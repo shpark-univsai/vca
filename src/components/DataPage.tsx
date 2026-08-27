@@ -537,7 +537,12 @@ function SimpleSelect({ value, options, onChange }: { value:string; options:stri
     <div style={{ position:"relative", width:"100%" }}>
       <style>{`
         .vca-simple-select-trigger:hover { border-color:var(--primary-300) !important; }
-        .vca-simple-select-option:hover { background-color:var(--gray-50); }
+        /* The option rows set their own background inline (selected vs not), and an inline
+           declaration outranks a plain selector — so this rule did nothing until it carried
+           !important like its neighbours. The selected row keeps its purple on hover: it is
+           already the current value, and graying it would read as losing the selection. */
+        .vca-simple-select-option:hover { background-color:var(--gray-50) !important; }
+        .vca-simple-select-option[data-on="true"]:hover { background-color:var(--primary-100) !important; }
       `}</style>
       <button onClick={() => setOpen(o => !o)} className="vca-simple-select-trigger" style={{
         display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
@@ -554,7 +559,7 @@ function SimpleSelect({ value, options, onChange }: { value:string; options:stri
           {["", ...options].map(o => {
             const active = value === o;
             return (
-              <button key={o || "__all__"} onClick={() => { onChange(o); setOpen(false); }} className="vca-simple-select-option" style={{
+              <button key={o || "__all__"} onClick={() => { onChange(o); setOpen(false); }} className="vca-simple-select-option" data-on={active} style={{
                 display:"flex", alignItems:"center", gap:"6px", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer",
                 backgroundColor: active ? "var(--primary-100)" : "white",
                 fontSize:"12px", fontWeight: active ? 700 : 500, color: active ? "var(--primary-400)" : "var(--gray-700)",
