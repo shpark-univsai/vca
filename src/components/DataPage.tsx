@@ -3374,16 +3374,22 @@ const TIER_LINK_META: Record<string, { label:string }> = {
   tier3: { label:"Tier 3 link" },
 };
 
+// Four cameras that ACTUALLY EXIST in Best Frame's CAM_DATA, by both code and location. They used
+// to be invented ("CAM-BGS-007" / "Bugis St Crossing"), which quietly broke the lightbox's Analyze
+// frame button: it hands the location to Best Frame, which matches it against CAM_DATA by substring
+// — and no invented name matched anything, so every click ended in a "No matching camera" toast.
+// Anything added here has to name a real CAM_DATA entry that has at least one detection.
+//
 // One scene per camera. Until the backend serves the actual still behind each detection, every
 // row shared a single image, so paging through 15 pages of frames looked like the same moment
 // listed over and over — the scene is what tells you these are different places. Remote stills
 // come from the same source as the face crops; Bugis keeps the local CCTV asset.
 const CO_SCENE = (id: string) => `https://images.unsplash.com/${id}?w=640&h=368&fit=crop&q=70`;
 const COOCCUR_CAMERAS = [
-  { code:"CAM-GEY-024", location:"Geylang Rd Int.",     scene:CO_SCENE("photo-1493780474015-ba834fd0ce2f") },
-  { code:"CAM-ORC-011", location:"Orchard Rd Junction", scene:CO_SCENE("photo-1449824913935-59a10b8d2000") },
-  { code:"CAM-BGS-007", location:"Bugis St Crossing",   scene:"/cctv-sample.png" },
-  { code:"CAM-CBD-019", location:"Raffles Pl Int.",     scene:CO_SCENE("photo-1519501025264-65ba15a82390") },
+  { code:"CAM_WestGate_BS1B", location:"Bugis MRT",       scene:"/cctv-sample.png" },
+  { code:"CAM_OrchardC_OR2",  location:"Orchard Central", scene:CO_SCENE("photo-1449824913935-59a10b8d2000") },
+  { code:"CAM_TampinesH_TP1", location:"Tampines Hub",    scene:CO_SCENE("photo-1519501025264-65ba15a82390") },
+  { code:"CAM_ClarkeQ_CQ1",   location:"Clarke Quay",     scene:CO_SCENE("photo-1493780474015-ba834fd0ce2f") },
 ];
 
 function assocId(n: RedfaceNode) {
