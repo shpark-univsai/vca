@@ -244,6 +244,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
   const [zoneFilter, setZoneFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "online" | "offline">("ALL");
   const [aiFilter, setAiFilter] = useState<"ALL" | CameraAiFeature>("ALL");
+  const [hoveredAction, setHoveredAction] = useState<"reconnect" | "export" | "add" | null>(null);
 
   const projectCameras = cameras.filter(c => c.projectId === projectId);
   const zones = Array.from(new Set(projectCameras.map(c => c.zone).filter(Boolean)));
@@ -331,17 +332,20 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
           <button onClick={batchReconnect}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            onMouseEnter={() => setHoveredAction("reconnect")} onMouseLeave={() => setHoveredAction(null)}
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: hoveredAction === "reconnect" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M12.25 7A5.25 5.25 0 1 1 10.5 3.15M12.25 1.75V4.67h-2.92" stroke="var(--gray-600)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             Reconnect All
           </button>
           <button onClick={exportCsv}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            onMouseEnter={() => setHoveredAction("export")} onMouseLeave={() => setHoveredAction(null)}
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: hoveredAction === "export" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1.75V9.33M7 9.33 4.08 6.42M7 9.33 9.92 6.42M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             Export CSV
           </button>
           <button onClick={() => setShowAdd(true)}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+            onMouseEnter={() => setHoveredAction("add")} onMouseLeave={() => setHoveredAction(null)}
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0, filter: hoveredAction === "add" ? "brightness(0.92)" : "none" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
             Add camera
           </button>

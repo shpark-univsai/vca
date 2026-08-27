@@ -6,7 +6,6 @@ import { useVcaStore } from "@/lib/vcaStore";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import RemoveImageButton from "./RemoveImageButton";
-import SidebarToggleIcon from "./SidebarToggleIcon";
 
 const BORDER = "1px solid var(--gray-200)";
 export type DataTab = "Live Monitoring" | "Re-ID Analysis" | "Smart Search" | "RedFace";
@@ -2338,11 +2337,6 @@ function SlidersIconSm({ size = 16 }: { size?: number }) {
 // "Co-occurrence frequency (high → low)" ran on as one line in a 280px-wide sidebar — breaks it
 // onto a second line starting at the "(" instead of wrapping wherever the text box happens to run
 // out of room (mid-word) or truncating with an ellipsis.
-function SortOptionLabel({ label }: { label: string }) {
-  const idx = label.indexOf(" (");
-  if (idx === -1) return <>{label}</>;
-  return <>{label.slice(0, idx)}<br />{label.slice(idx + 1)}</>;
-}
 
 // Same picker look as Live Monitoring's "All Cameras ▾" (CameraDetailView above) — Re-ID's
 // `camera` search filter (already wired into filterReidData) had no UI to actually set it from,
@@ -2691,14 +2685,6 @@ function CandidateCard({ c, selected, onClick }:
   );
 }
 
-function CheckSquareIconSm() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <rect x="1.5" y="1.5" width="11" height="11" rx="2" fill="currentColor"/>
-      <path d="M4 7l2 2 4-4.5" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
 function ChevronDownIconSm() {
   return <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 }
@@ -2796,10 +2782,14 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   };
 
   const target = selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget] : activeVIP >= 0 ? VIP_QUICK[activeVIP] : null;
-  const hasFace = !!uploadedFace || !!target;
-  const faceSrc = uploadedFace ?? target?.face;
-  const hasBody = !!uploadedBody || !!target;
-  const bodySrc = uploadedBody ?? target?.body;
+  // faceCleared/bodyCleared are consulted here, which is the whole point of them: the ✕ on one
+  // preview sets the flag, and without reading it back the image never went away — the control
+  // looked functional and did nothing. An upload still wins over a cleared target photo, since
+  // uploading is a fresh choice for that slot.
+  const hasFace = !!uploadedFace || (!!target && !faceCleared);
+  const faceSrc = uploadedFace ?? (faceCleared ? undefined : target?.face);
+  const hasBody = !!uploadedBody || (!!target && !bodyCleared);
+  const bodySrc = uploadedBody ?? (bodyCleared ? undefined : target?.body);
   // Selected recent target first — same reason as VipQuickSelectRow's compact ordering. Original
   // indices ride along because selectRecentTarget and selectedTarget are index-based.
   const recentOrder = RECENT_TARGETS_EN.map((t, i) => ({ t, i }));
@@ -4171,8 +4161,6 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
   const tier1 = sortNodes(REDFACE_TIER1.filter(n => notExcluded(n) && inDateRange(n)));
   const tier2 = sortNodes(REDFACE_TIER2.filter(n => notExcluded(n) && inDateRange(n)));
   const tier3 = sortNodes(REDFACE_TIER3.filter(n => notExcluded(n) && inDateRange(n)));
-  const totalAll = REDFACE_TIER1.filter(notExcluded).length + REDFACE_TIER2.filter(notExcluded).length + REDFACE_TIER3.filter(notExcluded).length;
-  const totalVisible = (tier1On ? tier1.length : 0) + (tier2On ? tier2.length : 0) + (tier3On ? tier3.length : 0);
   const reset = () => { setTier1On(true); setTier2On(true); setTier3On(true); setSortDir("desc"); setDateRange(DEFAULT_REDFACE_RANGE); };
 
   // No primary target yet means there's nobody to compute co-occurrence against — the tier

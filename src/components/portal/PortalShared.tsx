@@ -29,6 +29,8 @@ interface SelectOption {
 // from the main VCA app's SimpleSelect (DataPage.tsx) to match its exact look and behavior.
 export function FilterSelect({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: SelectOption[] }) {
   const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [hoveredOption, setHoveredOption] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   useEscapeKey(() => setOpen(false), open);
 
@@ -45,17 +47,15 @@ export function FilterSelect({ value, onChange, options }: { value: string; onCh
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <style>{`
-        .portal-simple-select-trigger:hover { border-color: var(--primary-300) !important; }
-        .portal-simple-select-option:hover { background-color: var(--gray-50); }
-      `}</style>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="portal-simple-select-trigger"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px",
-          height: "32px", padding: "0 10px", borderRadius: "8px", border: BORDER,
+          height: "32px", padding: "0 10px", borderRadius: "8px",
+          border: hovered ? "1px solid var(--primary-300)" : BORDER,
           backgroundColor: "white", cursor: "pointer", whiteSpace: "nowrap",
         }}
       >
@@ -75,11 +75,13 @@ export function FilterSelect({ value, onChange, options }: { value: string; onCh
             return (
               <button
                 key={o.value}
-                className="portal-simple-select-option"
                 onClick={() => { onChange(o.value); setOpen(false); }}
+                onMouseEnter={() => setHoveredOption(o.value)}
+                onMouseLeave={() => setHoveredOption(null)}
                 style={{
                   display: "flex", alignItems: "center", gap: "6px", width: "100%", textAlign: "left", padding: "8px 12px",
-                  border: "none", cursor: "pointer", backgroundColor: active ? "var(--primary-100)" : "white",
+                  border: "none", cursor: "pointer",
+                  backgroundColor: active ? "var(--primary-100)" : hoveredOption === o.value ? "var(--gray-50)" : "white",
                   fontSize: "12px", fontWeight: active ? 700 : 500, color: active ? "var(--primary-400)" : "var(--gray-700)",
                 }}
               >
