@@ -135,7 +135,7 @@ export interface Person {
 // "did requestId change" fires again even when asked to jump to the exact same place twice in a
 // row.
 export interface DataNavRequest {
-  tab: "Live Monitoring" | "Re-ID Analysis" | "Smart Search" | "RedFace";
+  tab: "Live Monitoring" | "Re-ID Analysis" | "RedFace";
   cameraCode?: string;
   vipIndex?: number;
   requestId: number;

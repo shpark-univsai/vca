@@ -1027,12 +1027,23 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
     : filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange: searchDateRange, threshold, licensePlate, camera: searchCamera, topColors, bottomColors, shoesColors, emotion, ethnicGroup });
   const searchResultDetailItem = searchDetailId !== null ? searchResults.find(p => p.id===searchDetailId) ?? null : null;
 
-  // Command palette deep-link: "jump to camera X" lands here with cameraCode set.
+  // Command palette deep-links land here: "jump to camera X" with cameraCode, "search for VIP Y"
+  // with vipIndex. The VIP case used to be routed at tab:"Smart Search" and consumed by nobody, so
+  // picking a VIP in the palette opened a Data page with no tab rendered at all.
   const dataNavRequest = useVcaStore(s => s.dataNavRequest);
   const [prevCamNavId, setPrevCamNavId] = useState<number | null>(null);
-  if (dataNavRequest?.cameraCode && dataNavRequest.requestId !== prevCamNavId) {
+  if (dataNavRequest && dataNavRequest.requestId !== prevCamNavId
+      && (dataNavRequest.cameraCode !== undefined || dataNavRequest.vipIndex !== undefined)) {
     setPrevCamNavId(dataNavRequest.requestId);
-    onOpenCamChange(dataNavRequest.cameraCode);
+    if (dataNavRequest.cameraCode !== undefined) onOpenCamChange(dataNavRequest.cameraCode);
+    if (dataNavRequest.vipIndex !== undefined) {
+      // Same landing state as picking that VIP by hand in the search sidebar.
+      setSearchExpanded(true); setSearchTab("Photo");
+      setSelectedTarget(-1); setCardSearchTarget(null);
+      clearAttrFilters(); setLicensePlate(""); setSearchCamera("");
+      setTopColors([]); setBottomColors([]); setShoesColors([]);
+      setActiveVIP(dataNavRequest.vipIndex);
+    }
   }
 
   useEffect(() => {
@@ -4465,7 +4476,10 @@ export const TAB_ICONS: Record<DataTab, React.ReactNode> = {
 // Smart Search isn't its own top-level tab anymore — it lives inside Live Monitoring (see
 // LiveMonitoringTab), matching how Re-ID Analysis/RedFace each keep their own search UI embedded
 // in place rather than sending the operator to a separate destination to search from.
-const DATA_TABS: DataTab[] = ["Live Monitoring","Re-ID Analysis","RedFace"];
+// Exported so the command palette lists exactly these. It kept its own copy, which still had
+// "Smart Search" in it after that stopped being a top-level tab — selecting it set activeTab to a
+// value nothing renders, i.e. a blank Data page.
+export const DATA_TABS = ["Live Monitoring", "Re-ID Analysis", "RedFace"] as const satisfies readonly DataTab[];
 // "RedFace" doesn't say what it does on its own — a first-time viewer has no way to guess this
 // is a co-occurrence/associate-finder feature just from the tab label.
 const DATA_TAB_TOOLTIPS: Partial<Record<DataTab, string>> = {

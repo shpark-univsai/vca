@@ -3,10 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVcaStore } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { VIP_QUICK, TAB_ICONS, type DataTab } from "./DataPage";
+import { DATA_TABS, VIP_QUICK, TAB_ICONS } from "./DataPage";
 import type { NavTab } from "./Navbar";
-
-const DATA_SUB_TABS: DataTab[] = ["Live Monitoring", "Re-ID Analysis", "Smart Search", "RedFace"];
 
 interface PaletteItem {
   group: string;
@@ -78,7 +76,7 @@ export default function CommandPalette({ open, onClose, onGoToPage }: {
   };
 
   const items = useMemo<PaletteItem[]>(() => [
-    ...DATA_SUB_TABS.map(tab => ({
+    ...DATA_TABS.map(tab => ({
       group: "Data", label: tab, icon: <span style={{ color: "var(--gray-400)", display: "flex" }}>{TAB_ICONS[tab]}</span>, keywords: `data ${tab}`,
       action: () => goToData({ tab }),
     })),
@@ -88,7 +86,9 @@ export default function CommandPalette({ open, onClose, onGoToPage }: {
     })),
     ...VIP_QUICK.map((v, i) => ({
       group: "VIP Targets", label: v.name, avatar: v.face, keywords: `vip ${v.name}`,
-      action: () => goToData({ tab: "Smart Search", vipIndex: i }),
+      // Live Monitoring, not "Smart Search": that stopped being a tab of its own and the search
+      // form now lives inside Live Monitoring's sidebar, which is what vipIndex opens.
+      action: () => goToData({ tab: "Live Monitoring", vipIndex: i }),
     })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [cameras]);
