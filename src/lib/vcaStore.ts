@@ -344,6 +344,14 @@ const CAMERAS: Camera[] = [
     });
   }),
 ];
+/**
+ * The project's camera codes, in roster order. Mock datasets that need to name a camera draw from
+ * here rather than inventing their own labels: Re-ID's grid used to carry "NC-1".."NC-4", which
+ * meant its camera filter listed names that appeared nowhere else in the app and could never match
+ * a real camera. One id space, so a camera means the same thing on every screen.
+ */
+export const CAMERA_CODES = CAMERAS.map(c => c.code);
+
 
 // A separate, much larger camera pool that only the VIP-detection simulator (VipAlertTicker in
 // ClientLayout.tsx) picks from — NOT part of the `cameras` store state above, and not rendered as

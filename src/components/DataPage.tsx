@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MatchItem, ReIDStatus } from "@/types/reid";
-import { useVcaStore } from "@/lib/vcaStore";
+import { CAMERA_CODES, useVcaStore } from "@/lib/vcaStore";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import RemoveImageButton from "./RemoveImageButton";
@@ -1790,7 +1790,10 @@ const REID_GENDER_CYCLE  = ["F","M","F","F","M","F","M","F","F","M","M","F","F",
 const REID_AGE_CYCLE     = ["28yo","28yo","28yo","35yo","28yo","42yo","28yo","28yo","31yo","28yo","35yo","28yo","28yo","29yo","28yo","37yo","28yo","33yo"];
 const REID_SCORE_CYCLE   = [null,null,87.8,null,null,null,87.8,null,null,null,null,87.8,null,null,null,null,87.8,null];
 const REID_CAM_CYCLE     = ["NC-1","NC-2","NC-3","NC-1","NC-4","NC-2","NC-1","NC-3","NC-2","NC-4","NC-1","NC-3","NC-2","NC-1","NC-4","NC-3","NC-1","NC-2"];
-const CAMERA_OPTIONS     = ["NC-1", "NC-2", "NC-3", "NC-4"];
+// The real roster, not a private "NC-1".."NC-4" set. Re-ID's rows and its camera filter now name
+// the same cameras Live Monitoring does, so a camera picked in one tab means the same camera in the
+// other, and the filter can actually match.
+const CAMERA_OPTIONS = CAMERA_CODES;
 const REID_FACE_POOL     = MATCH_DATA.map(m => m.face);
 // Attribute/date/similarity fields backing the Re-ID / Smart Search filter forms — added so
 // Gender/Apparel/Props/Search Period/Similarity actually narrow the result set instead of the
@@ -2348,12 +2351,14 @@ function SlidersIconSm({ size = 16 }: { size?: number }) {
 // same gap the Associate filter's search box used to have. A plain string, not tied to the
 // ALL_CAMERAS_ID sentinel CameraDetailView uses, since this sets a filter value, not which live
 // feed is being browsed — "" just means "no camera filter", same as every other cleared filter.
-// Lists CAMERA_OPTIONS (the "NC-1".."NC-4" labels REID_DATA's own `cam` field actually uses), not
-// the live camera roster from useVcaStore — those are a different id space ("CAM-NOV-001" etc.)
-// that no REID_DATA row's `cam` would ever match, which would make this filter silently return
-// nothing no matter which camera got picked.
+// Lists the same cameras Live Monitoring's picker does, with the same codes and the same
+// online/offline read. Both used to be true at once: this listed "NC-1".."NC-4" because that is
+// what REID_DATA's `cam` field held, so the two tabs showed different names for the same estate
+// and neither could hand a selection to the other. REID_DATA draws from CAMERA_CODES now.
 function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
+  const cameras = useVcaStore(s => s.cameras);
+  const statusOf = (code: string) => cameras.find(c => c.code === code)?.status;
   const label = value || "All Cameras";
   return (
     <div style={{ position:"relative", width:"152px" }}>
@@ -2384,10 +2389,15 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
           {CAMERA_OPTIONS.map(code => (
             <button key={code} className="vca-picker-option" data-on={code===value}
               onClick={() => { onChange(code); setOpen(false); }} style={{
-              display:"flex", alignItems:"center", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer",
+              display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer",
               fontSize:"13px", fontWeight: code===value ? 700:500, color: code===value ? "var(--primary-400)":"var(--gray-700)",
             }}>
               {code}
+              {/* Same ON/OFF read as Live Monitoring's picker. Whether a camera is up is part of
+                  what "pick this camera" means, and only one of the two lists was saying it. */}
+              <span style={{ fontSize:"10px", fontWeight:800, color: statusOf(code)==="online" ? "var(--success-400)" : "var(--gray-400)" }}>
+                {statusOf(code)==="online" ? "ON" : "OFF"}
+              </span>
             </button>
           ))}
         </div>
@@ -4464,12 +4474,12 @@ export default function DataPage({ onGoRedmap, onGoAnalyzeFrame }: { onGoRedmap?
     setActiveTab(tab);
   };
 
-  // Live Monitoring's camera picker (real store codes, e.g. "CAM-NOV-001") and Re-ID's camera
-  // filter (the separate "NC-1".."NC-4" mock id space REID_DATA's own `cam` field uses) can't
-  // share a raw value — a specific selection in one has no equivalent in the other's id space,
-  // and forcing one through would make the other silently filter down to zero real matches. "All
-  // Cameras" is the one state that means the same thing in both spaces, so only that syncs both
-  // ways; a specific pick in either tab stays local to that tab.
+  // Both pickers now name the same cameras (CAMERA_CODES), so a specific code IS meaningful in
+  // either tab. What still differs is only the "no filter" sentinel — Live Monitoring uses
+  // ALL_CAMERAS_ID for "show every feed", Re-ID uses "" for "no camera filter" — so that one state
+  // is translated between them. A specific pick stays local on purpose: switching tabs to compare
+  // the same camera is a deliberate act, and silently carrying a filter across would change what
+  // the other tab was showing without being asked.
   const [liveCam, setLiveCamRaw] = useState<string>(ALL_CAMERAS_ID);
   const [reidCam, setReidCamRaw] = useState<string>("");
   const setLiveCam = (v: string) => { setLiveCamRaw(v); if (v === ALL_CAMERAS_ID) setReidCamRaw(""); };
