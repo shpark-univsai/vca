@@ -554,6 +554,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
   const [focusedDet, setFocusedDet] = useState<Detection>(initialDet);
   const [trackDate, setTrackDate] = useState(() => initialDate ?? sgtDateKey(new Date()));
   const [dateOpen, setDateOpen] = useState(false);
+  const [timeOpen, setTimeOpen] = useState(false);
   const [cameraHovered, setCameraHovered] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [reelFilter, setReelFilter] = useState<ReelFilter>("All");
@@ -579,6 +580,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
   const [hoveredHour, setHoveredHour] = useState<number | null>(null);
   const [hoveredMinute, setHoveredMinute] = useState<number | null>(null);
   const dateDropdownRef = useRef<HTMLDivElement>(null);
+  const timeDropdownRef = useRef<HTMLDivElement>(null);
   const thumbRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const axisSpanSec = AXIS_SPAN_SEC;
@@ -606,10 +608,12 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
   const stepBy = (deltaSec: number) => { setSelectedSec(s => s + deltaSec); setWindowCenterSec(s => s + deltaSec); };
 
   useEscapeKey(() => setDateOpen(false), dateOpen);
+  useEscapeKey(() => setTimeOpen(false), timeOpen);
   useEffect(() => {
     if (!dateOpen) return;
     function handleClickOutside(e: MouseEvent) {
       if (dateDropdownRef.current && !dateDropdownRef.current.contains(e.target as Node)) setDateOpen(false);
+      if (timeDropdownRef.current && !timeDropdownRef.current.contains(e.target as Node)) setTimeOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -854,21 +858,74 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   date button beside it. The clock icon (moved here from the date button, where
                   it misleadingly looked like a time indicator) now marks the control that's
                   actually about time. */}
-              <div style={{ display:"flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:"8px", padding:"6px 12px", border:"1px solid var(--gray-300)" }}>
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="8" r="6" stroke="var(--gray-500)" strokeWidth="1.4"/>
-                  <path d="M8 5v3l2 2" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round"/>
-                </svg>
-                <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-500)" }}>Jump to</span>
-                <input
-                  type="text" inputMode="numeric" placeholder="HH:MM:SS" defaultValue={secToHHMMSS(selectedSec)}
-                  onKeyDown={e => {
-                    if (e.key !== "Enter") return;
-                    const match = e.currentTarget.value.trim().match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/);
-                    if (match) jumpTo(Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3] ?? 0));
-                  }}
-                  style={{ width:"66px", border:"none", outline:"none", fontSize:"12px", fontWeight:700, color:"var(--gray-900)", fontFamily:"monospace" }}
-                />
+              <div ref={timeDropdownRef} style={{ position:"relative" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:"8px", padding:"6px 12px", border:"1px solid var(--gray-300)" }}>
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                    <circle cx="8" cy="8" r="6" stroke="var(--gray-500)" strokeWidth="1.4"/>
+                    <path d="M8 5v3l2 2" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
+                  <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-500)" }}>Jump to</span>
+                  {/* key={selectedSec} remounts the field whenever the time moves from anywhere
+                      else (the list below, the step buttons, a thumbnail), so an uncontrolled
+                      input can't sit there showing a stale time. */}
+                  <input
+                    key={selectedSec}
+                    type="text" inputMode="numeric" placeholder="HH:MM:SS" defaultValue={secToHHMMSS(selectedSec)}
+                    onFocus={() => setTimeOpen(false)}
+                    onKeyDown={e => {
+                      if (e.key !== "Enter") return;
+                      const match = e.currentTarget.value.trim().match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/);
+                      if (match) jumpTo(Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3] ?? 0));
+                    }}
+                    // Committing on blur too: typing a time and then clicking the strip used to
+                    // discard what was typed, with nothing to say Enter was required.
+                    onBlur={e => {
+                      const match = e.currentTarget.value.trim().match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/);
+                      if (match) jumpTo(Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3] ?? 0));
+                    }}
+                    style={{ width:"66px", border:"none", outline:"none", fontSize:"12px", fontWeight:700, color:"var(--gray-900)", fontFamily:"monospace" }}
+                  />
+                  {/* This control used to be <input type="time">, whose native dropdown is where
+                      the hour/minute list came from. That input was dropped because the browser
+                      draws its AM/PM in the OS locale (Korean "오후") with an accent colour from
+                      nowhere in this app — but typing-only left the control looking like the date
+                      dropdown beside it while doing nothing when clicked. This is the same list,
+                      drawn here, so it stays in English and the typed path still works. */}
+                  <button onClick={() => setTimeOpen(o => !o)} aria-label="Pick hour and minute"
+                    style={{ display:"flex", padding:0, border:"none", background:"none", cursor:"pointer" }}>
+                    <svg width="9" height="9" viewBox="0 0 8 8" fill="none" style={{ transform: timeOpen ? "rotate(180deg)" : "none", transition:"transform 0.15s" }}>
+                      <path d="M2 3L4 5L6 3" stroke="var(--gray-900)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+                {timeOpen && (
+                  <div style={{ position:"absolute", right:0, top:"calc(100% + 4px)", zIndex:20, display:"flex",
+                    backgroundColor:"white", borderRadius:"8px", border:"1px solid var(--gray-200)",
+                    boxShadow:"0 4px 16px rgba(14, 22, 42,0.12)", overflow:"hidden" }}>
+                    {([
+                      { label:"Hour", values: Array.from({ length: HOURS_IN_DAY }, (_, h) => h), current: currentHour,
+                        pick: (h: number) => jumpTo(h * 3600 + currentMinute * 60) },
+                      { label:"Min", values: Array.from({ length: 60 }, (_, m) => m), current: currentMinute,
+                        pick: (m: number) => jumpTo(currentHour * 3600 + m * 60) },
+                    ]).map(col => (
+                      <div key={col.label} style={{ display:"flex", flexDirection:"column", borderLeft: col.label === "Min" ? "1px solid var(--gray-200)" : "none" }}>
+                        <span style={{ fontSize:"9px", fontWeight:800, color:"var(--gray-400)", letterSpacing:"0.4px",
+                          padding:"6px 12px 4px", textTransform:"uppercase" }}>{col.label}</span>
+                        <div className="vca-thin-scrollbar" style={{ maxHeight:"188px", overflowY:"auto" }}>
+                          {col.values.map(v => (
+                            <button key={v} className="vca-picker-option" data-on={v === col.current}
+                              onClick={() => { col.pick(v); setTimeOpen(false); }}
+                              style={{ display:"block", width:"100%", padding:"5px 16px", border:"none", cursor:"pointer",
+                                fontSize:"12px", fontWeight: v === col.current ? 800 : 600, fontFamily:"monospace",
+                                color: v === col.current ? "var(--primary-400)" : "var(--gray-700)" }}>
+                              {String(v).padStart(2, "0")}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
