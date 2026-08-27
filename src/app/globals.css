@@ -335,3 +335,12 @@ body {
    slider and its % reading are the only thing beside it. */
 @media (max-width: 1600px) { .vca-tb-hint { display: none; } }
 @media (max-width: 1400px) { .vca-tb-label { display: none; } }
+
+/* Option rows in the Data screens' camera pickers (Live Monitoring and Re-ID). The resting and
+   selected fills live here rather than in each button's style attribute: an inline declaration
+   outranks any stylesheet selector, so a background set inline silently cancels :hover — which is
+   exactly how the navbar tabs ended up with a hover rule that never fired. Only unselected rows
+   respond; the selected row is already where you are. */
+.vca-picker-option { background-color: #fff; transition: background-color .12s; }
+.vca-picker-option[data-on="true"] { background-color: var(--primary-100); }
+.vca-picker-option:not([data-on="true"]):hover { background-color: var(--gray-50); }

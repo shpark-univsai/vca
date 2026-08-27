@@ -374,9 +374,9 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
             <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, width:"100%", backgroundColor:"white",
               border:BORDER, borderRadius:"8px", boxShadow:"0 8px 20px rgba(14,22,42,0.12)", zIndex:10, overflow:"hidden",
               maxHeight:"320px", display:"flex", flexDirection:"column" }}>
-              <button onClick={() => { onSwitchCam(ALL_CAMERAS_ID); setPickerOpen(false); }} style={{
+              <button className="vca-picker-option" data-on={isAll}
+                onClick={() => { onSwitchCam(ALL_CAMERAS_ID); setPickerOpen(false); }} style={{
                 display:"flex", alignItems:"center", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer", flexShrink:0,
-                backgroundColor: isAll ? "var(--primary-100)" : "white",
                 fontSize:"13px", fontWeight: isAll ? 700:500, color: isAll ? "var(--primary-400)":"var(--gray-700)",
               }}>
                 All Cameras
@@ -386,9 +386,9 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
                   this list just kept growing past the bottom of the screen instead of scrolling. */}
               <div className="vca-thin-scrollbar" style={{ overflowY:"auto" }}>
                 {cameras.map(cam => (
-                  <button key={cam.id} onClick={() => { onSwitchCam(cam.code); setPickerOpen(false); }} style={{
+                  <button key={cam.id} className="vca-picker-option" data-on={cam.code===camId}
+                    onClick={() => { onSwitchCam(cam.code); setPickerOpen(false); }} style={{
                     display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer",
-                    backgroundColor: cam.code===camId ? "var(--primary-100)" : "white",
                     fontSize:"13px", fontWeight: cam.code===camId ? 700:500, color: cam.code===camId ? "var(--primary-400)":"var(--gray-700)",
                   }}>
                     {cam.code}
@@ -2369,18 +2369,17 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
       {open && (
         <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, width:"100%", backgroundColor:"white",
           border:BORDER, borderRadius:"8px", boxShadow:"0 8px 20px rgba(14,22,42,0.12)", zIndex:10, overflow:"hidden" }}>
-          <button onClick={() => { onChange(""); setOpen(false); }} style={{
+          <button className="vca-picker-option" data-on={!value} onClick={() => { onChange(""); setOpen(false); }} style={{
             display:"flex", alignItems:"center", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer",
-            backgroundColor: !value ? "var(--primary-100)" : "white",
             fontSize:"13px", fontWeight: !value ? 700:500, color: !value ? "var(--primary-400)":"var(--gray-700)",
           }}>
             All Cameras
           </button>
           <div style={{ height:"1px", backgroundColor:"var(--gray-200)" }} />
           {CAMERA_OPTIONS.map(code => (
-            <button key={code} onClick={() => { onChange(code); setOpen(false); }} style={{
+            <button key={code} className="vca-picker-option" data-on={code===value}
+              onClick={() => { onChange(code); setOpen(false); }} style={{
               display:"flex", alignItems:"center", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer",
-              backgroundColor: code===value ? "var(--primary-100)" : "white",
               fontSize:"13px", fontWeight: code===value ? 700:500, color: code===value ? "var(--primary-400)":"var(--gray-700)",
             }}>
               {code}
