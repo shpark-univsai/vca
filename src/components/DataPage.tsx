@@ -2361,7 +2361,8 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
   const statusOf = (code: string) => cameras.find(c => c.code === code)?.status;
   const label = value || "All Cameras";
   return (
-    <div style={{ position:"relative", width:"152px" }}>
+    /* 152px fitted "NC-1"; a real code plus its ON/OFF needs more, and the label was ellipsing. */
+    <div style={{ position:"relative", width:"186px" }}>
       <button onClick={() => setOpen(o => !o)} style={{
         display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
         padding:"8px 12px", borderRadius:"8px", backgroundColor:"white", border:"1px solid var(--primary-400)",
@@ -2378,14 +2379,20 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
       </button>
       {open && (
         <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, width:"100%", backgroundColor:"white",
-          border:BORDER, borderRadius:"8px", boxShadow:"0 8px 20px rgba(14,22,42,0.12)", zIndex:10, overflow:"hidden" }}>
+          border:BORDER, borderRadius:"8px", boxShadow:"0 8px 20px rgba(14,22,42,0.12)", zIndex:10, overflow:"hidden",
+          maxHeight:"320px", display:"flex", flexDirection:"column" }}>
           <button className="vca-picker-option" data-on={!value} onClick={() => { onChange(""); setOpen(false); }} style={{
-            display:"flex", alignItems:"center", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer",
+            display:"flex", alignItems:"center", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer", flexShrink:0,
             fontSize:"13px", fontWeight: !value ? 700:500, color: !value ? "var(--primary-400)":"var(--gray-700)",
           }}>
             All Cameras
           </button>
-          <div style={{ height:"1px", backgroundColor:"var(--gray-200)" }} />
+          <div style={{ height:"1px", backgroundColor:"var(--gray-200)", flexShrink:0 }} />
+          {/* Same scroll region Live Monitoring's picker has. This list was 4 fixed entries and fit
+              in the panel; now it follows the real roster, which grows, and overflow:hidden on the
+              panel meant the extra entries were simply unreachable. "All Cameras" stays pinned
+              above it — it is the reset, not one of the cameras. */}
+          <div className="vca-thin-scrollbar" style={{ overflowY:"auto" }}>
           {CAMERA_OPTIONS.map(code => (
             <button key={code} className="vca-picker-option" data-on={code===value}
               onClick={() => { onChange(code); setOpen(false); }} style={{
@@ -2400,6 +2407,7 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
               </span>
             </button>
           ))}
+          </div>
         </div>
       )}
     </div>
