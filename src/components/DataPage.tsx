@@ -3863,7 +3863,11 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
           <div style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"11px" }}>
             <span style={{ color:"var(--gray-400)", whiteSpace:"nowrap" }}>First <strong style={{ color:"var(--gray-900)", fontWeight:700 }}>{firstSeen.date} {firstSeen.time.slice(0, 5)}</strong></span>
             <span style={{ flex:1, minWidth:"12px", height:0, borderTop:"1px dashed var(--gray-300)" }} />
-            <span style={{ flexShrink:0, fontSize:"9px", fontWeight:800, color:"var(--primary-400)", backgroundColor:"white",
+            {/* gray-700, not the link colour. This is a plain count of what falls between the two
+                dates — nothing to click — and purple here competed with the heading and the two
+                Peak counts that ARE clickable. (Set once already and lost when this row was
+                rewritten for the dashed rules; don't reintroduce it.) */}
+            <span style={{ flexShrink:0, fontSize:"9px", fontWeight:800, color:"var(--gray-700)", backgroundColor:"white",
               padding:"2px 8px", borderRadius:"999px", letterSpacing:"0.2px", whiteSpace:"nowrap" }}>
               {events.length} FRAMES
             </span>
