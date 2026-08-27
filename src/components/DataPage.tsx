@@ -4013,7 +4013,15 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort }
   useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", width:"100%" }}>
+    /* Scrolls sideways rather than being clipped. The ten columns need 1092px (880 of fixed widths
+       + 72 of gaps + 140 minimum for the name column) before the 40px of row padding, and the
+       Co-capture evidence panel takes 460 of the window: at 1512 that leaves 1012 and the Action
+       button — the only control in the row — was being cut off the right edge by the page's own
+       overflow:hidden, exactly the way Redmap's Search button was. A table is the one place
+       horizontal scrolling reads as normal, and the alternative here is hiding columns of data.
+       At 1600px and up nothing scrolls. */
+    <div className="vca-thin-scrollbar" style={{ width:"100%", overflowX:"auto" }}>
+    <div style={{ display:"flex", flexDirection:"column", minWidth:"1132px" }}>
       <div style={{ backgroundColor:"var(--gray-50)", borderTop:"1px solid var(--gray-100)", padding:"12px 20px",
         display:"flex", gap:"8px", fontSize:"12px", fontWeight:800, color:"var(--gray-600)" }}>
         <span style={{ width:"50px", flexShrink:0 }}>Rank</span>
@@ -4108,9 +4116,9 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort }
         );
       })}
     </div>
+    </div>
   );
 }
-
 function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }: {
   primaryTarget:{ name:string; face:string } | null; onSwitchTarget:()=>void;
   onGoAnalyzeFrame?: (location: string, at?: { date: string; time: string }) => void;
