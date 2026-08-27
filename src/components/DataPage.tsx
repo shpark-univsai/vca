@@ -1931,6 +1931,12 @@ interface ReidCluster {
   id: string;
   thumbnail: string;
   title: string;
+  /**
+   * The person this cluster is about, in REID_DATA's shape. The RedFace button needs an actual
+   * person to hand over: without it that button only switched tabs, so RedFace opened its target
+   * picker and asked you to find — by hand — the person whose row you had just clicked.
+   */
+  subject: (typeof REID_DATA)[number];
   meta: { label: string; value: string }[];
   action: string;
   matches: MatchItem[];
@@ -2018,6 +2024,7 @@ const CLUSTERS: ReidCluster[] = [
   {
     id: "c1",
     thumbnail: SUSPECT_1.url,
+    subject: SUSPECT_1,
     title: "TS017323",
     meta: [
       { label:"Gender", value:"F" },
@@ -2031,6 +2038,7 @@ const CLUSTERS: ReidCluster[] = [
   {
     id: "c2",
     thumbnail: SUSPECT_2.url,
+    subject: SUSPECT_2,
     title: "TS015942",
     meta: [
       { label:"Gender", value:"M" },
@@ -2073,7 +2081,7 @@ function ClusterMatchCard({ item, onClick }: { item: MatchItem; onClick?: () => 
   );
 }
 
-function ClusterCard({ cluster, onNavigateTab, onMatchClick }: { cluster: ReidCluster; onNavigateTab?: (tab: DataTab) => void; onMatchClick?: (id: number) => void }) {
+function ClusterCard({ cluster, onNavigateTab, onMatchClick }: { cluster: ReidCluster; onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number], label?: string) => void; onMatchClick?: (id: number) => void }) {
   return (
     <div style={{ backgroundColor:"white", borderRadius:"12px", padding:"12px 24px", display:"flex", flexDirection:"column", gap:"16px", width:"100%", boxSizing:"border-box" }}>
       <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", gap:"16px" }}>
@@ -2096,7 +2104,7 @@ function ClusterCard({ cluster, onNavigateTab, onMatchClick }: { cluster: ReidCl
             </div>
           </div>
         </div>
-        <button onClick={() => onNavigateTab?.(cluster.action as DataTab)} style={{ display:"flex", alignItems:"center", gap:"6px", padding:"6px 12px", borderRadius:"8px",
+        <button onClick={() => onNavigateTab?.(cluster.action as DataTab, cluster.subject, cluster.title)} style={{ display:"flex", alignItems:"center", gap:"6px", padding:"6px 12px", borderRadius:"8px",
           backgroundColor:"var(--gray-100)", border:"none", cursor:"pointer", flexShrink:0 }}>
           <RedFaceIconSm />
           <span style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-600)", letterSpacing:"-0.26px", whiteSpace:"nowrap" }}>{cluster.action}</span>
@@ -2158,11 +2166,14 @@ function generateNewRecognition(existingClusters: ReidCluster[]): ReidCluster[] 
     // one fresh hit — a single photo doesn't read as "this identity has been re-identified
     // across cameras," which is the whole point of a Re-ID cluster (same generator Recent
     // Targets/VIP Quick Select search results already use for exactly this).
-    const history = buildTargetResultRows(vip.face, vip.body, genderAbbrev, 20).map(reidToMatchItem);
+    const historyRows = buildTargetResultRows(vip.face, vip.body, genderAbbrev, 20);
     const fresh: ReidCluster = {
       id: `vip-${vip.name}`, thumbnail: vip.face, title: vip.name,
+      // status forced to VIP: the generator marks its rows Unknown, but this cluster IS a
+      // registered VIP and RedFace reads the status to label the primary target.
+      subject: { ...historyRows[0], status: "VIP" as ReIDStatus },
       meta: [{ label:"Gender", value:genderAbbrev }],
-      action: "RedFace", matches: [newMatch, ...history], isVip: true,
+      action: "RedFace", matches: [newMatch, ...historyRows.map(reidToMatchItem)], isVip: true,
     };
     return [fresh, ...existingClusters];
   }
@@ -2171,11 +2182,12 @@ function generateNewRecognition(existingClusters: ReidCluster[]): ReidCluster[] 
   const age = `${20 + Math.floor(Math.random() * 4) * 10}s`;
   const photo = MATCH_DATA[Math.floor(Math.random() * MATCH_DATA.length)];
   const newMatch: MatchItem = { id:matchId, face:photo.face, body:photo.body, cam, date, time, similarity, gender:genderAbbrev, age, plate:null, status:"Unknown" };
-  const history = buildTargetResultRows(photo.face, photo.body, genderAbbrev, 20).map(reidToMatchItem);
+  const historyRows = buildTargetResultRows(photo.face, photo.body, genderAbbrev, 20);
   const fresh: ReidCluster = {
     id: `unk-${matchId}`, thumbnail: photo.face, title: randomTargetName(),
+    subject: historyRows[0],
     meta: [{ label:"Gender", value:genderAbbrev }, { label:"Age", value:age }],
-    action: "RedFace", matches: [newMatch, ...history], isVip: false,
+    action: "RedFace", matches: [newMatch, ...historyRows.map(reidToMatchItem)], isVip: false,
   };
   return [fresh, ...existingClusters];
 }
@@ -2416,7 +2428,7 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
 
 function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavigateTab, onGoRedmap, onGoAnalyzeFrame }: {
   camera: string; onCameraChange: (v: string) => void;
-  seedCard?: (typeof REID_DATA)[number] | null; onSeedConsumed?: () => void; onNavigateTab?: (tab: DataTab) => void; onGoRedmap?: () => void; onGoAnalyzeFrame?: (location: string) => void;
+  seedCard?: (typeof REID_DATA)[number] | null; onSeedConsumed?: () => void; onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number], label?: string) => void; onGoRedmap?: () => void; onGoAnalyzeFrame?: (location: string) => void;
 }) {
   const [expanded, setExpanded]         = useState(false);
   // Same collapsible tabbed sidebar as Live Monitoring's Photo/Filter/VIP/Car search (see
@@ -2548,13 +2560,17 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   // correct result. buildTargetResultRows never looks at camera/gender/apparel/props/date, so once
   // a target's picked those stop being real filters — the meta line below only lists what's
   // actually driving the results, same reasoning as Smart Search's results-bar chips.
-  const targetMatches = searchType === "PERSON" && searchTarget
+  const targetRows = searchType === "PERSON" && searchTarget
     ? buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20)
         .filter(r => r.similarity >= threshold)
-        .map(reidToMatchItem)
     : null;
+  const targetMatches = targetRows?.map(reidToMatchItem) ?? null;
   const searchResultCluster: ReidCluster | null = hasSearched ? {
     id: "search-result",
+    // Top row of the same generated set, so this cluster's RedFace button hands over the person
+    // that was searched for rather than switching tabs empty-handed. Falls back to the first mock
+    // row for an attribute-only search, where there is no one specific person to carry over.
+    subject: targetRows?.[0] ?? REID_DATA[0],
     thumbnail: searchType === "VEHICLE" ? carSvgDataUri(VEHICLE_COLOR_CYCLE[0]) : (searchTarget?.face ?? MATCH_DATA[0].face),
     title: searchType === "VEHICLE" ? "Vehicle search result" : searchTarget && "label" in searchTarget ? searchTarget.label : searchTarget ? searchTarget.name : "Search result",
     meta: targetMatches ? [
@@ -4337,8 +4353,8 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
   );
 }
 
-function RedFaceContent({ seedCard, onSeedConsumed, onGoAnalyzeFrame }: {
-  seedCard?: (typeof REID_DATA)[number] | null; onSeedConsumed?: () => void;
+function RedFaceContent({ seedCard, seedLabel, onSeedConsumed, onGoAnalyzeFrame }: {
+  seedCard?: (typeof REID_DATA)[number] | null; seedLabel?: string | null; onSeedConsumed?: () => void;
   onGoAnalyzeFrame?: (location: string, at?: { date: string; time: string }) => void;
 } = {}) {
   const [primaryTarget, setPrimaryTarget] = useState<{ name:string; face:string } | null>(null);
@@ -4368,7 +4384,9 @@ function RedFaceContent({ seedCard, onSeedConsumed, onGoAnalyzeFrame }: {
   if (seedCard !== prevSeedCard) {
     setPrevSeedCard(seedCard);
     if (seedCard) {
-      const label = seedCard.status === "VIP" ? "VIP Match" : `TS${String(seedCard.id).padStart(6, "0")}`;
+      // The caller's own name for this person wins. Only when it has none do we fall back to the
+      // row's status/id, which is all this component can see on its own.
+      const label = seedLabel ?? (seedCard.status === "VIP" ? "VIP Match" : `TS${String(seedCard.id).padStart(6, "0")}`);
       setPrimaryTarget({ name: label, face: seedCard.url });
       setPickerOpen(false);
     }
@@ -4477,8 +4495,13 @@ export default function DataPage({ onGoRedmap, onGoAnalyzeFrame }: { onGoRedmap?
   // Carries a Live Monitoring card's data into whichever tab its hover-action button targets,
   // so that tab lands on real results for that person instead of a bare, empty search form.
   const [seedCard, setSeedCard] = useState<(typeof REID_DATA)[number] | null>(null);
-  const handleNavigateFromCard = (tab: DataTab, card: (typeof REID_DATA)[number]) => {
+  // The name the source screen already knows for that person ("Mina", "TS017323"). Without it
+  // RedFace can only re-derive a label from the row's status and id, which throws away a real
+  // identity the Re-ID cluster was already displaying.
+  const [seedLabel, setSeedLabel] = useState<string | null>(null);
+  const handleNavigateFromCard = (tab: DataTab, card: (typeof REID_DATA)[number], label?: string) => {
     setSeedCard(card);
+    setSeedLabel(label ?? null);
     setActiveTab(tab);
   };
 
@@ -4527,8 +4550,8 @@ export default function DataPage({ onGoRedmap, onGoAnalyzeFrame }: { onGoRedmap?
       </div>
 
       {activeTab==="Live Monitoring" && <LiveMonitoringTab openCam={liveCam} onOpenCamChange={setLiveCam} onNavigateTab={handleNavigateFromCard} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
-      {activeTab==="Re-ID Analysis"   && <ReIDContent camera={reidCam} onCameraChange={setReidCam} seedCard={seedCard} onSeedConsumed={() => setSeedCard(null)} onNavigateTab={setActiveTab} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
-      {activeTab==="RedFace"          && <RedFaceContent seedCard={seedCard} onSeedConsumed={() => setSeedCard(null)} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
+      {activeTab==="Re-ID Analysis"   && <ReIDContent camera={reidCam} onCameraChange={setReidCam} seedCard={seedCard} onSeedConsumed={() => setSeedCard(null)} onNavigateTab={handleNavigateFromCard} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
+      {activeTab==="RedFace"          && <RedFaceContent seedCard={seedCard} seedLabel={seedLabel} onSeedConsumed={() => { setSeedCard(null); setSeedLabel(null); }} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
     </div>
   );
 }
