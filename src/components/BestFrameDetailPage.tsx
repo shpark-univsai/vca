@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { DetType, Detection, CamData } from "@/types/detection";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { sgtDateKey } from "@/lib/time";
+import { sgtClockTime, sgtDateKey } from "@/lib/time";
 
 const BORDER = "1px solid var(--gray-200)";
 const STEP_BTN_STYLE: CSSProperties = {
@@ -566,8 +566,14 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
       const [h, m, sec] = initialTime.split(":").map(Number);
       return h * 3600 + m * 60 + (sec || 0);
     }
-    const now = new Date();
-    return now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    // Singapore time, not the machine's. Every detection's `time` is an SGT clock string
+    // (recentSgtClockTime), the date button beside this reads sgtDateKey, and the header clock is
+    // SGT — but this one seed used getHours()/getMinutes() on local time. On any machine that
+    // isn't UTC+8 the strip therefore opened hours away from the data it is supposed to be
+    // scrubbing: the timestamps under the thumbnails disagreed with the detection list, and the
+    // VIP crown (a ±1s test against those same detection times) could match on frames it had no
+    // business marking, or never match at all.
+    return hhmmssToSec(sgtClockTime(new Date()));
   });
   // The thumbnail strip's own center — deliberately separate from selectedSec. Clicking a
   // thumbnail only needs to move the selection onto whatever's already on screen; recomputing
