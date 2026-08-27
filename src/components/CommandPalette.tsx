@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVcaStore } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { VIP_QUICK, RECENT_TARGETS_EN, TAB_ICONS, type DataTab } from "./DataPage";
+import { VIP_QUICK, TAB_ICONS, type DataTab } from "./DataPage";
 import type { NavTab } from "./Navbar";
 
 const DATA_SUB_TABS: DataTab[] = ["Live Monitoring", "Re-ID Analysis", "Smart Search", "RedFace"];
@@ -90,10 +90,6 @@ export default function CommandPalette({ open, onClose, onGoToPage }: {
       group: "VIP Targets", label: v.name, avatar: v.face, keywords: `vip ${v.name}`,
       action: () => goToData({ tab: "Smart Search", vipIndex: i }),
     })),
-    ...RECENT_TARGETS_EN.map((t, i) => ({
-      group: "Recent Targets", label: t.label, sublabel: t.time, avatar: t.face, keywords: `recent ${t.label}`,
-      action: () => goToData({ tab: "Smart Search", recentTargetIndex: i }),
-    })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [cameras]);
 
@@ -118,7 +114,11 @@ export default function CommandPalette({ open, onClose, onGoToPage }: {
   const dataGroup = groups.find(g => g.group === "Data") ?? null;
   // VIP Targets first — jumping straight to a watched person is the more common reason to open
   // this palette than browsing cameras, so it shouldn't sit below a whole camera list.
-  const LIST_GROUP_ORDER = ["VIP Targets", "Cameras", "Recent Targets"];
+  //
+  // Recent Targets used to be a third group here. It was four hardcoded entries, identical for
+  // every operator, so "recent" was a claim the data couldn't make — and making it true needs
+  // per-user search history on the server. A global palette is the wrong place to promise that.
+  const LIST_GROUP_ORDER = ["VIP Targets", "Cameras"];
   const listGroups = groups
     .filter(g => g.group !== "Data")
     .sort((a, b) => LIST_GROUP_ORDER.indexOf(a.group) - LIST_GROUP_ORDER.indexOf(b.group));

@@ -138,7 +138,6 @@ export interface DataNavRequest {
   tab: "Live Monitoring" | "Re-ID Analysis" | "Smart Search" | "RedFace";
   cameraCode?: string;
   vipIndex?: number;
-  recentTargetIndex?: number;
   requestId: number;
 }
 

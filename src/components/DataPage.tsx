@@ -4520,7 +4520,7 @@ export default function DataPage({ onGoRedmap, onGoAnalyzeFrame }: { onGoRedmap?
   // this deep via the shared store — there's no prop path from there to here. Same
   // compare-during-render pattern as seedCard below: `requestId` always increments, so switching
   // to the same tab twice in a row still re-fires for whichever child cares about cameraCode/
-  // vipIndex/recentTargetIndex.
+  // vipIndex.
   const dataNavRequest = useVcaStore(s => s.dataNavRequest);
   const [prevNavRequestId, setPrevNavRequestId] = useState<number | null>(null);
   if (dataNavRequest && dataNavRequest.requestId !== prevNavRequestId) {
