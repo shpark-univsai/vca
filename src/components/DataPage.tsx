@@ -2780,6 +2780,9 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   // those for the rationale.
   const selectRecentTarget = (i: number) => {
     setFaceCleared(false); setBodyCleared(false);
+    // A stale candidate id from the previous search would otherwise win over the new pick's own
+    // top row and leave the grid selecting someone unrelated.
+    setSelectedCandidate(null);
     if (selectedTarget === i) { setSelectedTarget(-1); setGender(""); setApparel([]); setProps([]); return; }
     setSelectedTarget(i); setActiveVIP(-1);
     const t = RECENT_TARGETS_EN[i];
@@ -2787,6 +2790,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   };
   const selectVIP = (i: number) => {
     setFaceCleared(false); setBodyCleared(false);
+    setSelectedCandidate(null);
     if (activeVIP === i) { setActiveVIP(-1); return; }
     setActiveVIP(i); setSelectedTarget(-1);
   };
@@ -2828,15 +2832,19 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   // Live — recomputes on every filter change instead of staying empty until a "Search" click, so
   // the results panel never sits disconnected from the filters actually driving it.
   const candidates = targetCandidates ?? candidatesFromFilters({ searchType, gender, apparel, props, dateRange, threshold, licensePlate, topColors, bottomColors, shoesColors });
-  // Picking a Recent target or a VIP already names one specific person, so it is the primary
-  // target — the candidate grid below exists for finding someone you DON'T have on hand. Making
-  // you then click a lookalike crop to confirm was busywork, and worse: the crop you clicked
-  // belonged to a different sighting, so confirming replaced the person you picked.
-  const pickedTargetObj: RedfaceCandidate | null = target && faceSrc
-    ? { id: -1, url: faceSrc, cam: "", time: "", similarity: 100,
-        label: "label" in target ? target.label : target.name }
-    : null;
-  const selectedObj = candidates.find(c => c.id === selectedCandidate) ?? pickedTargetObj;
+  // Picking a Recent target or a VIP already names one specific person, so its top candidate row
+  // starts selected. That row is not a lookalike: buildTargetResultRows builds it FROM the picked
+  // face at 97%, so it is the same photo — clicking it could only ever choose the same person.
+  // Leaving it unselected meant the grid showed the pick but nothing in it was chosen, and the
+  // confirm button sat disabled over a person already named.
+  const autoSelectId = target && targetCandidates && targetCandidates.length > 0 ? targetCandidates[0].id : null;
+  const effectiveSelected = selectedCandidate ?? autoSelectId;
+  const selectedRow = candidates.find(c => c.id === effectiveSelected) ?? null;
+  // The picked target's own name rides along, so confirming keeps "Mina" or "Target #1024" rather
+  // than falling back to the row's object id.
+  const selectedObj: RedfaceCandidate | null = selectedRow && selectedRow.id === autoSelectId && target
+    ? { ...selectedRow, label: "label" in target ? target.label : target.name }
+    : selectedRow;
   const isVehicle = searchType === "VEHICLE";
   // Distinguishes a genuinely blank slate (nothing chosen yet) from an active search that
   // happens to match nothing — the two deserve different empty-state wording.
@@ -3102,7 +3110,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
             {/* A muted, easy-to-miss line read as an afterthought — once candidates actually
                 exist, picking one is the ONE thing left to do, so it gets a filled, colored
                 callout instead until a card's actually clicked. */}
-            {candidates.length > 0 && selectedCandidate === null && !pickedTargetObj && (
+            {candidates.length > 0 && effectiveSelected === null && (
               <span style={{ fontSize:"12px", fontWeight:700, color:"var(--primary-400)", backgroundColor:"var(--primary-100)", padding:"4px 10px", borderRadius:"999px" }}>
                 ↓ Click a candidate below to select
               </span>
@@ -3123,7 +3131,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
             ) : (
               <div style={{ display:"flex", flexWrap:"wrap", gap:"16px" }}>
                 {candidates.map(c => (
-                  <CandidateCard key={c.id} c={c} selected={selectedCandidate === c.id} onClick={() => setSelectedCandidate(c.id)} />
+                  <CandidateCard key={c.id} c={c} selected={effectiveSelected === c.id} onClick={() => setSelectedCandidate(c.id)} />
                 ))}
               </div>
             )}
