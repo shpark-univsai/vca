@@ -13,7 +13,6 @@ import SkeletonBestFrame from "./SkeletonBestFrame";
 import SkeletonData from "./SkeletonData";
 import SkeletonRedmap from "./SkeletonRedmap";
 import DetectionActivityChart from "./DetectionActivityChart";
-import CommandPalette from "./CommandPalette";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
@@ -158,19 +157,6 @@ export default function ClientLayout() {
   };
   const [showDetectionChart, setShowDetectionChart] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  // Cmd+K (Mac) / Ctrl+K (everywhere else) toggles the global command palette from anywhere in
-  // the app, not just while some particular field has focus.
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setPaletteOpen(o => !o);
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
   const [bestFrameFocusLocation, setBestFrameFocusLocation] = useState<string | null>(null);
   const [redmapAutoSearchName, setRedmapAutoSearchName] = useState<string | null>(null);
   const [bestFrameAnalyzeLocation, setBestFrameAnalyzeLocation] = useState<string | null>(null);
@@ -203,13 +189,11 @@ export default function ClientLayout() {
   return (
     <ToastProvider>
     <VipAlertTicker onNavigate={handleNotificationNavigate} />
-    <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onGoToPage={setActivePage} />
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
       <Navbar
         activeTab={activePage}
         onTabChange={setActivePage}
         onNotificationSelect={handleNotificationNavigate}
-        onOpenSearch={() => setPaletteOpen(true)}
         // Only actually affects the Dashboard tab's Sidebar+Map layout — hidden on the other tabs
         // (via Navbar's own `{onSidebarPositionChange && (...)}` guard) so the Settings dropdown
         // doesn't show a "Sidebar" control that would do nothing while looking at Best Frame/Data/RedMap.

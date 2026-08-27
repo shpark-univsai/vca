@@ -26,10 +26,9 @@ interface NavbarProps {
   sidebarPosition?: "left" | "right";
   onSidebarPositionChange?: (position: "left" | "right") => void;
   /** Opens the global command palette (also reachable via Cmd/Ctrl+K from anywhere). */
-  onOpenSearch?: () => void;
 }
 
-export default function Navbar({ activeTab: externalTab, onTabChange, onNotificationSelect, sidebarPosition, onSidebarPositionChange, onOpenSearch }: NavbarProps) {
+export default function Navbar({ activeTab: externalTab, onTabChange, onNotificationSelect, sidebarPosition, onSidebarPositionChange }: NavbarProps) {
   const router = useRouter();
   const [internalTab, setInternalTab] = useState<NavTab>("DASHBOARD");
   const activeTab = externalTab === undefined ? internalTab : externalTab;
@@ -139,11 +138,6 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
       .navbar-dropdown-item--danger:hover::before{background-color:var(--danger-400)}
       .navbar-logo-btn{transition:opacity .15s}
       .navbar-logo-btn:hover{opacity:.8}
-      /* The search bar was the one clickable thing in the header with no hover state at all — it
-         sits between the clock and the bell, both of which respond, so it read as decoration. */
-      .navbar-search-btn{background-color:var(--gray-50);transition:background-color .15s, border-color .15s}
-      .navbar-search-btn:hover{background-color:var(--gray-100);border-color:var(--gray-300)}
-      .navbar-search-btn:hover .navbar-search-kbd{border-color:var(--gray-300)}
     `}</style>
     <nav style={{
       height: "62px", backgroundColor: "white", borderBottom: BORDER,
@@ -292,23 +286,6 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
 
         {/* Bell + Settings */}
         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-          {onOpenSearch && (
-            // Bar-shaped (not a plain square icon button) so it still reads as "there's a search
-            // here", just without placeholder copy competing with the rest of the header.
-            <button
-              className="navbar-search-btn"
-              aria-label="Search (Cmd+K)"
-              onClick={onOpenSearch}
-              style={{ display: "flex", alignItems: "center", gap: "8px", border: "1px solid var(--gray-200)", borderRadius: "8px",
-                cursor: "pointer", padding: "7px 8px 7px 10px" }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-                <path d="M13.9998 13.9998L11.1064 11.1064" stroke="var(--gray-400)" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M7.33333 12.6667C10.2789 12.6667 12.6667 10.2789 12.6667 7.33333C12.6667 4.38781 10.2789 2 7.33333 2C4.38781 2 2 4.38781 2 7.33333C2 10.2789 4.38781 12.6667 7.33333 12.6667Z" stroke="var(--gray-400)" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span className="navbar-search-kbd" style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: "5px", padding: "2px 5px", flexShrink: 0 }}>⌘K</span>
-            </button>
-          )}
           <div ref={notifRef} style={{ position: "relative" }}>
             <button
               className="navbar-icon-btn"

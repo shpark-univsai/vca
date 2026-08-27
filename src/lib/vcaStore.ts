@@ -128,18 +128,6 @@ export interface Person {
   priorityLabel?: "normal" | "high" | "very_high";
 }
 
-// A cross-component "please navigate" signal — the global command palette (mounted at the
-// ClientLayout level) uses this to reach into DataPage's Data-tab children (LiveMonitoringTab,
-// SmartSearchContent), each of which is otherwise pure local state with no external control hook.
-// `requestId` always increments, even when `tab`/`cameraCode`/etc. repeat, so a listener comparing
-// "did requestId change" fires again even when asked to jump to the exact same place twice in a
-// row.
-export interface DataNavRequest {
-  tab: "Live Monitoring" | "Re-ID Analysis" | "RedFace";
-  cameraCode?: string;
-  vipIndex?: number;
-  requestId: number;
-}
 
 interface VcaStoreState {
   organizations: Organization[];
@@ -152,7 +140,6 @@ interface VcaStoreState {
   // Notifications (header bell) only care about VIP-match events from this point forward —
   // events seeded at load are historical and start out already "read".
   lastReadNotifAt: string;
-  dataNavRequest: DataNavRequest | null;
   setCameraStatus: (cameraId: string, status: CameraStatus) => void;
   addCamera: (camera: Omit<Camera, "id">) => void;
   updateCamera: (cameraId: string, updates: Partial<Omit<Camera, "id" | "projectId">>) => void;
@@ -163,7 +150,6 @@ interface VcaStoreState {
   removePerson: (personId: string) => void;
   addEvent: (event: Omit<VcaEvent, "id">) => void;
   markNotificationsRead: () => void;
-  requestDataNav: (req: Omit<DataNavRequest, "requestId">) => void;
   addPortalUser: (user: Omit<PortalUser, "id">) => void;
   updatePortalUserPermission: (userId: string, permission: PortalPermission) => void;
   updatePortalUserProjects: (userId: string, projectIds: string[]) => void;
@@ -534,7 +520,6 @@ export const useVcaStore = create<VcaStoreState>((set) => ({
   portalUsers: PORTAL_USERS,
   servers: SERVERS,
   lastReadNotifAt: LATEST_SEED_TIMESTAMP,
-  dataNavRequest: null,
   setCameraStatus: (cameraId, status) =>
     set(state => ({ cameras: state.cameras.map(c => (c.id === cameraId ? { ...c, status } : c)) })),
   addCamera: (camera) =>
@@ -608,8 +593,6 @@ export const useVcaStore = create<VcaStoreState>((set) => ({
       return { events: [...personEvents, ...otherEvents].slice(0, 500) };
     }),
   markNotificationsRead: () => set({ lastReadNotifAt: new Date().toISOString() }),
-  requestDataNav: (req) =>
-    set(state => ({ dataNavRequest: { ...req, requestId: (state.dataNavRequest?.requestId ?? 0) + 1 } })),
   addPortalUser: (user) =>
     set(state => ({ portalUsers: [...state.portalUsers, { ...user, id: `user-${++portalUserSeq}` }] })),
   updatePortalUserPermission: (userId, permission) =>

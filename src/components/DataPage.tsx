@@ -697,7 +697,7 @@ function LiveSearchSidebar({
   const bodySrc = uploadedBody ?? target?.body ?? cardBody;
   // Picking a Recent target/VIP after uploading a photo should switch the preview to THAT
   // person, not keep showing the stale upload underneath it. Compared during render rather than
-  // reset from an effect — the same pattern dataNavRequest below uses. An effect would paint one
+  // reset from an effect — compare during render instead. An effect would paint one
   // frame with the new selection and the old upload still on top of it, then paint again.
   const targetKey = `${selectedTarget}|${activeVIP}`;
   const [prevTargetKey, setPrevTargetKey] = useState(targetKey);
@@ -1027,24 +1027,7 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
     : filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange: searchDateRange, threshold, licensePlate, camera: searchCamera, topColors, bottomColors, shoesColors, emotion, ethnicGroup });
   const searchResultDetailItem = searchDetailId !== null ? searchResults.find(p => p.id===searchDetailId) ?? null : null;
 
-  // Command palette deep-links land here: "jump to camera X" with cameraCode, "search for VIP Y"
-  // with vipIndex. The VIP case used to be routed at tab:"Smart Search" and consumed by nobody, so
-  // picking a VIP in the palette opened a Data page with no tab rendered at all.
-  const dataNavRequest = useVcaStore(s => s.dataNavRequest);
-  const [prevCamNavId, setPrevCamNavId] = useState<number | null>(null);
-  if (dataNavRequest && dataNavRequest.requestId !== prevCamNavId
-      && (dataNavRequest.cameraCode !== undefined || dataNavRequest.vipIndex !== undefined)) {
-    setPrevCamNavId(dataNavRequest.requestId);
-    if (dataNavRequest.cameraCode !== undefined) onOpenCamChange(dataNavRequest.cameraCode);
-    if (dataNavRequest.vipIndex !== undefined) {
-      // Same landing state as picking that VIP by hand in the search sidebar.
-      setSearchExpanded(true); setSearchTab("Photo");
-      setSelectedTarget(-1); setCardSearchTarget(null);
-      clearAttrFilters(); setLicensePlate(""); setSearchCamera("");
-      setTopColors([]); setBottomColors([]); setShoesColors([]);
-      setActiveVIP(dataNavRequest.vipIndex);
-    }
-  }
+
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -4476,10 +4459,7 @@ export const TAB_ICONS: Record<DataTab, React.ReactNode> = {
 // Smart Search isn't its own top-level tab anymore — it lives inside Live Monitoring (see
 // LiveMonitoringTab), matching how Re-ID Analysis/RedFace each keep their own search UI embedded
 // in place rather than sending the operator to a separate destination to search from.
-// Exported so the command palette lists exactly these. It kept its own copy, which still had
-// "Smart Search" in it after that stopped being a top-level tab — selecting it set activeTab to a
-// value nothing renders, i.e. a blank Data page.
-export const DATA_TABS = ["Live Monitoring", "Re-ID Analysis", "RedFace"] as const satisfies readonly DataTab[];
+const DATA_TABS: DataTab[] = ["Live Monitoring", "Re-ID Analysis", "RedFace"];
 // "RedFace" doesn't say what it does on its own — a first-time viewer has no way to guess this
 // is a co-occurrence/associate-finder feature just from the tab label.
 const DATA_TAB_TOOLTIPS: Partial<Record<DataTab, string>> = {
@@ -4530,17 +4510,7 @@ export default function DataPage({ onGoRedmap, onGoAnalyzeFrame }: { onGoRedmap?
   const setLiveCam = (v: string) => { setLiveCamRaw(v); if (v === ALL_CAMERAS_ID) setReidCamRaw(""); };
   const setReidCam = (v: string) => { setReidCamRaw(v); if (v === "") setLiveCamRaw(ALL_CAMERAS_ID); };
 
-  // The global command palette (mounted outside this component, in ClientLayout) can only reach
-  // this deep via the shared store — there's no prop path from there to here. Same
-  // compare-during-render pattern as seedCard below: `requestId` always increments, so switching
-  // to the same tab twice in a row still re-fires for whichever child cares about cameraCode/
-  // vipIndex.
-  const dataNavRequest = useVcaStore(s => s.dataNavRequest);
-  const [prevNavRequestId, setPrevNavRequestId] = useState<number | null>(null);
-  if (dataNavRequest && dataNavRequest.requestId !== prevNavRequestId) {
-    setPrevNavRequestId(dataNavRequest.requestId);
-    setActiveTab(dataNavRequest.tab);
-  }
+
 
   return (
     <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", backgroundColor:"var(--gray-50)" }}>
