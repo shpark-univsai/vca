@@ -3915,7 +3915,25 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
         <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:"8px" }}>
           {/* "Event timeline" named the shape of the list, not its contents — every row here is
               one frame with both people in it, which is the whole reason the row exists. */}
-          <PanelHeading title="Frames the two appear in together, newest first">Shared frames</PanelHeading>
+          <span style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
+            <PanelHeading title="Frames the two appear in together, newest first">Shared frames</PanelHeading>
+            {/* One legend for the whole list. It was burned into every frame, which put twelve
+                identical copies of the same two words on a page — the colour-to-person mapping
+                only needs stating once, and the box colours carry it from there. Out here on white
+                it also stops costing the frames a corner. */}
+            <span style={{ display:"flex", alignItems:"center", gap:"8px", flexShrink:0 }}>
+              {[
+                { label:"TARGET", color:"var(--primary-300)" },
+                { label:assocId(node), color:"var(--danger-400)" },
+              ].map(l => (
+                <span key={l.label} style={{ display:"flex", alignItems:"center", gap:"4px",
+                  fontSize:"9px", fontWeight:800, color:"var(--gray-500)", letterSpacing:"0.2px", whiteSpace:"nowrap" }}>
+                  <span style={{ width:"7px", height:"7px", borderRadius:"2px", backgroundColor:l.color, flexShrink:0 }} />
+                  {l.label}
+                </span>
+              ))}
+            </span>
+          </span>
           <span style={{ display:"flex", alignItems:"center", gap:"6px", flexShrink:0 }}>
             {/* Names the active filter and clears it. The lit card says which one is on, but not
                 from down here where the count it changed is — and a count that dropped from 110
@@ -3967,25 +3985,11 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
                 overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
                 <CameraGlyph size={10} /> {e.location}
               </span>
-              <span style={{ position:"absolute", bottom:4, right:4, fontSize:"9px", fontWeight:700, color:"white",
+              {/* Bottom-LEFT now that the legend has moved out to the section heading — the two
+                  chips read as one column down the frame's left edge instead of straddling it. */}
+              <span style={{ position:"absolute", bottom:4, left:4, fontSize:"9px", fontWeight:700, color:"white",
                 backgroundColor:"rgba(14,22,42,0.65)", padding:"2px 5px", borderRadius:"3px", whiteSpace:"nowrap" }}>
                 {e.date.slice(5)} {e.time.slice(0, 5)}
-              </span>
-              {/* Legend rather than labels on the boxes themselves: the two boxes sit 34px apart
-                  in a 203px cell, so two 8px captions above them collided. Colour carries the
-                  identity, the legend says which colour is who. */}
-              <span style={{ position:"absolute", bottom:4, left:4, display:"flex", alignItems:"center", gap:"6px",
-                backgroundColor:"rgba(14,22,42,0.65)", padding:"2px 5px", borderRadius:"3px" }}>
-                {[
-                  { label:"TARGET", color:"var(--primary-300)" },
-                  { label:assocId(node), color:"var(--danger-400)" },
-                ].map(l => (
-                  <span key={l.label} style={{ display:"flex", alignItems:"center", gap:"3px",
-                    fontSize:"8px", fontWeight:800, color:"white", whiteSpace:"nowrap", letterSpacing:"0.2px" }}>
-                    <span style={{ width:"5px", height:"5px", borderRadius:"1px", backgroundColor:l.color, flexShrink:0 }} />
-                    {l.label}
-                  </span>
-                ))}
               </span>
               {[
                 { key:"target", color:"var(--primary-300)", left:e.boxLeft },

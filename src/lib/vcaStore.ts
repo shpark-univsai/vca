@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { liveEvents, getFacePhoto, DISTRICTS, type EventType, type LiveEvent, type TrackingHop } from "@/lib/mockData";
-import { isTodaySgt } from "@/lib/time";
+import { isTodaySgt, recentSgtStamp, parseSgtStamp } from "@/lib/time";
 
 // Deterministic pseudo-random in [0,1) — same formula as mockData.ts's own seededRandom — used
 // below to bulk-generate cameras without Math.random(), which would differ between the
@@ -137,6 +137,7 @@ interface VcaStoreState {
   events: VcaEvent[];
   portalUsers: PortalUser[];
   servers: Server[];
+  auditLog: AuditEvent[];
   // Notifications (header bell) only care about VIP-match events from this point forward —
   // events seeded at load are historical and start out already "read".
   lastReadNotifAt: string;
@@ -158,6 +159,19 @@ interface VcaStoreState {
   addServer: (server: Omit<Server, "id">) => void;
   updateServer: (serverId: string, updates: Partial<Omit<Server, "id" | "projectId">>) => void;
   removeServer: (serverId: string) => void;
+}
+
+// A lightweight admin activity feed for Portal's Overview tab ("Recent Activity") — who did what,
+// and when, scoped to a project. Not a general-purpose audit trail: only the handful of actions an
+// admin most needs a record of (camera status/roster changes, license updates, VIP registrations,
+// user permission changes) call `logAudit`, matching what the Figma "최근 관리자 작업 이력" reference
+// tracks. `projectId` is optional because a user-permission change isn't tied to one project.
+export interface AuditEvent {
+  id: string;
+  projectId?: string;
+  message: string;
+  actor: string;
+  at: string;
 }
 
 const ORGANIZATIONS: Organization[] = [
@@ -437,6 +451,19 @@ let portalUserSeq = PORTAL_USERS.length;
 let orgSeq = ORGANIZATIONS.length;
 let serverSeq = SERVERS.length;
 
+function auditAt(minutesAgo: number): string {
+  const { date, time } = recentSgtStamp(minutesAgo);
+  return parseSgtStamp(date, time).toISOString();
+}
+
+const AUDIT_LOG: AuditEvent[] = [
+  { id: "audit-1", projectId: "proj-sg", message: "Camera CAM-NOV-001 RTSP URL updated", actor: "Grace Tan", at: auditAt(20) },
+  { id: "audit-2", projectId: "proj-sg", message: "VIP Wei Chen registered", actor: "Marcus Lee", at: auditAt(65) },
+  { id: "audit-3", projectId: "proj-sg", message: "David Ong's account suspended", actor: "Grace Tan", at: auditAt(240) },
+  { id: "audit-4", projectId: "proj-riverside", message: "Server campus-fr-1 connectivity checked", actor: "Nadia Rahman", at: auditAt(50) },
+];
+let auditSeq = AUDIT_LOG.length;
+
 // Latest seed timestamp — anything at or before this is historical, so the bell starts with
 // nothing unread instead of surfacing all 12 seed VIP hits as "new" on first load.
 const LATEST_SEED_TIMESTAMP = SEED_EVENTS.reduce((max, e) => (e.timestamp > max ? e.timestamp : max), "");
@@ -519,21 +546,45 @@ export const useVcaStore = create<VcaStoreState>((set) => ({
   events: SEED_EVENTS,
   portalUsers: PORTAL_USERS,
   servers: SERVERS,
+  auditLog: AUDIT_LOG,
   lastReadNotifAt: LATEST_SEED_TIMESTAMP,
   setCameraStatus: (cameraId, status) =>
-    set(state => ({ cameras: state.cameras.map(c => (c.id === cameraId ? { ...c, status } : c)) })),
+    set(state => {
+      const cam = state.cameras.find(c => c.id === cameraId);
+      const auditEntry: AuditEvent = { id: `audit-${++auditSeq}`, projectId: cam?.projectId, message: `Camera ${cam?.code ?? cameraId} marked ${status}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() };
+      return {
+        cameras: state.cameras.map(c => (c.id === cameraId ? { ...c, status } : c)),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
   addCamera: (camera) =>
-    set(state => ({ cameras: [...state.cameras, { ...camera, id: `cam-${++cameraSeq}` }] })),
+    set(state => ({
+      cameras: [...state.cameras, { ...camera, id: `cam-${++cameraSeq}` }],
+      auditLog: [{ id: `audit-${++auditSeq}`, projectId: camera.projectId, message: `Camera ${camera.name} added`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+    })),
   updateCamera: (cameraId, updates) =>
     set(state => ({ cameras: state.cameras.map(c => (c.id === cameraId ? { ...c, ...updates } : c)) })),
   removeCamera: (cameraId) =>
-    set(state => ({ cameras: state.cameras.filter(c => c.id !== cameraId) })),
+    set(state => {
+      const cam = state.cameras.find(c => c.id === cameraId);
+      const auditEntry: AuditEvent = { id: `audit-${++auditSeq}`, projectId: cam?.projectId, message: `Camera ${cam?.name ?? cameraId} removed`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() };
+      return {
+        cameras: state.cameras.filter(c => c.id !== cameraId),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
   addProject: (project) =>
     set(state => ({ projects: [...state.projects, { ...project, id: `proj-${++projectSeq}` }] })),
   updateProjectLicense: (projectId, updates) =>
-    set(state => ({ projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)) })),
+    set(state => ({
+      projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)),
+      auditLog: [{ id: `audit-${++auditSeq}`, projectId, message: `License updated to ${updates.licensePlan} (${updates.licenseChannelLimit} channels)`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+    })),
   addPerson: (person) =>
-    set(state => ({ persons: [...state.persons, { ...person, id: `person-${++personSeq}` }] })),
+    set(state => ({
+      persons: [...state.persons, { ...person, id: `person-${++personSeq}` }],
+      auditLog: [{ id: `audit-${++auditSeq}`, projectId: person.projectId, message: `VIP ${person.name} registered`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+    })),
   removePerson: (personId) =>
     set(state => ({ persons: state.persons.filter(p => p.id !== personId) })),
   addEvent: (event) =>
@@ -596,11 +647,25 @@ export const useVcaStore = create<VcaStoreState>((set) => ({
   addPortalUser: (user) =>
     set(state => ({ portalUsers: [...state.portalUsers, { ...user, id: `user-${++portalUserSeq}` }] })),
   updatePortalUserPermission: (userId, permission) =>
-    set(state => ({ portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, permission } : u)) })),
+    set(state => {
+      const user = state.portalUsers.find(u => u.id === userId);
+      const auditEntry: AuditEvent = { id: `audit-${++auditSeq}`, projectId: user?.projectIds[0], message: `${user?.name ?? userId}'s permission changed to ${permission}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() };
+      return {
+        portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, permission } : u)),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
   updatePortalUserProjects: (userId, projectIds) =>
     set(state => ({ portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, projectIds } : u)) })),
   removePortalUser: (userId) =>
-    set(state => ({ portalUsers: state.portalUsers.filter(u => u.id !== userId) })),
+    set(state => {
+      const user = state.portalUsers.find(u => u.id === userId);
+      const auditEntry: AuditEvent = { id: `audit-${++auditSeq}`, projectId: user?.projectIds[0], message: `User ${user?.name ?? userId} removed`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() };
+      return {
+        portalUsers: state.portalUsers.filter(u => u.id !== userId),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
   addOrganization: (org) => {
     const id = `org-${++orgSeq}`;
     set(state => ({ organizations: [...state.organizations, { ...org, id }] }));
