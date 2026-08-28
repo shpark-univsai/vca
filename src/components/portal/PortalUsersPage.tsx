@@ -207,10 +207,10 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{r.name}</p>
-                <p style={{ fontSize: "10px", color: "var(--gray-400)" }}>{r.email}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{r.email}</p>
               </div>
               {r.reason && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{r.reason}</p>}
-              <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "4px" }}>
+              <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "4px" }}>
                 Requested {nowMs !== null ? `${formatElapsed(nowMs - new Date(r.requestedAt).getTime())} ago` : "…"}
               </p>
             </div>
@@ -294,7 +294,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.3fr 0.9fr 0.5fr 0.9fr 0.8fr 36px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER }}>
           {["User", "Organization", "Projects", "Permission", "MFA", "Last Login", "Status", ""].map(h => (
-            <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+            <span key={h} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
           ))}
         </div>
         {scopedUsers.length === 0 && (
@@ -308,7 +308,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           <div key={u.id} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.3fr 0.9fr 0.5fr 0.9fr 0.8fr 36px", padding: "12px 16px", alignItems: "center", borderBottom: BORDER }}>
             <div>
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{u.name}</p>
-              <p style={{ fontSize: "10px", color: "var(--gray-400)" }}>{u.email}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.email}</p>
             </div>
             <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{orgName(u.orgId)}</span>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
@@ -336,7 +336,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               <option value="operator">Operator</option>
             </select>
             <MfaBadge enabled={u.mfaEnabled} />
-            <span style={{ fontSize: "10px", color: "var(--gray-500)" }}>{u.lastLoginAt ?? "—"}</span>
+            <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.lastLoginAt ?? "—"}</span>
             <StatusBadge status={u.status} />
             <RowActionsMenu actions={[
               { label: "Remove user", onClick: () => removePortalUser(u.id), danger: true },
