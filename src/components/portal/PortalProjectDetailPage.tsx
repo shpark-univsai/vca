@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { useVcaStore } from "@/lib/vcaStore";
+import { useVcaStore, seededRandom, projectChannelLimit, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
 import { BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
 import type { DetailTab } from "./ProjectSidebar";
@@ -11,38 +11,6 @@ import ProjectLicenseTab from "./ProjectLicenseTab";
 import ProjectServerTab from "./ProjectServerTab";
 import PortalUsersPage from "./PortalUsersPage";
 
-function CameraIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="1.5" y="4.5" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.2"/>
-      <circle cx="8" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M5.5 4.5L6.3 3H9.7L10.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-function TagIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M8 1.8L9.8 5.6L14 6.15L11 9.1L11.75 13.3L8 11.3L4.25 13.3L5 9.1L2 6.15L6.2 5.6L8 1.8Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-function SparkleIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M8 2L9.3 6.7L14 8L9.3 9.3L8 14L6.7 9.3L2 8L6.7 6.7L8 2Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-function UsersIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="6" cy="5.5" r="2.3" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M1.8 13.5c0-2.3 1.9-4 4.2-4s4.2 1.7 4.2 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M10.5 3.3c1.2.3 2.1 1.4 2.1 2.7 0 1.2-.7 2.2-1.7 2.6M12 9.6c1.5.4 2.6 1.7 2.6 3.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  );
-}
 function CheckCircleIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -60,6 +28,126 @@ function WarningIcon() {
     </svg>
   );
 }
+function LiveStatusIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3"/>
+      <circle cx="8" cy="8" r="2" fill="currentColor"/>
+    </svg>
+  );
+}
+function ComputeIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="4" y="4" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M6 4V2M10 4V2M6 14V12M10 14V12M4 6H2M4 10H2M14 6H12M14 10H12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+function ModelIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <circle cx="5" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/>
+      <circle cx="11" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/>
+      <circle cx="8" cy="11" r="2" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M6.5 7.5L7 9.5M9.5 7.5L9 9.5M7 5.3H9" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+function ChannelsIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="3" width="12" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M6 13.5H10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+function MigrationIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M3 5L8 2L13 5L8 8L3 5Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/>
+      <path d="M3 8L8 11L13 8M3 11L8 14L13 11" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round"/>
+    </svg>
+  );
+}
+function BackupIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M5 2.5V6H11V2.5" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+      <rect x="5.5" y="9" width="5" height="3.5" stroke="currentColor" strokeWidth="1.1"/>
+    </svg>
+  );
+}
+function RegionIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M8 14S13 9.5 13 6A5 5 0 1 0 3 6C3 9.5 8 14 8 14Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+      <circle cx="8" cy="6" r="1.8" stroke="currentColor" strokeWidth="1.2"/>
+    </svg>
+  );
+}
+
+// Turns a string (e.g. a project id) into a stable numeric seed for seededRandom — the metric
+// trend series below need to be deterministic per project (no Math.random(), same reasoning as
+// vcaStore's own camera bulk-generator: avoids an SSR/client hydration mismatch) but distinct
+// across projects and metrics.
+function strSeed(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 100000;
+  return h;
+}
+
+const METRIC_TREND_DAYS = 14;
+
+function metricDailySeries(seed: number, min: number, max: number, sparse?: boolean): number[] {
+  return Array.from({ length: METRIC_TREND_DAYS }, (_, i) => {
+    const r = seededRandom(seed + i * 1.71);
+    if (sparse && r < 0.5) return 0;
+    // Gentle hill-shaped envelope (low at the edges, tall in the middle) so the bars read like a
+    // plausible daily pattern instead of pure noise.
+    const envelope = 0.4 + 0.6 * Math.sin((i / (METRIC_TREND_DAYS - 1)) * Math.PI);
+    return Math.round(min + (max - min) * envelope * (0.7 + r * 0.5));
+  });
+}
+
+function trendDayLabel(daysAgo: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+function MiniBarChart({ values, color }: { values: number[]; color: string }) {
+  const max = Math.max(...values, 1);
+  return (
+    <div style={{ display: "flex", gap: "6px" }}>
+      <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: "70px", paddingBottom: "1px", minWidth: "32px" }}>
+        <span style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1 }}>{max.toLocaleString()}</span>
+        <span style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1 }}>0</span>
+      </div>
+      <div style={{ flex: 1, display: "flex", alignItems: "flex-end", gap: "3px", height: "70px", borderLeft: "1px solid var(--gray-200)", paddingLeft: "6px" }}>
+        {values.map((v, i) => (
+          <div key={i} style={{ flex: 1, height: `${Math.max(2, (v / max) * 70)}px`, backgroundColor: color, borderRadius: "2px" }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MetricTrendCard({ label, values, color }: { label: string; values: number[]; color: string }) {
+  const total = values.reduce((a, b) => a + b, 0);
+  return (
+    <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
+      <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{label.toUpperCase()}</p>
+      <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", marginTop: "6px", marginBottom: "12px" }}>{total.toLocaleString()}</p>
+      <MiniBarChart values={values} color={color} />
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", marginLeft: "38px" }}>
+        <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(METRIC_TREND_DAYS - 1)}</span>
+        <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(0)}</span>
+      </div>
+    </div>
+  );
+}
 
 interface PortalProjectDetailPageProps {
   projectId: string;
@@ -74,7 +162,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const portalUsers = useVcaStore(s => s.portalUsers);
   const persons = useVcaStore(s => s.persons);
   const auditLog = useVcaStore(s => s.auditLog);
-  const setCameraStatus = useVcaStore(s => s.setCameraStatus);
+  const servers = useVcaStore(s => s.servers);
 
   // Every hook has to run before the "project not found" guard below. They used to sit after it,
   // so a render where the project is missing called seven fewer hooks than a render where it
@@ -102,19 +190,17 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const onlineCount = projectCameras.filter(c => c.status === "online").length;
   const offlineCount = projectCameras.length - onlineCount;
   const projectUsers = portalUsers.filter(u => u.projectIds.includes(projectId));
-  const userCount = projectUsers.length;
   const pendingInviteCount = projectUsers.filter(u => u.status === "invited").length;
   const suspendedUserCount = projectUsers.filter(u => u.status === "suspended").length;
-  const vipCount = persons.filter(p => p.projectId === projectId).length;
-  const zoneCount = new Set(projectCameras.map(c => c.zone).filter(Boolean)).size;
-  const aiEngineCount = new Set(projectCameras.flatMap(c => c.aiFeatures ?? [])).size;
 
-  const daysUntilExpiry = project.licenseExpiresAt && nowMs !== null
+  const channelLimit = projectChannelLimit(project);
+  const isUnlimitedExpiry = project.licenseExpiresAt === UNLIMITED_EXPIRY;
+  const daysUntilExpiry = project.licenseExpiresAt && !isUnlimitedExpiry && nowMs !== null
     ? Math.ceil((new Date(project.licenseExpiresAt).getTime() - nowMs) / (24 * 60 * 60 * 1000))
     : null;
   const licenseExpired = daysUntilExpiry !== null && daysUntilExpiry < 0;
   const licenseExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry >= 0 && daysUntilExpiry <= 30;
-  const overChannelLimit = !!project.licenseChannelLimit && projectCameras.length > project.licenseChannelLimit;
+  const overChannelLimit = !!channelLimit && projectCameras.length > channelLimit;
 
   // What a project manager actually needs to act on, surfaced above everything else — see the
   // "20-year PM" discussion this was built from: exception-based, not buried under analytics.
@@ -123,7 +209,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     attentionItems.push({ message: `${offlineCount} camera${offlineCount > 1 ? "s" : ""} offline`, severity: "danger", onClick: () => onTabChange("cameras") });
   }
   if (overChannelLimit) {
-    attentionItems.push({ message: `Over camera channel limit (${projectCameras.length} / ${project.licenseChannelLimit})`, severity: "danger", onClick: () => onTabChange("license") });
+    attentionItems.push({ message: `Over camera channel limit (${projectCameras.length} / ${channelLimit})`, severity: "danger", onClick: () => onTabChange("license") });
   }
   if (licenseExpired) {
     attentionItems.push({ message: `License expired ${project.licenseExpiresAt}`, severity: "danger", onClick: () => onTabChange("license") });
@@ -143,11 +229,33 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     .slice(0, 5);
 
   const projectPersons = persons.filter(p => p.projectId === projectId);
-  const highPriorityVipCount = projectPersons.filter(p => p.priorityLabel === "high" || p.priorityLabel === "very_high").length;
   const recentVips = [...projectPersons].sort((a, b) => b.registeredAt.localeCompare(a.registeredAt)).slice(0, 4);
-  const camerasForStatusTable = [...projectCameras]
-    .sort((a, b) => (a.status === "offline" ? 0 : 1) - (b.status === "offline" ? 0 : 1))
-    .slice(0, 5);
+
+  const projectServers = servers.filter(s => s.projectId === projectId);
+  const allServersLive = projectServers.every(s => s.status === "success");
+  const systemAllLive = offlineCount === 0 && allServersLive;
+
+  const seed = strSeed(projectId);
+  const cpuPercent = Math.round(20 + seededRandom(seed + 11) * 60);
+  const gpuPercent = Math.round(20 + seededRandom(seed + 22) * 60);
+  const ramPercent = Math.round(20 + seededRandom(seed + 33) * 60);
+  const networkMbps = Math.round(50 + seededRandom(seed + 44) * 200);
+
+  const channelYearlyCost = (channelLimit ?? projectCameras.length) * PRICE_PER_CHANNEL_PER_YEAR;
+
+  const apiRequestsDaily = metricDailySeries(seed + 101, 4000, 13000);
+  const aiDetectionsDaily = metricDailySeries(seed + 202, 3000, 11000);
+  const alertsDaily = metricDailySeries(seed + 303, 2, 35, true);
+  const recordingsDaily = metricDailySeries(seed + 404, 10, 18);
+
+  const SYSTEM_CELLS = [
+    { label: "STATUS", value: systemAllLive ? "All Live" : "Degraded", icon: LiveStatusIcon, color: systemAllLive ? "var(--success-400)" : "var(--danger-400)" },
+    { label: "COMPUTE", value: `${project.computeInstance ?? "—"} · GPU×${project.gpuCount ?? 0}`, icon: ComputeIcon, color: "var(--gray-900)" },
+    { label: "MODEL VERSION", value: project.modelVersion ?? "Not set", icon: ModelIcon, color: "var(--gray-900)" },
+    { label: "CHANNELS", value: `${channelLimit ?? projectCameras.length} channels · $${channelYearlyCost.toLocaleString()}/yr`, icon: ChannelsIcon, color: "var(--gray-900)" },
+    { label: "LAST MIGRATION", value: project.lastMigration ?? "Not set", icon: MigrationIcon, color: "var(--gray-900)" },
+    { label: "LAST BACKUP", value: nowMs !== null && project.lastBackupAt ? `${formatElapsed(nowMs - new Date(project.lastBackupAt).getTime())} ago` : "—", icon: BackupIcon, color: "var(--gray-900)" },
+  ];
 
   return (
     <div>
@@ -166,186 +274,149 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "2px" }}>{orgName}</p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "16px" }}>
-            <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "8px", backgroundColor: "var(--gray-50)", color: "var(--gray-500)", flexShrink: 0 }}><CameraIcon /></span>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>Camera Connectivity</p>
+          <div style={{ display: "flex", gap: "12px", marginBottom: "16px", alignItems: "stretch" }}>
+            <div style={{ flex: 1.6, backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)" }}>
+                {SYSTEM_CELLS.map((c, i) => {
+                  const Icon = c.icon;
+                  const rightBorder = i % 2 === 0;
+                  const bottomBorder = i < 4;
+                  return (
+                    <div key={c.label} style={{
+                      display: "flex", alignItems: "center", gap: "10px", padding: "16px",
+                      borderRight: rightBorder ? "1px solid var(--gray-300)" : "none",
+                      borderBottom: bottomBorder ? "1px solid var(--gray-300)" : "none",
+                    }}>
+                      <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "var(--gray-50)", color: "var(--gray-500)", flexShrink: 0 }}>
+                        <Icon />
+                      </span>
+                      <div style={{ overflow: "hidden" }}>
+                        <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>{c.label}</p>
+                        <p style={{ fontSize: "13px", fontWeight: 700, color: c.color, marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.value}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", marginTop: "6px" }}>
-                {onlineCount} <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-400)" }}>/ {projectCameras.length}</span>
-              </p>
-              <div style={{ height: "5px", backgroundColor: "var(--gray-100)", borderRadius: "3px", marginTop: "10px" }}>
-                <div style={{ height: "5px", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--success-400)", borderRadius: "3px" }} />
-              </div>
-              <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "8px" }}>
-                <span style={{ color: "var(--success-400)" }}>●</span> Online {onlineCount} &nbsp; <span style={{ color: "var(--gray-400)" }}>●</span> Offline {offlineCount}
-              </p>
             </div>
 
-            <div style={{ backgroundColor: "white", border: overChannelLimit ? "1px solid var(--danger-400)" : BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "8px", backgroundColor: "var(--gray-50)", color: "var(--gray-500)", flexShrink: 0 }}><TagIcon /></span>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>License Usage</p>
-              </div>
-              <p style={{ fontSize: "20px", fontWeight: 800, color: overChannelLimit ? "var(--danger-400)" : "var(--gray-900)", marginTop: "6px" }}>
-                {projectCameras.length} <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-400)" }}>/ {project.licenseChannelLimit ?? "∞"}</span>
-              </p>
-              {project.licenseChannelLimit ? (
-                <div style={{ height: "5px", backgroundColor: "var(--gray-100)", borderRadius: "3px", marginTop: "10px" }}>
-                  <div style={{ height: "5px", width: `${Math.min(100, (projectCameras.length / project.licenseChannelLimit) * 100)}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--primary-400)", borderRadius: "3px" }} />
+            <div style={{ flex: 1, backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "var(--success-100)", color: "var(--success-400)", flexShrink: 0 }}>
+                  <RegionIcon />
+                </span>
+                <div>
+                  <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>Primary Region</p>
+                  <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
+                    {project.regionName ?? "Not set"} {project.regionOnPrem ? "(On-prem)" : "(Cloud)"} {project.regionFlag}
+                  </p>
                 </div>
-              ) : <div style={{ height: "5px", marginTop: "10px" }} />}
-              <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "8px" }}>
-                {project.licensePlan ?? "No plan"} · {licenseExpired ? "Expired" : daysUntilExpiry !== null ? `D-${daysUntilExpiry}` : "—"}
-              </p>
-            </div>
-
-            <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "8px", backgroundColor: "var(--gray-50)", color: "var(--gray-500)", flexShrink: 0 }}><SparkleIcon /></span>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>VIP / Watchlist DB</p>
               </div>
-              <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", marginTop: "6px" }}>{vipCount}</p>
-              <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "18px" }}>{highPriorityVipCount} high priority</p>
-            </div>
-
-            <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "8px", backgroundColor: "var(--gray-50)", color: "var(--gray-500)", flexShrink: 0 }}><UsersIcon /></span>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>Portal Users</p>
-              </div>
-              <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", marginTop: "6px" }}>{userCount}</p>
-              <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "18px" }}>
-                {pendingInviteCount > 0 || suspendedUserCount > 0
-                  ? [pendingInviteCount > 0 ? `${pendingInviteCount} pending` : null, suspendedUserCount > 0 ? `${suspendedUserCount} suspended` : null].filter(Boolean).join(" · ")
-                  : "All active"}
+              <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "10px" }}>
+                center ×{project.regionCenterCount ?? 0} · subcenter ×{project.regionSubcenterCount ?? 0}
               </p>
+              <div style={{ display: "flex", gap: "14px", marginTop: "12px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "10px", color: "var(--gray-500)" }}>CPU <span style={{ fontWeight: 700, color: "var(--gray-900)" }}>{cpuPercent}%</span></span>
+                <span style={{ fontSize: "10px", color: "var(--gray-500)" }}>GPU <span style={{ fontWeight: 700, color: "var(--gray-900)" }}>{gpuPercent}%</span></span>
+                <span style={{ fontSize: "10px", color: "var(--gray-500)" }}>RAM <span style={{ fontWeight: 700, color: "var(--gray-900)" }}>{ramPercent}%</span></span>
+                <span style={{ fontSize: "10px", color: "var(--gray-500)" }}>{networkMbps} Mbps</span>
+              </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "12px", marginBottom: "16px", alignItems: "flex-start" }}>
-            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
-              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, overflow: "hidden" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 0" }}>
-                  <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>Camera Connection Status</p>
-                  <button onClick={() => onTabChange("cameras")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}>View all →</button>
-                </div>
-                {camerasForStatusTable.length === 0 ? (
-                  <p style={{ fontSize: "12px", color: "var(--gray-400)", padding: "16px" }}>No cameras connected yet.</p>
-                ) : (
-                  <div style={{ marginTop: "12px" }}>
-                    {camerasForStatusTable.map((cam, i) => {
-                      const online = cam.status === "online";
-                      return (
-                        <div key={cam.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 16px", borderTop: i > 0 ? BORDER : "none" }}>
-                          <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: online ? "var(--success-400)" : "var(--gray-400)", flexShrink: 0 }} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{cam.name}</p>
-                            <p style={{ fontSize: "10px", color: "var(--gray-400)" }}>{cam.zone}</p>
-                          </div>
-                          {online ? (
-                            <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--success-400)" }}>Online</span>
-                          ) : (
-                            <button onClick={() => setCameraStatus(cam.id, "online")}
-                              style={{ border: BORDER, borderRadius: "999px", backgroundColor: "white", padding: "5px 10px", fontSize: "10px", fontWeight: 600, color: "var(--gray-600)", cursor: "pointer" }}>
-                              Reconnect
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
 
-              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-                  <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>Recently Registered VIPs</p>
-                  <button onClick={() => onTabChange("vip")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}>Register VIP →</button>
-                </div>
-                {recentVips.length === 0 ? (
-                  <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>No VIPs registered yet.</p>
-                ) : (
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    {recentVips.map(p => (
-                      <div key={p.id} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: "8px", border: BORDER, borderRadius: "10px", padding: "8px" }}>
-                        <img src={p.photoUrl} alt="" style={{ width: "32px", height: "32px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
-                          <p style={{ fontSize: "10px", color: "var(--gray-400)" }}>{p.registeredAt}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "16px", alignItems: "start" }}>
+            <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>Recently Registered VIPs</p>
+                <button onClick={() => onTabChange("vip")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}>Register VIP →</button>
               </div>
+              {recentVips.length === 0 ? (
+                <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>No VIPs registered yet.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {recentVips.map(p => (
+                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "8px", border: BORDER, borderRadius: "10px", padding: "8px" }}>
+                      <img src={p.photoUrl} alt="" style={{ width: "32px", height: "32px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
+                        <p style={{ fontSize: "10px", color: "var(--gray-400)" }}>{p.registeredAt}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div style={{ width: "260px", flexShrink: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
-              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>To-do</p>
-                {attentionItems.length === 0 ? (
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
-                    <span style={{ display: "flex", color: "var(--success-400)", flexShrink: 0 }}><CheckCircleIcon /></span>
-                    <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>All systems operational — no action needed.</span>
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    {attentionItems.map((item, i) => {
-                      const color = item.severity === "danger" ? "var(--danger-400)" : "var(--warning-500)";
-                      return (
-                        <button
-                          key={item.message}
-                          onClick={item.onClick}
-                          style={{
-                            display: "flex", alignItems: "flex-start", gap: "8px", width: "100%", padding: "10px 6px",
-                            border: "none", borderTop: i > 0 ? BORDER : "none", borderRadius: 0, backgroundColor: "transparent",
-                            textAlign: "left", cursor: "pointer", font: "inherit",
-                          }}
-                        >
-                          <span style={{ display: "flex", color, flexShrink: 0, marginTop: "1px" }}><WarningIcon /></span>
-                          <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)" }}>{item.message}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-                  <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>License Info</p>
-                  <button onClick={() => onTabChange("license")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 600, color: "var(--primary-400)" }}>Manage →</button>
+            <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>To-do</p>
+              {attentionItems.length === 0 ? (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
+                  <span style={{ display: "flex", color: "var(--success-400)", flexShrink: 0 }}><CheckCircleIcon /></span>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>All systems operational — no action needed.</span>
                 </div>
-                <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{project.licensePlan ?? "Not set"}</p>
-                <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "6px" }}>Channels: {projectCameras.length} / {project.licenseChannelLimit ?? "∞"}</p>
-                <p style={{ fontSize: "10px", color: licenseExpired ? "var(--danger-400)" : "var(--gray-500)", marginTop: "2px" }}>
-                  {licenseExpired ? "Expired" : "Expires"} {project.licenseExpiresAt ?? "Not set"}
-                </p>
-              </div>
-
-              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>Recent Activity</p>
-                {recentActivity.length === 0 ? (
-                  <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>No admin activity yet.</p>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    {recentActivity.map((a, i) => (
-                      <div key={a.id} style={{ padding: "8px 0", borderTop: i > 0 ? BORDER : "none" }}>
-                        <div style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
-                          <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--primary-300)", flexShrink: 0, marginTop: "5px" }} />
-                          <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)" }}>{a.message}</p>
-                        </div>
-                        <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "2px", marginLeft: "11px" }}>
-                          {a.actor}{nowMs !== null ? ` · ${formatElapsed(nowMs - new Date(a.at).getTime())} ago` : ""}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {attentionItems.map((item, i) => {
+                    const color = item.severity === "danger" ? "var(--danger-400)" : "var(--warning-500)";
+                    return (
+                      <button
+                        key={item.message}
+                        onClick={item.onClick}
+                        style={{
+                          display: "flex", alignItems: "flex-start", gap: "8px", width: "100%", padding: "10px 6px",
+                          border: "none", borderTop: i > 0 ? BORDER : "none", borderRadius: 0, backgroundColor: "transparent",
+                          textAlign: "left", cursor: "pointer", font: "inherit",
+                        }}
+                      >
+                        <span style={{ display: "flex", color, flexShrink: 0, marginTop: "1px" }}><WarningIcon /></span>
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)" }}>{item.message}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+
+            <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>License Info</p>
+                <button onClick={() => onTabChange("license")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 600, color: "var(--primary-400)" }}>Manage →</button>
+              </div>
+              <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{project.licensePlan ?? "Not set"}</p>
+              <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "6px" }}>Channels: {projectCameras.length} / {channelLimit ?? "∞"}</p>
+              <p style={{ fontSize: "10px", color: licenseExpired ? "var(--danger-400)" : "var(--gray-500)", marginTop: "2px" }}>
+                {licenseExpired ? "Expired" : "Expires"} {project.licenseExpiresAt ?? "Not set"}
+              </p>
+            </div>
+
+            <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>Recent Activity</p>
+              {recentActivity.length === 0 ? (
+                <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>No admin activity yet.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {recentActivity.map((a, i) => (
+                    <div key={a.id} style={{ padding: "8px 0", borderTop: i > 0 ? BORDER : "none" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
+                        <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--primary-300)", flexShrink: 0, marginTop: "5px" }} />
+                        <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)" }}>{a.message}</p>
+                      </div>
+                      <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "2px", marginLeft: "11px" }}>
+                        {a.actor}{nowMs !== null ? ` · ${formatElapsed(nowMs - new Date(a.at).getTime())} ago` : ""}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
+            <MetricTrendCard label="API Requests" values={apiRequestsDaily} color="var(--primary-400)" />
+            <MetricTrendCard label="AI Detections" values={aiDetectionsDaily} color="var(--success-400)" />
+            <MetricTrendCard label="Alerts" values={alertsDaily} color="var(--danger-400)" />
+            <MetricTrendCard label="Recordings" values={recordingsDaily} color="var(--gray-600)" />
           </div>
         </>
       )}

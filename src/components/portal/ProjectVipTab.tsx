@@ -5,7 +5,7 @@ import { useVcaStore, type Person } from "@/lib/vcaStore";
 import { getFacePhoto } from "@/lib/mockData";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
-import { BORDER, PANEL_SHADOW } from "./PortalShared";
+import { BORDER, PANEL_SHADOW, FilterSelect } from "./PortalShared";
 
 const ROLE_LABELS = ["Regular", "Lead", "Captain", "Health", "Special"];
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -18,63 +18,89 @@ const PRIORITY_COLOR: Record<NonNullable<Person["priorityLabel"]>, { bg: string;
 
 interface RegisterValues {
   name: string;
-  description: string;
   roleLabel: string;
   priorityLabel: NonNullable<Person["priorityLabel"]>;
+  photoUrl?: string;
 }
 
 function RegisterVipModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (values: RegisterValues) => void }) {
   useEscapeKey(onClose);
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [roleLabel, setRoleLabel] = useState(ROLE_LABELS[0]);
   const [priorityLabel, setPriorityLabel] = useState<NonNullable<Person["priorityLabel"]>>("normal");
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFileName, setPhotoFileName] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const valid = name.trim().length > 0;
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoPreview(URL.createObjectURL(file));
+    setPhotoFileName(file.name);
+  };
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
         <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>Register VIP</p>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>Add New Person</p>
           <button onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Full Name *</label>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Name *</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Alexander Wright"
-              style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }} />
-          </div>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Description</label>
-            <input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Corporate Security — Executive Protection"
               style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Role tag</label>
-              <select value={roleLabel} onChange={e => setRoleLabel(e.target.value)}
-                style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit", backgroundColor: "white", cursor: "pointer" }}>
-                {ROLE_LABELS.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Tag</label>
+              <FilterSelect value={roleLabel} onChange={setRoleLabel} options={ROLE_LABELS.map(r => ({ value: r, label: r }))} />
             </div>
             <div>
               <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Priority</label>
-              <select value={priorityLabel} onChange={e => setPriorityLabel(e.target.value as typeof priorityLabel)}
-                style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit", backgroundColor: "white", cursor: "pointer" }}>
-                {PRIORITY_LABELS.map(p => <option key={p} value={p}>{PRIORITY_TEXT[p]}</option>)}
-              </select>
+              <FilterSelect
+                value={priorityLabel}
+                onChange={v => setPriorityLabel(v as typeof priorityLabel)}
+                options={PRIORITY_LABELS.map(p => ({ value: p, label: PRIORITY_TEXT[p] }))}
+              />
             </div>
+          </div>
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Face photo</label>
+            <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: "none" }} />
+            <button type="button" onClick={() => photoInputRef.current?.click()}
+              style={{
+                width: "100%", boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
+                padding: photoPreview ? "10px" : "24px", borderRadius: "10px", border: "1px dashed var(--gray-300)",
+                backgroundColor: "var(--gray-50)", cursor: "pointer",
+              }}>
+              {photoPreview ? (
+                <>
+                  <img src={photoPreview} alt="" style={{ width: "40px", height: "40px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{photoFileName}</span>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary-400)", flexShrink: 0 }}>Change</span>
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}>Upload photo</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
         <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             Cancel
           </button>
-          <button onClick={() => valid && onSubmit({ name: name.trim(), description: description.trim(), roleLabel, priorityLabel })} disabled={!valid}
-            style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>
+          <button onClick={() => valid && onSubmit({ name: name.trim(), roleLabel, priorityLabel, photoUrl: photoPreview ?? undefined })} disabled={!valid}
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
             Register
           </button>
         </div>
@@ -107,6 +133,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const { showToast } = useToast();
   const [showRegister, setShowRegister] = useState(false);
   const [search, setSearch] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const q = search.trim().toLowerCase();
@@ -116,9 +143,8 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
 
   const register = (values: RegisterValues) => {
     addPerson({
-      name: values.name, type: "VIP", photoUrl: getFacePhoto(values.name),
+      name: values.name, type: "VIP", photoUrl: values.photoUrl ?? getFacePhoto(values.name),
       registeredAt: new Date().toISOString().slice(0, 10),
-      description: values.description || undefined,
       roleLabel: values.roleLabel, priorityLabel: values.priorityLabel,
       projectId,
     });
@@ -179,7 +205,14 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search name…"
-          style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px", border: BORDER, fontSize: "12px", fontFamily: "inherit", backgroundColor: "white" }}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
+          style={{
+            width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px",
+            border: searchFocused ? "1px solid var(--primary-400)" : BORDER, outline: "none",
+            boxShadow: searchFocused ? "0 0 0 3px var(--primary-100)" : "none",
+            fontSize: "12px", fontFamily: "inherit", backgroundColor: "white",
+          }}
         />
       </div>
 

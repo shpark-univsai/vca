@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useVcaStore, type Camera, type CameraAiFeature } from "@/lib/vcaStore";
+import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, projectChannelLimit } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { BORDER, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
@@ -11,36 +11,48 @@ const DEFAULT_THUMBNAIL = "https://images.unsplash.com/photo-1517245386807-bb43f
 const AI_FEATURES: CameraAiFeature[] = ["Re-ID Analysis", "License Plate Recognition", "Intrusion Detection"];
 const MAKERS = ["Hanwha", "Hikvision", "Dahua"];
 const RESOLUTIONS = ["FHD (1920×1080)", "4K (3840×2160)"];
+const INPUT_KINDS = ["CCTV", "AI Camera"] as const;
+type InputKind = typeof INPUT_KINDS[number];
 
 interface CameraFormValues {
   name: string;
-  code: string;
-  rtspUrl: string;
   location: string;
   zone: string;
-  protocol: "TCP" | "UDP";
-  maker: string;
+  rtspUrl: string;
   resolution: string;
+  maker: string;
+  inputKind: InputKind;
   aiFeatures: CameraAiFeature[];
+  status: CameraStatus;
 }
 
-const EMPTY_FORM: CameraFormValues = { name: "", code: "", rtspUrl: "", location: "", zone: "", protocol: "TCP", maker: MAKERS[0], resolution: RESOLUTIONS[0], aiFeatures: [] };
+const EMPTY_FORM: CameraFormValues = {
+  name: "", location: "", zone: "", rtspUrl: "",
+  resolution: RESOLUTIONS[0], maker: MAKERS[0], inputKind: "CCTV", aiFeatures: [], status: "offline",
+};
+
+// Camera codes are an internal identifier (shown in the table, used in mock RTSP paths) — the
+// reference popup this modal now matches doesn't surface a code field, so it's derived from the
+// name instead of typed in by the operator.
+function generateCameraCode(name: string, existingCount: number): string {
+  const prefix = name.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase() || "CAM";
+  return `CAM-${prefix}-${String(existingCount + 1).padStart(3, "0")}`;
+}
 
 function CameraFormModal({
-  title, initial, onClose, onSubmit,
+  title, initial, isEdit, onClose, onSubmit,
 }: {
   title: string;
   initial: CameraFormValues;
+  isEdit: boolean;
   onClose: () => void;
   onSubmit: (values: CameraFormValues) => void;
 }) {
   useEscapeKey(onClose);
-  const { showToast } = useToast();
   const [form, setForm] = useState<CameraFormValues>(initial);
-  const [testing, setTesting] = useState(false);
   const valid = form.name.trim().length > 0 && form.rtspUrl.trim().length > 0;
 
-  const field = (key: "name" | "code" | "rtspUrl" | "location" | "zone", label: string, placeholder: string) => (
+  const field = (key: "name" | "location" | "zone" | "rtspUrl", label: string, placeholder: string) => (
     <div>
       <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{label}</label>
       <input
@@ -52,17 +64,22 @@ function CameraFormModal({
     </div>
   );
 
-  const toggleFeature = (f: CameraAiFeature) =>
-    setForm(prev => ({ ...prev, aiFeatures: prev.aiFeatures.includes(f) ? prev.aiFeatures.filter(x => x !== f) : [...prev.aiFeatures, f] }));
+  const selectField = (label: string, value: string, options: string[], onChange: (v: string) => void) => (
+    <div>
+      <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{label}</label>
+      <FilterSelect value={value} onChange={onChange} options={options.map(o => ({ value: o, label: o }))} />
+    </div>
+  );
 
-  const testConnection = () => {
-    if (!form.rtspUrl.trim()) return;
-    setTesting(true);
-    showToast({ variant: "info", title: "Testing RTSP connection…", desc: form.rtspUrl.trim() });
-    setTimeout(() => {
-      setTesting(false);
-      showToast({ variant: "success", title: "RTSP 200 OK", desc: "Stream reachable." });
-    }, 900);
+  const setInputKind = (kind: InputKind) => {
+    setForm(f => ({
+      ...f,
+      inputKind: kind,
+      // Switching to AI Camera turns on a sensible default engine if none were mapped yet;
+      // switching back to CCTV clears them — granular per-engine mapping still lives in the
+      // camera detail view, this popup just decides whether any engine runs at all.
+      aiFeatures: kind === "AI Camera" ? (f.aiFeatures.length > 0 ? f.aiFeatures : ["Re-ID Analysis"]) : [],
+    }));
   };
 
   return (
@@ -76,80 +93,23 @@ function CameraFormModal({
           </button>
         </div>
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
-          {field("name", "Camera Name *", "e.g. Novena")}
-          {field("code", "Camera Code", "e.g. CAM-NOV-001")}
-          {field("rtspUrl", "RTSP Stream URL *", "rtsp://10.20.4.11:554/stream1")}
-
-          <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>Transport protocol</label>
-              <div style={{ display: "flex", gap: "12px" }}>
-                {(["TCP", "UDP"] as const).map(p => (
-                  <label key={p} style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "12px", color: "var(--gray-600)" }}>
-                    <input type="radio" checked={form.protocol === p} onChange={() => setForm(f => ({ ...f, protocol: p }))} style={{ accentColor: "var(--primary-400)" }} />
-                    {p}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <button type="button" onClick={testConnection} disabled={!form.rtspUrl.trim() || testing}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-              padding: "10px", borderRadius: "10px", border: BORDER, backgroundColor: "var(--gray-50)",
-              color: "var(--primary-400)", fontSize: "12px", fontWeight: 700,
-              cursor: form.rtspUrl.trim() && !testing ? "pointer" : "not-allowed", opacity: form.rtspUrl.trim() ? 1 : 0.5,
-            }}>
-            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M9.33 1.75a1.24 1.24 0 0 1 1.75 1.75L4.67 10.08 2 10.75l.67-2.67 6.66-6.33z" stroke="var(--primary-400)" strokeWidth="1.1" strokeLinejoin="round"/></svg>
-            {testing ? "Testing…" : "Test RTSP Connection"}
-          </button>
-
-          {field("location", "Location", "e.g. Novena, Singapore")}
-          {field("zone", "Zone", "e.g. Novena")}
+          {field("name", "Device name *", "e.g. Novena")}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Maker</label>
-              <select
-                value={form.maker}
-                onChange={e => setForm(f => ({ ...f, maker: e.target.value }))}
-                style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit", backgroundColor: "white", cursor: "pointer" }}
-              >
-                {MAKERS.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Resolution</label>
-              <select
-                value={form.resolution}
-                onChange={e => setForm(f => ({ ...f, resolution: e.target.value }))}
-                style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit", backgroundColor: "white", cursor: "pointer" }}
-              >
-                {RESOLUTIONS.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
+            {field("location", "Location", "e.g. Entrance")}
+            {field("zone", "Zone", "e.g. Front Gate")}
           </div>
 
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "8px" }}>AI Analysis Engines</label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
-              {AI_FEATURES.map(f => {
-                const active = form.aiFeatures.includes(f);
-                return (
-                  <button key={f} type="button" onClick={() => toggleFeature(f)}
-                    style={{
-                      padding: "10px 6px", borderRadius: "10px", cursor: "pointer", textAlign: "center",
-                      border: active ? "1px solid var(--primary-400)" : BORDER,
-                      backgroundColor: active ? "var(--primary-100)" : "var(--gray-50)",
-                      color: active ? "var(--primary-400)" : "var(--gray-600)",
-                      fontSize: "10px", fontWeight: 600,
-                    }}>
-                    {f}
-                  </button>
-                );
-              })}
-            </div>
+          {field("rtspUrl", "Connection — RTSP URL *", "rtsp://10.20.4.11:554/stream1")}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            {selectField("Resolution", form.resolution, RESOLUTIONS, v => setForm(f => ({ ...f, resolution: v })))}
+            {selectField("Maker", form.maker, MAKERS, v => setForm(f => ({ ...f, maker: v })))}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            {selectField("Input kind", form.inputKind, [...INPUT_KINDS], v => setInputKind(v as InputKind))}
+            {!isEdit && selectField("Status", form.status === "online" ? "Online" : "Offline", ["Online", "Offline"], v => setForm(f => ({ ...f, status: v === "Online" ? "online" : "offline" })))}
           </div>
         </div>
         <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
@@ -157,8 +117,9 @@ function CameraFormModal({
             Cancel
           </button>
           <button onClick={() => valid && onSubmit(form)} disabled={!valid}
-            style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>
-            Save
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
+            {isEdit ? "Save changes" : "Add device"}
           </button>
         </div>
       </div>
@@ -241,6 +202,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
   const [confirmingStatusCam, setConfirmingStatusCam] = useState<Camera | null>(null);
   const [view, setView] = useState<"table" | "grid">("table");
   const [search, setSearch] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const [zoneFilter, setZoneFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "online" | "offline">("ALL");
   const [aiFilter, setAiFilter] = useState<"ALL" | CameraAiFeature>("ALL");
@@ -265,15 +227,15 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
     .map(zone => ({ zone, count: projectCameras.filter(c => c.zone === zone).length }))
     .sort((a, b) => b.count - a.count);
 
-  const limit = project?.licenseChannelLimit;
+  const limit = project ? projectChannelLimit(project) : undefined;
   const overLimit = !!limit && projectCameras.length > limit;
 
   const createCamera = (values: CameraFormValues) => {
     addCamera({
-      projectId, name: values.name.trim(), code: values.code.trim(), rtspUrl: values.rtspUrl.trim(),
+      projectId, name: values.name.trim(), code: generateCameraCode(values.name.trim(), projectCameras.length), rtspUrl: values.rtspUrl.trim(),
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
-      protocol: values.protocol, maker: values.maker, resolution: values.resolution, aiFeatures: values.aiFeatures,
-      ip: "", mac: "", status: "offline", thumbnail: DEFAULT_THUMBNAIL, lat: 0, lng: 0,
+      maker: values.maker, resolution: values.resolution, aiFeatures: values.aiFeatures,
+      ip: "", mac: "", status: values.status, thumbnail: DEFAULT_THUMBNAIL, lat: 0, lng: 0,
     });
     setShowAdd(false);
     showToast({ variant: "success", title: "Camera added", desc: `${values.name.trim()} connected to this project.` });
@@ -282,9 +244,9 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
   const saveEdit = (values: CameraFormValues) => {
     if (!editingCamera) return;
     updateCamera(editingCamera.id, {
-      name: values.name.trim(), code: values.code.trim(), rtspUrl: values.rtspUrl.trim(),
+      name: values.name.trim(), rtspUrl: values.rtspUrl.trim(),
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
-      protocol: values.protocol, maker: values.maker, resolution: values.resolution, aiFeatures: values.aiFeatures,
+      maker: values.maker, resolution: values.resolution, aiFeatures: values.aiFeatures,
     });
     setEditingCamera(null);
     showToast({ variant: "success", title: "Camera updated", desc: values.name.trim() });
@@ -395,7 +357,14 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search name, code, RTSP URL, IP…"
-            style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px", border: BORDER, fontSize: "12px", fontFamily: "inherit", backgroundColor: "white" }}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            style={{
+              width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px",
+              border: searchFocused ? "1px solid var(--primary-400)" : BORDER, outline: "none",
+              boxShadow: searchFocused ? "0 0 0 3px var(--primary-100)" : "none",
+              fontSize: "12px", fontFamily: "inherit", backgroundColor: "white",
+            }}
           />
         </div>
         <FilterSelect
@@ -516,17 +485,19 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
       )}
 
       {showAdd && (
-        <CameraFormModal title="Add camera" initial={EMPTY_FORM} onClose={() => setShowAdd(false)} onSubmit={createCamera} />
+        <CameraFormModal title="Add Input Device" initial={EMPTY_FORM} isEdit={false} onClose={() => setShowAdd(false)} onSubmit={createCamera} />
       )}
       {editingCamera && (
         <CameraFormModal
-          title="Edit camera"
+          title="Edit Input Device"
+          isEdit
           initial={{
-            name: editingCamera.name, code: editingCamera.code, rtspUrl: editingCamera.rtspUrl,
+            name: editingCamera.name, rtspUrl: editingCamera.rtspUrl,
             location: editingCamera.location, zone: editingCamera.zone,
-            protocol: editingCamera.protocol ?? "TCP",
             maker: editingCamera.maker ?? MAKERS[0], resolution: editingCamera.resolution ?? RESOLUTIONS[0],
+            inputKind: (editingCamera.aiFeatures ?? []).length > 0 ? "AI Camera" : "CCTV",
             aiFeatures: editingCamera.aiFeatures ?? [],
+            status: editingCamera.status,
           }}
           onClose={() => setEditingCamera(null)}
           onSubmit={saveEdit}

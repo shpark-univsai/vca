@@ -1,16 +1,31 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import { LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
+import { useVcaStore } from "@/lib/vcaStore";
 
 function fieldBorder(active: boolean) {
   return active ? "1px solid var(--primary-300)" : "1px solid var(--gray-300)";
 }
 
 export default function PasswordSetupPage() {
+  return (
+    <Suspense fallback={null}>
+      <PasswordSetupForm />
+    </Suspense>
+  );
+}
+
+function PasswordSetupForm() {
   const router = useRouter();
+  // No real invite-token backend yet — the mock invite link handed out from Portal's Invite/Access
+  // Request flows is just `/password-setup?token=<portalUser id>` (see PortalUsersPage.tsx). Look
+  // that user up the same way login/page.tsx matches by email, then route by their permission
+  // instead of always bouncing to /login.
+  const token = useSearchParams().get("token");
+  const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -28,7 +43,13 @@ export default function PasswordSetupPage() {
   const handleSubmit = () => {
     if (!canSubmit) return;
     if (!formatValid || mismatch) return;
-    router.push("/login");
+    const invitedUser = token ? useVcaStore.getState().portalUsers.find(u => u.id === token) : undefined;
+    if (!invitedUser) {
+      router.push("/login");
+      return;
+    }
+    updatePortalUserStatus(invitedUser.id, "active");
+    router.push(invitedUser.permission === "admin" ? "/portal" : "/");
   };
 
   return (

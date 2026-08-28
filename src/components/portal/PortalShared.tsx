@@ -54,6 +54,7 @@ export function FilterSelect({ value, onChange, options }: { value: string; onCh
         onMouseLeave={() => setHovered(false)}
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px",
+          width: "100%", boxSizing: "border-box",
           height: "32px", padding: "0 10px", borderRadius: "8px",
           border: hovered ? "1px solid var(--primary-300)" : BORDER,
           backgroundColor: "white", cursor: "pointer", whiteSpace: "nowrap",

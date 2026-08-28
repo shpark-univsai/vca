@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
@@ -134,6 +134,8 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   const [editingServer, setEditingServer] = useState<Server | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"ALL" | ServerType>("ALL");
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const projectServers = servers.filter(s => s.projectId === projectId);
   const q = search.trim().toLowerCase();
@@ -142,6 +144,21 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
     const matchesType = typeFilter === "ALL" || s.type === typeFilter;
     return matchesSearch && matchesType;
   });
+
+  // Filters/page-size changing the result set can strand the current page past the new last
+  // page (e.g. narrowing a search while on page 3) — snap back to page 1 whenever either shifts.
+  useEffect(() => { setPage(1); }, [search, typeFilter, rowsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil(visibleServers.length / rowsPerPage));
+  const currentPage = Math.min(page, totalPages);
+  const pageServers = visibleServers.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+  const rangeStart = visibleServers.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+  const rangeEnd = Math.min(visibleServers.length, currentPage * rowsPerPage);
+
+  const resetFilters = () => {
+    setSearch("");
+    setTypeFilter("ALL");
+  };
 
   const createServer = (values: ServerFormValues) => {
     addServer({
@@ -205,6 +222,10 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               <option value="ALL">All types</option>
               {SERVER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
+            <button onClick={resetFilters}
+              style={{ padding: "9px 14px", borderRadius: "10px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+              Reset
+            </button>
             <button onClick={() => setShowAdd(true)}
               style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
@@ -225,7 +246,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                   <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
                 ))}
               </div>
-              {visibleServers.map(server => {
+              {pageServers.map(server => {
                 const ok = server.status === "success";
                 return (
                   <div key={server.id} style={{ display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", padding: "12px 16px", alignItems: "center", borderBottom: BORDER }}>
@@ -244,6 +265,42 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {visibleServers.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "12px", flexWrap: "wrap", gap: "10px" }}>
+              <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>
+                Showing {rangeStart} to {rangeEnd} of {visibleServers.length} entries
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                  style={{ width: "28px", height: "28px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: currentPage === 1 ? "var(--gray-300)" : "var(--gray-600)", cursor: currentPage === 1 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M9 2.9L4.5 7l4.5 4.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+                  <button key={n} onClick={() => setPage(n)}
+                    style={{
+                      width: "28px", height: "28px", borderRadius: "8px", border: "none", cursor: "pointer",
+                      backgroundColor: n === currentPage ? "var(--primary-400)" : "transparent",
+                      color: n === currentPage ? "white" : "var(--gray-600)",
+                      fontSize: "12px", fontWeight: 700,
+                    }}>
+                    {n}
+                  </button>
+                ))}
+                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                  style={{ width: "28px", height: "28px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: currentPage === totalPages ? "var(--gray-300)" : "var(--gray-600)", cursor: currentPage === totalPages ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M5 2.9L9.5 7l-4.5 4.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>Rows per page:</span>
+                <select value={rowsPerPage} onChange={e => setRowsPerPage(Number(e.target.value))}
+                  style={{ padding: "6px 8px", borderRadius: "8px", border: BORDER, fontSize: "12px", fontFamily: "inherit", backgroundColor: "white", color: "var(--gray-600)", cursor: "pointer" }}>
+                  {[10, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
             </div>
           )}
         </>

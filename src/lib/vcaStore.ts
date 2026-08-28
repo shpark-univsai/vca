@@ -5,10 +5,23 @@ import { isTodaySgt, recentSgtStamp, parseSgtStamp } from "@/lib/time";
 // Deterministic pseudo-random in [0,1) — same formula as mockData.ts's own seededRandom — used
 // below to bulk-generate cameras without Math.random(), which would differ between the
 // server-rendered and client-hydrated pass and trigger a hydration mismatch.
-function seededRandom(seed: number): number {
+export function seededRandom(seed: number): number {
   const x = Math.sin(seed * 12.9898) * 43758.5453;
   return x - Math.floor(x);
 }
+
+// Thin accessor kept so call sites elsewhere in Portal don't need to know the license shape —
+// currently a single combined channel pool (AI and normal cameras share one quota; the License
+// tab breaks usage down by type, but the limit itself isn't split).
+export function projectChannelLimit(project: Pick<Project, "licenseChannelLimit">): number | undefined {
+  return project.licenseChannelLimit;
+}
+
+export const UNLIMITED_EXPIRY = "Unlimited";
+
+// Flat per-channel subscription rate used both on Overview's CHANNELS cell and the License tab's
+// contract breakdown — one constant so the two never drift apart.
+export const PRICE_PER_CHANNEL_PER_YEAR = 100;
 
 export type CameraStatus = "online" | "offline";
 
@@ -29,11 +42,27 @@ export interface Project {
   name: string;
   type: ProjectType;
   // Set/edited from the project's License tab in Portal — governs how many camera channels this
-  // project is provisioned for and when that provisioning expires. Optional so projects created
-  // before this existed (or without a license configured yet) still type-check.
+  // project is provisioned for and when that provisioning expires. One shared pool (AI and normal
+  // cameras draw from the same quota) — the License tab shows AI vs. normal as a usage breakdown
+  // of this single number, not two separate limits. Optional so projects created before this
+  // existed (or without a license configured yet) still type-check.
   licenseChannelLimit?: number;
   licensePlan?: string;
+  // A date string, or the literal "Unlimited" for a plan with no expiry.
   licenseExpiresAt?: string;
+  // System/infrastructure info shown on Portal's Overview tab — mirrors what an ops-facing admin
+  // dashboard needs alongside the business KPIs above. Optional so existing/seeded projects
+  // without this configured still type-check.
+  computeInstance?: string;
+  gpuCount?: number;
+  modelVersion?: string;
+  lastMigration?: string;
+  lastBackupAt?: string;
+  regionName?: string;
+  regionOnPrem?: boolean;
+  regionFlag?: string;
+  regionCenterCount?: number;
+  regionSubcenterCount?: number;
 }
 
 // Matches existing app-wide terminology ("Re-ID Analysis" tab in DataPage, "License plate" search
@@ -138,6 +167,7 @@ interface VcaStoreState {
   portalUsers: PortalUser[];
   servers: Server[];
   auditLog: AuditEvent[];
+  accessRequests: AccessRequest[];
   // Notifications (header bell) only care about VIP-match events from this point forward —
   // events seeded at load are historical and start out already "read".
   lastReadNotifAt: string;
@@ -151,10 +181,14 @@ interface VcaStoreState {
   removePerson: (personId: string) => void;
   addEvent: (event: Omit<VcaEvent, "id">) => void;
   markNotificationsRead: () => void;
-  addPortalUser: (user: Omit<PortalUser, "id">) => void;
+  addPortalUser: (user: Omit<PortalUser, "id">) => string;
   updatePortalUserPermission: (userId: string, permission: PortalPermission) => void;
   updatePortalUserProjects: (userId: string, projectIds: string[]) => void;
+  updatePortalUserStatus: (userId: string, status: PortalUserStatus) => void;
   removePortalUser: (userId: string) => void;
+  requestAccess: (request: Omit<AccessRequest, "id" | "requestedAt">) => void;
+  approveAccessRequests: (requestIds: string[]) => string[];
+  dismissAccessRequest: (requestId: string) => void;
   addOrganization: (org: Omit<Organization, "id">) => string;
   addServer: (server: Omit<Server, "id">) => void;
   updateServer: (serverId: string, updates: Partial<Omit<Server, "id" | "projectId">>) => void;
@@ -179,8 +213,20 @@ const ORGANIZATIONS: Organization[] = [
 ];
 
 const PROJECTS: Project[] = [
-  { id: "proj-sg", orgId: "org-univs", name: "Marina Bay & CBD Surveillance Network", type: "smart_city", licensePlan: "Enterprise", licenseChannelLimit: 100, licenseExpiresAt: "2029-06-04" },
-  { id: "proj-riverside", orgId: "org-univs", name: "Riverside International School", type: "smart_school", licensePlan: "Professional", licenseChannelLimit: 40, licenseExpiresAt: "2027-09-01" },
+  {
+    id: "proj-sg", orgId: "org-univs", name: "Marina Bay & CBD Surveillance Network", type: "smart_city",
+    licensePlan: "Enterprise", licenseChannelLimit: 100, licenseExpiresAt: "2029-06-04",
+    computeInstance: "vca.large", gpuCount: 4, modelVersion: "model_v2_prod", lastMigration: "v2_alert_schema",
+    lastBackupAt: auditAt(19 * 60),
+    regionName: "Singapore", regionOnPrem: false, regionFlag: "🇸🇬", regionCenterCount: 1, regionSubcenterCount: 2,
+  },
+  {
+    id: "proj-riverside", orgId: "org-univs", name: "Riverside International School", type: "smart_school",
+    licensePlan: "Professional", licenseChannelLimit: 40, licenseExpiresAt: "2027-09-01",
+    computeInstance: "vca.medium", gpuCount: 2, modelVersion: "model_v2_prod", lastMigration: "v2_alert_schema",
+    lastBackupAt: auditAt(7 * 60),
+    regionName: "Singapore", regionOnPrem: true, regionFlag: "🇸🇬", regionCenterCount: 1, regionSubcenterCount: 0,
+  },
 ];
 
 // Portal-managed accounts — separate from `persons` (the VIP/watchlist registry). A PortalUser is
@@ -223,6 +269,24 @@ export interface PortalUser {
   // users (none of which have this configured) still type-check.
   mfaEnabled?: boolean;
   lastLoginAt?: string;
+  // Set when this account is completing an invite via /password-setup — lets that page confirm
+  // it's finishing the right person's signup and land them straight in the app afterward instead
+  // of bouncing through /login. Cleared once the invite is completed (status becomes "active").
+  inviteToken?: string;
+}
+
+// Someone who found a project link but has no access yet, asking a Portal admin to grant it —
+// the "링크 공유받은 경우" branch of the invite flow (as opposed to being invited directly). Approving
+// one turns it into an invited PortalUser; there's deliberately no "rejected" state to persist —
+// per the reviewed UX pattern (Miro/MS Teams-style request inboxes), an admin just dismisses it
+// and the requester sees a neutral "no access yet" screen on their next visit, nothing punitive.
+export interface AccessRequest {
+  id: string;
+  name: string;
+  email: string;
+  projectId: string;
+  reason?: string;
+  requestedAt: string;
 }
 
 const PORTAL_USERS: PortalUser[] = [
@@ -231,6 +295,12 @@ const PORTAL_USERS: PortalUser[] = [
   { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", orgId: "org-univs", projectIds: ["proj-riverside"], permission: "operator", status: "active", mfaEnabled: false, lastLoginAt: "2026-08-20 11:47" },
   { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", orgId: "org-univs", projectIds: ["proj-sg"], permission: "operator", status: "invited" },
   { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", orgId: "org-univs", projectIds: ["proj-sg"], permission: "operator", status: "suspended", mfaEnabled: false, lastLoginAt: "2026-06-02 08:30" },
+];
+
+const ACCESS_REQUESTS: AccessRequest[] = [
+  { id: "req-1", name: "Daniel Foo", email: "daniel.foo@univs.ai", projectId: "proj-sg", reason: "Covering the night shift this week and need to check camera status.", requestedAt: auditAt(45) },
+  { id: "req-2", name: "Siti Aminah", email: "siti.aminah@univs.ai", projectId: "proj-sg", reason: "New hire on the ops team, was told to request access here.", requestedAt: auditAt(3 * 60) },
+  { id: "req-3", name: "Marcus Lee", email: "marcus.lee2@univs.ai", projectId: "proj-riverside", requestedAt: auditAt(26 * 60) },
 ];
 
 const SERVERS: Server[] = [
@@ -450,6 +520,7 @@ let eventSeq = SEED_EVENTS.length;
 let portalUserSeq = PORTAL_USERS.length;
 let orgSeq = ORGANIZATIONS.length;
 let serverSeq = SERVERS.length;
+let accessRequestSeq = ACCESS_REQUESTS.length;
 
 function auditAt(minutesAgo: number): string {
   const { date, time } = recentSgtStamp(minutesAgo);
@@ -538,7 +609,7 @@ function personHitHistory(events: VcaEvent[], personName: string, nowMs: number)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 }
 
-export const useVcaStore = create<VcaStoreState>((set) => ({
+export const useVcaStore = create<VcaStoreState>((set, get) => ({
   organizations: ORGANIZATIONS,
   projects: PROJECTS,
   cameras: CAMERAS,
@@ -547,6 +618,7 @@ export const useVcaStore = create<VcaStoreState>((set) => ({
   portalUsers: PORTAL_USERS,
   servers: SERVERS,
   auditLog: AUDIT_LOG,
+  accessRequests: ACCESS_REQUESTS,
   lastReadNotifAt: LATEST_SEED_TIMESTAMP,
   setCameraStatus: (cameraId, status) =>
     set(state => {
@@ -644,8 +716,11 @@ export const useVcaStore = create<VcaStoreState>((set) => ({
       return { events: [...personEvents, ...otherEvents].slice(0, 500) };
     }),
   markNotificationsRead: () => set({ lastReadNotifAt: new Date().toISOString() }),
-  addPortalUser: (user) =>
-    set(state => ({ portalUsers: [...state.portalUsers, { ...user, id: `user-${++portalUserSeq}` }] })),
+  addPortalUser: (user) => {
+    const id = `user-${++portalUserSeq}`;
+    set(state => ({ portalUsers: [...state.portalUsers, { ...user, id }] }));
+    return id;
+  },
   updatePortalUserPermission: (userId, permission) =>
     set(state => {
       const user = state.portalUsers.find(u => u.id === userId);
@@ -657,6 +732,8 @@ export const useVcaStore = create<VcaStoreState>((set) => ({
     }),
   updatePortalUserProjects: (userId, projectIds) =>
     set(state => ({ portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, projectIds } : u)) })),
+  updatePortalUserStatus: (userId, status) =>
+    set(state => ({ portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, status } : u)) })),
   removePortalUser: (userId) =>
     set(state => {
       const user = state.portalUsers.find(u => u.id === userId);
@@ -666,6 +743,38 @@ export const useVcaStore = create<VcaStoreState>((set) => ({
         auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
       };
     }),
+  requestAccess: (request) =>
+    set(state => ({
+      accessRequests: [...state.accessRequests, { ...request, id: `req-${++accessRequestSeq}`, requestedAt: new Date().toISOString() }],
+    })),
+  approveAccessRequests: (requestIds) => {
+    const state = get();
+    const toApprove = state.accessRequests.filter(r => requestIds.includes(r.id));
+    const newUsers: PortalUser[] = toApprove.map(r => {
+      const project = state.projects.find(p => p.id === r.projectId);
+      return {
+        id: `user-${++portalUserSeq}`,
+        name: r.name,
+        email: r.email,
+        orgId: project?.orgId ?? state.organizations[0]?.id ?? "",
+        projectIds: [r.projectId],
+        permission: "operator",
+        status: "invited",
+      };
+    });
+    const auditEntries: AuditEvent[] = toApprove.map(r => ({
+      id: `audit-${++auditSeq}`, projectId: r.projectId,
+      message: `Access request approved for ${r.name} — invited`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+    }));
+    set(s => ({
+      portalUsers: [...s.portalUsers, ...newUsers],
+      accessRequests: s.accessRequests.filter(r => !requestIds.includes(r.id)),
+      auditLog: [...auditEntries, ...s.auditLog].slice(0, 200),
+    }));
+    return newUsers.map(u => u.id);
+  },
+  dismissAccessRequest: (requestId) =>
+    set(state => ({ accessRequests: state.accessRequests.filter(r => r.id !== requestId) })),
   addOrganization: (org) => {
     const id = `org-${++orgSeq}`;
     set(state => ({ organizations: [...state.organizations, { ...org, id }] }));

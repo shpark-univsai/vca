@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useVcaStore, type PortalPermission, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { formatElapsed } from "@/lib/time";
+import { useToast } from "../Toast";
 import { BORDER, PANEL_SHADOW, RowActionsMenu } from "./PortalShared";
 
 function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: string; onClose: () => void }) {
@@ -10,6 +12,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const organizations = useVcaStore(s => s.organizations);
   const projects = useVcaStore(s => s.projects);
   const addPortalUser = useVcaStore(s => s.addPortalUser);
+  const { showToast } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [orgId, setOrgId] = useState(organizations[0]?.id ?? "");
@@ -19,9 +22,25 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const toggleProject = (id: string) =>
     setProjectIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
 
+  // Every invite goes through the same flow (admin sets no password — the user verifies by email
+  // and sets their own) regardless of deployment; only the mail transport changes. Fully offline
+  // on-prem projects can't reach an external mail provider, so those route through the project's
+  // internal mailbox instead. See the 2026-08-28 backend-meeting decision this mirrors.
+  const selectedProjects = projects.filter(p => projectIds.includes(p.id));
+  const hasOnPrem = selectedProjects.some(p => p.regionOnPrem);
+  const hasCloud = selectedProjects.some(p => !p.regionOnPrem);
+  const mailTransportNote = selectedProjects.length === 0
+    ? null
+    : hasOnPrem && hasCloud
+      ? "Invite will be sent by external email for cloud projects, and the on-prem mailbox for offline projects."
+      : hasOnPrem
+        ? "This project is offline (on-prem) — invite will be sent through its internal mailbox, not external email."
+        : "Invite will be sent by external email.";
+
   const submit = () => {
     if (!name.trim() || !email.trim() || !orgId) return;
-    addPortalUser({ name: name.trim(), email: email.trim(), orgId, projectIds, permission, status: "invited" });
+    const id = addPortalUser({ name: name.trim(), email: email.trim(), orgId, projectIds, permission, status: "invited" });
+    showToast({ variant: "success", title: "Invite sent", desc: `/password-setup?token=${id}` });
     onClose();
   };
 
@@ -89,6 +108,9 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                 );
               })}
             </div>
+            {mailTransportNote && (
+              <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "8px" }}>{mailTransportNote}</p>
+            )}
           </div>
         </div>
         <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
@@ -132,6 +154,83 @@ function MfaBadge({ enabled }: { enabled?: boolean }) {
   );
 }
 
+function AccessRequestsPanel({ projectId }: { projectId: string }) {
+  const accessRequests = useVcaStore(s => s.accessRequests);
+  const approveAccessRequests = useVcaStore(s => s.approveAccessRequests);
+  const dismissAccessRequest = useVcaStore(s => s.dismissAccessRequest);
+  const { showToast } = useToast();
+  const [selected, setSelected] = useState<string[]>([]);
+  // Read after mount, not during render — see ProjectLicenseTab for the same pattern. Only used
+  // for the "requested Xm ago" label, so a first-frame mismatch here would just be cosmetic, but
+  // staying consistent avoids surprises.
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
+
+  const requests = accessRequests.filter(r => r.projectId === projectId);
+  if (requests.length === 0) return null;
+
+  const toggle = (id: string) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const allSelected = requests.length > 0 && requests.every(r => selected.includes(r.id));
+  const toggleAll = () => setSelected(allSelected ? [] : requests.map(r => r.id));
+
+  const approve = (ids: string[]) => {
+    const newUserIds = approveAccessRequests(ids);
+    setSelected(prev => prev.filter(id => !ids.includes(id)));
+    if (newUserIds.length === 1) {
+      showToast({ variant: "success", title: "Access approved — invite sent", desc: `/password-setup?token=${newUserIds[0]}` });
+    } else if (newUserIds.length > 1) {
+      showToast({ variant: "success", title: `${newUserIds.length} users invited`, desc: "Each will receive their own invite link." });
+    }
+  };
+
+  return (
+    <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, marginBottom: "16px", overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: BORDER, backgroundColor: "var(--gray-50)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{ accentColor: "var(--primary-400)" }} />
+          </label>
+          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>Access Requests ({requests.length})</p>
+        </div>
+        {selected.length > 0 && (
+          <button onClick={() => approve(selected)}
+            style={{ padding: "7px 14px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            Approve {selected.length} selected
+          </button>
+        )}
+      </div>
+      <div>
+        {requests.map((r, i) => (
+          <div key={r.id} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "12px 16px", borderTop: i > 0 ? BORDER : "none" }}>
+            <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggle(r.id)}
+              style={{ accentColor: "var(--primary-400)", marginTop: "3px" }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{r.name}</p>
+                <p style={{ fontSize: "10px", color: "var(--gray-400)" }}>{r.email}</p>
+              </div>
+              {r.reason && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{r.reason}</p>}
+              <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "4px" }}>
+                Requested {nowMs !== null ? `${formatElapsed(nowMs - new Date(r.requestedAt).getTime())} ago` : "…"}
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+              <button onClick={() => dismissAccessRequest(r.id)}
+                style={{ padding: "7px 12px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                Dismiss
+              </button>
+              <button onClick={() => approve([r.id])}
+                style={{ padding: "7px 12px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                Approve
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface PortalUsersPageProps {
   /** Scopes the table to users who have access to this project — mirrors Clerk's per-application Users tab. */
   projectId: string;
@@ -145,6 +244,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const removePortalUser = useVcaStore(s => s.removePortalUser);
   const [showInvite, setShowInvite] = useState(false);
   const [search, setSearch] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const orgName = (orgId: string) => organizations.find(o => o.id === orgId)?.name ?? orgId;
   const projectName = (id: string) => projects.find(p => p.id === id)?.name ?? id;
@@ -170,6 +270,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         </button>
       </div>
 
+      <AccessRequestsPanel projectId={projectId} />
+
       <div style={{ position: "relative", marginBottom: "12px", maxWidth: "320px" }}>
         <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
@@ -178,7 +280,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search users…"
-          style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px", border: BORDER, fontSize: "12px", fontFamily: "inherit", backgroundColor: "white" }}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
+          style={{
+            width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px",
+            border: searchFocused ? "1px solid var(--primary-400)" : BORDER, outline: "none",
+            boxShadow: searchFocused ? "0 0 0 3px var(--primary-100)" : "none",
+            fontSize: "12px", fontFamily: "inherit", backgroundColor: "white",
+          }}
         />
       </div>
 
