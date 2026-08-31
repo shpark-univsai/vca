@@ -539,7 +539,7 @@ function TrackingEventRow({ event, isSelected, onClick }: { event: LiveEvent; is
               <span title={event.name} style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-900)", letterSpacing:"-0.26px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                 {event.name}
               </span>
-              <span title={`${distinctCameraCount} camera${distinctCameraCount === 1 ? "" : "s"}`} style={{
+              <span title={`Seen at ${distinctCameraCount} different camera${distinctCameraCount === 1 ? "" : "s"}`} style={{
                 width:"16px", height:"16px", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
                 fontSize:"10px", fontWeight:600, color:"var(--gray-500)",
                 border:"1px solid var(--gray-300)", borderRadius:"50%",
@@ -579,6 +579,16 @@ function TrackingEventRow({ event, isSelected, onClick }: { event: LiveEvent; is
       </div>
       {isSelected && (
         <div style={{ display:"flex", flexDirection:"column", padding:"0 16px 12px 60px" }}>
+          {/* The badge counts cameras, this list counts stops, and the two differ whenever someone
+              doubles back — three cameras can produce four rows with one name appearing twice,
+              which reads as a miscount unless the timeline says which number it is showing. The
+              ×N inside a row already collapses consecutive hits; it cannot collapse a return
+              visit, because that IS the interesting part of a trail. */}
+          {visitGroups.length !== distinctCameraCount && (
+            <p style={{ margin:"0 0 8px", fontSize:"11px", fontWeight:600, color:"var(--gray-400)", letterSpacing:"-0.2px" }}>
+              {visitGroups.length} stops across {distinctCameraCount} camera{distinctCameraCount === 1 ? "" : "s"}
+            </p>
+          )}
           {visitGroups.map(({ hop, count }, i) => {
             const isLast = i === visitGroups.length - 1;
             return (
@@ -596,6 +606,14 @@ function TrackingEventRow({ event, isSelected, onClick }: { event: LiveEvent; is
                     </span>
                     {count > 1 && (
                       <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)" }}>×{count}</span>
+                    )}
+                    {/* Marks the row as the same camera seen earlier in the trail, so a repeated
+                        name reads as "came back here" rather than a duplicated row. */}
+                    {visitGroups.slice(0, i).some(g => hopCameraKey(g.hop) === hopCameraKey(hop)) && (
+                      <span title="Same camera as earlier in this trail" style={{
+                        fontSize:"9px", fontWeight:800, color:"var(--gray-500)", backgroundColor:"var(--gray-100)",
+                        padding:"1px 5px", borderRadius:"999px", letterSpacing:"0.2px", whiteSpace:"nowrap",
+                      }}>RETURN</span>
                     )}
                   </span>
                   <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-500)", letterSpacing:"-0.2px" }}>
