@@ -348,3 +348,33 @@ body {
 .vca-picker-option { background-color: #fff; transition: background-color .12s; }
 .vca-picker-option[data-on="true"] { background-color: var(--primary-100); }
 .vca-picker-option:not([data-on="true"]):hover { background-color: var(--gray-50); }
+
+/* ── Auth screens: short-window behaviour ─────────────────────────────
+   The login card needs ~840px of height. Below that the form falls past the fold, and on a laptop
+   with a bookmarks bar or a half-height window that is most of the form. The illustration is
+   decoration, so it is what gives up space first — it shrinks, then goes entirely, so email /
+   password / the button reach the fold before anything else does.
+
+   These live here rather than inline because an inline height would outrank the media queries —
+   the same trap that left the navbar tabs with a :hover rule that never fired. */
+.vca-auth-illustration {
+  /* 196, not the 236 the Figma frame renders at — at full size the camera outweighed the form it
+     sits above, which is the thing people came to the screen to use. */
+  height: 196px;
+  aspect-ratio: 614 / 639;   /* the cropped PNG's own proportion */
+  width: auto;
+  flex-shrink: 0;
+}
+.vca-auth-scroll { padding-top: 44px; }
+
+@media (max-height: 900px) {
+  .vca-auth-illustration { height: 160px; }
+  .vca-auth-scroll { padding-top: 24px; }
+}
+/* Below this the illustration cannot buy enough room to matter — at 176px it still leaves the
+   button past the fold — and the form is what the screen is for, so it goes rather than shrinking
+   through sizes that help nobody. */
+@media (max-height: 820px) {
+  .vca-auth-illustration { display: none; }
+  .vca-auth-scroll { padding-top: 16px; }
+}

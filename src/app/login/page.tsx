@@ -44,7 +44,7 @@ export default function LoginPage() {
           moved. Anchoring to the top makes paddingTop the actual number: 44 here + 20 of card
           padding = 64px above the artwork, about half of the ~130px centring was producing on a
           typical window. Same pattern /password-setup already uses. */}
-      <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "44px", overflowY: "auto" }}>
+      <div className="vca-auth-scroll" style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
         <div style={{
           width: "480px", maxWidth: "480px", backgroundColor: "white",
           borderRadius: "28px", padding: "20px 36px 36px", margin: "0 0 40px",
@@ -56,13 +56,14 @@ export default function LoginPage() {
               gap nobody asked for. Cropping means the box IS the artwork, so the 24px column gap
               below is the only spacing between it and the title. 227x236 keeps the source's 614:639
               proportion. Decorative, so alt="" keeps a screen reader from announcing it before the
-              form. */}
+              form. Its rendered size lives in globals.css so the short-window rules can change it —
+              an inline height would outrank them. */}
           <img
+            className="vca-auth-illustration"
             src="/login-illustration.png"
             alt=""
-            width={227}
-            height={236}
-            style={{ width: "227px", height: "236px", flexShrink: 0 }}
+            width={188}
+            height={196}
           />
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
             <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>Log in</h1>
