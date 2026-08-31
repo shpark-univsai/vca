@@ -19,15 +19,6 @@ function CheckCircleIcon() {
     </svg>
   );
 }
-function WarningIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M8 1.8L14.6 13.4H1.4L8 1.8Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
-      <path d="M8 6.5V9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-      <circle cx="8" cy="11.5" r="0.9" fill="currentColor"/>
-    </svg>
-  );
-}
 function LiveStatusIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -49,6 +40,48 @@ function RegionIcon() {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M8 14S13 9.5 13 6A5 5 0 1 0 3 6C3 9.5 8 14 8 14Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
       <circle cx="8" cy="6" r="1.8" stroke="currentColor" strokeWidth="1.2"/>
+    </svg>
+  );
+}
+function CameraOfflineIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M2 5.5V11.5C2 12.0523 2.44772 12.5 3 12.5H10C10.5523 12.5 11 12.0523 11 11.5V9.5L14 11V5L11 6.5V4.5C11 3.94772 10.5523 3.5 10 3.5H6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M1.5 1.5L14.5 14.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+function LicenseClockIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M8 4.5V8L10.5 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+function InviteMailIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M2.5 4.5L8 9L13.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+function UserBlockedIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M3 13.5C3.5 10.5 5.5 9.5 8 9.5C10.5 9.5 12.5 10.5 13 13.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M2.5 2.5L13.5 13.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+function AccessRequestIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <circle cx="6.5" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M2 13.5C2.4 10.8 4 9.5 6.5 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M11.5 7V13M8.5 10H14.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -130,6 +163,45 @@ function TrendChangeBadge({ pct }: { pct: number | null }) {
   );
 }
 
+interface AttentionItemT {
+  key: string;
+  label: string;
+  value: string | number;
+  unit?: string;
+  tag: string;
+  severity: "danger" | "warning";
+  icon: () => React.JSX.Element;
+  onClick: () => void;
+}
+
+function AttentionKpiCard({ item }: { item: AttentionItemT }) {
+  const Icon = item.icon;
+  const palette = item.severity === "danger"
+    ? { badgeBg: "var(--danger-100)", badgeFg: "var(--danger-400)", tagBg: "var(--danger-100)", tagFg: "var(--danger-400)" }
+    : { badgeBg: "var(--warning-200)", badgeFg: "var(--warning-500)", tagBg: "var(--warning-200)", tagFg: "var(--warning-500)" };
+  return (
+    <button onClick={item.onClick} style={{
+      textAlign: "left", cursor: "pointer", font: "inherit",
+      border: BORDER, borderRadius: "12px", backgroundColor: "white", boxShadow: PANEL_SHADOW, padding: "16px",
+      display: "flex", flexDirection: "column", gap: "10px",
+    }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" }}>
+        <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}>{item.label}</p>
+        <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: palette.badgeBg, color: palette.badgeFg, flexShrink: 0 }}>
+          <Icon />
+        </span>
+      </div>
+      <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>
+        {item.value}
+        {item.unit && <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-500)", marginLeft: "4px" }}>{item.unit}</span>}
+      </p>
+      <span style={{ alignSelf: "flex-start", fontSize: "10px", fontWeight: 600, padding: "3px 8px", borderRadius: "999px", backgroundColor: palette.tagBg, color: palette.tagFg }}>
+        {item.tag}
+      </span>
+    </button>
+  );
+}
+
 function MetricTrendCard({ label, values, color }: { label: string; values: number[]; color: string }) {
   const total = values.reduce((a, b) => a + b, 0);
   const change = weekOverWeekChange(values);
@@ -163,6 +235,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const persons = useVcaStore(s => s.persons);
   const auditLog = useVcaStore(s => s.auditLog);
   const servers = useVcaStore(s => s.servers);
+  const accessRequests = useVcaStore(s => s.accessRequests);
 
   // Every hook has to run before the "project not found" guard below. They used to sit after it,
   // so a render where the project is missing called seven fewer hooks than a render where it
@@ -201,26 +274,51 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const licenseExpired = daysUntilExpiry !== null && daysUntilExpiry < 0;
   const licenseExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry >= 0 && daysUntilExpiry <= 30;
   const overChannelLimit = !!channelLimit && projectCameras.length > channelLimit;
+  const pendingAccessRequestCount = accessRequests.filter(r => r.projectId === projectId).length;
 
   // What a project manager actually needs to act on, surfaced above everything else — see the
   // "20-year PM" discussion this was built from: exception-based, not buried under analytics.
-  const attentionItems: { message: string; severity: "danger" | "warning"; onClick: () => void }[] = [];
+  const attentionItems: AttentionItemT[] = [];
   if (offlineCount > 0) {
-    attentionItems.push({ message: `${offlineCount} camera${offlineCount > 1 ? "s" : ""} offline`, severity: "danger", onClick: () => onTabChange("cameras") });
+    attentionItems.push({
+      key: "offline-cameras", label: "OFFLINE CAMERAS", value: offlineCount, unit: offlineCount === 1 ? "camera" : "cameras",
+      tag: "Needs attention", severity: "danger", icon: CameraOfflineIcon, onClick: () => onTabChange("cameras"),
+    });
   }
   if (overChannelLimit) {
-    attentionItems.push({ message: `Over camera channel limit (${projectCameras.length} / ${channelLimit})`, severity: "danger", onClick: () => onTabChange("license") });
+    attentionItems.push({
+      key: "over-channel-limit", label: "OVER CHANNEL LIMIT", value: `${projectCameras.length}/${channelLimit}`,
+      tag: "Upgrade required", severity: "danger", icon: ChannelsIcon, onClick: () => onTabChange("license"),
+    });
   }
   if (licenseExpired) {
-    attentionItems.push({ message: `License expired ${project.licenseExpiresAt}`, severity: "danger", onClick: () => onTabChange("license") });
+    attentionItems.push({
+      key: "license-expired", label: "LICENSE STATUS", value: "Expired",
+      tag: "Contact billing", severity: "danger", icon: LicenseClockIcon, onClick: () => onTabChange("license"),
+    });
   } else if (licenseExpiringSoon) {
-    attentionItems.push({ message: `License expires in ${daysUntilExpiry} day${daysUntilExpiry === 1 ? "" : "s"}`, severity: "warning", onClick: () => onTabChange("license") });
+    attentionItems.push({
+      key: "license-expiring", label: "LICENSE EXPIRES IN", value: daysUntilExpiry, unit: daysUntilExpiry === 1 ? "day" : "days",
+      tag: "Renew soon", severity: "warning", icon: LicenseClockIcon, onClick: () => onTabChange("license"),
+    });
+  }
+  if (pendingAccessRequestCount > 0) {
+    attentionItems.push({
+      key: "access-requests", label: "ACCESS REQUESTS", value: pendingAccessRequestCount, unit: pendingAccessRequestCount === 1 ? "request" : "requests",
+      tag: "Awaiting approval", severity: "warning", icon: AccessRequestIcon, onClick: () => onTabChange("users"),
+    });
   }
   if (pendingInviteCount > 0) {
-    attentionItems.push({ message: `${pendingInviteCount} user invite${pendingInviteCount > 1 ? "s" : ""} pending`, severity: "warning", onClick: () => onTabChange("users") });
+    attentionItems.push({
+      key: "pending-invites", label: "PENDING INVITES", value: pendingInviteCount, unit: pendingInviteCount === 1 ? "invite" : "invites",
+      tag: "Awaiting signup", severity: "warning", icon: InviteMailIcon, onClick: () => onTabChange("users"),
+    });
   }
   if (suspendedUserCount > 0) {
-    attentionItems.push({ message: `${suspendedUserCount} user${suspendedUserCount > 1 ? "s" : ""} suspended`, severity: "warning", onClick: () => onTabChange("users") });
+    attentionItems.push({
+      key: "suspended-users", label: "SUSPENDED USERS", value: suspendedUserCount, unit: suspendedUserCount === 1 ? "user" : "users",
+      tag: "Review needed", severity: "warning", icon: UserBlockedIcon, onClick: () => onTabChange("users"),
+    });
   }
 
   const recentActivity = auditLog
@@ -289,8 +387,18 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </div>
           </div>
 
+          {attentionItems.length === 0 ? (
+            <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ display: "flex", color: "var(--success-400)", flexShrink: 0 }}><CheckCircleIcon /></span>
+              <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-600)" }}>All systems operational — no action needed.</span>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px", marginBottom: "16px" }}>
+              {attentionItems.map(item => <AttentionKpiCard key={item.key} item={item} />)}
+            </div>
+          )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "16px", alignItems: "start" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "16px", alignItems: "start" }}>
             <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                 <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>Recently Registered VIPs</p>
@@ -309,36 +417,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                       </div>
                     </div>
                   ))}
-                </div>
-              )}
-            </div>
-
-            <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>To-do</p>
-              {attentionItems.length === 0 ? (
-                <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
-                  <span style={{ display: "flex", color: "var(--success-400)", flexShrink: 0 }}><CheckCircleIcon /></span>
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>All systems operational — no action needed.</span>
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  {attentionItems.map((item, i) => {
-                    const color = item.severity === "danger" ? "var(--danger-400)" : "var(--warning-500)";
-                    return (
-                      <button
-                        key={item.message}
-                        onClick={item.onClick}
-                        style={{
-                          display: "flex", alignItems: "flex-start", gap: "8px", width: "100%", padding: "10px 6px",
-                          border: "none", borderTop: i > 0 ? BORDER : "none", borderRadius: 0, backgroundColor: "transparent",
-                          textAlign: "left", cursor: "pointer", font: "inherit",
-                        }}
-                      >
-                        <span style={{ display: "flex", color, flexShrink: 0, marginTop: "1px" }}><WarningIcon /></span>
-                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)" }}>{item.message}</span>
-                      </button>
-                    );
-                  })}
                 </div>
               )}
             </div>
