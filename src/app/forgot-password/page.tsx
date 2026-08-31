@@ -1,36 +1,201 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
-import { PersonFieldIcon, ErrorCircleIcon } from "@/components/AuthIcons";
+import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
+import { isPasswordFormatValid, PASSWORD_RULE_TEXT, RESET_CODE_LENGTH } from "@/lib/password";
 
 const FIELD_BORDER = "1px solid var(--gray-300)";
+/** Seconds before "Resend" becomes available again — stops a stuck user from mailing themselves ten
+ *  codes, each of which invalidates the last. */
+const RESEND_COOLDOWN_SEC = 30;
+/** A code the demo rejects so the wrong-code state is reachable without a backend. See the
+ *  HANDOFF NOTE on verifyCode. */
+const DEMO_REJECTED_CODE = "12345678";
+
+type Step = "email" | "code" | "password" | "done";
+
+function fieldBorder(active: boolean) {
+  return active ? "1px solid var(--primary-300)" : FIELD_BORDER;
+}
 
 /**
- * Asks for the address and hands the request to the backend, which mails a reset link through the
- * customer's own mail server. This step did not exist: "Forgot password?" on the login screen went
- * straight to /password-setup, so anyone could open the set-a-new-password form without proving
- * they own the account, and nothing was ever sent to anybody.
+ * Reset in three steps on one screen: prove you can read the mailbox, then set the new password
+ * here. This replaces an emailed reset *link*, because the mail is read on the customer's internal
+ * mail server and a link only works if that mailbox is opened on a machine that can also reach VCA
+ * — which is not established. A code carries between two machines; a link does not. It also keeps
+ * the reset token out of URLs, where it survives in mail forwards, proxy logs and browser history.
+ *
+ * Before this existed, "Forgot password?" on the login screen went straight to /password-setup, so
+ * anyone could open the set-a-new-password form without proving they own the account, and nothing
+ * was ever sent to anybody.
  */
 export default function ForgotPasswordPage() {
   const router = useRouter();
+  const [step, setStep] = useState<Step>("email");
+
+  // ── step 1: email ──────────────────────────────────────────────────────────
   const [email, setEmail] = useState("");
-  const [touched, setTouched] = useState(false);
-  const [sent, setSent] = useState(false);
-
+  const [emailTouched, setEmailTouched] = useState(false);
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const emailError = touched && !emailValid ? "Enter a valid email address." : "";
+  const emailError = emailTouched && !emailValid ? "Enter a valid email address." : "";
 
-  // Deliberately does NOT check whether the account exists. This screen is public, so branching on
-  // "no such user" would let anyone test addresses to find out who has an account here. The
-  // confirmation is worded to be true either way, and the backend simply sends nothing when there
-  // is no match.
-  const handleSubmit = () => {
-    setTouched(true);
-    if (!emailValid) return;
-    setSent(true);
+  // ── step 2: code ───────────────────────────────────────────────────────────
+  const [digits, setDigits] = useState<string[]>(() => Array(RESET_CODE_LENGTH).fill(""));
+  const [codeError, setCodeError] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+  const boxes = useRef<(HTMLInputElement | null)[]>([]);
+  const code = digits.join("");
+  const codeComplete = code.length === RESET_CODE_LENGTH;
+
+  // ── step 3: new password ───────────────────────────────────────────────────
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [focusedField, setFocusedField] = useState<"new" | "confirm" | null>(null);
+  const formatValid = isPasswordFormatValid(newPassword);
+  const mismatch = confirmPassword.length > 0 && confirmPassword !== newPassword;
+  const canSetPassword = newPassword.length > 0 && confirmPassword.length > 0;
+
+  // Ticks the resend cooldown down. One timeout per second rather than an interval, so the cleanup
+  // has nothing to leak when the step changes mid-count.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  const resetCodeEntry = () => {
+    setDigits(Array(RESET_CODE_LENGTH).fill(""));
+    setCodeError("");
   };
+
+  // Deliberately does NOT check whether the account exists, and moves to the code step either way.
+  // This screen is public, so branching on "no such user" would let anyone test addresses to find
+  // out who has an account here. The backend simply sends nothing when there is no match, and an
+  // attacker learns only that they cannot guess an 8-digit code.
+  const sendCode = () => {
+    setEmailTouched(true);
+    if (!emailValid) return;
+    resetCodeEntry();
+    setCooldown(RESEND_COOLDOWN_SEC);
+    setStep("code");
+  };
+
+  const resend = () => {
+    if (cooldown > 0) return;
+    resetCodeEntry();
+    setCooldown(RESEND_COOLDOWN_SEC);
+    boxes.current[0]?.focus();
+  };
+
+  // HANDOFF NOTE: there is no verify endpoint yet, so this cannot actually check the code. It
+  // accepts any 8 digits except DEMO_REJECTED_CODE, which exists only so the wrong-code state is
+  // reachable in the mockup. Replace the whole body with the backend call: on a rejection set
+  // codeError from the response (the backend, not this screen, has to decide how many attempts an
+  // address gets before the code is burned), and on success advance to "password" carrying whatever
+  // short-lived token it returns.
+  const verifyCode = () => {
+    if (!codeComplete) return;
+    if (code === DEMO_REJECTED_CODE) {
+      setCodeError("That code is not correct. Check the mail and try again.");
+      return;
+    }
+    setCodeError("");
+    setStep("password");
+  };
+
+  const savePassword = () => {
+    if (!canSetPassword || !formatValid || mismatch) return;
+    // HANDOFF NOTE: submits nowhere. The real call needs the verified-code token from verifyCode.
+    setStep("done");
+  };
+
+  /** Writes one box. Handles a pasted or autofilled run of digits by spilling it across the boxes
+   *  from here rightwards, which is how people actually move a code between two windows. */
+  const setDigitAt = (index: number, raw: string) => {
+    const typed = raw.replace(/\D/g, "");
+    if (!typed) return;
+    const next = [...digits];
+    for (let i = 0; i < typed.length && index + i < RESET_CODE_LENGTH; i++) {
+      next[index + i] = typed[i];
+    }
+    setDigits(next);
+    setCodeError("");
+    const landed = Math.min(index + typed.length, RESET_CODE_LENGTH - 1);
+    boxes.current[landed]?.focus();
+  };
+
+  const handleDigitKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      const next = [...digits];
+      if (next[index]) {
+        // Clear this box and stay put.
+        next[index] = "";
+        setDigits(next);
+      } else if (index > 0) {
+        // Already empty — step back and clear that one, so held backspace walks the code out.
+        next[index - 1] = "";
+        setDigits(next);
+        boxes.current[index - 1]?.focus();
+      }
+      setCodeError("");
+      return;
+    }
+    if (e.key === "ArrowLeft" && index > 0) {
+      e.preventDefault();
+      boxes.current[index - 1]?.focus();
+    }
+    if (e.key === "ArrowRight" && index < RESET_CODE_LENGTH - 1) {
+      e.preventDefault();
+      boxes.current[index + 1]?.focus();
+    }
+    if (e.key === "Enter") verifyCode();
+  };
+
+  const primaryButton = (label: string, enabled: boolean, onClick: () => void) => (
+    <button
+      onClick={onClick}
+      disabled={!enabled}
+      style={{
+        height: "48px", width: "100%", border: "none", borderRadius: "8px",
+        backgroundColor: enabled ? "var(--primary-400)" : "var(--gray-100)",
+        color: enabled ? "white" : "var(--gray-400)",
+        fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px",
+        cursor: enabled ? "pointer" : "default",
+        transition: "background-color 0.15s, color 0.15s",
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  const textButton = (label: string, onClick: () => void, tone: "primary" | "gray" = "gray") => (
+    <button
+      onClick={onClick}
+      style={{
+        background: "none", border: "none", cursor: "pointer", padding: 0,
+        fontSize: "12px", fontWeight: 700,
+        color: tone === "primary" ? "var(--primary-400)" : "var(--gray-600)",
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  const heading = (title: string, lines: string[]) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
+      <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px", textAlign: "center" }}>{title}</h1>
+      <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.6 }}>
+        {lines.map((line, i) => (
+          <span key={i}>{line}{i < lines.length - 1 && <br />}</span>
+        ))}
+      </p>
+    </div>
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "white" }}>
@@ -42,55 +207,12 @@ export default function ForgotPasswordPage() {
           display: "flex", flexDirection: "column", gap: "40px", alignItems: "center",
         }}>
 
-          {sent ? (
+          {step === "email" && (
             <>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
-                <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>Check your mail</h1>
-                {/* "If an account exists" rather than "we sent it": the screen must read the same
-                    whether or not that address has an account here. */}
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.6 }}>
-                  If an account exists for <strong style={{ color: "var(--gray-800)" }}>{email.trim()}</strong>,
-                  a reset link is on its way to that mailbox.
-                </p>
-                <p style={{ margin: "4px 0 0", fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.24px", textAlign: "center", lineHeight: 1.6 }}>
-                  Open it from your company webmail. If it does not arrive, ask your administrator
-                  to send a reset.
-                </p>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
-                <button
-                  onClick={() => router.push("/login")}
-                  style={{
-                    height: "48px", width: "100%", border: "none", borderRadius: "8px",
-                    backgroundColor: "var(--primary-400)", color: "white",
-                    fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px", cursor: "pointer",
-                  }}
-                >
-                  Back to log in
-                </button>
-                {/* Retry without going back and forth — a mistyped address is the most likely
-                    reason someone is still on this screen. */}
-                <button
-                  onClick={() => { setSent(false); setTouched(false); }}
-                  style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}
-                >
-                  Use a different address
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
-                <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>Forgot your password?</h1>
-                {/* Two lines, as the design has it: what to type, then what happens next. Says
-                    "registered with" rather than "signed up with" — accounts here are created from
-                    an invitation, so nobody signs themselves up, but they did register by setting
-                    their password from that invite. */}
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.6 }}>
-                  Enter the email you registered with<br />
-                  We&apos;ll send you a link to set a new one
-                </p>
-              </div>
+              {heading("Forgot your password?", [
+                "Enter the email you registered with",
+                "We’ll send you a verification code",
+              ])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
@@ -101,8 +223,8 @@ export default function ForgotPasswordPage() {
                     <input
                       value={email}
                       onChange={e => setEmail(e.target.value)}
-                      onBlur={() => setTouched(true)}
-                      onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
+                      onBlur={() => setEmailTouched(true)}
+                      onKeyDown={e => { if (e.key === "Enter") sendCode(); }}
                       placeholder="user@email.com"
                       autoFocus
                       style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
@@ -116,31 +238,155 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!emailValid}
-                    style={{
-                      height: "48px", width: "100%", border: "none", borderRadius: "8px",
-                      backgroundColor: emailValid ? "var(--primary-400)" : "var(--gray-100)",
-                      color: emailValid ? "white" : "var(--gray-400)",
-                      fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px",
-                      cursor: emailValid ? "pointer" : "default",
-                      transition: "background-color 0.15s, color 0.15s",
-                    }}
-                  >
-                    Send reset link
-                  </button>
+                  {primaryButton("Send code", emailValid, sendCode)}
                   <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                    Remembered it?{" "}
-                    <button
-                      onClick={() => router.push("/login")}
-                      style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
-                    >
-                      Log in
-                    </button>
+                    Remembered it? {textButton("Log in", () => router.push("/login"), "primary")}
                   </p>
                 </div>
               </div>
+            </>
+          )}
+
+          {step === "code" && (
+            <>
+              {heading("Enter your verification code", [
+                `We sent an ${RESET_CODE_LENGTH}-digit code to ${email.trim()}`,
+                "Type it in below",
+              ])}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", alignItems: "center" }}>
+                  {/* Eight separate boxes rather than one field: the code arrives as eight glyphs to
+                      copy across, and boxed digits are far easier to check against the mail. */}
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    {digits.map((digit, i) => (
+                      <input
+                        key={i}
+                        ref={el => { boxes.current[i] = el; }}
+                        value={digit}
+                        onChange={e => setDigitAt(i, e.target.value)}
+                        onKeyDown={e => handleDigitKeyDown(i, e)}
+                        onFocus={e => e.currentTarget.select()}
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        aria-label={`Digit ${i + 1} of ${RESET_CODE_LENGTH}`}
+                        autoFocus={i === 0}
+                        style={{
+                          width: "44px", height: "52px", textAlign: "center",
+                          border: codeError ? "1px solid var(--danger-400)" : fieldBorder(!!digit),
+                          borderRadius: "8px", outline: "none",
+                          fontSize: "18px", fontWeight: 700,
+                          color: "var(--gray-800)", letterSpacing: 0,
+                          transition: "border-color 0.12s",
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  {codeError ? (
+                    <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.24px" }}>
+                      <ErrorCircleIcon /> {codeError}
+                    </p>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
+                      {/* The cooldown is spelled out rather than just greying the link, so waiting
+                          reads as waiting and not as a dead button. */}
+                      Didn&apos;t get the code?{" "}
+                      {cooldown > 0
+                        ? <span style={{ color: "var(--gray-400)" }}>Resend in {cooldown}s</span>
+                        : (
+                          /* Not routed through textButton(): the lint rule cannot see that the
+                             helper only stores the callback, so handing it a function that focuses
+                             a ref reads as a ref access during render. */
+                          <button
+                            onClick={resend}
+                            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
+                          >
+                            Resend
+                          </button>
+                        )}
+                    </p>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
+                  {primaryButton("Next", codeComplete, verifyCode)}
+                  <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
+                    Wrong address? {textButton("Use a different email", () => { resetCodeEntry(); setStep("email"); }, "primary")}
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {step === "password" && (
+            <>
+              {heading("Set a new password", ["Choose a password you have not used here before"])}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "24px", width: "100%" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
+                    <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>New password</label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
+                      <LockFieldIcon />
+                      <input
+                        type={showNew ? "text" : "password"}
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        onFocus={() => setFocusedField("new")}
+                        onBlur={() => setFocusedField(null)}
+                        placeholder="••••••••"
+                        autoFocus
+                        style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                      />
+                      <button onClick={() => setShowNew(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
+                        {showNew ? <EyeIcon /> : <EyeOffIcon />}
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
+                    <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>Confirm password</label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
+                      <LockFieldIcon />
+                      <input
+                        type={showConfirm ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={e => setConfirmPassword(e.target.value)}
+                        onFocus={() => setFocusedField("confirm")}
+                        onBlur={() => setFocusedField(null)}
+                        onKeyDown={e => { if (e.key === "Enter") savePassword(); }}
+                        placeholder="••••••••"
+                        style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                      />
+                      <button onClick={() => setShowConfirm(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
+                        {showConfirm ? <EyeIcon /> : <EyeOffIcon />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
+                  {PASSWORD_RULE_TEXT}
+                </p>
+
+                {mismatch && (
+                  <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                    <ErrorCircleIcon />
+                    <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.26px" }}>
+                      Passwords do not match. Please try again.
+                    </span>
+                  </div>
+                )}
+
+                {primaryButton("Change password", canSetPassword, savePassword)}
+              </div>
+            </>
+          )}
+
+          {step === "done" && (
+            <>
+              {heading("Password changed", ["You can now log in with your new password"])}
+              {primaryButton("Log in", true, () => router.push("/login"))}
             </>
           )}
         </div>

@@ -354,7 +354,12 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               }] : []),
               {
                 label: "Send password reset",
-                onClick: () => showToast({ variant: "success", title: "Reset link sent", desc: `To ${u.email}` }),
+                // Says "code", not "link": /forgot-password now verifies an 8-digit code instead of
+                // following an emailed link. OPEN QUESTION for the backend — if the user then uses
+                // "Forgot password?" themselves they request a second code, which invalidates this
+                // one. Either this action mails the code and the mail says where to type it, or it
+                // does nothing but tell the user to start the flow themselves.
+                onClick: () => showToast({ variant: "success", title: "Reset code sent", desc: `To ${u.email}` }),
               },
               { label: "Remove user", onClick: () => removePortalUser(u.id), danger: true },
             ]} />
