@@ -140,20 +140,17 @@ export default function LoginPage() {
               >
                 Log in
               </button>
-              {/* Was "New organization? Sign up for Portal", which pointed everyone at the master
-                  signup — the one path that should be taken exactly once per organization. Someone
-                  waiting on an invitation who followed it would create a second organization for
-                  themselves, and "Portal" means nothing to an operator, who has no business there.
-                  What the screen was actually missing is the path for someone with no access yet.
-                  Master signup stays at /signup for whoever is told about it during setup. */}
-              <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                Don&apos;t have an account?{" "}
-                <button
-                  onClick={() => router.push("/request-access")}
-                  style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
-                >
-                  Request access
-                </button>
+              {/* Not a link, on purpose. This screen has no project context, and a request has to
+                  name the project the master is approving access TO — sending someone here from
+                  /login opened the form in a state it could never submit from ("Project: not
+                  specified"). The request path only works from the project link that bounced them,
+                  which carries ?project=. Accounts are invite-only, so from the front door the true
+                  answer is "someone has to invite you", and saying it beats a link that dead-ends.
+                  (The Figma frame has no footer line here at all; this keeps one because a
+                  first-time visitor does ask the question.) */}
+              <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", lineHeight: 1.6 }}>
+                Don&apos;t have an account?<br />
+                Ask your administrator to send you an invitation.
               </p>
             </div>
           </div>
