@@ -36,46 +36,11 @@ function LiveStatusIcon() {
     </svg>
   );
 }
-function ComputeIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="4" y="4" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M6 4V2M10 4V2M6 14V12M10 14V12M4 6H2M4 10H2M14 6H12M14 10H12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  );
-}
-function ModelIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="5" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/>
-      <circle cx="11" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/>
-      <circle cx="8" cy="11" r="2" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M6.5 7.5L7 9.5M9.5 7.5L9 9.5M7 5.3H9" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
-    </svg>
-  );
-}
 function ChannelsIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <rect x="2" y="3" width="12" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
       <path d="M6 13.5H10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  );
-}
-function MigrationIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M3 5L8 2L13 5L8 8L3 5Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/>
-      <path d="M3 8L8 11L13 8M3 11L8 14L13 11" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round"/>
-    </svg>
-  );
-}
-function BackupIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M5 2.5V6H11V2.5" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-      <rect x="5.5" y="9" width="5" height="3.5" stroke="currentColor" strokeWidth="1.1"/>
     </svg>
   );
 }
@@ -134,12 +99,47 @@ function MiniBarChart({ values, color }: { values: number[]; color: string }) {
   );
 }
 
+// Gives the raw total some context — "+18% vs prior week" instead of a bare number — by comparing
+// the average of the most recent half of the window against the older half. Just a direction/magnitude
+// signal (up/down), not a judgment on whether that direction is good for this particular metric
+// (e.g. Alerts trending up isn't "good") — so it's colored purely by sign, not by metric semantics.
+function weekOverWeekChange(values: number[]): number | null {
+  const mid = Math.floor(values.length / 2);
+  const older = values.slice(0, mid);
+  const recent = values.slice(mid);
+  const olderAvg = older.reduce((a, b) => a + b, 0) / older.length;
+  const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
+  if (olderAvg === 0) return recentAvg === 0 ? null : 100;
+  return Math.round(((recentAvg - olderAvg) / olderAvg) * 100);
+}
+
+function TrendChangeBadge({ pct }: { pct: number | null }) {
+  if (pct === null) return null;
+  const flat = pct === 0;
+  const up = pct > 0;
+  const color = flat ? "var(--gray-400)" : up ? "var(--success-400)" : "var(--danger-400)";
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "2px", fontSize: "12px", fontWeight: 700, color }}>
+      {!flat && (
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ transform: up ? "none" : "rotate(180deg)" }}>
+          <path d="M5 8V2M5 2L2 5M5 2L8 5" stroke={color} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )}
+      {up ? "+" : ""}{pct}%
+    </span>
+  );
+}
+
 function MetricTrendCard({ label, values, color }: { label: string; values: number[]; color: string }) {
   const total = values.reduce((a, b) => a + b, 0);
+  const change = weekOverWeekChange(values);
   return (
     <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
       <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{label.toUpperCase()}</p>
-      <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", marginTop: "6px", marginBottom: "12px" }}>{total.toLocaleString()}</p>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "6px", marginBottom: "12px" }}>
+        <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{total.toLocaleString()}</p>
+        <TrendChangeBadge pct={change} />
+      </div>
       <MiniBarChart values={values} color={color} />
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", marginLeft: "38px" }}>
         <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(METRIC_TREND_DAYS - 1)}</span>
@@ -236,11 +236,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const systemAllLive = offlineCount === 0 && allServersLive;
 
   const seed = strSeed(projectId);
-  const cpuPercent = Math.round(20 + seededRandom(seed + 11) * 60);
-  const gpuPercent = Math.round(20 + seededRandom(seed + 22) * 60);
-  const ramPercent = Math.round(20 + seededRandom(seed + 33) * 60);
-  const networkMbps = Math.round(50 + seededRandom(seed + 44) * 200);
-
   const channelYearlyCost = (channelLimit ?? projectCameras.length) * PRICE_PER_CHANNEL_PER_YEAR;
 
   const apiRequestsDaily = metricDailySeries(seed + 101, 4000, 13000);
@@ -250,11 +245,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
   const SYSTEM_CELLS = [
     { label: "STATUS", value: systemAllLive ? "All Live" : "Degraded", icon: LiveStatusIcon, color: systemAllLive ? "var(--success-400)" : "var(--danger-400)" },
-    { label: "COMPUTE", value: `${project.computeInstance ?? "—"} · GPU×${project.gpuCount ?? 0}`, icon: ComputeIcon, color: "var(--gray-900)" },
-    { label: "MODEL VERSION", value: project.modelVersion ?? "Not set", icon: ModelIcon, color: "var(--gray-900)" },
     { label: "CHANNELS", value: `${channelLimit ?? projectCameras.length} channels · $${channelYearlyCost.toLocaleString()}/yr`, icon: ChannelsIcon, color: "var(--gray-900)" },
-    { label: "LAST MIGRATION", value: project.lastMigration ?? "Not set", icon: MigrationIcon, color: "var(--gray-900)" },
-    { label: "LAST BACKUP", value: nowMs !== null && project.lastBackupAt ? `${formatElapsed(nowMs - new Date(project.lastBackupAt).getTime())} ago` : "—", icon: BackupIcon, color: "var(--gray-900)" },
+    { label: "PRIMARY REGION", value: `${project.regionName ?? "Not set"} (${project.regionOnPrem ? "On-prem" : "Cloud"}) ${project.regionFlag ?? ""} · center ×${project.regionCenterCount ?? 0} · subcenter ×${project.regionSubcenterCount ?? 0}`, icon: RegionIcon, color: "var(--gray-900)" },
   ];
 
   return (
@@ -274,53 +266,26 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "2px" }}>{orgName}</p>
           </div>
 
-          <div style={{ display: "flex", gap: "12px", marginBottom: "16px", alignItems: "stretch" }}>
-            <div style={{ flex: 1.6, backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, overflow: "hidden" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)" }}>
-                {SYSTEM_CELLS.map((c, i) => {
-                  const Icon = c.icon;
-                  const rightBorder = i % 2 === 0;
-                  const bottomBorder = i < 4;
-                  return (
-                    <div key={c.label} style={{
-                      display: "flex", alignItems: "center", gap: "10px", padding: "16px",
-                      borderRight: rightBorder ? "1px solid var(--gray-300)" : "none",
-                      borderBottom: bottomBorder ? "1px solid var(--gray-300)" : "none",
-                    }}>
-                      <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "var(--gray-50)", color: "var(--gray-500)", flexShrink: 0 }}>
-                        <Icon />
-                      </span>
-                      <div style={{ overflow: "hidden" }}>
-                        <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>{c.label}</p>
-                        <p style={{ fontSize: "13px", fontWeight: 700, color: c.color, marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.value}</p>
-                      </div>
+          <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, overflow: "hidden", marginBottom: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
+              {SYSTEM_CELLS.map((c, i) => {
+                const Icon = c.icon;
+                const rightBorder = i < SYSTEM_CELLS.length - 1;
+                return (
+                  <div key={c.label} style={{
+                    display: "flex", alignItems: "center", gap: "10px", padding: "16px",
+                    borderRight: rightBorder ? "1px solid var(--gray-300)" : "none",
+                  }}>
+                    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "var(--gray-50)", color: "var(--gray-500)", flexShrink: 0 }}>
+                      <Icon />
+                    </span>
+                    <div style={{ overflow: "hidden" }}>
+                      <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>{c.label}</p>
+                      <p style={{ fontSize: "13px", fontWeight: 700, color: c.color, marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.value}</p>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div style={{ flex: 1, backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "var(--success-100)", color: "var(--success-400)", flexShrink: 0 }}>
-                  <RegionIcon />
-                </span>
-                <div>
-                  <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>Primary Region</p>
-                  <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
-                    {project.regionName ?? "Not set"} {project.regionOnPrem ? "(On-prem)" : "(Cloud)"} {project.regionFlag}
-                  </p>
-                </div>
-              </div>
-              <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "10px" }}>
-                center ×{project.regionCenterCount ?? 0} · subcenter ×{project.regionSubcenterCount ?? 0}
-              </p>
-              <div style={{ display: "flex", gap: "14px", marginTop: "12px", flexWrap: "wrap" }}>
-                <span style={{ fontSize: "10px", color: "var(--gray-500)" }}>CPU <span style={{ fontWeight: 700, color: "var(--gray-900)" }}>{cpuPercent}%</span></span>
-                <span style={{ fontSize: "10px", color: "var(--gray-500)" }}>GPU <span style={{ fontWeight: 700, color: "var(--gray-900)" }}>{gpuPercent}%</span></span>
-                <span style={{ fontSize: "10px", color: "var(--gray-500)" }}>RAM <span style={{ fontWeight: 700, color: "var(--gray-900)" }}>{ramPercent}%</span></span>
-                <span style={{ fontSize: "10px", color: "var(--gray-500)" }}>{networkMbps} Mbps</span>
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
