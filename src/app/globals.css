@@ -269,14 +269,18 @@ body {
 /* Flowing dashed line for a tracking route (Redmap search results, Dashboard Tracking events) */
 .vca-route-line {
   /* Dash lengths scale with the 2px stroke — at the old 10/8 the segments read as chunky bars
-     rather than a dashed trail, which made the line look thicker than its stroke actually is. */
-  stroke-dasharray: 7 6;
+     rather than a dashed trail, which made the line look thicker than its stroke actually is.
+     Shorter still (5/4) because the pattern has to be small relative to the SHORTEST route drawn:
+     two cameras a street apart make a path barely longer than one dash cycle, and a lone dash
+     sliding across it looks like the line growing and shrinking, not flowing. At a 9px cycle even
+     a short hop holds several dashes, so the same motion reads as travel on every route. */
+  stroke-dasharray: 5 4;
   animation: vca-route-flow 0.9s linear infinite;
 }
 @keyframes vca-route-flow {
   /* Must equal one full dash cycle (dash + gap). Anything else and the loop restarts mid-dash,
      which shows up as a visible stutter every 0.9s. */
-  to { stroke-dashoffset: -13; }
+  to { stroke-dashoffset: -9; }
 }
 
 /* ── Skeleton loading dashboard ──────────────────────────── */

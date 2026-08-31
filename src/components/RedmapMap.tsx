@@ -384,15 +384,11 @@ export default function RedmapMap({
 
   return (
     <>
-      <style>{`
-        .vca-route-line {
-          stroke-dasharray: 10 8;
-          animation: vca-route-flow 0.9s linear infinite;
-        }
-        @keyframes vca-route-flow {
-          to { stroke-dashoffset: -18; }
-        }
-      `}</style>
+      {/* .vca-route-line lives in globals.css. It used to be declared here TOO, with a different
+          dash pattern (10 8 / -18) and the same class and @keyframes names as the global one
+          (7 6 / -13) — so on this page the two fought, and whichever won per property could leave
+          a 13px offset animating an 18px dash cycle. That mismatch restarts the loop mid-dash,
+          which reads as the line blinking or stretching rather than flowing. One definition only. */}
       <div ref={mapRef} style={{ width: "100%", height: "100%", position: "relative", backgroundColor: "var(--gray-100)" }} />
     </>
   );
