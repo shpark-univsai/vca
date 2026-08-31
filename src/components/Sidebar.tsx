@@ -459,6 +459,17 @@ function LocationPickerModal({ current, onSelect, onClose }: { current: string |
   );
 }
 
+/** Same drawing as CameraTrailIcon, in a colour that works on a light background — the trail
+ *  version is stroked white because it sits inside a dark pill. */
+function CameraCountIcon({ color = "var(--gray-500)" }: { color?: string }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <path d="M8 6.5L10.6115 8.241C10.6491 8.26605 10.6929 8.28042 10.7381 8.28258C10.7832 8.28474 10.8281 8.27461 10.868 8.25327C10.9079 8.23192 10.9412 8.20013 10.9645 8.16135C10.9878 8.12256 11.0001 8.07822 11 8.033V3.967C11.0001 3.92178 10.9878 3.87744 10.9645 3.83865C10.9412 3.79987 10.9079 3.76808 10.868 3.74673C10.8281 3.72539 10.7832 3.71526 10.7381 3.71742C10.6929 3.71958 10.6491 3.73395 10.6115 3.759L8 5.5V6.5Z" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M7 3H2C1.44772 3 1 3.44772 1 4V8C1 8.55228 1.44772 9 2 9H7C7.55228 9 8 8.55228 8 8V4C8 3.44772 7.55228 3 7 3Z" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 function CameraTrailIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -539,11 +550,28 @@ function TrackingEventRow({ event, isSelected, onClick }: { event: LiveEvent; is
               <span title={event.name} style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-900)", letterSpacing:"-0.26px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                 {event.name}
               </span>
+              {/* A bare number in a circle said nothing — a first-time reader had no way to tell
+                  whether 4 meant cameras, sightings, or minutes. The camera glyph carries the unit
+                  without spending the width a word would, and it is the same drawing that marks
+                  every row of the trail below, so the association is already established by the
+                  time anyone expands the row. */}
               <span title={`Seen at ${distinctCameraCount} different camera${distinctCameraCount === 1 ? "" : "s"}`} style={{
-                width:"16px", height:"16px", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:"10px", fontWeight:600, color:"var(--gray-500)",
-                border:"1px solid var(--gray-300)", borderRadius:"50%",
-              }}>{distinctCameraCount}</span>
+                flexShrink:0, display:"flex", alignItems:"center", gap:"3px",
+                fontSize:"10px", fontWeight:700, color:"var(--gray-500)",
+                backgroundColor:"var(--gray-100)", padding:"1px 6px 1px 5px", borderRadius:"999px",
+              }}>
+                <CameraCountIcon />{distinctCameraCount}
+              </span>
+              {/* Only when the two differ, i.e. the person doubled back. Without it a collapsed row
+                  says "4 cameras" and expands into seven rows, which is the same surprise the
+                  expanded caption had to explain after the fact. */}
+              {visitGroups.length !== distinctCameraCount && (
+                <span title={`${visitGroups.length} stops on this trail`} style={{
+                  flexShrink:0, fontSize:"10px", fontWeight:600, color:"var(--gray-400)", whiteSpace:"nowrap",
+                }}>
+                  {visitGroups.length} stops
+                </span>
+              )}
             </div>
             <div style={{ display:"flex", gap:"5px", alignItems:"center", minWidth:0 }}>
               <LocationPinIcon color="var(--gray-700)" />
