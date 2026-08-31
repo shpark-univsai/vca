@@ -119,13 +119,19 @@ export default function LoginPage() {
               >
                 Log in
               </button>
+              {/* Was "New organization? Sign up for Portal", which pointed everyone at the master
+                  signup — the one path that should be taken exactly once per organization. Someone
+                  waiting on an invitation who followed it would create a second organization for
+                  themselves, and "Portal" means nothing to an operator, who has no business there.
+                  What the screen was actually missing is the path for someone with no access yet.
+                  Master signup stays at /signup for whoever is told about it during setup. */}
               <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                New organization?{" "}
+                Don&apos;t have an account?{" "}
                 <button
-                  onClick={() => router.push("/signup")}
+                  onClick={() => router.push("/request-access")}
                   style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
                 >
-                  Sign up for Portal
+                  Request access
                 </button>
               </p>
             </div>
