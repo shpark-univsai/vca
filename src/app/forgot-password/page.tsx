@@ -81,9 +81,14 @@ export default function ForgotPasswordPage() {
           ) : (
             <>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
-                <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>Reset password</h1>
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center" }}>
-                  We will mail you a link to set a new one
+                <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>Forgot your password?</h1>
+                {/* Two lines, as the design has it: what to type, then what happens next. Says
+                    "registered with" rather than "signed up with" — accounts here are created from
+                    an invitation, so nobody signs themselves up, but they did register by setting
+                    their password from that invite. */}
+                <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.6 }}>
+                  Enter the email you registered with<br />
+                  We&apos;ll send you a link to set a new one
                 </p>
               </div>
 
