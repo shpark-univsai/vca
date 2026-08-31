@@ -41,20 +41,22 @@ export default function LoginPage() {
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", overflowY: "auto" }}>
         <div style={{
           width: "480px", maxWidth: "480px", backgroundColor: "white",
-          borderRadius: "28px", padding: "36px", margin: "40px 0",
+          borderRadius: "28px", padding: "20px 36px 36px", margin: "40px 0",
           display: "flex", flexDirection: "column", gap: "24px", alignItems: "center",
         }}>
-          {/* Exported from the Figma login frame (node 49:21165) as the 1024px transparent PNG the
-              design itself uses. Sized 310x280 with objectFit "contain": the artwork sits inside
-              its own transparent padding, so containing it reproduces the spacing the design has
-              around the camera rather than making it up here. Decorative, so alt="" keeps a screen
-              reader from announcing it before the form. */}
+          {/* Exported from the Figma login frame (node 49:21165), then cropped to the artwork
+              itself. The 1024px source carries ~186px of transparent padding above the camera,
+              which at render size put roughly 50px of dead space inside the image and read as a
+              gap nobody asked for. Cropping means the box IS the artwork, so the 24px column gap
+              below is the only spacing between it and the title. 227x236 keeps the source's 614:639
+              proportion. Decorative, so alt="" keeps a screen reader from announcing it before the
+              form. */}
           <img
             src="/login-illustration.png"
             alt=""
-            width={310}
-            height={280}
-            style={{ width: "310px", height: "280px", objectFit: "contain", flexShrink: 0 }}
+            width={227}
+            height={236}
+            style={{ width: "227px", height: "236px", flexShrink: 0 }}
           />
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
             <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>Log in</h1>
