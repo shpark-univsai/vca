@@ -42,8 +42,20 @@ export default function LoginPage() {
         <div style={{
           width: "480px", maxWidth: "480px", backgroundColor: "white",
           borderRadius: "28px", padding: "36px", margin: "40px 0",
-          display: "flex", flexDirection: "column", gap: "40px", alignItems: "center",
+          display: "flex", flexDirection: "column", gap: "24px", alignItems: "center",
         }}>
+          {/* Exported from the Figma login frame (node 49:21165) as the 1024px transparent PNG the
+              design itself uses. Sized 310x280 with objectFit "contain": the artwork sits inside
+              its own transparent padding, so containing it reproduces the spacing the design has
+              around the camera rather than making it up here. Decorative, so alt="" keeps a screen
+              reader from announcing it before the form. */}
+          <img
+            src="/login-illustration.png"
+            alt=""
+            width={310}
+            height={280}
+            style={{ width: "310px", height: "280px", objectFit: "contain", flexShrink: 0 }}
+          />
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
             <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>Log in</h1>
             <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>Welcome to VCA</p>
