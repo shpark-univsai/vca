@@ -57,7 +57,12 @@ export default function ForgotPasswordPage() {
   const [focusedField, setFocusedField] = useState<"new" | "confirm" | null>(null);
   const formatValid = isPasswordFormatValid(newPassword);
   const mismatch = confirmPassword.length > 0 && confirmPassword !== newPassword;
-  const canSetPassword = newPassword.length > 0 && confirmPassword.length > 0;
+  // Enabled only when the form would actually succeed. Checking non-emptiness alone leaves the
+  // button lit while the passwords disagree, and clicking it then does nothing at all — the click
+  // has to either work or be visibly unavailable.
+  const canSetPassword = formatValid && confirmPassword.length > 0 && !mismatch;
+  // The rule line doubles as the format error, so a disabled button always has a reason on screen.
+  const formatBroken = newPassword.length > 0 && !formatValid;
 
   // Ticks the resend cooldown down. One timeout per second rather than an interval, so the cleanup
   // has nothing to leak when the step changes mid-count.
@@ -365,7 +370,8 @@ export default function ForgotPasswordPage() {
                   </div>
                 </div>
 
-                <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
+                <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: formatBroken ? "var(--danger-400)" : "var(--gray-600)", letterSpacing: "-0.24px" }}>
+                  {formatBroken && <ErrorCircleIcon />}
                   {PASSWORD_RULE_TEXT}
                 </p>
 

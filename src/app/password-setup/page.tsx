@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import { LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { useVcaStore } from "@/lib/vcaStore";
+import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 
 function fieldBorder(active: boolean) {
   return active ? "1px solid var(--primary-300)" : "1px solid var(--gray-300)";
@@ -32,13 +33,12 @@ function PasswordSetupForm() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [focusedField, setFocusedField] = useState<"new" | "confirm" | null>(null);
 
-  const formatValid =
-    newPassword.length >= 8 &&
-    /[a-zA-Z]/.test(newPassword) &&
-    /[0-9]/.test(newPassword) &&
-    /[^a-zA-Z0-9]/.test(newPassword);
+  const formatValid = isPasswordFormatValid(newPassword);
   const mismatch = confirmPassword.length > 0 && confirmPassword !== newPassword;
-  const canSubmit = newPassword.length > 0 && confirmPassword.length > 0;
+  // Enabled only when the form would actually succeed — handleSubmit used to bail out silently on a
+  // mismatch or a bad format, so the lit button did nothing.
+  const canSubmit = formatValid && confirmPassword.length > 0 && !mismatch;
+  const formatBroken = newPassword.length > 0 && !formatValid;
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -108,8 +108,9 @@ function PasswordSetupForm() {
               </div>
             </div>
 
-            <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-              At least 8 characters, including letters, numbers, and special characters
+            <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: formatBroken ? "var(--danger-400)" : "var(--gray-600)", letterSpacing: "-0.24px" }}>
+              {formatBroken && <ErrorCircleIcon />}
+              {PASSWORD_RULE_TEXT}
             </p>
 
             {mismatch && (

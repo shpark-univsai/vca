@@ -12,7 +12,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" style={{ height: "100%" }}>
+    <html lang="en" style={{ height: "100%" }}>
       <head>
         <link rel="preconnect" href="https://cdn.jsdelivr.net" />
         <link
