@@ -38,10 +38,16 @@ export default function LoginPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "white" }}>
       <AuthHeader />
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", overflowY: "auto" }}>
+      {/* Top-aligned, not centred. While this was `alignItems: "center"` the space above the
+          illustration was decided by the browser splitting the leftover height — trimming the
+          card's padding just handed the same space back as centring margin, so the gap never
+          moved. Anchoring to the top makes paddingTop the actual number: 44 here + 20 of card
+          padding = 64px above the artwork, about half of the ~130px centring was producing on a
+          typical window. Same pattern /password-setup already uses. */}
+      <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "44px", overflowY: "auto" }}>
         <div style={{
           width: "480px", maxWidth: "480px", backgroundColor: "white",
-          borderRadius: "28px", padding: "20px 36px 36px", margin: "40px 0",
+          borderRadius: "28px", padding: "20px 36px 36px", margin: "0 0 40px",
           display: "flex", flexDirection: "column", gap: "24px", alignItems: "center",
         }}>
           {/* Exported from the Figma login frame (node 49:21165), then cropped to the artwork
