@@ -133,6 +133,13 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
  * report mail were discussed and deliberately left out of this version; when they arrive they need
  * recipients and conditions, which is a separate screen, not another field here.
  *
+ * PROVISIONAL (2026-08-28): the backend developer is still looking into how SMTP is actually
+ * configured on their side, so the field set below — host / port / from-address / TLS — is this
+ * screen's guess at the shape, not a settled contract. `mailDomain` is NOT provisional: accounts
+ * live on one domain and /request-access already refuses addresses outside it. Expect the SMTP
+ * fields to change (auth credentials, a connection test, a per-event sender) and keep them in one
+ * block so that change stays local.
+ *
  * Settings inherit from the organization and can be overridden per project. The inherited case is
  * the normal one (one company, one mail server), and the override exists because `regionOnPrem`
  * sits on the project: one organization really can hold an on-prem project routing through an
@@ -219,6 +226,15 @@ function MailSettings({ projectId }: { projectId: string }) {
 
         {override && (
           <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
+            {/* Says out loud that these fields are not settled, so nobody hands them to a customer
+                as the configuration contract before the backend confirms it. */}
+            <p style={{
+              margin: 0, fontSize: "11px", fontWeight: 600, color: "var(--warning-500)",
+              backgroundColor: "var(--warning-100)", padding: "8px 10px", borderRadius: "8px", lineHeight: 1.5,
+            }}>
+              These SMTP fields are provisional — the exact settings the server needs are still
+              being confirmed. The mail domain below is final.
+            </p>
             <MailField label="Mail domain" value={domain} onChange={setDomain} placeholder="company.local"
               hint="Accounts must have an address on this domain — requests and invites to anything else are refused." />
             <div style={{ display: "flex", gap: "12px" }}>

@@ -94,8 +94,11 @@ export default function LoginPage() {
                   />
                   <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>Keep me logged in</span>
                 </label>
+                {/* /password-setup went straight to the set-a-new-password form, with no proof
+                    the visitor owns the account and nothing mailed to anyone. It now asks for the
+                    address first and leaves the sending to the backend. */}
                 <button
-                  onClick={() => router.push("/password-setup")}
+                  onClick={() => router.push("/forgot-password")}
                   style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}
                 >
                   Forgot password?

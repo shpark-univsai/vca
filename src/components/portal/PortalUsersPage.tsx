@@ -242,6 +242,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const projects = useVcaStore(s => s.projects);
   const updatePortalUserPermission = useVcaStore(s => s.updatePortalUserPermission);
   const removePortalUser = useVcaStore(s => s.removePortalUser);
+  const { showToast } = useToast();
   const [showInvite, setShowInvite] = useState(false);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -341,7 +342,20 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             <MfaBadge enabled={u.mfaEnabled} />
             <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.lastLoginAt ?? "—"}</span>
             <StatusBadge status={u.status} />
+            {/* Two mail actions, because the two ways a person gets locked out need different
+                messages: an invite that never arrived is resent, an account whose password is
+                forgotten gets a reset. Resend only shows for users still sitting at "invited" —
+                offering it for an active account would send a link that sets up an account which
+                already exists. */}
             <RowActionsMenu actions={[
+              ...(u.status === "invited" ? [{
+                label: "Resend invite",
+                onClick: () => showToast({ variant: "success", title: "Invite resent", desc: `/password-setup?token=${u.id}` }),
+              }] : []),
+              {
+                label: "Send password reset",
+                onClick: () => showToast({ variant: "success", title: "Reset link sent", desc: `To ${u.email}` }),
+              },
               { label: "Remove user", onClick: () => removePortalUser(u.id), danger: true },
             ]} />
           </div>
