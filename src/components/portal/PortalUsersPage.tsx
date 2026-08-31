@@ -109,7 +109,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               })}
             </div>
             {mailTransportNote && (
-              <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "8px" }}>{mailTransportNote}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "8px" }}>{mailTransportNote}</p>
             )}
           </div>
         </div>
@@ -137,7 +137,7 @@ function StatusBadge({ status }: { status: PortalUserStatus }) {
   const { bg, color } = STATUS_COLORS[status];
   return (
     <span style={{
-      fontSize: "10px", fontWeight: 600, padding: "3px 8px", borderRadius: "999px", textTransform: "capitalize",
+      fontSize: "12px", fontWeight: 600, padding: "3px 8px", borderRadius: "999px", textTransform: "capitalize",
       backgroundColor: bg, color,
     }}>
       {status}
@@ -313,10 +313,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{orgName(u.orgId)}</span>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
               {u.projectIds.length === 0
-                ? <span style={{ fontSize: "10px", color: "var(--gray-300)" }}>—</span>
+                ? <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
                 : u.projectIds.map(pid => (
                   <span key={pid} style={{
-                    fontSize: "10px", fontWeight: 600, padding: "2px 7px", borderRadius: "999px",
+                    fontSize: "12px", fontWeight: 600, padding: "2px 7px", borderRadius: "999px",
                     color: pid === projectId ? "var(--primary-400)" : "var(--gray-600)",
                     backgroundColor: pid === projectId ? "var(--primary-100)" : "var(--gray-100)",
                   }}>
@@ -328,9 +328,12 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               value={u.permission}
               onChange={e => updatePortalUserPermission(u.id, e.target.value as PortalPermission)}
               style={{
-                width: "fit-content", padding: "5px 8px", borderRadius: "8px", border: BORDER,
+                width: "fit-content", padding: "5px 30px 5px 8px", borderRadius: "8px", border: BORDER,
                 fontSize: "12px", fontWeight: 700, fontFamily: "inherit", backgroundColor: "white",
                 color: u.permission === "admin" ? "var(--primary-400)" : "var(--gray-600)", textTransform: "capitalize", cursor: "pointer",
+                appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
+                backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%2394a3b8' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
+                backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "12px",
               }}>
               <option value="admin">Admin</option>
               <option value="operator">Operator</option>

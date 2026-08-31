@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import { PersonFieldIcon, ErrorCircleIcon } from "@/components/AuthIcons";
-import { useVcaStore } from "@/lib/vcaStore";
+import { isMailDeliverable, resolveMailConfig, useVcaStore } from "@/lib/vcaStore";
 
 const FIELD_BORDER = "1px solid var(--gray-300)";
 
@@ -38,6 +38,7 @@ function RequestAccessForm() {
   // choose would mean the master has to second-guess the answer on every approval.
   const projectId = useSearchParams().get("project") ?? "";
   const projects = useVcaStore(s => s.projects);
+  const organizations = useVcaStore(s => s.organizations);
   const project = projects.find(p => p.id === projectId);
 
   const [name, setName] = useState("");
@@ -58,15 +59,23 @@ function RequestAccessForm() {
   const alreadyRequested = useVcaStore(s => s.accessRequests).some(
     r => r.email.toLowerCase() === email.trim().toLowerCase() && r.projectId === projectId,
   );
+  // Refused here rather than after approval. On an internet-separated network the mail server can
+  // only deliver inside its own domain, so an outside address means the master approves, the invite
+  // is sent, and it goes nowhere — the requester waits forever on something that already happened.
+  // `projects`/`organizations` come from the store above, so the hint below follows a domain an
+  // admin sets while this page is open.
+  const { mailDomain } = resolveMailConfig(projectId, projects, organizations);
+  const undeliverable = emailValid && !isMailDeliverable(email, mailDomain);
 
   const nameError = touched.name && !nameValid ? "Enter your name." : "";
   const emailError = !touched.email ? ""
     : !emailValid ? "Enter a valid email address."
     : alreadyHasAccess ? "This email already has access to this project — log in instead."
     : alreadyRequested ? "A request from this email is already waiting for approval."
+    : undeliverable ? `Use your @${mailDomain} address — invitations can only be sent to that domain.`
     : "";
 
-  const canSubmit = nameValid && emailValid && !alreadyHasAccess && !alreadyRequested && !!projectId;
+  const canSubmit = nameValid && emailValid && !alreadyHasAccess && !alreadyRequested && !undeliverable && !!projectId;
 
   const handleSubmit = () => {
     setTouched({ name: true, email: true });
@@ -174,7 +183,11 @@ function RequestAccessForm() {
                     {emailError
                       ? <FieldError text={emailError} />
                       : <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.24px" }}>
-                          Your invitation will be sent here.
+                          {/* Says the constraint before it is broken. Finding out only on submit
+                              means retyping an address you had no way to know was wrong. */}
+                          {mailDomain
+                            ? `Your invitation will be sent here — use your @${mailDomain} address.`
+                            : "Your invitation will be sent here."}
                         </p>}
                   </div>
 

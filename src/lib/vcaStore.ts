@@ -25,10 +25,32 @@ export const PRICE_PER_CHANNEL_PER_YEAR = 100;
 
 export type CameraStatus = "online" | "offline";
 
+/**
+ * How VCA reaches a user's mailbox. VCA does not host mail — it is an SMTP *sender*, handing the
+ * message to the customer's own mail server (Exchange / Zimbra / Postfix), which is what the user
+ * reads in their internal webmail. That is what makes an invite link workable on an
+ * internet-separated network: both the webmail and VCA sit inside it.
+ */
+export interface SmtpConfig {
+  host: string;
+  port: number;
+  /** The From: address messages are sent as, e.g. "vca-noreply@company.local". */
+  fromAddress: string;
+  username?: string;
+  useTls?: boolean;
+}
+
 export interface Organization {
   id: string;
   name: string;
   region: string;
+  /**
+   * The mail domain accounts here live on, e.g. "company.local". Requests and invites to an address
+   * outside it cannot be delivered by that mail server, so the forms refuse them up front rather
+   * than leaving a requester waiting on an invite that can never arrive.
+   */
+  mailDomain?: string;
+  smtp?: SmtpConfig;
   // Set at signup (Step 2 — "Primary Industry"); pre-highlights the matching template on the
   // New Project Wizard that follows signup. Optional since existing/legacy orgs won't have it.
   industry?: string;
@@ -60,6 +82,17 @@ export interface Project {
   lastBackupAt?: string;
   regionName?: string;
   regionOnPrem?: boolean;
+  /**
+   * Overrides the organization's mail settings for this one project. Optional because the normal
+   * case is a company running a single mail server: filling this per project would mean retyping
+   * the same host ten times for ten projects. But `regionOnPrem` sits on the PROJECT, not the org,
+   * and the seed data already has one org holding both an on-prem and a cloud project — so mail
+   * genuinely differs between projects (internal server vs external), and the override earns its
+   * place. Read through resolveMailConfig(), never directly, so the fallback is decided in one
+   * spot instead of re-implemented per screen.
+   */
+  mailDomain?: string;
+  smtp?: SmtpConfig;
   regionFlag?: string;
   regionCenterCount?: number;
   regionSubcenterCount?: number;
@@ -177,6 +210,8 @@ interface VcaStoreState {
   removeCamera: (cameraId: string) => void;
   addProject: (project: Omit<Project, "id">) => void;
   updateProjectLicense: (projectId: string, updates: Pick<Project, "licenseChannelLimit" | "licensePlan" | "licenseExpiresAt">) => void;
+  updateProjectMail: (projectId: string, updates: Pick<Project, "mailDomain" | "smtp">) => void;
+  updateOrganizationMail: (orgId: string, updates: Pick<Organization, "mailDomain" | "smtp">) => void;
   addPerson: (person: Omit<Person, "id">) => void;
   removePerson: (personId: string) => void;
   addEvent: (event: Omit<VcaEvent, "id">) => void;
@@ -209,7 +244,11 @@ export interface AuditEvent {
 }
 
 const ORGANIZATIONS: Organization[] = [
-  { id: "org-univs", name: "City of Singapore — Smart Infrastructure Office", region: "Singapore" },
+  {
+    id: "org-univs", name: "City of Singapore — Smart Infrastructure Office", region: "Singapore",
+    mailDomain: "smartcity.gov.sg",
+    smtp: { host: "mail.smartcity.gov.sg", port: 587, fromAddress: "vca-noreply@smartcity.gov.sg", useTls: true },
+  },
 ];
 
 const PROJECTS: Project[] = [
@@ -652,6 +691,18 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)),
       auditLog: [{ id: `audit-${++auditSeq}`, projectId, message: `License updated to ${updates.licensePlan} (${updates.licenseChannelLimit} channels)`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
     })),
+  // Mail settings write to the audit log the way license changes do — an admin changing where
+  // invites are sent is exactly the kind of thing someone has to be able to trace later.
+  updateProjectMail: (projectId, updates) =>
+    set(state => ({
+      projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)),
+      auditLog: [{ id: `audit-${++auditSeq}`, projectId, message: `Project mail settings updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+    })),
+  updateOrganizationMail: (orgId, updates) =>
+    set(state => ({
+      organizations: state.organizations.map(o => (o.id === orgId ? { ...o, ...updates } : o)),
+      auditLog: [{ id: `audit-${++auditSeq}`, message: `Organization mail settings updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+    })),
   addPerson: (person) =>
     set(state => ({
       persons: [...state.persons, { ...person, id: `person-${++personSeq}` }],
@@ -835,4 +886,38 @@ export function todaysDetectionHits(events: VcaEvent[]): DetectionHit[] {
     }
   });
   return hits.filter(h => isTodaySgt(new Date(h.timestamp)));
+}
+
+/**
+ * The one place the organization → project fallback is decided. Screens ask this instead of
+ * reaching for `project.mailDomain` themselves; otherwise each one re-implements the fallback and
+ * they drift apart — the invite modal would refuse an address the request form accepted.
+ *
+ * Pure, taking the two lists rather than reading getState(): a component that read state directly
+ * in here would not re-render when an admin edits the mail settings, so callers pass the slices
+ * they are already subscribed to.
+ *
+ * Returns nulls rather than throwing when nothing is configured yet. That is a real state — a fresh
+ * project before an admin has filled the mail section in — and callers should say "not configured"
+ * rather than pretend a domain.
+ */
+export function resolveMailConfig(
+  projectId: string,
+  projects: Project[],
+  organizations: Organization[],
+): { mailDomain: string | null; smtp: SmtpConfig | null } {
+  const project = projects.find(p => p.id === projectId);
+  const org = project ? organizations.find(o => o.id === project.orgId) : undefined;
+  return {
+    mailDomain: project?.mailDomain ?? org?.mailDomain ?? null,
+    smtp: project?.smtp ?? org?.smtp ?? null,
+  };
+}
+
+/** True when `email` can actually be delivered on `mailDomain`. A null domain means nothing is
+ *  configured, so it cannot rule anything out and does not block — a form should not refuse an
+ *  address on the strength of a setting nobody has filled in. */
+export function isMailDeliverable(email: string, mailDomain: string | null): boolean {
+  if (!mailDomain) return true;
+  return email.trim().toLowerCase().endsWith(`@${mailDomain.toLowerCase()}`);
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
+import { useState } from "react";
+import { resolveMailConfig, useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { BORDER, PANEL_SHADOW, RowActionsMenu } from "./PortalShared";
@@ -122,6 +122,184 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
   );
 }
 
+/**
+ * Outgoing mail. VCA does not host mailboxes — it hands messages to the customer's own mail server
+ * (Exchange / Zimbra / Postfix), which is what users read in their internal webmail. On an
+ * internet-separated network that is what makes an invite link workable at all: the webmail and VCA
+ * both sit inside it, so the link resolves.
+ *
+ * Only two things send mail today — account invitations and password resets — and both go to the
+ * person they concern, so there is no recipient list to configure here. VIP-detection and daily
+ * report mail were discussed and deliberately left out of this version; when they arrive they need
+ * recipients and conditions, which is a separate screen, not another field here.
+ *
+ * Settings inherit from the organization and can be overridden per project. The inherited case is
+ * the normal one (one company, one mail server), and the override exists because `regionOnPrem`
+ * sits on the project: one organization really can hold an on-prem project routing through an
+ * internal server alongside a cloud project that does not.
+ */
+function MailSettings({ projectId }: { projectId: string }) {
+  const projects = useVcaStore(s => s.projects);
+  const organizations = useVcaStore(s => s.organizations);
+  const updateProjectMail = useVcaStore(s => s.updateProjectMail);
+  const { showToast } = useToast();
+
+  const project = projects.find(p => p.id === projectId);
+  const org = project ? organizations.find(o => o.id === project.orgId) : undefined;
+  const inherited = resolveMailConfig(projectId, projects, organizations);
+  const overridden = !!project?.mailDomain || !!project?.smtp;
+
+  const [override, setOverride] = useState(overridden);
+  const [domain, setDomain] = useState(project?.mailDomain ?? "");
+  const [host, setHost] = useState(project?.smtp?.host ?? "");
+  const [port, setPort] = useState(String(project?.smtp?.port ?? 587));
+  const [fromAddress, setFromAddress] = useState(project?.smtp?.fromAddress ?? "");
+  const [useTls, setUseTls] = useState(project?.smtp?.useTls ?? true);
+
+  if (!project) return null;
+
+  const portNumber = Number(port);
+  const portValid = Number.isInteger(portNumber) && portNumber > 0 && portNumber < 65536;
+  // The From: address has to live on the domain being configured, or the receiving server will
+  // reject or spam-file it — worth catching here rather than discovering it when invites stop
+  // arriving.
+  const fromMatchesDomain = !domain || !fromAddress || fromAddress.trim().toLowerCase().endsWith(`@${domain.trim().toLowerCase()}`);
+  const canSave = !override || (domain.trim() !== "" && host.trim() !== "" && portValid && fromAddress.trim() !== "" && fromMatchesDomain);
+
+  const save = () => {
+    if (!canSave) return;
+    if (!override) {
+      updateProjectMail(projectId, { mailDomain: undefined, smtp: undefined });
+      showToast({ variant: "success", title: "Using organization mail settings" });
+      return;
+    }
+    updateProjectMail(projectId, {
+      mailDomain: domain.trim(),
+      smtp: { host: host.trim(), port: portNumber, fromAddress: fromAddress.trim(), useTls },
+    });
+    showToast({ variant: "success", title: "Mail settings saved", desc: `Invites will be sent from ${fromAddress.trim()}` });
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px", maxWidth: "640px" }}>
+
+      {/* What is in force right now, before any of the editing below. Without it an admin cannot
+          tell whether this project is inheriting or overriding, and both look like "filled in". */}
+      <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+        <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>In effect for this project</p>
+        {inherited.mailDomain ? (
+          <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+            <SettingRow label="Domain" value={inherited.mailDomain} />
+            <SettingRow label="SMTP host" value={inherited.smtp ? `${inherited.smtp.host}:${inherited.smtp.port}` : "—"} />
+            <SettingRow label="Sent from" value={inherited.smtp?.fromAddress ?? "—"} />
+            <SettingRow label="Source" value={overridden ? "This project" : `Inherited from ${org?.name ?? "organization"}`} />
+          </div>
+        ) : (
+          /* A project with no mail configured cannot invite anyone, so this says so plainly rather
+             than showing empty fields that look merely unfilled. */
+          <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "8px", lineHeight: 1.6 }}>
+            No mail server configured. Invitations and password resets cannot be sent until one is
+            set here or on the organization.
+          </p>
+        )}
+      </div>
+
+      <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+          <input type="checkbox" checked={override} onChange={e => setOverride(e.target.checked)}
+            style={{ marginTop: "3px", accentColor: "var(--primary-400)", cursor: "pointer" }} />
+          <span>
+            <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>Use a different mail server for this project</span>
+            <span style={{ display: "block", fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
+              Leave off to follow the organization&apos;s settings. Turn on for an on-prem project that
+              routes through its own internal server.
+            </span>
+          </span>
+        </label>
+
+        {override && (
+          <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
+            <MailField label="Mail domain" value={domain} onChange={setDomain} placeholder="company.local"
+              hint="Accounts must have an address on this domain — requests and invites to anything else are refused." />
+            <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ flex: 1 }}>
+                <MailField label="SMTP host" value={host} onChange={setHost} placeholder="mail.company.local" />
+              </div>
+              <div style={{ width: "120px" }}>
+                <MailField label="Port" value={port} onChange={setPort} placeholder="587"
+                  error={port !== "" && !portValid ? "1–65535" : ""} />
+              </div>
+            </div>
+            <MailField label="Sent from" value={fromAddress} onChange={setFromAddress} placeholder="vca-noreply@company.local"
+              error={!fromMatchesDomain ? `Must be an address on ${domain.trim()}.` : ""}
+              hint={fromMatchesDomain ? "The From: address recipients will see." : ""} />
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+              <input type="checkbox" checked={useTls} onChange={e => setUseTls(e.target.checked)}
+                style={{ accentColor: "var(--primary-400)", cursor: "pointer" }} />
+              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)" }}>Use TLS</span>
+            </label>
+          </div>
+        )}
+
+        <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
+          <button onClick={save} disabled={!canSave}
+            style={{
+              padding: "9px 16px", borderRadius: "8px", border: "none",
+              backgroundColor: canSave ? "var(--gray-900)" : "var(--gray-200)",
+              color: canSave ? "white" : "var(--gray-400)",
+              fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "default",
+            }}>
+            Save
+          </button>
+        </div>
+      </div>
+
+      {/* Named so nobody has to guess what a mail change affects. The two events are the whole list
+          on purpose — see the note on this component. */}
+      <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+        <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>What VCA sends</p>
+        <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
+          <SettingRow label="Account invitation" value="To the invited address, on approval" />
+          <SettingRow label="Password reset" value="To the account's own address, on request" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SettingRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
+      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", width: "96px", flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", wordBreak: "break-all" }}>{value}</span>
+    </div>
+  );
+}
+
+function MailField({ label, value, onChange, placeholder, hint, error }: {
+  label: string; value: string; onChange: (v: string) => void;
+  placeholder?: string; hint?: string; error?: string;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{label}</label>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          height: "38px", padding: "0 10px", borderRadius: "8px", outline: "none",
+          border: error ? "1px solid var(--danger-400)" : BORDER,
+          fontSize: "13px", color: "var(--gray-900)", fontFamily: "inherit",
+        }}
+      />
+      {error
+        ? <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-400)" }}>{error}</span>
+        : hint ? <span style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{hint}</span> : null}
+    </div>
+  );
+}
+
 export default function ProjectServerTab({ projectId }: { projectId: string }) {
   const servers = useVcaStore(s => s.servers);
   const addServer = useVcaStore(s => s.addServer);
@@ -129,7 +307,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   const removeServer = useVcaStore(s => s.removeServer);
   const { showToast } = useToast();
 
-  const [subTab, setSubTab] = useState<"infra" | "api">("infra");
+  const [subTab, setSubTab] = useState<"infra" | "mail" | "api">("infra");
   const [showAdd, setShowAdd] = useState(false);
   const [editingServer, setEditingServer] = useState<Server | null>(null);
   const [search, setSearch] = useState("");
@@ -147,7 +325,15 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
 
   // Filters/page-size changing the result set can strand the current page past the new last
   // page (e.g. narrowing a search while on page 3) — snap back to page 1 whenever either shifts.
-  useEffect(() => { setPage(1); }, [search, typeFilter, rowsPerPage]);
+  // Compared during render rather than reset from an effect: an effect paints the stale page once
+  // before correcting it, and react-hooks flags the synchronous setState as cascading renders.
+  // Same idiom DataPage.tsx uses for its own nav/seed resets.
+  const filterKey = `${search}|${typeFilter}|${rowsPerPage}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
+    setPage(1);
+  }
 
   const totalPages = Math.max(1, Math.ceil(visibleServers.length / rowsPerPage));
   const currentPage = Math.min(page, totalPages);
@@ -187,10 +373,10 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   return (
     <div>
       <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>Server &amp; API Management</p>
-      <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px", marginBottom: "16px" }}>Configure core infrastructure nodes and view API documentation.</p>
+      <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px", marginBottom: "16px" }}>Configure core infrastructure nodes, outgoing mail, and view API documentation.</p>
 
       <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
-        {(["infra", "api"] as const).map(t => (
+        {(["infra", "mail", "api"] as const).map(t => (
           <button key={t} onClick={() => setSubTab(t)}
             style={{
               background: "none", border: "none", cursor: "pointer",
@@ -198,12 +384,13 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               color: subTab === t ? "var(--primary-400)" : "var(--gray-400)",
               borderBottom: subTab === t ? "2px solid var(--primary-400)" : "2px solid transparent",
             }}>
-            {t === "infra" ? "Infrastructure" : "API Documentation"}
+            {t === "infra" ? "Infrastructure" : t === "mail" ? "Mail Server" : "API Documentation"}
           </button>
         ))}
       </div>
 
-      {subTab === "api" ? <ApiDocumentation projectId={projectId} /> : (
+      {subTab === "api" ? <ApiDocumentation projectId={projectId} />
+        : subTab === "mail" ? <MailSettings projectId={projectId} /> : (
         <>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
             <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
