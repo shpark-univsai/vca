@@ -45,7 +45,12 @@ export default function PortalShell() {
   const projects = useVcaStore(s => s.projects);
   const currentAdmin = useVcaStore(s => s.portalUsers.find(u => u.permission === "admin")) ?? null;
   const [currentProjectId, setCurrentProjectId] = useState(projects[0]?.id ?? "");
-  const currentOrgId = orgIdParam || organizations[0]?.id || "";
+  // Resolve ?orgId= against the real list rather than trusting it: an id that matches nothing used
+  // to flow straight into the New Project wizard, which would have filed the project under an
+  // organization that does not exist. Falling back to the first organization keeps the header and
+  // the wizard describing the same place.
+  const currentOrg = organizations.find(o => o.id === orgIdParam) ?? organizations[0];
+  const currentOrgId = currentOrg?.id ?? "";
   const [tab, setTab] = useState<DetailTab>("overview");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -101,13 +106,16 @@ export default function PortalShell() {
 
         <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-300)", margin: "0 2px" }}>/</span>
 
-        {/* Org — static today (single-tenant); the interactive switcher lives one level down, on project */}
+        {/* Reads the current organization, not organizations[0]. Portal can hold several (the signup
+            wizard calls addOrganization), so pinning the header to the first one made it name a
+            different organization than the page was actually showing. Still not a switcher — that
+            lives one level down, on project. */}
         <span style={{
           display: "flex", alignItems: "center", gap: "6px",
           border: "1px solid var(--gray-200)", borderRadius: "8px", padding: "6px 10px",
           fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", whiteSpace: "nowrap",
         }}>
-          {organizations[0]?.name ?? "No Organization"}
+          {currentOrg?.name ?? "No Organization"}
         </span>
         <BreadcrumbChevron />
         <ProjectSwitcher currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />
