@@ -17,7 +17,7 @@ import CameraStreamModal from "./CameraStreamModal";
 function useStickyHeader<T extends HTMLElement>() {
   const contentRef = useRef<T>(null);
   const [stuck, setStuck] = useState(false);
-  const [rect, setRect] = useState<{ left: number; top: number; width: number } | null>(null);
+  const [rect, setRect] = useState<{ left: number; top: number; width: number; padTop: number } | null>(null);
   const [height, setHeight] = useState(0);
 
   useEffect(() => {
@@ -40,9 +40,15 @@ function useStickyHeader<T extends HTMLElement>() {
       const spStyle = getComputedStyle(sp);
       const padLeft = parseFloat(spStyle.paddingLeft) || 0;
       const padRight = parseFloat(spStyle.paddingRight) || 0;
+      const padTop = parseFloat(spStyle.paddingTop) || 0;
       setHeight(el.offsetHeight);
       setStuck(sp.scrollTop >= naturalTop);
-      setRect({ left: spRect.left + padLeft, top: spRect.top, width: spRect.width - padLeft - padRight });
+      // top sits at the container's own border edge (not +padTop) so the fixed box's background
+      // covers the container's top-padding strip too — otherwise that strip shows whatever
+      // scrolled-content happens to align there once scrolled deep enough to clear it (bleed-
+      // through). padTop is applied as inline padding below instead, so the header's own content
+      // still visually lands at the same y it occupied in normal flow — no jump when it engages.
+      setRect({ left: spRect.left + padLeft, top: spRect.top, width: spRect.width - padLeft - padRight, padTop });
     };
     update();
     sp.addEventListener("scroll", update);
@@ -344,7 +350,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
       {stuck && <div style={{ height: stickyHeight }} />}
       <div ref={stickyRef} style={stuck && rect ? {
         position: "fixed", top: rect.top, left: rect.left, width: rect.width, zIndex: 20,
-        backgroundColor: "var(--gray-100)", paddingBottom: "16px",
+        backgroundColor: "var(--gray-100)", paddingTop: rect.padTop, paddingBottom: "16px",
       } : undefined}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px" }}>
         <div>
@@ -454,6 +460,20 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           ))}
         </div>
       </div>
+
+      {/* Table's own column header stays fixed with everything above it — only the data rows
+          scroll underneath. Rendered here (still inside the fixed/sticky block) as the top half of
+          the card; the data rows below are the bottom half, in normal flow, meeting it with no
+          border between them so the two halves read as one continuous card. */}
+      {view === "table" && visibleCameras.length > 0 && (
+        <div style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: "12px", borderTopRightRadius: "12px", boxShadow: PANEL_SHADOW }}>
+          <div style={{ display: "grid", gridTemplateColumns: "56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+            {["", "Camera", "Maker", "Resolution", "Zone", "RTSP Stream", "AI Engines", "Status", ""].map(h => (
+              <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+            ))}
+          </div>
+        </div>
+      )}
       </div>
 
       {visibleCameras.length === 0 ? (
@@ -465,13 +485,9 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
       ) : view === "table" ? (
         // No overflow:hidden on the container — it would clip a RowActionsMenu dropdown that opens
         // past the bottom edge (the last row's menu becomes invisible, not just cut off).
-        // Header/last-row corners are radiused directly instead.
-        <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
-          <div style={{ display: "grid", gridTemplateColumns: "56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
-            {["", "Camera", "Maker", "Resolution", "Zone", "RTSP Stream", "AI Engines", "Status", ""].map(h => (
-              <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
-            ))}
-          </div>
+        // Header/last-row corners are radiused directly instead. Top border/radius omitted — the
+        // fixed column-header block above already draws that edge, and the two must read as one card.
+        <div style={{ backgroundColor: "white", borderLeft: BORDER, borderRight: BORDER, borderBottom: BORDER, boxShadow: PANEL_SHADOW }}>
           {visibleCameras.map((cam, i) => {
             const online = cam.status === "online";
             const isAiCamera = (cam.aiFeatures ?? []).length > 0;
