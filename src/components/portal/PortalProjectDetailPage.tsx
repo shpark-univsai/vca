@@ -398,7 +398,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "16px", alignItems: "start" }}>
             <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-                <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>Recently Registered VIPs</p>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>Recently Registered VIPs</p>
+                  <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", backgroundColor: "var(--gray-100)", padding: "2px 7px", borderRadius: "999px" }}>
+                    {projectPersons.length} total
+                  </span>
+                </div>
                 <button onClick={() => onTabChange("vip")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}>Register VIP →</button>
               </div>
               {recentVips.length === 0 ? (
@@ -425,6 +430,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
               <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{project.licensePlan ?? "Not set"}</p>
               <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "6px" }}>Channels: {projectCameras.length} / {channelLimit ?? "∞"}</p>
+              <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "2px" }}>Cameras online: {onlineCount} / {projectCameras.length}</p>
               <p style={{ fontSize: "10px", color: licenseExpired ? "var(--danger-400)" : "var(--gray-500)", marginTop: "2px" }}>
                 {licenseExpired ? "Expired" : "Expires"} {project.licenseExpiresAt ?? "Not set"}
               </p>
