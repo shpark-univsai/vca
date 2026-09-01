@@ -287,6 +287,11 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
 
   return (
     <div>
+      {/* Sticky down through the search/filter row — PortalShell's content area is the scrolling
+          ancestor (overflow:auto), so position:sticky here just works; a solid background matching
+          the page (not white, since none of this is wrapped in a card) is needed so the table
+          scrolling underneath doesn't show through. */}
+      <div style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--gray-100)", paddingBottom: "16px" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px" }}>
         <div>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>Cameras</p>
@@ -394,6 +399,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             </button>
           ))}
         </div>
+      </div>
       </div>
 
       {visibleCameras.length === 0 ? (
