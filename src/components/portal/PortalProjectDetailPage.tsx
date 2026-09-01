@@ -377,10 +377,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const todayVipCount = todayStr ? projectPersons.filter(p => p.registeredAt === todayStr).length : 0;
   const highPriorityVipCount = projectPersons.filter(p => p.priorityLabel === "high" || p.priorityLabel === "very_high").length;
 
-  const visibleCameraRows = (cameraStatusFilter === "offline" ? projectCameras.filter(c => c.status === "offline") : projectCameras)
+  const filteredCameraRows = (cameraStatusFilter === "offline" ? projectCameras.filter(c => c.status === "offline") : projectCameras)
     .slice()
-    .sort((a, b) => (a.status === b.status ? 0 : a.status === "offline" ? -1 : 1))
-    .slice(0, 5);
+    .sort((a, b) => (a.status === b.status ? 0 : a.status === "offline" ? -1 : 1));
+  // Overview is a summary, not the full fleet manager — capped so this one card doesn't grow to
+  // however many cameras the project has. "View all" below covers the rest.
+  const visibleCameraRows = filteredCameraRows.slice(0, 5);
 
   const seed = strSeed(projectId);
   const aiDetectionsDaily = metricDailySeries(seed + 202, 3000, 11000);
@@ -399,23 +401,19 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     <div>
       {tab === "overview" && (
         <>
-          {/* Welcome banner — replaces the old plain text header. No single button here is "the"
-              primary action (Overview itself doesn't own one the way each tab does), so all three
-              stay in the same bordered/white tier rather than competing for primary-400. */}
-          <div style={{ position: "relative", overflow: "hidden", backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", marginBottom: "16px" }}>
-            <div style={{ position: "absolute", bottom: "-60px", right: "-60px", width: "200px", height: "200px", borderRadius: "50%", background: "radial-gradient(circle, var(--primary-100) 0%, rgba(255,255,255,0) 70%)", pointerEvents: "none" }} />
-            <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: "8px", minWidth: 0 }}>
+          {/* Welcome banner — plain page background, not a card (no single button here is "the"
+              primary action, so all three stay in the same bordered/white tier rather than
+              competing for primary-400). */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", marginBottom: "16px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{project.name}</p>
                 <span style={{ fontSize: "10px", fontWeight: 600, color: meta.color, backgroundColor: meta.bg, padding: "3px 8px", borderRadius: "999px" }}>{meta.label}</span>
                 <span style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{project.id}</span>
               </div>
               <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{orgName}</p>
-              <p style={{ fontSize: "13px", color: "var(--gray-500)", maxWidth: "480px" }}>
-                Review connected camera status, manage the VIP database, approve access requests, and keep an eye on your license — all in one place.
-              </p>
             </div>
-            <div style={{ position: "relative", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               <button onClick={() => onTabChange("cameras")}
                 style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 <PlusIcon /> Add Camera
@@ -574,6 +572,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                         </div>
                       );
                     })}
+                    {filteredCameraRows.length > visibleCameraRows.length && (
+                      <button onClick={() => onTabChange("cameras")}
+                        style={{ display: "block", width: "100%", textAlign: "center", border: "none", borderTop: BORDER, background: "none", padding: "10px 20px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
+                        View all {filteredCameraRows.length} cameras →
+                      </button>
+                    )}
                   </>
                 )}
               </div>

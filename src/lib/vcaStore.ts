@@ -582,6 +582,15 @@ export const PERSONS: Person[] = (() => {
       description: info?.description,
     });
   });
+  // Portal-scoped sample data for the Overview tab's "Recently Registered VIPs" panel — the
+  // auto-generated entries above predate per-project scoping (see the Person.projectId comment)
+  // and are invisible there, so that panel has nothing to show for proj-sg without these.
+  persons.push(
+    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2026-09-01", projectId: "proj-sg", roleLabel: "Lead", priorityLabel: "high" },
+    { id: "person-portal-2", name: "Sarah Lim", type: "VIP", photoUrl: getFacePhoto("person-portal-2"), registeredAt: "2026-08-30", projectId: "proj-sg", roleLabel: "Regular", priorityLabel: "normal" },
+    { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28", projectId: "proj-sg", roleLabel: "Special", priorityLabel: "very_high" },
+    { id: "person-portal-4", name: "Rachel Wong", type: "VIP", photoUrl: getFacePhoto("person-portal-4"), registeredAt: "2026-08-25", projectId: "proj-sg", roleLabel: "Regular", priorityLabel: "normal" },
+  );
   return persons;
 })();
 
