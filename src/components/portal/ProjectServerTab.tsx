@@ -292,17 +292,22 @@ function MailSettings({ projectId }: { projectId: string }) {
           </div>
         )}
 
-        <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
-          <button onClick={save} disabled={!canSave}
-            style={{
-              padding: "9px 16px", borderRadius: "8px", border: "none",
-              backgroundColor: canSave ? "var(--gray-900)" : "var(--gray-200)",
-              color: canSave ? "white" : "var(--gray-400)",
-              fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "default",
-            }}>
-            Save
-          </button>
-        </div>
+        {/* Nothing to save while unchecked and already on the org default — that's a no-op click.
+            Stays visible if unchecking just turned OFF a previously-saved override, since that's a
+            real change (revert to default) that still needs to be committed. */}
+        {(override || overridden) && (
+          <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
+            <button onClick={save} disabled={!canSave}
+              style={{
+                padding: "9px 16px", borderRadius: "8px", border: "none",
+                backgroundColor: canSave ? "var(--gray-900)" : "var(--gray-200)",
+                color: canSave ? "white" : "var(--gray-400)",
+                fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "default",
+              }}>
+              Save
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Named so nobody has to guess what a mail change affects. The two events are the whole list
@@ -321,7 +326,7 @@ function MailSettings({ projectId }: { projectId: string }) {
 function SettingRow({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
-      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", width: "96px", flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", width: "130px", flexShrink: 0, whiteSpace: "nowrap" }}>{label}</span>
       <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", wordBreak: "break-all" }}>{value}</span>
     </div>
   );
