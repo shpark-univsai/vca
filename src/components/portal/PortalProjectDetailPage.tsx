@@ -117,16 +117,46 @@ function trendDayLabel(daysAgo: number): string {
 
 function MiniBarChart({ values, color }: { values: number[]; color: string }) {
   const max = Math.max(...values, 1);
+  const [hovered, setHovered] = useState<number | null>(null);
+  // Same split weekOverWeekChange uses — the divider marks exactly the boundary that % badge
+  // above is comparing across, instead of leaving that comparison as text with no visual anchor.
+  const weekBoundary = Math.floor(values.length / 2);
+
   return (
     <div style={{ display: "flex", gap: "6px" }}>
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: "70px", paddingBottom: "1px", minWidth: "32px" }}>
         <span style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1 }}>{max.toLocaleString()}</span>
         <span style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1 }}>0</span>
       </div>
-      <div style={{ flex: 1, display: "flex", alignItems: "flex-end", gap: "3px", height: "70px", borderLeft: "1px solid var(--gray-200)", paddingLeft: "6px" }}>
-        {values.map((v, i) => (
-          <div key={i} style={{ flex: 1, height: `${Math.max(2, (v / max) * 70)}px`, backgroundColor: color, borderRadius: "2px" }} />
-        ))}
+      <div style={{ position: "relative", flex: 1, display: "flex", alignItems: "flex-end", gap: "3px", height: "70px", borderLeft: "1px solid var(--gray-200)", paddingLeft: "6px" }}>
+        <div style={{
+          position: "absolute", top: 0, bottom: 0, left: `calc(6px + ${(weekBoundary / values.length) * 100}%)`,
+          borderLeft: "1px dashed var(--gray-300)", pointerEvents: "none",
+        }} />
+        {values.map((v, i) => {
+          const daysAgo = values.length - 1 - i;
+          return (
+            <div key={i}
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)}
+              style={{ position: "relative", flex: 1, height: "100%", display: "flex", alignItems: "flex-end" }}
+            >
+              <div style={{
+                width: "100%", height: `${Math.max(2, (v / max) * 70)}px`, borderRadius: "2px",
+                backgroundColor: color, opacity: hovered === null || hovered === i ? 1 : 0.45,
+              }} />
+              {hovered === i && (
+                <div style={{
+                  position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: "6px",
+                  backgroundColor: "var(--gray-900)", color: "white", fontSize: "10px", fontWeight: 700,
+                  padding: "4px 8px", borderRadius: "6px", whiteSpace: "nowrap", zIndex: 10, pointerEvents: "none",
+                }}>
+                  {trendDayLabel(daysAgo)} · {v.toLocaleString()}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -215,6 +245,7 @@ function MetricTrendCard({ label, values, color }: { label: string; values: numb
       <MiniBarChart values={values} color={color} />
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", marginLeft: "38px" }}>
         <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(METRIC_TREND_DAYS - 1)}</span>
+        <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(Math.ceil(METRIC_TREND_DAYS / 2))}</span>
         <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(0)}</span>
       </div>
     </div>
