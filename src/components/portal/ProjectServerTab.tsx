@@ -461,12 +461,17 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               />
             </div>
             <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as typeof typeFilter)}
-              style={{ padding: "9px 10px", borderRadius: "10px", border: BORDER, fontSize: "12px", fontFamily: "inherit", backgroundColor: "white", color: "var(--gray-600)", cursor: "pointer" }}>
+              style={{
+                padding: "9px 28px 9px 10px", borderRadius: "10px", border: BORDER, fontSize: "12px", fontFamily: "inherit", backgroundColor: "white", color: "var(--gray-600)", cursor: "pointer",
+                appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
+                backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%2394a3b8' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
+                backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "12px",
+              }}>
               <option value="ALL">All types</option>
               {SERVER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
             <button onClick={resetFilters}
-              style={{ padding: "9px 14px", borderRadius: "10px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+              style={{ padding: "9px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
               Reset
             </button>
             <button onClick={() => setShowAdd(true)}
