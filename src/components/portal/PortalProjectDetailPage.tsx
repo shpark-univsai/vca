@@ -439,7 +439,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
           {/* Metric cards — camera connectivity / license usage / VIP DB / accounts & permissions,
               each grounded in real store data (no fabricated failure-reason breakdowns the data
               model doesn't have). */}
-          <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "16px" }}>
             <MetricCard label="Camera Connectivity" icon={VideoIcon} iconBg="var(--success-100)" iconColor="var(--success-400)">
               <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</p>
@@ -464,7 +464,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--info-500)" }} />
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px" }}>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{project.licensePlan ?? "Plan not set"}</p>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{project.licensePlan ?? "Plan not set"}</p>
+                  <button onClick={() => onTabChange("license")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
+                    Manage →
+                  </button>
+                </div>
                 <span style={{
                   fontSize: "10px", fontWeight: 700, padding: "2px 7px", borderRadius: "4px",
                   backgroundColor: licenseExpired ? "var(--danger-100)" : licenseExpiringSoon ? "var(--warning-200)" : "var(--info-100)",
@@ -510,8 +515,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </MetricCard>
           </div>
 
-          <div style={{ display: "flex", gap: "16px", alignItems: "flex-start", marginBottom: "16px", flexWrap: "wrap" }}>
-            <div style={{ flex: "2 1 480px", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
+          {/* Same 4-column grid + gap as the metrics row above, so the left column's right edge
+              lands exactly on the boundary between card 2 (License Subscription) and card 3 —
+              a flex-basis split couldn't guarantee that alignment across viewport widths the way
+              sharing the grid's own column lines does. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", alignItems: "start", marginBottom: "16px" }}>
+            <div style={{ gridColumn: "1 / span 2", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
               <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: BORDER, flexWrap: "wrap", gap: "10px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -598,7 +607,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
             </div>
 
-            <div style={{ flex: "1 1 320px", display: "flex", flexDirection: "column", gap: "16px", minWidth: "300px" }}>
+            <div style={{ gridColumn: "3 / span 2", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
               <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -638,36 +647,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     )}
                   </div>
                 )}
-              </div>
-
-              <div style={{ background: "linear-gradient(135deg, white 0%, var(--gray-50) 100%)", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px", display: "flex", flexDirection: "column", gap: "14px" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-                  <div>
-                    <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--info-500)", letterSpacing: "0.4px" }}>LICENSE INFO</p>
-                    <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", marginTop: "4px" }}>{project.licensePlan ?? "Not set"}</p>
-                  </div>
-                  <span style={{ display: "flex", color: "var(--info-500)" }}><KeyIcon /></span>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
-                    <span style={{ color: "var(--gray-500)" }}>Channel limit:</span>
-                    <span style={{ fontWeight: 700, color: "var(--gray-900)" }}>{channelLimit ?? "Unlimited"}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
-                    <span style={{ color: "var(--gray-500)" }}>Cameras connected:</span>
-                    <span style={{ fontWeight: 700, color: "var(--success-400)" }}>{projectCameras.length}{channelLimit ? ` (${Math.round((projectCameras.length / channelLimit) * 100)}%)` : ""}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
-                    <span style={{ color: "var(--gray-500)" }}>Expires:</span>
-                    <span style={{ fontWeight: 700, color: licenseExpired ? "var(--danger-500)" : licenseExpiringSoon ? "var(--warning-500)" : "var(--gray-900)" }}>
-                      {isUnlimitedExpiry ? "Unlimited" : project.licenseExpiresAt ?? "Not set"}{daysUntilExpiry !== null ? ` (D-${daysUntilExpiry})` : ""}
-                    </span>
-                  </div>
-                </div>
-                <button onClick={() => onTabChange("license")}
-                  style={{ padding: "10px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-                  Manage License →
-                </button>
               </div>
 
               <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px" }}>
