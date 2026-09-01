@@ -202,7 +202,7 @@ function MailSettings({ projectId }: { projectId: string }) {
       {/* A project that hasn't overridden anything is quietly relying on the org default — easy to
           miss until an on-prem site's invites silently fail because that default can't reach it.
           Surface it as an actionable banner rather than only inside the read-only card below. */}
-      {!override && (
+      {!override && inherited.mailDomain && (
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
           backgroundColor: "var(--warning-100)", border: "1px solid var(--warning-300)", borderRadius: "12px", padding: "14px 16px",
@@ -225,26 +225,31 @@ function MailSettings({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      {/* What is in force right now, before any of the editing below. Without it an admin cannot
-          tell whether this project is inheriting or overriding, and both look like "filled in". */}
-      <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
-        <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>In effect for this project</p>
-        {inherited.mailDomain ? (
-          <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
-            <SettingRow label="Domain" value={inherited.mailDomain} />
-            <SettingRow label="SMTP host" value={inherited.smtp ? `${inherited.smtp.host}:${inherited.smtp.port}` : "—"} />
-            <SettingRow label="Sent from" value={inherited.smtp?.fromAddress ?? "—"} />
-            <SettingRow label="Source" value={overridden ? "This project" : `Inherited from ${org?.name ?? "organization"}`} />
-          </div>
-        ) : (
-          /* A project with no mail configured cannot invite anyone, so this says so plainly rather
-             than showing empty fields that look merely unfilled. */
-          <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "8px", lineHeight: 1.6 }}>
-            No mail server configured. Invitations and password resets cannot be sent until one is
-            set here or on the organization.
-          </p>
-        )}
-      </div>
+      {/* What is in force right now, before any of the editing below. Only relevant once this project
+          is actually using its own server — the banner above already covers the "inheriting the org
+          default" case, so repeating those same values in a second card here would be redundant. A
+          project with nothing configured anywhere is still a real problem worth surfacing regardless
+          of override state, so that case bypasses the override check. */}
+      {(override || !inherited.mailDomain) && (
+        <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>In effect for this project</p>
+          {inherited.mailDomain ? (
+            <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+              <SettingRow label="Domain" value={inherited.mailDomain} />
+              <SettingRow label="SMTP host" value={inherited.smtp ? `${inherited.smtp.host}:${inherited.smtp.port}` : "—"} />
+              <SettingRow label="Sent from" value={inherited.smtp?.fromAddress ?? "—"} />
+              <SettingRow label="Source" value={overridden ? "This project" : `Inherited from ${org?.name ?? "organization"}`} />
+            </div>
+          ) : (
+            /* A project with no mail configured cannot invite anyone, so this says so plainly rather
+               than showing empty fields that look merely unfilled. */
+            <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "8px", lineHeight: 1.6 }}>
+              No mail server configured. Invitations and password resets cannot be sent until one is
+              set here or on the organization.
+            </p>
+          )}
+        </div>
+      )}
 
       <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
         <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
