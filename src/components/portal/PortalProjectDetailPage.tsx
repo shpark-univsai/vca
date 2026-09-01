@@ -9,6 +9,7 @@ import ProjectCamerasTab from "./ProjectCamerasTab";
 import ProjectVipTab from "./ProjectVipTab";
 import ProjectLicenseTab from "./ProjectLicenseTab";
 import ProjectServerTab from "./ProjectServerTab";
+import ProjectRosterTab from "./ProjectRosterTab";
 import PortalUsersPage from "./PortalUsersPage";
 
 function CheckCircleIcon() {
@@ -568,6 +569,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
       {tab === "vip" && <ProjectVipTab projectId={projectId} />}
       {tab === "license" && <ProjectLicenseTab projectId={projectId} />}
       {tab === "server" && <ProjectServerTab projectId={projectId} />}
+      {tab === "roster" && <ProjectRosterTab projectId={projectId} />}
       {tab === "users" && <PortalUsersPage projectId={projectId} />}
     </div>
   );

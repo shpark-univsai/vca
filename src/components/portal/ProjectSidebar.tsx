@@ -2,7 +2,7 @@
 
 import type { ComponentType } from "react";
 
-export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users";
+export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "roster" | "users";
 
 interface IconProps {
   color: string;
@@ -57,6 +57,16 @@ function ServerIcon({ color }: IconProps) {
   );
 }
 
+function RosterIcon({ color }: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M5 2.5C5 2.22 5.22 2 5.5 2H10.5C10.78 2 11 2.22 11 2.5V3.3H5V2.5Z" stroke={color} strokeWidth="1"/>
+      <rect x="3" y="3.3" width="10" height="10.7" rx="1.2" stroke={color} strokeWidth="1"/>
+      <path d="M5.5 7.3H10.5M5.5 9.7H10.5M5.5 12.1H8.5" stroke={color} strokeWidth="1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 function UsersIcon({ color }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -74,6 +84,7 @@ export const PROJECT_TABS: { id: DetailTab; label: string; icon: ComponentType<I
   { id: "vip", label: "VIP Registry", icon: VipIcon },
   { id: "license", label: "License", icon: LicenseIcon },
   { id: "server", label: "Server & API", icon: ServerIcon },
+  { id: "roster", label: "Staff Roster", icon: RosterIcon },
   { id: "users", label: "Users & Permissions", icon: UsersIcon },
 ];
 

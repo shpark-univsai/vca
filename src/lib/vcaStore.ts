@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { liveEvents, getFacePhoto, DISTRICTS, type EventType, type LiveEvent, type TrackingHop } from "@/lib/mockData";
 import { isTodaySgt, recentSgtStamp, parseSgtStamp } from "@/lib/time";
+import { generateRegistrationCode, type RosterEntry } from "@/lib/staffRoster";
 
 // Deterministic pseudo-random in [0,1) — same formula as mockData.ts's own seededRandom — used
 // below to bulk-generate cameras without Math.random(), which would differ between the
@@ -201,6 +202,7 @@ interface VcaStoreState {
   servers: Server[];
   auditLog: AuditEvent[];
   accessRequests: AccessRequest[];
+  staffRoster: RosterEntry[];
   // Notifications (header bell) only care about VIP-match events from this point forward —
   // events seeded at load are historical and start out already "read".
   lastReadNotifAt: string;
@@ -228,6 +230,13 @@ interface VcaStoreState {
   addServer: (server: Omit<Server, "id">) => void;
   updateServer: (serverId: string, updates: Partial<Omit<Server, "id" | "projectId">>) => void;
   removeServer: (serverId: string) => void;
+  // Registration-code actions for the staff roster — see staffRoster.ts for the type/alphabet and
+  // ProjectRosterTab.tsx for the screen. Keyed by employeeId (the roster's own matching key), not a
+  // generated id, since these never need one of their own.
+  issueRegistrationCodes: (employeeIds: string[]) => void;
+  reissueRegistrationCode: (employeeId: string) => void;
+  removeRosterEntry: (employeeId: string) => void;
+  logRosterCodeViewed: (employeeId: string) => void;
 }
 
 // A lightweight admin activity feed for Portal's Overview tab ("Recent Activity") — who did what,
@@ -340,6 +349,30 @@ const ACCESS_REQUESTS: AccessRequest[] = [
   { id: "req-1", name: "Daniel Foo", email: "daniel.foo@univs.ai", projectId: "proj-sg", reason: "Covering the night shift this week and need to check camera status.", requestedAt: auditAt(45) },
   { id: "req-2", name: "Siti Aminah", email: "siti.aminah@univs.ai", projectId: "proj-sg", reason: "New hire on the ops team, was told to request access here.", requestedAt: auditAt(3 * 60) },
   { id: "req-3", name: "Marcus Lee", email: "marcus.lee2@univs.ai", projectId: "proj-riverside", requestedAt: auditAt(26 * 60) },
+];
+
+// Mock stand-in for an Excel-imported staff roster (see ProjectRosterTab.tsx — the real import
+// isn't built yet). Mix of all four code statuses on purpose, across both projects, so the tab's
+// status filter has something in every bucket from first load.
+const STAFF_ROSTER: RosterEntry[] = [
+  { employeeId: "EMP-3001", name: "James Whitfield", department: "Control Room", projectId: "proj-sg", permission: "admin", status: "not-issued" },
+  { employeeId: "EMP-3002", name: "Priya Nair", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", code: "BPXW4762" },
+  { employeeId: "EMP-3003", name: "Daniel Cruz", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", code: "HKLM9234" },
+  { employeeId: "EMP-3004", name: "Farah Ismail", department: "Operations", projectId: "proj-sg", permission: "operator", status: "not-issued" },
+  { employeeId: "EMP-3005", name: "Tom Reyes", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "used", code: "QRST5678" },
+  { employeeId: "EMP-3006", name: "Lena Brooks", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "not-issued" },
+  { employeeId: "EMP-3007", name: "Marcus Ho", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "expired", code: "VXYZ2345" },
+  { employeeId: "EMP-3008", name: "Aisha Bakar", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", code: "JKMN6789" },
+  { employeeId: "EMP-3009", name: "Ryan Tavares", department: "Field Engineering", projectId: "proj-sg", permission: "admin", status: "not-issued" },
+  { employeeId: "EMP-3010", name: "Sana Idris", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "used", code: "CDFG3456" },
+  { employeeId: "EMP-3011", name: "Emily Foster", department: "Operations", projectId: "proj-riverside", permission: "admin", status: "not-issued" },
+  { employeeId: "EMP-3012", name: "Kevin Ng", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "LMPQ8765" },
+  { employeeId: "EMP-3013", name: "Hana Suzuki", department: "Field Engineering", projectId: "proj-riverside", permission: "operator", status: "not-issued" },
+  { employeeId: "EMP-3014", name: "Oliver Grant", department: "Operations", projectId: "proj-riverside", permission: "operator", status: "used", code: "RSTU4325" },
+  { employeeId: "EMP-3015", name: "Mei Lin Tan", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "WXYZ9876" },
+  { employeeId: "EMP-3016", name: "Diego Alvarez", department: "Field Engineering", projectId: "proj-riverside", permission: "operator", status: "expired", code: "ABCD5432" },
+  { employeeId: "EMP-3017", name: "Chloe Bennett", department: "Operations", projectId: "proj-riverside", permission: "operator", status: "not-issued" },
+  { employeeId: "EMP-3018", name: "Yusuf Karim", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "EFGH6543" },
 ];
 
 const SERVERS: Server[] = [
@@ -658,6 +691,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   servers: SERVERS,
   auditLog: AUDIT_LOG,
   accessRequests: ACCESS_REQUESTS,
+  staffRoster: STAFF_ROSTER,
   lastReadNotifAt: LATEST_SEED_TIMESTAMP,
   setCameraStatus: (cameraId, status) =>
     set(state => {
@@ -837,6 +871,69 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     set(state => ({ servers: state.servers.map(s => (s.id === serverId ? { ...s, ...updates } : s)) })),
   removeServer: (serverId) =>
     set(state => ({ servers: state.servers.filter(s => s.id !== serverId) })),
+  // Only ever touches rows that (a) were asked for and (b) don't already have a code — reissuing
+  // one is a separate, explicit action, not something a repeated bulk-issue click should do.
+  issueRegistrationCodes: (employeeIds) =>
+    set(state => {
+      const existingCodes = new Set(state.staffRoster.map(r => r.code).filter((c): c is string => !!c));
+      const auditEntries: AuditEvent[] = [];
+      const staffRoster = state.staffRoster.map(r => {
+        if (!employeeIds.includes(r.employeeId) || r.code) return r;
+        const code = generateRegistrationCode(existingCodes);
+        existingCodes.add(code);
+        auditEntries.push({
+          id: `audit-${++auditSeq}`, projectId: r.projectId,
+          message: `Registration code issued for ${r.name} (${r.employeeId})`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        });
+        return { ...r, code, status: "unused" as const };
+      });
+      return { staffRoster, auditLog: [...auditEntries, ...state.auditLog].slice(0, 200) };
+    }),
+  // For a lost sheet of paper — the old code must stop working immediately, which a fresh
+  // generateRegistrationCode() call already guarantees just by overwriting `code`.
+  reissueRegistrationCode: (employeeId) =>
+    set(state => {
+      const entry = state.staffRoster.find(r => r.employeeId === employeeId);
+      if (!entry) return {};
+      const existingCodes = new Set(state.staffRoster.map(r => r.code).filter((c): c is string => !!c));
+      const code = generateRegistrationCode(existingCodes);
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: entry.projectId,
+        message: `Registration code reissued for ${entry.name} (${entry.employeeId}) — previous code invalidated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        staffRoster: state.staffRoster.map(r => (r.employeeId === employeeId ? { ...r, code, status: "unused" as const } : r)),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
+  // Deleting the row is what kills an unused code (a departing employee's paper code must not stay
+  // a working key into the system) — there is no separate "revoke code" action because a roster row
+  // with no person behind it has nothing left to protect.
+  removeRosterEntry: (employeeId) =>
+    set(state => {
+      const entry = state.staffRoster.find(r => r.employeeId === employeeId);
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: entry?.projectId,
+        message: `Roster entry removed: ${entry?.name ?? employeeId} (${employeeId})${entry?.code ? " — unused code invalidated" : ""}`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        staffRoster: state.staffRoster.filter(r => r.employeeId !== employeeId),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
+  // No roster mutation here — this is purely a "who looked at this code" trail, called when an
+  // admin clicks to unmask one in ProjectRosterTab.
+  logRosterCodeViewed: (employeeId) =>
+    set(state => {
+      const entry = state.staffRoster.find(r => r.employeeId === employeeId);
+      if (!entry) return {};
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: entry.projectId,
+        message: `Registration code viewed for ${entry.name} (${entry.employeeId})`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return { auditLog: [auditEntry, ...state.auditLog].slice(0, 200) };
+    }),
 }));
 
 // Converts store events back into the Dashboard/Sidebar's LiveEvent shape. Only events carrying

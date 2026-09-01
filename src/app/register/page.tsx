@@ -9,6 +9,7 @@ import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import {
   REGISTRATION_CODE_LENGTH, RosterEntry, resolveRegistrationCode,
 } from "@/lib/staffRoster";
+import { useVcaStore } from "@/lib/vcaStore";
 
 type Step = "code" | "confirm" | "password" | "done";
 
@@ -36,6 +37,8 @@ function fieldBorder(active: boolean) {
  */
 export default function RegisterPage() {
   const router = useRouter();
+  const staffRoster = useVcaStore(s => s.staffRoster);
+  const projects = useVcaStore(s => s.projects);
   const [step, setStep] = useState<Step>("code");
 
   const [digits, setDigits] = useState<string[]>(() => Array(REGISTRATION_CODE_LENGTH).fill(""));
@@ -65,7 +68,7 @@ export default function RegisterPage() {
   // backend, which must throttle attempts — the code is the only gate on this screen.
   const submitCode = () => {
     if (!codeComplete) return;
-    const result = resolveRegistrationCode(code);
+    const result = resolveRegistrationCode(code, staffRoster);
     if (!result.ok) {
       setCodeError(CODE_ERRORS[result.reason]);
       return;
@@ -210,7 +213,7 @@ export default function RegisterPage() {
                   <div style={{ height: "1px", backgroundColor: "var(--gray-200)" }} />
                   {detailRow("Employee ID", entry.employeeId)}
                   {entry.department && detailRow("Department", entry.department)}
-                  {detailRow("Project", entry.projectName)}
+                  {detailRow("Project", projects.find(p => p.id === entry.projectId)?.name ?? entry.projectId)}
                   {detailRow("Permission", entry.permission === "admin" ? "Administrator" : "Operator")}
                 </div>
 
