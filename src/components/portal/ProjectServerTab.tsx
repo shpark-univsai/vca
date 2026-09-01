@@ -97,7 +97,7 @@ const API_ENDPOINTS = [
 
 function ApiDocumentation({ projectId }: { projectId: string }) {
   return (
-    <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px", maxWidth: "640px" }}>
+    <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
       <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>API Base URL</p>
       <p style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", marginTop: "6px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "8px", padding: "8px 10px" }}>
         https://api.univs.ai/portal/{projectId}
@@ -197,7 +197,7 @@ function MailSettings({ projectId }: { projectId: string }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px", maxWidth: "640px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
       {/* A project that hasn't overridden anything is quietly relying on the org default — easy to
           miss until an on-prem site's invites silently fail because that default can't reach it.
