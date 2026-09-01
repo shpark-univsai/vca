@@ -1,11 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, projectChannelLimit } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { BORDER, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
+
+// CSS position:sticky kept fighting PortalShell's padded scroll container — the header either
+// left a gap a scrolled-past row showed through, or (once patched with a negative-margin/padding
+// trick to close that gap) sat taller than every other tab's header, since sticky reserves that
+// same padded box in normal flow even before it engages. Measuring the real scrolling ancestor in
+// JS and switching to position:fixed while "stuck" sidesteps both: no ancestor padding/stacking
+// ambiguity (fixed paints in the root stacking context), and the spacer below is sized to the
+// header's own actual height, not a padded approximation.
+function useStickyHeader<T extends HTMLElement>() {
+  const contentRef = useRef<T>(null);
+  const [stuck, setStuck] = useState(false);
+  const [rect, setRect] = useState<{ left: number; top: number; width: number } | null>(null);
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    let scrollParent: HTMLElement | null = el.parentElement;
+    while (scrollParent) {
+      const overflowY = getComputedStyle(scrollParent).overflowY;
+      if (overflowY === "auto" || overflowY === "scroll") break;
+      scrollParent = scrollParent.parentElement;
+    }
+    if (!scrollParent) return;
+    const sp = scrollParent;
+    // Where the header naturally sits within the scrollable content, measured once before
+    // anything sticks — the scrollTop past which it should switch to fixed.
+    const naturalTop = el.getBoundingClientRect().top - sp.getBoundingClientRect().top + sp.scrollTop;
+
+    const update = () => {
+      const spRect = sp.getBoundingClientRect();
+      const spStyle = getComputedStyle(sp);
+      const padLeft = parseFloat(spStyle.paddingLeft) || 0;
+      const padRight = parseFloat(spStyle.paddingRight) || 0;
+      setHeight(el.offsetHeight);
+      setStuck(sp.scrollTop >= naturalTop);
+      setRect({ left: spRect.left + padLeft, top: spRect.top, width: spRect.width - padLeft - padRight });
+    };
+    update();
+    sp.addEventListener("scroll", update);
+    const ro = new ResizeObserver(update);
+    ro.observe(sp);
+    return () => {
+      sp.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, []);
+
+  return { contentRef, stuck, rect, height };
+}
 
 const DEFAULT_THUMBNAIL = "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80";
 const AI_FEATURES: CameraAiFeature[] = ["Re-ID Analysis", "License Plate Recognition", "Intrusion Detection"];
@@ -192,6 +242,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
   const removeCamera = useVcaStore(s => s.removeCamera);
   const setCameraStatus = useVcaStore(s => s.setCameraStatus);
   const { showToast } = useToast();
+  const { contentRef: stickyRef, stuck, rect, height: stickyHeight } = useStickyHeader<HTMLDivElement>();
 
   const [showAdd, setShowAdd] = useState(false);
   const [editingCamera, setEditingCamera] = useState<Camera | null>(null);
@@ -287,15 +338,14 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
 
   return (
     <div>
-      {/* Sticky down through the search/filter row — PortalShell's content area is the scrolling
-          ancestor (overflow:auto), so position:sticky here just works. The negative margin +
-          matching padding pulls this block out over PortalShell's own top/side padding (32px/72px)
-          and repaints it — without that, position:sticky only covers its own box, not the parent's
-          padding strip above it, and a scrolled-past table row shows through that gap. */}
-      <div style={{
-        position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--gray-100)",
-        margin: "-32px -72px 0", padding: "32px 72px 16px",
-      }}>
+      {/* Spacer holds the scroll height the fixed header vacates once stuck — sized to the
+          header's own measured height, so this tab's top spacing matches every other tab exactly
+          (unlike the earlier CSS sticky attempt, which reserved a taller padded box). */}
+      {stuck && <div style={{ height: stickyHeight }} />}
+      <div ref={stickyRef} style={stuck && rect ? {
+        position: "fixed", top: rect.top, left: rect.left, width: rect.width, zIndex: 20,
+        backgroundColor: "var(--gray-100)", paddingBottom: "16px",
+      } : undefined}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px" }}>
         <div>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>Cameras</p>
