@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
+import { getAuthConfig } from "@/lib/authConfig";
 import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon } from "@/components/AuthIcons";
 import { useVcaStore } from "@/lib/vcaStore";
 
@@ -16,6 +17,8 @@ export default function LoginPage() {
   const [keepLoggedIn, setKeepLoggedIn] = useState(false);
 
   const canSubmit = email.trim().length > 0 && password.length > 0;
+
+  const authConfig = getAuthConfig();
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -140,17 +143,22 @@ export default function LoginPage() {
               >
                 Log in
               </button>
-              {/* Not a link, on purpose. This screen has no project context, and a request has to
-                  name the project the master is approving access TO — sending someone here from
-                  /login opened the form in a state it could never submit from ("Project: not
-                  specified"). The request path only works from the project link that bounced them,
-                  which carries ?project=. Accounts are invite-only, so from the front door the true
-                  answer is "someone has to invite you", and saying it beats a link that dead-ends.
+              {/* What to tell someone with no account depends on which ways in this deployment
+                  has switched on — see lib/authConfig.ts. Note this stays plain text even when
+                  accessRequest is on: a request has to name the project the admin is approving
+                  access TO, and this screen has no project context, so the link opened the form in
+                  a state it could never submit from ("Project: not specified"). That path only
+                  works from the project link that bounced the visitor, which carries ?project=.
+                  Once a domain identifies the company before login, this can become a real link.
                   (The Figma frame has no footer line here at all; this keeps one because a
                   first-time visitor does ask the question.) */}
               <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", lineHeight: 1.6 }}>
                 Don&apos;t have an account?<br />
-                Ask your administrator to send you an invitation.
+                {authConfig.selfSignup
+                  ? "Create one to get started."
+                  : authConfig.accessRequest
+                    ? "Open the project link you were sent to request access."
+                    : "Ask your administrator to send you an invitation."}
               </p>
             </div>
           </div>
