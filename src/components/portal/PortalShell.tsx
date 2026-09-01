@@ -97,8 +97,7 @@ export default function PortalShell() {
             <SidebarToggleIcon />
           </button>
         )}
-        <span style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", flexShrink: 0 }}>VCA</span>
-        <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", backgroundColor: "var(--gray-100)", padding: "3px 8px", borderRadius: "999px", flexShrink: 0 }}>Portal</span>
+        <span style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", flexShrink: 0 }}>VCA Portal</span>
 
         <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-300)", margin: "0 2px" }}>/</span>
 
