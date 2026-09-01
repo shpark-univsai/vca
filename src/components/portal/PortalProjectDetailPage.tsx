@@ -490,7 +490,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-600)" }}>All systems operational — no action needed.</span>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 260px))", gap: "12px", marginBottom: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px", marginBottom: "16px" }}>
               {attentionItems.map(item => <AttentionKpiCard key={item.key} item={item} />)}
             </div>
           )}
