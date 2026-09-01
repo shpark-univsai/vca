@@ -145,6 +145,15 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
  * sits on the project: one organization really can hold an on-prem project routing through an
  * internal server alongside a cloud project that does not.
  */
+function MailIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M2.5 4.5L8 9L13.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 function MailSettings({ projectId }: { projectId: string }) {
   const projects = useVcaStore(s => s.projects);
   const organizations = useVcaStore(s => s.organizations);
@@ -190,6 +199,32 @@ function MailSettings({ projectId }: { projectId: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px", maxWidth: "640px" }}>
 
+      {/* A project that hasn't overridden anything is quietly relying on the org default — easy to
+          miss until an on-prem site's invites silently fail because that default can't reach it.
+          Surface it as an actionable banner rather than only inside the read-only card below. */}
+      {!override && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
+          backgroundColor: "var(--warning-100)", border: "1px solid var(--warning-300)", borderRadius: "12px", padding: "14px 16px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+            <span style={{ display: "flex", color: "var(--warning-500)", flexShrink: 0 }}><MailIcon /></span>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>
+                Using {org?.name ?? "the organization"}&apos;s default mail server
+              </p>
+              <p style={{ fontSize: "12px", color: "var(--gray-600)", marginTop: "2px" }}>
+                Set up a dedicated SMTP server if this project needs its own — e.g. an on-prem site with no internet access.
+              </p>
+            </div>
+          </div>
+          <button onClick={() => setOverride(true)}
+            style={{ padding: "8px 14px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>
+            Set up SMTP
+          </button>
+        </div>
+      )}
+
       {/* What is in force right now, before any of the editing below. Without it an admin cannot
           tell whether this project is inheriting or overriding, and both look like "filled in". */}
       <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
@@ -229,7 +264,7 @@ function MailSettings({ projectId }: { projectId: string }) {
             {/* Says out loud that these fields are not settled, so nobody hands them to a customer
                 as the configuration contract before the backend confirms it. */}
             <p style={{
-              margin: 0, fontSize: "11px", fontWeight: 600, color: "var(--warning-500)",
+              margin: 0, fontSize: "10px", fontWeight: 600, color: "var(--warning-500)",
               backgroundColor: "var(--warning-100)", padding: "8px 10px", borderRadius: "8px", lineHeight: 1.5,
             }}>
               These SMTP fields are provisional — the exact settings the server needs are still
@@ -310,8 +345,8 @@ function MailField({ label, value, onChange, placeholder, hint, error }: {
         }}
       />
       {error
-        ? <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-400)" }}>{error}</span>
-        : hint ? <span style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{hint}</span> : null}
+        ? <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--danger-400)" }}>{error}</span>
+        : hint ? <span style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.5 }}>{hint}</span> : null}
     </div>
   );
 }
