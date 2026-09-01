@@ -43,7 +43,7 @@ export default function PortalNewProjectWizard({ orgId, onDeployed, defaultType 
         Set Up Your New AI Monitoring Project
       </p>
       <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px", textAlign: "center", maxWidth: "560px" }}>
-        Welcome to the UniverseAI console. To get started, choose a solution template and fill in your project details.
+        Welcome to the VCA Portal console. To get started, choose a solution template and fill in your project details.
       </p>
 
       <div style={{
