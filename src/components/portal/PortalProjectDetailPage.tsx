@@ -336,10 +336,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const seed = strSeed(projectId);
   const channelYearlyCost = (channelLimit ?? projectCameras.length) * PRICE_PER_CHANNEL_PER_YEAR;
 
-  const apiRequestsDaily = metricDailySeries(seed + 101, 4000, 13000);
   const aiDetectionsDaily = metricDailySeries(seed + 202, 3000, 11000);
   const alertsDaily = metricDailySeries(seed + 303, 2, 35, true);
-  const recordingsDaily = metricDailySeries(seed + 404, 10, 18);
 
   const SYSTEM_CELLS = [
     { label: "STATUS", value: systemAllLive ? "All Live" : "Degraded", icon: LiveStatusIcon, color: systemAllLive ? "var(--success-400)" : "var(--danger-400)" },
@@ -458,11 +456,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
-            <MetricTrendCard label="API Requests" values={apiRequestsDaily} color="var(--primary-400)" />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
             <MetricTrendCard label="AI Detections" values={aiDetectionsDaily} color="var(--success-400)" />
             <MetricTrendCard label="Alerts" values={alertsDaily} color="var(--danger-400)" />
-            <MetricTrendCard label="Recordings" values={recordingsDaily} color="var(--gray-600)" />
           </div>
         </>
       )}
