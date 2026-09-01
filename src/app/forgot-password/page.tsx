@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
+import VerificationCodeInput from "@/components/VerificationCodeInput";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT, RESET_CODE_LENGTH } from "@/lib/password";
 
 const FIELD_BORDER = "1px solid var(--gray-300)";
@@ -45,7 +46,8 @@ export default function ForgotPasswordPage() {
   const [digits, setDigits] = useState<string[]>(() => Array(RESET_CODE_LENGTH).fill(""));
   const [codeError, setCodeError] = useState("");
   const [cooldown, setCooldown] = useState(0);
-  const boxes = useRef<(HTMLInputElement | null)[]>([]);
+  // Bumped to send focus back to the first box after a resend.
+  const [focusSignal, setFocusSignal] = useState(0);
   const code = digits.join("");
   const codeComplete = code.length === RESET_CODE_LENGTH;
 
@@ -93,7 +95,7 @@ export default function ForgotPasswordPage() {
     if (cooldown > 0) return;
     resetCodeEntry();
     setCooldown(RESEND_COOLDOWN_SEC);
-    boxes.current[0]?.focus();
+    setFocusSignal(n => n + 1);
   };
 
   // HANDOFF NOTE: there is no verify endpoint yet, so this cannot actually check the code. It
@@ -116,49 +118,6 @@ export default function ForgotPasswordPage() {
     if (!canSetPassword || !formatValid || mismatch) return;
     // HANDOFF NOTE: submits nowhere. The real call needs the verified-code token from verifyCode.
     setStep("done");
-  };
-
-  /** Writes one box. Handles a pasted or autofilled run of digits by spilling it across the boxes
-   *  from here rightwards, which is how people actually move a code between two windows. */
-  const setDigitAt = (index: number, raw: string) => {
-    const typed = raw.replace(/\D/g, "");
-    if (!typed) return;
-    const next = [...digits];
-    for (let i = 0; i < typed.length && index + i < RESET_CODE_LENGTH; i++) {
-      next[index + i] = typed[i];
-    }
-    setDigits(next);
-    setCodeError("");
-    const landed = Math.min(index + typed.length, RESET_CODE_LENGTH - 1);
-    boxes.current[landed]?.focus();
-  };
-
-  const handleDigitKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace") {
-      e.preventDefault();
-      const next = [...digits];
-      if (next[index]) {
-        // Clear this box and stay put.
-        next[index] = "";
-        setDigits(next);
-      } else if (index > 0) {
-        // Already empty — step back and clear that one, so held backspace walks the code out.
-        next[index - 1] = "";
-        setDigits(next);
-        boxes.current[index - 1]?.focus();
-      }
-      setCodeError("");
-      return;
-    }
-    if (e.key === "ArrowLeft" && index > 0) {
-      e.preventDefault();
-      boxes.current[index - 1]?.focus();
-    }
-    if (e.key === "ArrowRight" && index < RESET_CODE_LENGTH - 1) {
-      e.preventDefault();
-      boxes.current[index + 1]?.focus();
-    }
-    if (e.key === "Enter") verifyCode();
   };
 
   const primaryButton = (label: string, enabled: boolean, onClick: () => void) => (
@@ -261,32 +220,14 @@ export default function ForgotPasswordPage() {
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", alignItems: "center" }}>
-                  {/* Eight separate boxes rather than one field: the code arrives as eight glyphs to
-                      copy across, and boxed digits are far easier to check against the mail. */}
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    {digits.map((digit, i) => (
-                      <input
-                        key={i}
-                        ref={el => { boxes.current[i] = el; }}
-                        value={digit}
-                        onChange={e => setDigitAt(i, e.target.value)}
-                        onKeyDown={e => handleDigitKeyDown(i, e)}
-                        onFocus={e => e.currentTarget.select()}
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        aria-label={`Digit ${i + 1} of ${RESET_CODE_LENGTH}`}
-                        autoFocus={i === 0}
-                        style={{
-                          width: "44px", height: "52px", textAlign: "center",
-                          border: codeError ? "1px solid var(--danger-400)" : fieldBorder(!!digit),
-                          borderRadius: "8px", outline: "none",
-                          fontSize: "18px", fontWeight: 700,
-                          color: "var(--gray-800)", letterSpacing: 0,
-                          transition: "border-color 0.12s",
-                        }}
-                      />
-                    ))}
-                  </div>
+                  <VerificationCodeInput
+                    value={digits}
+                    onChange={next => { setDigits(next); setCodeError(""); }}
+                    error={!!codeError}
+                    onSubmit={verifyCode}
+                    focusSignal={focusSignal}
+                    autoFocus
+                  />
 
                   {codeError ? (
                     <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.24px" }}>
