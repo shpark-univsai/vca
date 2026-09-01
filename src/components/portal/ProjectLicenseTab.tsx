@@ -27,7 +27,7 @@ function LockIcon() {
 function CheckIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <path d="M2.5 6.3L4.8 8.6L9.5 3.5" stroke="var(--success-400)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M2.5 6.3L4.8 8.6L9.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }
@@ -104,7 +104,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
         <div>
           <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>Included Features</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             {ALL_FEATURES.map(f => {
               const isSchoolOnly = f === SCHOOL_ONLY_FEATURE;
               const isAlwaysLocked = ALWAYS_LOCKED_FEATURES.includes(f);
@@ -115,11 +115,11 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
                 ? `${f} — Coming soon`
                 : isSchoolOnly && !typeAllowed ? `${f} — Requires Smart School license` : f;
               return (
-                <div key={f} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 10px", borderRadius: "8px", backgroundColor: included ? "var(--success-100)" : "var(--gray-50)" }}>
-                  <span style={{ display: "flex", color: included ? "var(--success-400)" : "var(--gray-400)" }}>
+                <div key={f} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ display: "flex", color: included ? "var(--gray-900)" : "var(--gray-300)" }}>
                     {included ? <CheckIcon /> : <LockIcon />}
                   </span>
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: included ? "var(--gray-900)" : "var(--gray-400)" }}>{label}</span>
+                  <span style={{ fontSize: "12px", fontWeight: included ? 700 : 600, color: included ? "var(--gray-900)" : "var(--gray-400)" }}>{label}</span>
                 </div>
               );
             })}
