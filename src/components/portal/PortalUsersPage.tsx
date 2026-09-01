@@ -238,6 +238,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const organizations = useVcaStore(s => s.organizations);
   const projects = useVcaStore(s => s.projects);
   const updatePortalUserPermission = useVcaStore(s => s.updatePortalUserPermission);
+  const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
   const removePortalUser = useVcaStore(s => s.removePortalUser);
   const { showToast } = useToast();
   const [showInvite, setShowInvite] = useState(false);
@@ -349,6 +350,22 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 // does nothing but tell the user to start the flow themselves.
                 onClick: () => showToast({ variant: "success", title: "Reset code sent", desc: `To ${u.email}` }),
               },
+              u.status === "suspended"
+                ? {
+                    label: "Reactivate user",
+                    onClick: () => {
+                      updatePortalUserStatus(u.id, "active");
+                      showToast({ variant: "success", title: "User reactivated", desc: u.name });
+                    },
+                  }
+                : {
+                    label: "Suspend user",
+                    onClick: () => {
+                      updatePortalUserStatus(u.id, "suspended");
+                      showToast({ variant: "warning", title: "User suspended", desc: `${u.name} can no longer sign in` });
+                    },
+                    danger: true,
+                  },
               { label: "Remove user", onClick: () => removePortalUser(u.id), danger: true },
             ]} />
           </div>
