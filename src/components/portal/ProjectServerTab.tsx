@@ -480,16 +480,24 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               </p>
             </div>
           ) : (
-            <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, overflow: "hidden" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER }}>
+            // No overflow:hidden on the container — it would clip a RowActionsMenu dropdown that
+            // opens past the bottom edge (the last row's menu becomes invisible, not just cut
+            // off). Header/last-row corners are radiused directly instead.
+            <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
+              <div style={{ display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
                 {["Status", "Server Name", "Server IP", "Server Type", "Specification", ""].map(h => (
                   <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
                 ))}
               </div>
-              {pageServers.map(server => {
+              {pageServers.map((server, i) => {
                 const ok = server.status === "success";
+                const isLast = i === pageServers.length - 1;
                 return (
-                  <div key={server.id} style={{ display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", padding: "12px 16px", alignItems: "center", borderBottom: BORDER }}>
+                  <div key={server.id} style={{
+                    display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", padding: "12px 16px", alignItems: "center",
+                    borderBottom: isLast ? "none" : BORDER,
+                    borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
+                  }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                       <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: ok ? "var(--success-400)" : "var(--danger-400)", flexShrink: 0 }} />
                       <span style={{ fontSize: "12px", fontWeight: 700, color: ok ? "var(--success-400)" : "var(--danger-400)" }}>{ok ? "Success" : "Error"}</span>

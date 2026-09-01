@@ -290,21 +290,31 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         />
       </div>
 
-      <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.3fr 0.9fr 0.5fr 0.9fr 0.8fr 36px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER }}>
+      {/* No overflow:hidden here — it used to clip the header row's flat corners to match the
+          card's rounded ones, but that also clips any row's RowActionsMenu dropdown that opens
+          past the container's bottom edge (invisible, not just cut off). Radius the header row
+          itself instead. */}
+      <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.3fr 0.9fr 0.5fr 0.9fr 0.8fr 36px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
           {["User", "Organization", "Projects", "Permission", "MFA", "Last Login", "Status", ""].map(h => (
             <span key={h} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
           ))}
         </div>
         {scopedUsers.length === 0 && (
-          <div style={{ padding: "32px 16px", textAlign: "center" }}>
+          <div style={{ padding: "32px 16px", textAlign: "center", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}>
             <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
               {q ? "No users match this search." : "No users have access to this project yet."}
             </p>
           </div>
         )}
-        {scopedUsers.map(u => (
-          <div key={u.id} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.3fr 0.9fr 0.5fr 0.9fr 0.8fr 36px", padding: "12px 16px", alignItems: "center", borderBottom: BORDER }}>
+        {scopedUsers.map((u, i) => {
+          const isLast = i === scopedUsers.length - 1;
+          return (
+          <div key={u.id} style={{
+            display: "grid", gridTemplateColumns: "1.4fr 1fr 1.3fr 0.9fr 0.5fr 0.9fr 0.8fr 36px", padding: "12px 16px", alignItems: "center",
+            borderBottom: isLast ? "none" : BORDER,
+            borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
+          }}>
             <div>
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{u.name}</p>
               <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.email}</p>
@@ -369,7 +379,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               { label: "Remove user", onClick: () => removePortalUser(u.id), danger: true },
             ]} />
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {showInvite && <InviteUserModal defaultProjectId={projectId} onClose={() => setShowInvite(false)} />}

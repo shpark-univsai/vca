@@ -403,17 +403,25 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           </p>
         </div>
       ) : view === "table" ? (
-        <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER }}>
+        // No overflow:hidden on the container — it would clip a RowActionsMenu dropdown that opens
+        // past the bottom edge (the last row's menu becomes invisible, not just cut off).
+        // Header/last-row corners are radiused directly instead.
+        <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
+          <div style={{ display: "grid", gridTemplateColumns: "56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
             {["", "Camera", "Maker", "Resolution", "Zone", "RTSP Stream", "AI Engines", "Status", ""].map(h => (
               <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
             ))}
           </div>
-          {visibleCameras.map(cam => {
+          {visibleCameras.map((cam, i) => {
             const online = cam.status === "online";
             const isAiCamera = (cam.aiFeatures ?? []).length > 0;
+            const isLast = i === visibleCameras.length - 1;
             return (
-              <div key={cam.id} style={{ display: "grid", gridTemplateColumns: "56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", padding: "10px 16px", alignItems: "center", borderBottom: BORDER }}>
+              <div key={cam.id} style={{
+                display: "grid", gridTemplateColumns: "56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", padding: "10px 16px", alignItems: "center",
+                borderBottom: isLast ? "none" : BORDER,
+                borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
+              }}>
                 <button onClick={() => setInspectingCameraId(cam.id)} style={{ width: "40px", height: "40px", borderRadius: "8px", overflow: "hidden", backgroundColor: "var(--gray-100)", border: "none", cursor: "pointer", padding: 0 }}>
                   <img src={cam.thumbnail || DEFAULT_THUMBNAIL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </button>
