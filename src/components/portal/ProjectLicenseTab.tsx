@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
-import { BORDER, PANEL_SHADOW, TYPE_META, FilterSelect } from "./PortalShared";
-
-const PLANS = ["Starter", "Professional", "Enterprise"];
+import { BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
 
 // Cumulative — each tier includes everything the tier before it unlocks. "Attendance / Reports"
 // is additionally gated by project type below (Smart School only), independent of plan tier.
@@ -15,13 +13,6 @@ const PLAN_FEATURES: Record<string, string[]> = {
 };
 const ALL_FEATURES = PLAN_FEATURES.Enterprise;
 const SCHOOL_ONLY_FEATURE = "Attendance / Reports";
-
-// One-time installation fee, priced per physical site — a primary center costs more to stand up
-// than a subcenter. Recurring SLA fee is a flat share of the yearly subscription rather than its
-// own line item, since 24/7 coverage scales with how much is being subscribed to.
-const PRICE_PER_CENTER_ONE_TIME = 20000;
-const PRICE_PER_SUBCENTER_ONE_TIME = 10000;
-const SLA_SHARE_OF_SUBSCRIPTION = 0.5;
 
 function LockIcon() {
   return (
@@ -53,28 +44,10 @@ function usageCard(label: string, used: number, limit: number | undefined) {
   );
 }
 
-function contractRow(index: number, label: string, value: string) {
-  return (
-    <div key={index} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderTop: index > 1 ? BORDER : "none" }}>
-      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>
-        <span style={{ color: "var(--gray-400)", marginRight: "6px" }}>{["①", "②", "③", "④"][index - 1]}</span>
-        {label}
-      </span>
-      <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{value}</span>
-    </div>
-  );
-}
-
 export default function ProjectLicenseTab({ projectId }: { projectId: string }) {
   const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
   const cameras = useVcaStore(s => s.cameras);
-  const updateProjectLicense = useVcaStore(s => s.updateProjectLicense);
 
-  const [plan, setPlan] = useState(project?.licensePlan ?? "");
-  const [channelLimit, setChannelLimit] = useState(project?.licenseChannelLimit?.toString() ?? "");
-  const [unlimited, setUnlimited] = useState(project?.licenseExpiresAt === UNLIMITED_EXPIRY);
-  const [expiresAt, setExpiresAt] = useState(project?.licenseExpiresAt && project.licenseExpiresAt !== UNLIMITED_EXPIRY ? project.licenseExpiresAt : "");
-  const [saved, setSaved] = useState(false);
   // Read after mount, not during render: the clock is not a pure input, and this is the only thing
   // here that needs it. queueMicrotask keeps the setState out of the effect body — same pattern
   // ClientLayout uses for its localStorage read. Reads as not-expired for the first frame.
@@ -97,18 +70,6 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
     : null;
 
   const subscriptionYearlyCost = (limit ?? 0) * PRICE_PER_CHANNEL_PER_YEAR;
-  const installationCost = (project.regionCenterCount ?? 0) * PRICE_PER_CENTER_ONE_TIME + (project.regionSubcenterCount ?? 0) * PRICE_PER_SUBCENTER_ONE_TIME;
-  const slaYearlyCost = Math.round(subscriptionYearlyCost * SLA_SHARE_OF_SUBSCRIPTION);
-
-  const save = () => {
-    updateProjectLicense(projectId, {
-      licensePlan: plan || undefined,
-      licenseChannelLimit: channelLimit.trim() ? Number(channelLimit) : undefined,
-      licenseExpiresAt: unlimited ? UNLIMITED_EXPIRY : (expiresAt || undefined),
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
 
   return (
     <div>
@@ -180,44 +141,6 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
             {usageCard("Normal Cameras (CCTV)", normalCameraCount, limit)}
           </div>
         </div>
-      </div>
-
-      <div style={{ marginBottom: "20px" }}>
-        <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>Contract (VCA Pricing Model v2)</p>
-        <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, overflow: "hidden", maxWidth: "560px" }}>
-          {contractRow(1, `SW Subscription — ${limit ?? 0}ch × $${PRICE_PER_CHANNEL_PER_YEAR}`, `$${subscriptionYearlyCost.toLocaleString()}/yr`)}
-          {contractRow(2, `Installation (center ${project.regionCenterCount ?? 0} + subcenter ${project.regionSubcenterCount ?? 0})`, `$${installationCost.toLocaleString()} one-time`)}
-          {contractRow(3, `Operations 24/7 SLA (${Math.round(SLA_SHARE_OF_SUBSCRIPTION * 100)}% of subscription)`, `$${slaYearlyCost.toLocaleString()}/yr`)}
-          {contractRow(4, "Hardware", "$0 (spec sheet only)")}
-        </div>
-      </div>
-
-      <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px", maxWidth: "480px" }}>
-        <div style={{ marginBottom: "16px" }}>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Plan</label>
-          <FilterSelect value={plan} onChange={setPlan}
-            options={[{ value: "", label: "Select a plan" }, ...PLANS.map(p => ({ value: p, label: p }))]} />
-        </div>
-        <div style={{ marginBottom: "16px" }}>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Camera channel limit</label>
-          <input value={channelLimit} onChange={e => setChannelLimit(e.target.value)} placeholder="e.g. 100"
-            style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }} />
-        </div>
-        <div style={{ marginBottom: "20px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>Expires on</label>
-            <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--gray-600)", cursor: "pointer" }}>
-              <input type="checkbox" checked={unlimited} onChange={e => setUnlimited(e.target.checked)} style={{ accentColor: "var(--gray-900)" }} />
-              Unlimited
-            </label>
-          </div>
-          <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} disabled={unlimited}
-            style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit", opacity: unlimited ? 0.5 : 1 }} />
-        </div>
-        <button onClick={save}
-          style={{ width: "100%", padding: "12px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
-          {saved ? "✓ Saved" : "Save license"}
-        </button>
       </div>
     </div>
   );
