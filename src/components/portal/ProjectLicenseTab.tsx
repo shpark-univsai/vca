@@ -78,26 +78,47 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
       <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>License Management</p>
       <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px", marginBottom: "20px" }}>This project&apos;s license determines which pages and features are exposed.</p>
 
-      <div style={{ backgroundColor: "var(--gray-900)", borderRadius: "12px", boxShadow: PANEL_SHADOW, marginBottom: "20px", padding: "20px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+      {/* Content clusters on the left with a fixed gap rather than stretching to justify-space-between
+          — on a wide monitor that would pull "plan" and "expiry" apart to opposite edges of the card,
+          hurting the at-a-glance read. A hairline border + monospace date read as precise/enterprise
+          without leaning on shadow, blur, or gradient — those were deliberately stripped from this app's
+          cards elsewhere, so this stays flat and restrained rather than decorative. */}
+      <div style={{
+        backgroundColor: "var(--gray-900)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px",
+        boxShadow: PANEL_SHADOW, marginBottom: "20px", padding: "22px 26px",
+        display: "flex", alignItems: "center", gap: "28px", flexWrap: "wrap",
+      }}>
         <div>
-          <p style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.6)", letterSpacing: "0.4px" }}>CURRENT PLAN</p>
-          <p style={{ fontSize: "20px", fontWeight: 800, color: "white", marginTop: "6px" }}>{meta.label} — {project.licensePlan ?? "Not set"}</p>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          {project.licenseExpiresAt && nowMs !== null && (
+          <p style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.5)", letterSpacing: "0.6px" }}>CURRENT PLAN</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "8px" }}>
+            <p style={{ fontSize: "24px", fontWeight: 800, color: "white" }}>{project.licensePlan ?? "Not set"}</p>
             <span style={{
-              display: "inline-flex", alignItems: "center", gap: "4px",
-              fontSize: "10px", fontWeight: 600, padding: "3px 9px", borderRadius: "999px", textTransform: "uppercase",
-              backgroundColor: isExpired ? "var(--danger-100)" : "var(--success-100)",
-              color: isExpired ? "var(--danger-500)" : "var(--success-400)",
+              fontSize: "10px", fontWeight: 700, padding: "3px 9px", borderRadius: "999px", letterSpacing: "0.3px", textTransform: "uppercase",
+              backgroundColor: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.16)", color: "rgba(255,255,255,0.8)",
             }}>
-              {isExpired ? "Expired" : "Valid"}
+              {meta.label}
             </span>
-          )}
-          <p style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.6)", marginTop: "10px" }}>EXPIRES ON</p>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "white", marginTop: "2px" }}>
-            {isUnlimitedExpiry ? "Unlimited" : (project.licenseExpiresAt ?? "—")}{yearsRemaining ? ` (${yearsRemaining}yr)` : ""}
-          </p>
+            {project.licenseExpiresAt && nowMs !== null && (
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: "4px",
+                fontSize: "10px", fontWeight: 600, padding: "3px 9px", borderRadius: "999px", textTransform: "uppercase",
+                backgroundColor: isExpired ? "var(--danger-100)" : "var(--success-100)",
+                color: isExpired ? "var(--danger-500)" : "var(--success-400)",
+              }}>
+                {isExpired ? "Expired" : "Valid"}
+              </span>
+            )}
+          </div>
+        </div>
+        <div style={{ width: "1px", height: "36px", backgroundColor: "rgba(255,255,255,0.12)", flexShrink: 0 }} />
+        <div>
+          <p style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.5)", letterSpacing: "0.6px" }}>LICENSE PERIOD</p>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "8px" }}>
+            <p style={{ fontSize: "18px", fontWeight: 800, color: "white", fontFamily: "monospace" }}>
+              {isUnlimitedExpiry ? "Unlimited" : (project.licenseExpiresAt ?? "—")}
+            </p>
+            {yearsRemaining ? <span style={{ fontSize: "12px", fontWeight: 700, color: "rgba(255,255,255,0.5)" }}>{yearsRemaining}yr remaining</span> : null}
+          </div>
         </div>
       </div>
 
