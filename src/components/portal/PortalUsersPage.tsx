@@ -76,9 +76,9 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                 <button key={perm} onClick={() => setPermission(perm)}
                   style={{
                     flex: 1, padding: "10px 12px", borderRadius: "10px", cursor: "pointer", textTransform: "capitalize",
-                    border: permission === perm ? "1px solid var(--primary-400)" : BORDER,
-                    backgroundColor: permission === perm ? "var(--primary-100)" : "white",
-                    color: permission === perm ? "var(--primary-400)" : "var(--gray-600)",
+                    border: permission === perm ? "1px solid var(--gray-900)" : BORDER,
+                    backgroundColor: permission === perm ? "var(--gray-100)" : "white",
+                    color: permission === perm ? "var(--gray-900)" : "var(--gray-600)",
                     fontSize: "13px", fontWeight: 700,
                   }}>
                   {perm}
@@ -95,9 +95,9 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                   <button key={p.id} onClick={() => toggleProject(p.id)}
                     style={{
                       padding: "6px 10px", borderRadius: "999px", cursor: "pointer",
-                      border: active ? "1px solid var(--primary-400)" : BORDER,
-                      backgroundColor: active ? "var(--primary-100)" : "white",
-                      color: active ? "var(--primary-400)" : "var(--gray-600)",
+                      border: active ? "1px solid var(--gray-900)" : BORDER,
+                      backgroundColor: active ? "var(--gray-100)" : "white",
+                      color: active ? "var(--gray-900)" : "var(--gray-600)",
                       fontSize: "12px", fontWeight: 700,
                     }}>
                     {p.name}
@@ -185,13 +185,13 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: BORDER, backgroundColor: "var(--gray-50)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
-            <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{ accentColor: "var(--primary-400)" }} />
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{ accentColor: "var(--gray-900)" }} />
           </label>
           <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>Access Requests ({requests.length})</p>
         </div>
         {selected.length > 0 && (
           <button onClick={() => approve(selected)}
-            style={{ padding: "7px 14px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "7px 14px", borderRadius: "999px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
             Approve {selected.length} selected
           </button>
         )}
@@ -200,7 +200,7 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
         {requests.map((r, i) => (
           <div key={r.id} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "12px 16px", borderTop: i > 0 ? BORDER : "none" }}>
             <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggle(r.id)}
-              style={{ accentColor: "var(--primary-400)", marginTop: "3px" }} />
+              style={{ accentColor: "var(--gray-900)", marginTop: "3px" }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{r.name}</p>
@@ -217,7 +217,7 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
                 Dismiss
               </button>
               <button onClick={() => approve([r.id])}
-                style={{ padding: "7px 12px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "7px 12px", borderRadius: "999px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                 Approve
               </button>
             </div>
@@ -283,8 +283,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           onBlur={() => setSearchFocused(false)}
           style={{
             width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px",
-            border: searchFocused ? "1px solid var(--primary-400)" : BORDER, outline: "none",
-            boxShadow: searchFocused ? "0 0 0 3px var(--primary-100)" : "none",
+            border: searchFocused ? "1px solid var(--gray-400)" : BORDER, outline: "none",
+            boxShadow: searchFocused ? "0 0 0 3px var(--gray-100)" : "none",
             fontSize: "12px", fontFamily: "inherit", backgroundColor: "white",
           }}
         />
@@ -323,12 +323,13 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
               {u.projectIds.length === 0
                 ? <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
-                : u.projectIds.map(pid => (
+                : u.projectIds.map((pid, i) => (
                   <span key={pid} style={{
-                    fontSize: "12px", fontWeight: 600, padding: "2px 7px", borderRadius: "999px",
-                    color: pid === projectId ? "var(--primary-400)" : "var(--gray-600)",
-                    backgroundColor: pid === projectId ? "var(--primary-100)" : "var(--gray-100)",
+                    fontSize: "12px",
+                    fontWeight: pid === projectId ? 700 : 400,
+                    color: pid === projectId ? "var(--gray-900)" : "var(--gray-500)",
                   }}>
+                    {i > 0 && <span style={{ color: "var(--gray-300)" }}>, </span>}
                     {projectName(pid)}
                   </span>
                 ))}

@@ -304,7 +304,7 @@ function MetricTrendCard({ label, values, color, chartType = "bar", onViewMore }
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</p>
         {onViewMore && (
-          <button onClick={onViewMore} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 700, color: "var(--primary-400)" }}>
+          <button onClick={onViewMore} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 700, color: "var(--gray-600)" }}>
             View →
           </button>
         )}
@@ -504,7 +504,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     {projectPersons.length} total
                   </span>
                 </div>
-                <button onClick={() => onTabChange("vip")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 700, color: "var(--primary-400)" }}>Register VIP →</button>
+                <button onClick={() => onTabChange("vip")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 700, color: "var(--gray-600)" }}>Register VIP →</button>
               </div>
               {recentVips.length === 0 ? (
                 <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>No VIPs registered yet.</p>
@@ -526,7 +526,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>License Info</p>
-                <button onClick={() => onTabChange("license")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 700, color: "var(--primary-400)" }}>Manage →</button>
+                <button onClick={() => onTabChange("license")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 700, color: "var(--gray-600)" }}>Manage →</button>
               </div>
               <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{project.licensePlan ?? "Not set"}</p>
               <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "6px" }}>Channels: {projectCameras.length} / {channelLimit ?? "∞"}</p>
@@ -545,7 +545,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   {recentActivity.map((a, i) => (
                     <div key={a.id} style={{ padding: "8px 0", borderTop: i > 0 ? BORDER : "none" }}>
                       <div style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
-                        <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--primary-300)", flexShrink: 0, marginTop: "5px" }} />
+                        <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--gray-400)", flexShrink: 0, marginTop: "5px" }} />
                         <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)" }}>{a.message}</p>
                       </div>
                       <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "2px", marginLeft: "11px" }}>

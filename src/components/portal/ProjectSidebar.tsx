@@ -138,7 +138,7 @@ export default function ProjectSidebar({ tab, onTabChange, collapsed, admin }: P
           <span style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0,
-            backgroundColor: "var(--primary-100)", color: "var(--primary-400)", fontSize: "12px", fontWeight: 700,
+            backgroundColor: "var(--gray-200)", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700,
           }}>
             {admin.name.charAt(0).toUpperCase()}
           </span>

@@ -158,7 +158,7 @@ function ConfirmStatusModal({
           <button onClick={onConfirm}
             style={{
               padding: "9px 16px", borderRadius: "999px", border: "none",
-              backgroundColor: goingOffline ? "var(--danger-400)" : "var(--primary-400)", color: "white",
+              backgroundColor: goingOffline ? "var(--danger-400)" : "var(--gray-900)", color: "white",
               fontSize: "13px", fontWeight: 700, cursor: "pointer",
             }}>
             {goingOffline ? "Mark offline" : "Reconnect"}
@@ -174,7 +174,7 @@ function AiFeatureBadges({ features }: { features?: CameraAiFeature[] }) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
       {features.map(f => (
-        <span key={f} style={{ fontSize: "10px", fontWeight: 600, color: "var(--primary-400)", backgroundColor: "var(--primary-100)", padding: "2px 6px", borderRadius: "999px" }}>{f}</span>
+        <span key={f} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-700)", backgroundColor: "var(--gray-100)", padding: "2px 6px", borderRadius: "999px" }}>{f}</span>
       ))}
     </div>
   );
@@ -324,7 +324,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             </p>
             {limit ? (
               <div style={{ height: "4px", backgroundColor: "var(--gray-100)", borderRadius: "2px", marginTop: "8px" }}>
-                <div style={{ height: "4px", width: `${Math.min(100, (projectCameras.length / limit) * 100)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--primary-400)", borderRadius: "2px" }} />
+                <div style={{ height: "4px", width: `${Math.min(100, (projectCameras.length / limit) * 100)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--gray-900)", borderRadius: "2px" }} />
               </div>
             ) : <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px" }}>No license limit set</p>}
           </div>
@@ -361,8 +361,8 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             onBlur={() => setSearchFocused(false)}
             style={{
               width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px",
-              border: searchFocused ? "1px solid var(--primary-400)" : BORDER, outline: "none",
-              boxShadow: searchFocused ? "0 0 0 3px var(--primary-100)" : "none",
+              border: searchFocused ? "1px solid var(--gray-400)" : BORDER, outline: "none",
+              boxShadow: searchFocused ? "0 0 0 3px var(--gray-100)" : "none",
               fontSize: "12px", fontFamily: "inherit", backgroundColor: "white",
             }}
           />
@@ -428,7 +428,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{cam.name}</p>
-                    <span style={{ fontSize: "10px", fontWeight: 600, color: isAiCamera ? "var(--primary-400)" : "var(--gray-500)", backgroundColor: isAiCamera ? "var(--primary-100)" : "var(--gray-100)", padding: "1px 5px", borderRadius: "999px" }}>
+                    <span style={{ fontSize: "10px", fontWeight: 600, color: isAiCamera ? "var(--gray-900)" : "var(--gray-500)", backgroundColor: isAiCamera ? "var(--gray-200)" : "var(--gray-100)", padding: "1px 5px", borderRadius: "999px" }}>
                       {isAiCamera ? "AI CAMERA" : "CCTV"}
                     </span>
                   </div>

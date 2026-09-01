@@ -40,7 +40,7 @@ function OrgIcon() {
 function ProjectIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M2 4.5C2 3.67157 2.67157 3 3.5 3H6.5L8 4.5H12.5C13.3284 4.5 14 5.17157 14 6V11.5C14 12.3284 13.3284 13 12.5 13H3.5C2.67157 13 2 12.3284 2 11.5V4.5Z" stroke="var(--primary-400)" strokeWidth="1.2"/>
+      <path d="M2 4.5C2 3.67157 2.67157 3 3.5 3H6.5L8 4.5H12.5C13.3284 4.5 14 5.17157 14 6V11.5C14 12.3284 13.3284 13 12.5 13H3.5C2.67157 13 2 12.3284 2 11.5V4.5Z" stroke="var(--gray-500)" strokeWidth="1.2"/>
     </svg>
   );
 }
@@ -56,7 +56,7 @@ function StarIcon({ filled }: { filled: boolean }) {
 function CheckIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-      <path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="var(--primary-400)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="var(--gray-900)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }
@@ -158,7 +158,7 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
                   placeholder="Search projects and folders"
                   style={{
                     width: "100%", boxSizing: "border-box", padding: "10px 12px 10px 34px", borderRadius: "10px",
-                    border: searchFocused ? "1px solid var(--primary-300)" : BORDER, outline: "none",
+                    border: searchFocused ? "1px solid var(--gray-400)" : BORDER, outline: "none",
                     fontSize: "13px", fontFamily: "inherit",
                   }}
                 />
@@ -173,8 +173,8 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
                     style={{
                       background: "none", border: "none", cursor: "pointer",
                       padding: "0 2px 10px", fontSize: "12px", fontWeight: 700,
-                      color: tab === t.id ? "var(--primary-400)" : "var(--gray-400)",
-                      borderBottom: tab === t.id ? "2px solid var(--primary-400)" : "2px solid transparent",
+                      color: tab === t.id ? "var(--gray-900)" : "var(--gray-400)",
+                      borderBottom: tab === t.id ? "2px solid var(--gray-900)" : "2px solid transparent",
                     }}
                   >
                     {t.label}
@@ -222,7 +222,7 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
                       alignItems: "center", cursor: "pointer",
                     }}
                   >
-                    <span style={{ display: "flex", color: "var(--primary-400)" }}>{isCurrent && <CheckIcon />}</span>
+                    <span style={{ display: "flex", color: "var(--gray-900)" }}>{isCurrent && <CheckIcon />}</span>
                     <span style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       <ProjectIcon /> {p.name}
                     </span>

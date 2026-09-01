@@ -83,7 +83,7 @@ function RegisterVipModal({ onClose, onSubmit }: { onClose: () => void; onSubmit
                 <>
                   <img src={photoPreview} alt="" style={{ width: "40px", height: "40px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
                   <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{photoFileName}</span>
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary-400)", flexShrink: 0 }}>Change</span>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", flexShrink: 0 }}>Change</span>
                 </>
               ) : (
                 <>
@@ -209,8 +209,8 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           onBlur={() => setSearchFocused(false)}
           style={{
             width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px",
-            border: searchFocused ? "1px solid var(--primary-400)" : BORDER, outline: "none",
-            boxShadow: searchFocused ? "0 0 0 3px var(--primary-100)" : "none",
+            border: searchFocused ? "1px solid var(--gray-400)" : BORDER, outline: "none",
+            boxShadow: searchFocused ? "0 0 0 3px var(--gray-100)" : "none",
             fontSize: "12px", fontFamily: "inherit", backgroundColor: "white",
           }}
         />

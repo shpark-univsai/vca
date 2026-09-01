@@ -103,8 +103,8 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
           <div key={ep.path} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", backgroundColor: "var(--gray-50)" }}>
             <span style={{
               fontSize: "10px", fontWeight: 600, padding: "2px 7px", borderRadius: "6px", flexShrink: 0,
-              backgroundColor: ep.method === "GET" ? "var(--primary-100)" : "var(--success-100)",
-              color: ep.method === "GET" ? "var(--primary-400)" : "var(--success-400)",
+              backgroundColor: ep.method === "GET" ? "var(--gray-200)" : "var(--success-100)",
+              color: ep.method === "GET" ? "var(--gray-900)" : "var(--success-400)",
             }}>
               {ep.method}
             </span>
@@ -249,7 +249,7 @@ function MailSettings({ projectId }: { projectId: string }) {
       <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
         <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
           <input type="checkbox" checked={override} onChange={e => setOverride(e.target.checked)}
-            style={{ marginTop: "3px", accentColor: "var(--primary-400)", cursor: "pointer" }} />
+            style={{ marginTop: "3px", accentColor: "var(--gray-900)", cursor: "pointer" }} />
           <span>
             <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>Use a different mail server for this project</span>
             <span style={{ display: "block", fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
@@ -286,7 +286,7 @@ function MailSettings({ projectId }: { projectId: string }) {
               hint={fromMatchesDomain ? "The From: address recipients will see." : ""} />
             <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
               <input type="checkbox" checked={useTls} onChange={e => setUseTls(e.target.checked)}
-                style={{ accentColor: "var(--primary-400)", cursor: "pointer" }} />
+                style={{ accentColor: "var(--gray-900)", cursor: "pointer" }} />
               <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)" }}>Use TLS</span>
             </label>
           </div>
@@ -437,8 +437,8 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
             style={{
               background: "none", border: "none", cursor: "pointer",
               padding: "0 2px 10px", fontSize: "13px", fontWeight: 700,
-              color: subTab === t ? "var(--primary-400)" : "var(--gray-400)",
-              borderBottom: subTab === t ? "2px solid var(--primary-400)" : "2px solid transparent",
+              color: subTab === t ? "var(--gray-900)" : "var(--gray-400)",
+              borderBottom: subTab === t ? "2px solid var(--gray-900)" : "2px solid transparent",
             }}>
             {t === "infra" ? "Infrastructure" : t === "mail" ? "Mail Server" : "API Documentation"}
           </button>

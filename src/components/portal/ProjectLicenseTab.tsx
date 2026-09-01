@@ -47,7 +47,7 @@ function usageCard(label: string, used: number, limit: number | undefined) {
         <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{used} channels</p>
       </div>
       <div style={{ height: "5px", backgroundColor: "var(--gray-100)", borderRadius: "3px", marginTop: "10px" }}>
-        <div style={{ height: "5px", width: `${limit ? Math.min(100, (used / limit) * 100) : 0}%`, backgroundColor: "var(--primary-400)", borderRadius: "3px" }} />
+        <div style={{ height: "5px", width: `${limit ? Math.min(100, (used / limit) * 100) : 0}%`, backgroundColor: "var(--gray-900)", borderRadius: "3px" }} />
       </div>
     </div>
   );
@@ -169,7 +169,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>${PRICE_PER_CHANNEL_PER_YEAR}/channel/yr</p>
               </div>
               <div style={{ height: "5px", backgroundColor: "var(--gray-100)", borderRadius: "3px", marginTop: "10px" }}>
-                <div style={{ height: "5px", width: "100%", backgroundColor: overLimit ? "var(--danger-400)" : "var(--primary-400)", borderRadius: "3px" }} />
+                <div style={{ height: "5px", width: "100%", backgroundColor: overLimit ? "var(--danger-400)" : "var(--gray-900)", borderRadius: "3px" }} />
               </div>
               <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "8px" }}>
                 {limit ? `${limit} channels · $${subscriptionYearlyCost.toLocaleString()}/yr` : "No limit set"}
@@ -207,7 +207,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>Expires on</label>
             <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--gray-600)", cursor: "pointer" }}>
-              <input type="checkbox" checked={unlimited} onChange={e => setUnlimited(e.target.checked)} style={{ accentColor: "var(--primary-400)" }} />
+              <input type="checkbox" checked={unlimited} onChange={e => setUnlimited(e.target.checked)} style={{ accentColor: "var(--gray-900)" }} />
               Unlimited
             </label>
           </div>
