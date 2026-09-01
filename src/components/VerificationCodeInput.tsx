@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef } from "react";
 
 interface Props {
   /** One string per box. Length of this array is the length of the code. */
@@ -13,6 +13,12 @@ interface Props {
   /** Change this number to send focus back to the first box, e.g. after a resend. */
   focusSignal?: number;
   autoFocus?: boolean;
+  /** "digits" for a mailed one-time code, "alnum" for a registration code handed over on paper.
+   *  Alphanumeric codes are upper-cased on entry so the boxes never disagree with the printout. */
+  charset?: "digits" | "alnum";
+  /** Draws a dash after this many boxes, the way a printed code is grouped (KNVB-CLVC). Purely
+   *  visual — the value stays one flat array. */
+  groupAfter?: number;
 }
 
 /**
@@ -25,7 +31,7 @@ interface Props {
  * disagree with this one.
  */
 export default function VerificationCodeInput({
-  value, onChange, error, onSubmit, focusSignal, autoFocus,
+  value, onChange, error, onSubmit, focusSignal, autoFocus, charset = "digits", groupAfter,
 }: Props) {
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
   const length = value.length;
@@ -38,7 +44,11 @@ export default function VerificationCodeInput({
   /** Handles a pasted or autofilled run of digits by spilling it across the boxes from here
    *  rightwards, which is how people actually move a code between two windows. */
   const setDigitAt = (index: number, raw: string) => {
-    const typed = raw.replace(/\D/g, "");
+    const typed = charset === "alnum"
+      // Drops the characters a printed code should never contain anyway, so a misread O or I does
+      // not silently enter a character that can never match.
+      ? raw.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, "")
+      : raw.replace(/\D/g, "");
     if (!typed) return;
     const next = [...value];
     for (let i = 0; i < typed.length && index + i < length; i++) {
@@ -75,21 +85,25 @@ export default function VerificationCodeInput({
   };
 
   return (
-    <div style={{ display: "flex", gap: "8px" }}>
+    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
       {value.map((digit, i) => (
+        <Fragment key={i}>
+        {groupAfter !== undefined && i === groupAfter && (
+          <span aria-hidden style={{ color: "var(--gray-400)", fontWeight: 700, padding: "0 2px" }}>–</span>
+        )}
         <input
-          key={i}
           ref={el => { boxes.current[i] = el; }}
           value={digit}
           onChange={e => setDigitAt(i, e.target.value)}
           onKeyDown={e => handleKeyDown(i, e)}
           onFocus={e => e.currentTarget.select()}
-          inputMode="numeric"
+          inputMode={charset === "digits" ? "numeric" : "text"}
           autoComplete="one-time-code"
+          spellCheck={false}
           aria-label={`Digit ${i + 1} of ${length}`}
           autoFocus={autoFocus && i === 0}
           style={{
-            width: "44px", height: "52px", textAlign: "center",
+            width: charset === "alnum" ? "40px" : "44px", height: "52px", textAlign: "center",
             border: error
               ? "1px solid var(--danger-400)"
               : digit ? "1px solid var(--primary-300)" : "1px solid var(--gray-300)",
@@ -99,6 +113,7 @@ export default function VerificationCodeInput({
             transition: "border-color 0.12s",
           }}
         />
+        </Fragment>
       ))}
     </div>
   );
