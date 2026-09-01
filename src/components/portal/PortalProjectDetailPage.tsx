@@ -577,25 +577,26 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   </>
                 )}
               </div>
+            </div>
 
-              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {/* Same width as the VIP / Target DB metric card above it (grid column 3 only, not
+                spanning) — sits directly underneath rather than sharing a row with Camera Status. */}
+            <div style={{ gridColumn: "3 / span 1", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
+              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--primary-100)", color: "var(--primary-400)", flexShrink: 0 }}><UsersGroupIcon /></span>
-                    <div>
-                      <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>Recently Registered VIPs</p>
-                      <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>Latest additions to this project&apos;s watchlist</p>
-                    </div>
+                    <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>Recently Registered VIPs</p>
                   </div>
                   <button onClick={() => onTabChange("vip")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>Register VIP →</button>
                 </div>
                 {recentVips.length === 0 ? (
                   <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>No VIPs registered yet.</p>
                 ) : (
-                  <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     {recentVips.map(p => (
-                      <div key={p.id} style={{ flex: "1 1 160px", display: "flex", alignItems: "center", gap: "10px", border: BORDER, borderRadius: "12px", padding: "10px" }}>
-                        <img src={p.photoUrl} alt="" style={{ width: "40px", height: "40px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
+                      <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "10px", border: BORDER, borderRadius: "12px", padding: "10px" }}>
+                        <img src={p.photoUrl} alt="" style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
                         <div style={{ minWidth: 0 }}>
                           <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
                           <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{p.registeredAt}</p>
@@ -607,7 +608,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
             </div>
 
-            <div style={{ gridColumn: "3 / span 2", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
+            {/* Same width as the Portal Accounts & Permissions metric card above it. */}
+            <div style={{ gridColumn: "4 / span 1", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
               <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
