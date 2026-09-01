@@ -13,6 +13,8 @@ const PLAN_FEATURES: Record<string, string[]> = {
 };
 const ALL_FEATURES = PLAN_FEATURES.Enterprise;
 const SCHOOL_ONLY_FEATURE = "Attendance / Reports";
+// Shown locked regardless of plan or project type — not tied to a purchasable tier yet.
+const ALWAYS_LOCKED_FEATURES = ["Advanced Crowd Behavior", "Fire Detection"];
 
 function LockIcon() {
   return (
@@ -105,10 +107,13 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {ALL_FEATURES.map(f => {
               const isSchoolOnly = f === SCHOOL_ONLY_FEATURE;
+              const isAlwaysLocked = ALWAYS_LOCKED_FEATURES.includes(f);
               const typeAllowed = !isSchoolOnly || project.type === "smart_school";
               const planIncludes = project.licensePlan ? (PLAN_FEATURES[project.licensePlan] ?? []).includes(f) : false;
-              const included = typeAllowed && planIncludes;
-              const label = isSchoolOnly && !typeAllowed ? `${f} — Requires Smart School license` : f;
+              const included = !isAlwaysLocked && typeAllowed && planIncludes;
+              const label = isAlwaysLocked
+                ? `${f} — Coming soon`
+                : isSchoolOnly && !typeAllowed ? `${f} — Requires Smart School license` : f;
               return (
                 <div key={f} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 10px", borderRadius: "8px", backgroundColor: included ? "var(--success-100)" : "var(--gray-50)" }}>
                   <span style={{ display: "flex", color: included ? "var(--success-400)" : "var(--gray-400)" }}>
