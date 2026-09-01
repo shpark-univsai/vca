@@ -285,7 +285,7 @@ function AttentionKpiCard({ item }: { item: AttentionItemT }) {
       </div>
       <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>
         {item.value}
-        {item.unit && <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-500)", marginLeft: "4px" }}>{item.unit}</span>}
+        {item.unit && <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", marginLeft: "4px" }}>{item.unit}</span>}
       </p>
       <span style={{ alignSelf: "flex-start", fontSize: "10px", fontWeight: 600, padding: "3px 8px", borderRadius: "999px", backgroundColor: palette.tagBg, color: palette.tagFg }}>
         {item.tag}
@@ -302,7 +302,7 @@ function MetricTrendCard({ label, values, color, chartType = "bar", onViewMore }
   return (
     <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{label.toUpperCase()}</p>
+        <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</p>
         {onViewMore && (
           <button onClick={onViewMore} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 700, color: "var(--primary-400)" }}>
             View →
@@ -490,7 +490,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-600)" }}>All systems operational — no action needed.</span>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px", marginBottom: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 260px))", gap: "12px", marginBottom: "16px" }}>
               {attentionItems.map(item => <AttentionKpiCard key={item.key} item={item} />)}
             </div>
           )}
