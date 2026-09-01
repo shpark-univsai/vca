@@ -5,7 +5,7 @@ import type { ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 export const BORDER = "1px solid var(--gray-200)";
-export const PANEL_SHADOW = "0 2px 3px rgba(14,22,42,0.03)";
+export const PANEL_SHADOW = "none";
 
 export const TYPE_META: Record<ProjectType, { label: string; bg: string; color: string }> = {
   smart_city: { label: "Smart City", bg: "white", color: "var(--primary-400)" },
