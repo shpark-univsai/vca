@@ -278,7 +278,7 @@ function AttentionKpiCard({ item }: { item: AttentionItemT }) {
       display: "flex", flexDirection: "column", gap: "10px",
     }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" }}>
-        <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}>{item.label}</p>
+        <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{item.label}</p>
         <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: palette.badgeBg, color: palette.badgeFg, flexShrink: 0 }}>
           <Icon />
         </span>
@@ -476,7 +476,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     <Icon />
                   </span>
                   <div style={{ overflow: "hidden" }}>
-                    <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>{c.label}</p>
+                    <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{c.label}</p>
                     <p style={{ fontSize: "13px", fontWeight: 700, color: c.color, marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.value}</p>
                   </div>
                 </div>
@@ -499,12 +499,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>Recently Registered VIPs</p>
+                  <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>Recently Registered VIPs</p>
                   <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", backgroundColor: "var(--gray-100)", padding: "2px 7px", borderRadius: "999px" }}>
                     {projectPersons.length} total
                   </span>
                 </div>
-                <button onClick={() => onTabChange("vip")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}>Register VIP →</button>
+                <button onClick={() => onTabChange("vip")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 700, color: "var(--primary-400)" }}>Register VIP →</button>
               </div>
               {recentVips.length === 0 ? (
                 <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>No VIPs registered yet.</p>
@@ -524,9 +524,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </div>
 
             <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>License Info</p>
-                <button onClick={() => onTabChange("license")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 600, color: "var(--primary-400)" }}>Manage →</button>
+                <button onClick={() => onTabChange("license")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 700, color: "var(--primary-400)" }}>Manage →</button>
               </div>
               <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{project.licensePlan ?? "Not set"}</p>
               <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "6px" }}>Channels: {projectCameras.length} / {channelLimit ?? "∞"}</p>
