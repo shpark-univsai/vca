@@ -364,27 +364,24 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "2px" }}>{orgName}</p>
           </div>
 
-          <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, overflow: "hidden", marginBottom: "16px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
-              {SYSTEM_CELLS.map((c, i) => {
-                const Icon = c.icon;
-                const rightBorder = i < SYSTEM_CELLS.length - 1;
-                return (
-                  <div key={c.label} style={{
-                    display: "flex", alignItems: "center", gap: "10px", padding: "16px",
-                    borderRight: rightBorder ? "1px solid var(--gray-300)" : "none",
-                  }}>
-                    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "var(--gray-50)", color: "var(--gray-500)", flexShrink: 0 }}>
-                      <Icon />
-                    </span>
-                    <div style={{ overflow: "hidden" }}>
-                      <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>{c.label}</p>
-                      <p style={{ fontSize: "13px", fontWeight: 700, color: c.color, marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.value}</p>
-                    </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "16px" }}>
+            {SYSTEM_CELLS.map(c => {
+              const Icon = c.icon;
+              return (
+                <div key={c.label} style={{
+                  display: "flex", alignItems: "center", gap: "10px", padding: "16px",
+                  backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW,
+                }}>
+                  <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "var(--gray-50)", color: "var(--gray-500)", flexShrink: 0 }}>
+                    <Icon />
+                  </span>
+                  <div style={{ overflow: "hidden" }}>
+                    <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>{c.label}</p>
+                    <p style={{ fontSize: "13px", fontWeight: 700, color: c.color, marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.value}</p>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
 
           {attentionItems.length === 0 ? (
