@@ -5,7 +5,7 @@ import { useVcaStore, type PortalPermission, type PortalUserStatus } from "@/lib
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { useToast } from "../Toast";
-import { BORDER, PANEL_SHADOW, RowActionsMenu } from "./PortalShared";
+import { BORDER, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
 
 function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: string; onClose: () => void }) {
   useEscapeKey(onClose);
@@ -67,10 +67,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Organization</label>
-            <select value={orgId} onChange={e => setOrgId(e.target.value)}
-              style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit", backgroundColor: "white" }}>
-              {organizations.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
+            <FilterSelect value={orgId} onChange={setOrgId} options={organizations.map(o => ({ value: o.id, label: o.name }))} />
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Permission level</label>
@@ -325,20 +322,11 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                   </span>
                 ))}
             </div>
-            <select
+            <FilterSelect
               value={u.permission}
-              onChange={e => updatePortalUserPermission(u.id, e.target.value as PortalPermission)}
-              style={{
-                width: "fit-content", padding: "5px 30px 5px 8px", borderRadius: "8px", border: BORDER,
-                fontSize: "12px", fontWeight: 700, fontFamily: "inherit", backgroundColor: "white",
-                color: u.permission === "admin" ? "var(--primary-400)" : "var(--gray-600)", textTransform: "capitalize", cursor: "pointer",
-                appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
-                backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%2394a3b8' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
-                backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "12px",
-              }}>
-              <option value="admin">Admin</option>
-              <option value="operator">Operator</option>
-            </select>
+              onChange={v => updatePortalUserPermission(u.id, v as PortalPermission)}
+              options={[{ value: "admin", label: "Admin" }, { value: "operator", label: "Operator" }]}
+            />
             <MfaBadge enabled={u.mfaEnabled} />
             <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.lastLoginAt ?? "—"}</span>
             <StatusBadge status={u.status} />

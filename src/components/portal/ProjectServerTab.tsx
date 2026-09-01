@@ -4,7 +4,7 @@ import { useState } from "react";
 import { resolveMailConfig, useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
-import { BORDER, PANEL_SHADOW, RowActionsMenu } from "./PortalShared";
+import { BORDER, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
 
 const SERVER_TYPES: ServerType[] = ["AI Camera", "Normal Camera", "Face Recognition", "Image Store", "Database"];
 
@@ -54,18 +54,13 @@ function ServerFormModal({
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
               <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Server Type</label>
-              <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as ServerType }))}
-                style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit", backgroundColor: "white", cursor: "pointer" }}>
-                {SERVER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+              <FilterSelect value={form.type} onChange={v => setForm(f => ({ ...f, type: v as ServerType }))}
+                options={SERVER_TYPES.map(t => ({ value: t, label: t }))} />
             </div>
             <div>
               <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Status</label>
-              <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as "success" | "error" }))}
-                style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit", backgroundColor: "white", cursor: "pointer" }}>
-                <option value="success">Success</option>
-                <option value="error">Error</option>
-              </select>
+              <FilterSelect value={form.status} onChange={v => setForm(f => ({ ...f, status: v as "success" | "error" }))}
+                options={[{ value: "success", label: "Success" }, { value: "error", label: "Error" }]} />
             </div>
           </div>
           <div>
@@ -460,16 +455,8 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                 style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px", border: BORDER, fontSize: "12px", fontFamily: "inherit", backgroundColor: "white" }}
               />
             </div>
-            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as typeof typeFilter)}
-              style={{
-                padding: "9px 28px 9px 10px", borderRadius: "10px", border: BORDER, fontSize: "12px", fontFamily: "inherit", backgroundColor: "white", color: "var(--gray-600)", cursor: "pointer",
-                appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
-                backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%2394a3b8' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
-                backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "12px",
-              }}>
-              <option value="ALL">All types</option>
-              {SERVER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+            <FilterSelect value={typeFilter} onChange={v => setTypeFilter(v as typeof typeFilter)}
+              options={[{ value: "ALL", label: "All types" }, ...SERVER_TYPES.map(t => ({ value: t, label: t }))]} />
             <button onClick={resetFilters}
               style={{ padding: "9px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
               Reset
@@ -530,7 +517,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                   <button key={n} onClick={() => setPage(n)}
                     style={{
                       width: "28px", height: "28px", borderRadius: "8px", border: "none", cursor: "pointer",
-                      backgroundColor: n === currentPage ? "var(--primary-400)" : "transparent",
+                      backgroundColor: n === currentPage ? "var(--gray-900)" : "transparent",
                       color: n === currentPage ? "white" : "var(--gray-600)",
                       fontSize: "12px", fontWeight: 700,
                     }}>
@@ -544,10 +531,8 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>Rows per page:</span>
-                <select value={rowsPerPage} onChange={e => setRowsPerPage(Number(e.target.value))}
-                  style={{ padding: "6px 8px", borderRadius: "8px", border: BORDER, fontSize: "12px", fontFamily: "inherit", backgroundColor: "white", color: "var(--gray-600)", cursor: "pointer" }}>
-                  {[10, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
+                <FilterSelect value={String(rowsPerPage)} onChange={v => setRowsPerPage(Number(v))}
+                  options={[10, 25, 50].map(n => ({ value: String(n), label: String(n) }))} />
               </div>
             </div>
           )}

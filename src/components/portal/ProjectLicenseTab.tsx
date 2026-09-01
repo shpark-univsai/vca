@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
-import { BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
+import { BORDER, PANEL_SHADOW, TYPE_META, FilterSelect } from "./PortalShared";
 
 const PLANS = ["Starter", "Professional", "Enterprise"];
 
@@ -195,11 +195,8 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
       <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px", maxWidth: "480px" }}>
         <div style={{ marginBottom: "16px" }}>
           <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Plan</label>
-          <select value={plan} onChange={e => setPlan(e.target.value)}
-            style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit", backgroundColor: "white", cursor: "pointer" }}>
-            <option value="">Select a plan</option>
-            {PLANS.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
+          <FilterSelect value={plan} onChange={setPlan}
+            options={[{ value: "", label: "Select a plan" }, ...PLANS.map(p => ({ value: p, label: p }))]} />
         </div>
         <div style={{ marginBottom: "16px" }}>
           <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Camera channel limit</label>

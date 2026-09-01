@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useVcaStore, type ProjectType } from "@/lib/vcaStore";
-import { BORDER } from "./PortalShared";
+import { BORDER, FilterSelect } from "./PortalShared";
 
 type SignupStep = "account" | "organization" | "done";
 
@@ -349,10 +349,8 @@ export default function PortalSignupWizard() {
 
             <div style={{ marginTop: "16px" }}>
               <FieldLabel>Primary Industry (optional)</FieldLabel>
-              <select value={industry} onChange={e => setIndustry(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
-                <option value="">Smart City / Smart School / Utilities / Other</option>
-                {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
-              </select>
+              <FilterSelect value={industry} onChange={setIndustry}
+                options={[{ value: "", label: "Smart City / Smart School / Utilities / Other" }, ...INDUSTRIES.map(i => ({ value: i, label: i }))]} />
             </div>
 
             <div style={{ backgroundColor: "var(--primary-100)", borderRadius: "10px", padding: "8px 14px", marginTop: "8px" }}>
