@@ -162,6 +162,68 @@ function MiniBarChart({ values, color }: { values: number[]; color: string }) {
   );
 }
 
+// Continuous volume (AI Detections) reads better as a line than as bars — bars are for sparse,
+// discrete events (Alerts), where "did anything happen this day" matters more than the shape of
+// the trend between days. Same y-axis/hover/week-divider treatment as MiniBarChart so the two
+// don't feel like different components bolted together.
+function MiniLineChart({ values, color }: { values: number[]; color: string }) {
+  const max = Math.max(...values, 1);
+  const [hovered, setHovered] = useState<number | null>(null);
+  const weekBoundary = Math.floor(values.length / 2);
+  const VIEW_W = 100;
+  const VIEW_H = 70;
+  const points = values.map((v, i) => ({
+    x: (i / (values.length - 1)) * VIEW_W,
+    y: VIEW_H - (v / max) * VIEW_H,
+  }));
+  const lineD = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+  const areaD = `${lineD} L ${VIEW_W} ${VIEW_H} L 0 ${VIEW_H} Z`;
+
+  return (
+    <div style={{ display: "flex", gap: "6px" }}>
+      <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: "70px", paddingBottom: "1px", minWidth: "32px" }}>
+        <span style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1 }}>{max.toLocaleString()}</span>
+        <span style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1 }}>0</span>
+      </div>
+      <div style={{ position: "relative", flex: 1, height: "70px", borderLeft: "1px solid var(--gray-200)", paddingLeft: "6px" }}>
+        <div style={{
+          position: "absolute", top: 0, bottom: 0, left: `calc(6px + ${(weekBoundary / values.length) * 100}%)`,
+          borderLeft: "1px dashed var(--gray-300)", pointerEvents: "none",
+        }} />
+        <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block", overflow: "visible" }}>
+          <path d={areaD} fill={color} fillOpacity={0.12} stroke="none" />
+          <path d={lineD} fill="none" stroke={color} strokeWidth={1.5} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
+          {hovered !== null && (
+            <circle cx={points[hovered].x} cy={points[hovered].y} r={2.5} fill={color} stroke="white" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          )}
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex" }}>
+          {values.map((v, i) => {
+            const daysAgo = values.length - 1 - i;
+            return (
+              <div key={i}
+                onMouseEnter={() => setHovered(i)}
+                onMouseLeave={() => setHovered(null)}
+                style={{ flex: 1, height: "100%", position: "relative" }}
+              >
+                {hovered === i && (
+                  <div style={{
+                    position: "absolute", left: "50%", top: `${points[i].y}px`, transform: "translate(-50%, -130%)",
+                    backgroundColor: "var(--gray-900)", color: "white", fontSize: "10px", fontWeight: 700,
+                    padding: "4px 8px", borderRadius: "6px", whiteSpace: "nowrap", zIndex: 10, pointerEvents: "none",
+                  }}>
+                    {trendDayLabel(daysAgo)} · {v.toLocaleString()}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Gives the raw total some context — "+18% vs prior week" instead of a bare number — by comparing
 // the average of the most recent half of the window against the older half. Just a direction/magnitude
 // signal (up/down), not a judgment on whether that direction is good for this particular metric
@@ -232,17 +294,26 @@ function AttentionKpiCard({ item }: { item: AttentionItemT }) {
   );
 }
 
-function MetricTrendCard({ label, values, color }: { label: string; values: number[]; color: string }) {
+function MetricTrendCard({ label, values, color, chartType = "bar", onViewMore }: {
+  label: string; values: number[]; color: string; chartType?: "bar" | "line"; onViewMore?: () => void;
+}) {
   const total = values.reduce((a, b) => a + b, 0);
   const change = weekOverWeekChange(values);
   return (
     <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-      <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{label.toUpperCase()}</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{label.toUpperCase()}</p>
+        {onViewMore && (
+          <button onClick={onViewMore} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 700, color: "var(--primary-400)" }}>
+            View →
+          </button>
+        )}
+      </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "6px", marginBottom: "12px" }}>
         <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{total.toLocaleString()}</p>
         <TrendChangeBadge pct={change} />
       </div>
-      <MiniBarChart values={values} color={color} />
+      {chartType === "line" ? <MiniLineChart values={values} color={color} /> : <MiniBarChart values={values} color={color} />}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", marginLeft: "38px" }}>
         <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(METRIC_TREND_DAYS - 1)}</span>
         <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(Math.ceil(METRIC_TREND_DAYS / 2))}</span>
@@ -488,8 +559,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
-            <MetricTrendCard label="AI Detections" values={aiDetectionsDaily} color="var(--success-400)" />
-            <MetricTrendCard label="Alerts" values={alertsDaily} color="var(--danger-400)" />
+            <MetricTrendCard label="AI Detections" values={aiDetectionsDaily} color="var(--success-400)" chartType="line" onViewMore={() => onTabChange("cameras")} />
+            <MetricTrendCard label="Alerts" values={alertsDaily} color="var(--danger-400)" chartType="bar" onViewMore={() => onTabChange("vip")} />
           </div>
         </>
       )}
