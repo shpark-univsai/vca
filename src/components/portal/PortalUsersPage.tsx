@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
-import { TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
+import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
@@ -85,6 +85,10 @@ const T = {
     // Temporary password modal — confirm step
     tempModalTitle: "Generate temporary password",
     tempForLabel: "FOR",
+    mailConsequenceSend: (email: string) => `A reset code is sent to ${email}. You never see it.`,
+    mailConsequenceUserSets: "They set their own password with it, so nobody else knows what they choose.",
+    mailConsequenceTtl: (min: number) => `The code stops working after ${min} minutes.`,
+    mailConsequenceInvalidates: "Any reset code already on its way to them stops working.",
     tempConsequenceInvalidate: "Their current password stops working the moment you generate this.",
     tempConsequenceOnce: "The new password is shown once, on the next screen. It is never stored and cannot be looked up again.",
     tempConsequenceMustChange: "They must set a password of their own the first time they log in with it.",
@@ -274,6 +278,10 @@ const T = {
     // Temporary password modal — confirm step
     tempModalTitle: "임시 비밀번호 생성",
     tempForLabel: "대상",
+    mailConsequenceSend: (email: string) => `재설정 코드가 ${email} 로 발송됩니다. 관리자는 코드를 보지 않습니다.`,
+    mailConsequenceUserSets: "사용자가 그 코드로 본인 비밀번호를 직접 정하므로, 아무도 그 비밀번호를 알지 못합니다.",
+    mailConsequenceTtl: (min: number) => `코드는 ${min}분 후 만료됩니다.`,
+    mailConsequenceInvalidates: "이미 발송된 재설정 코드가 있으면 그 코드는 사용할 수 없게 됩니다.",
     tempConsequenceInvalidate: "생성하는 즉시 기존 비밀번호는 사용할 수 없게 됩니다.",
     tempConsequenceOnce: "새 비밀번호는 다음 화면에 한 번만 표시됩니다. 저장되지 않으며 다시 확인할 수 없습니다.",
     tempConsequenceMustChange: "사용자는 이 비밀번호로 처음 로그인할 때 반드시 본인 비밀번호를 새로 설정해야 합니다.",
@@ -505,7 +513,17 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
         modalTitle: t.resetPassword, intro: undefined as string | undefined, generate: t.sendCode,
         resultTitle: t.resetCodeSentTitle, note: "",
         handoverTitle: "", handover: "",
-        consequences: [] as string[],
+        // This branch used to carry no rules at all, and it is the one the modal OPENS on wherever
+        // mail works — so the box looked as though the button had nothing to warn about until the
+        // administrator picked one of the other two. Sending a code is not consequence-free: it
+        // retires whatever code is already in that mailbox, and it puts the account behind a
+        // ten-minute window. An empty block also reads as "we forgot", which is worse than either.
+        consequences: [
+          t.mailConsequenceSend(user.email),
+          t.mailConsequenceUserSets,
+          t.mailConsequenceTtl(RESET_CODE_TTL_MIN),
+          t.mailConsequenceInvalidates,
+        ],
         showExpiry: false, expiryLabel: "",
       }
     : kind === "password"
