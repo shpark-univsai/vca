@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import VerificationCodeInput from "@/components/VerificationCodeInput";
@@ -18,6 +18,24 @@ const DEMO_REJECTED_CODE = "12345678";
 
 type Step = "email" | "code" | "password" | "done";
 
+/**
+ * Every way code entry can fail. They are separate states because the operator's next move differs
+ * for each — retype, request a new one, or stop and telephone someone — and a single "invalid code"
+ * leaves them guessing. On a closed network guessing wrong costs a phone call either way.
+ *
+ * HANDOFF NOTE: this is the error contract the verify endpoint has to satisfy. Each state can be
+ * opened directly with /forgot-password?demo=<key>.
+ */
+type CodeFailure = "wrong" | "expired" | "throttled" | "resendLimit";
+
+const CODE_FAILURE_TEXT: Record<Exclude<CodeFailure, "throttled">, string> = {
+  wrong: "That code is not correct. Check the mail and try again.",
+  // OPEN QUESTION for the backend: how long is a code good for, and should the screen say so? Ten
+  // minutes is assumed here. Saying it out loud stops people retrying a code from an hour ago.
+  expired: "That code has expired. Codes last about 10 minutes — request a new one.",
+  resendLimit: "You have requested the maximum number of codes. Try again later.",
+};
+
 function fieldBorder(active: boolean) {
   return active ? "1px solid var(--primary-300)" : FIELD_BORDER;
 }
@@ -33,20 +51,57 @@ function fieldBorder(active: boolean) {
  * anyone could open the set-a-new-password form without proving they own the account, and nothing
  * was ever sent to anybody.
  */
+/**
+ * HANDOFF NOTE — viewing every state without a backend.
+ *
+ * None of these can be reached by using the screen normally, because the responses that would
+ * produce them do not exist yet. Open them directly instead; this is the list of states the reset
+ * endpoints have to be able to produce:
+ *
+ *   /forgot-password                 ask for the address
+ *   /forgot-password?demo=code       code entry
+ *   /forgot-password?demo=wrong      code rejected
+ *   /forgot-password?demo=expired    code too old
+ *   /forgot-password?demo=throttled  too many attempts, entry locked
+ *   /forgot-password?demo=password   set the new password
+ *   /forgot-password?demo=done       finished
+ *   /forgot-password?demo=adminOnly  deployment with no mail server at all
+ *
+ * Delete this parameter once the endpoints are real.
+ */
+const DEMO_EMAIL = "grace.tan@univs.ai";
+
 export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ForgotPasswordFlow />
+    </Suspense>
+  );
+}
+
+function ForgotPasswordFlow() {
   const router = useRouter();
+  const demo = useSearchParams().get("demo");
   const authConfig = getAuthConfig();
-  const [step, setStep] = useState<Step>("email");
+  const [step, setStep] = useState<Step>(() => {
+    if (demo === "code" || demo === "wrong" || demo === "expired" || demo === "throttled") return "code";
+    if (demo === "password" || demo === "done") return demo === "done" ? "done" : "password";
+    return "email";
+  });
 
   // ── step 1: email ──────────────────────────────────────────────────────────
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(demo ? DEMO_EMAIL : "");
   const [emailTouched, setEmailTouched] = useState(false);
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const emailError = emailTouched && !emailValid ? "Enter a valid email address." : "";
 
   // ── step 2: code ───────────────────────────────────────────────────────────
   const [digits, setDigits] = useState<string[]>(() => Array(RESET_CODE_LENGTH).fill(""));
-  const [codeError, setCodeError] = useState("");
+  const [codeFailure, setCodeFailure] = useState<CodeFailure | null>(
+    demo === "wrong" || demo === "expired" || demo === "throttled" || demo === "resendLimit"
+      ? demo
+      : null
+  );
   const [cooldown, setCooldown] = useState(0);
   // Bumped to send focus back to the first box after a resend.
   const [focusSignal, setFocusSignal] = useState(0);
@@ -78,7 +133,7 @@ export default function ForgotPasswordPage() {
 
   const resetCodeEntry = () => {
     setDigits(Array(RESET_CODE_LENGTH).fill(""));
-    setCodeError("");
+    setCodeFailure(null);
   };
 
   // Deliberately does NOT check whether the account exists, and moves to the code step either way.
@@ -109,10 +164,10 @@ export default function ForgotPasswordPage() {
   const verifyCode = () => {
     if (!codeComplete) return;
     if (code === DEMO_REJECTED_CODE) {
-      setCodeError("That code is not correct. Check the mail and try again.");
+      setCodeFailure("wrong");
       return;
     }
-    setCodeError("");
+    setCodeFailure(null);
     setStep("password");
   };
 
@@ -176,7 +231,7 @@ export default function ForgotPasswordPage() {
           {/* A deployment with no mail server cannot send anything, so asking for an address would
               collect it and then do nothing — the person waits for a mail that was never going to
               arrive. Say plainly that recovery goes through a person, and name that person. */}
-          {authConfig.passwordRecovery === "adminOnly" ? (
+          {(demo === "adminOnly" || authConfig.passwordRecovery === "adminOnly") ? (
             <>
               {heading("Password reset is handled by an administrator", [
                 "This system has no outbound mail, so a reset link or code cannot be sent",
@@ -254,7 +309,39 @@ export default function ForgotPasswordPage() {
             </>
           )}
 
-          {step === "code" && (
+          {/* Too many wrong codes is a wall, not an inline hint: leaving the boxes usable invites
+              a tenth attempt that cannot succeed. The others stay inline because retrying or
+              requesting a fresh code still works from here. */}
+          {step === "code" && codeFailure === "throttled" && (
+            <>
+              {heading("Too many attempts", [
+                "Code entry is locked for this account for now",
+              ])}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
+                <div style={{
+                  display: "flex", flexDirection: "column", gap: "10px",
+                  padding: "20px", borderRadius: "12px", backgroundColor: "var(--danger-100)",
+                }}>
+                  <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-700)", letterSpacing: "-0.26px", lineHeight: 1.7 }}>
+                    {/* OPEN QUESTION for the backend: how long is the lockout, and does the response
+                        say? A countdown is kinder than "try again later", but it also tells a
+                        guesser exactly when to come back. */}
+                    Wait a few minutes and try again, or ask an administrator to issue a new code
+                    for you.
+                  </p>
+                  <div style={{ height: "1px", backgroundColor: "var(--danger-200)", margin: "2px 0" }} />
+                  <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
+                    {authConfig.supportContact ?? "Your security operations team"}
+                  </p>
+                </div>
+
+                {primaryButton("Back to log in", true, () => router.push("/login"))}
+              </div>
+            </>
+          )}
+
+          {step === "code" && codeFailure !== "throttled" && (
             <>
               {heading("Enter your verification code", [
                 `We sent an ${RESET_CODE_LENGTH}-digit code to ${email.trim()}`,
@@ -265,17 +352,29 @@ export default function ForgotPasswordPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", alignItems: "center" }}>
                   <VerificationCodeInput
                     value={digits}
-                    onChange={next => { setDigits(next); setCodeError(""); }}
-                    error={!!codeError}
+                    onChange={next => { setDigits(next); setCodeFailure(null); }}
+                    error={!!codeFailure}
                     onSubmit={verifyCode}
                     focusSignal={focusSignal}
                     autoFocus
                   />
 
-                  {codeError ? (
-                    <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.24px" }}>
-                      <ErrorCircleIcon /> {codeError}
-                    </p>
+                  {codeFailure ? (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+                      <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.24px", textAlign: "center" }}>
+                        <ErrorCircleIcon /> {CODE_FAILURE_TEXT[codeFailure]}
+                      </p>
+                      {/* An expired code cannot be retyped into working, so the way out is offered
+                          right here instead of leaving them to find the resend link. */}
+                      {codeFailure === "expired" && cooldown === 0 && (
+                        <button
+                          onClick={resend}
+                          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
+                        >
+                          Send a new code
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
                       {/* The cooldown is spelled out rather than just greying the link, so waiting
