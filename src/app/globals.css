@@ -291,6 +291,17 @@ body {
   animation: vca-vip-dot-pulse 1.4s ease-in-out infinite;
 }
 
+/* Map dots must stay legible on a basemap we do not control. In a delivered installation the tiles
+   come from the customer's own GIS server, which may be anything from near-white to a dense colour
+   map, so the dot cannot rely on the background being quiet. Three layers do the work: a white ring
+   lifts it off dark or busy tiles, a hairline just outside that ring separates it from near-white
+   tiles (where a plain white ring would vanish), and a soft shadow keeps it reading as something
+   sitting on top of the map rather than printed into it. */
+.vca-map-dot {
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(14, 22, 42, 0.25), 0 1px 3px rgba(14, 22, 42, 0.35);
+}
+
 /* Dashboard map, zoomed-in camera dots — hover grows the visible dot inside its (larger,
    invisible) click/hover hit box, and strips Leaflet's default tooltip chrome so the
    name/status/zone card we build ourselves in MapView's cameraDotTooltipHtml is the only

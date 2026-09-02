@@ -30,20 +30,23 @@ const VIP_PING_COLOR = "var(--primary-400)";
 function recentPingHtml(color: string): string {
   return `
     <div class="vca-camera-dot-hit" style="position:relative;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;transform:translateX(-50%) translateY(-50%)">
-      <div class="vca-camera-dot-visual" style="position:relative;width:10px;height:10px;transition:transform 0.15s ease">
+      <div class="vca-camera-dot-visual" style="position:relative;width:14px;height:14px;transition:transform 0.15s ease">
         <span class="vca-alert-ping" style="position:absolute;inset:0;border-radius:50%;background:${color};"></span>
-        <div style="position:relative;width:10px;height:10px;border-radius:50%;background:${color};border:1.5px solid white;"></div>
+        <div class="vca-map-dot" style="position:relative;width:14px;height:14px;border-radius:50%;background:${color};"></div>
       </div>
     </div>`;
 }
 
+// The box is 14px, not the 10px it reads as: box-sizing is border-box globally, so the 2px white
+// casing eats into the width and the visible fill lands back at 10px. Fill is gray-700 rather than
+// gray-600 — still quiet next to a colour ping, but it survives a light basemap.
 // Same footprint as recentPingHtml (so both anchor identically) but no expanding ring and a
 // muted dark-gray fill — every camera's location still gets marked when zoomed in, but only the
 // ones with a recent VIP hit get the attention-grabbing pulse.
 function quietCameraDotHtml(): string {
   return `
     <div class="vca-camera-dot-hit" style="position:relative;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;transform:translateX(-50%) translateY(-50%)">
-      <div class="vca-camera-dot-visual" style="position:relative;width:10px;height:10px;border-radius:50%;background:var(--gray-600);border:1.5px solid white;transition:transform 0.15s ease"></div>
+      <div class="vca-camera-dot-visual vca-map-dot" style="position:relative;width:14px;height:14px;border-radius:50%;background:var(--gray-700);transition:transform 0.15s ease"></div>
     </div>`;
 }
 
