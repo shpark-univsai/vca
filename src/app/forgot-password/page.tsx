@@ -6,6 +6,7 @@ import AuthHeader from "@/components/AuthHeader";
 import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import VerificationCodeInput from "@/components/VerificationCodeInput";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT, RESET_CODE_LENGTH } from "@/lib/password";
+import { getAuthConfig } from "@/lib/authConfig";
 
 const FIELD_BORDER = "1px solid var(--gray-300)";
 /** Seconds before "Resend" becomes available again — stops a stuck user from mailing themselves ten
@@ -34,6 +35,7 @@ function fieldBorder(active: boolean) {
  */
 export default function ForgotPasswordPage() {
   const router = useRouter();
+  const authConfig = getAuthConfig();
   const [step, setStep] = useState<Step>("email");
 
   // ── step 1: email ──────────────────────────────────────────────────────────
@@ -171,6 +173,47 @@ export default function ForgotPasswordPage() {
           display: "flex", flexDirection: "column", gap: "40px", alignItems: "center",
         }}>
 
+          {/* A deployment with no mail server cannot send anything, so asking for an address would
+              collect it and then do nothing — the person waits for a mail that was never going to
+              arrive. Say plainly that recovery goes through a person, and name that person. */}
+          {authConfig.passwordRecovery === "adminOnly" ? (
+            <>
+              {heading("Password reset is handled by an administrator", [
+                "This system has no outbound mail, so a reset link or code cannot be sent",
+              ])}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
+                <div style={{
+                  display: "flex", flexDirection: "column", gap: "10px",
+                  padding: "20px", borderRadius: "12px", backgroundColor: "var(--gray-50)",
+                }}>
+                  <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>WHO TO CONTACT</p>
+                  <p style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>
+                    {authConfig.supportContact ?? "Your security operations team"}
+                  </p>
+                  <div style={{ height: "1px", backgroundColor: "var(--gray-200)", margin: "2px 0" }} />
+                  <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.26px", lineHeight: 1.7 }}>
+                    They will issue a new registration code. You set your own password with it, so
+                    nobody else ever knows what you choose.
+                  </p>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
+                  {primaryButton("Back to log in", true, () => router.push("/login"))}
+                  <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
+                    Already have a code?{" "}
+                    <button
+                      onClick={() => router.push("/register")}
+                      style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
+                    >
+                      Activate your account
+                    </button>
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+          <>
           {step === "email" && (
             <>
               {heading("Forgot your password?", [
@@ -335,6 +378,8 @@ export default function ForgotPasswordPage() {
               {heading("Password changed", ["You can now log in with your new password"])}
               {primaryButton("Log in", true, () => router.push("/login"))}
             </>
+          )}
+          </>
           )}
         </div>
       </div>

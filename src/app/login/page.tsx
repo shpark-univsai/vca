@@ -11,14 +11,13 @@ const FIELD_BORDER = "1px solid var(--gray-300)";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [keepLoggedIn, setKeepLoggedIn] = useState(false);
 
-  const canSubmit = email.trim().length > 0 && password.length > 0;
-
   const authConfig = getAuthConfig();
+  const canSubmit = identifier.trim().length > 0 && password.length > 0;
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -32,8 +31,16 @@ export default function LoginPage() {
     // session/middleware layer here) since src/app/portal/ has its own auth work already in
     // progress — a real login needs to be wired up together with whatever session model that
     // settles on, not built separately here and reconciled later.
-    const matchedUser = useVcaStore.getState().portalUsers.find(
-      u => u.email.toLowerCase() === email.trim().toLowerCase()
+    // Matches an email, or an employee number where the deployment allows it — a site with no mail
+    // server often has no per-person address either, and the staff roster keys on employee number.
+    const typed = identifier.trim().toLowerCase();
+    const state = useVcaStore.getState();
+    const rosterMatch = authConfig.employeeIdLogin
+      ? state.staffRoster.find(r => r.employeeId.toLowerCase() === typed)
+      : undefined;
+    const matchedUser = state.portalUsers.find(
+      u => u.email.toLowerCase() === typed
+        || (!!rosterMatch && u.name.toLowerCase() === rosterMatch.name.toLowerCase())
     );
     router.push(matchedUser?.permission === "admin" ? "/portal" : "/");
   };
@@ -75,15 +82,18 @@ export default function LoginPage() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "32px", width: "100%" }}>
-              {/* Email */}
+              {/* Identifier — email, or an employee number where that is enabled */}
               <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
-                <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>Email</label>
+                <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>
+                  {authConfig.employeeIdLogin ? "Employee number or email" : "Email"}
+                </label>
                 <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px", border: FIELD_BORDER, borderRadius: "8px" }}>
                   <PersonFieldIcon />
                   <input
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="user@email.com"
+                    value={identifier}
+                    onChange={e => setIdentifier(e.target.value)}
+                    placeholder={authConfig.employeeIdLogin ? "EMP-2041 or user@email.com" : "user@email.com"}
+                    autoComplete="username"
                     style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                   />
                 </div>
@@ -143,31 +153,38 @@ export default function LoginPage() {
               >
                 Log in
               </button>
-              {/* What to tell someone with no account depends on which ways in this deployment
-                  has switched on — see lib/authConfig.ts. Note this stays plain text even when
-                  accessRequest is on: a request has to name the project the admin is approving
-                  access TO, and this screen has no project context, so the link opened the form in
-                  a state it could never submit from ("Project: not specified"). That path only
-                  works from the project link that bounced the visitor, which carries ?project=.
-                  Once a domain identifies the company before login, this can become a real link.
-                  (The Figma frame has no footer line here at all; this keeps one because a
-                  first-time visitor does ask the question.) */}
+              {/* Which way in to name depends on what this deployment has switched on — see
+                  lib/authConfig.ts. Deliberately not called "Sign up": /register does nothing
+                  without a code the administrator issued, so it is an activation step, not open
+                  registration, and labelling it as sign-up invites people who cannot proceed. */}
               <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", lineHeight: 1.6 }}>
-                Don&apos;t have an account?<br />
                 {authConfig.registrationCode ? (
                   <>
-                    Ask your administrator for a registration code, then{" "}
+                    Have a registration code?{" "}
                     <button
                       onClick={() => router.push("/register")}
                       style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
                     >
-                      create your account
-                    </button>.
+                      Activate your account
+                    </button>
                   </>
                 ) : authConfig.accessRequest
                   ? "Open the project link you were sent to request access."
                   : "Ask your administrator to send you an invitation."}
               </p>
+
+              {/* Standing notice, not an error. An operator should be able to tell at a glance that
+                  this is the internal system and not something reachable from outside, and be able
+                  to read who to call without hunting for it — on a closed network that phone number
+                  is the entire account-recovery path. */}
+              <div style={{ borderTop: "1px solid var(--gray-200)", paddingTop: "16px", marginTop: "4px" }}>
+                <p style={{ margin: 0, textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.24px", lineHeight: 1.7 }}>
+                  This system runs on a restricted internal network.<br />
+                  {authConfig.supportContact
+                    ? <>For an account or access, contact <strong style={{ color: "var(--gray-500)" }}>{authConfig.supportContact}</strong>.</>
+                    : "For an account or access, contact your security operations team."}
+                </p>
+              </div>
             </div>
           </div>
         </div>

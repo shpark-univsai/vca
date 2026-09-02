@@ -33,6 +33,18 @@ export interface AuthConfig {
    *   would need to say so instead of asking for an address.
    */
   passwordRecovery: "emailCode" | "adminOnly";
+  /**
+   * Who to reach when nobody can get in — printed at the foot of the login screen and on the
+   * password screen when recovery is "adminOnly". This is the whole recovery path in a deployment
+   * with no mail, so a wrong or missing value strands people.
+   *
+   * Null renders a generic line rather than a made-up extension: an invented contact is worse than
+   * none, because someone will try it.
+   */
+  supportContact: string | null;
+  /** Accept an employee number as well as an email at the login prompt. Deployments with no mail
+   *  often have no per-person address either, and the roster keys on employee number anyway. */
+  employeeIdLogin: boolean;
 }
 
 /**
@@ -51,5 +63,7 @@ export function getAuthConfig(): AuthConfig {
     selfSignup: false,
     registrationCode: true,
     passwordRecovery: "emailCode",
+    supportContact: null,
+    employeeIdLogin: true,
   };
 }
