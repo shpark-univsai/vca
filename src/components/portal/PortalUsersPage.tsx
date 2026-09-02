@@ -97,7 +97,10 @@ const T = {
     setupBadge: "Setup code",
     soleAdminTitle: "Only one administrator can sign in",
     soleAdminBody: "Granting permissions is an administrator-only power, and there is no supplier account behind this installation. If this one account is locked out, nobody can grant anything and there is no way back in. Make a second person an administrator.",
-    lastAdminReason: "The only administrator who can sign in. Make someone else an administrator first — with nobody in this role, no one can grant permissions and there is no way back in.",
+    // Two sentences, because this renders as a footnote inside a dropdown. The reasoning behind the
+    // rule — with nobody in this role no one can grant permissions and there is no way back in —
+    // belongs in isLastActiveAdmin's comment, not in a 280px menu.
+    lastAdminReason: "The only administrator who can sign in. Make someone else an administrator first.",
     tempExpires: (hours: number) => `Expires in ${hours} hours`,
     tempDone: "Done",
 
@@ -181,7 +184,7 @@ const T = {
     setupBadge: "설치 코드",
     soleAdminTitle: "로그인 가능한 관리자가 한 명입니다",
     soleAdminBody: "권한 부여는 관리자만 할 수 있고, 이 설치에는 공급사 계정이 없습니다. 이 한 계정이 잠기면 아무도 권한을 부여할 수 없고 되돌릴 방법도 없습니다. 두 번째 관리자를 지정하세요.",
-    lastAdminReason: "로그인할 수 있는 유일한 관리자입니다. 다른 사람을 먼저 관리자로 지정하세요 — 이 역할이 비면 아무도 권한을 부여할 수 없고 되돌릴 방법이 없습니다.",
+    lastAdminReason: "로그인할 수 있는 유일한 관리자입니다. 다른 사람을 먼저 관리자로 지정하세요.",
     reactivateUser: "사용자 재활성화",
     suspendUser: "사용자 정지",
     removeUser: "사용자 제거",

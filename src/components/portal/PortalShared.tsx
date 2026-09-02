@@ -45,6 +45,9 @@ interface RowAction {
    * Shown greyed out and unclickable, with `reason` explaining why. Kept in the menu rather than
    * removed: an action that quietly disappears looks like a missing feature, and the administrator
    * goes looking for it elsewhere. Present-but-refused says the system decided.
+   *
+   * Keep `reason` to a sentence or two. It renders as a footnote at the foot of the menu, not as a
+   * paragraph under the item — see RowActionsMenu.
    */
   disabled?: boolean;
   reason?: string;
@@ -100,7 +103,9 @@ export function FilterSelect({ value, onChange, options }: { value: string; onCh
       {open && (
         <div style={{
           position: "absolute", top: "100%", left: 0, marginTop: "4px", zIndex: 50,
-          backgroundColor: "white", border: BORDER, borderRadius: "8px", boxShadow: "0 8px 20px rgba(14,22,42,0.12)",
+          // Same radius and shadow as RowActionsMenu's dropdown — Portal has two menus and they
+          // should not be two designs.
+          backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "0 8px 20px rgba(14,22,42,0.12)",
           minWidth: "160px", maxHeight: "220px", overflowY: "auto",
         }}>
           {options.map(o => {
@@ -137,6 +142,10 @@ export function FilterSelect({ value, onChange, options }: { value: string; onCh
 export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const disabledReasons = Array.from(
+    new Set(actions.filter(a => a.disabled && a.reason).map(a => a.reason as string))
+  );
   useEscapeKey(() => setOpen(false), open);
 
   useEffect(() => {
@@ -150,7 +159,6 @@ export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
 
   return (
     <div ref={ref} style={{ position: "relative", justifySelf: "end" }}>
-      <style>{`.portal-menu-item:hover{background-color:var(--gray-100)}`}</style>
       <button
         onClick={() => setOpen(o => !o)}
         title="More actions"
@@ -165,34 +173,56 @@ export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
       {open && (
         <div style={{
           position: "absolute", top: "100%", right: 0, marginTop: "4px", zIndex: 50,
-          backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "0 8px 24px rgba(14,22,42,0.12)",
-          minWidth: "140px", padding: "4px",
+          backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "0 8px 20px rgba(14,22,42,0.12)",
+          // Sized to the longest label rather than to a guess. At 140px every label of more than
+          // two words wrapped, and the menu came out as a column of stacked half-sentences that
+          // looked like nothing else in the app. maxWidth only bounds the footnote below, which is
+          // the one thing in here that is meant to wrap.
+          minWidth: "180px", maxWidth: "280px", padding: "4px",
         }}>
           {actions.map(a => (
-            <div key={a.label}>
-              <button
-                className={a.disabled ? undefined : "portal-menu-item"}
-                disabled={a.disabled}
-                onClick={() => { if (a.disabled) return; a.onClick(); setOpen(false); }}
-                style={{
-                  display: "block", width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: "6px",
-                  border: "none", background: "none",
-                  cursor: a.disabled ? "default" : "pointer",
-                  fontSize: "12px", fontWeight: 600,
-                  color: a.disabled ? "var(--gray-400)" : a.danger ? "var(--danger-500)" : "var(--gray-600)",
-                }}
-              >
-                {a.label}
-              </button>
-              {/* The reason sits under the label instead of in a title attribute: a tooltip on a
-                  disabled control is unreliable across browsers, and this one has to be read. */}
-              {a.disabled && a.reason && (
-                <p style={{ margin: "0 0 4px", padding: "0 10px", fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5 }}>
-                  {a.reason}
-                </p>
-              )}
-            </div>
+            <button
+              key={a.label}
+              disabled={a.disabled}
+              onClick={() => { if (a.disabled) return; a.onClick(); setOpen(false); }}
+              onMouseEnter={() => setHovered(a.label)}
+              onMouseLeave={() => setHovered(null)}
+              style={{
+                display: "block", width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: "6px",
+                border: "none", whiteSpace: "nowrap",
+                // Hover used to be a `.portal-menu-item:hover` rule in a <style> tag, which never
+                // once fired: every item also carried an inline `background: none`, and an inline
+                // declaration outranks a class selector. Held in state instead, the same way
+                // FilterSelect's options below already do it.
+                backgroundColor: !a.disabled && hovered === a.label
+                  ? (a.danger ? "var(--danger-100)" : "var(--gray-100)")
+                  : "transparent",
+                cursor: a.disabled ? "default" : "pointer",
+                fontSize: "12px", fontWeight: 600,
+                color: a.disabled ? "var(--gray-400)" : a.danger ? "var(--danger-500)" : "var(--gray-600)",
+              }}
+            >
+              {a.label}
+            </button>
           ))}
+          {/* Why the greyed items are greyed, once at the foot of the menu — not repeated under
+              each one. Two actions refused for the same reason used to print the same paragraph
+              twice, which made a five-item menu taller than the table behind it. Deduplicated, so
+              a shared reason is stated once and genuinely different reasons still both appear.
+              Kept in the menu rather than moved to a title attribute: a tooltip on a disabled
+              control is unreliable across browsers, and this one has to be read. */}
+          {disabledReasons.length > 0 && (
+            <div style={{ borderTop: BORDER, marginTop: "4px", padding: "8px 10px 4px", display: "flex", flexDirection: "column", gap: "6px" }}>
+              {disabledReasons.map(reason => (
+                <div key={reason} style={{ display: "flex", gap: "6px" }}>
+                  <span style={{ flexShrink: 0, display: "flex", color: "var(--gray-400)", marginTop: "1px" }}>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3"/><path d="M8 4.6v4.2M8 10.9v.9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                  </span>
+                  <p style={{ margin: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.6 }}>{reason}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
