@@ -325,6 +325,42 @@ export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
   );
 }
 
+/**
+ * How many filters are narrowing what you are looking at, shown next to the filter controls.
+ *
+ * A toolbar of selects reading "All zones / Offline / All AI engines" states the same thing, but it
+ * states it in three places and only if you read them; the failure it prevents is the one where
+ * somebody filters to Offline, scrolls away, comes back later and reports that their cameras have
+ * disappeared. Renders nothing at zero — a badge saying "0" is chrome.
+ *
+ * Clicking it clears every filter, because the count is exactly the thing you want undone once you
+ * have noticed it.
+ */
+export function ActiveFilterCount({ count, onClear, label }: { count: number; onClear: () => void; label: string }) {
+  const [hovered, setHovered] = useState(false);
+  if (count === 0) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClear}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      title={label}
+      style={{
+        display: "flex", alignItems: "center", gap: "6px", flexShrink: 0,
+        height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "999px", cursor: "pointer",
+        border: "none", backgroundColor: hovered ? "var(--gray-200)" : "var(--gray-100)",
+        fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit",
+      }}
+    >
+      {label}
+      <span style={{ display: "flex", color: "var(--gray-500)" }}>
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+      </span>
+    </button>
+  );
+}
+
 // ── Sortable table headings ──────────────────────────────────────────────────
 
 export type SortDirection = "asc" | "desc";

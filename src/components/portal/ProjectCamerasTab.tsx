@@ -5,7 +5,7 @@ import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, proj
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, CARD_BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort } from "./PortalShared";
+import { BORDER, CARD_BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ActiveFilterCount } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -30,6 +30,8 @@ const T = {
     filterAllZones: "All zones",
     filterAllStatus: "All status",
     filterAllAiEngines: "All AI engines",
+    filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
+    clearFilters: "Clear all filters",
     viewTable: "Table",
     viewGrid: "Grid",
     colCamera: "Camera",
@@ -115,6 +117,8 @@ const T = {
     filterAllZones: "전체 구역",
     filterAllStatus: "전체 상태",
     filterAllAiEngines: "전체 AI 엔진",
+    filtersActive: (n: number) => `필터 ${n}개`,
+    clearFilters: "필터 모두 지우기",
     viewTable: "테이블",
     viewGrid: "그리드",
     colCamera: "카메라",
@@ -446,6 +450,10 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
   const projectCameras = cameras.filter(c => c.projectId === projectId);
   const zones = Array.from(new Set(projectCameras.map(c => c.zone).filter(Boolean)));
   const { sort, toggle: toggleSort } = useTableSort<CameraSortKey>({ key: "status", direction: "asc" });
+  // Search is not counted. It is visible as text in its own box and clearing it is obvious, whereas
+  // a select that says "Offline" looks like a heading until you look twice.
+  const activeFilterCount = [zoneFilter, statusFilter, aiFilter].filter(v => v !== "ALL").length;
+  const clearFilters = () => { setZoneFilter("ALL"); setStatusFilter("ALL"); setAiFilter("ALL"); };
 
   const q = search.trim().toLowerCase();
   const matchingCameras = projectCameras.filter(c => {
@@ -639,6 +647,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           onChange={v => setAiFilter(v as typeof aiFilter)}
           options={[{ value: "ALL", label: t.filterAllAiEngines }, ...AI_FEATURES.map(f => ({ value: f, label: t.aiFeatureLabels[f] }))]}
         />
+        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
         <div style={{ display: "flex", alignItems: "center", height: CONTROL_HEIGHT, boxSizing: "border-box", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px" }}>
           {(["table", "grid"] as const).map(v => (
             <button key={v} onClick={() => setView(v)}

@@ -8,7 +8,7 @@ import { formatElapsed } from "@/lib/time";
 import { TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ActiveFilterCount } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 
 const T = {
@@ -36,6 +36,7 @@ const T = {
     filterAllStatuses: "All statuses",
     emptyFiltered: "No users match these filters.",
     clearFilters: "Clear filters",
+    filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
 
     // Table
     colUser: "User",
@@ -187,6 +188,7 @@ const T = {
     filterAllStatuses: "전체 상태",
     emptyFiltered: "이 필터에 해당하는 사용자가 없습니다.",
     clearFilters: "필터 지우기",
+    filtersActive: (n: number) => `필터 ${n}개`,
 
     // Table
     colUser: "사용자",
@@ -954,7 +956,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   // left after filtering. Counting the filtered set instead would make the summary agree with the
   // table and stop being a summary — filter to "Suspended" and it would proudly report zero admins.
   const projectUsers = portalUsers.filter(u => u.projectIds.includes(projectId));
-  const filtersActive = permissionFilter !== "ALL" || statusFilter !== "ALL";
+  const activeFilterCount = [permissionFilter, statusFilter].filter(v => v !== "ALL").length;
+  const filtersActive = activeFilterCount > 0;
+  const clearFilters = () => { setPermissionFilter("ALL"); setStatusFilter("ALL"); };
   const filteredUsers = projectUsers
     .filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
     .filter(u => permissionFilter === "ALL" || u.permission === permissionFilter)
@@ -1066,6 +1070,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             { value: "suspended", label: t.statusSuspended },
           ]}
         />
+        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
       </div>
 
       {/* No overflow:hidden here — it used to clip the header row's flat corners to match the
@@ -1099,7 +1104,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 out is not discoverable from the empty table. Offer it here. */}
             {filtersActive && (
               <button
-                onClick={() => { setPermissionFilter("ALL"); setStatusFilter("ALL"); }}
+                onClick={clearFilters}
                 style={{ marginTop: "10px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}
               >
                 {t.clearFilters}
