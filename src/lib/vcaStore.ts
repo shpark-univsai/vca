@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { liveEvents, getFacePhoto, DISTRICTS, type EventType, type LiveEvent, type TrackingHop } from "@/lib/mockData";
 import { isTodaySgt, recentSgtStamp, parseSgtStamp } from "@/lib/time";
 import { generateRegistrationCode, type RosterEntry } from "@/lib/staffRoster";
+import { generateTemporaryPassword } from "@/lib/password";
 
 // Deterministic pseudo-random in [0,1) — same formula as mockData.ts's own seededRandom — used
 // below to bulk-generate cameras without Math.random(), which would differ between the
@@ -238,6 +239,19 @@ interface VcaStoreState {
   updatePortalUserPermission: (userId: string, permission: PortalPermission) => void;
   updatePortalUserProjects: (userId: string, projectIds: string[]) => void;
   updatePortalUserStatus: (userId: string, status: PortalUserStatus) => void;
+  /**
+   * Issue a temporary password for an account and return the plaintext, once. Returns null when
+   * there is no such user, so the caller shows nothing rather than an empty credential box.
+   *
+   * HANDOFF NOTE: the plaintext is generated and returned here only because there is no backend.
+   * The real call is a POST to the reset endpoint that returns the password the *server* generated
+   * — see generateTemporaryPassword()'s note. Nothing but the issuing modal may ever read the
+   * return value, and it is deliberately not stored: the store keeps the timestamp and the
+   * must-change flag, never the password itself, so no later screen can redisplay it.
+   */
+  issueTemporaryPassword: (userId: string) => string | null;
+  /** Called once the user has set a password of their own — retires the temporary one. */
+  clearTemporaryPassword: (userId: string) => void;
   removePortalUser: (userId: string) => void;
   requestAccess: (request: Omit<AccessRequest, "id" | "requestedAt">) => void;
   approveAccessRequests: (requestIds: string[]) => string[];
@@ -337,6 +351,19 @@ export interface PortalUser {
   // it's finishing the right person's signup and land them straight in the app afterward instead
   // of bouncing through /login. Cleared once the invite is completed (status becomes "active").
   inviteToken?: string;
+  /**
+   * When an administrator last issued a temporary password for this account (the recovery path for
+   * a deployment with no outbound mail — see authConfig's passwordRecovery: "adminOnly"). Kept so
+   * the Users table can show, at a glance, who is still sitting on a credential a second person has
+   * seen. Cleared the moment they set their own.
+   */
+  tempPasswordIssuedAt?: string;
+  /**
+   * Forces the set-a-new-password step at the next login instead of letting them in. A temporary
+   * password is known to whoever read it out, so an account that keeps one is an account with a
+   * shared password.
+   */
+  mustChangePassword?: boolean;
 }
 
 // Someone who found a project link but has no access yet, asking a Portal admin to grant it —
@@ -854,6 +881,40 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     set(state => ({ portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, projectIds } : u)) })),
   updatePortalUserStatus: (userId, status) =>
     set(state => ({ portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, status } : u)) })),
+  issueTemporaryPassword: (userId) => {
+    const user = get().portalUsers.find(u => u.id === userId);
+    if (!user) return null;
+    const password = generateTemporaryPassword();
+    // Logged, and worded so the log says what actually happened. Setting someone else's credential
+    // is the one recovery path where a second person knows the password, so "who did this, to
+    // whom, when" is the only thing standing behind it afterwards. The password itself is of
+    // course never written here.
+    const auditEntry: AuditEvent = {
+      id: `audit-${++auditSeq}`, projectId: user.projectIds[0],
+      message: `Temporary password issued for ${user.name} (${user.email}) — previous password invalidated`,
+      actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+    };
+    // Status is deliberately left alone. An invited user who never got their mail can be handed a
+    // temporary password too, and flipping them to "active" here would claim they had completed a
+    // signup they have not started — they are still invited until they set their own password.
+    set(state => ({
+      portalUsers: state.portalUsers.map(u =>
+        u.id === userId
+          ? { ...u, tempPasswordIssuedAt: new Date().toISOString(), mustChangePassword: true }
+          : u
+      ),
+      auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+    }));
+    return password;
+  },
+  clearTemporaryPassword: (userId) =>
+    set(state => ({
+      portalUsers: state.portalUsers.map(u =>
+        u.id === userId
+          ? { ...u, tempPasswordIssuedAt: undefined, mustChangePassword: false }
+          : u
+      ),
+    })),
   removePortalUser: (userId) =>
     set(state => {
       const user = state.portalUsers.find(u => u.id === userId);

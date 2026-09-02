@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import { getAuthConfig } from "@/lib/authConfig";
@@ -8,19 +8,50 @@ import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon } from "@/component
 import { useVcaStore } from "@/lib/vcaStore";
 
 const FIELD_BORDER = "1px solid var(--gray-300)";
+/** Only ever holds the identifier. Never the password, never a session token. */
+const REMEMBERED_ID_KEY = "vca.rememberedId";
 
 export default function LoginPage() {
   const router = useRouter();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [keepLoggedIn, setKeepLoggedIn] = useState(false);
+  // Remembers the identifier only, never the password, and never the session. A control room runs
+  // shifts on shared workstations, so "keep me logged in" would hand the next person the previous
+  // person's account — the saving it offers is one field, the cost is an unattended session.
+  const [rememberId, setRememberId] = useState(false);
+
+  // Restored after mount rather than during render: the server has no localStorage, so seeding
+  // useState from it would make the server and client markup disagree. queueMicrotask keeps the
+  // write out of the effect body, which the set-state-in-effect rule forbids.
+  useEffect(() => {
+    queueMicrotask(() => {
+      try {
+        const saved = localStorage.getItem(REMEMBERED_ID_KEY);
+        if (saved) {
+          setIdentifier(saved);
+          setRememberId(true);
+        }
+      } catch {
+        // Private windows and locked-down browser policies throw on access. Nothing to recover —
+        // the field simply starts empty, which is the same as never having saved one.
+      }
+    });
+  }, []);
 
   const authConfig = getAuthConfig();
   const canSubmit = identifier.trim().length > 0 && password.length > 0;
 
   const handleSubmit = () => {
     if (!canSubmit) return;
+
+    try {
+      if (rememberId) localStorage.setItem(REMEMBERED_ID_KEY, identifier.trim());
+      else localStorage.removeItem(REMEMBERED_ID_KEY);
+    } catch {
+      // Not being able to remember the identifier is not a reason to block the sign-in.
+    }
+
     // No real backend yet — mock the post-login permission branch off the Portal user registry
     // (see project-vca-auth-routing-plan memory) so Portal is reachable straight from login,
     // not only via the VCA app's Navbar "Portal" switch-over item.
@@ -122,11 +153,13 @@ export default function LoginPage() {
                 <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                   <input
                     type="checkbox"
-                    checked={keepLoggedIn}
-                    onChange={e => setKeepLoggedIn(e.target.checked)}
+                    checked={rememberId}
+                    onChange={e => setRememberId(e.target.checked)}
                     style={{ width: "20px", height: "20px", accentColor: "var(--primary-400)", cursor: "pointer" }}
                   />
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>Keep me logged in</span>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
+                    {authConfig.employeeIdLogin ? "Remember my employee number" : "Remember my email"}
+                  </span>
                 </label>
                 {/* /password-setup went straight to the set-a-new-password form, with no proof
                     the visitor owns the account and nothing mailed to anyone. It now asks for the

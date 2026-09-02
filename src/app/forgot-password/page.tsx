@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import VerificationCodeInput from "@/components/VerificationCodeInput";
-import { isPasswordFormatValid, PASSWORD_RULE_TEXT, RESET_CODE_LENGTH } from "@/lib/password";
+import { isPasswordFormatValid, PASSWORD_RULE_TEXT, RESET_CODE_LENGTH, RESET_CODE_TTL_MIN } from "@/lib/password";
 import { getAuthConfig } from "@/lib/authConfig";
 
 const FIELD_BORDER = "1px solid var(--gray-300)";
@@ -30,9 +30,9 @@ type CodeFailure = "wrong" | "expired" | "throttled" | "resendLimit";
 
 const CODE_FAILURE_TEXT: Record<Exclude<CodeFailure, "throttled">, string> = {
   wrong: "That code is not correct. Check the mail and try again.",
-  // OPEN QUESTION for the backend: how long is a code good for, and should the screen say so? Ten
-  // minutes is assumed here. Saying it out loud stops people retrying a code from an hour ago.
-  expired: "That code has expired. Codes last about 10 minutes — request a new one.",
+  // The screen states this up front too (see the code step), so the two must not drift — both read
+  // RESET_CODE_TTL_MIN. HANDOFF NOTE: the backend has to enforce the same number.
+  expired: `That code has expired. Codes last ${RESET_CODE_TTL_MIN} minutes — request a new one.`,
   resendLimit: "You have requested the maximum number of codes. Try again later.",
 };
 
@@ -343,9 +343,11 @@ function ForgotPasswordFlow() {
 
           {step === "code" && codeFailure !== "throttled" && (
             <>
+              {/* The deadline replaces "Type it in below", which the boxes already say. Someone who
+                  walks to another machine to read the mail needs to know they are on a clock. */}
               {heading("Enter your verification code", [
                 `We sent an ${RESET_CODE_LENGTH}-digit code to ${email.trim()}`,
-                "Type it in below",
+                `It expires in ${RESET_CODE_TTL_MIN} minutes`,
               ])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>

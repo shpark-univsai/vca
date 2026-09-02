@@ -29,8 +29,10 @@ export interface AuthConfig {
    * How a forgotten password is recovered.
    * - "emailCode": the 8-digit code flow at /forgot-password. Needs outbound mail.
    * - "adminOnly": no self-service. A company with no mail at all has no way to send a code, so an
-   *   administrator has to set the password and hand it over in person. NOT BUILT — /forgot-password
-   *   would need to say so instead of asking for an address.
+   *   administrator issues a temporary password from Portal (Users & Permissions -> row actions ->
+   *   "Generate temporary password") and hands it over by phone, in person, or on internal
+   *   messenger. /forgot-password says so instead of asking for an address, and Portal hides its
+   *   mail-dependent actions. Both halves are built.
    */
   passwordRecovery: "emailCode" | "adminOnly";
   /**
@@ -66,4 +68,16 @@ export function getAuthConfig(): AuthConfig {
     supportContact: null,
     employeeIdLogin: true,
   };
+}
+
+/**
+ * Whether this installation can put mail on the wire at all.
+ *
+ * Two flags above describe the same underlying fact — there either is an SMTP relay reachable from
+ * this network or there is not — and every mail-dependent affordance should ask this rather than
+ * pick one of them. If the two ever disagree the deployment is misconfigured, so the stricter
+ * answer wins: offering a button that silently sends nothing is the failure that strands people.
+ */
+export function hasOutboundMail(config: AuthConfig = getAuthConfig()): boolean {
+  return config.inviteByEmail && config.passwordRecovery === "emailCode";
 }

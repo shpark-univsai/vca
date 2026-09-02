@@ -40,6 +40,7 @@ const T = {
     // Row actions
     resendInvite: "Resend invite",
     sendPasswordReset: "Send password reset",
+    generateTempPassword: "Generate temporary password",
     reactivateUser: "Reactivate user",
     suspendUser: "Suspend user",
     removeUser: "Remove user",
@@ -48,9 +49,43 @@ const T = {
     inviteResentTitle: "Invite resent",
     resetCodeSentTitle: "Reset code sent",
     resetCodeSentDesc: (email: string) => `To ${email}`,
+    tempIssuedTitle: "Temporary password issued",
+    tempIssuedDesc: (name: string) => `${name} must set their own password at next login`,
     userReactivatedTitle: "User reactivated",
     userSuspendedTitle: "User suspended",
     userSuspendedDesc: (name: string) => `${name} can no longer sign in`,
+
+    // Temporary password badge (status column)
+    tempBadge: "Temp password",
+    tempBadgeExpired: "Temp password expired",
+    tempBadgeTitle: (when: string) => `Issued ${when} — not yet changed by the user`,
+
+    // Temporary password modal — confirm step
+    tempModalTitle: "Generate temporary password",
+    tempForLabel: "FOR",
+    tempConfirmIntro: "Use this when the person cannot receive a reset code — no mail server here, or they have lost access to their mailbox.",
+    tempConsequenceInvalidate: "Their current password stops working the moment you generate this.",
+    tempConsequenceOnce: "The new password is shown once, on the next screen. It is never stored and cannot be looked up again.",
+    tempConsequenceMustChange: "They must set a password of their own the first time they log in with it.",
+    tempConsequenceExpiry: (hours: number) => `It stops working after ${hours} hours, used or not.`,
+    tempGenerate: "Generate",
+
+    // Temporary password modal — result step
+    tempResultTitle: "Temporary password",
+    tempResultFor: (name: string) => `For ${name}`,
+    tempShownOnce: "This is the only time it is shown. Close this box and it is gone.",
+    tempCopy: "Copy",
+    tempCopied: "Copied",
+    tempHandoverTitle: "HANDING IT OVER",
+    tempHandover: "Read it out on the internal line, or hand it over in person or on internal messenger. Do not email it — mail is exactly what this path exists to avoid.",
+    tempExpires: (hours: number) => `Expires in ${hours} hours`,
+    tempDone: "Done",
+
+    // Recovery-mode notice (deployment with no outbound mail)
+    recoveryNoticeTitle: "Self-service password reset is off for this installation",
+    recoveryNoticeBody: "There is no outbound mail here, so no reset code can be sent to anyone. A locked-out user calls the contact below, and an administrator issues them a temporary password from the row actions.",
+    recoveryNoticeContactLabel: "THEY CALL",
+    recoveryNoticeContactFallback: "Your security operations team",
 
     // Invite modal
     modalTitle: "Invite user",
@@ -109,6 +144,7 @@ const T = {
     // Row actions
     resendInvite: "초대 재전송",
     sendPasswordReset: "비밀번호 재설정 코드 전송",
+    generateTempPassword: "임시 비밀번호 생성",
     reactivateUser: "사용자 재활성화",
     suspendUser: "사용자 정지",
     removeUser: "사용자 제거",
@@ -117,9 +153,43 @@ const T = {
     inviteResentTitle: "초대 재전송됨",
     resetCodeSentTitle: "재설정 코드 전송됨",
     resetCodeSentDesc: (email: string) => `${email}로 전송됨`,
+    tempIssuedTitle: "임시 비밀번호가 발급됨",
+    tempIssuedDesc: (name: string) => `${name} 님은 다음 로그인 시 직접 비밀번호를 설정해야 합니다`,
     userReactivatedTitle: "사용자가 재활성화됨",
     userSuspendedTitle: "사용자가 정지됨",
     userSuspendedDesc: (name: string) => `${name} 님은 더 이상 로그인할 수 없습니다`,
+
+    // Temporary password badge (status column)
+    tempBadge: "임시 비밀번호",
+    tempBadgeExpired: "임시 비밀번호 만료됨",
+    tempBadgeTitle: (when: string) => `${when} 발급 — 사용자가 아직 변경하지 않음`,
+
+    // Temporary password modal — confirm step
+    tempModalTitle: "임시 비밀번호 생성",
+    tempForLabel: "대상",
+    tempConfirmIntro: "재설정 코드를 받을 수 없는 경우에 사용하세요 — 메일 서버가 없거나, 본인 메일함에 접근할 수 없는 상황입니다.",
+    tempConsequenceInvalidate: "생성하는 즉시 기존 비밀번호는 사용할 수 없게 됩니다.",
+    tempConsequenceOnce: "새 비밀번호는 다음 화면에 한 번만 표시됩니다. 저장되지 않으며 다시 확인할 수 없습니다.",
+    tempConsequenceMustChange: "사용자는 이 비밀번호로 처음 로그인할 때 반드시 본인 비밀번호를 새로 설정해야 합니다.",
+    tempConsequenceExpiry: (hours: number) => `사용 여부와 관계없이 ${hours}시간 후 만료됩니다.`,
+    tempGenerate: "생성",
+
+    // Temporary password modal — result step
+    tempResultTitle: "임시 비밀번호",
+    tempResultFor: (name: string) => `${name} 님`,
+    tempShownOnce: "지금 한 번만 표시됩니다. 이 창을 닫으면 다시 볼 수 없습니다.",
+    tempCopy: "복사",
+    tempCopied: "복사됨",
+    tempHandoverTitle: "전달 방법",
+    tempHandover: "내선 전화로 불러주거나, 대면 또는 사내 메신저로 전달하세요. 이메일로는 보내지 마세요 — 메일을 쓸 수 없어서 존재하는 경로입니다.",
+    tempExpires: (hours: number) => `${hours}시간 후 만료`,
+    tempDone: "완료",
+
+    // Recovery-mode notice (deployment with no outbound mail)
+    recoveryNoticeTitle: "이 설치 환경에서는 셀프 비밀번호 재설정이 꺼져 있습니다",
+    recoveryNoticeBody: "외부로 나가는 메일이 없어 재설정 코드를 보낼 수 없습니다. 로그인하지 못하는 사용자는 아래 연락처로 문의하고, 관리자가 행 메뉴에서 임시 비밀번호를 발급해 전달합니다.",
+    recoveryNoticeContactLabel: "문의처",
+    recoveryNoticeContactFallback: "관제 센터 보안 관리자",
 
     // Invite modal
     modalTitle: "사용자 초대",
