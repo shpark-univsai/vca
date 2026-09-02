@@ -6,6 +6,17 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 
 export const BORDER = "1px solid var(--gray-200)";
+/**
+ * Cards on the Portal's gray-100 surface carry no outline of their own — white against that ground
+ * is the whole separation. Every card used to draw a gray-200 border as well, and with dividers
+ * inside them, a bordered table header, bordered rows and bordered controls all stacking up, the
+ * page was mostly lines. Removing the outermost of them costs nothing legible and takes a whole
+ * layer of ruling out.
+ *
+ * Written as a named constant rather than by deleting the property, so a card still declares what
+ * its edge is and one edit brings the outline back everywhere if it turns out to be needed.
+ */
+export const CARD_BORDER = "none";
 // Every control that can sit on a toolbar row — search input, FilterSelect, pill buttons, the
 // table/grid segmented toggle — is this tall, so a row of them lines up regardless of padding
 // or font size. Set the height, not the vertical padding.

@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useVcaStore, seededRandom, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
-import { BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage, type PortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
@@ -206,8 +206,12 @@ function MetricCard({ label, iconBg, iconColor, icon, children }: {
 }) {
   const Icon = icon;
   return (
-    <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "16px", display: "flex", flexDirection: "column", gap: "12px", flex: 1, minWidth: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    // The card's own gap is the space between the big value and the bar under it — halved to 6,
+    // because the number and the bar are one statement and 12 read as two. The other two gaps are
+    // not: the eyebrow above and the footer below each add 6 back, so they stay where they were.
+    // Doing it here rather than per card is what keeps the four identical.
+    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "16px", display: "flex", flexDirection: "column", gap: "6px", flex: 1, minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
         <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px" }}>{label.toUpperCase()}</p>
         <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
           <Icon />
@@ -381,7 +385,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
                 </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
                 <SubStat color="var(--success-400)" label={t.onlineCount(onlineCount)} />
                 <SubStat color="var(--danger-400)" label={t.offlineCount(offlineCount)} />
               </div>
@@ -397,7 +401,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--info-500)" }} />
                 </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{project.licensePlan ?? t.planNotSet}</p>
                   <button onClick={() => onTabChange("license")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
@@ -426,7 +430,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)", width: "100%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.vipDbSubtitle}</p>
               </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
                 <p style={{ fontSize: "12px", color: "var(--primary-400)", fontWeight: 600 }}>{t.highPriorityLabel(highPriorityVipCount)}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.registeredTodayLabel(todayVipCount)}</p>
               </div>
@@ -460,7 +464,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <p style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.allAccountsActive}</p>
                 )}
               </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.adminOperatorLabel(adminCount, operatorCount)}</p>
                 <button onClick={() => onTabChange("users")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.manage}</button>
               </div>
@@ -477,7 +481,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               push the rest of the page off the fold — past that, each panel scrolls its own list. */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: CARD_GAP, alignItems: "stretch", maxHeight: OVERVIEW_PANEL_MAX_HEIGHT, marginBottom: CARD_GAP }}>
             <div style={{ gridColumn: "1 / span 2", display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
-              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: BORDER, flexWrap: "wrap", gap: "10px", flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--info-100)", color: "var(--info-500)", flexShrink: 0 }}><VideoIcon /></span>
@@ -548,7 +552,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             {/* Same width as the VIP / Target DB metric card above it (grid column 3 only, not
                 spanning) — sits directly underneath rather than sharing a row with Camera Status. */}
             <div style={{ gridColumn: "3 / span 1", display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
-              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px", flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--primary-100)", color: "var(--primary-400)", flexShrink: 0 }}><UsersGroupIcon /></span>
@@ -582,7 +586,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 so turning the flag off later cannot strand someone who already asked. */}
             <div style={{ gridColumn: "4 / span 1", display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
               {showAccessRequests && (
-              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px" }}>
+              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{ display: "flex", color: "var(--warning-500)" }}><ShieldIcon /></span>
@@ -624,7 +628,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
               )}
 
-              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px", flexShrink: 0 }}>
                   <span style={{ display: "flex", color: "var(--gray-500)" }}><ClockIcon /></span>
                   <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px" }}>{t.recentAdminActivity}</p>
