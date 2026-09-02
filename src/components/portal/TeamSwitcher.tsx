@@ -16,11 +16,9 @@ const T = {
 
     // New team modal
     modalTitle: "New team",
-    modalIntro: "A team keeps its own projects, users and mail settings.",
     nameLabel: "Team name",
     namePlaceholder: "e.g. Northgate Education Trust",
     industryLabel: "Primary industry",
-    industryHint: "Decides which solution this team's projects are built from.",
     cancel: "Cancel",
     create: "Create team",
   },
@@ -33,11 +31,9 @@ const T = {
 
     // New team modal
     modalTitle: "새 팀",
-    modalIntro: "팀은 프로젝트, 사용자, 메일 설정을 각자 따로 가집니다.",
     nameLabel: "팀 이름",
     namePlaceholder: "예: Northgate Education Trust",
     industryLabel: "주요 산업",
-    industryHint: "이 팀의 프로젝트가 어떤 솔루션으로 만들어질지 결정합니다.",
     cancel: "취소",
     create: "팀 만들기",
   },
@@ -198,14 +194,15 @@ export default function TeamSwitcher({ currentTeamId, onSelect }: TeamSwitcherPr
  * Creating a team was only possible at signup, so an installation was stuck with whatever it was
  * named on day one.
  *
- * Name, and one optional hint about what the team does. It started out also asking for a region and
- * a mail domain and was the heaviest create-a-team box of any console we looked at — every one of
- * them (Devin, Framer, Miro, Tally, Mistral, PandaDoc, Notion) asks for a name and at most a couple
- * of extras, because at the moment a team is created most of its settings are not yet knowable.
- * Region went because nothing in the app ever reads Team.region. Mail domain went because it is
- * already editable, with far better context, in the project's Server & API tab — and the hint under
- * it here literally said "leave it empty if you are not sure yet", which is the field telling you
- * it does not belong on this screen.
+ * Two required fields and nothing else. It started out asking for a region and a mail domain too,
+ * and carried a paragraph explaining what a team is — the heaviest create-a-team box of any console
+ * we looked at, where the usual shape (Devin, Framer, Miro, Tally, Mistral, PandaDoc, Notion) is a
+ * name and at most a couple of extras, because at the moment a team is created most of its settings
+ * are not yet knowable. Region went because nothing in the app ever reads Team.region. Mail domain
+ * went because it is already editable, with far better context, in the project's Server & API tab —
+ * and the hint under it here literally said "leave it empty if you are not sure yet", which is the
+ * field telling you it does not belong on this screen. The prose went because two labelled required
+ * fields already say what this makes; Framer's is exactly this bare and reads fine.
  *
  * On success the shell switches to the new team, which has no projects yet and therefore lands on
  * the empty state inviting the first one. That is the intended next step, not a dead end.
@@ -243,7 +240,6 @@ function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
         </div>
 
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-          <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>{t.modalIntro}</p>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
               {t.nameLabel} <span style={{ color: "var(--danger-400)" }}>*</span>
@@ -284,7 +280,6 @@ function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
                 );
               })}
             </div>
-            <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.6 }}>{t.industryHint}</p>
           </div>
         </div>
 
