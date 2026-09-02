@@ -6,6 +6,10 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 
 export const BORDER = "1px solid var(--gray-200)";
+// Every control that can sit on a toolbar row — search input, FilterSelect, pill buttons, the
+// table/grid segmented toggle — is this tall, so a row of them lines up regardless of padding
+// or font size. Set the height, not the vertical padding.
+export const CONTROL_HEIGHT = "36px";
 export const PANEL_SHADOW = "none";
 
 export const TYPE_META: Record<ProjectType, { label: string; bg: string; color: string }> = {
@@ -76,7 +80,7 @@ export function FilterSelect({ value, onChange, options }: { value: string; onCh
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px",
           width: "100%", boxSizing: "border-box",
-          height: "32px", padding: "0 10px", borderRadius: "8px",
+          height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "10px",
           border: hovered ? "1px solid var(--gray-400)" : BORDER,
           backgroundColor: "white", cursor: "pointer", whiteSpace: "nowrap",
         }}

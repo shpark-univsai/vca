@@ -5,7 +5,7 @@ import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, proj
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -26,7 +26,7 @@ const T = {
     aiMappedSuffix: (total: number) => `/ ${total} mapped`,
     metricZoneCoverage: "Zone Coverage",
     zonesSuffix: "zones",
-    searchPlaceholder: "Search name, code, RTSP URL, IP…",
+    searchPlaceholder: "Search by camera name, code, RTSP URL, or IP address",
     filterAllZones: "All zones",
     filterAllStatus: "All status",
     filterAllAiEngines: "All AI engines",
@@ -111,7 +111,7 @@ const T = {
     aiMappedSuffix: (total: number) => `/ ${total} 매핑됨`,
     metricZoneCoverage: "구역 커버리지",
     zonesSuffix: "구역",
-    searchPlaceholder: "이름, 코드, RTSP URL, IP로 검색…",
+    searchPlaceholder: "카메라 이름, 코드, RTSP URL, IP 주소로 검색",
     filterAllZones: "전체 구역",
     filterAllStatus: "전체 상태",
     filterAllAiEngines: "전체 AI 엔진",
@@ -602,7 +602,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             style={{
-              width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px",
+              width: "100%", boxSizing: "border-box", height: CONTROL_HEIGHT, padding: "0 10px 0 30px", borderRadius: "10px",
               border: searchFocused ? "1px solid var(--gray-400)" : BORDER, outline: "none",
               boxShadow: searchFocused ? "0 0 0 3px var(--gray-100)" : "none",
               fontSize: "12px", fontFamily: "inherit", backgroundColor: "white",
@@ -624,11 +624,11 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           onChange={v => setAiFilter(v as typeof aiFilter)}
           options={[{ value: "ALL", label: t.filterAllAiEngines }, ...AI_FEATURES.map(f => ({ value: f, label: t.aiFeatureLabels[f] }))]}
         />
-        <div style={{ display: "flex", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px" }}>
+        <div style={{ display: "flex", alignItems: "center", height: CONTROL_HEIGHT, boxSizing: "border-box", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px" }}>
           {(["table", "grid"] as const).map(v => (
             <button key={v} onClick={() => setView(v)}
               style={{
-                padding: "6px 10px", borderRadius: "8px", border: "none", cursor: "pointer",
+                height: "100%", padding: "0 10px", borderRadius: "8px", border: "none", cursor: "pointer",
                 backgroundColor: view === v ? "white" : "transparent", boxShadow: view === v ? PANEL_SHADOW : "none",
                 fontSize: "12px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
               }}>

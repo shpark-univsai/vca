@@ -6,7 +6,7 @@ import { getFacePhoto } from "@/lib/mockData";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, PANEL_SHADOW, FilterSelect } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, PANEL_SHADOW, FilterSelect } from "./PortalShared";
 
 const ROLE_LABELS = ["Regular", "Lead", "Captain", "Health", "Special"];
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -58,7 +58,7 @@ const T: Record<"en" | "ko", VipDict> = {
     pageDesc: "Register watchlist individuals for this project's cameras to detect.",
     bulkUpload: "Bulk Upload",
     registerVip: "Register VIP",
-    searchPlaceholder: "Search name…",
+    searchPlaceholder: "Search by VIP name",
     noSearchResults: "No VIPs match this search.",
     noVips: "No VIPs registered for this project yet.",
     registered: (date: string) => `Registered ${date}`,
@@ -89,7 +89,7 @@ const T: Record<"en" | "ko", VipDict> = {
     pageDesc: "이 프로젝트의 카메라가 탐지할 관심인물을 등록하세요.",
     bulkUpload: "일괄 업로드",
     registerVip: "VIP 등록하기",
-    searchPlaceholder: "이름 검색…",
+    searchPlaceholder: "VIP 이름으로 검색",
     noSearchResults: "검색 결과와 일치하는 VIP가 없습니다.",
     noVips: "이 프로젝트에 등록된 VIP가 아직 없습니다.",
     registered: (date: string) => `등록일 ${date}`,
@@ -349,7 +349,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setSearchFocused(false)}
           style={{
-            width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px",
+            width: "100%", boxSizing: "border-box", height: CONTROL_HEIGHT, padding: "0 10px 0 30px", borderRadius: "10px",
             border: searchFocused ? "1px solid var(--gray-400)" : BORDER, outline: "none",
             boxShadow: searchFocused ? "0 0 0 3px var(--gray-100)" : "none",
             fontSize: "12px", fontFamily: "inherit", backgroundColor: "white",

@@ -5,7 +5,7 @@ import { useVcaStore, isNetworkIsolated, type PortalPermission, type PortalUserS
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { useToast } from "../Toast";
-import { BORDER, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 
 const T = {
@@ -16,7 +16,7 @@ const T = {
     descScopedSuffix: "",
     descUnscoped: "Grant Portal (admin) or app (operator) access and scope users to projects.",
     inviteUser: "Invite user",
-    searchPlaceholder: "Search users…",
+    searchPlaceholder: "Search by user name or email address",
 
     // Table
     colUser: "User",
@@ -85,7 +85,7 @@ const T = {
     descScopedSuffix: "프로젝트에 접근 권한이 있는 사용자를 표시합니다.",
     descUnscoped: "포털(관리자) 또는 앱(운영자) 접근 권한을 부여하고, 사용자가 이용할 프로젝트를 지정하세요.",
     inviteUser: "사용자 초대",
-    searchPlaceholder: "사용자 검색…",
+    searchPlaceholder: "사용자 이름 또는 이메일 주소로 검색",
 
     // Table
     colUser: "사용자",
@@ -440,7 +440,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setSearchFocused(false)}
           style={{
-            width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px",
+            width: "100%", boxSizing: "border-box", height: CONTROL_HEIGHT, padding: "0 10px 0 30px", borderRadius: "10px",
             border: searchFocused ? "1px solid var(--gray-400)" : BORDER, outline: "none",
             boxShadow: searchFocused ? "0 0 0 3px var(--gray-100)" : "none",
             fontSize: "12px", fontFamily: "inherit", backgroundColor: "white",

@@ -5,7 +5,7 @@ import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type Se
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
 
 const SERVER_TYPES: ServerType[] = ["AI Camera", "Normal Camera", "Face Recognition", "Image Store", "Database"];
 
@@ -584,7 +584,7 @@ const MAIN_T = {
     title: "Server & API Management",
     desc: "Configure core infrastructure nodes, network reachability and outgoing mail, and view API documentation.",
     subTabInfra: "Infrastructure", subTabMail: "Mail & Network", subTabApi: "API Documentation",
-    searchPlaceholder: "Search server name or IP…",
+    searchPlaceholder: "Search by server name or IP address",
     allTypes: "All types", reset: "Reset", addServer: "Add server",
     emptyNoServers: "No servers configured for this project yet.",
     emptyNoMatch: "No servers match these filters.",
@@ -599,7 +599,7 @@ const MAIN_T = {
     title: "서버 및 API 관리",
     desc: "핵심 인프라 노드, 네트워크 연결 상태, 발신 메일을 설정하고 API 문서를 확인하세요.",
     subTabInfra: "인프라", subTabMail: "메일 및 네트워크", subTabApi: "API 문서",
-    searchPlaceholder: "서버 이름 또는 IP 검색…",
+    searchPlaceholder: "서버 이름 또는 IP 주소로 검색",
     allTypes: "전체 유형", reset: "초기화", addServer: "서버 추가",
     emptyNoServers: "이 프로젝트에 아직 설정된 서버가 없습니다.",
     emptyNoMatch: "필터와 일치하는 서버가 없습니다.",
@@ -716,17 +716,17 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder={t.searchPlaceholder}
-                style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px", border: BORDER, fontSize: "12px", fontFamily: "inherit", backgroundColor: "white" }}
+                style={{ width: "100%", boxSizing: "border-box", height: CONTROL_HEIGHT, padding: "0 10px 0 30px", borderRadius: "10px", border: BORDER, fontSize: "12px", fontFamily: "inherit", backgroundColor: "white" }}
               />
             </div>
             <FilterSelect value={typeFilter} onChange={v => setTypeFilter(v as typeof typeFilter)}
               options={[{ value: "ALL", label: t.allTypes }, ...SERVER_TYPES.map(ty => ({ value: ty, label: ty }))]} />
             <button onClick={resetFilters}
-              style={{ padding: "9px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
               {t.reset}
             </button>
             <button onClick={() => setShowAdd(true)}
-              style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
               {t.addServer}
             </button>
