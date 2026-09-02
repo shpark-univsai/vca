@@ -1002,9 +1002,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
 
       {!mailAvailable && <RecoveryModeNotice supportContact={authConfig.supportContact} />}
 
+      <UserCountStrip users={projectUsers} />
+
       <AccessRequestsPanel projectId={projectId} />
 
-      <div style={{ position: "relative", marginBottom: "12px", maxWidth: "320px" }}>
+      {/* Search on the left, filters on the right — the Vimeo Members arrangement, and the same one
+          the Cameras tab already uses, so the two toolbars in Portal finally read the same way. */}
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
+      <div style={{ position: "relative", flex: 1, minWidth: "220px", maxWidth: "320px" }}>
         <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
         </span>
@@ -1023,6 +1028,29 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         />
       </div>
 
+        <div style={{ flex: 1 }} />
+        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", flexShrink: 0 }}>{t.filterBy}</span>
+        <FilterSelect
+          value={permissionFilter}
+          onChange={v => setPermissionFilter(v as PortalPermission | "ALL")}
+          options={[
+            { value: "ALL", label: t.filterAllPermissions },
+            { value: "admin", label: t.permAdmin },
+            { value: "operator", label: t.permOperator },
+          ]}
+        />
+        <FilterSelect
+          value={statusFilter}
+          onChange={v => setStatusFilter(v as PortalUserStatus | "ALL")}
+          options={[
+            { value: "ALL", label: t.filterAllStatuses },
+            { value: "active", label: t.statusActive },
+            { value: "invited", label: t.statusInvited },
+            { value: "suspended", label: t.statusSuspended },
+          ]}
+        />
+      </div>
+
       {/* No overflow:hidden here — it used to clip the header row's flat corners to match the
           card's rounded ones, but that also clips any row's RowActionsMenu dropdown that opens
           past the container's bottom edge (invisible, not just cut off). Radius the header row
@@ -1036,8 +1064,18 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         {scopedUsers.length === 0 && (
           <div style={{ padding: "32px 16px", textAlign: "center", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}>
             <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
-              {q ? t.emptySearch : t.emptyNoUsers}
+              {q ? t.emptySearch : filtersActive ? t.emptyFiltered : t.emptyNoUsers}
             </p>
+            {/* A filter that hides everyone looks identical to a project with no users, and the way
+                out is not discoverable from the empty table. Offer it here. */}
+            {filtersActive && (
+              <button
+                onClick={() => { setPermissionFilter("ALL"); setStatusFilter("ALL"); }}
+                style={{ marginTop: "10px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}
+              >
+                {t.clearFilters}
+              </button>
+            )}
           </div>
         )}
         {scopedUsers.map((u, i) => {
