@@ -81,6 +81,20 @@ const T = {
     tempCopied: "Copied",
     tempHandoverTitle: "HANDING IT OVER",
     tempHandover: "Read it out on the internal line, or hand it over in person or on internal messenger. Do not email it — mail is exactly what this path exists to avoid.",
+    issueSetupCode: "Issue setup code",
+    setupModalTitle: "Issue setup code",
+    setupConfirmIntro: "Use this when a password cannot be handed over safely — the first administrator at an on-premise handover, or anyone you should not read a password out to.",
+    setupConsequenceReplace: "Any setup code issued to them earlier stops working.",
+    setupConsequenceNoLogin: "The code cannot sign in. It only opens the set-a-password screen, and it is spent once used.",
+    setupConsequenceWhere: "They enter it at /register, then choose their own password — you never see it.",
+    setupGenerate: "Issue code",
+    setupResultTitle: "Setup code",
+    setupShownOnce: "You can look this up again from the row menu while it is unused.",
+    setupHandoverTitle: "HANDING IT OVER",
+    setupHandover: "Print it or hand it over on paper. It is not a password and cannot be used to sign in — but whoever holds it sets the first password, so treat it like one.",
+    setupIssuedTitle: "Setup code issued",
+    setupIssuedDesc: (name: string) => `${name} sets their own password with it at /register`,
+    setupBadge: "Setup code",
     tempExpires: (hours: number) => `Expires in ${hours} hours`,
     tempDone: "Done",
 
@@ -148,6 +162,20 @@ const T = {
     resendInvite: "초대 재전송",
     sendPasswordReset: "비밀번호 재설정 코드 전송",
     generateTempPassword: "임시 비밀번호 생성",
+    issueSetupCode: "설치 코드 발급",
+    setupModalTitle: "설치 코드 발급",
+    setupConfirmIntro: "비밀번호를 안전하게 전달할 수 없을 때 씁니다 — 온프레미스 인계의 첫 관리자, 또는 비밀번호를 불러줄 수 없는 상대.",
+    setupConsequenceReplace: "이전에 발급한 설치 코드는 즉시 무효가 됩니다.",
+    setupConsequenceNoLogin: "코드로는 로그인할 수 없습니다. 비밀번호 설정 화면만 열리고, 한 번 쓰면 소진됩니다.",
+    setupConsequenceWhere: "/register 에 코드를 넣고 본인이 비밀번호를 정합니다 — 관리자는 그 비밀번호를 모릅니다.",
+    setupGenerate: "코드 발급",
+    setupResultTitle: "설치 코드",
+    setupShownOnce: "사용되기 전까지는 행 메뉴에서 다시 확인할 수 있습니다.",
+    setupHandoverTitle: "전달 방법",
+    setupHandover: "인쇄하거나 종이로 전달하세요. 비밀번호가 아니어서 로그인은 안 되지만, 이 코드를 가진 사람이 첫 비밀번호를 정합니다 — 비밀번호처럼 다루세요.",
+    setupIssuedTitle: "설치 코드 발급됨",
+    setupIssuedDesc: (name: string) => `${name} 이 /register 에서 직접 비밀번호를 설정합니다`,
+    setupBadge: "설치 코드",
     reactivateUser: "사용자 재활성화",
     suspendUser: "사용자 정지",
     removeUser: "사용자 제거",
@@ -354,20 +382,53 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
  * is no route back to step one, because a second look at the same password does not exist — a
  * lost password is reissued, not recovered.
  */
-function TempPasswordModal({ user, onClose }: { user: PortalUser; onClose: () => void }) {
+function TempPasswordModal({ user, kind, onClose }: { user: PortalUser; kind: CredentialKind; onClose: () => void }) {
   useEscapeKey(onClose);
   const issueTemporaryPassword = useVcaStore(s => s.issueTemporaryPassword);
+  const issueSetupCode = useVcaStore(s => s.issueSetupCode);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const [password, setPassword] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  /* The two credentials share this box because the careful parts are identical — a confirm step
+     before an irreversible action, a result shown once, a clipboard write that only claims success
+     once it resolves. Only the words and the store call differ, and duplicating the box would let
+     the two drift. */
+  const c = kind === "password"
+    ? {
+        modalTitle: t.tempModalTitle, intro: t.tempConfirmIntro, generate: t.tempGenerate,
+        resultTitle: t.tempResultTitle, note: t.tempShownOnce,
+        handoverTitle: t.tempHandoverTitle, handover: t.tempHandover,
+        consequences: [
+          t.tempConsequenceInvalidate, t.tempConsequenceOnce,
+          t.tempConsequenceMustChange, t.tempConsequenceExpiry(TEMP_PASSWORD_VALIDITY_HOURS),
+        ],
+        showExpiry: true,
+      }
+    : {
+        modalTitle: t.setupModalTitle, intro: t.setupConfirmIntro, generate: t.setupGenerate,
+        resultTitle: t.setupResultTitle, note: t.setupShownOnce,
+        handoverTitle: t.setupHandoverTitle, handover: t.setupHandover,
+        consequences: [
+          t.setupConsequenceReplace, t.setupConsequenceNoLogin, t.setupConsequenceWhere,
+        ],
+        // No expiry line: nothing here expires setup codes yet, and stating a lifetime the system
+        // does not enforce would be worse than saying nothing. HANDOFF NOTE: the backend should
+        // expire them, and then this becomes true and can be shown.
+        showExpiry: false,
+      };
+
   const generate = () => {
-    const issued = issueTemporaryPassword(user.id);
+    const issued = kind === "password" ? issueTemporaryPassword(user.id) : issueSetupCode(user.id);
     if (!issued) return;
     setPassword(issued);
-    showToast({ variant: "success", title: t.tempIssuedTitle, desc: t.tempIssuedDesc(user.name) });
+    showToast({
+      variant: "success",
+      title: kind === "password" ? t.tempIssuedTitle : t.setupIssuedTitle,
+      desc: kind === "password" ? t.tempIssuedDesc(user.name) : t.setupIssuedDesc(user.name),
+    });
   };
 
   // Clipboard write can be refused (an insecure origin, or the browser's permission), and a "Copied"
@@ -392,7 +453,7 @@ function TempPasswordModal({ user, onClose }: { user: PortalUser; onClose: () =>
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
         <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
-            {password ? t.tempResultTitle : t.tempModalTitle}
+            {password ? c.resultTitle : c.modalTitle}
           </p>
           <button onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -407,12 +468,9 @@ function TempPasswordModal({ user, onClose }: { user: PortalUser; onClose: () =>
                 <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)", marginTop: "4px" }}>{user.name}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{user.email}</p>
               </div>
-              <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>{t.tempConfirmIntro}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>{c.intro}</p>
               <ul style={{ display: "flex", flexDirection: "column", gap: "6px", margin: 0, paddingLeft: "18px" }}>
-                {bullet(t.tempConsequenceInvalidate)}
-                {bullet(t.tempConsequenceOnce)}
-                {bullet(t.tempConsequenceMustChange)}
-                {bullet(t.tempConsequenceExpiry(TEMP_PASSWORD_VALIDITY_HOURS))}
+                {c.consequences.map(line => bullet(line))}
               </ul>
             </div>
             <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
@@ -421,7 +479,7 @@ function TempPasswordModal({ user, onClose }: { user: PortalUser; onClose: () =>
               </button>
               <button onClick={generate}
                 style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {t.tempGenerate}
+                {c.generate}
               </button>
             </div>
           </>
@@ -444,13 +502,13 @@ function TempPasswordModal({ user, onClose }: { user: PortalUser; onClose: () =>
               </div>
 
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)" }}>{t.tempShownOnce}</p>
-                <span style={{ flexShrink: 0, fontSize: "12px", color: "var(--gray-500)" }}>{t.tempExpires(TEMP_PASSWORD_VALIDITY_HOURS)}</span>
+                <p style={{ fontSize: "12px", fontWeight: 700, color: c.showExpiry ? "var(--warning-500)" : "var(--gray-600)" }}>{c.note}</p>
+                {c.showExpiry && <span style={{ flexShrink: 0, fontSize: "12px", color: "var(--gray-500)" }}>{t.tempExpires(TEMP_PASSWORD_VALIDITY_HOURS)}</span>}
               </div>
 
-              <div style={{ padding: "12px 14px", borderRadius: "10px", backgroundColor: "var(--warning-100)" }}>
-                <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--warning-500)", letterSpacing: "0.4px" }}>{t.tempHandoverTitle}</p>
-                <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.7, marginTop: "4px" }}>{t.tempHandover}</p>
+              <div style={{ padding: "12px 14px", borderRadius: "10px", backgroundColor: c.showExpiry ? "var(--warning-100)" : "var(--info-100)" }}>
+                <p style={{ fontSize: "10px", fontWeight: 700, color: c.showExpiry ? "var(--warning-500)" : "var(--info-500)", letterSpacing: "0.4px" }}>{c.handoverTitle}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.7, marginTop: "4px" }}>{c.handover}</p>
               </div>
             </div>
             <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end" }}>
@@ -465,6 +523,8 @@ function TempPasswordModal({ user, onClose }: { user: PortalUser; onClose: () =>
     </div>
   );
 }
+
+type CredentialKind = "password" | "code";
 
 const STATUS_COLORS: Record<PortalUserStatus, { bg: string; color: string }> = {
   active: { bg: "var(--gray-100)", color: "var(--success-400)" },
@@ -658,7 +718,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const [showInvite, setShowInvite] = useState(false);
   // The user a temporary password is being issued for, or null. Held as the user rather than an id
   // so the modal keeps rendering the right name even if the row scrolls out from under it.
-  const [tempPasswordFor, setTempPasswordFor] = useState<PortalUser | null>(null);
+  const [credentialFor, setCredentialFor] = useState<{ user: PortalUser; kind: CredentialKind } | null>(null);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
 
@@ -806,7 +866,15 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 // account reassigned, a shared operations address nobody can open. Where it does not,
                 // it is the only way back in and the phone number on the login screen leads here.
                 label: t.generateTempPassword,
-                onClick: () => setTempPasswordFor(u),
+                onClick: () => setCredentialFor({ user: u, kind: "password" }),
+              },
+              {
+                // The fallback for when a password cannot be passed on: nobody to read it out to,
+                // or a handover where the supplier should not end up holding a working credential.
+                // Offered on every row rather than only the first administrator, because "I cannot
+                // safely read this person a password" happens well beyond handover day.
+                label: t.issueSetupCode,
+                onClick: () => setCredentialFor({ user: u, kind: "code" }),
               },
               u.status === "suspended"
                 ? {
@@ -832,7 +900,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       </div>
 
       {showInvite && <InviteUserModal defaultProjectId={projectId} onClose={() => setShowInvite(false)} />}
-      {tempPasswordFor && <TempPasswordModal user={tempPasswordFor} onClose={() => setTempPasswordFor(null)} />}
+      {credentialFor && (
+        <TempPasswordModal user={credentialFor.user} kind={credentialFor.kind} onClose={() => setCredentialFor(null)} />
+      )}
     </div>
   );
 }
