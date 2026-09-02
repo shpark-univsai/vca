@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Eye } from "lucide-react";
 import { useVcaStore } from "@/lib/vcaStore";
-import { formatCode, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
+import { REGISTRATION_CODE_TTL_DAYS, formatCode, withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
@@ -18,6 +19,7 @@ const T = {
     issueTitle: "Issue registration code?",
     reissueBody: (name: string) => `${name}'s current code will stop working immediately. Anyone still holding the old printout will need the new one instead.`,
     issueBody: (name: string) => `A new registration code will be generated for ${name}.`,
+    codeExpiryNote: (days: number) => `It stops working after ${days} days, used or not — write the date on the printout.`,
     cancel: "Cancel",
     reissueConfirm: "Reissue code",
     issueConfirm: "Issue code",
@@ -75,6 +77,7 @@ const T = {
     issueTitle: "등록 코드를 발급하시겠습니까?",
     reissueBody: (name: string) => `${name}님의 현재 코드는 즉시 사용할 수 없게 됩니다. 이전 출력물을 가지고 있는 사람은 새 코드가 필요합니다.`,
     issueBody: (name: string) => `${name}님을 위한 새 등록 코드가 생성됩니다.`,
+    codeExpiryNote: (days: number) => `사용 여부와 관계없이 ${days}일 후 만료됩니다 — 출력물에 날짜를 적어 두세요.`,
     cancel: "취소",
     reissueConfirm: "코드 재발급",
     issueConfirm: "코드 발급",
@@ -150,15 +153,6 @@ function StatusBadge({ status, meta }: { status: RosterCodeStatus; meta: Record<
   );
 }
 
-function EyeIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-      <path d="M1.5 8S4 3 8 3s6.5 5 6.5 5-2.5 5-6.5 5-6.5-5-6.5-5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2"/>
-    </svg>
-  );
-}
-
 function csvEscape(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
 }
@@ -183,7 +177,10 @@ function RosterCodeCell({ entry, onReveal }: { entry: RosterEntry; onReveal: () 
         style={{ display: "flex", alignItems: "center", gap: "6px", border: "none", background: "none", cursor: "pointer", padding: 0, fontFamily: "monospace", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}
       >
         ••••-••••
-        <span style={{ display: "flex", color: "var(--gray-400)" }}><EyeIcon /></span>
+        {/* Lucide, like the password fields' show/hide toggle — this is the same "reveal a hidden
+            value" affordance, and it was a second hand-drawn eye that happened to be a slightly
+            different shape from that one. Colour comes from the wrapper so the button can tint it. */}
+        <span style={{ display: "flex", color: "var(--gray-400)" }}><Eye size={14} strokeWidth={1.5} /></span>
       </button>
     );
   }
@@ -214,6 +211,11 @@ function IssueConfirmModal({
           </p>
           <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.6 }}>
             {hasCode ? t.reissueBody(entry.name) : t.issueBody(entry.name)}
+          </p>
+          {/* Said before the code exists, not after: the administrator is about to print this and
+              hand it over, and the deadline is only useful while they still have the paper. */}
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.6 }}>
+            {t.codeExpiryNote(REGISTRATION_CODE_TTL_DAYS)}
           </p>
         </div>
         <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
@@ -348,7 +350,10 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
   const [showPrintSheet, setShowPrintSheet] = useState(false);
 
   const projectName = project?.name ?? projectId;
-  const projectRoster = staffRoster.filter(r => r.projectId === projectId);
+  // Read through withEffectiveStatus so a code that outlived REGISTRATION_CODE_TTL_DAYS reads as
+  // expired everywhere below at once — the badge, the status filter, the reveal control, the CSV
+  // and the printable handout. Before this, expiry was a value somebody typed into the seed data.
+  const projectRoster = withEffectiveStatus(staffRoster.filter(r => r.projectId === projectId));
   // Not-issued first by default: the roster exists so somebody can work out who still needs a code,
   // and "not-issued" sorts before "unused"/"used" alphabetically.
   const visibleRoster = sortRows(
