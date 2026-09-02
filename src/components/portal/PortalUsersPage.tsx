@@ -42,7 +42,6 @@ const T = {
 
     // Row actions
     resendInvite: "Resend invite",
-    sendPasswordReset: "Send password reset",
     generateTempPassword: "Generate temporary password",
     // "user" is redundant in a menu that opens from a user's own row — the row already says who.
     reactivateUser: "Reactivate",
@@ -81,7 +80,13 @@ const T = {
     tempCopied: "Copied",
     tempHandoverTitle: "HANDING IT OVER",
     tempHandover: "Read it out on the internal line, or hand it over in person or on internal messenger.",
-    deliveryQuestion: "How will you get it to them?",
+    resetPassword: "Reset password",
+    sendCode: "Send code",
+    deliveryQuestion: "How will you reach them?",
+    deliveryMailTitle: "Send it by email",
+    deliveryMailHow: "To their own mailbox",
+    deliveryMailResult: "They get a code and set their own password. You see nothing.",
+    deliveryMailUnavailable: "This installation has no mail server, so nothing can be sent. Configure one under Server & API, or use one of the paths below.",
     deliveryPasswordTitle: "I can tell them the password",
     deliveryPasswordHow: "Internal line, in person, or internal messenger",
     deliveryPasswordResult: "A temporary password is generated and shown to you once.",
@@ -172,9 +177,14 @@ const T = {
 
     // Row actions
     resendInvite: "초대 재전송",
-    sendPasswordReset: "비밀번호 재설정 코드 전송",
     generateTempPassword: "임시 비밀번호 생성",
+    resetPassword: "비밀번호 재설정",
+    sendCode: "코드 전송",
     deliveryQuestion: "어떻게 전달하시겠어요?",
+    deliveryMailTitle: "이메일로 보낼게요",
+    deliveryMailHow: "본인 메일함으로",
+    deliveryMailResult: "코드를 받아 본인이 비밀번호를 정합니다. 관리자는 아무것도 보지 않습니다.",
+    deliveryMailUnavailable: "이 설치에는 메일 서버가 없어 발송할 수 없습니다. Server & API 에서 설정하거나, 아래 방법을 쓰세요.",
     deliveryPasswordTitle: "비밀번호를 직접 알려줄 수 있어요",
     deliveryPasswordHow: "내선 전화 · 대면 · 사내 메신저",
     deliveryPasswordResult: "임시 비밀번호를 만들어 한 번 보여드립니다.",
@@ -416,7 +426,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
  * is no route back to step one, because a second look at the same password does not exist — a
  * lost password is reissued, not recovered.
  */
-function TempPasswordModal({ user, onClose }: { user: PortalUser; onClose: () => void }) {
+function TempPasswordModal({ user, mailAvailable, onClose }: { user: PortalUser; mailAvailable: boolean; onClose: () => void }) {
   useEscapeKey(onClose);
   const issueTemporaryPassword = useVcaStore(s => s.issueTemporaryPassword);
   const issueSetupCode = useVcaStore(s => s.issueSetupCode);
@@ -430,13 +440,23 @@ function TempPasswordModal({ user, onClose }: { user: PortalUser; onClose: () =>
      password and a setup code before they could pick one. Asked as a question about their own
      situation instead: can you tell this person a password, or can you only pass them a slip of
      paper? The mechanism follows from the answer. */
-  const [kind, setKind] = useState<CredentialKind>("password");
+  // Mail first where it exists, and the default: it is the only path on which the administrator
+  // never learns the person's password.
+  const [kind, setKind] = useState<CredentialKind>(mailAvailable ? "mail" : "password");
 
   /* The two credentials share this box because the careful parts are identical — a confirm step
      before an irreversible action, a result shown once, a clipboard write that only claims success
      once it resolves. Only the words and the store call differ, and duplicating the box would let
      the two drift. */
-  const c = kind === "password"
+  const c = kind === "mail"
+    ? {
+        modalTitle: t.resetPassword, intro: undefined as string | undefined, generate: t.sendCode,
+        resultTitle: t.resetCodeSentTitle, note: "",
+        handoverTitle: "", handover: "",
+        consequences: [] as string[],
+        showExpiry: false,
+      }
+    : kind === "password"
     ? {
         // No intro line: the consequence list below says the same thing more precisely, and a
         // sentence that only restates the bullets pushes them further from the button.
@@ -463,6 +483,16 @@ function TempPasswordModal({ user, onClose }: { user: PortalUser; onClose: () =>
       };
 
   const generate = () => {
+    // Mail has no second step: nothing is shown to the administrator, which is the whole point of
+    // that path. Confirm, send, close.
+    if (kind === "mail") {
+      // HANDOFF NOTE: posts nowhere. The real call asks the backend to mail a reset code, and the
+      // OPEN QUESTION from before still stands — if the person then uses "Forgot password?"
+      // themselves they request a second code, invalidating this one.
+      showToast({ variant: "success", title: t.resetCodeSentTitle, desc: t.resetCodeSentDesc(user.email) });
+      onClose();
+      return;
+    }
     const issued = kind === "password" ? issueTemporaryPassword(user.id) : issueSetupCode(user.id);
     if (!issued) return;
     setPassword(issued);
@@ -517,34 +547,42 @@ function TempPasswordModal({ user, onClose }: { user: PortalUser; onClose: () =>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-700)" }}>{t.deliveryQuestion}</p>
                 {([
-                  { value: "password" as CredentialKind, title: t.deliveryPasswordTitle, how: t.deliveryPasswordHow, result: t.deliveryPasswordResult },
-                  { value: "code" as CredentialKind, title: t.deliveryCodeTitle, how: t.deliveryCodeHow, result: t.deliveryCodeResult },
+                  // Kept in the list when unavailable rather than dropped, with the reason on the
+                  // card: an option that vanishes reads as a missing feature, and the administrator
+                  // goes hunting for it. "Exists, not here" is the accurate thing to say.
+                  { value: "mail" as CredentialKind, title: t.deliveryMailTitle, how: t.deliveryMailHow, result: t.deliveryMailResult, unavailable: !mailAvailable, why: t.deliveryMailUnavailable },
+                  { value: "password" as CredentialKind, title: t.deliveryPasswordTitle, how: t.deliveryPasswordHow, result: t.deliveryPasswordResult, unavailable: false, why: "" },
+                  { value: "code" as CredentialKind, title: t.deliveryCodeTitle, how: t.deliveryCodeHow, result: t.deliveryCodeResult, unavailable: false, why: "" },
                 ]).map(opt => {
-                  const on = kind === opt.value;
+                  const on = kind === opt.value && !opt.unavailable;
                   return (
                     <label
                       key={opt.value}
                       style={{
-                        display: "flex", gap: "10px", alignItems: "flex-start", cursor: "pointer",
+                        display: "flex", gap: "10px", alignItems: "flex-start",
+                        cursor: opt.unavailable ? "default" : "pointer",
                         padding: "12px 14px", borderRadius: "10px",
                         border: on ? "1px solid var(--primary-300)" : "1px solid var(--gray-300)",
-                        backgroundColor: on ? "var(--primary-50)" : "white",
+                        backgroundColor: on ? "var(--primary-50)" : opt.unavailable ? "var(--gray-50)" : "white",
                       }}
                     >
                       <input
                         type="radio"
                         name="credential-kind"
                         checked={on}
+                        disabled={opt.unavailable}
                         onChange={() => setKind(opt.value)}
-                        style={{ width: "16px", height: "16px", accentColor: "var(--primary-400)", cursor: "pointer", marginTop: "1px", flexShrink: 0 }}
+                        style={{ width: "16px", height: "16px", accentColor: "var(--primary-400)", cursor: opt.unavailable ? "default" : "pointer", marginTop: "1px", flexShrink: 0 }}
                       />
                       <div>
-                        <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{opt.title}</p>
+                        <p style={{ fontSize: "13px", fontWeight: 700, color: opt.unavailable ? "var(--gray-400)" : "var(--gray-900)" }}>{opt.title}</p>
                         <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{opt.how}</p>
                         {/* What happens if you pick this, on the card itself. Deciding then finding
                             out is how an administrator ends up reading a password down a phone line
                             they meant to avoid. */}
-                        <p style={{ fontSize: "12px", color: "var(--gray-700)", marginTop: "5px", lineHeight: 1.6 }}>{opt.result}</p>
+                        <p style={{ fontSize: "12px", color: opt.unavailable ? "var(--gray-400)" : "var(--gray-700)", marginTop: "5px", lineHeight: 1.6 }}>
+                          {opt.unavailable ? opt.why : opt.result}
+                        </p>
                       </div>
                     </label>
                   );
@@ -606,7 +644,9 @@ function TempPasswordModal({ user, onClose }: { user: PortalUser; onClose: () =>
   );
 }
 
-type CredentialKind = "password" | "code";
+/** How the way-back-in reaches the person. Mail sends a code they redeem themselves; password is
+ *  read out; code is handed over on paper. */
+type CredentialKind = "mail" | "password" | "code";
 
 const STATUS_COLORS: Record<PortalUserStatus, { bg: string; color: string }> = {
   active: { bg: "var(--gray-100)", color: "var(--success-400)" },
@@ -962,25 +1002,13 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 label: t.resendInvite,
                 onClick: () => showToast({ variant: "success", title: t.inviteResentTitle, desc: `/password-setup?token=${u.id}` }),
               }] : []),
-              ...(mailAvailable ? [{
-                label: t.sendPasswordReset,
-                // Says "code", not "link": /forgot-password now verifies an 8-digit code instead of
-                // following an emailed link. OPEN QUESTION for the backend — if the user then uses
-                // "Forgot password?" themselves they request a second code, which invalidates this
-                // one. Either this action mails the code and the mail says where to type it, or it
-                // does nothing but tell the user to start the flow themselves.
-                onClick: () => showToast({ variant: "success", title: t.resetCodeSentTitle, desc: t.resetCodeSentDesc(u.email) }),
-              }] : []),
               {
-                // Offered in every deployment, not only the mail-less one. Where mail works this is
-                // the fallback for someone who has lost the mailbox the code would go to — a leaver's
-                // account reassigned, a shared operations address nobody can open. Where it does not,
-                // it is the only way back in and the phone number on the login screen leads here.
-                // One entry, not two. A temporary password and a setup code are the same job with
-                // different delivery, so the choice belongs inside the box, phrased as a question
-                // about the administrator's situation — not as two menu items whose difference they
-                // have to already understand.
-                label: t.generateTempPassword,
+                // All three recovery paths behind one entry. Mailing a code, reading out a temporary
+                // password and handing over a setup code do the same job — give this person a way
+                // back in — and differ only in how it reaches them. Three menu items made the
+                // administrator choose a mechanism; one item asks how they can reach the person and
+                // derives the mechanism from that.
+                label: t.resetPassword,
                 onClick: () => setCredentialFor(u),
               },
               u.status === "suspended"
@@ -1016,7 +1044,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       </div>
 
       {showInvite && <InviteUserModal defaultProjectId={projectId} onClose={() => setShowInvite(false)} />}
-      {credentialFor && <TempPasswordModal user={credentialFor} onClose={() => setCredentialFor(null)} />}
+      {credentialFor && (
+        <TempPasswordModal user={credentialFor} mailAvailable={mailAvailable} onClose={() => setCredentialFor(null)} />
+      )}
     </div>
   );
 }
