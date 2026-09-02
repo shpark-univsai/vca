@@ -117,6 +117,15 @@ body {
 body {
   font-family: 'SUIT', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--gray-50);
+  /* Browsers treat each Hangul syllable block as its own line-break opportunity by default, so
+     Korean words wrap mid-word constantly — keep-all restricts breaks to actual whitespace,
+     matching how English already wraps. overflow-wrap still allows breaking a single unbroken
+     token (a long URL, an unspaced string) that doesn't fit its box at all, so nothing overflows
+     its container either. Elements that intentionally force mid-string breaks (RTSP URLs, IPs —
+     see wordBreak:"break-all" in CameraStreamModal.tsx/ProjectServerTab.tsx) set that inline,
+     which overrides this default per-element as intended. */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .leaflet-container {
