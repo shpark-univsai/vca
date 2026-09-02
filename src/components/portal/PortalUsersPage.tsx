@@ -769,7 +769,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           </span>
           <div>
             <p style={{ fontSize: "13px", fontWeight: 800, color: "var(--gray-900)" }}>{t.soleAdminTitle}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.7, marginTop: "3px", maxWidth: "72ch" }}>
+            <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.7, marginTop: "3px" }}>
               {t.soleAdminBody}
             </p>
           </div>
