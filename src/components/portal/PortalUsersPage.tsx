@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useVcaStore, type PortalPermission, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, type PortalPermission, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { useToast } from "../Toast";
@@ -28,8 +28,8 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   // internet-isolated site can't reach an external mail provider, so that one routes through the
   // project's internal mailbox instead. See the 2026-08-28 backend-meeting decision this mirrors.
   const selectedProjects = projects.filter(p => projectIds.includes(p.id));
-  const hasIsolated = selectedProjects.some(p => p.regionOnPrem);
-  const hasReachable = selectedProjects.some(p => !p.regionOnPrem);
+  const hasIsolated = selectedProjects.some(isNetworkIsolated);
+  const hasReachable = selectedProjects.some(p => !isNetworkIsolated(p));
   const mailTransportNote = selectedProjects.length === 0
     ? null
     : hasIsolated && hasReachable

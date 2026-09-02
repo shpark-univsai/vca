@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { resolveMailConfig, useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
+import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { BORDER, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
@@ -136,11 +136,12 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
  * block so that change stays local.
  *
  * Settings inherit from the team and can be overridden per project. The inherited case is
- * the normal one (one company, one mail server), and the override exists because `regionOnPrem`
- * sits on the project: one team really can hold an internet-isolated project routing through an
- * internal server alongside an internet-reachable project that does not. Every deployment is
- * on-premise (see getAuthConfig()'s doc comment) — that's a separate axis from whether a given
- * site can reach the internet, which is what this override is actually keyed on.
+ * the normal one (one company, one mail server), and the override exists because network
+ * isolation (see isNetworkIsolated(), set below in NetworkStatus) is resolved per PROJECT, not
+ * per team: one team really can hold an internet-isolated project routing through an internal
+ * server alongside an internet-reachable project that does not. Every deployment is on-premise
+ * (see getAuthConfig()'s doc comment) — that's a separate axis from whether a given site can
+ * reach the internet, which is what this override is actually keyed on.
  */
 function MailIcon() {
   return (
@@ -148,6 +149,109 @@ function MailIcon() {
       <rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
       <path d="M2.5 4.5L8 9L13.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
+  );
+}
+
+function NetworkIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M2 8h12M8 2c1.8 1.7 2.8 3.8 2.8 6s-1 4.3-2.8 6c-1.8-1.7-2.8-3.8-2.8-6s1-4.3 2.8-6Z" stroke="currentColor" strokeWidth="1.2"/>
+    </svg>
+  );
+}
+
+/**
+ * Whether this project's site can reach the internet — decides the invite-mail transport in
+ * InviteUserModal (PortalUsersPage.tsx) and whether the "using team default" mail banner below
+ * even applies. A real deployment would detect this by an outbound ping, but a firewall or
+ * security policy can make that check return a false positive/negative — so the resolved value
+ * always has an admin override on top, per isNetworkIsolated()'s precedence. This card is the one
+ * place that override is set; everywhere else only reads the result.
+ */
+function NetworkStatus({ projectId }: { projectId: string }) {
+  const projects = useVcaStore(s => s.projects);
+  const setNetworkIsolationOverride = useVcaStore(s => s.setNetworkIsolationOverride);
+  const { showToast } = useToast();
+
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return null;
+
+  const detected = project.networkIsolatedDetected ?? false;
+  const overrideValue = project.networkIsolatedOverride ?? null;
+  const hasOverride = overrideValue !== null;
+  const effective = isNetworkIsolated(project);
+
+  const setOverride = (value: boolean | null) => {
+    setNetworkIsolationOverride(projectId, value);
+    showToast({
+      variant: "success",
+      title: value === null ? "Back to auto-detection" : "Override saved",
+      desc: value === null ? undefined : `Marked as ${value ? "internet-isolated" : "internet-connected"}`,
+    });
+  };
+
+  return (
+    <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+          <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><NetworkIcon /></span>
+          <div>
+            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>Network reachability</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
+              Decides whether invites go out by external email or this project&apos;s internal mailbox.
+            </p>
+          </div>
+        </div>
+        <span style={{
+          fontSize: "10px", fontWeight: 700, padding: "3px 9px", borderRadius: "999px", textTransform: "uppercase", flexShrink: 0,
+          backgroundColor: effective ? "var(--gray-200)" : "var(--success-100)",
+          color: effective ? "var(--gray-700)" : "var(--success-400)",
+        }}>
+          {effective ? "Isolated" : "Connected"}
+        </span>
+      </div>
+
+      <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "8px" }}>
+        <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: detected ? "var(--gray-400)" : "var(--success-400)", flexShrink: 0 }} />
+        <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>
+          Auto-detected via outbound ping: <span style={{ fontWeight: 700, color: "var(--gray-700)" }}>{detected ? "No response (isolated)" : "Reachable"}</span>
+        </p>
+      </div>
+
+      <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: BORDER }}>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+          <input type="checkbox" checked={hasOverride} onChange={e => setOverride(e.target.checked ? detected : null)}
+            style={{ marginTop: "3px", accentColor: "var(--gray-900)", cursor: "pointer" }} />
+          <span>
+            <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>Override auto-detection</span>
+            <span style={{ display: "block", fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
+              A firewall or security policy can make the ping check unreliable — turn this on to set the status manually.
+            </span>
+          </span>
+        </label>
+
+        {hasOverride && (
+          <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
+            {[{ v: false, label: "Internet-connected" }, { v: true, label: "Internet-isolated" }].map(opt => {
+              const active = overrideValue === opt.v;
+              return (
+                <button key={String(opt.v)} onClick={() => setOverride(opt.v)}
+                  style={{
+                    padding: "8px 14px", borderRadius: "999px", cursor: "pointer",
+                    border: active ? "1px solid var(--gray-900)" : BORDER,
+                    backgroundColor: active ? "var(--gray-900)" : "white",
+                    color: active ? "white" : "var(--gray-600)",
+                    fontSize: "12px", fontWeight: 700,
+                  }}>
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -195,6 +299,8 @@ function MailSettings({ projectId }: { projectId: string }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
+      <NetworkStatus projectId={projectId} />
 
       {/* A project that hasn't overridden anything is quietly relying on the team default — easy to
           miss until an on-prem site's invites silently fail because that default can't reach it.
@@ -431,7 +537,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   return (
     <div>
       <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>Server &amp; API Management</p>
-      <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px", marginBottom: "16px" }}>Configure core infrastructure nodes, outgoing mail, and view API documentation.</p>
+      <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px", marginBottom: "16px" }}>Configure core infrastructure nodes, network reachability and outgoing mail, and view API documentation.</p>
 
       <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
         {(["infra", "mail", "api"] as const).map(t => (
@@ -442,7 +548,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               color: subTab === t ? "var(--gray-900)" : "var(--gray-400)",
               borderBottom: subTab === t ? "2px solid var(--gray-900)" : "2px solid transparent",
             }}>
-            {t === "infra" ? "Infrastructure" : t === "mail" ? "Mail Server" : "API Documentation"}
+            {t === "infra" ? "Infrastructure" : t === "mail" ? "Mail & Network" : "API Documentation"}
           </button>
         ))}
       </div>

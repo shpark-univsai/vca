@@ -86,14 +86,22 @@ export interface Project {
   // Every deployment is on-premise (decided 2026-09-02, see getAuthConfig()'s doc comment); that
   // settled whether VCA is ever offered as cloud-hosted SaaS (no), but it didn't settle whether a
   // given on-prem site can still reach the internet, which varies per customer site and is what
-  // this field actually tracks. true = air-gapped, mail can only go through that site's internal
+  // this pair actually tracks. true = air-gapped, mail can only go through that site's internal
   // mailbox; false = the site has outbound internet, external email works normally.
-  regionOnPrem?: boolean;
+  //
+  // Split into a detected value and an optional override rather than one flag, because a real
+  // server would detect this by pinging out and a firewall/security policy can make that check
+  // return a false positive/negative — so the resolved value has to be overridable by an admin,
+  // not just server-reported. Read through isNetworkIsolated(), never directly, so "override wins
+  // when set, detected value otherwise" is decided in one place.
+  networkIsolatedDetected?: boolean;
+  networkIsolatedOverride?: boolean | null;
   /**
    * Overrides the team's mail settings for this one project. Optional because the normal
    * case is a company running a single mail server: filling this per project would mean retyping
-   * the same host ten times for ten projects. But `regionOnPrem` sits on the PROJECT, not the team,
-   * and the seed data already has one team holding both an internet-isolated and an internet-reachable
+   * the same host ten times for ten projects. But network isolation is resolved PER PROJECT, not
+   * per team (see isNetworkIsolated()), and the seed data already has one team holding both an
+   * internet-isolated and an internet-reachable
    * project — so mail genuinely differs between projects (internal-only server vs normal external
    * relay), and the override earns its place. Read through resolveMailConfig(), never directly, so
    * the fallback is decided in one spot instead of re-implemented per screen.
@@ -219,6 +227,8 @@ interface VcaStoreState {
   addProject: (project: Omit<Project, "id">) => void;
   updateProjectLicense: (projectId: string, updates: Pick<Project, "licenseChannelLimit" | "licensePlan" | "licenseExpiresAt">) => void;
   updateProjectMail: (projectId: string, updates: Pick<Project, "mailDomain" | "smtp">) => void;
+  // null clears the override and falls back to the auto-detected value; true/false pins it.
+  setNetworkIsolationOverride: (projectId: string, override: boolean | null) => void;
   updateTeamMail: (teamId: string, updates: Pick<Team, "mailDomain" | "smtp">) => void;
   addPerson: (person: Omit<Person, "id">) => void;
   removePerson: (personId: string) => void;
@@ -272,14 +282,14 @@ const PROJECTS: Project[] = [
     licensePlan: "Enterprise", licenseChannelLimit: 100, licenseExpiresAt: "2029-06-04",
     computeInstance: "vca.large", gpuCount: 4, modelVersion: "model_v2_prod", lastMigration: "v2_alert_schema",
     lastBackupAt: auditAt(19 * 60),
-    regionName: "Singapore", regionOnPrem: false, regionFlag: "🇸🇬", regionCenterCount: 1, regionSubcenterCount: 2,
+    regionName: "Singapore", networkIsolatedDetected: false, regionFlag: "🇸🇬", regionCenterCount: 1, regionSubcenterCount: 2,
   },
   {
     id: "proj-riverside", teamId: "team-univs", name: "Riverside International School", type: "smart_school",
     licensePlan: "Professional", licenseChannelLimit: 40, licenseExpiresAt: "2027-09-01",
     computeInstance: "vca.medium", gpuCount: 2, modelVersion: "model_v2_prod", lastMigration: "v2_alert_schema",
     lastBackupAt: auditAt(7 * 60),
-    regionName: "Singapore", regionOnPrem: true, regionFlag: "🇸🇬", regionCenterCount: 1, regionSubcenterCount: 0,
+    regionName: "Singapore", networkIsolatedDetected: true, regionFlag: "🇸🇬", regionCenterCount: 1, regionSubcenterCount: 0,
   },
 ];
 
@@ -747,6 +757,16 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)),
       auditLog: [{ id: `audit-${++auditSeq}`, projectId, message: `Project mail settings updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
     })),
+  // This flips which mailbox invites/resets go through, same audit-worthy weight as updateProjectMail.
+  setNetworkIsolationOverride: (projectId, override) =>
+    set(state => ({
+      projects: state.projects.map(p => (p.id === projectId ? { ...p, networkIsolatedOverride: override } : p)),
+      auditLog: [{
+        id: `audit-${++auditSeq}`, projectId,
+        message: override === null ? "Network reachability reset to auto-detection" : `Network reachability manually set to ${override ? "internet-isolated" : "internet-connected"}`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      }, ...state.auditLog].slice(0, 200),
+    })),
   updateTeamMail: (teamId, updates) =>
     set(state => ({
       teams: state.teams.map(o => (o.id === teamId ? { ...o, ...updates } : o)),
@@ -1024,6 +1044,15 @@ export function resolveMailConfig(
     mailDomain: project?.mailDomain ?? team?.mailDomain ?? null,
     smtp: project?.smtp ?? team?.smtp ?? null,
   };
+}
+
+/** Whether a project's site should be treated as internet-isolated (mail can only go through its
+ *  internal mailbox). An admin's manual override always wins when set — that's the point of it,
+ *  since the auto-detected ping result can be a false positive/negative behind a firewall — and
+ *  the detected value is the fallback otherwise. Read through this everywhere instead of either
+ *  field directly, so this precedence lives in one place. */
+export function isNetworkIsolated(project: Project): boolean {
+  return project.networkIsolatedOverride ?? project.networkIsolatedDetected ?? false;
 }
 
 /** True when `email` can actually be delivered on `mailDomain`. A null domain means nothing is
