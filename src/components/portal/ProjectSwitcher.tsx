@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useVcaStore, type Project } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH } from "./PortalShared";
+import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH, TABLE_HEADER_COLOR } from "./PortalShared";
 
 interface ProjectSwitcherProps {
   /** The team whose projects this picker lists. Projects belong to exactly one team, and the
@@ -238,7 +238,7 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
               <div style={{ display: "grid", gridTemplateColumns: "28px 1.6fr 0.9fr 1.3fr 32px", padding: "8px 20px", gap: "8px" }}>
                 <span />
                 {[t.colName, t.colType, t.colId, ""].map((h, i) => (
-                  <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+                  <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
                 ))}
               </div>
 

@@ -5,7 +5,7 @@ import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, proj
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
+import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, TABLE_HEADER_COLOR } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -560,7 +560,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
       <div style={{ backgroundColor: "white", border: overLimit ? "1px solid var(--danger-400)" : BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, marginBottom: "16px", overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
           <div style={{ padding: "16px", borderRight: BORDER }}>
-            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>{t.metricChannelUsage.toUpperCase()}</p>
+            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricChannelUsage.toUpperCase()}</p>
             <p style={{ fontSize: "20px", fontWeight: 800, color: overLimit ? "var(--danger-400)" : "var(--gray-900)", marginTop: "6px" }}>
               {projectCameras.length}{limit ? ` / ${limit}` : ""}
             </p>
@@ -571,16 +571,16 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             ) : <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px" }}>{t.noLicenseLimit}</p>}
           </div>
           <div style={{ padding: "16px", borderRight: BORDER }}>
-            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>{t.metricStreamHealth.toUpperCase()}</p>
+            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricStreamHealth.toUpperCase()}</p>
             <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--success-400)", marginTop: "6px" }}>{onlineCount} <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)" }}>{t.onlineSuffix}</span></p>
             <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px" }}>{t.offlineSuffix(offlineCount)}</p>
           </div>
           <div style={{ padding: "16px", borderRight: BORDER }}>
-            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>{t.metricAiCoverage.toUpperCase()}</p>
+            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricAiCoverage.toUpperCase()}</p>
             <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", marginTop: "6px" }}>{aiMappedCount} <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)" }}>{t.aiMappedSuffix(projectCameras.length)}</span></p>
           </div>
           <div style={{ padding: "16px" }}>
-            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>{t.metricZoneCoverage.toUpperCase()}</p>
+            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricZoneCoverage.toUpperCase()}</p>
             <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", marginTop: "6px" }}>{zones.length} <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)" }}>{t.zonesSuffix}</span></p>
             <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {zoneCounts.slice(0, 3).map(z => `${z.zone} (${z.count})`).join(" · ") || "—"}
@@ -646,7 +646,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
         <div style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: "12px", borderTopRightRadius: "12px", boxShadow: PANEL_SHADOW }}>
           <div style={{ display: "grid", gridTemplateColumns: "56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
             {["", t.colCamera, t.colMaker, t.colResolution, t.colZone, t.colRtspStream, t.colAiEngines, t.colStatus, ""].map((h, i) => (
-              <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+              <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
             ))}
           </div>
         </div>

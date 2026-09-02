@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useVcaStore, seededRandom, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage, type PortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
@@ -511,7 +511,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <>
                     <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.4fr 0.7fr 60px", padding: "8px 20px", backgroundColor: "var(--gray-50)", gap: "8px", flexShrink: 0 }}>
                       {[t.colCamera, t.colZone, t.colStreamUrl, t.colStatus, ""].map(h => (
-                        <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+                        <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
                       ))}
                     </div>
                     {/* Only the rows scroll. The column headings above and the "view all" below are

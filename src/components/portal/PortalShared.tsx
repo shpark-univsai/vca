@@ -51,6 +51,13 @@ export const TABLE_COLUMN_GAP = "12px";
  * columns that look tighter than the rows they line up with.
  */
 export const CARD_GAP = "12px";
+/**
+ * Colour of a table's column headings, everywhere in Portal. gray-400 was a step too light: set
+ * against gray-50 header bands it read as disabled text rather than as the labels for the columns
+ * under it. gray-500 keeps them clearly quieter than the data without making them look switched off.
+ * Named so the six tables that draw a heading row cannot drift apart again.
+ */
+export const TABLE_HEADER_COLOR = "var(--gray-500)";
 
 /**
  * Ceiling for the Overview's three list panels — Camera Status, Recently Registered VIPs, Recent
@@ -139,7 +146,19 @@ interface SelectOption {
 // and inside this app's nested-scroll shell (PortalShell's outer overflow:hidden + inner
 // overflow:auto content area) that positioning can land the popup far from its trigger. Ported
 // from the main VCA app's SimpleSelect (DataPage.tsx) to match its exact look and behavior.
-export function FilterSelect({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: SelectOption[] }) {
+export function FilterSelect({ value, onChange, options, fitContent }: {
+  value: string;
+  onChange: (value: string) => void;
+  options: SelectOption[];
+  /**
+   * Size the trigger to its label instead of filling the space it is given. For a select sitting in
+   * a table cell, where the answers are a word long ("Admin", "Operator") and the column is as wide
+   * as the columns beside it — a full-width control there draws a box several times the length of
+   * the word inside it. Forms want the opposite (fields line up on a shared edge), so this is
+   * opt-in and full width stays the default.
+   */
+  fitContent?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
@@ -166,7 +185,7 @@ export function FilterSelect({ value, onChange, options }: { value: string; onCh
         onMouseLeave={() => setHovered(false)}
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px",
-          width: "100%", boxSizing: "border-box",
+          ...(fitContent ? {} : { width: "100%" }), boxSizing: "border-box",
           height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "10px",
           border: hovered ? "1px solid var(--gray-400)" : BORDER,
           backgroundColor: "white", cursor: "pointer", whiteSpace: "nowrap",

@@ -8,7 +8,7 @@ import { formatElapsed } from "@/lib/time";
 import { TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, TABLE_HEADER_COLOR } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 
 const T = {
@@ -946,9 +946,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           past the container's bottom edge (invisible, not just cut off). Radius the header row
           itself instead. */}
       <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.3fr 0.9fr 0.5fr 0.9fr 0.8fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1.4fr 0.6fr 0.5fr 0.9fr 0.8fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
           {[t.colUser, t.colTeam, t.colProjects, t.colPermission, t.colMfa, t.colLastLogin, t.colStatus, ""].map((h, i) => (
-            <span key={i} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+            <span key={i} style={{ fontSize: "12px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
           ))}
         </div>
         {scopedUsers.length === 0 && (
@@ -965,7 +965,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           const lastAdmin = isLastActiveAdmin(portalUsers, u.id);
           return (
           <div key={u.id} style={{
-            display: "grid", gridTemplateColumns: "1.4fr 1fr 1.3fr 0.9fr 0.5fr 0.9fr 0.8fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
+            display: "grid", gridTemplateColumns: "1.5fr 1fr 1.4fr 0.6fr 0.5fr 0.9fr 0.8fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
             borderBottom: isLast ? "none" : BORDER,
             borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
           }}>
@@ -989,6 +989,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 ))}
             </div>
             <FilterSelect
+              fitContent
               value={u.permission}
               onChange={v => updatePortalUserPermission(u.id, v as PortalPermission)}
               options={[{ value: "admin", label: t.permAdmin }, { value: "operator", label: t.permOperator }]}
