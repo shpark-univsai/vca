@@ -10,6 +10,13 @@ export const BORDER = "1px solid var(--gray-200)";
 // table/grid segmented toggle — is this tall, so a row of them lines up regardless of padding
 // or font size. Set the height, not the vertical padding.
 export const CONTROL_HEIGHT = "36px";
+/**
+ * Column gap for the Portal tables. They were all built with no gap at all, which is merely tight
+ * for columns of plain text but actually collides once a cell holds a bordered control — the Users
+ * table's Permission select ran straight into the MFA badge next to it. One value so the four
+ * tables stay the same table.
+ */
+export const TABLE_COLUMN_GAP = "12px";
 export const PANEL_SHADOW = "none";
 
 export const TYPE_META: Record<ProjectType, { label: string; bg: string; color: string }> = {

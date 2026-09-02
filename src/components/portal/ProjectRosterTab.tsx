@@ -6,7 +6,7 @@ import { formatCode, type RosterEntry, type RosterCodeStatus } from "@/lib/staff
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, PANEL_SHADOW, FilterSelect, RowActionsMenu } from "./PortalShared";
+import { BORDER, TABLE_COLUMN_GAP, PANEL_SHADOW, FilterSelect, RowActionsMenu } from "./PortalShared";
 
 const T = {
   en: {
@@ -445,7 +445,7 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
         </div>
       ) : (
         <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.8fr 1fr 1.1fr 36px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.8fr 1fr 1.1fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
             {[t.colName, t.colEmployeeId, t.colDepartment, t.colPermission, t.colStatus, t.colCode, ""].map(h => (
               <span key={h} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
             ))}
@@ -454,7 +454,7 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
             const isLast = i === visibleRoster.length - 1;
             return (
               <div key={entry.employeeId} style={{
-                display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.8fr 1fr 1.1fr 36px", padding: "12px 16px", alignItems: "center",
+                display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.8fr 1fr 1.1fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
                 borderBottom: isLast ? "none" : BORDER,
                 borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
               }}>

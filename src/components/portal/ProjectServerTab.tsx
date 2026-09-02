@@ -5,7 +5,7 @@ import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type Se
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
+import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
 
 const SERVER_TYPES: ServerType[] = ["AI Camera", "Normal Camera", "Face Recognition", "Image Store", "Database"];
 
@@ -743,7 +743,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
             // opens past the bottom edge (the last row's menu becomes invisible, not just cut
             // off). Header/last-row corners are radiused directly instead.
             <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
-              <div style={{ display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
                 {[t.colStatus, t.colName, t.colIp, t.colType, t.colSpec, ""].map(h => (
                   <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
                 ))}
@@ -753,7 +753,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                 const isLast = i === pageServers.length - 1;
                 return (
                   <div key={server.id} style={{
-                    display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", padding: "12px 16px", alignItems: "center",
+                    display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
                     borderBottom: isLast ? "none" : BORDER,
                     borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
                   }}>

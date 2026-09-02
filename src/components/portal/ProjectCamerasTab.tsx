@@ -5,7 +5,7 @@ import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, proj
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
+import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -644,7 +644,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           border between them so the two halves read as one continuous card. */}
       {view === "table" && visibleCameras.length > 0 && (
         <div style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: "12px", borderTopRightRadius: "12px", boxShadow: PANEL_SHADOW }}>
-          <div style={{ display: "grid", gridTemplateColumns: "56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
             {["", t.colCamera, t.colMaker, t.colResolution, t.colZone, t.colRtspStream, t.colAiEngines, t.colStatus, ""].map((h, i) => (
               <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
             ))}
@@ -671,7 +671,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             const isLast = i === visibleCameras.length - 1;
             return (
               <div key={cam.id} style={{
-                display: "grid", gridTemplateColumns: "56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", padding: "10px 16px", alignItems: "center",
+                display: "grid", gridTemplateColumns: "56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
                 borderBottom: isLast ? "none" : BORDER,
                 borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
               }}>
