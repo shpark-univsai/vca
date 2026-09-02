@@ -369,13 +369,10 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         delete container._leaflet_id;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-      });
+      // The usual Next.js/Leaflet fix for broken default marker icons used to sit here, pointing at
+      // unpkg. Removed: every L.marker in this file and in RedmapMap passes its own divIcon, so
+      // L.Icon.Default is never constructed — and the deployment target is a network with no
+      // internet, where those three URLs are unreachable anyway.
 
       const map = L.map(mapRef.current!, {
         center: [1.3521, 103.8198],
