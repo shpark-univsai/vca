@@ -30,6 +30,10 @@ interface VipDict {
   noVips: string;
   registered: (date: string) => string;
   removeVip: string;
+  confirmRemoveTitle: string;
+  confirmRemoveBody: (name: string) => string;
+  removeAction: string;
+  vipRemovedTitle: string;
   modalTitle: string;
   nameLabel: string;
   namePlaceholder: string;
@@ -59,6 +63,10 @@ const T: Record<"en" | "ko", VipDict> = {
     noVips: "No VIPs registered for this project yet.",
     registered: (date: string) => `Registered ${date}`,
     removeVip: "Remove VIP",
+    confirmRemoveTitle: "Remove this VIP?",
+    confirmRemoveBody: (name: string) => `${name} will be removed from this project's watchlist. Cameras will no longer detect them as a registered VIP.`,
+    removeAction: "Remove",
+    vipRemovedTitle: "VIP removed",
     modalTitle: "Add New Person",
     nameLabel: "Name *",
     namePlaceholder: "e.g. Alexander Wright",
@@ -86,6 +94,10 @@ const T: Record<"en" | "ko", VipDict> = {
     noVips: "이 프로젝트에 등록된 VIP가 아직 없습니다.",
     registered: (date: string) => `등록일 ${date}`,
     removeVip: "VIP 삭제",
+    confirmRemoveTitle: "이 VIP를 삭제하시겠습니까?",
+    confirmRemoveBody: (name: string) => `${name} 님이 이 프로젝트의 관심인물 목록에서 삭제됩니다. 이후 카메라는 이 인물을 등록된 VIP로 탐지하지 않습니다.`,
+    removeAction: "삭제",
+    vipRemovedTitle: "VIP 삭제됨",
     modalTitle: "새 인물 추가",
     nameLabel: "이름 *",
     namePlaceholder: "예: 홍길동",
@@ -198,6 +210,30 @@ function RegisterVipModal({ t, onClose, onSubmit }: { t: VipDict; onClose: () =>
   );
 }
 
+function RemoveVipConfirmModal({ t, person, onClose, onConfirm }: { t: VipDict; person: Person; onClose: () => void; onConfirm: () => void }) {
+  useEscapeKey(onClose);
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "380px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+        <div style={{ padding: "20px" }}>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.confirmRemoveTitle}</p>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px" }}>{t.confirmRemoveBody(person.name)}</p>
+        </div>
+        <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {t.cancel}
+          </button>
+          <button onClick={onConfirm}
+            style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {t.removeAction}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RoleTag({ label }: { label: string }) {
   return (
     <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 6px", borderRadius: "999px", backgroundColor: "var(--gray-100)", color: "var(--gray-600)", textTransform: "uppercase" }}>
@@ -223,6 +259,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const [showRegister, setShowRegister] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState<Person | null>(null);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -240,6 +277,13 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       projectId,
     });
     setShowRegister(false);
+  };
+
+  const confirmRemove = () => {
+    if (!confirmingRemove) return;
+    removePerson(confirmingRemove.id);
+    showToast({ variant: "warning", title: t.vipRemovedTitle, desc: confirmingRemove.name });
+    setConfirmingRemove(null);
   };
 
   const handleBulkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -333,7 +377,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 {person.description && <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "2px" }}>{person.description}</p>}
                 <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "4px" }}>{t.registered(person.registeredAt)}</p>
               </div>
-              <button onClick={() => removePerson(person.id)} title={t.removeVip} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", flexShrink: 0 }}>
+              <button onClick={() => setConfirmingRemove(person)} title={t.removeVip} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", flexShrink: 0 }}>
                 <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
                   <path d="M2.91663 4.08333H11.0833M5.83329 6.41667V9.33333M8.16663 6.41667V9.33333M3.49996 4.08333L4.08329 10.9167C4.08329 11.2261 4.20621 11.5228 4.42501 11.7416C4.6438 11.9604 4.9405 12.0833 5.24996 12.0833H8.74996C9.05942 12.0833 9.35612 11.9604 9.57491 11.7416C9.79371 11.5228 9.91663 11.2261 9.91663 10.9167L10.5 4.08333M5.24996 4.08333V2.33333C5.24996 2.17862 5.31142 2.03025 5.42082 1.92085C5.53022 1.81146 5.67858 1.75 5.83329 1.75H8.16663C8.32134 1.75 8.4697 1.81146 8.5791 1.92085C8.68849 2.03025 8.74996 2.17862 8.74996 2.33333V4.08333" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -344,6 +388,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       )}
 
       {showRegister && <RegisterVipModal t={t} onClose={() => setShowRegister(false)} onSubmit={register} />}
+      {confirmingRemove && (
+        <RemoveVipConfirmModal t={t} person={confirmingRemove} onClose={() => setConfirmingRemove(null)} onConfirm={confirmRemove} />
+      )}
     </div>
   );
 }
