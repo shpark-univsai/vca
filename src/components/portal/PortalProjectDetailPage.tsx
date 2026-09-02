@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useVcaStore, seededRandom, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
-import { BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
+import { BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage, type PortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
@@ -366,7 +366,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
           {/* Metric cards — camera connectivity / license usage / VIP DB / accounts & permissions,
               each grounded in real store data (no fabricated failure-reason breakdowns the data
               model doesn't have). */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "16px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: CARD_GAP, marginBottom: CARD_GAP }}>
             <MetricCard label={t.cameraConnectivity} icon={VideoIcon} iconBg="var(--success-100)" iconColor="var(--success-400)">
               <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</p>
@@ -471,10 +471,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               lands exactly on the boundary between card 2 (License Subscription) and card 3 —
               a flex-basis split couldn't guarantee that alignment across viewport widths the way
               sharing the grid's own column lines does. */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", alignItems: "start", marginBottom: "16px" }}>
-            <div style={{ gridColumn: "1 / span 2", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
-              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: BORDER, flexWrap: "wrap", gap: "10px" }}>
+          {/* alignItems stretch, not start: the three panels below are a row, and a row whose
+              members each stop wherever their own content happens to end reads as three unrelated
+              boxes. Capped at OVERVIEW_PANEL_MAX_HEIGHT so a project with a lot of activity cannot
+              push the rest of the page off the fold — past that, each panel scrolls its own list. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: CARD_GAP, alignItems: "stretch", maxHeight: OVERVIEW_PANEL_MAX_HEIGHT, marginBottom: CARD_GAP }}>
+            <div style={{ gridColumn: "1 / span 2", display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
+              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: BORDER, flexWrap: "wrap", gap: "10px", flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--info-100)", color: "var(--info-500)", flexShrink: 0 }}><VideoIcon /></span>
                     <div>
@@ -501,11 +505,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   </p>
                 ) : (
                   <>
-                    <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.4fr 0.7fr 60px", padding: "8px 20px", backgroundColor: "var(--gray-50)", gap: "8px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.4fr 0.7fr 60px", padding: "8px 20px", backgroundColor: "var(--gray-50)", gap: "8px", flexShrink: 0 }}>
                       {[t.colCamera, t.colZone, t.colStreamUrl, t.colStatus, ""].map(h => (
                         <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
                       ))}
                     </div>
+                    {/* Only the rows scroll. The column headings above and the "view all" below are
+                        the two things you need while scrolling, so they stay put. */}
+                    <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
                     {visibleCameraRows.map((c, i) => {
                       const online = c.status === "online";
                       return (
@@ -526,9 +533,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                         </div>
                       );
                     })}
+                    </div>
                     {filteredCameraRows.length > visibleCameraRows.length && (
                       <button onClick={() => onTabChange("cameras")}
-                        style={{ display: "block", width: "100%", textAlign: "center", border: "none", borderTop: BORDER, background: "none", padding: "10px 20px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
+                        style={{ display: "block", width: "100%", textAlign: "center", border: "none", borderTop: BORDER, background: "none", padding: "10px 20px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>
                         {t.viewAllCameras(filteredCameraRows.length)}
                       </button>
                     )}
@@ -539,9 +547,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
             {/* Same width as the VIP / Target DB metric card above it (grid column 3 only, not
                 spanning) — sits directly underneath rather than sharing a row with Camera Status. */}
-            <div style={{ gridColumn: "3 / span 1", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
-              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+            <div style={{ gridColumn: "3 / span 1", display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
+              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px", flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--primary-100)", color: "var(--primary-400)", flexShrink: 0 }}><UsersGroupIcon /></span>
                     <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.recentVipsTitle}</p>
@@ -551,7 +559,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 {recentVips.length === 0 ? (
                   <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noVipsYet}</p>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minHeight: 0, overflowY: "auto" }}>
                     {recentVips.map(p => (
                       <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "10px", border: BORDER, borderRadius: "12px", padding: "10px" }}>
                         <img src={p.photoUrl} alt="" style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
@@ -572,7 +580,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 pending" describes a door this deployment does not have. Only that card: Recent
                 Activity shares this column and is unrelated. Still shown while real requests exist,
                 so turning the flag off later cannot strand someone who already asked. */}
-            <div style={{ gridColumn: "4 / span 1", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
+            <div style={{ gridColumn: "4 / span 1", display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
               {showAccessRequests && (
               <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
@@ -616,15 +624,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
               )}
 
-              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+              <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px", flexShrink: 0 }}>
                   <span style={{ display: "flex", color: "var(--gray-500)" }}><ClockIcon /></span>
                   <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px" }}>{t.recentAdminActivity}</p>
                 </div>
                 {recentActivity.length === 0 ? (
                   <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noAdminActivity}</p>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column" }}>
+                  <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflowY: "auto" }}>
                     {recentActivity.map((a, i) => (
                       <div key={a.id} style={{ display: "flex", gap: "10px" }}>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "8px", flexShrink: 0 }}>

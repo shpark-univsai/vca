@@ -33,6 +33,28 @@ export const TABLE_COLUMN_GAP = "12px";
  * organisation name. Both crumbs' render sites read these, so a name clips at one width rather than
  * at whichever number that particular component happened to be written with.
  */
+/**
+ * One gap between cards, in both directions. The Overview was built with the grid's own gap at 12px
+ * and every vertical space between cards at 16px, so the same nominal "space between two cards"
+ * measured differently depending on whether they sat side by side or stacked — which shows up as
+ * columns that look tighter than the rows they line up with.
+ */
+export const CARD_GAP = "12px";
+
+/**
+ * Ceiling for the Overview's three list panels — Camera Status, Recently Registered VIPs, Recent
+ * Admin Activity. They sit side by side in one grid row, and each was free to be as tall as its own
+ * content, so the row's bottom edge was a staircase and a busy project pushed everything below it
+ * off the fold.
+ *
+ * The row stretches its three panels to a common height and stops at this one; anything longer
+ * scrolls inside its own panel instead of growing the page. 380px is a little above what the
+ * fullest of them needs today (Camera Status at its five-row cap is ~340px), so in the normal case
+ * nothing scrolls and the three simply line up — the cap is there for the project that outgrows
+ * that, not as the everyday layout.
+ */
+export const OVERVIEW_PANEL_MAX_HEIGHT = "380px";
+
 export const BREADCRUMB_TEAM_MAX_WIDTH = "min(360px, 26vw)";
 export const BREADCRUMB_PROJECT_MAX_WIDTH = "min(320px, 22vw)";
 export const PANEL_SHADOW = "none";
