@@ -14,8 +14,8 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { LanguageSwitcher } from "./PortalShared";
 
 const T = {
-  en: { noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar", exit: "Exit to App" },
-  ko: { noTeam: "팀 없음", expand: "사이드바 펼치기", collapse: "사이드바 접기", exit: "앱으로 나가기" },
+  en: { noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar", exit: "Exit to App", newProject: "New project", cancel: "Cancel" },
+  ko: { noTeam: "팀 없음", expand: "사이드바 펼치기", collapse: "사이드바 접기", exit: "앱으로 나가기", newProject: "새 프로젝트", cancel: "취소" },
 } as const;
 
 function BreadcrumbChevron() {
@@ -137,14 +137,61 @@ export default function PortalShell() {
 
         <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-300)", margin: "0 2px" }}>/</span>
 
-        {/* Reads the current team, not teams[0]. Portal can hold several (the signup wizard calls
-            addTeam, and the switcher's own "New team" does), so pinning the header to the first one
-            made it name a different team than the page was actually showing. */}
-        <TeamSwitcher currentTeamId={currentOrgId} onSelect={switchTeam} />
-        <BreadcrumbChevron />
-        <ProjectSwitcher teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />
+        {/* The breadcrumb says where you are, and during creation you are not inside any project —
+            so the last crumb becomes the act of creating one. It used to keep naming whichever
+            project happened to be selected, which was false (nothing has been created yet) and
+            worse than false: that crumb is a live switcher, so clicking it navigated away and
+            discarded the half-filled form. Every console that has this flow ends the trail at the
+            creation step the same way — GitLab "… / Projects / New project", Canva "Projects /
+            New course", Copilot "Forms / New form".
+
+            The team crumb stays, because which team the project is filed under is real information
+            and the wizard genuinely uses it — but it stops being a switcher for the same reason
+            the project crumb did. Switching teams mid-form has no defined answer for what happens
+            to what you typed, and silently dropping it is not one. */}
+        {showWizard ? (
+          <>
+            <span style={{
+              display: "flex", alignItems: "center",
+              border: "1px solid var(--gray-200)", borderRadius: "8px", padding: "6px 10px",
+              fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", whiteSpace: "nowrap",
+              maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis",
+            }}>
+              {currentOrg?.name ?? t.noTeam}
+            </span>
+            <BreadcrumbChevron />
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap", padding: "6px 2px" }}>
+              {t.newProject}
+            </span>
+          </>
+        ) : (
+          <>
+            {/* Reads the current team, not teams[0]. Portal can hold several (the signup wizard
+                calls addTeam, and the switcher's own "New team" does), so pinning the header to the
+                first one made it name a different team than the page was actually showing. */}
+            <TeamSwitcher currentTeamId={currentOrgId} onSelect={switchTeam} />
+            <BreadcrumbChevron />
+            <ProjectSwitcher teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />
+          </>
+        )}
 
         <div style={{ flex: 1 }} />
+        {/* The way out. The wizard had none: its own hamburger is hidden, the breadcrumb no longer
+            navigates, and "Exit to App" leaves Portal altogether — so a person who opened this by
+            accident had to leave the console to get out of it. Hidden when the team has no projects
+            yet, because then there is nothing behind this screen to cancel back to. */}
+        {showWizard && teamProjects.length > 0 && (
+          <button
+            className="portal-exit-btn"
+            onClick={() => setShowWizard(false)}
+            style={{
+              border: "1px solid var(--gray-200)", borderRadius: "999px", backgroundColor: "white",
+              padding: "8px 14px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
+            }}
+          >
+            {t.cancel}
+          </button>
+        )}
         <LanguageSwitcher />
         <button
           className="portal-exit-btn"
