@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...but the template is the only documentation of what can be configured — tile
+# source, support contact, API base URL — and it holds no secrets. Without this
+# exception it stayed untracked, so a fresh clone had no record of any setting.
+!.env.example
 
 # vercel
 .vercel
