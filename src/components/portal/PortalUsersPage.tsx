@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ScrollText } from "lucide-react";
+import { Asterisk } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -575,14 +575,15 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
   /* Was a <li> relying on the default disc marker, which renders as empty indent here, so the
      lines arrived as one unlabelled block. Drawn rather than inherited, and the same marker on
      every line: these four are the rules of the action about to be taken, not four different kinds
-     of thing. A wrapped line stays hanging off the icon instead of sliding under it. */
+     of thing. An asterisk is the mark those already carry in print. A wrapped line stays hanging
+     off it instead of sliding under it. */
   const bullet = (text: string) => (
     <li key={text} style={{ display: "flex", gap: "8px", alignItems: "flex-start", listStyle: "none" }}>
-      <ScrollText
-        size={13}
+      <Asterisk
+        size={14}
         strokeWidth={2}
         aria-hidden
-        style={{ flexShrink: 0, marginTop: "3px", color: "var(--gray-400)" }}
+        style={{ flexShrink: 0, marginTop: "2px", color: "var(--gray-400)" }}
       />
       <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.6 }}>{text}</span>
     </li>
