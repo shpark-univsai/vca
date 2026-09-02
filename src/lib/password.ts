@@ -41,6 +41,16 @@ export const RESET_CODE_LENGTH = 8;
 export const RESET_CODE_TTL_MIN = 10;
 
 /**
+ * How long an emailed invitation link stays good for, in days. An invitation that was never
+ * accepted is an open door with nobody watching it — the person it was meant for has usually been
+ * chased down another way by then.
+ *
+ * OPEN QUESTION for the backend: 7 days is the assumption this UI states. /password-setup shows the
+ * "link no longer valid" screen past it.
+ */
+export const INVITE_TOKEN_TTL_DAYS = 7;
+
+/**
  * How long an administrator-issued temporary password stays usable. It exists only to carry someone
  * from a phone call to the login screen, so it is short: a temp password that lives for a week is a
  * second, weaker password on the account.

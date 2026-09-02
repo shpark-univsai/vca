@@ -8,7 +8,7 @@ import { LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/component
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { getAuthConfig } from "@/lib/authConfig";
 import {
-  REGISTRATION_CODE_LENGTH, normalizeCode, resolveRegistrationCode,
+  REGISTRATION_CODE_LENGTH, SETUP_CODE_TTL_DAYS, isCodeExpired, normalizeCode, resolveRegistrationCode,
 } from "@/lib/staffRoster";
 import { useVcaStore } from "@/lib/vcaStore";
 
@@ -35,11 +35,29 @@ interface Activation {
   source: "roster" | "account";
 }
 
+/**
+ * Three messages, because the next move differs: retype it, ask for a new one, or stop.
+ *
+ * "Already used" is named rather than folded into "unknown" — decided 2026-09-02, see the auth-flow
+ * doc, section 03. Reaching this message at all means guessing 8 correct characters, so what leaks
+ * is close to nothing, while the person who has genuinely already registered (or handed their slip
+ * to a colleague) learns the one thing that explains what they are seeing.
+ */
 const CODE_ERRORS: Record<"unknown" | "used" | "expired", string> = {
   unknown: "We don’t recognise that code. Check it against the sheet you were given.",
   used: "That code has already been used. Ask your administrator to issue a new one.",
   expired: "That code has expired. Ask your administrator to issue a new one.",
 };
+
+/**
+ * Wrong codes allowed before entry closes. The code is the only gate on this screen and the space
+ * is ~1.1 x 10^12, which is only out of reach with a limit in front of it.
+ *
+ * HANDOFF NOTE: counted in this component, so it resets on reload — it stops a person mistyping
+ * their way through a sheet of codes, and nothing more. The real limit is per account/address/IP
+ * and lives on the server; this number has to match whatever that one is.
+ */
+const MAX_CODE_ATTEMPTS = 5;
 
 function fieldBorder(active: boolean) {
   return active ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)";
@@ -61,10 +79,11 @@ function fieldBorder(active: boolean) {
  * HANDOFF NOTE — states that cannot be reached by using the screen, because the responses that
  * produce them do not exist yet:
  *
- *   /register?demo=throttled   too many wrong codes, entry locked
+ *   /register?demo=throttled   too many wrong codes, entry locked — also reachable for real now,
+ *                              by getting MAX_CODE_ATTEMPTS codes wrong
  *
  * The rest are reachable with the seeded codes: BPXW-4762 works, QRST-5678 is already used,
- * VXYZ-2345 has expired.
+ * VXYZ-2345 was issued too long ago and has expired.
  */
 export default function RegisterPage() {
   return (
@@ -82,6 +101,7 @@ function RegisterFlow() {
   const portalUsers = useVcaStore(s => s.portalUsers);
   const projects = useVcaStore(s => s.projects);
   const clearSetupCode = useVcaStore(s => s.clearSetupCode);
+  const activateRosterEntry = useVcaStore(s => s.activateRosterEntry);
   const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
   const [step, setStep] = useState<Step>("code");
 
@@ -90,6 +110,7 @@ function RegisterFlow() {
   // Separate from codeError because it is not an inline message — it replaces the entry step. See
   // the panel below for why.
   const [throttled, setThrottled] = useState(demo === "throttled");
+  const [attempts, setAttempts] = useState(0);
   const [entry, setEntry] = useState<Activation | null>(null);
   const code = digits.join("");
   const codeComplete = code.length === REGISTRATION_CODE_LENGTH;
@@ -110,6 +131,18 @@ function RegisterFlow() {
     setThrottled(false);
     setEntry(null);
     setStep("code");
+  };
+
+  /** A rejected code: its own message, and one attempt closer to the wall. */
+  const rejectCode = (reason: "unknown" | "used" | "expired") => {
+    const used = attempts + 1;
+    setAttempts(used);
+    if (used >= MAX_CODE_ATTEMPTS) {
+      setCodeError("");
+      setThrottled(true);
+      return;
+    }
+    setCodeError(CODE_ERRORS[reason]);
   };
 
   // HANDOFF NOTE: resolves against mock data in the store. The real call is one request to the
@@ -134,6 +167,11 @@ function RegisterFlow() {
     // person keeps the richer details their row carries.
     const account = portalUsers.find(u => u.setupCode && u.setupCode === normalizeCode(code));
     if (account) {
+      // Setup codes age out on the same schedule as roster codes — see SETUP_CODE_TTL_DAYS.
+      if (isCodeExpired(account.setupCodeIssuedAt, SETUP_CODE_TTL_DAYS)) {
+        rejectCode("expired");
+        return;
+      }
       setCodeError("");
       setEntry({
         name: account.name,
@@ -145,14 +183,16 @@ function RegisterFlow() {
       return;
     }
 
-    // "unknown" for anything unmatched, including a code that exists but was already used. Saying
-    // which would tell someone holding a stale slip that the account is real.
-    setCodeError(CODE_ERRORS[rosterResult.ok ? "unknown" : rosterResult.reason]);
+    // unknown / used / expired all pass through, and all count against MAX_CODE_ATTEMPTS — the
+    // limit is what makes naming "used" safe, since it caps how many 8-character guesses anyone
+    // gets to make in the first place.
+    rejectCode(rosterResult.reason);
   };
 
-  // HANDOFF NOTE: sets no password — there is nowhere to set one. The real call stores it, activates
-  // the account, and burns the code. Burning it here for an account-issued code is not cosmetic:
-  // the code is held in the store, so leaving it would let the same slip of paper be used twice.
+  // HANDOFF NOTE: sets no password — there is nowhere to store one until the backend exists. What
+  // it does do is burn the code and leave an account behind, for both pools: a roster code used to
+  // do neither, so the screen said "account created" while the code stayed usable and the person
+  // had nothing to log into.
   const savePassword = () => {
     if (!canSetPassword || !entry) return;
     if (entry.source === "account") {
@@ -161,6 +201,8 @@ function RegisterFlow() {
         clearSetupCode(account.id);
         updatePortalUserStatus(account.id, "active");
       }
+    } else if (entry.employeeId) {
+      activateRosterEntry(entry.employeeId);
     }
     setStep("done");
   };

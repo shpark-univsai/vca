@@ -10,6 +10,7 @@ import {
 import { SIGNED_IN_USER } from "@/lib/vcaStore";
 import { LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 
 const CARD_BORDER = "1px solid var(--gray-200)";
 
@@ -209,16 +210,17 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
     setStep("new");
   };
 
-  const formatValid =
-    newPassword.length >= 8 &&
-    /[a-zA-Z]/.test(newPassword) &&
-    /[0-9]/.test(newPassword) &&
-    /[^a-zA-Z0-9]/.test(newPassword);
+  // Was a third copy of the rule, inline. Three copies is how two screens end up disagreeing
+  // about whether "abc12345" is allowed — this now reads the one definition the auth flow uses.
+  const formatValid = isPasswordFormatValid(newPassword);
   const mismatch = confirmPassword.length > 0 && confirmPassword !== newPassword;
-  const canSubmit = newPassword.length > 0 && confirmPassword.length > 0;
+  // Lit only when the click would actually work. The old form of this was `both fields non-empty`
+  // plus a second, differently-worded condition on the button, which agreed by accident.
+  const canSubmit = formatValid && confirmPassword.length > 0 && !mismatch;
+  const formatBroken = newPassword.length > 0 && !formatValid;
 
   const handleSubmit = () => {
-    if (!canSubmit || !formatValid || mismatch) return;
+    if (!canSubmit) return;
     setStep("done");
     onSuccess();
   };
@@ -344,8 +346,10 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                   </div>
                 </div>
 
-                <p style={{ margin: 0, fontSize: "10px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.22px" }}>
-                  At least 8 characters, including letters, numbers, and special characters
+                {/* Doubles as the format error, so a disabled button always has its reason on screen. */}
+                <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "10px", fontWeight: 600, color: formatBroken ? "var(--danger-400)" : "var(--gray-600)", letterSpacing: "-0.22px" }}>
+                  {formatBroken && <ErrorCircleIcon />}
+                  {PASSWORD_RULE_TEXT}
                 </p>
 
                 {mismatch && (
@@ -359,13 +363,13 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
 
                 <button
                   onClick={handleSubmit}
-                  disabled={!canSubmit || (confirmPassword.length > 0 && (!formatValid || mismatch))}
+                  disabled={!canSubmit}
                   style={{
                     height: "44px", width: "100%", border: "none", borderRadius: "8px",
-                    backgroundColor: canSubmit && formatValid && !mismatch ? "var(--primary-400)" : "var(--gray-100)",
-                    color: canSubmit && formatValid && !mismatch ? "white" : "var(--gray-400)",
+                    backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-100)",
+                    color: canSubmit ? "white" : "var(--gray-400)",
                     fontSize: "14px", fontWeight: 800, letterSpacing: "-0.28px",
-                    cursor: canSubmit && formatValid && !mismatch ? "pointer" : "default",
+                    cursor: canSubmit ? "pointer" : "default",
                     transition: "background-color 0.15s, color 0.15s",
                   }}
                 >

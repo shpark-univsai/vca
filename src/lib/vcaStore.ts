@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { liveEvents, getFacePhoto, DISTRICTS, type EventType, type LiveEvent, type TrackingHop } from "@/lib/mockData";
 import { isTodaySgt, recentSgtStamp, parseSgtStamp } from "@/lib/time";
-import { generateRegistrationCode, type RosterEntry } from "@/lib/staffRoster";
+import { effectiveCodeStatus, generateRegistrationCode, type RosterEntry } from "@/lib/staffRoster";
 import { generateTemporaryPassword } from "@/lib/password";
 
 // Deterministic pseudo-random in [0,1) — same formula as mockData.ts's own seededRandom — used
@@ -268,6 +268,9 @@ interface VcaStoreState {
    *
    * A reissue replaces the previous code, so the old slip of paper stops working.
    */
+  /** Issues (or replaces) this account's invite token and returns it, for the `/password-setup`
+   *  link. Replacing invalidates the previous link — a resend is a reissue. */
+  issueInviteToken: (userId: string) => string | null;
   issueSetupCode: (userId: string) => string | null;
   /** Called once the code has been redeemed, or when revoking an unused one. */
   clearSetupCode: (userId: string) => void;
@@ -284,6 +287,9 @@ interface VcaStoreState {
   // generated id, since these never need one of their own.
   issueRegistrationCodes: (employeeIds: string[]) => void;
   reissueRegistrationCode: (employeeId: string) => void;
+  /** Someone finished /register with their roster code: burn the code and give them the account it
+   *  was issued against. Returns the new user's id, or null if the code was not usable. */
+  activateRosterEntry: (employeeId: string) => string | null;
   removeRosterEntry: (employeeId: string) => void;
   logRosterCodeViewed: (employeeId: string) => void;
 }
@@ -393,10 +399,25 @@ export interface PortalUser {
   // users (none of which have this configured) still type-check.
   mfaEnabled?: boolean;
   lastLoginAt?: string;
-  // Set when this account is completing an invite via /password-setup — lets that page confirm
-  // it's finishing the right person's signup and land them straight in the app afterward instead
-  // of bouncing through /login. Cleared once the invite is completed (status becomes "active").
+  /**
+   * The employee number this person signs in with, where the deployment allows it
+   * (authConfig.employeeIdLogin). It lives on the ACCOUNT, not only on the roster row: the roster
+   * is a pre-registration name list that rows get deleted from, and resolving a login through it
+   * would mean a tidied-up roster silently removes people's ability to sign in.
+   *
+   * Optional because an account can predate the roster (the first administrator) or come from an
+   * invitation by mail, where nobody asked for a number.
+   */
+  employeeId?: string;
+  /**
+   * The invite link's token — `/password-setup?token=<this>`. Opaque and single-use: it used to be
+   * the account's own id, which is short, guessable and printed all over the Portal UI, so anyone
+   * who saw a user id could set that person's password. Cleared once the invite is completed.
+   */
   inviteToken?: string;
+  /** When the invite token was issued, ISO — an invite that was never accepted has to stop working
+   *  on its own. See INVITE_TOKEN_TTL_DAYS. */
+  inviteTokenIssuedAt?: string;
   /**
    * When an administrator last issued a temporary password for this account (the recovery path for
    * a deployment with no outbound mail — see authConfig's passwordRecovery: "adminOnly"). Kept so
@@ -442,11 +463,11 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "admin", status: "active", mfaEnabled: true, lastLoginAt: "2026-08-25 09:14" },
-  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", teamId: "team-univs", projectIds: ["proj-sg"], permission: "operator", status: "active", mfaEnabled: true, lastLoginAt: "2026-08-24 18:02" },
-  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "operator", status: "active", mfaEnabled: false, lastLoginAt: "2026-08-20 11:47" },
-  { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", teamId: "team-univs", projectIds: ["proj-sg"], permission: "operator", status: "invited" },
-  { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", teamId: "team-univs", projectIds: ["proj-sg"], permission: "operator", status: "suspended", mfaEnabled: false, lastLoginAt: "2026-06-02 08:30" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "admin", status: "active", mfaEnabled: true, lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "operator", status: "active", mfaEnabled: true, lastLoginAt: "2026-08-24 18:02" },
+  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "operator", status: "active", mfaEnabled: false, lastLoginAt: "2026-08-20 11:47" },
+  { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", employeeId: "EMP-2044", teamId: "team-univs", projectIds: ["proj-sg"], permission: "operator", status: "invited" },
+  { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", employeeId: "EMP-2045", teamId: "team-univs", projectIds: ["proj-sg"], permission: "operator", status: "suspended", mfaEnabled: false, lastLoginAt: "2026-06-02 08:30" },
 ];
 
 // Empty on purpose. Three sample requests used to sit here, and no path in the app could produce
@@ -465,7 +486,10 @@ const STAFF_ROSTER: RosterEntry[] = [
   { employeeId: "EMP-3004", name: "Farah Ismail", department: "Operations", projectId: "proj-sg", permission: "operator", status: "not-issued" },
   { employeeId: "EMP-3005", name: "Tom Reyes", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "used", code: "QRST5678" },
   { employeeId: "EMP-3006", name: "Lena Brooks", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "not-issued" },
-  { employeeId: "EMP-3007", name: "Marcus Ho", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "expired", code: "VXYZ2345" },
+  // Issued long enough ago that REGISTRATION_CODE_TTL_DAYS has passed: the row still says
+  // "unused", and effectiveCodeStatus() is what turns it into "expired". Stored-as-expired is not
+  // used in the seeds any more — it could never demonstrate that expiry actually works.
+  { employeeId: "EMP-3007", name: "Marcus Ho", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", code: "VXYZ2345", issuedAt: "2026-07-15T09:00:00+08:00" },
   { employeeId: "EMP-3008", name: "Aisha Bakar", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", code: "JKMN6789" },
   { employeeId: "EMP-3009", name: "Ryan Tavares", department: "Field Engineering", projectId: "proj-sg", permission: "admin", status: "not-issued" },
   { employeeId: "EMP-3010", name: "Sana Idris", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "used", code: "CDFG3456" },
@@ -474,7 +498,7 @@ const STAFF_ROSTER: RosterEntry[] = [
   { employeeId: "EMP-3013", name: "Hana Suzuki", department: "Field Engineering", projectId: "proj-riverside", permission: "operator", status: "not-issued" },
   { employeeId: "EMP-3014", name: "Oliver Grant", department: "Operations", projectId: "proj-riverside", permission: "operator", status: "used", code: "RSTU4325" },
   { employeeId: "EMP-3015", name: "Mei Lin Tan", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "WXYZ9876" },
-  { employeeId: "EMP-3016", name: "Diego Alvarez", department: "Field Engineering", projectId: "proj-riverside", permission: "operator", status: "expired", code: "ABCD5432" },
+  { employeeId: "EMP-3016", name: "Diego Alvarez", department: "Field Engineering", projectId: "proj-riverside", permission: "operator", status: "unused", code: "ABCD5432", issuedAt: "2026-07-02T09:00:00+08:00" },
   { employeeId: "EMP-3017", name: "Chloe Bennett", department: "Operations", projectId: "proj-riverside", permission: "operator", status: "not-issued" },
   { employeeId: "EMP-3018", name: "Yusuf Karim", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "EFGH6543" },
 ];
@@ -1015,6 +1039,24 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           : u
       ),
     })),
+  issueInviteToken: (userId) => {
+    const user = get().portalUsers.find(u => u.id === userId);
+    if (!user) return null;
+    // HANDOFF NOTE: mockup only. The real token is minted server-side, stored as a hash next to its
+    // expiry, and single-use. What matters here is the shape the link takes, so /password-setup can
+    // be written against an opaque token instead of the account id it used to carry.
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    const token = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+    set(state => ({
+      portalUsers: state.portalUsers.map(u =>
+        u.id === userId
+          ? { ...u, inviteToken: token, inviteTokenIssuedAt: new Date().toISOString() }
+          : u
+      ),
+    }));
+    return token;
+  },
   issueSetupCode: (userId) => {
     const user = get().portalUsers.find(u => u.id === userId);
     if (!user) return null;
@@ -1045,7 +1087,11 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   clearSetupCode: (userId) =>
     set(state => ({
       portalUsers: state.portalUsers.map(u =>
-        u.id === userId ? { ...u, setupCode: undefined, setupCodeIssuedAt: undefined } : u
+        u.id === userId
+          // The invite link dies with the code: both exist only to get this person to their first
+          // password, and one of them having survived the other is how a used link keeps working.
+          ? { ...u, setupCode: undefined, setupCodeIssuedAt: undefined, inviteToken: undefined, inviteTokenIssuedAt: undefined }
+          : u
       ),
     })),
   removePortalUser: (userId) =>
@@ -1115,7 +1161,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           id: `audit-${++auditSeq}`, projectId: r.projectId,
           message: `Registration code issued for ${r.name} (${r.employeeId})`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         });
-        return { ...r, code, status: "unused" as const };
+        return { ...r, code, issuedAt: new Date().toISOString(), status: "unused" as const };
       });
       return { staffRoster, auditLog: [...auditEntries, ...state.auditLog].slice(0, 200) };
     }),
@@ -1132,10 +1178,46 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         message: `Registration code reissued for ${entry.name} (${entry.employeeId}) — previous code invalidated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       };
       return {
-        staffRoster: state.staffRoster.map(r => (r.employeeId === employeeId ? { ...r, code, status: "unused" as const } : r)),
+        // A fresh issuedAt restarts the clock: the point of a reissue is that the person still has
+        // not registered, so handing them a code that expires on the old one's schedule is no use.
+        staffRoster: state.staffRoster.map(r => (r.employeeId === employeeId ? { ...r, code, issuedAt: new Date().toISOString(), status: "unused" as const } : r)),
         auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
       };
     }),
+  /**
+   * The end of /register for a roster code. Until this existed the screen said "account created"
+   * and created nothing: the code stayed usable, and the person had no account to log into.
+   *
+   * HANDOFF NOTE: the backend does all of this in one transaction, and it is the transaction that
+   * matters — burning the code and creating the account have to succeed or fail together, or a
+   * crash in between leaves either a live code with an account behind it or an account nobody can
+   * reach. The password belongs in that same call; there is nowhere to put it here.
+   */
+  activateRosterEntry: (employeeId) => {
+    const state = get();
+    const entry = state.staffRoster.find(r => r.employeeId === employeeId);
+    if (!entry || effectiveCodeStatus(entry) !== "unused") return null;
+    const project = state.projects.find(p => p.id === entry.projectId);
+    const id = `user-${++portalUserSeq}`;
+    // The address is optional on a roster row — a site with no mail has none — and an account
+    // without one is normal here: they sign in with the employee number.
+    const user: PortalUser = {
+      id, name: entry.name, email: entry.email ?? "", employeeId: entry.employeeId,
+      teamId: project?.teamId ?? state.teams[0]?.id ?? "",
+      projectIds: [entry.projectId], permission: entry.permission, status: "active",
+    };
+    const auditEntry: AuditEvent = {
+      id: `audit-${++auditSeq}`, projectId: entry.projectId,
+      message: `Account activated with a registration code: ${entry.name} (${entry.employeeId}) — code used`,
+      actor: entry.name, at: new Date().toISOString(),
+    };
+    set(s2 => ({
+      portalUsers: [...s2.portalUsers, user],
+      staffRoster: s2.staffRoster.map(r => (r.employeeId === employeeId ? { ...r, status: "used" as const } : r)),
+      auditLog: [auditEntry, ...s2.auditLog].slice(0, 200),
+    }));
+    return id;
+  },
   // Deleting the row is what kills an unused code (a departing employee's paper code must not stay
   // a working key into the system) — there is no separate "revoke code" action because a roster row
   // with no person behind it has nothing left to protect.

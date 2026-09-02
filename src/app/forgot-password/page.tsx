@@ -12,6 +12,15 @@ const FIELD_BORDER = "1px solid var(--gray-300)";
 /** Seconds before "Resend" becomes available again — stops a stuck user from mailing themselves ten
  *  codes, each of which invalidates the last. */
 const RESEND_COOLDOWN_SEC = 30;
+/**
+ * How many codes one attempt at recovery gets. Past this the answer is not another code: something
+ * else is wrong — the mail is going somewhere they cannot read — and more codes only invalidate the
+ * one that may yet arrive.
+ *
+ * HANDOFF NOTE: counted in this component, so it resets on reload. The real limit is per account
+ * and lives on the server, which also has to return `resendLimit`; this number has to match it.
+ */
+const MAX_RESENDS = 3;
 /** A code the demo rejects so the wrong-code state is reachable without a backend. See the
  *  HANDOFF NOTE on verifyCode. */
 const DEMO_REJECTED_CODE = "12345678";
@@ -63,6 +72,8 @@ function fieldBorder(active: boolean) {
  *   /forgot-password?demo=wrong      code rejected
  *   /forgot-password?demo=expired    code too old
  *   /forgot-password?demo=throttled  too many attempts, entry locked
+ *   /forgot-password?demo=resendLimit  asked for too many codes (also reachable for real, by
+ *                                    pressing Resend past MAX_RESENDS)
  *   /forgot-password?demo=password   set the new password
  *   /forgot-password?demo=done       finished
  *   /forgot-password?demo=adminOnly  deployment with no mail server at all
@@ -115,6 +126,7 @@ function ForgotPasswordFlow() {
       : null
   );
   const [cooldown, setCooldown] = useState(0);
+  const [resends, setResends] = useState(0);
   // Bumped to send focus back to the first box after a resend.
   const [focusSignal, setFocusSignal] = useState(0);
   const code = digits.join("");
@@ -162,6 +174,12 @@ function ForgotPasswordFlow() {
 
   const resend = () => {
     if (cooldown > 0) return;
+    if (resends + 1 > MAX_RESENDS) {
+      setDigits(Array(RESET_CODE_LENGTH).fill(""));
+      setCodeFailure("resendLimit");
+      return;
+    }
+    setResends(n => n + 1);
     resetCodeEntry();
     setCooldown(RESEND_COOLDOWN_SEC);
     setFocusSignal(n => n + 1);
@@ -259,9 +277,12 @@ function ForgotPasswordFlow() {
                     {authConfig.supportContact ?? "Your security operations team"}
                   </p>
                   <div style={{ height: "1px", backgroundColor: "var(--gray-200)", margin: "2px 0" }} />
+                  {/* Both of Portal's no-mail options, in the order it offers them. This used to name
+                      only the registration code while Portal's own notice named only the temporary
+                      password, so the two halves of one conversation described different remedies. */}
                   <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.26px", lineHeight: 1.7 }}>
-                    They will issue a new registration code. You set your own password with it, so
-                    nobody else ever knows what you choose.
+                    They will either read you a temporary password, which you replace the moment you
+                    sign in, or hand you a setup code on paper that you set your own password with.
                   </p>
                 </div>
 
@@ -292,7 +313,9 @@ function ForgotPasswordFlow() {
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
-                  <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>Email</label>
+                  <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>
+                    {authConfig.employeeIdLogin ? "Employee number or email" : "Email"}
+                  </label>
                   <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px",
                     border: identifierError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: "8px" }}>
                     <PersonFieldIcon />
@@ -306,11 +329,20 @@ function ForgotPasswordFlow() {
                       style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                     />
                   </div>
-                  {identifierError && (
+                  {identifierError ? (
                     <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.24px" }}>
                       <ErrorCircleIcon /> {identifierError}
                     </p>
-                  )}
+                  ) : authConfig.employeeIdLogin ? (
+                    // A number resolves to whatever address the account carries — and a site with no
+                    // per-person mail leaves that empty. Saying so here is the only warning that can
+                    // be given, because the next screen cannot admit that nothing was sent without
+                    // also telling a stranger whether the account exists.
+                    <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", lineHeight: 1.6 }}>
+                      No email address on your account? Only an administrator can reset it —{" "}
+                      {authConfig.supportContact ?? "contact your security operations team"}.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>

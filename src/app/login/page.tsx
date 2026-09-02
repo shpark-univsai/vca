@@ -23,9 +23,11 @@ const REMEMBERED_ID_KEY = "vca.rememberedId";
  *   /login?demo=sessionExpired   signed out by the session timing out
  *   /login?demo=signedOut        signed out deliberately
  *
- * Three of these also happen for real against the seeded accounts, because the mock user list
- * already carries a status: wei.chen@univs.ai is "invited" and david.ong@univs.ai is "suspended".
- * Until this change both of them signed in perfectly happily, which was a real hole.
+ * Two of these also happen for real against the seeded accounts, because the mock user list
+ * already carries a status: wei.chen@univs.ai (EMP-2044) is "invited" and david.ong@univs.ai
+ * (EMP-2045) is "suspended". Until this change both of them signed in perfectly happily, which was
+ * a real hole. Either identifier reaches them — EMP-2041 is Grace Tan, an admin, so it lands in
+ * Portal; EMP-2042 is an operator and lands in the app.
  */
 export default function LoginPage() {
   return (
@@ -90,14 +92,18 @@ function LoginForm() {
     // settles on, not built separately here and reconciled later.
     // Matches an email, or an employee number where the deployment allows it — a site with no mail
     // server often has no per-person address either, and the staff roster keys on employee number.
+    //
+    // Both come off the ACCOUNT. This used to resolve a number through the staff roster and then
+    // match the roster row's name against a user, which never once matched — the seeded roster and
+    // the seeded accounts are different people — so every employee-number sign-in fell through to
+    // the unknown-identifier path below, admins included. The roster is also the wrong place to ask:
+    // it is a pre-registration name list whose rows get deleted, and a login that reads it stops
+    // working the moment somebody tidies it up.
     const typed = identifier.trim().toLowerCase();
     const state = useVcaStore.getState();
-    const rosterMatch = authConfig.employeeIdLogin
-      ? state.staffRoster.find(r => r.employeeId.toLowerCase() === typed)
-      : undefined;
     const matchedUser = state.portalUsers.find(
       u => u.email.toLowerCase() === typed
-        || (!!rosterMatch && u.name.toLowerCase() === rosterMatch.name.toLowerCase())
+        || (authConfig.employeeIdLogin && !!u.employeeId && u.employeeId.toLowerCase() === typed)
     );
 
     // A known account's status decides whether it may sign in at all, and this is checked before
@@ -117,7 +123,7 @@ function LoginForm() {
     // the account stays on a password a second person read out over the phone.
     //
     // HANDOFF NOTE: the real login response carries this flag; the mock reads it off the Portal
-    // user the admin issued it to (Users & Permissions -> Generate temporary password). The backend
+    // user the admin issued it to (Users & Permissions -> Reset password). The backend
     // must enforce it as well — this branch only decides where the browser goes next.
     if (matchedUser?.mustChangePassword) {
       router.push(`/password-setup?token=${matchedUser.id}&reason=temp`);

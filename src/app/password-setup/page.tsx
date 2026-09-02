@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import { LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { useVcaStore } from "@/lib/vcaStore";
-import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
+import { INVITE_TOKEN_TTL_DAYS, isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
+import { isCodeExpired } from "@/lib/staffRoster";
+import { getAuthConfig } from "@/lib/authConfig";
 
 function fieldBorder(active: boolean) {
   return active ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)";
@@ -21,10 +23,12 @@ export default function PasswordSetupPage() {
 
 function PasswordSetupForm() {
   const router = useRouter();
-  // No real invite-token backend yet — the mock invite link handed out from Portal's Invite/Access
-  // Request flows is just `/password-setup?token=<portalUser id>` (see PortalUsersPage.tsx). Look
-  // that user up the same way login/page.tsx matches by email, then route by their permission
-  // instead of always bouncing to /login.
+  // The invite link carries an opaque token minted when the invitation was sent
+  // (PortalUser.inviteToken), not the account id it used to carry — a user id is short, guessable
+  // and printed all over Portal, so anyone who saw one could set that person's password.
+  //
+  // HANDOFF NOTE: the token is still generated in the browser and stored in the clear. The real one
+  // is minted server-side, stored as a hash beside its expiry, and burned on use.
   const params = useSearchParams();
   const token = params.get("token");
   // Why this screen is being shown. "temp" means the person just logged in with a password an
@@ -34,6 +38,22 @@ function PasswordSetupForm() {
   const forcedByTempPassword = params.get("reason") === "temp";
   const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
   const clearTemporaryPassword = useVcaStore(s => s.clearTemporaryPassword);
+  const clearSetupCode = useVcaStore(s => s.clearSetupCode);
+  const portalUsers = useVcaStore(s => s.portalUsers);
+  const authConfig = getAuthConfig();
+
+  // Two ways to arrive, and they resolve differently. An invitation is looked up by its token; a
+  // forced change after logging in with a temporary password is a redirect this app made itself
+  // (login/page.tsx), so it passes the account id and there is no token to expire.
+  const target = !token
+    ? undefined
+    : forcedByTempPassword
+      ? portalUsers.find(u => u.id === token)
+      : portalUsers.find(u => u.inviteToken === token);
+  // An invitation nobody accepted is an open door with nobody watching it. Past the window the link
+  // stops working rather than staying valid forever.
+  const linkDead = !target
+    || (!forcedByTempPassword && isCodeExpired(target.inviteTokenIssuedAt, INVITE_TOKEN_TTL_DAYS));
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -48,19 +68,78 @@ function PasswordSetupForm() {
   const formatBroken = newPassword.length > 0 && !formatValid;
 
   const handleSubmit = () => {
-    if (!canSubmit) return;
-    if (!formatValid || mismatch) return;
-    const invitedUser = token ? useVcaStore.getState().portalUsers.find(u => u.id === token) : undefined;
-    if (!invitedUser) {
-      router.push("/login");
-      return;
-    }
-    updatePortalUserStatus(invitedUser.id, "active");
+    if (!canSubmit || !target) return;
+    updatePortalUserStatus(target.id, "active");
     // Retires the temporary password: the must-change flag comes off, and Portal's Users table
     // stops flagging this account as one somebody else has the password to.
-    clearTemporaryPassword(invitedUser.id);
-    router.push(invitedUser.permission === "admin" ? "/portal" : "/");
+    clearTemporaryPassword(target.id);
+    // Burns the link. Without this the same invitation mail keeps setting this person's password
+    // for as long as anyone has it — including whoever the mail was forwarded to.
+    clearSetupCode(target.id);
+    router.push(target.permission === "admin" ? "/portal" : "/");
   };
+
+  /**
+   * A link that no longer resolves — expired, already used, or mistyped. This used to bounce
+   * silently to /login, which from the outside looks like a button that did nothing: the person is
+   * left clicking the same mail again. It does not distinguish expired from unknown, since the way
+   * out is identical and naming which one would confirm to a stranger that the account exists.
+   */
+  if (linkDead) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "white" }}>
+        <AuthHeader />
+        <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "200px", overflowY: "auto" }}>
+          <div style={{
+            width: "480px", maxWidth: "480px", backgroundColor: "white",
+            borderRadius: "28px", padding: "36px",
+            display: "flex", flexDirection: "column", gap: "32px", alignItems: "center",
+          }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
+              <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px", textAlign: "center" }}>
+                This link no longer works
+              </h1>
+              <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.7 }}>
+                Invitation links stop working after {INVITE_TOKEN_TTL_DAYS} days, and once they have
+                been used.<br />Ask for a new one — nothing you do here can revive this one.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%", padding: "20px", borderRadius: "12px", backgroundColor: "var(--gray-50)" }}>
+              <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>WHO TO CONTACT</p>
+              <p style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>
+                {authConfig.supportContact ?? "Your security operations team"}
+              </p>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
+              <button
+                onClick={() => router.push("/login")}
+                style={{
+                  height: "48px", width: "100%", border: "none", borderRadius: "8px",
+                  backgroundColor: "var(--primary-400)", color: "white",
+                  fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px", cursor: "pointer",
+                }}
+              >
+                Back to log in
+              </button>
+              {authConfig.registrationCode && (
+                <p style={{ margin: 0, textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
+                  Given a code on paper instead?{" "}
+                  <button
+                    onClick={() => router.push("/register")}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
+                  >
+                    Activate your account
+                  </button>
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "white" }}>

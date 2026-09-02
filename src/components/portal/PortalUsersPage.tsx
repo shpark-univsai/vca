@@ -6,6 +6,7 @@ import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, type PortalPermissio
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
+import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
 import { BORDER, CARD_BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ActiveFilterCount } from "./PortalShared";
@@ -87,6 +88,7 @@ const T = {
     tempConsequenceOnce: "The new password is shown once, on the next screen. It is never stored and cannot be looked up again.",
     tempConsequenceMustChange: "They must set a password of their own the first time they log in with it.",
     tempConsequenceExpiry: (hours: number) => `It stops working after ${hours} hours, used or not.`,
+    tempConsequenceExpiryDays: (days: number) => `It stops working after ${days} days, used or not.`,
     tempGenerate: "Generate",
 
     // Temporary password modal — result step
@@ -123,6 +125,10 @@ const T = {
     setupIssuedTitle: "Setup code issued",
     setupIssuedDesc: (name: string) => `${name} sets their own password with it at /register`,
     setupBadge: "Setup code",
+    setupBadgeTitle: (days: number) => `Issued — not yet used. Stops working in ${days} days`,
+    setupBadgeExpired: "Setup code expired",
+    viewSetupCode: "View setup code",
+    setupExpires: (days: number) => `Expires in ${days} days`,
     soleAdminTitle: "Only one administrator can sign in",
     soleAdminBody: "Granting permissions is an administrator-only power, and there is no supplier account behind this installation. If this one account is locked out, nobody can grant anything and there is no way back in. Make a second person an administrator.",
     // Two sentences, because this renders as a footnote inside a dropdown. The reasoning behind the
@@ -134,7 +140,7 @@ const T = {
 
     // Recovery-mode notice (deployment with no outbound mail)
     recoveryNoticeTitle: "Self-service password reset is off for this installation",
-    recoveryNoticeBody: "There is no outbound mail here, so no reset code can be sent to anyone. A locked-out user calls the contact below, and an administrator issues them a temporary password from the row actions.",
+    recoveryNoticeBody: "There is no outbound mail here, so no reset code can be sent to anyone. A locked-out user calls the contact below, and an administrator hands them a way back in from the row actions — a temporary password read out on the line, or a setup code on paper.",
     recoveryNoticeContactLabel: "THEY CALL",
     recoveryNoticeContactFallback: "Your security operations team",
 
@@ -238,6 +244,10 @@ const T = {
     setupIssuedTitle: "설치 코드 발급됨",
     setupIssuedDesc: (name: string) => `${name} 이 /register 에서 직접 비밀번호를 설정합니다`,
     setupBadge: "설치 코드",
+    setupBadgeTitle: (days: number) => `발급됨 · 아직 사용되지 않음 — ${days}일 후 만료`,
+    setupBadgeExpired: "설치 코드 만료",
+    viewSetupCode: "설치 코드 보기",
+    setupExpires: (days: number) => `${days}일 후 만료`,
     soleAdminTitle: "로그인 가능한 관리자가 한 명입니다",
     soleAdminBody: "권한 부여는 관리자만 할 수 있고, 이 설치에는 공급사 계정이 없습니다. 이 한 계정이 잠기면 아무도 권한을 부여할 수 없고 되돌릴 방법도 없습니다. 두 번째 관리자를 지정하세요.",
     lastAdminReason: "로그인할 수 있는 유일한 관리자입니다. 다른 사람을 먼저 관리자로 지정하세요.",
@@ -267,6 +277,7 @@ const T = {
     tempConsequenceOnce: "새 비밀번호는 다음 화면에 한 번만 표시됩니다. 저장되지 않으며 다시 확인할 수 없습니다.",
     tempConsequenceMustChange: "사용자는 이 비밀번호로 처음 로그인할 때 반드시 본인 비밀번호를 새로 설정해야 합니다.",
     tempConsequenceExpiry: (hours: number) => `사용 여부와 관계없이 ${hours}시간 후 만료됩니다.`,
+    tempConsequenceExpiryDays: (days: number) => `사용 여부와 관계없이 ${days}일 후 만료됩니다.`,
     tempGenerate: "생성",
 
     // Temporary password modal — result step
@@ -282,7 +293,7 @@ const T = {
 
     // Recovery-mode notice (deployment with no outbound mail)
     recoveryNoticeTitle: "이 설치 환경에서는 셀프 비밀번호 재설정이 꺼져 있습니다",
-    recoveryNoticeBody: "외부로 나가는 메일이 없어 재설정 코드를 보낼 수 없습니다. 로그인하지 못하는 사용자는 아래 연락처로 문의하고, 관리자가 행 메뉴에서 임시 비밀번호를 발급해 전달합니다.",
+    recoveryNoticeBody: "외부로 나가는 메일이 없어 재설정 코드를 보낼 수 없습니다. 로그인하지 못하는 사용자는 아래 연락처로 문의하고, 관리자가 행 메뉴에서 다시 들어올 수단을 발급합니다 — 내선으로 읽어주는 임시 비밀번호, 또는 종이로 전달하는 설치 코드.",
     recoveryNoticeContactLabel: "문의처",
     recoveryNoticeContactFallback: "관제 센터 보안 관리자",
 
@@ -319,6 +330,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const addPortalUser = useVcaStore(s => s.addPortalUser);
+  const issueInviteToken = useVcaStore(s => s.issueInviteToken);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -364,7 +376,10 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const submit = () => {
     if (!name.trim() || !email.trim() || !teamId) return;
     const id = addPortalUser({ name: name.trim(), email: email.trim(), teamId, projectIds, permission, status: "invited" });
-    showToast({ variant: "success", title: t.inviteSentTitle, desc: `/password-setup?token=${id}` });
+    // The link carries a minted token, not the account id it used to carry — see PortalUser.
+    // inviteToken. The toast stands in for the mail nobody can send yet.
+    const token = issueInviteToken(id);
+    showToast({ variant: "success", title: t.inviteSentTitle, desc: `/password-setup?token=${token}` });
     onClose();
   };
 
@@ -460,14 +475,16 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
  * is no route back to step one, because a second look at the same password does not exist — a
  * lost password is reissued, not recovered.
  */
-function TempPasswordModal({ user, mailAvailable, onClose }: { user: PortalUser; mailAvailable: boolean; onClose: () => void }) {
+function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user: PortalUser; mailAvailable: boolean; initialCode?: string; onClose: () => void }) {
   useEscapeKey(onClose);
   const issueTemporaryPassword = useVcaStore(s => s.issueTemporaryPassword);
   const issueSetupCode = useVcaStore(s => s.issueSetupCode);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t = T[lang];
-  const [password, setPassword] = useState<string | null>(null);
+  // Non-null from the start when an existing setup code is being looked up again rather than
+  // issued — the result step is the whole point of that visit, so it opens straight into it.
+  const [password, setPassword] = useState<string | null>(initialCode ?? null);
   const [copied, setCopied] = useState(false);
   /* Chosen here rather than in the row menu. Both paths do the same job — hand this person a way
      in — so two menu entries made the administrator learn the difference between a temporary
@@ -476,7 +493,7 @@ function TempPasswordModal({ user, mailAvailable, onClose }: { user: PortalUser;
      paper? The mechanism follows from the answer. */
   // Mail first where it exists, and the default: it is the only path on which the administrator
   // never learns the person's password.
-  const [kind, setKind] = useState<CredentialKind>(mailAvailable ? "mail" : "password");
+  const [kind, setKind] = useState<CredentialKind>(initialCode ? "code" : mailAvailable ? "mail" : "password");
 
   /* The two credentials share this box because the careful parts are identical — a confirm step
      before an irreversible action, a result shown once, a clipboard write that only claims success
@@ -488,7 +505,7 @@ function TempPasswordModal({ user, mailAvailable, onClose }: { user: PortalUser;
         resultTitle: t.resetCodeSentTitle, note: "",
         handoverTitle: "", handover: "",
         consequences: [] as string[],
-        showExpiry: false,
+        showExpiry: false, expiryLabel: "",
       }
     : kind === "password"
     ? {
@@ -501,7 +518,7 @@ function TempPasswordModal({ user, mailAvailable, onClose }: { user: PortalUser;
           t.tempConsequenceInvalidate, t.tempConsequenceOnce,
           t.tempConsequenceMustChange, t.tempConsequenceExpiry(TEMP_PASSWORD_VALIDITY_HOURS),
         ],
-        showExpiry: true,
+        showExpiry: true, expiryLabel: t.tempExpires(TEMP_PASSWORD_VALIDITY_HOURS),
       }
     : {
         modalTitle: t.setupModalTitle, intro: t.setupConfirmIntro, generate: t.setupGenerate,
@@ -509,11 +526,16 @@ function TempPasswordModal({ user, mailAvailable, onClose }: { user: PortalUser;
         handoverTitle: t.setupHandoverTitle, handover: t.setupHandover,
         consequences: [
           t.setupConsequenceReplace, t.setupConsequenceNoLogin, t.setupConsequenceWhere,
+          t.tempConsequenceExpiryDays(SETUP_CODE_TTL_DAYS),
         ],
-        // No expiry line: nothing here expires setup codes yet, and stating a lifetime the system
-        // does not enforce would be worse than saying nothing. HANDOFF NOTE: the backend should
-        // expire them, and then this becomes true and can be shown.
+        // The expiry line is real now: a code carries an issue date and /register refuses it past
+        // SETUP_CODE_TTL_DAYS. It stays in the neutral tone rather than the warning one — unlike a
+        // temporary password, a code cannot sign in, so the clock is information, not a hazard.
+        // HANDOFF NOTE: the backend has to enforce the same number.
         showExpiry: false,
+        expiryLabel: t.setupExpires(
+          codeDaysRemaining(user.setupCodeIssuedAt, SETUP_CODE_TTL_DAYS) ?? SETUP_CODE_TTL_DAYS,
+        ),
       };
 
   const generate = () => {
@@ -657,7 +679,7 @@ function TempPasswordModal({ user, mailAvailable, onClose }: { user: PortalUser;
 
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: c.showExpiry ? "var(--warning-500)" : "var(--gray-600)" }}>{c.note}</p>
-                {c.showExpiry && <span style={{ flexShrink: 0, fontSize: "12px", color: "var(--gray-500)" }}>{t.tempExpires(TEMP_PASSWORD_VALIDITY_HOURS)}</span>}
+                {c.expiryLabel && <span style={{ flexShrink: 0, fontSize: "12px", color: "var(--gray-500)" }}>{c.expiryLabel}</span>}
               </div>
 
               <div style={{ padding: "12px 14px", borderRadius: "10px", backgroundColor: c.showExpiry ? "var(--warning-100)" : "var(--info-100)" }}>
@@ -724,6 +746,38 @@ function MfaBadge({ enabled }: { enabled?: boolean }) {
  * password means the person never used it and is still locked out, which is precisely when an
  * administrator needs to notice them.
  */
+/**
+ * An issued setup code nobody has redeemed yet. Same job as the temporary-password badge: the table
+ * should say, without opening anything, who is still holding a slip of paper that gets them in.
+ * Neutral tone rather than warning — a code cannot sign in, so an outstanding one is a loose end,
+ * not a shared credential.
+ */
+function SetupCodeBadge({ issuedAt }: { issuedAt?: string }) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  // After mount, for the reason TempPasswordBadge documents below.
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
+
+  const days = nowMs === null ? null : codeDaysRemaining(issuedAt, SETUP_CODE_TTL_DAYS, nowMs);
+  const expired = days === 0;
+  const tone = expired
+    ? { bg: "var(--danger-100)", color: "var(--danger-500)" }
+    : { bg: "var(--info-100)", color: "var(--info-500)" };
+
+  return (
+    <span
+      title={days === null ? undefined : t.setupBadgeTitle(days)}
+      style={{
+        display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px",
+        backgroundColor: tone.bg, color: tone.color, fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap",
+      }}
+    >
+      {expired ? t.setupBadgeExpired : t.setupBadge}
+    </span>
+  );
+}
+
 function TempPasswordBadge({ issuedAt }: { issuedAt: string }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -785,6 +839,7 @@ function RecoveryModeNotice({ supportContact }: { supportContact: string | null 
 function AccessRequestsPanel({ projectId }: { projectId: string }) {
   const accessRequests = useVcaStore(s => s.accessRequests);
   const approveAccessRequests = useVcaStore(s => s.approveAccessRequests);
+  const issueInviteToken = useVcaStore(s => s.issueInviteToken);
   const dismissAccessRequest = useVcaStore(s => s.dismissAccessRequest);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
@@ -810,7 +865,7 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
     const newUserIds = approveAccessRequests(ids);
     setSelected(prev => prev.filter(id => !ids.includes(id)));
     if (newUserIds.length === 1) {
-      showToast({ variant: "success", title: t.accessApprovedTitle, desc: `/password-setup?token=${newUserIds[0]}` });
+      showToast({ variant: "success", title: t.accessApprovedTitle, desc: `/password-setup?token=${issueInviteToken(newUserIds[0])}` });
     } else if (newUserIds.length > 1) {
       showToast({ variant: "success", title: t.usersInvitedTitle(newUserIds.length), desc: t.eachWillReceive });
     }
@@ -920,10 +975,13 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const updatePortalUserPermission = useVcaStore(s => s.updatePortalUserPermission);
   const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
   const removePortalUser = useVcaStore(s => s.removePortalUser);
+  const issueInviteToken = useVcaStore(s => s.issueInviteToken);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const [showInvite, setShowInvite] = useState(false);
+  // The user whose already-issued setup code is being looked up again, or null.
+  const [viewingCodeFor, setViewingCodeFor] = useState<PortalUser | null>(null);
   // The user a temporary password is being issued for, or null. Held as the user rather than an id
   // so the modal keeps rendering the right name even if the row scrolls out from under it.
   const [credentialFor, setCredentialFor] = useState<PortalUser | null>(null);
@@ -1153,6 +1211,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "4px" }}>
               <StatusBadge status={u.status} />
               {u.tempPasswordIssuedAt && <TempPasswordBadge issuedAt={u.tempPasswordIssuedAt} />}
+              {u.setupCode && <SetupCodeBadge issuedAt={u.setupCodeIssuedAt} />}
             </div>
             {/* Two mail actions, because the two ways a person gets locked out need different
                 messages: an invite that never arrived is resent, an account whose password is
@@ -1163,7 +1222,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             <RowActionsMenu actions={[
               ...(mailAvailable && u.status === "invited" ? [{
                 label: t.resendInvite,
-                onClick: () => showToast({ variant: "success", title: t.inviteResentTitle, desc: `/password-setup?token=${u.id}` }),
+                // A resend is a reissue: the previous link stops working, which is the point when
+                // the first one has been sitting in a forwarded mail thread for a week.
+                onClick: () => showToast({ variant: "success", title: t.inviteResentTitle, desc: `/password-setup?token=${issueInviteToken(u.id)}` }),
               }] : []),
               {
                 // All three recovery paths behind one entry. Mailing a code, reading out a temporary
@@ -1174,6 +1235,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 label: t.resetPassword,
                 onClick: () => setCredentialFor(u),
               },
+              // The code's result screen says it can be looked up again from this menu while it is
+              // unused — and until now it could not, so the modal was promising a menu item that
+              // did not exist. Unlike a temporary password there is nothing wrong with showing it
+              // twice: it is stored, because it has to be verifiable, and it cannot sign in.
+              ...(u.setupCode ? [{
+                label: t.viewSetupCode,
+                onClick: () => setViewingCodeFor(u),
+              }] : []),
               u.status === "suspended"
                 ? {
                     label: t.reactivateUser,
@@ -1209,6 +1278,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       {showInvite && <InviteUserModal defaultProjectId={projectId} onClose={() => setShowInvite(false)} />}
       {credentialFor && (
         <TempPasswordModal user={credentialFor} mailAvailable={mailAvailable} onClose={() => setCredentialFor(null)} />
+      )}
+      {viewingCodeFor?.setupCode && (
+        <TempPasswordModal
+          user={viewingCodeFor}
+          mailAvailable={mailAvailable}
+          initialCode={viewingCodeFor.setupCode}
+          onClose={() => setViewingCodeFor(null)}
+        />
       )}
     </div>
   );

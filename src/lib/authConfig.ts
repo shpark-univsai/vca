@@ -43,9 +43,9 @@ export interface AuthConfig {
    * How a forgotten password is recovered.
    * - "emailCode": the 8-digit code flow at /forgot-password. Needs outbound mail.
    * - "adminOnly": no self-service. A company with no mail at all has no way to send a code, so an
-   *   administrator issues a temporary password from Portal (Users & Permissions -> row actions ->
-   *   "Generate temporary password") and hands it over by phone, in person, or on internal
-   *   messenger. /forgot-password says so instead of asking for an address, and Portal hides its
+   *   administrator hands over a way back in from Portal (Users & Permissions -> row actions ->
+   *   "Reset password"): a temporary password read out by phone or in person, or a setup code on
+   *   paper. /forgot-password says so instead of asking for an address, and Portal hides its
    *   mail-dependent actions. Both halves are built.
    */
   passwordRecovery: "emailCode" | "adminOnly";
