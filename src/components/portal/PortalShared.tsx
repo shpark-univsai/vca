@@ -17,6 +17,15 @@ export const CONTROL_HEIGHT = "36px";
  * tables stay the same table.
  */
 export const TABLE_COLUMN_GAP = "12px";
+/**
+ * How wide the team name in the breadcrumb may get before it is ellipsised. It was 260px, which cut
+ * a perfectly ordinary customer name ("City of Singapore — Smart Infrastructure Office") in half
+ * while about a thousand pixels of header sat empty to the right of it. Truncating is for the name
+ * that genuinely does not fit, not for the one we declined to give room to. Both places that render
+ * the team crumb — the switcher trigger and the wizard's static label — read this, so they clip at
+ * the same point instead of at two.
+ */
+export const BREADCRUMB_TEAM_MAX_WIDTH = "360px";
 export const PANEL_SHADOW = "none";
 
 export const TYPE_META: Record<ProjectType, { label: string; bg: string; color: string }> = {

@@ -11,7 +11,7 @@ import ProjectSidebar, { type DetailTab } from "./ProjectSidebar";
 import { ToastProvider } from "../Toast";
 import { useVcaStore, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { LanguageSwitcher } from "./PortalShared";
+import { LanguageSwitcher, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 
 const T = {
   en: { noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar", exit: "Exit to App", newProject: "New project", cancel: "Cancel" },
@@ -151,12 +151,18 @@ export default function PortalShell() {
             to what you typed, and silently dropping it is not one. */}
         {showWizard ? (
           <>
-            <span style={{
-              display: "flex", alignItems: "center",
-              border: "1px solid var(--gray-200)", borderRadius: "8px", padding: "6px 10px",
-              fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", whiteSpace: "nowrap",
-              maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis",
-            }}>
+            {/* display:block, not flex. text-overflow only applies to a block box, so with
+                display:flex the name was hard-clipped mid-word with no ellipsis — it read as a
+                rendering fault rather than as a shortened name. */}
+            <span
+              title={currentOrg?.name}
+              style={{
+                display: "block",
+                border: "1px solid var(--gray-200)", borderRadius: "8px", padding: "6px 10px",
+                fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", whiteSpace: "nowrap",
+                maxWidth: BREADCRUMB_TEAM_MAX_WIDTH, overflow: "hidden", textOverflow: "ellipsis",
+              }}
+            >
               {currentOrg?.name ?? t.noTeam}
             </span>
             <BreadcrumbChevron />

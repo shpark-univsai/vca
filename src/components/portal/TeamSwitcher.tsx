@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useVcaStore } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, FilterSelect } from "./PortalShared";
+import { BORDER, FilterSelect, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 
 const T = {
   en: {
@@ -119,7 +119,12 @@ export default function TeamSwitcher({ currentTeamId, onSelect }: TeamSwitcherPr
             cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", whiteSpace: "nowrap",
           }}
         >
-          <span style={{ maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {/* Its own title, so hovering the name reveals the name in full while hovering the rest
+              of the button still explains what the button does. */}
+          <span
+            title={current?.name}
+            style={{ maxWidth: BREADCRUMB_TEAM_MAX_WIDTH, overflow: "hidden", textOverflow: "ellipsis" }}
+          >
             {current?.name ?? t.noTeam}
           </span>
           <span style={{ display: "flex", color: "var(--gray-400)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
