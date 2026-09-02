@@ -250,7 +250,10 @@ function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
               placeholder={t.namePlaceholder}
               onKeyDown={e => { if (e.key === "Enter") submit(); }}
               autoFocus
-              style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }}
+              // 14px, a step up from the 13px the Portal's other form inputs use. This is the one
+              // field the whole box exists for, and it is what the team will be called everywhere
+              // afterwards — worth reading at the size you would read a title at.
+              style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "14px", fontFamily: "inherit" }}
             />
           </div>
           <div>

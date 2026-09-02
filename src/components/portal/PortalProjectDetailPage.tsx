@@ -65,8 +65,12 @@ const T = {
     recentAdminActivity: "RECENT ADMIN ACTIVITY",
     noAdminActivity: "No admin activity yet.",
     agoSuffix: " ago",
-    aiDetections: "AI Detections",
-    alerts: "Alerts",
+    livenessLastDetection: (elapsed: string) => `Last detection · ${elapsed} ago`,
+    livenessNoDetections: "No detections received yet",
+    livenessNoCameras: "No cameras registered",
+    livenessLoading: "Checking for detections…",
+    livenessViewCameras: "View cameras",
+    livenessAddCameras: "Add a camera",
     toastApprovedTitle: "Access approved — invite sent",
     toastDismissedTitle: "Request dismissed",
   },
@@ -120,8 +124,12 @@ const T = {
     recentAdminActivity: "최근 관리자 활동",
     noAdminActivity: "아직 관리자 활동이 없습니다.",
     agoSuffix: " 전",
-    aiDetections: "AI 탐지",
-    alerts: "경보",
+    livenessLastDetection: (elapsed: string) => `마지막 탐지 · ${elapsed} 전`,
+    livenessNoDetections: "아직 수신된 탐지가 없습니다",
+    livenessNoCameras: "등록된 카메라가 없습니다",
+    livenessLoading: "탐지 확인 중…",
+    livenessViewCameras: "카메라 보기",
+    livenessAddCameras: "카메라 추가",
     toastApprovedTitle: "접근 승인됨 — 초대장 발송됨",
     toastDismissedTitle: "요청 거절됨",
   },
@@ -192,204 +200,76 @@ function ArrowUpIcon() {
   return <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 8V2M5 2L2 5M5 2L8 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 }
 
-// Turns a string (e.g. a project id) into a stable numeric seed for seededRandom — the metric
-// trend series below need to be deterministic per project (no Math.random(), same reasoning as
-// vcaStore's own camera bulk-generator: avoids an SSR/client hydration mismatch) but distinct
-// across projects and metrics.
-function strSeed(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 100000;
-  return h;
-}
 
-const METRIC_TREND_DAYS = 14;
-
-function metricDailySeries(seed: number, min: number, max: number, sparse?: boolean): number[] {
-  return Array.from({ length: METRIC_TREND_DAYS }, (_, i) => {
-    const r = seededRandom(seed + i * 1.71);
-    if (sparse && r < 0.5) return 0;
-    // Gentle hill-shaped envelope (low at the edges, tall in the middle) so the bars read like a
-    // plausible daily pattern instead of pure noise.
-    const envelope = 0.4 + 0.6 * Math.sin((i / (METRIC_TREND_DAYS - 1)) * Math.PI);
-    return Math.round(min + (max - min) * envelope * (0.7 + r * 0.5));
-  });
-}
-
-function trendDayLabel(daysAgo: number, lang: PortalLanguage): string {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  return lang === "ko" ? `${d.getMonth() + 1}월 ${d.getDate()}일` : `${d.getMonth() + 1}/${d.getDate()}`;
-}
-
-function MiniBarChart({ values, color }: { values: number[]; color: string }) {
-  const [lang] = usePortalLanguage();
-  const max = Math.max(...values, 1);
-  const [hovered, setHovered] = useState<number | null>(null);
-  // Same split weekOverWeekChange uses — the divider marks exactly the boundary that % badge
-  // above is comparing across, instead of leaving that comparison as text with no visual anchor.
-  const weekBoundary = Math.floor(values.length / 2);
-
-  return (
-    <div style={{ display: "flex", gap: "6px" }}>
-      <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: "70px", paddingBottom: "1px", minWidth: "32px" }}>
-        <span style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1 }}>{max.toLocaleString()}</span>
-        <span style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1 }}>0</span>
-      </div>
-      <div style={{ position: "relative", flex: 1, display: "flex", alignItems: "flex-end", gap: "3px", height: "70px", borderLeft: "1px solid var(--gray-200)", paddingLeft: "6px" }}>
-        <div style={{
-          position: "absolute", top: 0, bottom: 0, left: `calc(6px + ${(weekBoundary / values.length) * 100}%)`,
-          borderLeft: "1px dashed var(--gray-300)", pointerEvents: "none",
-        }} />
-        {values.map((v, i) => {
-          const daysAgo = values.length - 1 - i;
-          return (
-            <div key={i}
-              onMouseEnter={() => setHovered(i)}
-              onMouseLeave={() => setHovered(null)}
-              style={{ position: "relative", flex: 1, height: "100%", display: "flex", alignItems: "flex-end" }}
-            >
-              <div style={{
-                width: "100%", height: `${Math.max(2, (v / max) * 70)}px`, borderRadius: "2px",
-                backgroundColor: color, opacity: hovered === null || hovered === i ? 1 : 0.45,
-              }} />
-              {hovered === i && (
-                <div style={{
-                  position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: "6px",
-                  backgroundColor: "var(--gray-900)", color: "white", fontSize: "10px", fontWeight: 700,
-                  padding: "4px 8px", borderRadius: "6px", whiteSpace: "nowrap", zIndex: 10, pointerEvents: "none",
-                }}>
-                  {trendDayLabel(daysAgo, lang)} · {v.toLocaleString()}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// Continuous volume (AI Detections) reads better as a line than as bars — bars are for sparse,
-// discrete events (Alerts), where "did anything happen this day" matters more than the shape of
-// the trend between days. Same y-axis/hover/week-divider treatment as MiniBarChart so the two
-// don't feel like different components bolted together.
-function MiniLineChart({ values, color }: { values: number[]; color: string }) {
-  const [lang] = usePortalLanguage();
-  const max = Math.max(...values, 1);
-  const [hovered, setHovered] = useState<number | null>(null);
-  const weekBoundary = Math.floor(values.length / 2);
-  const VIEW_W = 100;
-  const VIEW_H = 70;
-  const points = values.map((v, i) => ({
-    x: (i / (values.length - 1)) * VIEW_W,
-    y: VIEW_H - (v / max) * VIEW_H,
-  }));
-  const lineD = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const areaD = `${lineD} L ${VIEW_W} ${VIEW_H} L 0 ${VIEW_H} Z`;
-
-  return (
-    <div style={{ display: "flex", gap: "6px" }}>
-      <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: "70px", paddingBottom: "1px", minWidth: "32px" }}>
-        <span style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1 }}>{max.toLocaleString()}</span>
-        <span style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1 }}>0</span>
-      </div>
-      <div style={{ position: "relative", flex: 1, height: "70px", borderLeft: "1px solid var(--gray-200)", paddingLeft: "6px" }}>
-        <div style={{
-          position: "absolute", top: 0, bottom: 0, left: `calc(6px + ${(weekBoundary / values.length) * 100}%)`,
-          borderLeft: "1px dashed var(--gray-300)", pointerEvents: "none",
-        }} />
-        <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block", overflow: "visible" }}>
-          <path d={areaD} fill={color} fillOpacity={0.12} stroke="none" />
-          <path d={lineD} fill="none" stroke={color} strokeWidth={1.5} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
-          {hovered !== null && (
-            <circle cx={points[hovered].x} cy={points[hovered].y} r={2.5} fill={color} stroke="white" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          )}
-        </svg>
-        <div style={{ position: "absolute", inset: 0, display: "flex" }}>
-          {values.map((v, i) => {
-            const daysAgo = values.length - 1 - i;
-            return (
-              <div key={i}
-                onMouseEnter={() => setHovered(i)}
-                onMouseLeave={() => setHovered(null)}
-                style={{ flex: 1, height: "100%", position: "relative" }}
-              >
-                {hovered === i && (
-                  <div style={{
-                    position: "absolute", left: "50%", top: `${points[i].y}px`, transform: "translate(-50%, -130%)",
-                    backgroundColor: "var(--gray-900)", color: "white", fontSize: "10px", fontWeight: 700,
-                    padding: "4px 8px", borderRadius: "6px", whiteSpace: "nowrap", zIndex: 10, pointerEvents: "none",
-                  }}>
-                    {trendDayLabel(daysAgo, lang)} · {v.toLocaleString()}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Gives the raw total some context — "+18% vs prior week" instead of a bare number — by comparing
-// the average of the most recent half of the window against the older half. Just a direction/magnitude
-// signal (up/down), not a judgment on whether that direction is good for this particular metric
-// (e.g. Alerts trending up isn't "good") — so it's colored purely by sign, not by metric semantics.
-function weekOverWeekChange(values: number[]): number | null {
-  const mid = Math.floor(values.length / 2);
-  const older = values.slice(0, mid);
-  const recent = values.slice(mid);
-  const olderAvg = older.reduce((a, b) => a + b, 0) / older.length;
-  const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
-  if (olderAvg === 0) return recentAvg === 0 ? null : 100;
-  return Math.round(((recentAvg - olderAvg) / olderAvg) * 100);
-}
-
-function TrendChangeBadge({ pct }: { pct: number | null }) {
-  if (pct === null) return null;
-  const flat = pct === 0;
-  const up = pct > 0;
-  const color = flat ? "var(--gray-400)" : up ? "var(--success-400)" : "var(--danger-400)";
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: "2px", fontSize: "12px", fontWeight: 700, color }}>
-      {!flat && (
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ transform: up ? "none" : "rotate(180deg)" }}>
-          <path d="M5 8V2M5 2L2 5M5 2L8 5" stroke={color} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      )}
-      {up ? "+" : ""}{pct}%
-    </span>
-  );
-}
-
-function MetricTrendCard({ label, values, color, chartType = "bar", onViewMore }: {
-  label: string; values: number[]; color: string; chartType?: "bar" | "line"; onViewMore?: () => void;
+/**
+ * Is anything actually reaching this project? One line, because that is the whole question an
+ * administrator has here.
+ *
+ * It replaces two 14-day trend charts (AI Detections, Alerts) whose numbers were generated from the
+ * project id — the only invented figures on a page where every other number comes from real store
+ * state, which taught the reader to discount the real ones too. They also answered an operator's
+ * question, not an administrator's: what to do about a detection trend lives in the app, and both
+ * charts' own "View more" led to tabs that show neither detections nor alerts.
+ *
+ * This reads the same event stream the app does — newest event whose camera belongs to this project
+ * — so it says nothing the data cannot support, including when the answer is "nothing yet".
+ *
+ * HANDOFF NOTE: `events` is a client-side stream seeded from mockData and topped up while Live
+ * Monitoring is open, so a fresh Portal-only session sees the seeded events and nothing newer. When
+ * detections come from the backend this should read a per-project "last event at" instead of
+ * scanning the list. The four states below are the contract either way.
+ */
+function DetectionLivenessStrip({ lastDetection, cameraCount, nowMs, onViewCameras }: {
+  lastDetection: { at: string; label: string } | null;
+  cameraCount: number;
+  nowMs: number | null;
+  onViewCameras: () => void;
 }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
-  const total = values.reduce((a, b) => a + b, 0);
-  const change = weekOverWeekChange(values);
+
+  // Anything older than this is stale rather than live. Not an error — a school campus at night
+  // legitimately detects nothing — so it changes the colour and nothing else.
+  const LIVE_WINDOW_MS = 15 * 60 * 1000;
+  const ageMs = lastDetection && nowMs !== null ? nowMs - new Date(lastDetection.at).getTime() : null;
+  const live = ageMs !== null && ageMs <= LIVE_WINDOW_MS;
+
+  const tone = cameraCount === 0 || !lastDetection
+    ? { dot: "var(--gray-300)", text: "var(--gray-500)" }
+    : live
+      ? { dot: "var(--success-400)", text: "var(--gray-900)" }
+      : { dot: "var(--warning-400)", text: "var(--gray-900)" };
+
+  const headline = cameraCount === 0
+    ? t.livenessNoCameras
+    : !lastDetection
+      ? t.livenessNoDetections
+      : ageMs === null
+        // Before the clock is read on the client. Naming the state beats rendering an elapsed time
+        // the server and the browser would disagree about.
+        ? t.livenessLoading
+        : t.livenessLastDetection(formatElapsed(ageMs));
+
   return (
-    <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</p>
-        {onViewMore && (
-          <button onClick={onViewMore} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 700, color: "var(--gray-600)" }}>
-            {t.view}
-          </button>
-        )}
-      </div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "6px", marginBottom: "12px" }}>
-        <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{total.toLocaleString()}</p>
-        <TrendChangeBadge pct={change} />
-      </div>
-      {chartType === "line" ? <MiniLineChart values={values} color={color} /> : <MiniBarChart values={values} color={color} />}
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", marginLeft: "38px" }}>
-        <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(METRIC_TREND_DAYS - 1, lang)}</span>
-        <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(Math.ceil(METRIC_TREND_DAYS / 2), lang)}</span>
-        <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(0, lang)}</span>
-      </div>
+    <div style={{
+      display: "flex", alignItems: "center", gap: "10px",
+      backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW,
+      padding: "14px 16px",
+    }}>
+      <span style={{ width: "8px", height: "8px", borderRadius: "999px", backgroundColor: tone.dot, flexShrink: 0 }} />
+      <p style={{ fontSize: "13px", fontWeight: 700, color: tone.text }}>{headline}</p>
+      {lastDetection && cameraCount > 0 && (
+        <p style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {lastDetection.label}
+        </p>
+      )}
+      <div style={{ flex: 1 }} />
+      <button
+        onClick={onViewCameras}
+        style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}
+      >
+        {cameraCount === 0 ? t.livenessAddCameras : t.livenessViewCameras}
+      </button>
     </div>
   );
 }
@@ -435,6 +315,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const portalUsers = useVcaStore(s => s.portalUsers);
   const persons = useVcaStore(s => s.persons);
   const auditLog = useVcaStore(s => s.auditLog);
+  const events = useVcaStore(s => s.events);
   const accessRequests = useVcaStore(s => s.accessRequests);
   const approveAccessRequests = useVcaStore(s => s.approveAccessRequests);
   const dismissAccessRequest = useVcaStore(s => s.dismissAccessRequest);
@@ -504,9 +385,17 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // however many cameras the project has. "View all" below covers the rest.
   const visibleCameraRows = filteredCameraRows.slice(0, 5);
 
-  const seed = strSeed(projectId);
-  const aiDetectionsDaily = metricDailySeries(seed + 202, 3000, 11000);
-  const alertsDaily = metricDailySeries(seed + 303, 2, 35, true);
+  // Newest event from a camera in this project. Scanned rather than indexed because `events` is
+  // capped at 500 and this runs once per render of one page — see DetectionLivenessStrip's handoff
+  // note for what replaces it.
+  const projectCameraIds = new Set(projectCameras.map(c => c.id));
+  const lastDetection = events
+    .filter(e => projectCameraIds.has(e.cameraId))
+    .reduce<{ at: string; label: string } | null>((newest, e) => {
+      if (newest && e.timestamp <= newest.at) return newest;
+      const camera = projectCameras.find(c => c.id === e.cameraId);
+      return { at: e.timestamp, label: e.cameraLabel ?? e.location ?? camera?.name ?? e.cameraId };
+    }, null);
 
   const approveRequest = (id: string, name: string) => {
     approveAccessRequests([id]);
@@ -816,10 +705,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
-            <MetricTrendCard label={t.aiDetections} values={aiDetectionsDaily} color="var(--success-400)" chartType="line" onViewMore={() => onTabChange("cameras")} />
-            <MetricTrendCard label={t.alerts} values={alertsDaily} color="var(--danger-400)" chartType="bar" onViewMore={() => onTabChange("vip")} />
-          </div>
+          <DetectionLivenessStrip
+            lastDetection={lastDetection}
+            cameraCount={projectCameras.length}
+            nowMs={nowMs}
+            onViewCameras={() => onTabChange("cameras")}
+          />
         </>
       )}
       {tab === "cameras" && <ProjectCamerasTab projectId={projectId} />}
