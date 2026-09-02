@@ -394,7 +394,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
-        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", maxHeight: "60vh", overflowY: "auto" }}>
+        <div style={MODAL_BODY}>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder={t.namePlaceholder}
@@ -604,7 +604,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
 
         {password === null ? (
           <>
-            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={MODAL_BODY}>
               <div style={{ padding: "12px 14px", borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
                 <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{t.tempForLabel}</p>
                 <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)", marginTop: "4px" }}>{user.name}</p>
@@ -675,7 +675,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
           </>
         ) : (
           <>
-            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={MODAL_BODY}>
               <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.tempResultFor(user.name)}</p>
 
               {/* Monospace and letter-spaced because this string gets read aloud a character at a
@@ -713,6 +713,19 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
     </div>
   );
 }
+
+/**
+ * The recovery modal's body. Capped and scrollable, because the confirm step grows with its copy:
+ * three delivery cards plus four consequence lines is taller than a short laptop window once the
+ * text wraps — and the English strings wrap where the Korean ones do not, so the same box fit in
+ * one language and had its bottom (the consequence list, then the buttons) cut off in the other,
+ * with no scrollbar to reach it. The header and footer stay put; only the middle scrolls.
+ * InviteUserModal already did this — the two boxes now agree.
+ */
+const MODAL_BODY: React.CSSProperties = {
+  padding: "20px", display: "flex", flexDirection: "column", gap: "16px",
+  maxHeight: "60vh", overflowY: "auto",
+};
 
 /** How the way-back-in reaches the person. Mail sends a code they redeem themselves; password is
  *  read out; code is handed over on paper. */
