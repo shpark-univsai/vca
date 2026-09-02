@@ -324,3 +324,93 @@ export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
     </div>
   );
 }
+
+// ── Sortable table headings ──────────────────────────────────────────────────
+
+export type SortDirection = "asc" | "desc";
+export interface SortState<K extends string> {
+  key: K;
+  direction: SortDirection;
+}
+
+/**
+ * Column sorting for the Portal tables. None of them could be sorted at all, so questions an
+ * administrator actually asks — who has not signed in for longest, which cameras have been offline
+ * the longest — meant reading every row.
+ *
+ * Held here rather than per table so the five tables behave identically: first click on a new
+ * column sorts ascending, clicking the active column flips it, and there is always a sort (no
+ * third "unsorted" click, which only ever returns you to an order nobody chose).
+ */
+export function useTableSort<K extends string>(initial: SortState<K>) {
+  const [sort, setSort] = useState<SortState<K>>(initial);
+  const toggle = (key: K) =>
+    setSort(prev => (prev.key === key ? { key, direction: prev.direction === "asc" ? "desc" : "asc" } : { key, direction: "asc" }));
+  return { sort, toggle };
+}
+
+/**
+ * Sorts by the value `valueOf` returns for each row. Strings compare with localeCompare so Korean
+ * and English names both land where a reader expects; everything else compares numerically.
+ * Undefined always sinks to the bottom regardless of direction — a camera with no last-seen time is
+ * missing data, not the oldest one, and letting it win "oldest first" would be a wrong answer.
+ */
+export function sortRows<T, K extends string>(
+  rows: T[],
+  sort: SortState<K>,
+  valueOf: (row: T, key: K) => string | number | undefined,
+): T[] {
+  const factor = sort.direction === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const av = valueOf(a, sort.key);
+    const bv = valueOf(b, sort.key);
+    if (av === undefined && bv === undefined) return 0;
+    if (av === undefined) return 1;
+    if (bv === undefined) return -1;
+    if (typeof av === "string" && typeof bv === "string") return av.localeCompare(bv) * factor;
+    return (Number(av) - Number(bv)) * factor;
+  });
+}
+
+/**
+ * A column heading that sorts. Columns without a `sortKey` render as plain headings, so a table can
+ * mix the two — an actions column or a thumbnail has nothing to sort by.
+ *
+ * The arrow shows only on the active column. Showing a faint one on every sortable column is the
+ * other common choice, but it puts a piece of chrome in every heading to say "you could", and the
+ * hover already says that.
+ */
+export function SortableHeader<K extends string>({ label, sortKey, sort, onToggle }: {
+  label: string;
+  sortKey?: K;
+  sort: SortState<K>;
+  onToggle: (key: K) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const headingStyle = { fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px" } as const;
+
+  if (!sortKey) return <span style={{ ...headingStyle, color: TABLE_HEADER_COLOR }}>{label.toUpperCase()}</span>;
+
+  const active = sort.key === sortKey;
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(sortKey)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        ...headingStyle,
+        display: "flex", alignItems: "center", gap: "3px", padding: 0, border: "none", background: "none",
+        cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+        color: active || hovered ? "var(--gray-900)" : TABLE_HEADER_COLOR,
+      }}
+    >
+      {label.toUpperCase()}
+      {active && (
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0, transform: sort.direction === "desc" ? "rotate(180deg)" : "none" }}>
+          <path d="M5 8V2M5 2L2.4 4.6M5 2l2.6 2.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )}
+    </button>
+  );
+}

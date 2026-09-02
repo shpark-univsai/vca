@@ -8,7 +8,7 @@ import { formatElapsed } from "@/lib/time";
 import { TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, TABLE_HEADER_COLOR } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 
 const T = {
@@ -904,6 +904,8 @@ function UserCountStrip({ users }: { users: PortalUser[] }) {
   );
 }
 
+type UserSortKey = "name" | "team" | "permission" | "lastLogin" | "status";
+
 interface PortalUsersPageProps {
   /** Scopes the table to users who have access to this project — mirrors Clerk's per-application Users tab. */
   projectId: string;
@@ -926,6 +928,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [permissionFilter, setPermissionFilter] = useState<PortalPermission | "ALL">("ALL");
+  // Name ascending to start: the only order that is stable and that a reader can predict before
+  // they have looked. The sortable columns are the ones an administrator asks questions about —
+  // who, which team, what permission, when they last signed in, what state they are in.
+  const { sort, toggle: toggleSort } = useTableSort<UserSortKey>({ key: "name", direction: "asc" });
   const [statusFilter, setStatusFilter] = useState<PortalUserStatus | "ALL">("ALL");
 
   // Which recovery path this installation actually has. Everything mail-dependent on this page is
@@ -949,10 +955,21 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   // table and stop being a summary — filter to "Suspended" and it would proudly report zero admins.
   const projectUsers = portalUsers.filter(u => u.projectIds.includes(projectId));
   const filtersActive = permissionFilter !== "ALL" || statusFilter !== "ALL";
-  const scopedUsers = projectUsers
+  const filteredUsers = projectUsers
     .filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
     .filter(u => permissionFilter === "ALL" || u.permission === permissionFilter)
     .filter(u => statusFilter === "ALL" || u.status === statusFilter);
+  const scopedUsers = sortRows(filteredUsers, sort, (u, key) => {
+    switch (key) {
+      case "name": return u.name.toLowerCase();
+      case "team": return orgName(u.teamId).toLowerCase();
+      case "permission": return u.permission;
+      // Undefined, not "" — someone who has never signed in has no date, and sortRows sinks
+      // undefined to the bottom either way rather than letting it win "oldest first".
+      case "lastLogin": return u.lastLoginAt;
+      case "status": return u.status;
+    }
+  });
 
   return (
     <div>
@@ -1057,8 +1074,20 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           itself instead. */}
       <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
         <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1.4fr 0.6fr 0.5fr 0.9fr 0.8fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
-          {[t.colUser, t.colTeam, t.colProjects, t.colPermission, t.colMfa, t.colLastLogin, t.colStatus, ""].map((h, i) => (
-            <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+          {/* Projects and MFA carry no sortKey: a user belongs to several projects, so there is no
+              single value to order by, and MFA is display-only mock data it would be misleading to
+              let anyone rank people with. */}
+          {([
+            { label: t.colUser, key: "name" },
+            { label: t.colTeam, key: "team" },
+            { label: t.colProjects },
+            { label: t.colPermission, key: "permission" },
+            { label: t.colMfa },
+            { label: t.colLastLogin, key: "lastLogin" },
+            { label: t.colStatus, key: "status" },
+            { label: "" },
+          ] as { label: string; key?: UserSortKey }[]).map((h, i) => (
+            <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
           ))}
         </div>
         {scopedUsers.length === 0 && (

@@ -6,7 +6,7 @@ import { formatCode, type RosterEntry, type RosterCodeStatus } from "@/lib/staff
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, TABLE_COLUMN_GAP, PANEL_SHADOW, FilterSelect, RowActionsMenu, TABLE_HEADER_COLOR } from "./PortalShared";
+import { BORDER, TABLE_COLUMN_GAP, PANEL_SHADOW, FilterSelect, RowActionsMenu, SortableHeader, sortRows, useTableSort } from "./PortalShared";
 
 const T = {
   en: {
@@ -326,6 +326,8 @@ function getStatusFilterOptions(t: Translations): { value: "ALL" | RosterCodeSta
   ];
 }
 
+type RosterSortKey = "name" | "employeeId" | "department" | "permission" | "status";
+
 export default function ProjectRosterTab({ projectId }: { projectId: string }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -340,13 +342,28 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
   const { showToast } = useToast();
 
   const [statusFilter, setStatusFilter] = useState<"ALL" | RosterCodeStatus>("ALL");
+  const { sort, toggle: toggleSort } = useTableSort<RosterSortKey>({ key: "status", direction: "asc" });
   const [issuingEntry, setIssuingEntry] = useState<RosterEntry | null>(null);
   const [removingEntry, setRemovingEntry] = useState<RosterEntry | null>(null);
   const [showPrintSheet, setShowPrintSheet] = useState(false);
 
   const projectName = project?.name ?? projectId;
   const projectRoster = staffRoster.filter(r => r.projectId === projectId);
-  const visibleRoster = projectRoster.filter(r => statusFilter === "ALL" || r.status === statusFilter);
+  // Not-issued first by default: the roster exists so somebody can work out who still needs a code,
+  // and "not-issued" sorts before "unused"/"used" alphabetically.
+  const visibleRoster = sortRows(
+    projectRoster.filter(r => statusFilter === "ALL" || r.status === statusFilter),
+    sort,
+    (r, key) => {
+      switch (key) {
+        case "name": return r.name.toLowerCase();
+        case "employeeId": return r.employeeId.toLowerCase();
+        case "department": return r.department?.toLowerCase();
+        case "permission": return r.permission;
+        case "status": return r.status;
+      }
+    },
+  );
   const notIssuedCount = projectRoster.filter(r => r.status === "not-issued").length;
   const printableEntries = projectRoster.filter(r => r.status === "unused" && r.code);
 
@@ -446,8 +463,18 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
       ) : (
         <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
           <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.8fr 1fr 1.1fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
-            {[t.colName, t.colEmployeeId, t.colDepartment, t.colPermission, t.colStatus, t.colCode, ""].map(h => (
-              <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+            {/* The code column has no sortKey: ordering people by a random 8-character code answers
+                no question anybody has. */}
+            {([
+              { label: t.colName, key: "name" },
+              { label: t.colEmployeeId, key: "employeeId" },
+              { label: t.colDepartment, key: "department" },
+              { label: t.colPermission, key: "permission" },
+              { label: t.colStatus, key: "status" },
+              { label: t.colCode },
+              { label: "" },
+            ] as { label: string; key?: RosterSortKey }[]).map((h, i) => (
+              <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
             ))}
           </div>
           {visibleRoster.map((entry, i) => {

@@ -5,7 +5,7 @@ import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type Se
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, TABLE_HEADER_COLOR } from "./PortalShared";
+import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort } from "./PortalShared";
 
 const SERVER_TYPES: ServerType[] = ["AI Camera", "Normal Camera", "Face Recognition", "Image Store", "Database"];
 
@@ -612,6 +612,8 @@ const MAIN_T = {
   },
 } as const;
 
+type ServerSortKey = "status" | "name" | "ip" | "type";
+
 export default function ProjectServerTab({ projectId }: { projectId: string }) {
   const servers = useVcaStore(s => s.servers);
   const addServer = useVcaStore(s => s.addServer);
@@ -629,14 +631,30 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   const [typeFilter, setTypeFilter] = useState<"ALL" | ServerType>("ALL");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const { sort, toggle: toggleSort } = useTableSort<ServerSortKey>({ key: "status", direction: "asc" });
 
   const projectServers = servers.filter(s => s.projectId === projectId);
   const q = search.trim().toLowerCase();
-  const visibleServers = projectServers.filter(s => {
-    const matchesSearch = !q || s.name.toLowerCase().includes(q) || s.ip.includes(q);
-    const matchesType = typeFilter === "ALL" || s.type === typeFilter;
-    return matchesSearch && matchesType;
-  });
+  // Errors first by default — "error" sorts before "success" — because a server list is read when
+  // something is wrong, not to admire the healthy ones.
+  const visibleServers = sortRows(
+    projectServers.filter(s => {
+      const matchesSearch = !q || s.name.toLowerCase().includes(q) || s.ip.includes(q);
+      const matchesType = typeFilter === "ALL" || s.type === typeFilter;
+      return matchesSearch && matchesType;
+    }),
+    sort,
+    (server, key) => {
+      switch (key) {
+        case "status": return server.status;
+        case "name": return server.name.toLowerCase();
+        // Padded so 10.20.4.9 sorts after 10.20.4.17 rather than before it — a plain string compare
+        // orders addresses by digit, which is the wrong answer for every list of IPs.
+        case "ip": return server.ip.split(".").map(part => part.padStart(3, "0")).join(".");
+        case "type": return server.type;
+      }
+    },
+  );
 
   // Filters/page-size changing the result set can strand the current page past the new last
   // page (e.g. narrowing a search while on page 3) — snap back to page 1 whenever either shifts.
@@ -744,8 +762,15 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
             // off). Header/last-row corners are radiused directly instead.
             <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
               <div style={{ display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
-                {[t.colStatus, t.colName, t.colIp, t.colType, t.colSpec, ""].map(h => (
-                  <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+                {([
+                  { label: t.colStatus, key: "status" },
+                  { label: t.colName, key: "name" },
+                  { label: t.colIp, key: "ip" },
+                  { label: t.colType, key: "type" },
+                  { label: t.colSpec },
+                  { label: "" },
+                ] as { label: string; key?: ServerSortKey }[]).map((h, i) => (
+                  <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
                 ))}
               </div>
               {pageServers.map((server, i) => {

@@ -5,7 +5,7 @@ import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, proj
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, CARD_BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, TABLE_HEADER_COLOR } from "./PortalShared";
+import { BORDER, CARD_BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -238,6 +238,8 @@ function useStickyHeader<T extends HTMLElement>() {
 }
 
 const DEFAULT_THUMBNAIL = "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80";
+type CameraSortKey = "name" | "maker" | "resolution" | "zone" | "status";
+
 const AI_FEATURES: CameraAiFeature[] = ["Re-ID Analysis", "License Plate Recognition", "Intrusion Detection"];
 const MAKERS = ["Hanwha", "Hikvision", "Dahua"];
 const RESOLUTIONS = ["FHD (1920×1080)", "4K (3840×2160)"];
@@ -443,14 +445,27 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
 
   const projectCameras = cameras.filter(c => c.projectId === projectId);
   const zones = Array.from(new Set(projectCameras.map(c => c.zone).filter(Boolean)));
+  const { sort, toggle: toggleSort } = useTableSort<CameraSortKey>({ key: "status", direction: "asc" });
 
   const q = search.trim().toLowerCase();
-  const visibleCameras = projectCameras.filter(c => {
+  const matchingCameras = projectCameras.filter(c => {
     const matchesSearch = !q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q) || c.rtspUrl.toLowerCase().includes(q) || c.ip.includes(q);
     const matchesZone = zoneFilter === "ALL" || c.zone === zoneFilter;
     const matchesStatus = statusFilter === "ALL" || c.status === statusFilter;
     const matchesAi = aiFilter === "ALL" || (c.aiFeatures ?? []).includes(aiFilter);
     return matchesSearch && matchesZone && matchesStatus && matchesAi;
+  });
+  // Offline first by default. The table's job here is "what needs attention", and a fleet sorted
+  // alphabetically buries the three cameras that are down among the ninety-seven that are not.
+  // "desc" on status because the values sort "offline" < "online" alphabetically.
+  const visibleCameras = sortRows(matchingCameras, sort, (c, key) => {
+    switch (key) {
+      case "name": return c.name.toLowerCase();
+      case "maker": return c.maker?.toLowerCase();
+      case "resolution": return c.resolution?.toLowerCase();
+      case "zone": return c.zone?.toLowerCase();
+      case "status": return c.status;
+    }
   });
 
   const onlineCount = projectCameras.filter(c => c.status === "online").length;
@@ -645,8 +660,21 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
       {view === "table" && visibleCameras.length > 0 && (
         <div style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: "12px", borderTopRightRadius: "12px", boxShadow: PANEL_SHADOW }}>
           <div style={{ display: "grid", gridTemplateColumns: "56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
-            {["", t.colCamera, t.colMaker, t.colResolution, t.colZone, t.colRtspStream, t.colAiEngines, t.colStatus, ""].map((h, i) => (
-              <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+            {/* The thumbnail, RTSP URL and AI-engine columns carry no sortKey — a picture has no
+                order, a stream URL sorts by whatever the IP happens to start with, and AI engines
+                is a set per camera rather than one value. */}
+            {([
+              { label: "" },
+              { label: t.colCamera, key: "name" },
+              { label: t.colMaker, key: "maker" },
+              { label: t.colResolution, key: "resolution" },
+              { label: t.colZone, key: "zone" },
+              { label: t.colRtspStream },
+              { label: t.colAiEngines },
+              { label: t.colStatus, key: "status" },
+              { label: "" },
+            ] as { label: string; key?: CameraSortKey }[]).map((h, i) => (
+              <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
             ))}
           </div>
         </div>
