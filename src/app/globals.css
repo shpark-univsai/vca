@@ -162,9 +162,10 @@ body {
   border-radius: 0 0 8px 8px !important;
 }
 
-.leaflet-tile-pane {
-  filter: grayscale(0.1) brightness(0.98);
-}
+/* The tile-pane filter lives at the top of this file, next to the other map settings. The rule that
+   used to sit here was grayscale(0.1) — a light touch-up for CARTO's already-grey basemap, which is
+   nowhere near enough now that the default source is a full-colour one. It also came later in the
+   file and so silently beat the new rule. */
 
 /* ── VCA custom popup ────────────────────────────────────── */
 .vca-custom-popup .leaflet-popup-content-wrapper {
