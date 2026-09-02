@@ -44,9 +44,9 @@ interface Activation {
  * to a colleague) learns the one thing that explains what they are seeing.
  */
 const CODE_ERRORS: Record<"unknown" | "used" | "expired", string> = {
-  unknown: "We don’t recognise that code. Check it against the sheet you were given.",
-  used: "That code has already been used. Ask your administrator to issue a new one.",
-  expired: "That code has expired. Ask your administrator to issue a new one.",
+  unknown: "Code not recognised. Check the sheet you were given.",
+  used: "Code already used. Ask your administrator for a new one.",
+  expired: "Code expired. Ask your administrator for a new one.",
 };
 
 /**
@@ -306,8 +306,7 @@ function RegisterFlow() {
           {step === "code" && !throttled && (
             <>
               {heading("Enter your registration code", [
-                `Your administrator gave you an ${REGISTRATION_CODE_LENGTH}-character code`,
-                "It identifies you, so there is nothing else to fill in",
+                `The ${REGISTRATION_CODE_LENGTH}-character code your administrator gave you`,
               ])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
@@ -346,7 +345,7 @@ function RegisterFlow() {
 
           {step === "confirm" && entry && (
             <>
-              {heading("Is this you?", ["Check this against your own details before continuing"])}
+              {heading("Is this you?", ["Check your details before continuing"])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
                 {/* Showing what the code resolved to, before a password exists. Someone handed the
@@ -398,7 +397,7 @@ function RegisterFlow() {
                   <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                     <ErrorCircleIcon />
                     <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.26px" }}>
-                      Passwords do not match. Please try again.
+                      Passwords don’t match
                     </span>
                   </div>
                 )}

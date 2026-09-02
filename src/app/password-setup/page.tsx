@@ -100,8 +100,7 @@ function PasswordSetupForm() {
                 This link no longer works
               </h1>
               <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.7 }}>
-                Invitation links stop working after {INVITE_TOKEN_TTL_DAYS} days, and once they have
-                been used.<br />Ask for a new one — nothing you do here can revive this one.
+                Invitation links expire after {INVITE_TOKEN_TTL_DAYS} days or once used. Ask for a new one.
               </p>
             </div>
 
@@ -152,12 +151,12 @@ function PasswordSetupForm() {
         }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
             <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>
-              {forcedByTempPassword ? "Choose your own password" : "Set password"}
+              {forcedByTempPassword ? "Choose your own password" : "Set your password"}
             </h1>
             <p style={{ margin: 0, fontSize: "16px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.32px", textAlign: "center", lineHeight: 1.6 }}>
               {forcedByTempPassword
-                ? <>The password you were given is temporary and someone else has seen it.<br />Replace it before you continue.</>
-                : "Please set your new password."}
+                ? "Your temporary password can’t be kept — replace it to continue."
+                : "Choose a password for your account."}
             </p>
           </div>
 
@@ -212,7 +211,7 @@ function PasswordSetupForm() {
               <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                 <ErrorCircleIcon />
                 <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.26px" }}>
-                  Passwords do not match. Please try again.
+                  Passwords don’t match
                 </span>
               </div>
             )}

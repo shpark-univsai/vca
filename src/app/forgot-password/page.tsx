@@ -38,11 +38,11 @@ type Step = "email" | "code" | "password" | "done";
 type CodeFailure = "wrong" | "expired" | "throttled" | "resendLimit";
 
 const CODE_FAILURE_TEXT: Record<Exclude<CodeFailure, "throttled">, string> = {
-  wrong: "That code is not correct. Check the mail and try again.",
+  wrong: "Incorrect code. Check and try again.",
   // The screen states this up front too (see the code step), so the two must not drift — both read
   // RESET_CODE_TTL_MIN. HANDOFF NOTE: the backend has to enforce the same number.
-  expired: `That code has expired. Codes last ${RESET_CODE_TTL_MIN} minutes — request a new one.`,
-  resendLimit: "You have requested the maximum number of codes. Try again later.",
+  expired: "Code expired. Request a new one.",
+  resendLimit: "Too many codes requested. Try again later.",
 };
 
 function fieldBorder(active: boolean) {
@@ -114,7 +114,7 @@ function ForgotPasswordFlow() {
   const identifierValid = authConfig.employeeIdLogin ? (typedEmail || looksLikeId) : typedEmail;
   const identifierError = identifierTouched && !identifierValid
     ? (authConfig.employeeIdLogin
-        ? "Enter your employee number or email address."
+        ? "Enter an employee number or email address."
         : "Enter a valid email address.")
     : "";
 
@@ -263,8 +263,8 @@ function ForgotPasswordFlow() {
               arrive. Say plainly that recovery goes through a person, and name that person. */}
           {(demo === "adminOnly" || authConfig.passwordRecovery === "adminOnly") ? (
             <>
-              {heading("Password reset is handled by an administrator", [
-                "This system has no outbound mail, so a reset link or code cannot be sent",
+              {heading("Contact your administrator", [
+                "This system can’t send reset emails",
               ])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
@@ -281,8 +281,7 @@ function ForgotPasswordFlow() {
                       only the registration code while Portal's own notice named only the temporary
                       password, so the two halves of one conversation described different remedies. */}
                   <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.26px", lineHeight: 1.7 }}>
-                    They will either read you a temporary password, which you replace the moment you
-                    sign in, or hand you a setup code on paper that you set your own password with.
+                    They’ll give you a temporary password or a setup code.
                   </p>
                 </div>
 
@@ -304,11 +303,10 @@ function ForgotPasswordFlow() {
           <>
           {step === "email" && (
             <>
+              {/* One line, not three. The field below already says what to type into it, and the
+                  step after this one says a code was sent — the subtitle only has to promise it. */}
               {heading("Forgot your password?", [
-                authConfig.employeeIdLogin
-                  ? "Enter your employee number or the email you registered with"
-                  : "Enter the email you registered with",
-                "We’ll send you a verification code",
+                "We’ll send a verification code to your registered email",
               ])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
@@ -361,7 +359,7 @@ function ForgotPasswordFlow() {
           {step === "code" && codeFailure === "throttled" && (
             <>
               {heading("Too many attempts", [
-                "Code entry is locked for this account for now",
+                "Code entry is locked for now",
               ])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
@@ -373,8 +371,7 @@ function ForgotPasswordFlow() {
                     {/* OPEN QUESTION for the backend: how long is the lockout, and does the response
                         say? A countdown is kinder than "try again later", but it also tells a
                         guesser exactly when to come back. */}
-                    Wait a few minutes and try again, or ask an administrator to issue a new code
-                    for you.
+                    Try again in a few minutes, or contact your administrator.
                   </p>
                   <div style={{ height: "1px", backgroundColor: "var(--danger-200)", margin: "2px 0" }} />
                   <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
@@ -396,9 +393,9 @@ function ForgotPasswordFlow() {
                 // nothing to leak. An employee number resolves to an address the screen has no
                 // business printing, so it says where it went without saying where that is.
                 typedEmail
-                  ? `We sent an ${RESET_CODE_LENGTH}-digit code to ${identifier.trim()}`
-                  : `We sent an ${RESET_CODE_LENGTH}-digit code to the address on this account`,
-                `It expires in ${RESET_CODE_TTL_MIN} minutes`,
+                  ? `Code sent to ${identifier.trim()}`
+                  : "Code sent to the email on this account",
+                `Expires in ${RESET_CODE_TTL_MIN} minutes`,
               ])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
@@ -467,7 +464,7 @@ function ForgotPasswordFlow() {
 
           {step === "password" && (
             <>
-              {heading("Set a new password", ["Choose a password you have not used here before"])}
+              {heading("Set a new password", ["Choose one you haven’t used before"])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "24px", width: "100%" }}>
@@ -520,7 +517,7 @@ function ForgotPasswordFlow() {
                   <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                     <ErrorCircleIcon />
                     <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.26px" }}>
-                      Passwords do not match. Please try again.
+                      Passwords don’t match
                     </span>
                   </div>
                 )}
@@ -532,7 +529,7 @@ function ForgotPasswordFlow() {
 
           {step === "done" && (
             <>
-              {heading("Password changed", ["You can now log in with your new password"])}
+              {heading("Password changed", ["Log in with your new password"])}
               {primaryButton("Log in", true, () => router.push("/login"))}
             </>
           )}

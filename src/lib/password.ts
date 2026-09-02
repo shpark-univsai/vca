@@ -21,7 +21,7 @@ export function isPasswordFormatValid(password: string): boolean {
  *  matches what /password-setup already shipped with — one rule stated two ways reads as two
  *  rules. */
 export const PASSWORD_RULE_TEXT =
-  "At least 8 characters, including letters, numbers, and special characters";
+  "8+ characters with a letter, number, and symbol";
 
 /** Length of the emailed verification code, per the design. Digits only: the code gets read off one
  *  screen and typed into another, so letters would raise case and O/0 questions for no gain. */
