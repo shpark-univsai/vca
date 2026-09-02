@@ -207,9 +207,6 @@ const NETWORK_T = {
     overrideLabel: "Override auto-detection",
     overrideDesc: "A firewall or security policy can make the ping check unreliable — turn this on to set the status manually.",
     optConnected: "Internet-connected", optIsolated: "Internet-isolated",
-    toastBackToAuto: "Back to auto-detection",
-    toastOverrideSaved: "Override saved",
-    toastMarkedAs: (value: boolean) => `Marked as ${value ? "internet-isolated" : "internet-connected"}`,
   },
   ko: {
     heading: "네트워크 연결 상태",
@@ -220,9 +217,6 @@ const NETWORK_T = {
     overrideLabel: "자동 감지 재정의",
     overrideDesc: "방화벽이나 보안 정책으로 인해 핑 확인이 부정확할 수 있습니다. 상태를 직접 설정하려면 이 옵션을 켜세요.",
     optConnected: "인터넷 연결", optIsolated: "인터넷 격리",
-    toastBackToAuto: "자동 감지로 전환됨",
-    toastOverrideSaved: "수동 설정 저장됨",
-    toastMarkedAs: (value: boolean) => `${value ? "인터넷 격리" : "인터넷 연결"} 상태로 설정됨`,
   },
 } as const;
 
@@ -237,7 +231,6 @@ const NETWORK_T = {
 function NetworkStatus({ projectId }: { projectId: string }) {
   const projects = useVcaStore(s => s.projects);
   const setNetworkIsolationOverride = useVcaStore(s => s.setNetworkIsolationOverride);
-  const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t = NETWORK_T[lang];
 
@@ -249,13 +242,11 @@ function NetworkStatus({ projectId }: { projectId: string }) {
   const hasOverride = overrideValue !== null;
   const effective = isNetworkIsolated(project);
 
+  // No toast here — the status badge above and the toggle's own selected state already give
+  // immediate visual feedback, and a toast on every checkbox/toggle click was noisier than useful
+  // for a setting an admin might flip back and forth while diagnosing a mail-delivery issue.
   const setOverride = (value: boolean | null) => {
     setNetworkIsolationOverride(projectId, value);
-    showToast({
-      variant: "success",
-      title: value === null ? t.toastBackToAuto : t.toastOverrideSaved,
-      desc: value === null ? undefined : t.toastMarkedAs(value),
-    });
   };
 
   return (
@@ -299,17 +290,18 @@ function NetworkStatus({ projectId }: { projectId: string }) {
         </label>
 
         {hasOverride && (
-          <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
+          // One shared track with the active side getting the white pill, same look as the
+          // Table/Grid and EN/한국어 toggles elsewhere — two separately-bordered buttons read as
+          // two unrelated actions rather than one on/off choice, which was the actual complaint.
+          <div style={{ marginTop: "12px", display: "inline-flex", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px" }}>
             {[{ v: false, label: t.optConnected }, { v: true, label: t.optIsolated }].map(opt => {
               const active = overrideValue === opt.v;
               return (
                 <button key={String(opt.v)} onClick={() => setOverride(opt.v)}
                   style={{
-                    padding: "8px 14px", borderRadius: "999px", cursor: "pointer",
-                    border: active ? "1px solid var(--gray-900)" : BORDER,
-                    backgroundColor: active ? "var(--gray-900)" : "white",
-                    color: active ? "white" : "var(--gray-600)",
-                    fontSize: "12px", fontWeight: 700,
+                    padding: "7px 14px", borderRadius: "8px", border: "none", cursor: "pointer",
+                    backgroundColor: active ? "white" : "transparent", boxShadow: active ? PANEL_SHADOW : "none",
+                    fontSize: "12px", fontWeight: 700, color: active ? "var(--gray-900)" : "var(--gray-400)",
                   }}>
                   {opt.label}
                 </button>
