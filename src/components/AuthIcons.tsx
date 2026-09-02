@@ -1,3 +1,5 @@
+import { Eye, EyeOff } from "lucide-react";
+
 /**
  * Outlined rather than filled — the solid silhouette read heavier than the lock beside it in the
  * password field, so the pair looked mismatched. Shared by login, forgot-password and
@@ -24,21 +26,32 @@ export function LockFieldIcon() {
   );
 }
 
+/**
+ * The show/hide-password pair, from Lucide rather than hand-drawn.
+ *
+ * They were two one-off exports: a filled, slashed eye for "hidden" and an outlined one for
+ * "shown", which meant the two states of a single toggle were drawn in two different styles — the
+ * thing that changes between them should be the slash, not the whole icon's weight. Lucide gives a
+ * matched pair, and the package is already a dependency used elsewhere in the app (Sidebar,
+ * BestFramePage), so this adds nothing to the bundle and nothing to fetch: it is bundled, not a CDN
+ * script, which matters on an installation with no route to the internet.
+ *
+ * Kept as zero-prop wrappers with the same names, so the five screens that show a password field
+ * (login, password-setup, forgot-password, register, my page) are untouched and cannot drift into
+ * five different sizes.
+ *
+ * 1.5 rather than Lucide's default 2: the lock sitting on the other side of the same field is drawn
+ * at ~1.3, and a heavier eye beside it reads as a different icon set — which is the fault this
+ * change exists to fix.
+ */
+const EYE_ICON_PROPS = { size: 20, strokeWidth: 1.5, color: "var(--gray-400)" } as const;
+
 export function EyeOffIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <path d="M15.4462 12.6463L14.65 11.85C14.8 10.977 14.5526 10.2213 13.9077 9.58275C13.2629 8.94425 12.5103 8.7 11.65 8.85L10.8538 8.05375C11.0218 7.98458 11.1971 7.93267 11.3797 7.898C11.5624 7.8635 11.7692 7.84625 12 7.84625C13.0192 7.84625 13.8829 8.20042 14.5913 8.90875C15.2996 9.61708 15.6538 10.4808 15.6538 11.5C15.6538 11.7308 15.6365 11.944 15.602 12.1395C15.5673 12.335 15.5154 12.5039 15.4462 12.6463ZM18.6077 15.7193L17.85 15.05C18.4833 14.5667 19.0458 14.0375 19.5375 13.4625C20.0292 12.8875 20.45 12.2333 20.8 11.5C19.9667 9.81667 18.7708 8.47917 17.2125 7.4875C15.6542 6.49583 13.9167 6 12 6C11.5167 6 11.0417 6.03333 10.575 6.1C10.1083 6.16667 9.65 6.26667 9.2 6.4L8.41925 5.61925C9.00008 5.40008 9.59108 5.24208 10.1922 5.14525C10.7936 5.04842 11.3962 5 12 5C14.1705 5 16.1557 5.5965 17.9557 6.7895C19.7557 7.98233 21.0782 9.5525 21.923 11.5C21.5653 12.3038 21.1125 13.0593 20.5645 13.7663C20.0163 14.4734 19.3641 15.1244 18.6077 15.7193ZM19.723 21.1385L15.8307 17.2578C15.3884 17.4539 14.8394 17.6267 14.1837 17.776C13.5279 17.9253 12.8 18 12 18C9.81667 18 7.83142 17.4035 6.04425 16.2105C4.25708 15.0177 2.93467 13.4475 2.077 11.5C2.46533 10.6167 2.9775 9.78942 3.6135 9.01825C4.24933 8.24708 4.92817 7.6 5.65 7.077L2.8615 4.277L3.56925 3.56925L20.4307 20.4308L19.723 21.1385ZM6.35775 7.7845C5.78458 8.19233 5.19867 8.72825 4.6 9.39225C4.00133 10.0564 3.53467 10.759 3.2 11.5C4.03333 13.1833 5.22917 14.5208 6.7875 15.5125C8.34583 16.5042 10.0833 17 12 17C12.577 17 13.1584 16.9439 13.7443 16.8318C14.3301 16.7196 14.7705 16.6064 15.0655 16.4923L13.4345 14.85C13.2768 14.9385 13.057 15.0113 12.775 15.0683C12.493 15.1253 12.2347 15.1538 12 15.1538C10.9808 15.1538 10.1171 14.7996 9.40875 14.0913C8.70042 13.3829 8.34625 12.5192 8.34625 11.5C8.34625 11.2782 8.37475 11.0294 8.43175 10.7538C8.48875 10.4783 8.5615 10.2488 8.65 10.0655L6.35775 7.7845Z" fill="var(--gray-400)"/>
-    </svg>
-  );
+  return <EyeOff {...EYE_ICON_PROPS} />;
 }
 
 export function EyeIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <path d="M12 15.5C13.1046 15.5 14 14.6046 14 13.5C14 12.3954 13.1046 11.5 12 11.5C10.8954 11.5 10 12.3954 10 13.5C10 14.6046 10.8954 15.5 12 15.5Z" stroke="var(--gray-400)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M2 13.5C3.5 9.5 7.4 7 12 7C16.6 7 20.5 9.5 22 13.5C20.5 15.5 16.6 18 12 18C7.4 18 3.5 15.5 2 13.5Z" stroke="var(--gray-400)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
+  return <Eye {...EYE_ICON_PROPS} />;
 }
 
 export function ErrorCircleIcon() {
