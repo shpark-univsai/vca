@@ -225,6 +225,14 @@ interface VcaStoreState {
   addCamera: (camera: Omit<Camera, "id">) => void;
   updateCamera: (cameraId: string, updates: Partial<Omit<Camera, "id" | "projectId">>) => void;
   removeCamera: (cameraId: string) => void;
+  /**
+   * Remove several cameras at once, and log it as one line rather than N. An audit log that records
+   * "Camera X removed" twelve times in the same second buries the fact that this was one decision
+   * about twelve cameras — which is the thing anyone reading the log later needs to know.
+   */
+  removeCameras: (cameraIds: string[]) => void;
+  /** Move several cameras into one zone. Same one-entry-per-action reasoning as removeCameras. */
+  setCamerasZone: (cameraIds: string[], zone: string) => void;
   addProject: (project: Omit<Project, "id">) => void;
   updateProjectLicense: (projectId: string, updates: Pick<Project, "licenseChannelLimit" | "licensePlan" | "licenseExpiresAt">) => void;
   updateProjectMail: (projectId: string, updates: Pick<Project, "mailDomain" | "smtp">) => void;
@@ -820,6 +828,38 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const auditEntry: AuditEvent = { id: `audit-${++auditSeq}`, projectId: cam?.projectId, message: `Camera ${cam?.name ?? cameraId} removed`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() };
       return {
         cameras: state.cameras.filter(c => c.id !== cameraId),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
+  removeCameras: (cameraIds) =>
+    set(state => {
+      const ids = new Set(cameraIds);
+      const removed = state.cameras.filter(c => ids.has(c.id));
+      if (removed.length === 0) return {};
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: removed[0].projectId,
+        message: removed.length === 1
+          ? `Camera ${removed[0].name} removed`
+          : `${removed.length} cameras removed (${removed.map(c => c.code).join(", ")})`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        cameras: state.cameras.filter(c => !ids.has(c.id)),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
+  setCamerasZone: (cameraIds, zone) =>
+    set(state => {
+      const ids = new Set(cameraIds);
+      const moved = state.cameras.filter(c => ids.has(c.id));
+      if (moved.length === 0) return {};
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: moved[0].projectId,
+        message: `${moved.length} camera${moved.length === 1 ? "" : "s"} moved to zone "${zone}"`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        cameras: state.cameras.map(c => (ids.has(c.id) ? { ...c, zone } : c)),
         auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
       };
     }),

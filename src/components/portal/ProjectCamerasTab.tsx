@@ -32,6 +32,15 @@ const T = {
     filterAllAiEngines: "All AI engines",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     clearFilters: "Clear all filters",
+    selectedCount: (n: number) => `${n} selected`,
+    bulkClearSelection: "Clear selection",
+    bulkMoveToZone: "Move to zone",
+    bulkDelete: "Remove",
+    bulkDeleteConfirm: (n: number) => `Remove ${n} camera${n === 1 ? "" : "s"}?`,
+    bulkDeleteBody: "They stop being monitored immediately and their channels are freed. Recordings already made are not deleted.",
+    bulkDeletedTitle: (n: number) => `${n} camera${n === 1 ? "" : "s"} removed`,
+    bulkMovedTitle: (n: number, zone: string) => `${n} camera${n === 1 ? "" : "s"} moved to ${zone}`,
+    selectAllLabel: "Select all rows",
     viewTable: "Table",
     viewGrid: "Grid",
     colCamera: "Camera",
@@ -119,6 +128,15 @@ const T = {
     filterAllAiEngines: "전체 AI 엔진",
     filtersActive: (n: number) => `필터 ${n}개`,
     clearFilters: "필터 모두 지우기",
+    selectedCount: (n: number) => `${n}대 선택됨`,
+    bulkClearSelection: "선택 해제",
+    bulkMoveToZone: "구역 이동",
+    bulkDelete: "삭제",
+    bulkDeleteConfirm: (n: number) => `카메라 ${n}대를 삭제할까요?`,
+    bulkDeleteBody: "즉시 모니터링이 중단되고 채널이 반환됩니다. 이미 저장된 녹화는 삭제되지 않습니다.",
+    bulkDeletedTitle: (n: number) => `카메라 ${n}대가 삭제됨`,
+    bulkMovedTitle: (n: number, zone: string) => `카메라 ${n}대를 ${zone}(으)로 이동함`,
+    selectAllLabel: "전체 선택",
     viewTable: "테이블",
     viewGrid: "그리드",
     colCamera: "카메라",
@@ -426,6 +444,8 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
   const addCamera = useVcaStore(s => s.addCamera);
   const updateCamera = useVcaStore(s => s.updateCamera);
   const removeCamera = useVcaStore(s => s.removeCamera);
+  const removeCameras = useVcaStore(s => s.removeCameras);
+  const setCamerasZone = useVcaStore(s => s.setCamerasZone);
   const setCameraStatus = useVcaStore(s => s.setCameraStatus);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
@@ -453,6 +473,11 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
   // Search is not counted. It is visible as text in its own box and clearing it is obvious, whereas
   // a select that says "Offline" looks like a heading until you look twice.
   const activeFilterCount = [zoneFilter, statusFilter, aiFilter].filter(v => v !== "ALL").length;
+  // Selected camera ids. Held as a Set of ids rather than of rows so a selection survives the list
+  // being re-sorted or re-filtered underneath it.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
+
   const clearFilters = () => { setZoneFilter("ALL"); setStatusFilter("ALL"); setAiFilter("ALL"); };
 
   const q = search.trim().toLowerCase();
@@ -475,6 +500,38 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
       case "status": return c.status;
     }
   });
+
+  // Only rows that are actually on screen count as selected. Filtering to Offline while three
+  // online cameras are ticked would otherwise leave a delete button armed with rows the person
+  // can no longer see.
+  const visibleSelectedIds = visibleCameras.filter(c => selectedIds.has(c.id)).map(c => c.id);
+  const allVisibleSelected = visibleCameras.length > 0 && visibleSelectedIds.length === visibleCameras.length;
+  const toggleRow = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const toggleAllVisible = () => setSelectedIds(prev => {
+    const next = new Set(prev);
+    if (allVisibleSelected) visibleCameras.forEach(c => next.delete(c.id));
+    else visibleCameras.forEach(c => next.add(c.id));
+    return next;
+  });
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const bulkDelete = () => {
+    const count = visibleSelectedIds.length;
+    removeCameras(visibleSelectedIds);
+    clearSelection();
+    setConfirmingBulkDelete(false);
+    showToast({ variant: "success", title: t.bulkDeletedTitle(count) });
+  };
+  const bulkMoveToZone = (zone: string) => {
+    const count = visibleSelectedIds.length;
+    setCamerasZone(visibleSelectedIds, zone);
+    clearSelection();
+    showToast({ variant: "success", title: t.bulkMovedTitle(count, zone) });
+  };
 
   const onlineCount = projectCameras.filter(c => c.status === "online").length;
   const offlineCount = projectCameras.length - onlineCount;
@@ -648,6 +705,34 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           options={[{ value: "ALL", label: t.filterAllAiEngines }, ...AI_FEATURES.map(f => ({ value: f, label: t.aiFeatureLabels[f] }))]}
         />
         <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
+        {/* Bulk actions live in the toolbar rather than in a floating bar over the table: the
+            toolbar is where every other thing that acts on the whole list already is, and a
+            floating bar covers the rows you are deciding about. Only appears with a selection. */}
+        {visibleSelectedIds.length > 0 && (
+          <>
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>
+              {t.selectedCount(visibleSelectedIds.length)}
+            </span>
+            <FilterSelect
+              fitContent
+              value=""
+              onChange={zone => { if (zone) bulkMoveToZone(zone); }}
+              options={[{ value: "", label: t.bulkMoveToZone }, ...zones.map(z => ({ value: z, label: z }))]}
+            />
+            <button
+              onClick={() => setConfirmingBulkDelete(true)}
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--danger-500)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
+            >
+              {t.bulkDelete}
+            </button>
+            <button
+              onClick={clearSelection}
+              style={{ border: "none", background: "none", padding: "0 4px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", flexShrink: 0 }}
+            >
+              {t.bulkClearSelection}
+            </button>
+          </>
+        )}
         <div style={{ display: "flex", alignItems: "center", height: CONTROL_HEIGHT, boxSizing: "border-box", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px" }}>
           {(["table", "grid"] as const).map(v => (
             <button key={v} onClick={() => setView(v)}
@@ -668,10 +753,17 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           border between them so the two halves read as one continuous card. */}
       {view === "table" && visibleCameras.length > 0 && (
         <div style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: "12px", borderTopRightRadius: "12px", boxShadow: PANEL_SHADOW }}>
-          <div style={{ display: "grid", gridTemplateColumns: "56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "28px 56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
             {/* The thumbnail, RTSP URL and AI-engine columns carry no sortKey — a picture has no
                 order, a stream URL sorts by whatever the IP happens to start with, and AI engines
                 is a set per camera rather than one value. */}
+            <input
+              type="checkbox"
+              checked={allVisibleSelected}
+              onChange={toggleAllVisible}
+              aria-label={t.selectAllLabel}
+              style={{ accentColor: "var(--gray-900)", cursor: "pointer", justifySelf: "start" }}
+            />
             {([
               { label: "" },
               { label: t.colCamera, key: "name" },
@@ -708,10 +800,17 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             const isLast = i === visibleCameras.length - 1;
             return (
               <div key={cam.id} style={{
-                display: "grid", gridTemplateColumns: "56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
+                display: "grid", gridTemplateColumns: "28px 56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
                 borderBottom: isLast ? "none" : BORDER,
                 borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
               }}>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(cam.id)}
+                  onChange={() => toggleRow(cam.id)}
+                  aria-label={cam.name}
+                  style={{ accentColor: "var(--gray-900)", cursor: "pointer", justifySelf: "start" }}
+                />
                 <button onClick={() => setInspectingCameraId(cam.id)} style={{ width: "40px", height: "40px", borderRadius: "8px", overflow: "hidden", backgroundColor: "var(--gray-100)", border: "none", cursor: "pointer", padding: 0 }}>
                   <img src={cam.thumbnail || DEFAULT_THUMBNAIL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </button>
@@ -813,6 +912,28 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           onConfirm={() => { toggleStatus(confirmingStatusCam); setConfirmingStatusCam(null); }}
           t={t}
         />
+      )}
+      {/* Confirmed, not undoable-with-a-toast: removing cameras in bulk takes a whole set of feeds
+          off monitoring at once, and there is no restore. Says what actually happens and what does
+          not, because "are you sure?" alone leaves people guessing about the recordings. */}
+      {confirmingBulkDelete && (
+        <div onClick={e => { if (e.target === e.currentTarget) setConfirmingBulkDelete(false); }}
+          style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ backgroundColor: "white", borderRadius: "16px", maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)", padding: "20px" }}>
+            <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.bulkDeleteConfirm(visibleSelectedIds.length)}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7, marginTop: "8px" }}>{t.bulkDeleteBody}</p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "20px" }}>
+              <button onClick={() => setConfirmingBulkDelete(false)}
+                style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                {t.cancel}
+              </button>
+              <button onClick={bulkDelete}
+                style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--danger-500)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                {t.bulkDelete}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
