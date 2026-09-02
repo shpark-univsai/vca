@@ -659,10 +659,18 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
                 })}
               </div>
 
-              <ul style={{ display: "flex", flexDirection: "column", gap: "5px", margin: 0, padding: 0, listStyle: "none" }}>
-                {c.consequences.map(line => bullet(line))}
-              </ul>
             </div>
+            {/* Outside the scrolling body, deliberately. These are the rules of the button below
+                them, so they have to be on screen at the moment it is pressed — reachable by
+                scrolling is not the same as read, and this action cannot be undone. The choice
+                above can scroll; what the choice commits you to cannot. */}
+            {c.consequences.length > 0 && (
+              <div style={{ padding: "14px 20px", borderTop: BORDER, backgroundColor: "var(--gray-50)" }}>
+                <ul style={{ display: "flex", flexDirection: "column", gap: "5px", margin: 0, padding: 0, listStyle: "none" }}>
+                  {c.consequences.map(line => bullet(line))}
+                </ul>
+              </div>
+            )}
             <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
               <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.cancel}
