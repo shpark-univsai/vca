@@ -1,18 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import { getAuthConfig } from "@/lib/authConfig";
-import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon } from "@/components/AuthIcons";
+import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
+import { LOGIN_NOTICES, parseLoginNotice, type LoginFailure } from "@/lib/authErrors";
 import { useVcaStore } from "@/lib/vcaStore";
 
 const FIELD_BORDER = "1px solid var(--gray-300)";
 /** Only ever holds the identifier. Never the password, never a session token. */
 const REMEMBERED_ID_KEY = "vca.rememberedId";
 
+/**
+ * HANDOFF NOTE — viewing every state without a backend.
+ *
+ *   /login?demo=badCredentials   wrong identifier or password
+ *   /login?demo=locked           too many failed attempts
+ *   /login?demo=suspended        access withdrawn
+ *   /login?demo=pendingApproval  waiting for an administrator
+ *   /login?demo=notActivated     issued a registration code, never used it
+ *   /login?demo=sessionExpired   signed out by the session timing out
+ *   /login?demo=signedOut        signed out deliberately
+ *
+ * Three of these also happen for real against the seeded accounts, because the mock user list
+ * already carries a status: wei.chen@univs.ai is "invited" and david.ong@univs.ai is "suspended".
+ * Until this change both of them signed in perfectly happily, which was a real hole.
+ */
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const demo = useSearchParams().get("demo");
+  const [notice, setNotice] = useState<LoginFailure | null>(() => parseLoginNotice(demo));
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -73,6 +99,30 @@ export default function LoginPage() {
       u => u.email.toLowerCase() === typed
         || (!!rosterMatch && u.name.toLowerCase() === rosterMatch.name.toLowerCase())
     );
+
+    // A known account's status decides whether it may sign in at all, and this is checked before
+    // the temporary-password branch — a suspended account holding a temporary password should be
+    // turned away, not sent on to set a new one. Both of these used to sail straight through:
+    // access withdrawn by an administrator, and an account that never set a password.
+    if (matchedUser?.status === "suspended") { setNotice("suspended"); return; }
+    if (matchedUser?.status === "invited") { setNotice("notActivated"); return; }
+    setNotice(null);
+
+    // HANDOFF NOTE: an identifier matching nothing is still let through, so anyone opening this
+    // build can look around without being handed a list of seeded accounts. A real login rejects it
+    // with "badCredentials" — that state is built, at /login?demo=badCredentials.
+
+    // An account still on an administrator-issued temporary password does not get in — it gets the
+    // set-a-password screen first. Otherwise the temporary one silently becomes the real one, and
+    // the account stays on a password a second person read out over the phone.
+    //
+    // HANDOFF NOTE: the real login response carries this flag; the mock reads it off the Portal
+    // user the admin issued it to (Users & Permissions -> Generate temporary password). The backend
+    // must enforce it as well — this branch only decides where the browser goes next.
+    if (matchedUser?.mustChangePassword) {
+      router.push(`/password-setup?token=${matchedUser.id}&reason=temp`);
+      return;
+    }
     router.push(matchedUser?.permission === "admin" ? "/portal" : "/");
   };
 
@@ -113,6 +163,48 @@ export default function LoginPage() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "32px", width: "100%" }}>
+              {/* Sits above the fields, not under the button: the reason a sign-in failed changes
+                  whether retyping is even worth attempting, so it has to be read before the hands
+                  go back to the keyboard. "error" for something the operator can act on here,
+                  "info" for a state only an administrator can change. */}
+              {notice && (
+                <div
+                  role="status"
+                  style={{
+                    display: "flex", gap: "10px", alignItems: "flex-start", width: "100%",
+                    padding: "14px 16px", borderRadius: "10px", marginBottom: "4px",
+                    backgroundColor: LOGIN_NOTICES[notice].tone === "error" ? "var(--danger-100)" : "var(--info-100)",
+                  }}
+                >
+                  <span style={{ display: "flex", flexShrink: 0, marginTop: "1px" }}>
+                    <ErrorCircleIcon />
+                  </span>
+                  <div>
+                    <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-800)", letterSpacing: "-0.26px" }}>
+                      {LOGIN_NOTICES[notice].title}
+                    </p>
+                    <p style={{ margin: "3px 0 0", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px", lineHeight: 1.6 }}>
+                      {LOGIN_NOTICES[notice].detail}
+                    </p>
+                    {/* A dead end otherwise: this person has a code and nowhere on the screen tells
+                        them where to use it. */}
+                    {notice === "notActivated" && authConfig.registrationCode && (
+                      <button
+                        onClick={() => router.push("/register")}
+                        style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 0 0", fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
+                      >
+                        Activate with a registration code
+                      </button>
+                    )}
+                    {(notice === "locked" || notice === "suspended") && (
+                      <p style={{ margin: "6px 0 0", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
+                        {authConfig.supportContact ?? "Your security operations team"}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Identifier — email, or an employee number where that is enabled */}
               <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                 <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>
@@ -122,7 +214,7 @@ export default function LoginPage() {
                   <PersonFieldIcon />
                   <input
                     value={identifier}
-                    onChange={e => setIdentifier(e.target.value)}
+                    onChange={e => { setIdentifier(e.target.value); setNotice(null); }}
                     placeholder={authConfig.employeeIdLogin ? "EMP-2041 or user@email.com" : "user@email.com"}
                     autoComplete="username"
                     style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
@@ -137,7 +229,7 @@ export default function LoginPage() {
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={e => setPassword(e.target.value)}
+                    onChange={e => { setPassword(e.target.value); setNotice(null); }}
                     placeholder="Please enter your password"
                     style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                   />
