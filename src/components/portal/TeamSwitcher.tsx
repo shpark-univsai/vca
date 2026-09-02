@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useVcaStore } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, FilterSelect, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
+import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH, TEAM_INDUSTRIES } from "./PortalShared";
 
 const T = {
   en: {
@@ -16,12 +16,11 @@ const T = {
 
     // New team modal
     modalTitle: "New team",
-    modalIntro: "A team keeps its own projects, users and mail settings. Nothing is shared with the teams already here.",
+    modalIntro: "A team keeps its own projects, users and mail settings.",
     nameLabel: "Team name",
     namePlaceholder: "e.g. Northgate Education Trust",
     industryLabel: "Primary industry",
-    industryHint: "Pre-selects the matching template on the next screen. Optional.",
-    industryNone: "Not set",
+    industryHint: "Decides which solution this team's projects are built from.",
     cancel: "Cancel",
     create: "Create team",
   },
@@ -34,20 +33,15 @@ const T = {
 
     // New team modal
     modalTitle: "새 팀",
-    modalIntro: "팀은 각자의 프로젝트, 사용자, 메일 설정을 따로 가집니다. 기존 팀과 공유되는 것은 없습니다.",
+    modalIntro: "팀은 프로젝트, 사용자, 메일 설정을 각자 따로 가집니다.",
     nameLabel: "팀 이름",
     namePlaceholder: "예: Northgate Education Trust",
     industryLabel: "주요 산업",
-    industryHint: "다음 화면에서 맞는 템플릿을 미리 선택해 둡니다. 선택 사항입니다.",
-    industryNone: "미설정",
+    industryHint: "이 팀의 프로젝트가 어떤 솔루션으로 만들어질지 결정합니다.",
     cancel: "취소",
     create: "팀 만들기",
   },
 } as const;
-
-/** Same list the signup wizard offers, so a team created here and a team created at signup carry
- *  values from the same vocabulary rather than two overlapping ones. */
-const INDUSTRIES = ["Smart City", "Smart School", "Public Safety", "Transport", "Retail", "Other"];
 
 function ChevronDown({ size = 12 }: { size?: number }) {
   return (
@@ -224,13 +218,15 @@ function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [name, setName] = useState("");
   const [industry, setIndustry] = useState("");
 
-  const canSubmit = name.trim().length > 0;
+  // Both required. Industry is not a nicety: it decides which of the two solution templates this
+  // team's projects start from, and an unanswered one would just quietly mean Smart City.
+  const canSubmit = name.trim().length > 0 && industry.length > 0;
 
   const submit = () => {
     if (!canSubmit) return;
     // region is left empty the same way signup leaves it — the field exists on Team but no screen
     // reads it, so asking for it would collect something nobody ever sees.
-    const id = addTeam({ name: name.trim(), region: "", industry: industry || undefined });
+    const id = addTeam({ name: name.trim(), region: "", industry });
     onClose();
     onCreated(id);
   };
@@ -249,7 +245,9 @@ function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
           <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>{t.modalIntro}</p>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
+              {t.nameLabel} <span style={{ color: "var(--danger-400)" }}>*</span>
+            </label>
             <input
               value={name}
               onChange={e => setName(e.target.value)}
@@ -260,15 +258,32 @@ function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
             />
           </div>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.industryLabel}</label>
-            {/* One select rather than a row of seven chips. Chips are for a choice you want read at
-                a glance; this one is optional and is read once, at which point a closed control
-                keeps the box short enough to take in whole. */}
-            <FilterSelect
-              value={industry}
-              onChange={setIndustry}
-              options={[{ value: "", label: t.industryNone }, ...INDUSTRIES.map(i => ({ value: i, label: i }))]}
-            />
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
+              {t.industryLabel} <span style={{ color: "var(--danger-400)" }}>*</span>
+            </label>
+            {/* Two buttons, not a dropdown. A required choice between exactly two things should be
+                answerable in one click with both answers on screen; a closed select hides half the
+                question and adds a click to a question that cannot be skipped. */}
+            <div style={{ display: "flex", gap: "8px" }}>
+              {TEAM_INDUSTRIES.map(option => {
+                const active = industry === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => setIndustry(option.value)}
+                    style={{
+                      flex: 1, padding: "10px 12px", borderRadius: "10px", cursor: "pointer",
+                      border: active ? "1px solid var(--gray-900)" : BORDER,
+                      backgroundColor: active ? "var(--gray-100)" : "white",
+                      color: active ? "var(--gray-900)" : "var(--gray-600)",
+                      fontSize: "13px", fontWeight: 700,
+                    }}
+                  >
+                    {option.label[lang]}
+                  </button>
+                );
+              })}
+            </div>
             <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.6 }}>{t.industryHint}</p>
           </div>
         </div>

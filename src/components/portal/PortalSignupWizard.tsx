@@ -4,21 +4,15 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useVcaStore, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, FilterSelect } from "./PortalShared";
+import { BORDER, FilterSelect, TEAM_INDUSTRIES } from "./PortalShared";
 
 type SignupStep = "account" | "team" | "done";
 
 const STEP_PILL_KEYS: (SignupStep | "landing")[] = ["landing", "account", "team", "done"];
 
-// Values stay in English — they're stored on the team record (team.industry) and compared
-// against directly in industryToProjectType below. Only the label shown in the dropdown is
-// translated, same as PROJECT_TABS in ProjectSidebar.tsx.
-const INDUSTRIES: { value: string; label: { en: string; ko: string } }[] = [
-  { value: "Smart City", label: { en: "Smart City", ko: "스마트시티" } },
-  { value: "Smart School", label: { en: "Smart School", ko: "스마트스쿨" } },
-  { value: "Utilities", label: { en: "Utilities", ko: "유틸리티" } },
-  { value: "Other", label: { en: "Other", ko: "기타" } },
-];
+// The list lives in PortalShared, because the New team modal asks the same question and the two
+// had already drifted apart. Utilities and Other used to sit here and both resolved to a Smart City
+// project — see TEAM_INDUSTRIES.
 
 const T = {
   en: {
@@ -65,8 +59,8 @@ const T = {
       useDomainWithValue: (domain: string) => `Use ${domain}`,
       orgNameError: "Team name is required (min 2 characters).",
       orgNameHint: "Enter an team name → the system will create your workspace automatically",
-      industryLabel: "Primary Industry (optional)",
-      industryPlaceholder: "Smart City / Smart School / Utilities / Other",
+      industryLabel: "Primary Industry *",
+      industryPlaceholder: "Select an industry",
       domainTemplateHint: "💡 The domain you select here will be pre-highlighted as the template on the next [Create Project] screen.",
       channelLabel: "Estimated Channel Count (optional — for billing reference)",
       channelPlaceholder: "200 — optional, you can set this later",
@@ -128,8 +122,8 @@ const T = {
       useDomainWithValue: (domain: string) => `${domain} 사용`,
       orgNameError: "팀 이름을 입력해주세요 (최소 2자).",
       orgNameHint: "팀 이름을 입력하면 워크스페이스가 자동으로 생성됩니다",
-      industryLabel: "주요 산업군 (선택)",
-      industryPlaceholder: "스마트시티 / 스마트스쿨 / 유틸리티 / 기타",
+      industryLabel: "주요 산업군 *",
+      industryPlaceholder: "산업군을 선택하세요",
       domainTemplateHint: "💡 여기서 선택한 산업군은 다음 [프로젝트 생성] 화면에서 템플릿으로 미리 선택되어 있습니다.",
       channelLabel: "예상 채널 수 (선택 — 청구 참고용)",
       channelPlaceholder: "예: 200 (선택 사항 — 지금은 건너뛰어도 됩니다)",
@@ -154,6 +148,7 @@ const T = {
 function industryToProjectType(industry: string): ProjectType {
   return industry === "Smart School" ? "smart_school" : "smart_city";
 }
+
 
 function isEmailFormatValid(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -289,7 +284,10 @@ export default function PortalSignupWizard() {
 
   const orgNameValid = orgName.trim().length >= 2;
   const channelCountValid = isChannelCountValid(channelCount);
-  const step2Valid = orgNameValid && channelCountValid && agreedToS;
+  // Industry is required, not "(optional)" as the label used to claim. It decides which solution
+  // template the project that follows is built from, and leaving it blank silently produced a Smart
+  // City project — a default with real consequences dressed up as no answer.
+  const step2Valid = orgNameValid && !!industry && channelCountValid && agreedToS;
 
   const emailError = !touched.email ? "" :
     !emailFormatValid ? t.step1.emailInvalidError :
@@ -327,7 +325,7 @@ export default function PortalSignupWizard() {
 
   const completeSignup = () => {
     if (!step2Valid) return;
-    const teamId = addTeam({ name: orgName.trim(), region: "", industry: industry || undefined });
+    const teamId = addTeam({ name: orgName.trim(), region: "", industry });
     addPortalUser({ name: fullName.trim(), email: email.trim(), teamId, projectIds: [], permission: "admin", status: "active" });
     setCreatedOrgId(teamId);
     setStep("done");
@@ -490,7 +488,7 @@ export default function PortalSignupWizard() {
             <div style={{ marginTop: "16px" }}>
               <FieldLabel>{t.step2.industryLabel}</FieldLabel>
               <FilterSelect value={industry} onChange={setIndustry}
-                options={[{ value: "", label: t.step2.industryPlaceholder }, ...INDUSTRIES.map(i => ({ value: i.value, label: i.label[lang] }))]} />
+                options={[{ value: "", label: t.step2.industryPlaceholder }, ...TEAM_INDUSTRIES.map(i => ({ value: i.value, label: i.label[lang] }))]} />
             </div>
 
             <div style={{ backgroundColor: "var(--primary-100)", borderRadius: "10px", padding: "8px 14px", marginTop: "8px" }}>

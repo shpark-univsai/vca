@@ -37,6 +37,25 @@ export const BREADCRUMB_TEAM_MAX_WIDTH = "min(360px, 26vw)";
 export const BREADCRUMB_PROJECT_MAX_WIDTH = "min(320px, 22vw)";
 export const PANEL_SHADOW = "none";
 
+/**
+ * What a team can say it does. Exactly two entries, because the product ships exactly two solution
+ * templates (ProjectType) and this field's only job is to pre-select one of them.
+ *
+ * It used to list Utilities and Other as well, and the New team modal invented Public Safety,
+ * Transport and Retail on top of that — six choices leading to two outcomes, with everything that
+ * was not "Smart School" silently becoming a Smart City project. A menu that quietly collapses
+ * four of its options into one is worse than a short menu: the person picks Transport, believes
+ * they told us something, and gets a Smart City template with no explanation.
+ *
+ * Both places that ask (signup's Step 2 and the New team modal) read this, so the question has one
+ * answer set. Values stay in English — they are stored on team.industry and compared against
+ * directly by industryToProjectType; only the label is translated.
+ */
+export const TEAM_INDUSTRIES: { value: string; label: { en: string; ko: string } }[] = [
+  { value: "Smart City", label: { en: "Smart City", ko: "스마트시티" } },
+  { value: "Smart School", label: { en: "Smart School", ko: "스마트스쿨" } },
+];
+
 export const TYPE_META: Record<ProjectType, { label: string; bg: string; color: string }> = {
   smart_city: { label: "Smart City", bg: "white", color: "var(--primary-400)" },
   smart_school: { label: "Smart School", bg: "white", color: "var(--success-400)" },
