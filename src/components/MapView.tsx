@@ -8,7 +8,7 @@ import { useVcaStore, vcaEventsToLiveEvents, VIP_SIMULATION_CAMERAS, type Camera
 import { useApiData } from "@/hooks/useApiData";
 import { getDistricts } from "@/lib/api/dashboard";
 import { isTodaySgt } from "@/lib/time";
-import { MAP_TILE_URL, tileLayerOptions } from "@/lib/mapTiles";
+import { MAP_TILE_URL, MAP_TILE_FILTER, tileLayerOptions } from "@/lib/mapTiles";
 
 // Leaflet popups are raw HTML strings, not React — values dropped into an inline onclick="...('...')"
 // attribute need their quotes escaped so a name/label containing one can't break the attribute.
@@ -706,6 +706,9 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
     <div
       ref={mapRef}
       style={{
+        // Read by .leaflet-tile-pane in globals.css. Set here rather than in the stylesheet so an
+        // installation can change it through the environment without editing CSS.
+        ["--map-tile-filter" as string]: MAP_TILE_FILTER,
         width: "100%",
         height: "100%",
         position: "relative",

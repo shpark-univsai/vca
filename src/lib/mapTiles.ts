@@ -33,6 +33,22 @@ export const MAP_TILE_SUBDOMAINS = (process.env.NEXT_PUBLIC_MAP_TILE_SUBDOMAINS 
 
 export const MAP_MAX_ZOOM = Number(process.env.NEXT_PUBLIC_MAP_MAX_ZOOM) || 19;
 
+/**
+ * A CSS filter laid over the tiles, applied to Leaflet's tile pane only — markers, routes and
+ * polygons drawn above it are untouched.
+ *
+ * The base map here is deliberately desaturated. Everything this product draws on top carries
+ * meaning through colour — camera markers, VIP tracking trails, district polygons, heat — and a
+ * full-colour street map competes with all of it, forcing the eye to sort map colour from data
+ * colour. A general-purpose tile server (OpenStreetMap, and most customer GIS servers) ships full
+ * colour, so the calm backdrop is produced here rather than by hunting for a grey tile set that an
+ * isolated network may not have.
+ *
+ * Set NEXT_PUBLIC_MAP_TILE_FILTER=none where the customer's own tiles are already styled.
+ */
+export const MAP_TILE_FILTER =
+  process.env.NEXT_PUBLIC_MAP_TILE_FILTER || "grayscale(1) brightness(1.06) contrast(0.94)";
+
 /** The options object both maps pass to L.tileLayer, so they cannot drift apart again. */
 export function tileLayerOptions() {
   return {

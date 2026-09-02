@@ -33,6 +33,14 @@
 @import "tailwindcss";
 @import 'leaflet/dist/leaflet.css';
 
+/* Base map stays desaturated so the data drawn on top keeps colour to itself. The value comes from
+   the map container (see lib/mapTiles.ts, MAP_TILE_FILTER) and inherits down to the pane; the
+   fallback here keeps the look if that variable is ever missing. Scoped to the tile pane, so
+   markers and route lines above it are not filtered. */
+.leaflet-tile-pane {
+  filter: var(--map-tile-filter, grayscale(1) brightness(1.06) contrast(0.94));
+}
+
 /* ── Design tokens ────────────────────────────────────────────
    VCA Figma 라이브러리("VCA 작업")에 정의된 변수 값 그대로입니다.
    여기 없는 색은 쓰지 마세요. 화면에 필요한 단계가 없으면(예: danger-200

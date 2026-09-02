@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { DISTRICTS } from "@/lib/mockData";
-import { MAP_TILE_URL, tileLayerOptions } from "@/lib/mapTiles";
+import { MAP_TILE_URL, MAP_TILE_FILTER, tileLayerOptions } from "@/lib/mapTiles";
 
 export interface TrackingHit {
   lat: number;
@@ -383,7 +383,14 @@ export default function RedmapMap({
           (7 6 / -13) — so on this page the two fought, and whichever won per property could leave
           a 13px offset animating an 18px dash cycle. That mismatch restarts the loop mid-dash,
           which reads as the line blinking or stretching rather than flowing. One definition only. */}
-      <div ref={mapRef} style={{ width: "100%", height: "100%", position: "relative", backgroundColor: "var(--gray-100)" }} />
+      <div
+        ref={mapRef}
+        style={{
+          // Read by .leaflet-tile-pane in globals.css — see MapView for why it is set here.
+          ["--map-tile-filter" as string]: MAP_TILE_FILTER,
+          width: "100%", height: "100%", position: "relative", backgroundColor: "var(--gray-100)",
+        }}
+      />
     </>
   );
 }
