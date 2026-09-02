@@ -6,6 +6,148 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { useToast } from "../Toast";
 import { BORDER, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
+import { usePortalLanguage } from "@/lib/i18n";
+
+const T = {
+  en: {
+    // Page header
+    title: "Users & Permissions",
+    descScopedPrefix: "Showing users with access to",
+    descScopedSuffix: "",
+    descUnscoped: "Grant Portal (admin) or app (operator) access and scope users to projects.",
+    inviteUser: "Invite user",
+    searchPlaceholder: "Search users…",
+
+    // Table
+    colUser: "User",
+    colTeam: "Team",
+    colProjects: "Projects",
+    colPermission: "Permission",
+    colMfa: "MFA",
+    colLastLogin: "Last Login",
+    colStatus: "Status",
+    emptySearch: "No users match this search.",
+    emptyNoUsers: "No users have access to this project yet.",
+
+    // Permission / status / MFA display labels
+    permAdmin: "Admin",
+    permOperator: "Operator",
+    statusActive: "Active",
+    statusInvited: "Invited",
+    statusSuspended: "Suspended",
+    mfaEnabledTitle: "MFA enabled",
+
+    // Row actions
+    resendInvite: "Resend invite",
+    sendPasswordReset: "Send password reset",
+    reactivateUser: "Reactivate user",
+    suspendUser: "Suspend user",
+    removeUser: "Remove user",
+
+    // Row action toasts
+    inviteResentTitle: "Invite resent",
+    resetCodeSentTitle: "Reset code sent",
+    resetCodeSentDesc: (email: string) => `To ${email}`,
+    userReactivatedTitle: "User reactivated",
+    userSuspendedTitle: "User suspended",
+    userSuspendedDesc: (name: string) => `${name} can no longer sign in`,
+
+    // Invite modal
+    modalTitle: "Invite user",
+    nameLabel: "Name",
+    namePlaceholder: "Full name",
+    emailLabel: "Email",
+    teamLabel: "Team",
+    permissionLabel: "Permission level",
+    projectsLabel: "Projects",
+    mailNoteBoth: "Invite will be sent by external email for internet-connected projects, and the internal mailbox for internet-isolated ones.",
+    mailNoteIsolated: "This project's site is internet-isolated — invite will be sent through its internal mailbox, not external email.",
+    mailNoteReachable: "Invite will be sent by external email.",
+    cancel: "Cancel",
+    sendInvite: "Send Invite",
+    inviteSentTitle: "Invite sent",
+
+    // Access requests panel
+    accessRequestsTitle: (count: number) => `Access Requests (${count})`,
+    approveSelected: (count: number) => `Approve ${count} selected`,
+    dismiss: "Dismiss",
+    approve: "Approve",
+    requestedAgo: (elapsed: string) => `Requested ${elapsed} ago`,
+    requestedLoading: "Requested …",
+    accessApprovedTitle: "Access approved — invite sent",
+    usersInvitedTitle: (count: number) => `${count} users invited`,
+    eachWillReceive: "Each will receive their own invite link.",
+  },
+  ko: {
+    // Page header
+    title: "사용자 및 권한",
+    descScopedPrefix: "",
+    descScopedSuffix: "프로젝트에 접근 권한이 있는 사용자를 표시합니다.",
+    descUnscoped: "포털(관리자) 또는 앱(운영자) 접근 권한을 부여하고, 사용자가 이용할 프로젝트를 지정하세요.",
+    inviteUser: "사용자 초대",
+    searchPlaceholder: "사용자 검색…",
+
+    // Table
+    colUser: "사용자",
+    colTeam: "팀",
+    colProjects: "프로젝트",
+    colPermission: "권한",
+    colMfa: "MFA",
+    colLastLogin: "마지막 로그인",
+    colStatus: "상태",
+    emptySearch: "검색 결과와 일치하는 사용자가 없습니다.",
+    emptyNoUsers: "이 프로젝트에 접근 권한이 있는 사용자가 아직 없습니다.",
+
+    // Permission / status / MFA display labels
+    permAdmin: "관리자",
+    permOperator: "운영자",
+    statusActive: "활성",
+    statusInvited: "초대됨",
+    statusSuspended: "정지됨",
+    mfaEnabledTitle: "MFA 사용 중",
+
+    // Row actions
+    resendInvite: "초대 재전송",
+    sendPasswordReset: "비밀번호 재설정 코드 전송",
+    reactivateUser: "사용자 재활성화",
+    suspendUser: "사용자 정지",
+    removeUser: "사용자 제거",
+
+    // Row action toasts
+    inviteResentTitle: "초대 재전송됨",
+    resetCodeSentTitle: "재설정 코드 전송됨",
+    resetCodeSentDesc: (email: string) => `${email}로 전송됨`,
+    userReactivatedTitle: "사용자가 재활성화됨",
+    userSuspendedTitle: "사용자가 정지됨",
+    userSuspendedDesc: (name: string) => `${name} 님은 더 이상 로그인할 수 없습니다`,
+
+    // Invite modal
+    modalTitle: "사용자 초대",
+    nameLabel: "이름",
+    namePlaceholder: "전체 이름",
+    emailLabel: "이메일",
+    teamLabel: "팀",
+    permissionLabel: "권한 수준",
+    projectsLabel: "프로젝트",
+    mailNoteBoth: "인터넷에 연결된 프로젝트에는 외부 이메일로, 인터넷이 차단된 프로젝트에는 내부 메일함으로 초대장이 발송됩니다.",
+    mailNoteIsolated: "이 프로젝트의 사이트는 인터넷이 차단되어 있습니다 — 초대장은 외부 이메일이 아닌 내부 메일함으로 발송됩니다.",
+    mailNoteReachable: "초대장이 외부 이메일로 발송됩니다.",
+    cancel: "취소",
+    sendInvite: "초대 보내기",
+    inviteSentTitle: "초대장 발송됨",
+
+    // Access requests panel
+    accessRequestsTitle: (count: number) => `접근 요청 (${count}건)`,
+    approveSelected: (count: number) => `선택한 ${count}건 승인`,
+    dismiss: "무시",
+    approve: "승인",
+    requestedAgo: (elapsed: string) => `${elapsed} 전 요청됨`,
+    requestedLoading: "요청됨 …",
+    accessApprovedTitle: "접근 승인됨 — 초대장 발송됨",
+    usersInvitedTitle: (count: number) => `${count}명의 사용자 초대됨`,
+    eachWillReceive: "각자 개별 초대 링크를 받게 됩니다.",
+  },
+} as const;
 
 function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: string; onClose: () => void }) {
   useEscapeKey(onClose);
@@ -13,6 +155,8 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const projects = useVcaStore(s => s.projects);
   const addPortalUser = useVcaStore(s => s.addPortalUser);
   const { showToast } = useToast();
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [teamId, setOrgId] = useState(teams[0]?.id ?? "");
@@ -33,15 +177,15 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const mailTransportNote = selectedProjects.length === 0
     ? null
     : hasIsolated && hasReachable
-      ? "Invite will be sent by external email for internet-connected projects, and the internal mailbox for internet-isolated ones."
+      ? t.mailNoteBoth
       : hasIsolated
-        ? "This project's site is internet-isolated — invite will be sent through its internal mailbox, not external email."
-        : "Invite will be sent by external email.";
+        ? t.mailNoteIsolated
+        : t.mailNoteReachable;
 
   const submit = () => {
     if (!name.trim() || !email.trim() || !teamId) return;
     const id = addPortalUser({ name: name.trim(), email: email.trim(), teamId, projectIds, permission, status: "invited" });
-    showToast({ variant: "success", title: "Invite sent", desc: `/password-setup?token=${id}` });
+    showToast({ variant: "success", title: t.inviteSentTitle, desc: `/password-setup?token=${id}` });
     onClose();
   };
 
@@ -50,28 +194,28 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
       style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
         <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>Invite user</p>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.modalTitle}</p>
           <button onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", maxHeight: "60vh", overflowY: "auto" }}>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Name</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Full name"
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder={t.namePlaceholder}
               style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }} />
           </div>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Email</label>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.emailLabel}</label>
             <input value={email} onChange={e => setEmail(e.target.value)} placeholder="name@univs.ai" type="email"
               style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }} />
           </div>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Team</label>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.teamLabel}</label>
             <FilterSelect value={teamId} onChange={setOrgId} options={teams.map(o => ({ value: o.id, label: o.name }))} />
           </div>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Permission level</label>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.permissionLabel}</label>
             <div style={{ display: "flex", gap: "8px" }}>
               {(["admin", "operator"] as PortalPermission[]).map(perm => (
                 <button key={perm} onClick={() => setPermission(perm)}
@@ -82,13 +226,13 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                     color: permission === perm ? "var(--gray-900)" : "var(--gray-600)",
                     fontSize: "13px", fontWeight: 700,
                   }}>
-                  {perm}
+                  {perm === "admin" ? t.permAdmin : t.permOperator}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Projects</label>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.projectsLabel}</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
               {projects.map(p => {
                 const active = projectIds.includes(p.id);
@@ -113,11 +257,11 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
         </div>
         <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            Cancel
+            {t.cancel}
           </button>
           <button onClick={submit} disabled={!name.trim() || !email.trim()}
             style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: (name.trim() && email.trim()) ? "pointer" : "not-allowed", opacity: (name.trim() && email.trim()) ? 1 : 0.5 }}>
-            Send Invite
+            {t.sendInvite}
           </button>
         </div>
       </div>
@@ -132,21 +276,26 @@ const STATUS_COLORS: Record<PortalUserStatus, { bg: string; color: string }> = {
 };
 
 function StatusBadge({ status }: { status: PortalUserStatus }) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
   const { bg, color } = STATUS_COLORS[status];
+  const label = status === "active" ? t.statusActive : status === "invited" ? t.statusInvited : t.statusSuspended;
   return (
     <span style={{
       fontSize: "12px", fontWeight: 600, padding: "3px 8px", borderRadius: "999px", textTransform: "capitalize",
       backgroundColor: bg, color,
     }}>
-      {status}
+      {label}
     </span>
   );
 }
 
 function MfaBadge({ enabled }: { enabled?: boolean }) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
   if (!enabled) return <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>;
   return (
-    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "18px", height: "18px", borderRadius: "5px", backgroundColor: "var(--success-100)" }} title="MFA enabled">
+    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "18px", height: "18px", borderRadius: "5px", backgroundColor: "var(--success-100)" }} title={t.mfaEnabledTitle}>
       <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="var(--success-400)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
     </span>
   );
@@ -157,6 +306,8 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
   const approveAccessRequests = useVcaStore(s => s.approveAccessRequests);
   const dismissAccessRequest = useVcaStore(s => s.dismissAccessRequest);
   const { showToast } = useToast();
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
   const [selected, setSelected] = useState<string[]>([]);
   // Read after mount, not during render — see ProjectLicenseTab for the same pattern. Only used
   // for the "requested Xm ago" label, so a first-frame mismatch here would just be cosmetic, but
@@ -175,9 +326,9 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
     const newUserIds = approveAccessRequests(ids);
     setSelected(prev => prev.filter(id => !ids.includes(id)));
     if (newUserIds.length === 1) {
-      showToast({ variant: "success", title: "Access approved — invite sent", desc: `/password-setup?token=${newUserIds[0]}` });
+      showToast({ variant: "success", title: t.accessApprovedTitle, desc: `/password-setup?token=${newUserIds[0]}` });
     } else if (newUserIds.length > 1) {
-      showToast({ variant: "success", title: `${newUserIds.length} users invited`, desc: "Each will receive their own invite link." });
+      showToast({ variant: "success", title: t.usersInvitedTitle(newUserIds.length), desc: t.eachWillReceive });
     }
   };
 
@@ -188,12 +339,12 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
           <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
             <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{ accentColor: "var(--gray-900)" }} />
           </label>
-          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>Access Requests ({requests.length})</p>
+          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.accessRequestsTitle(requests.length)}</p>
         </div>
         {selected.length > 0 && (
           <button onClick={() => approve(selected)}
             style={{ padding: "7px 14px", borderRadius: "999px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-            Approve {selected.length} selected
+            {t.approveSelected(selected.length)}
           </button>
         )}
       </div>
@@ -209,17 +360,17 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
               </div>
               {r.reason && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{r.reason}</p>}
               <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "4px" }}>
-                Requested {nowMs !== null ? `${formatElapsed(nowMs - new Date(r.requestedAt).getTime())} ago` : "…"}
+                {nowMs !== null ? t.requestedAgo(formatElapsed(nowMs - new Date(r.requestedAt).getTime())) : t.requestedLoading}
               </p>
             </div>
             <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
               <button onClick={() => dismissAccessRequest(r.id)}
                 style={{ padding: "7px 12px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-                Dismiss
+                {t.dismiss}
               </button>
               <button onClick={() => approve([r.id])}
                 style={{ padding: "7px 12px", borderRadius: "999px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-                Approve
+                {t.approve}
               </button>
             </div>
           </div>
@@ -242,6 +393,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
   const removePortalUser = useVcaStore(s => s.removePortalUser);
   const { showToast } = useToast();
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
   const [showInvite, setShowInvite] = useState(false);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -258,15 +411,19 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
     <div>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "20px" }}>
         <div>
-          <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>Users &amp; Permissions</p>
+          <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
           <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "4px" }}>
-            {currentProject ? <>Showing users with access to <strong style={{ color: "var(--gray-600)" }}>{currentProject.name}</strong>.</> : "Grant Portal (admin) or app (operator) access and scope users to projects."}
+            {currentProject
+              ? (lang === "ko"
+                ? <><strong style={{ color: "var(--gray-600)" }}>{currentProject.name}</strong> {t.descScopedSuffix}</>
+                : <>{t.descScopedPrefix} <strong style={{ color: "var(--gray-600)" }}>{currentProject.name}</strong>.</>)
+              : t.descUnscoped}
           </p>
         </div>
         <button onClick={() => setShowInvite(true)}
           style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
           <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          Invite user
+          {t.inviteUser}
         </button>
       </div>
 
@@ -279,7 +436,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search users…"
+          placeholder={t.searchPlaceholder}
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setSearchFocused(false)}
           style={{
@@ -297,14 +454,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           itself instead. */}
       <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
         <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.3fr 0.9fr 0.5fr 0.9fr 0.8fr 36px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
-          {["User", "Team", "Projects", "Permission", "MFA", "Last Login", "Status", ""].map(h => (
-            <span key={h} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+          {[t.colUser, t.colTeam, t.colProjects, t.colPermission, t.colMfa, t.colLastLogin, t.colStatus, ""].map((h, i) => (
+            <span key={i} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
           ))}
         </div>
         {scopedUsers.length === 0 && (
           <div style={{ padding: "32px 16px", textAlign: "center", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}>
             <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
-              {q ? "No users match this search." : "No users have access to this project yet."}
+              {q ? t.emptySearch : t.emptyNoUsers}
             </p>
           </div>
         )}
@@ -338,7 +495,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             <FilterSelect
               value={u.permission}
               onChange={v => updatePortalUserPermission(u.id, v as PortalPermission)}
-              options={[{ value: "admin", label: "Admin" }, { value: "operator", label: "Operator" }]}
+              options={[{ value: "admin", label: t.permAdmin }, { value: "operator", label: t.permOperator }]}
             />
             <MfaBadge enabled={u.mfaEnabled} />
             <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.lastLoginAt ?? "—"}</span>
@@ -350,35 +507,35 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 already exists. */}
             <RowActionsMenu actions={[
               ...(u.status === "invited" ? [{
-                label: "Resend invite",
-                onClick: () => showToast({ variant: "success", title: "Invite resent", desc: `/password-setup?token=${u.id}` }),
+                label: t.resendInvite,
+                onClick: () => showToast({ variant: "success", title: t.inviteResentTitle, desc: `/password-setup?token=${u.id}` }),
               }] : []),
               {
-                label: "Send password reset",
+                label: t.sendPasswordReset,
                 // Says "code", not "link": /forgot-password now verifies an 8-digit code instead of
                 // following an emailed link. OPEN QUESTION for the backend — if the user then uses
                 // "Forgot password?" themselves they request a second code, which invalidates this
                 // one. Either this action mails the code and the mail says where to type it, or it
                 // does nothing but tell the user to start the flow themselves.
-                onClick: () => showToast({ variant: "success", title: "Reset code sent", desc: `To ${u.email}` }),
+                onClick: () => showToast({ variant: "success", title: t.resetCodeSentTitle, desc: t.resetCodeSentDesc(u.email) }),
               },
               u.status === "suspended"
                 ? {
-                    label: "Reactivate user",
+                    label: t.reactivateUser,
                     onClick: () => {
                       updatePortalUserStatus(u.id, "active");
-                      showToast({ variant: "success", title: "User reactivated", desc: u.name });
+                      showToast({ variant: "success", title: t.userReactivatedTitle, desc: u.name });
                     },
                   }
                 : {
-                    label: "Suspend user",
+                    label: t.suspendUser,
                     onClick: () => {
                       updatePortalUserStatus(u.id, "suspended");
-                      showToast({ variant: "warning", title: "User suspended", desc: `${u.name} can no longer sign in` });
+                      showToast({ variant: "warning", title: t.userSuspendedTitle, desc: t.userSuspendedDesc(u.name) });
                     },
                     danger: true,
                   },
-              { label: "Remove user", onClick: () => removePortalUser(u.id), danger: true },
+              { label: t.removeUser, onClick: () => removePortalUser(u.id), danger: true },
             ]} />
           </div>
           );

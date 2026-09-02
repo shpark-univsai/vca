@@ -4,23 +4,148 @@ import { useState } from "react";
 import { useVcaStore } from "@/lib/vcaStore";
 import { formatCode, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import { BORDER, PANEL_SHADOW, FilterSelect, RowActionsMenu } from "./PortalShared";
 
+const T = {
+  en: {
+    statusNotIssued: "Not issued",
+    statusIssued: "Issued",
+    statusUsed: "Used",
+    statusExpired: "Expired",
+    reissueTitle: "Reissue registration code?",
+    issueTitle: "Issue registration code?",
+    reissueBody: (name: string) => `${name}'s current code will stop working immediately. Anyone still holding the old printout will need the new one instead.`,
+    issueBody: (name: string) => `A new registration code will be generated for ${name}.`,
+    cancel: "Cancel",
+    reissueConfirm: "Reissue code",
+    issueConfirm: "Issue code",
+    removeTitle: (name: string) => `Remove ${name} from the roster?`,
+    removeBodyWithCode: "Their unused registration code is removed with them and can no longer be used to sign up.",
+    removeBodyNoCode: "This only removes the roster row — it does not affect an account that already signed up.",
+    remove: "Remove",
+    handoutPreviewTitle: "Handout sheet preview",
+    handoutSlipCount: (n: number) => `${n} slip(s) — cut along the dashed lines.`,
+    close: "Close",
+    print: "Print",
+    handoutInstruction: "Go to the registration page and enter this code to set up your account.",
+    filterAllStatuses: "All statuses",
+    pageTitle: "Staff Roster",
+    pageDesc: "Issue registration codes for offline sign-up — no mail required. See who hasn't joined yet.",
+    importExcel: "Import from Excel",
+    comingSoon: "Coming soon",
+    exportCsv: "Export CSV",
+    printHandout: "Print handout sheet",
+    issueCodesTo: (n: number) => `Issue codes to ${n} unassigned`,
+    emptyAll: "No staff in this project's roster yet.",
+    emptyFiltered: "No staff match this filter.",
+    colName: "Name",
+    colEmployeeId: "Employee ID",
+    colDepartment: "Department",
+    colPermission: "Permission",
+    colStatus: "Status",
+    colCode: "Code",
+    admin: "Admin",
+    operator: "Operator",
+    reissueCodeAction: "Reissue code",
+    issueCodeAction: "Issue code",
+    removeFromRoster: "Remove from roster",
+    toastCodesIssuedTitle: "Codes issued",
+    toastCodesIssuedDesc: (n: number) => `${n} registration code(s) issued.`,
+    toastCodeReissuedTitle: "Code reissued",
+    toastCodeReissuedDesc: (name: string) => `${name}'s previous code is no longer valid.`,
+    toastCodeIssuedTitle: "Code issued",
+    toastRemovedTitle: "Removed from roster",
+    toastExportTitle: "Export complete",
+    toastExportDesc: (n: number) => `${n} row(s) exported to CSV.`,
+    csvHeaderName: "Name",
+    csvHeaderEmployeeId: "Employee ID",
+    csvHeaderDepartment: "Department",
+    csvHeaderPermission: "Permission",
+    csvHeaderStatus: "Status",
+    csvHeaderCode: "Code",
+  },
+  ko: {
+    statusNotIssued: "미발급",
+    statusIssued: "발급됨",
+    statusUsed: "사용됨",
+    statusExpired: "만료됨",
+    reissueTitle: "등록 코드를 재발급하시겠습니까?",
+    issueTitle: "등록 코드를 발급하시겠습니까?",
+    reissueBody: (name: string) => `${name}님의 현재 코드는 즉시 사용할 수 없게 됩니다. 이전 출력물을 가지고 있는 사람은 새 코드가 필요합니다.`,
+    issueBody: (name: string) => `${name}님을 위한 새 등록 코드가 생성됩니다.`,
+    cancel: "취소",
+    reissueConfirm: "코드 재발급",
+    issueConfirm: "코드 발급",
+    removeTitle: (name: string) => `${name}님을 명부에서 삭제하시겠습니까?`,
+    removeBodyWithCode: "미사용 등록 코드도 함께 삭제되며, 더 이상 가입에 사용할 수 없습니다.",
+    removeBodyNoCode: "명부 항목만 삭제되며, 이미 가입된 계정에는 영향을 주지 않습니다.",
+    remove: "삭제",
+    handoutPreviewTitle: "배포용 시트 미리보기",
+    handoutSlipCount: (n: number) => `${n}장 — 점선을 따라 잘라주세요.`,
+    close: "닫기",
+    print: "인쇄",
+    handoutInstruction: "등록 페이지로 이동하여 이 코드를 입력하면 계정을 설정할 수 있습니다.",
+    filterAllStatuses: "전체 상태",
+    pageTitle: "직원 명부",
+    pageDesc: "메일 없이 오프라인 가입을 위한 등록 코드를 발급합니다. 아직 가입하지 않은 직원을 확인하세요.",
+    importExcel: "엑셀로 가져오기",
+    comingSoon: "준비 중",
+    exportCsv: "CSV 내보내기",
+    printHandout: "배포용 시트 인쇄",
+    issueCodesTo: (n: number) => `미발급 ${n}명에게 코드 발급`,
+    emptyAll: "이 프로젝트의 명부에 등록된 직원이 없습니다.",
+    emptyFiltered: "이 필터와 일치하는 직원이 없습니다.",
+    colName: "이름",
+    colEmployeeId: "사번",
+    colDepartment: "부서",
+    colPermission: "권한",
+    colStatus: "상태",
+    colCode: "코드",
+    admin: "관리자",
+    operator: "운영자",
+    reissueCodeAction: "코드 재발급",
+    issueCodeAction: "코드 발급",
+    removeFromRoster: "명부에서 삭제",
+    toastCodesIssuedTitle: "코드 발급 완료",
+    toastCodesIssuedDesc: (n: number) => `등록 코드 ${n}개가 발급되었습니다.`,
+    toastCodeReissuedTitle: "코드 재발급 완료",
+    toastCodeReissuedDesc: (name: string) => `${name}님의 이전 코드는 더 이상 사용할 수 없습니다.`,
+    toastCodeIssuedTitle: "코드 발급 완료",
+    toastRemovedTitle: "명부에서 삭제됨",
+    toastExportTitle: "내보내기 완료",
+    toastExportDesc: (n: number) => `${n}개 행이 CSV로 내보내졌습니다.`,
+    csvHeaderName: "이름",
+    csvHeaderEmployeeId: "사번",
+    csvHeaderDepartment: "부서",
+    csvHeaderPermission: "권한",
+    csvHeaderStatus: "상태",
+    csvHeaderCode: "코드",
+  },
+} as const;
+
+// Both branches of T carry identical keys with only the literal string values differing between
+// languages, so `T[lang]` widens to a union of the two — components take that union rather than
+// pinning to the "en" branch specifically, or TS rejects passing a "ko"-selected value in.
+type Translations = (typeof T)["en"] | (typeof T)["ko"];
+
 // "Issued" is shown to admins for what the type calls "unused" — from an admin's point of view the
 // interesting fact is "I handed this out, nobody's used it yet," not the code's own internal state.
-const STATUS_META: Record<RosterCodeStatus, { label: string; bg: string; color: string }> = {
-  "not-issued": { label: "Not issued", bg: "var(--gray-100)", color: "var(--gray-500)" },
-  unused: { label: "Issued", bg: "var(--warning-200)", color: "var(--warning-500)" },
-  used: { label: "Used", bg: "var(--gray-100)", color: "var(--success-400)" },
-  expired: { label: "Expired", bg: "var(--danger-100)", color: "var(--danger-500)" },
-};
+function getStatusMeta(t: Translations): Record<RosterCodeStatus, { label: string; bg: string; color: string }> {
+  return {
+    "not-issued": { label: t.statusNotIssued, bg: "var(--gray-100)", color: "var(--gray-500)" },
+    unused: { label: t.statusIssued, bg: "var(--warning-200)", color: "var(--warning-500)" },
+    used: { label: t.statusUsed, bg: "var(--gray-100)", color: "var(--success-400)" },
+    expired: { label: t.statusExpired, bg: "var(--danger-100)", color: "var(--danger-500)" },
+  };
+}
 
-function StatusBadge({ status }: { status: RosterCodeStatus }) {
-  const meta = STATUS_META[status];
+function StatusBadge({ status, meta }: { status: RosterCodeStatus; meta: Record<RosterCodeStatus, { label: string; bg: string; color: string }> }) {
+  const m = meta[status];
   return (
-    <span style={{ fontSize: "12px", fontWeight: 600, padding: "3px 8px", borderRadius: "999px", backgroundColor: meta.bg, color: meta.color }}>
-      {meta.label}
+    <span style={{ fontSize: "12px", fontWeight: 600, padding: "3px 8px", borderRadius: "999px", backgroundColor: m.bg, color: m.color }}>
+      {m.label}
     </span>
   );
 }
@@ -70,11 +195,12 @@ function RosterCodeCell({ entry, onReveal }: { entry: RosterEntry; onReveal: () 
 }
 
 function IssueConfirmModal({
-  entry, onClose, onConfirm,
+  entry, onClose, onConfirm, t,
 }: {
   entry: RosterEntry;
   onClose: () => void;
   onConfirm: () => void;
+  t: Translations;
 }) {
   useEscapeKey(onClose);
   const hasCode = !!entry.code;
@@ -84,21 +210,19 @@ function IssueConfirmModal({
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
         <div style={{ padding: "20px" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
-            {hasCode ? "Reissue registration code?" : "Issue registration code?"}
+            {hasCode ? t.reissueTitle : t.issueTitle}
           </p>
           <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.6 }}>
-            {hasCode
-              ? `${entry.name}'s current code will stop working immediately. Anyone still holding the old printout will need the new one instead.`
-              : `A new registration code will be generated for ${entry.name}.`}
+            {hasCode ? t.reissueBody(entry.name) : t.issueBody(entry.name)}
           </p>
         </div>
         <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            Cancel
+            {t.cancel}
           </button>
           <button onClick={onConfirm}
             style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {hasCode ? "Reissue code" : "Issue code"}
+            {hasCode ? t.reissueConfirm : t.issueConfirm}
           </button>
         </div>
       </div>
@@ -107,11 +231,12 @@ function IssueConfirmModal({
 }
 
 function RemoveConfirmModal({
-  entry, onClose, onConfirm,
+  entry, onClose, onConfirm, t,
 }: {
   entry: RosterEntry;
   onClose: () => void;
   onConfirm: () => void;
+  t: Translations;
 }) {
   useEscapeKey(onClose);
   return (
@@ -119,20 +244,18 @@ function RemoveConfirmModal({
       style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
         <div style={{ padding: "20px" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>Remove {entry.name} from the roster?</p>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.removeTitle(entry.name)}</p>
           <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.6 }}>
-            {entry.code && entry.status === "unused"
-              ? "Their unused registration code is removed with them and can no longer be used to sign up."
-              : "This only removes the roster row — it does not affect an account that already signed up."}
+            {entry.code && entry.status === "unused" ? t.removeBodyWithCode : t.removeBodyNoCode}
           </p>
         </div>
         <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            Cancel
+            {t.cancel}
           </button>
           <button onClick={onConfirm}
             style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            Remove
+            {t.remove}
           </button>
         </div>
       </div>
@@ -144,7 +267,7 @@ function RemoveConfirmModal({
 // than `display:none` on everything else) is the standard trick for "print just this one subtree
 // regardless of what else the page layout is" — it works without this component needing to know
 // anything about PortalShell's chrome outside it.
-function PrintSheet({ entries, projectName, onClose }: { entries: RosterEntry[]; projectName: string; onClose: () => void }) {
+function PrintSheet({ entries, projectName, onClose, t }: { entries: RosterEntry[]; projectName: string; onClose: () => void; t: Translations }) {
   useEscapeKey(onClose);
   return (
     <div style={{ position: "fixed", inset: 0, backgroundColor: "white", zIndex: 500, overflowY: "auto" }}>
@@ -163,15 +286,15 @@ function PrintSheet({ entries, projectName, onClose }: { entries: RosterEntry[];
         borderBottom: BORDER, position: "sticky", top: 0, backgroundColor: "white", zIndex: 1,
       }}>
         <div>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>Handout sheet preview</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{entries.length} slip(s) — cut along the dashed lines.</p>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.handoutPreviewTitle}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{t.handoutSlipCount(entries.length)}</p>
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            Close
+            {t.close}
           </button>
           <button onClick={() => window.print()} style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            Print
+            {t.print}
           </button>
         </div>
       </div>
@@ -184,7 +307,7 @@ function PrintSheet({ entries, projectName, onClose }: { entries: RosterEntry[];
               {formatCode(entry.code ?? "")}
             </p>
             <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "10px", lineHeight: 1.6 }}>
-              Go to the registration page and enter this code to set up your account.
+              {t.handoutInstruction}
             </p>
           </div>
         ))}
@@ -193,15 +316,21 @@ function PrintSheet({ entries, projectName, onClose }: { entries: RosterEntry[];
   );
 }
 
-const STATUS_FILTER_OPTIONS: { value: "ALL" | RosterCodeStatus; label: string }[] = [
-  { value: "ALL", label: "All statuses" },
-  { value: "not-issued", label: "Not issued" },
-  { value: "unused", label: "Issued" },
-  { value: "used", label: "Used" },
-  { value: "expired", label: "Expired" },
-];
+function getStatusFilterOptions(t: Translations): { value: "ALL" | RosterCodeStatus; label: string }[] {
+  return [
+    { value: "ALL", label: t.filterAllStatuses },
+    { value: "not-issued", label: t.statusNotIssued },
+    { value: "unused", label: t.statusIssued },
+    { value: "used", label: t.statusUsed },
+    { value: "expired", label: t.statusExpired },
+  ];
+}
 
 export default function ProjectRosterTab({ projectId }: { projectId: string }) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  const statusMeta = getStatusMeta(t);
+  const statusFilterOptions = getStatusFilterOptions(t);
   const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
   const staffRoster = useVcaStore(s => s.staffRoster);
   const issueRegistrationCodes = useVcaStore(s => s.issueRegistrationCodes);
@@ -225,17 +354,17 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
     const employeeIds = projectRoster.filter(r => r.status === "not-issued").map(r => r.employeeId);
     if (employeeIds.length === 0) return;
     issueRegistrationCodes(employeeIds);
-    showToast({ variant: "success", title: "Codes issued", desc: `${employeeIds.length} registration code(s) issued.` });
+    showToast({ variant: "success", title: t.toastCodesIssuedTitle, desc: t.toastCodesIssuedDesc(employeeIds.length) });
   };
 
   const confirmIssueOrReissue = () => {
     if (!issuingEntry) return;
     if (issuingEntry.code) {
       reissueRegistrationCode(issuingEntry.employeeId);
-      showToast({ variant: "success", title: "Code reissued", desc: `${issuingEntry.name}'s previous code is no longer valid.` });
+      showToast({ variant: "success", title: t.toastCodeReissuedTitle, desc: t.toastCodeReissuedDesc(issuingEntry.name) });
     } else {
       issueRegistrationCodes([issuingEntry.employeeId]);
-      showToast({ variant: "success", title: "Code issued", desc: issuingEntry.name });
+      showToast({ variant: "success", title: t.toastCodeIssuedTitle, desc: issuingEntry.name });
     }
     setIssuingEntry(null);
   };
@@ -243,15 +372,15 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
   const confirmRemove = () => {
     if (!removingEntry) return;
     removeRosterEntry(removingEntry.employeeId);
-    showToast({ variant: "warning", title: "Removed from roster", desc: removingEntry.name });
+    showToast({ variant: "warning", title: t.toastRemovedTitle, desc: removingEntry.name });
     setRemovingEntry(null);
   };
 
   const exportCsv = () => {
-    const header = ["Name", "Employee ID", "Department", "Permission", "Status", "Code"];
+    const header = [t.csvHeaderName, t.csvHeaderEmployeeId, t.csvHeaderDepartment, t.csvHeaderPermission, t.csvHeaderStatus, t.csvHeaderCode];
     const rows = projectRoster.map(r => [
-      r.name, r.employeeId, r.department ?? "", r.permission === "admin" ? "Admin" : "Operator",
-      STATUS_META[r.status].label,
+      r.name, r.employeeId, r.department ?? "", r.permission === "admin" ? t.admin : t.operator,
+      statusMeta[r.status].label,
       // Only a still-usable code is worth exporting — a used/expired one can't get anyone signed up.
       r.status === "unused" && r.code ? formatCode(r.code) : "",
     ]);
@@ -263,26 +392,26 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
     a.download = `${projectName}-staff-roster.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast({ variant: "success", title: "Export complete", desc: `${projectRoster.length} row(s) exported to CSV.` });
+    showToast({ variant: "success", title: t.toastExportTitle, desc: t.toastExportDesc(projectRoster.length) });
   };
 
   return (
     <div>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px", gap: "12px", flexWrap: "wrap" }}>
         <div>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>Staff Roster</p>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.pageTitle}</p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>
-            Issue registration codes for offline sign-up — no mail required. See who hasn&apos;t joined yet.
+            {t.pageDesc}
           </p>
         </div>
         <div style={{ display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap" }}>
-          <button disabled title="Coming soon"
+          <button disabled title={t.comingSoon}
             style={{ padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: "not-allowed" }}>
-            Import from Excel
+            {t.importExcel}
           </button>
           <button onClick={exportCsv}
             style={{ padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-            Export CSV
+            {t.exportCsv}
           </button>
           <button onClick={() => setShowPrintSheet(true)} disabled={printableEntries.length === 0}
             style={{
@@ -290,7 +419,7 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
               color: printableEntries.length === 0 ? "var(--gray-300)" : "var(--gray-600)",
               fontSize: "12px", fontWeight: 700, cursor: printableEntries.length === 0 ? "not-allowed" : "pointer",
             }}>
-            Print handout sheet
+            {t.printHandout}
           </button>
           <button onClick={bulkIssue} disabled={notIssuedCount === 0}
             style={{
@@ -299,25 +428,25 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
               color: notIssuedCount === 0 ? "var(--gray-400)" : "white",
               fontSize: "12px", fontWeight: 700, cursor: notIssuedCount === 0 ? "not-allowed" : "pointer",
             }}>
-            Issue codes to {notIssuedCount} unassigned
+            {t.issueCodesTo(notIssuedCount)}
           </button>
         </div>
       </div>
 
       <div style={{ marginBottom: "16px", maxWidth: "220px" }}>
-        <FilterSelect value={statusFilter} onChange={v => setStatusFilter(v as typeof statusFilter)} options={STATUS_FILTER_OPTIONS} />
+        <FilterSelect value={statusFilter} onChange={v => setStatusFilter(v as typeof statusFilter)} options={statusFilterOptions} />
       </div>
 
       {visibleRoster.length === 0 ? (
         <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", padding: "32px", textAlign: "center" }}>
           <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
-            {statusFilter === "ALL" ? "No staff in this project's roster yet." : "No staff match this filter."}
+            {statusFilter === "ALL" ? t.emptyAll : t.emptyFiltered}
           </p>
         </div>
       ) : (
         <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
           <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.8fr 1fr 1.1fr 36px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
-            {["Name", "Employee ID", "Department", "Permission", "Status", "Code", ""].map(h => (
+            {[t.colName, t.colEmployeeId, t.colDepartment, t.colPermission, t.colStatus, t.colCode, ""].map(h => (
               <span key={h} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
             ))}
           </div>
@@ -332,12 +461,12 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
                 <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{entry.name}</p>
                 <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace" }}>{entry.employeeId}</span>
                 <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{entry.department ?? "—"}</span>
-                <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{entry.permission === "admin" ? "Admin" : "Operator"}</span>
-                <div><StatusBadge status={entry.status} /></div>
+                <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{entry.permission === "admin" ? t.admin : t.operator}</span>
+                <div><StatusBadge status={entry.status} meta={statusMeta} /></div>
                 <RosterCodeCell entry={entry} onReveal={() => logRosterCodeViewed(entry.employeeId)} />
                 <RowActionsMenu actions={[
-                  { label: entry.code ? "Reissue code" : "Issue code", onClick: () => setIssuingEntry(entry) },
-                  { label: "Remove from roster", onClick: () => setRemovingEntry(entry), danger: true },
+                  { label: entry.code ? t.reissueCodeAction : t.issueCodeAction, onClick: () => setIssuingEntry(entry) },
+                  { label: t.removeFromRoster, onClick: () => setRemovingEntry(entry), danger: true },
                 ]} />
               </div>
             );
@@ -346,13 +475,13 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
       )}
 
       {issuingEntry && (
-        <IssueConfirmModal entry={issuingEntry} onClose={() => setIssuingEntry(null)} onConfirm={confirmIssueOrReissue} />
+        <IssueConfirmModal entry={issuingEntry} onClose={() => setIssuingEntry(null)} onConfirm={confirmIssueOrReissue} t={t} />
       )}
       {removingEntry && (
-        <RemoveConfirmModal entry={removingEntry} onClose={() => setRemovingEntry(null)} onConfirm={confirmRemove} />
+        <RemoveConfirmModal entry={removingEntry} onClose={() => setRemovingEntry(null)} onConfirm={confirmRemove} t={t} />
       )}
       {showPrintSheet && (
-        <PrintSheet entries={printableEntries} projectName={projectName} onClose={() => setShowPrintSheet(false)} />
+        <PrintSheet entries={printableEntries} projectName={projectName} onClose={() => setShowPrintSheet(false)} t={t} />
       )}
     </div>
   );

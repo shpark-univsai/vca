@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useVcaStore, type Project } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER } from "./PortalShared";
 
 interface ProjectSwitcherProps {
@@ -12,11 +13,46 @@ interface ProjectSwitcherProps {
 }
 
 type Tab = "recent" | "starred" | "all";
-const TABS: { id: Tab; label: string }[] = [
-  { id: "recent", label: "Recent" },
-  { id: "starred", label: "Starred" },
-  { id: "all", label: "All" },
-];
+const TAB_IDS: Tab[] = ["recent", "starred", "all"];
+
+const T = {
+  en: {
+    selectProject: "Select project",
+    selectResource: "Select a resource",
+    newProject: "New Project",
+    noTeam: "No Team",
+    searchPlaceholder: "Search projects and folders",
+    tabRecent: "Recent",
+    tabStarred: "Starred",
+    tabAll: "All",
+    colName: "Name",
+    colType: "Type",
+    colId: "ID",
+    typeTeam: "Team",
+    typeProject: "Project",
+    noStarredProjects: "No starred projects yet.",
+    noResultsFor: (query: string) => `No results for "${query}".`,
+    cancel: "Cancel",
+  },
+  ko: {
+    selectProject: "프로젝트 선택",
+    selectResource: "리소스 선택",
+    newProject: "새 프로젝트",
+    noTeam: "팀 없음",
+    searchPlaceholder: "프로젝트 및 폴더 검색",
+    tabRecent: "최근",
+    tabStarred: "즐겨찾기",
+    tabAll: "전체",
+    colName: "이름",
+    colType: "유형",
+    colId: "ID",
+    typeTeam: "팀",
+    typeProject: "프로젝트",
+    noStarredProjects: "즐겨찾기한 프로젝트가 없습니다.",
+    noResultsFor: (query: string) => `"${query}"에 대한 검색 결과가 없습니다.`,
+    cancel: "취소",
+  },
+} as const;
 
 function ChevronDown({ size = 12 }: { size?: number }) {
   return (
@@ -62,6 +98,9 @@ function CheckIcon() {
 }
 
 export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProject }: ProjectSwitcherProps) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  const TAB_LABELS: Record<Tab, string> = { recent: t.tabRecent, starred: t.tabStarred, all: t.tabAll };
   const projects = useVcaStore(s => s.projects);
   const teams = useVcaStore(s => s.teams);
   const [open, setOpen] = useState(false);
@@ -106,7 +145,7 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
         }}
       >
         <span style={{ fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {current?.name ?? "Select project"}
+          {current?.name ?? t.selectProject}
         </span>
         <span style={{ color: "var(--gray-600)", display: "flex" }}><ChevronDown size={14} /></span>
       </button>
@@ -123,13 +162,13 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
           }}>
             {/* Header */}
             <div style={{ padding: "18px 20px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: BORDER }}>
-              <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>Select a resource</p>
+              <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.selectResource}</p>
               <button
                 onClick={() => { setOpen(false); onNewProject(); }}
                 style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", cursor: "pointer", color: "var(--primary-400)", fontSize: "12px", fontWeight: 700 }}
               >
                 <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="var(--primary-400)" strokeWidth="1.4" strokeLinecap="round"/></svg>
-                New Project
+                {t.newProject}
               </button>
             </div>
 
@@ -140,7 +179,7 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
                 border: BORDER, borderRadius: "8px", padding: "6px 10px", marginBottom: "12px",
                 fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
               }}>
-                {team?.name ?? "No Team"}
+                {team?.name ?? t.noTeam}
                 <ChevronDown size={10} />
               </div>
 
@@ -155,7 +194,7 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
                   onChange={e => setQuery(e.target.value)}
                   onFocus={() => setSearchFocused(true)}
                   onBlur={() => setSearchFocused(false)}
-                  placeholder="Search projects and folders"
+                  placeholder={t.searchPlaceholder}
                   style={{
                     width: "100%", boxSizing: "border-box", padding: "10px 12px 10px 34px", borderRadius: "10px",
                     border: searchFocused ? "1px solid var(--gray-400)" : BORDER, outline: "none",
@@ -166,18 +205,18 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
 
               {/* Tabs */}
               <div style={{ display: "flex", gap: "20px", borderBottom: BORDER }}>
-                {TABS.map(t => (
+                {TAB_IDS.map(id => (
                   <button
-                    key={t.id}
-                    onClick={() => setTab(t.id)}
+                    key={id}
+                    onClick={() => setTab(id)}
                     style={{
                       background: "none", border: "none", cursor: "pointer",
                       padding: "0 2px 10px", fontSize: "12px", fontWeight: 700,
-                      color: tab === t.id ? "var(--gray-900)" : "var(--gray-400)",
-                      borderBottom: tab === t.id ? "2px solid var(--gray-900)" : "2px solid transparent",
+                      color: tab === id ? "var(--gray-900)" : "var(--gray-400)",
+                      borderBottom: tab === id ? "2px solid var(--gray-900)" : "2px solid transparent",
                     }}
                   >
-                    {t.label}
+                    {TAB_LABELS[id]}
                   </button>
                 ))}
               </div>
@@ -187,8 +226,8 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
             <div style={{ flex: 1, overflowY: "auto" }}>
               <div style={{ display: "grid", gridTemplateColumns: "28px 1.6fr 0.9fr 1.3fr 32px", padding: "8px 20px", gap: "8px" }}>
                 <span />
-                {["Name", "Type", "ID", ""].map(h => (
-                  <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+                {[t.colName, t.colType, t.colId, ""].map((h, i) => (
+                  <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
                 ))}
               </div>
 
@@ -198,7 +237,7 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
                   <span style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
                     <TeamIcon /> {team?.name}
                   </span>
-                  <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>Team</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.typeTeam}</span>
                   <span style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{team?.id}</span>
                   <span />
                 </div>
@@ -206,7 +245,7 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
 
               {visibleProjects.length === 0 && !showTeamRow && (
                 <p style={{ fontSize: "12px", color: "var(--gray-400)", padding: "20px", textAlign: "center" }}>
-                  {tab === "starred" ? "No starred projects yet." : `No results for "${query}".`}
+                  {tab === "starred" ? t.noStarredProjects : t.noResultsFor(query)}
                 </p>
               )}
 
@@ -226,7 +265,7 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
                     <span style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       <ProjectIcon /> {p.name}
                     </span>
-                    <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>Project</span>
+                    <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.typeProject}</span>
                     <span style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis" }}>{p.id}</span>
                     <button onClick={e => toggleStar(p.id, e)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                       <StarIcon filled={starred.has(p.id)} />
@@ -242,7 +281,7 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
                 onClick={() => setOpen(false)}
                 style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
               >
-                Cancel
+                {t.cancel}
               </button>
             </div>
           </div>

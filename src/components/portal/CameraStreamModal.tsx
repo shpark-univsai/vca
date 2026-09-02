@@ -4,6 +4,7 @@ import { useVcaStore, type Camera } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { BORDER } from "./PortalShared";
+import { usePortalLanguage } from "@/lib/i18n";
 
 const AI_OVERLAY_COLORS: Record<string, string> = {
   "Re-ID Analysis": "var(--success-400)",
@@ -11,11 +12,50 @@ const AI_OVERLAY_COLORS: Record<string, string> = {
   "Intrusion Detection": "var(--warning-500)",
 };
 
+const T = {
+  en: {
+    live: "LIVE",
+    streamOffline: "Stream offline",
+    zone: "Zone",
+    location: "Location",
+    protocol: "Protocol",
+    coordinates: "Coordinates",
+    rtspUrl: "RTSP Stream URL",
+    mappedAiEngines: "Mapped AI engines",
+    noAiEngines: "No AI engines mapped to this camera yet.",
+    recentActivity: "Recent activity",
+    noRecentDetections: "No recent detections at this camera.",
+    close: "Close",
+    reconnect: "Reconnect",
+    reconnectedTitle: "Reconnected",
+    reconnectedDesc: (name: string) => `${name} is back online.`,
+  },
+  ko: {
+    live: "실시간",
+    streamOffline: "스트리밍 오프라인",
+    zone: "구역",
+    location: "위치",
+    protocol: "프로토콜",
+    coordinates: "좌표",
+    rtspUrl: "RTSP 스트림 URL",
+    mappedAiEngines: "연결된 AI 엔진",
+    noAiEngines: "이 카메라에 연결된 AI 엔진이 아직 없습니다.",
+    recentActivity: "최근 활동",
+    noRecentDetections: "이 카메라에서 최근 감지된 내역이 없습니다.",
+    close: "닫기",
+    reconnect: "재연결",
+    reconnectedTitle: "재연결됨",
+    reconnectedDesc: (name: string) => `${name} 카메라가 다시 연결되었습니다.`,
+  },
+} as const;
+
 export default function CameraStreamModal({ camera, onClose }: { camera: Camera; onClose: () => void }) {
   useEscapeKey(onClose);
   const events = useVcaStore(s => s.events);
   const setCameraStatus = useVcaStore(s => s.setCameraStatus);
   const { showToast } = useToast();
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
 
   const online = camera.status === "online";
   const recentEvents = events.filter(e => e.cameraId === camera.id).slice(0, 5);
@@ -23,7 +63,7 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
 
   const reconnect = () => {
     setCameraStatus(camera.id, "online");
-    showToast({ variant: "success", title: "Reconnected", desc: `${camera.name} is back online.` });
+    showToast({ variant: "success", title: t.reconnectedTitle, desc: t.reconnectedDesc(camera.name) });
   };
 
   return (
@@ -50,12 +90,12 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
             {online && (
               <div style={{ position: "absolute", top: "10px", left: "10px", display: "flex", alignItems: "center", gap: "6px", backgroundColor: "rgba(14,22,42,0.7)", padding: "4px 10px", borderRadius: "999px" }}>
                 <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--success-400)" }} />
-                <span style={{ fontSize: "10px", fontWeight: 600, color: "white" }}>LIVE</span>
+                <span style={{ fontSize: "10px", fontWeight: 600, color: "white" }}>{t.live}</span>
               </div>
             )}
             {!online && (
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "white" }}>Stream offline</span>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "white" }}>{t.streamOffline}</span>
               </div>
             )}
             {online && aiFeatures.map((feature, i) => (
@@ -72,10 +112,10 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
           {/* Info grid */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             {[
-              ["Zone", camera.zone || "—"],
-              ["Location", camera.location || "—"],
-              ["Protocol", camera.protocol ?? "TCP"],
-              ["Coordinates", camera.lat && camera.lng ? `${camera.lat}, ${camera.lng}` : "—"],
+              [t.zone, camera.zone || "—"],
+              [t.location, camera.location || "—"],
+              [t.protocol, camera.protocol ?? "TCP"],
+              [t.coordinates, camera.lat && camera.lng ? `${camera.lat}, ${camera.lng}` : "—"],
             ].map(([label, value]) => (
               <div key={label} style={{ padding: "8px 10px", borderRadius: "10px", backgroundColor: "var(--gray-50)", border: BORDER }}>
                 <p style={{ fontSize: "10px", color: "var(--gray-400)", fontWeight: 600 }}>{label}</p>
@@ -85,15 +125,15 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
           </div>
 
           <div style={{ padding: "8px 10px", borderRadius: "10px", backgroundColor: "var(--gray-50)", border: BORDER }}>
-            <p style={{ fontSize: "10px", color: "var(--gray-400)", fontWeight: 600 }}>RTSP Stream URL</p>
+            <p style={{ fontSize: "10px", color: "var(--gray-400)", fontWeight: 600 }}>{t.rtspUrl}</p>
             <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-600)", fontFamily: "monospace", marginTop: "2px", wordBreak: "break-all" }}>{camera.rtspUrl}</p>
           </div>
 
           {/* AI features */}
           <div>
-            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "8px" }}>Mapped AI engines</p>
+            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "8px" }}>{t.mappedAiEngines}</p>
             {aiFeatures.length === 0 ? (
-              <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>No AI engines mapped to this camera yet.</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noAiEngines}</p>
             ) : (
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                 {aiFeatures.map(f => (
@@ -105,9 +145,9 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
 
           {/* Recent activity — real detection events tied to this camera */}
           <div>
-            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "8px" }}>Recent activity</p>
+            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "8px" }}>{t.recentActivity}</p>
             {recentEvents.length === 0 ? (
-              <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>No recent detections at this camera.</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noRecentDetections}</p>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                 {recentEvents.map(e => (
@@ -123,11 +163,11 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
 
         <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            Close
+            {t.close}
           </button>
           <button onClick={reconnect} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M12.25 7A5.25 5.25 0 1 1 10.5 3.15M12.25 1.75V4.67h-2.92" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Reconnect
+            {t.reconnect}
           </button>
         </div>
       </div>

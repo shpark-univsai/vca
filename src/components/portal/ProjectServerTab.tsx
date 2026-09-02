@@ -4,9 +4,18 @@ import { useState } from "react";
 import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
+import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
 
 const SERVER_TYPES: ServerType[] = ["AI Camera", "Normal Camera", "Face Recognition", "Image Store", "Database"];
+
+// Shared between ServerFormModal and the main table (both need the same two status words) —
+// kept as its own tiny dict rather than duplicated, same way SERVER_TYPES/API_ENDPOINTS are
+// shared top-level constants in this file.
+const STATUS_T = {
+  en: { success: "Success", error: "Error" },
+  ko: { success: "성공", error: "오류" },
+} as const;
 
 interface ServerFormValues {
   name: string;
@@ -17,6 +26,23 @@ interface ServerFormValues {
 }
 
 const EMPTY_FORM: ServerFormValues = { name: "", ip: "", type: SERVER_TYPES[0], specification: "", status: "success" };
+
+const MODAL_T = {
+  en: {
+    serverName: "Server Name *", serverNamePlaceholder: "e.g. FR 2",
+    serverIp: "Server IP *", serverIpPlaceholder: "e.g. 192.168.0.36",
+    serverType: "Server Type", status: "Status",
+    specification: "Specification", specificationPlaceholder: "e.g. 8 vCPU · 32GB RAM",
+    cancel: "Cancel", save: "Save",
+  },
+  ko: {
+    serverName: "서버 이름 *", serverNamePlaceholder: "예: FR 2",
+    serverIp: "서버 IP *", serverIpPlaceholder: "예: 192.168.0.36",
+    serverType: "서버 유형", status: "상태",
+    specification: "사양", specificationPlaceholder: "예: 8 vCPU · 32GB RAM",
+    cancel: "취소", save: "저장",
+  },
+} as const;
 
 function ServerFormModal({
   title, initial, onClose, onSubmit,
@@ -29,6 +55,9 @@ function ServerFormModal({
   useEscapeKey(onClose);
   const [form, setForm] = useState<ServerFormValues>(initial);
   const valid = form.name.trim().length > 0 && form.ip.trim().length > 0;
+  const [lang] = usePortalLanguage();
+  const t = MODAL_T[lang];
+  const st = STATUS_T[lang];
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
@@ -42,40 +71,40 @@ function ServerFormModal({
         </div>
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Server Name *</label>
-            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. FR 2"
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverName}</label>
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t.serverNamePlaceholder}
               style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }} />
           </div>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Server IP *</label>
-            <input value={form.ip} onChange={e => setForm(f => ({ ...f, ip: e.target.value }))} placeholder="e.g. 192.168.0.36"
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverIp}</label>
+            <input value={form.ip} onChange={e => setForm(f => ({ ...f, ip: e.target.value }))} placeholder={t.serverIpPlaceholder}
               style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Server Type</label>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverType}</label>
               <FilterSelect value={form.type} onChange={v => setForm(f => ({ ...f, type: v as ServerType }))}
-                options={SERVER_TYPES.map(t => ({ value: t, label: t }))} />
+                options={SERVER_TYPES.map(ty => ({ value: ty, label: ty }))} />
             </div>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Status</label>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.status}</label>
               <FilterSelect value={form.status} onChange={v => setForm(f => ({ ...f, status: v as "success" | "error" }))}
-                options={[{ value: "success", label: "Success" }, { value: "error", label: "Error" }]} />
+                options={[{ value: "success", label: st.success }, { value: "error", label: st.error }]} />
             </div>
           </div>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Specification</label>
-            <input value={form.specification} onChange={e => setForm(f => ({ ...f, specification: e.target.value }))} placeholder="e.g. 8 vCPU · 32GB RAM"
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.specification}</label>
+            <input value={form.specification} onChange={e => setForm(f => ({ ...f, specification: e.target.value }))} placeholder={t.specificationPlaceholder}
               style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }} />
           </div>
         </div>
         <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            Cancel
+            {t.cancel}
           </button>
           <button onClick={() => valid && onSubmit(form)} disabled={!valid}
             style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>
-            Save
+            {t.save}
           </button>
         </div>
       </div>
@@ -84,20 +113,27 @@ function ServerFormModal({
 }
 
 const API_ENDPOINTS = [
-  { method: "GET", path: "/v1/cameras", desc: "List cameras registered to this project." },
-  { method: "GET", path: "/v1/persons", desc: "List VIP/watchlist registrations." },
-  { method: "POST", path: "/v1/events", desc: "Push a detection event from an edge server." },
-  { method: "GET", path: "/v1/servers", desc: "List infrastructure nodes and their health." },
+  { method: "GET", path: "/v1/cameras", desc: { en: "List cameras registered to this project.", ko: "이 프로젝트에 등록된 카메라 목록을 조회합니다." } },
+  { method: "GET", path: "/v1/persons", desc: { en: "List VIP/watchlist registrations.", ko: "VIP/관심인물 등록 목록을 조회합니다." } },
+  { method: "POST", path: "/v1/events", desc: { en: "Push a detection event from an edge server.", ko: "엣지 서버에서 탐지 이벤트를 전송합니다." } },
+  { method: "GET", path: "/v1/servers", desc: { en: "List infrastructure nodes and their health.", ko: "인프라 노드와 상태를 조회합니다." } },
 ];
 
+const API_DOC_T = {
+  en: { baseUrl: "API Base URL", endpoints: "Endpoints" },
+  ko: { baseUrl: "API 기본 URL", endpoints: "엔드포인트" },
+} as const;
+
 function ApiDocumentation({ projectId }: { projectId: string }) {
+  const [lang] = usePortalLanguage();
+  const t = API_DOC_T[lang];
   return (
     <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
-      <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>API Base URL</p>
+      <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.baseUrl}</p>
       <p style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", marginTop: "6px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "8px", padding: "8px 10px" }}>
         https://api.univs.ai/portal/{projectId}
       </p>
-      <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "20px", marginBottom: "10px" }}>Endpoints</p>
+      <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "20px", marginBottom: "10px" }}>{t.endpoints}</p>
       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
         {API_ENDPOINTS.map(ep => (
           <div key={ep.path} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", backgroundColor: "var(--gray-50)" }}>
@@ -109,7 +145,7 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
               {ep.method}
             </span>
             <span style={{ fontSize: "10px", fontFamily: "monospace", color: "var(--gray-900)" }}>{ep.path}</span>
-            <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{ep.desc}</span>
+            <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{ep.desc[lang]}</span>
           </div>
         ))}
       </div>
@@ -161,6 +197,35 @@ function NetworkIcon() {
   );
 }
 
+const NETWORK_T = {
+  en: {
+    heading: "Network reachability",
+    desc: "Decides whether invites go out by external email or this project's internal mailbox.",
+    isolated: "Isolated", connected: "Connected",
+    autoDetected: "Auto-detected via outbound ping:",
+    noResponse: "No response (isolated)", reachable: "Reachable",
+    overrideLabel: "Override auto-detection",
+    overrideDesc: "A firewall or security policy can make the ping check unreliable — turn this on to set the status manually.",
+    optConnected: "Internet-connected", optIsolated: "Internet-isolated",
+    toastBackToAuto: "Back to auto-detection",
+    toastOverrideSaved: "Override saved",
+    toastMarkedAs: (value: boolean) => `Marked as ${value ? "internet-isolated" : "internet-connected"}`,
+  },
+  ko: {
+    heading: "네트워크 연결 상태",
+    desc: "초대장이 외부 이메일로 발송될지, 이 프로젝트의 내부 메일함으로 발송될지를 결정합니다.",
+    isolated: "격리됨", connected: "연결됨",
+    autoDetected: "외부 핑(ping)을 통한 자동 감지:",
+    noResponse: "응답 없음(격리됨)", reachable: "연결 가능",
+    overrideLabel: "자동 감지 재정의",
+    overrideDesc: "방화벽이나 보안 정책으로 인해 핑 확인이 부정확할 수 있습니다. 상태를 직접 설정하려면 이 옵션을 켜세요.",
+    optConnected: "인터넷 연결", optIsolated: "인터넷 격리",
+    toastBackToAuto: "자동 감지로 전환됨",
+    toastOverrideSaved: "수동 설정 저장됨",
+    toastMarkedAs: (value: boolean) => `${value ? "인터넷 격리" : "인터넷 연결"} 상태로 설정됨`,
+  },
+} as const;
+
 /**
  * Whether this project's site can reach the internet — decides the invite-mail transport in
  * InviteUserModal (PortalUsersPage.tsx) and whether the "using team default" mail banner below
@@ -173,6 +238,8 @@ function NetworkStatus({ projectId }: { projectId: string }) {
   const projects = useVcaStore(s => s.projects);
   const setNetworkIsolationOverride = useVcaStore(s => s.setNetworkIsolationOverride);
   const { showToast } = useToast();
+  const [lang] = usePortalLanguage();
+  const t = NETWORK_T[lang];
 
   const project = projects.find(p => p.id === projectId);
   if (!project) return null;
@@ -186,8 +253,8 @@ function NetworkStatus({ projectId }: { projectId: string }) {
     setNetworkIsolationOverride(projectId, value);
     showToast({
       variant: "success",
-      title: value === null ? "Back to auto-detection" : "Override saved",
-      desc: value === null ? undefined : `Marked as ${value ? "internet-isolated" : "internet-connected"}`,
+      title: value === null ? t.toastBackToAuto : t.toastOverrideSaved,
+      desc: value === null ? undefined : t.toastMarkedAs(value),
     });
   };
 
@@ -197,9 +264,9 @@ function NetworkStatus({ projectId }: { projectId: string }) {
         <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
           <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><NetworkIcon /></span>
           <div>
-            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>Network reachability</p>
+            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.heading}</p>
             <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
-              Decides whether invites go out by external email or this project&apos;s internal mailbox.
+              {t.desc}
             </p>
           </div>
         </div>
@@ -208,14 +275,14 @@ function NetworkStatus({ projectId }: { projectId: string }) {
           backgroundColor: effective ? "var(--gray-200)" : "var(--success-100)",
           color: effective ? "var(--gray-700)" : "var(--success-400)",
         }}>
-          {effective ? "Isolated" : "Connected"}
+          {effective ? t.isolated : t.connected}
         </span>
       </div>
 
       <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "8px" }}>
         <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: detected ? "var(--gray-400)" : "var(--success-400)", flexShrink: 0 }} />
         <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>
-          Auto-detected via outbound ping: <span style={{ fontWeight: 700, color: "var(--gray-700)" }}>{detected ? "No response (isolated)" : "Reachable"}</span>
+          {t.autoDetected} <span style={{ fontWeight: 700, color: "var(--gray-700)" }}>{detected ? t.noResponse : t.reachable}</span>
         </p>
       </div>
 
@@ -224,16 +291,16 @@ function NetworkStatus({ projectId }: { projectId: string }) {
           <input type="checkbox" checked={hasOverride} onChange={e => setOverride(e.target.checked ? detected : null)}
             style={{ marginTop: "3px", accentColor: "var(--gray-900)", cursor: "pointer" }} />
           <span>
-            <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>Override auto-detection</span>
+            <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.overrideLabel}</span>
             <span style={{ display: "block", fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
-              A firewall or security policy can make the ping check unreliable — turn this on to set the status manually.
+              {t.overrideDesc}
             </span>
           </span>
         </label>
 
         {hasOverride && (
           <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
-            {[{ v: false, label: "Internet-connected" }, { v: true, label: "Internet-isolated" }].map(opt => {
+            {[{ v: false, label: t.optConnected }, { v: true, label: t.optIsolated }].map(opt => {
               const active = overrideValue === opt.v;
               return (
                 <button key={String(opt.v)} onClick={() => setOverride(opt.v)}
@@ -255,11 +322,70 @@ function NetworkStatus({ projectId }: { projectId: string }) {
   );
 }
 
+const MAIL_T = {
+  en: {
+    usingDefault: (name: string) => `Using ${name}'s default mail server`,
+    theTeam: "the team",
+    bannerDesc: "Set up a dedicated SMTP server if this project needs its own — e.g. an on-prem site with no internet access.",
+    setUpSmtp: "Set up SMTP",
+    inEffect: "In effect for this project",
+    domain: "Domain", smtpHost: "SMTP host", sentFrom: "Sent from", source: "Source",
+    thisProject: "This project", inheritedFrom: (name: string) => `Inherited from ${name}`,
+    notConfigured: "No mail server configured. Invitations and password resets cannot be sent until one is set here or on the team.",
+    useDifferentServer: "Use a different mail server for this project",
+    useDifferentServerDesc: "Leave off to follow the team's settings. Turn on for a project on an internet-isolated site that routes through its own internal server.",
+    provisionalNotice: "These SMTP fields are provisional — the exact settings the server needs are still being confirmed. The mail domain below is final.",
+    mailDomain: "Mail domain", mailDomainPlaceholder: "company.local",
+    mailDomainHint: "Accounts must have an address on this domain — requests and invites to anything else are refused.",
+    smtpHostPlaceholder: "mail.company.local",
+    port: "Port", portPlaceholder: "587", portError: "1–65535",
+    fromAddressPlaceholder: "vca-noreply@company.local",
+    fromAddressError: (domain: string) => `Must be an address on ${domain}.`,
+    fromAddressHint: "The From: address recipients will see.",
+    useTls: "Use TLS", save: "Save",
+    toastUsingTeam: "Using team mail settings",
+    toastSaved: "Mail settings saved",
+    toastSavedDesc: (addr: string) => `Invites will be sent from ${addr}`,
+    whatVcaSends: "What VCA sends",
+    accountInvitation: "Account invitation", accountInvitationValue: "To the invited address, on approval",
+    passwordReset: "Password reset", passwordResetValue: "To the account's own address, on request",
+  },
+  ko: {
+    usingDefault: (name: string) => `${name}의 기본 메일 서버 사용 중`,
+    theTeam: "팀",
+    bannerDesc: "이 프로젝트에 전용 메일 서버가 필요하다면 별도로 설정하세요 — 예: 인터넷이 연결되지 않은 온프레미스 사이트.",
+    setUpSmtp: "SMTP 설정",
+    inEffect: "이 프로젝트에 적용 중인 설정",
+    domain: "도메인", smtpHost: "SMTP 호스트", sentFrom: "발신 주소", source: "출처",
+    thisProject: "이 프로젝트", inheritedFrom: (name: string) => `${name}에서 상속됨`,
+    notConfigured: "메일 서버가 설정되어 있지 않습니다. 여기 또는 팀에 메일 서버를 설정하기 전까지 초대장과 비밀번호 재설정 메일을 보낼 수 없습니다.",
+    useDifferentServer: "이 프로젝트에 다른 메일 서버 사용",
+    useDifferentServerDesc: "끄면 팀 설정을 따릅니다. 인터넷이 차단된 사이트에서 자체 내부 서버를 통해 라우팅하는 프로젝트라면 켜세요.",
+    provisionalNotice: "아래 SMTP 항목은 잠정적인 값입니다 — 서버에 필요한 정확한 설정은 아직 확인 중입니다. 메일 도메인 항목은 확정된 값입니다.",
+    mailDomain: "메일 도메인", mailDomainPlaceholder: "company.local",
+    mailDomainHint: "계정은 반드시 이 도메인의 주소를 사용해야 합니다 — 그 외 주소로의 요청과 초대는 거부됩니다.",
+    smtpHostPlaceholder: "mail.company.local",
+    port: "포트", portPlaceholder: "587", portError: "1–65535",
+    fromAddressPlaceholder: "vca-noreply@company.local",
+    fromAddressError: (domain: string) => `${domain} 주소여야 합니다.`,
+    fromAddressHint: "수신자에게 표시될 발신(From) 주소입니다.",
+    useTls: "TLS 사용", save: "저장",
+    toastUsingTeam: "팀 메일 설정 사용 중",
+    toastSaved: "메일 설정 저장됨",
+    toastSavedDesc: (addr: string) => `초대장은 ${addr}에서 발송됩니다.`,
+    whatVcaSends: "VCA가 발송하는 메일",
+    accountInvitation: "계정 초대", accountInvitationValue: "승인 시 초대받은 주소로 발송",
+    passwordReset: "비밀번호 재설정", passwordResetValue: "요청 시 계정 본인 주소로 발송",
+  },
+} as const;
+
 function MailSettings({ projectId }: { projectId: string }) {
   const projects = useVcaStore(s => s.projects);
   const teams = useVcaStore(s => s.teams);
   const updateProjectMail = useVcaStore(s => s.updateProjectMail);
   const { showToast } = useToast();
+  const [lang] = usePortalLanguage();
+  const t = MAIL_T[lang];
 
   const project = projects.find(p => p.id === projectId);
   const team = project ? teams.find(o => o.id === project.teamId) : undefined;
@@ -287,14 +413,14 @@ function MailSettings({ projectId }: { projectId: string }) {
     if (!canSave) return;
     if (!override) {
       updateProjectMail(projectId, { mailDomain: undefined, smtp: undefined });
-      showToast({ variant: "success", title: "Using team mail settings" });
+      showToast({ variant: "success", title: t.toastUsingTeam });
       return;
     }
     updateProjectMail(projectId, {
       mailDomain: domain.trim(),
       smtp: { host: host.trim(), port: portNumber, fromAddress: fromAddress.trim(), useTls },
     });
-    showToast({ variant: "success", title: "Mail settings saved", desc: `Invites will be sent from ${fromAddress.trim()}` });
+    showToast({ variant: "success", title: t.toastSaved, desc: t.toastSavedDesc(fromAddress.trim()) });
   };
 
   return (
@@ -314,16 +440,16 @@ function MailSettings({ projectId }: { projectId: string }) {
             <span style={{ display: "flex", color: "var(--warning-500)", flexShrink: 0 }}><MailIcon /></span>
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>
-                Using {team?.name ?? "the team"}&apos;s default mail server
+                {t.usingDefault(team?.name ?? t.theTeam)}
               </p>
               <p style={{ fontSize: "12px", color: "var(--gray-600)", marginTop: "2px" }}>
-                Set up a dedicated SMTP server if this project needs its own — e.g. an on-prem site with no internet access.
+                {t.bannerDesc}
               </p>
             </div>
           </div>
           <button onClick={() => setOverride(true)}
             style={{ padding: "8px 14px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>
-            Set up SMTP
+            {t.setUpSmtp}
           </button>
         </div>
       )}
@@ -335,20 +461,19 @@ function MailSettings({ projectId }: { projectId: string }) {
           of override state, so that case bypasses the override check. */}
       {(override || !inherited.mailDomain) && (
         <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
-          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>In effect for this project</p>
+          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.inEffect}</p>
           {inherited.mailDomain ? (
             <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
-              <SettingRow label="Domain" value={inherited.mailDomain} />
-              <SettingRow label="SMTP host" value={inherited.smtp ? `${inherited.smtp.host}:${inherited.smtp.port}` : "—"} />
-              <SettingRow label="Sent from" value={inherited.smtp?.fromAddress ?? "—"} />
-              <SettingRow label="Source" value={overridden ? "This project" : `Inherited from ${team?.name ?? "team"}`} />
+              <SettingRow label={t.domain} value={inherited.mailDomain} />
+              <SettingRow label={t.smtpHost} value={inherited.smtp ? `${inherited.smtp.host}:${inherited.smtp.port}` : "—"} />
+              <SettingRow label={t.sentFrom} value={inherited.smtp?.fromAddress ?? "—"} />
+              <SettingRow label={t.source} value={overridden ? t.thisProject : t.inheritedFrom(team?.name ?? t.theTeam)} />
             </div>
           ) : (
             /* A project with no mail configured cannot invite anyone, so this says so plainly rather
                than showing empty fields that look merely unfilled. */
             <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "8px", lineHeight: 1.6 }}>
-              No mail server configured. Invitations and password resets cannot be sent until one is
-              set here or on the team.
+              {t.notConfigured}
             </p>
           )}
         </div>
@@ -359,10 +484,9 @@ function MailSettings({ projectId }: { projectId: string }) {
           <input type="checkbox" checked={override} onChange={e => setOverride(e.target.checked)}
             style={{ marginTop: "3px", accentColor: "var(--gray-900)", cursor: "pointer" }} />
           <span>
-            <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>Use a different mail server for this project</span>
+            <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.useDifferentServer}</span>
             <span style={{ display: "block", fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
-              Leave off to follow the team&apos;s settings. Turn on for a project on an
-              internet-isolated site that routes through its own internal server.
+              {t.useDifferentServerDesc}
             </span>
           </span>
         </label>
@@ -375,27 +499,26 @@ function MailSettings({ projectId }: { projectId: string }) {
               margin: 0, fontSize: "10px", fontWeight: 600, color: "var(--warning-500)",
               backgroundColor: "var(--warning-100)", padding: "8px 10px", borderRadius: "8px", lineHeight: 1.5,
             }}>
-              These SMTP fields are provisional — the exact settings the server needs are still
-              being confirmed. The mail domain below is final.
+              {t.provisionalNotice}
             </p>
-            <MailField label="Mail domain" value={domain} onChange={setDomain} placeholder="company.local"
-              hint="Accounts must have an address on this domain — requests and invites to anything else are refused." />
+            <MailField label={t.mailDomain} value={domain} onChange={setDomain} placeholder={t.mailDomainPlaceholder}
+              hint={t.mailDomainHint} />
             <div style={{ display: "flex", gap: "12px" }}>
               <div style={{ flex: 1 }}>
-                <MailField label="SMTP host" value={host} onChange={setHost} placeholder="mail.company.local" />
+                <MailField label={t.smtpHost} value={host} onChange={setHost} placeholder={t.smtpHostPlaceholder} />
               </div>
               <div style={{ width: "120px" }}>
-                <MailField label="Port" value={port} onChange={setPort} placeholder="587"
-                  error={port !== "" && !portValid ? "1–65535" : ""} />
+                <MailField label={t.port} value={port} onChange={setPort} placeholder={t.portPlaceholder}
+                  error={port !== "" && !portValid ? t.portError : ""} />
               </div>
             </div>
-            <MailField label="Sent from" value={fromAddress} onChange={setFromAddress} placeholder="vca-noreply@company.local"
-              error={!fromMatchesDomain ? `Must be an address on ${domain.trim()}.` : ""}
-              hint={fromMatchesDomain ? "The From: address recipients will see." : ""} />
+            <MailField label={t.sentFrom} value={fromAddress} onChange={setFromAddress} placeholder={t.fromAddressPlaceholder}
+              error={!fromMatchesDomain ? t.fromAddressError(domain.trim()) : ""}
+              hint={fromMatchesDomain ? t.fromAddressHint : ""} />
             <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
               <input type="checkbox" checked={useTls} onChange={e => setUseTls(e.target.checked)}
                 style={{ accentColor: "var(--gray-900)", cursor: "pointer" }} />
-              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)" }}>Use TLS</span>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)" }}>{t.useTls}</span>
             </label>
           </div>
         )}
@@ -412,7 +535,7 @@ function MailSettings({ projectId }: { projectId: string }) {
                 color: canSave ? "white" : "var(--gray-400)",
                 fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "default",
               }}>
-              Save
+              {t.save}
             </button>
           </div>
         )}
@@ -421,10 +544,10 @@ function MailSettings({ projectId }: { projectId: string }) {
       {/* Named so nobody has to guess what a mail change affects. The two events are the whole list
           on purpose — see the note on this component. */}
       <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
-        <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>What VCA sends</p>
+        <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.whatVcaSends}</p>
         <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
-          <SettingRow label="Account invitation" value="To the invited address, on approval" />
-          <SettingRow label="Password reset" value="To the account's own address, on request" />
+          <SettingRow label={t.accountInvitation} value={t.accountInvitationValue} />
+          <SettingRow label={t.passwordReset} value={t.passwordResetValue} />
         </div>
       </div>
     </div>
@@ -464,12 +587,48 @@ function MailField({ label, value, onChange, placeholder, hint, error }: {
   );
 }
 
+const MAIN_T = {
+  en: {
+    title: "Server & API Management",
+    desc: "Configure core infrastructure nodes, network reachability and outgoing mail, and view API documentation.",
+    subTabInfra: "Infrastructure", subTabMail: "Mail & Network", subTabApi: "API Documentation",
+    searchPlaceholder: "Search server name or IP…",
+    allTypes: "All types", reset: "Reset", addServer: "Add server",
+    emptyNoServers: "No servers configured for this project yet.",
+    emptyNoMatch: "No servers match these filters.",
+    colStatus: "Status", colName: "Server Name", colIp: "Server IP", colType: "Server Type", colSpec: "Specification",
+    edit: "Edit", remove: "Remove",
+    showingEntries: (start: number, end: number, total: number) => `Showing ${start} to ${end} of ${total} entries`,
+    rowsPerPage: "Rows per page:",
+    addServerTitle: "Add server", editServerTitle: "Edit server",
+    toastAdded: "Server added", toastUpdated: "Server updated", toastRemoved: "Server removed",
+  },
+  ko: {
+    title: "서버 및 API 관리",
+    desc: "핵심 인프라 노드, 네트워크 연결 상태, 발신 메일을 설정하고 API 문서를 확인하세요.",
+    subTabInfra: "인프라", subTabMail: "메일 및 네트워크", subTabApi: "API 문서",
+    searchPlaceholder: "서버 이름 또는 IP 검색…",
+    allTypes: "전체 유형", reset: "초기화", addServer: "서버 추가",
+    emptyNoServers: "이 프로젝트에 아직 설정된 서버가 없습니다.",
+    emptyNoMatch: "필터와 일치하는 서버가 없습니다.",
+    colStatus: "상태", colName: "서버 이름", colIp: "서버 IP", colType: "서버 유형", colSpec: "사양",
+    edit: "수정", remove: "삭제",
+    showingEntries: (start: number, end: number, total: number) => `전체 ${total}건 중 ${start}–${end}건 표시`,
+    rowsPerPage: "페이지당 행 수:",
+    addServerTitle: "서버 추가", editServerTitle: "서버 수정",
+    toastAdded: "서버 추가됨", toastUpdated: "서버 수정됨", toastRemoved: "서버 삭제됨",
+  },
+} as const;
+
 export default function ProjectServerTab({ projectId }: { projectId: string }) {
   const servers = useVcaStore(s => s.servers);
   const addServer = useVcaStore(s => s.addServer);
   const updateServer = useVcaStore(s => s.updateServer);
   const removeServer = useVcaStore(s => s.removeServer);
   const { showToast } = useToast();
+  const [lang] = usePortalLanguage();
+  const t = MAIN_T[lang];
+  const st = STATUS_T[lang];
 
   const [subTab, setSubTab] = useState<"infra" | "mail" | "api">("infra");
   const [showAdd, setShowAdd] = useState(false);
@@ -516,7 +675,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
       type: values.type, specification: values.specification.trim() || undefined, status: values.status,
     });
     setShowAdd(false);
-    showToast({ variant: "success", title: "Server added", desc: values.name.trim() });
+    showToast({ variant: "success", title: t.toastAdded, desc: values.name.trim() });
   };
 
   const saveEdit = (values: ServerFormValues) => {
@@ -526,29 +685,29 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
       type: values.type, specification: values.specification.trim() || undefined, status: values.status,
     });
     setEditingServer(null);
-    showToast({ variant: "success", title: "Server updated", desc: values.name.trim() });
+    showToast({ variant: "success", title: t.toastUpdated, desc: values.name.trim() });
   };
 
   const handleDelete = (server: Server) => {
     removeServer(server.id);
-    showToast({ variant: "warning", title: "Server removed", desc: server.name });
+    showToast({ variant: "warning", title: t.toastRemoved, desc: server.name });
   };
 
   return (
     <div>
-      <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>Server &amp; API Management</p>
-      <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px", marginBottom: "16px" }}>Configure core infrastructure nodes, network reachability and outgoing mail, and view API documentation.</p>
+      <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
+      <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px", marginBottom: "16px" }}>{t.desc}</p>
 
       <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
-        {(["infra", "mail", "api"] as const).map(t => (
-          <button key={t} onClick={() => setSubTab(t)}
+        {(["infra", "mail", "api"] as const).map(sub => (
+          <button key={sub} onClick={() => setSubTab(sub)}
             style={{
               background: "none", border: "none", cursor: "pointer",
               padding: "0 2px 10px", fontSize: "13px", fontWeight: 700,
-              color: subTab === t ? "var(--gray-900)" : "var(--gray-400)",
-              borderBottom: subTab === t ? "2px solid var(--gray-900)" : "2px solid transparent",
+              color: subTab === sub ? "var(--gray-900)" : "var(--gray-400)",
+              borderBottom: subTab === sub ? "2px solid var(--gray-900)" : "2px solid transparent",
             }}>
-            {t === "infra" ? "Infrastructure" : t === "mail" ? "Mail & Network" : "API Documentation"}
+            {sub === "infra" ? t.subTabInfra : sub === "mail" ? t.subTabMail : t.subTabApi}
           </button>
         ))}
       </div>
@@ -564,27 +723,27 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search server name or IP…"
+                placeholder={t.searchPlaceholder}
                 style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px 9px 30px", borderRadius: "10px", border: BORDER, fontSize: "12px", fontFamily: "inherit", backgroundColor: "white" }}
               />
             </div>
             <FilterSelect value={typeFilter} onChange={v => setTypeFilter(v as typeof typeFilter)}
-              options={[{ value: "ALL", label: "All types" }, ...SERVER_TYPES.map(t => ({ value: t, label: t }))]} />
+              options={[{ value: "ALL", label: t.allTypes }, ...SERVER_TYPES.map(ty => ({ value: ty, label: ty }))]} />
             <button onClick={resetFilters}
               style={{ padding: "9px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-              Reset
+              {t.reset}
             </button>
             <button onClick={() => setShowAdd(true)}
               style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
-              Add server
+              {t.addServer}
             </button>
           </div>
 
           {visibleServers.length === 0 ? (
             <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", padding: "32px", textAlign: "center" }}>
               <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
-                {projectServers.length === 0 ? "No servers configured for this project yet." : "No servers match these filters."}
+                {projectServers.length === 0 ? t.emptyNoServers : t.emptyNoMatch}
               </p>
             </div>
           ) : (
@@ -593,7 +752,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
             // off). Header/last-row corners are radiused directly instead.
             <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
               <div style={{ display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
-                {["Status", "Server Name", "Server IP", "Server Type", "Specification", ""].map(h => (
+                {[t.colStatus, t.colName, t.colIp, t.colType, t.colSpec, ""].map(h => (
                   <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
                 ))}
               </div>
@@ -608,15 +767,15 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                       <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: ok ? "var(--success-400)" : "var(--danger-400)", flexShrink: 0 }} />
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: ok ? "var(--success-400)" : "var(--danger-400)" }}>{ok ? "Success" : "Error"}</span>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: ok ? "var(--success-400)" : "var(--danger-400)" }}>{ok ? st.success : st.error}</span>
                     </div>
                     <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{server.name}</span>
                     <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace" }}>{server.ip}</span>
                     <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{server.type}</span>
                     <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{server.specification ?? "—"}</span>
                     <RowActionsMenu actions={[
-                      { label: "Edit", onClick: () => setEditingServer(server) },
-                      { label: "Remove", onClick: () => handleDelete(server), danger: true },
+                      { label: t.edit, onClick: () => setEditingServer(server) },
+                      { label: t.remove, onClick: () => handleDelete(server), danger: true },
                     ]} />
                   </div>
                 );
@@ -627,7 +786,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
           {visibleServers.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "12px", flexWrap: "wrap", gap: "10px" }}>
               <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>
-                Showing {rangeStart} to {rangeEnd} of {visibleServers.length} entries
+                {t.showingEntries(rangeStart, rangeEnd, visibleServers.length)}
               </p>
               <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
@@ -651,7 +810,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                 </button>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>Rows per page:</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.rowsPerPage}</span>
                 <FilterSelect value={String(rowsPerPage)} onChange={v => setRowsPerPage(Number(v))}
                   options={[10, 25, 50].map(n => ({ value: String(n), label: String(n) }))} />
               </div>
@@ -661,11 +820,11 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
       )}
 
       {showAdd && (
-        <ServerFormModal title="Add server" initial={EMPTY_FORM} onClose={() => setShowAdd(false)} onSubmit={createServer} />
+        <ServerFormModal title={t.addServerTitle} initial={EMPTY_FORM} onClose={() => setShowAdd(false)} onSubmit={createServer} />
       )}
       {editingServer && (
         <ServerFormModal
-          title="Edit server"
+          title={t.editServerTitle}
           initial={{
             name: editingServer.name, ip: editingServer.ip, type: editingServer.type,
             specification: editingServer.specification ?? "", status: editingServer.status,

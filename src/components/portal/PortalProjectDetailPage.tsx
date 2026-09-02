@@ -5,6 +5,7 @@ import { useVcaStore, seededRandom, projectChannelLimit, UNLIMITED_EXPIRY } from
 import { formatElapsed } from "@/lib/time";
 import { BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
 import { useToast } from "../Toast";
+import { usePortalLanguage, type PortalLanguage } from "@/lib/i18n";
 import type { DetailTab } from "./ProjectSidebar";
 import ProjectCamerasTab from "./ProjectCamerasTab";
 import ProjectVipTab from "./ProjectVipTab";
@@ -12,6 +13,119 @@ import ProjectLicenseTab from "./ProjectLicenseTab";
 import ProjectServerTab from "./ProjectServerTab";
 import ProjectRosterTab from "./ProjectRosterTab";
 import PortalUsersPage from "./PortalUsersPage";
+
+const T = {
+  en: {
+    projectNotFound: "Project not found.",
+    addCamera: "Add Camera",
+    registerVip: "Register VIP",
+    approveAccessRequests: "Approve Access Requests",
+    cameraConnectivity: "Camera Connectivity",
+    connectedSuffix: (n: number) => `/ ${n} connected`,
+    online: "Online",
+    offline: "Offline",
+    onlineCount: (n: number) => `Online ${n}`,
+    offlineCount: (n: number) => `Offline ${n}`,
+    licenseSubscription: "License Subscription",
+    channelsUsedSuffix: (limit: number | string) => `/ ${limit} channels used`,
+    planNotSet: "Plan not set",
+    manage: "Manage →",
+    unlimited: "Unlimited",
+    expired: "Expired",
+    notSet: "Not set",
+    vipTargetDb: "VIP / Target DB",
+    todayBadge: (n: number) => `${n} today`,
+    vipDbSubtitle: "Registered watchlist individuals for this project.",
+    highPriorityLabel: (n: number) => `High priority: ${n}`,
+    registeredTodayLabel: (n: number) => `Registered today: ${n}`,
+    portalAccounts: "Portal Accounts & Permissions",
+    accountsSuffix: "accounts",
+    pendingAccessRequest: (n: number) => `${n} pending access request${n === 1 ? "" : "s"}`,
+    noPendingAccessRequests: "No pending access requests.",
+    adminOperatorLabel: (admin: number, operator: number) => `Admin: ${admin} | Operator: ${operator}`,
+    cameraStatusTitle: "Camera Status",
+    cameraStatusSubtitle: "Streaming status for cameras connected to this project",
+    filterAll: (n: number) => `All (${n})`,
+    filterOffline: (n: number) => `Offline (${n})`,
+    colCamera: "Camera",
+    colZone: "Zone",
+    colStreamUrl: "Stream URL",
+    colStatus: "Status",
+    noOfflineCameras: "No offline cameras — everything is connected.",
+    noCamerasYet: "No cameras connected to this project yet.",
+    view: "View →",
+    viewAllCameras: (n: number) => `View all ${n} cameras →`,
+    recentVipsTitle: "Recently Registered VIPs",
+    registerVipLink: "Register VIP →",
+    noVipsYet: "No VIPs registered yet.",
+    accessRequestsTitle: "Access Requests",
+    approve: "Approve",
+    dismiss: "Dismiss",
+    viewMore: (n: number) => `View ${n} more →`,
+    recentAdminActivity: "RECENT ADMIN ACTIVITY",
+    noAdminActivity: "No admin activity yet.",
+    agoSuffix: " ago",
+    aiDetections: "AI Detections",
+    alerts: "Alerts",
+    toastApprovedTitle: "Access approved — invite sent",
+    toastDismissedTitle: "Request dismissed",
+  },
+  ko: {
+    projectNotFound: "프로젝트를 찾을 수 없습니다.",
+    addCamera: "카메라 추가",
+    registerVip: "VIP 등록",
+    approveAccessRequests: "접근 요청 승인",
+    cameraConnectivity: "카메라 연결 상태",
+    connectedSuffix: (n: number) => `/ ${n}대 연결됨`,
+    online: "온라인",
+    offline: "오프라인",
+    onlineCount: (n: number) => `온라인 ${n}`,
+    offlineCount: (n: number) => `오프라인 ${n}`,
+    licenseSubscription: "라이선스 구독",
+    channelsUsedSuffix: (limit: number | string) => `/ ${limit}채널 사용`,
+    planNotSet: "요금제 미설정",
+    manage: "관리 →",
+    unlimited: "무제한",
+    expired: "만료됨",
+    notSet: "미설정",
+    vipTargetDb: "VIP / 관심대상 DB",
+    todayBadge: (n: number) => `오늘 ${n}건`,
+    vipDbSubtitle: "이 프로젝트에 등록된 관심대상(워치리스트) 인원입니다.",
+    highPriorityLabel: (n: number) => `우선순위 높음: ${n}`,
+    registeredTodayLabel: (n: number) => `오늘 등록: ${n}`,
+    portalAccounts: "포털 계정 및 권한",
+    accountsSuffix: "개 계정",
+    pendingAccessRequest: (n: number) => `대기 중인 접근 요청 ${n}건`,
+    noPendingAccessRequests: "대기 중인 접근 요청이 없습니다.",
+    adminOperatorLabel: (admin: number, operator: number) => `관리자: ${admin} | 운영자: ${operator}`,
+    cameraStatusTitle: "카메라 상태",
+    cameraStatusSubtitle: "이 프로젝트에 연결된 카메라의 스트리밍 상태",
+    filterAll: (n: number) => `전체 (${n})`,
+    filterOffline: (n: number) => `오프라인 (${n})`,
+    colCamera: "카메라",
+    colZone: "구역",
+    colStreamUrl: "스트림 URL",
+    colStatus: "상태",
+    noOfflineCameras: "오프라인 카메라가 없습니다 — 모두 연결되어 있습니다.",
+    noCamerasYet: "이 프로젝트에 연결된 카메라가 아직 없습니다.",
+    view: "보기 →",
+    viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기 →`,
+    recentVipsTitle: "최근 등록된 VIP",
+    registerVipLink: "VIP 등록 →",
+    noVipsYet: "등록된 VIP가 아직 없습니다.",
+    accessRequestsTitle: "접근 요청",
+    approve: "승인",
+    dismiss: "거절",
+    viewMore: (n: number) => `${n}건 더 보기 →`,
+    recentAdminActivity: "최근 관리자 활동",
+    noAdminActivity: "아직 관리자 활동이 없습니다.",
+    agoSuffix: " 전",
+    aiDetections: "AI 탐지",
+    alerts: "경보",
+    toastApprovedTitle: "접근 승인됨 — 초대장 발송됨",
+    toastDismissedTitle: "요청 거절됨",
+  },
+} as const;
 
 function VideoIcon() {
   return (
@@ -101,13 +215,14 @@ function metricDailySeries(seed: number, min: number, max: number, sparse?: bool
   });
 }
 
-function trendDayLabel(daysAgo: number): string {
+function trendDayLabel(daysAgo: number, lang: PortalLanguage): string {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
+  return lang === "ko" ? `${d.getMonth() + 1}월 ${d.getDate()}일` : `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
 function MiniBarChart({ values, color }: { values: number[]; color: string }) {
+  const [lang] = usePortalLanguage();
   const max = Math.max(...values, 1);
   const [hovered, setHovered] = useState<number | null>(null);
   // Same split weekOverWeekChange uses — the divider marks exactly the boundary that % badge
@@ -143,7 +258,7 @@ function MiniBarChart({ values, color }: { values: number[]; color: string }) {
                   backgroundColor: "var(--gray-900)", color: "white", fontSize: "10px", fontWeight: 700,
                   padding: "4px 8px", borderRadius: "6px", whiteSpace: "nowrap", zIndex: 10, pointerEvents: "none",
                 }}>
-                  {trendDayLabel(daysAgo)} · {v.toLocaleString()}
+                  {trendDayLabel(daysAgo, lang)} · {v.toLocaleString()}
                 </div>
               )}
             </div>
@@ -159,6 +274,7 @@ function MiniBarChart({ values, color }: { values: number[]; color: string }) {
 // the trend between days. Same y-axis/hover/week-divider treatment as MiniBarChart so the two
 // don't feel like different components bolted together.
 function MiniLineChart({ values, color }: { values: number[]; color: string }) {
+  const [lang] = usePortalLanguage();
   const max = Math.max(...values, 1);
   const [hovered, setHovered] = useState<number | null>(null);
   const weekBoundary = Math.floor(values.length / 2);
@@ -204,7 +320,7 @@ function MiniLineChart({ values, color }: { values: number[]; color: string }) {
                     backgroundColor: "var(--gray-900)", color: "white", fontSize: "10px", fontWeight: 700,
                     padding: "4px 8px", borderRadius: "6px", whiteSpace: "nowrap", zIndex: 10, pointerEvents: "none",
                   }}>
-                    {trendDayLabel(daysAgo)} · {v.toLocaleString()}
+                    {trendDayLabel(daysAgo, lang)} · {v.toLocaleString()}
                   </div>
                 )}
               </div>
@@ -250,6 +366,8 @@ function TrendChangeBadge({ pct }: { pct: number | null }) {
 function MetricTrendCard({ label, values, color, chartType = "bar", onViewMore }: {
   label: string; values: number[]; color: string; chartType?: "bar" | "line"; onViewMore?: () => void;
 }) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
   const total = values.reduce((a, b) => a + b, 0);
   const change = weekOverWeekChange(values);
   return (
@@ -258,7 +376,7 @@ function MetricTrendCard({ label, values, color, chartType = "bar", onViewMore }
         <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</p>
         {onViewMore && (
           <button onClick={onViewMore} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "10px", fontWeight: 700, color: "var(--gray-600)" }}>
-            View →
+            {t.view}
           </button>
         )}
       </div>
@@ -268,9 +386,9 @@ function MetricTrendCard({ label, values, color, chartType = "bar", onViewMore }
       </div>
       {chartType === "line" ? <MiniLineChart values={values} color={color} /> : <MiniBarChart values={values} color={color} />}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", marginLeft: "38px" }}>
-        <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(METRIC_TREND_DAYS - 1)}</span>
-        <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(Math.ceil(METRIC_TREND_DAYS / 2))}</span>
-        <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(0)}</span>
+        <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(METRIC_TREND_DAYS - 1, lang)}</span>
+        <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(Math.ceil(METRIC_TREND_DAYS / 2), lang)}</span>
+        <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{trendDayLabel(0, lang)}</span>
       </div>
     </div>
   );
@@ -321,6 +439,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const approveAccessRequests = useVcaStore(s => s.approveAccessRequests);
   const dismissAccessRequest = useVcaStore(s => s.dismissAccessRequest);
   const { showToast } = useToast();
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
 
   // Every hook has to run before the "project not found" guard below. They used to sit after it,
   // so a render where the project is missing called seven fewer hooks than a render where it
@@ -343,7 +463,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
   const project = projects.find(p => p.id === projectId);
   if (!project) {
-    return <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>Project not found.</p>;
+    return <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>{t.projectNotFound}</p>;
   }
 
   const meta = TYPE_META[project.type];
@@ -390,11 +510,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
   const approveRequest = (id: string, name: string) => {
     approveAccessRequests([id]);
-    showToast({ variant: "success", title: "Access approved — invite sent", desc: name });
+    showToast({ variant: "success", title: t.toastApprovedTitle, desc: name });
   };
   const dismissRequest = (id: string, name: string) => {
     dismissAccessRequest(id);
-    showToast({ variant: "warning", title: "Request dismissed", desc: name });
+    showToast({ variant: "warning", title: t.toastDismissedTitle, desc: name });
   };
 
   return (
@@ -416,15 +536,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               <button onClick={() => onTabChange("cameras")}
                 style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                <PlusIcon /> Add Camera
+                <PlusIcon /> {t.addCamera}
               </button>
               <button onClick={() => onTabChange("vip")}
                 style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                <UserPlusIcon /> Register VIP
+                <UserPlusIcon /> {t.registerVip}
               </button>
               <button onClick={() => onTabChange("users")}
                 style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                <ShieldIcon /> Approve Access Requests
+                <ShieldIcon /> {t.approveAccessRequests}
                 {projectAccessRequests.length > 0 && (
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)", backgroundColor: "var(--warning-200)", padding: "2px 7px", borderRadius: "999px" }}>
                     {projectAccessRequests.length}
@@ -438,10 +558,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               each grounded in real store data (no fabricated failure-reason breakdowns the data
               model doesn't have). */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "16px" }}>
-            <MetricCard label="Camera Connectivity" icon={VideoIcon} iconBg="var(--success-100)" iconColor="var(--success-400)">
+            <MetricCard label={t.cameraConnectivity} icon={VideoIcon} iconBg="var(--success-100)" iconColor="var(--success-400)">
               <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</p>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>/ {projectCameras.length} connected</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.connectedSuffix(projectCameras.length)}</p>
               </div>
               {/* Fixed-height row so the footer divider below lands at the same y across all 4 cards —
                   the other two cards fill this slot with a text line instead of a bar, and text's
@@ -453,15 +573,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px" }}>
-                <SubStat color="var(--success-400)" label={`Online ${onlineCount}`} />
-                <SubStat color="var(--danger-400)" label={`Offline ${offlineCount}`} />
+                <SubStat color="var(--success-400)" label={t.onlineCount(onlineCount)} />
+                <SubStat color="var(--danger-400)" label={t.offlineCount(offlineCount)} />
               </div>
             </MetricCard>
 
-            <MetricCard label="License Subscription" icon={KeyIcon} iconBg="var(--info-100)" iconColor="var(--info-500)">
+            <MetricCard label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--info-100)" iconColor="var(--info-500)">
               <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectCameras.length}</p>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>/ {channelLimit ?? "∞"} channels used</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.channelsUsedSuffix(channelLimit ?? "∞")}</p>
               </div>
               <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
                 <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
@@ -470,9 +590,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{project.licensePlan ?? "Plan not set"}</p>
+                  <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{project.licensePlan ?? t.planNotSet}</p>
                   <button onClick={() => onTabChange("license")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
-                    Manage →
+                    {t.manage}
                   </button>
                 </div>
                 <span style={{
@@ -480,47 +600,47 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   backgroundColor: licenseExpired ? "var(--danger-100)" : licenseExpiringSoon ? "var(--warning-200)" : "var(--info-100)",
                   color: licenseExpired ? "var(--danger-500)" : licenseExpiringSoon ? "var(--warning-500)" : "var(--info-500)",
                 }}>
-                  {isUnlimitedExpiry ? "Unlimited" : licenseExpired ? "Expired" : daysUntilExpiry !== null ? `D-${daysUntilExpiry}` : "Not set"}
+                  {isUnlimitedExpiry ? t.unlimited : licenseExpired ? t.expired : daysUntilExpiry !== null ? `D-${daysUntilExpiry}` : t.notSet}
                 </span>
               </div>
             </MetricCard>
 
-            <MetricCard label="VIP / Target DB" icon={UsersGroupIcon} iconBg="var(--primary-100)" iconColor="var(--primary-400)">
+            <MetricCard label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--primary-100)" iconColor="var(--primary-400)">
               <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectPersons.length}</p>
                 {todayVipCount > 0 && (
                   <span style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "12px", fontWeight: 600, color: "var(--success-400)" }}>
-                    <ArrowUpIcon /> {todayVipCount} today
+                    <ArrowUpIcon /> {t.todayBadge(todayVipCount)}
                   </span>
                 )}
               </div>
               <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)", width: "100%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>Registered watchlist individuals for this project.</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)", width: "100%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.vipDbSubtitle}</p>
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px" }}>
-                <p style={{ fontSize: "12px", color: "var(--primary-400)", fontWeight: 600 }}>High priority: {highPriorityVipCount}</p>
-                <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>Registered today: {todayVipCount}</p>
+                <p style={{ fontSize: "12px", color: "var(--primary-400)", fontWeight: 600 }}>{t.highPriorityLabel(highPriorityVipCount)}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.registeredTodayLabel(todayVipCount)}</p>
               </div>
             </MetricCard>
 
-            <MetricCard label="Portal Accounts & Permissions" icon={SettingsIcon} iconBg="var(--warning-100)" iconColor="var(--warning-500)">
+            <MetricCard label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--warning-100)" iconColor="var(--warning-500)">
               <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectUsers.length}</p>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>accounts</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.accountsSuffix}</p>
               </div>
               <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
                 {projectAccessRequests.length > 0 ? (
                   <button onClick={() => onTabChange("users")} style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%", overflow: "hidden", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", color: "var(--warning-500)" }}>
                     <ShieldIcon />
-                    <span style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{projectAccessRequests.length} pending access request{projectAccessRequests.length === 1 ? "" : "s"}</span>
+                    <span style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.pendingAccessRequest(projectAccessRequests.length)}</span>
                   </button>
                 ) : (
-                  <p style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>No pending access requests.</p>
+                  <p style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.noPendingAccessRequests}</p>
                 )}
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px" }}>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>Admin: {adminCount} | Operator: {operatorCount}</p>
-                <button onClick={() => onTabChange("users")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>Manage →</button>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.adminOperatorLabel(adminCount, operatorCount)}</p>
+                <button onClick={() => onTabChange("users")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.manage}</button>
               </div>
             </MetricCard>
           </div>
@@ -536,8 +656,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--info-100)", color: "var(--info-500)", flexShrink: 0 }}><VideoIcon /></span>
                     <div>
-                      <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>Camera Status</p>
-                      <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>Streaming status for cameras connected to this project</p>
+                      <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.cameraStatusTitle}</p>
+                      <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.cameraStatusSubtitle}</p>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: "4px", backgroundColor: "var(--gray-50)", padding: "2px", borderRadius: "8px" }}>
@@ -548,19 +668,19 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                           backgroundColor: cameraStatusFilter === f ? "white" : "transparent",
                           color: cameraStatusFilter === f ? "var(--gray-900)" : f === "offline" ? "var(--danger-400)" : "var(--gray-500)",
                         }}>
-                        {f === "all" ? `All (${projectCameras.length})` : `Offline (${offlineCount})`}
+                        {f === "all" ? t.filterAll(projectCameras.length) : t.filterOffline(offlineCount)}
                       </button>
                     ))}
                   </div>
                 </div>
                 {visibleCameraRows.length === 0 ? (
                   <p style={{ fontSize: "13px", color: "var(--gray-400)", padding: "24px", textAlign: "center" }}>
-                    {cameraStatusFilter === "offline" ? "No offline cameras — everything is connected." : "No cameras connected to this project yet."}
+                    {cameraStatusFilter === "offline" ? t.noOfflineCameras : t.noCamerasYet}
                   </p>
                 ) : (
                   <>
                     <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.4fr 0.7fr 60px", padding: "8px 20px", backgroundColor: "var(--gray-50)", gap: "8px" }}>
-                      {["Camera", "Zone", "Stream URL", "Status", ""].map(h => (
+                      {[t.colCamera, t.colZone, t.colStreamUrl, t.colStatus, ""].map(h => (
                         <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
                       ))}
                     </div>
@@ -578,16 +698,16 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                             fontSize: "12px", fontWeight: 600, padding: "3px 8px", borderRadius: "6px", width: "fit-content",
                             backgroundColor: online ? "var(--success-100)" : "var(--danger-100)", color: online ? "var(--success-400)" : "var(--danger-400)",
                           }}>
-                            {online ? "Online" : "Offline"}
+                            {online ? t.online : t.offline}
                           </span>
-                          <button onClick={() => onTabChange("cameras")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>View →</button>
+                          <button onClick={() => onTabChange("cameras")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.view}</button>
                         </div>
                       );
                     })}
                     {filteredCameraRows.length > visibleCameraRows.length && (
                       <button onClick={() => onTabChange("cameras")}
                         style={{ display: "block", width: "100%", textAlign: "center", border: "none", borderTop: BORDER, background: "none", padding: "10px 20px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
-                        View all {filteredCameraRows.length} cameras →
+                        {t.viewAllCameras(filteredCameraRows.length)}
                       </button>
                     )}
                   </>
@@ -602,12 +722,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--primary-100)", color: "var(--primary-400)", flexShrink: 0 }}><UsersGroupIcon /></span>
-                    <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>Recently Registered VIPs</p>
+                    <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.recentVipsTitle}</p>
                   </div>
-                  <button onClick={() => onTabChange("vip")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>Register VIP →</button>
+                  <button onClick={() => onTabChange("vip")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.registerVipLink}</button>
                 </div>
                 {recentVips.length === 0 ? (
-                  <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>No VIPs registered yet.</p>
+                  <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noVipsYet}</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     {recentVips.map(p => (
@@ -630,7 +750,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{ display: "flex", color: "var(--warning-500)" }}><ShieldIcon /></span>
-                    <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>Access Requests</p>
+                    <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.accessRequestsTitle}</p>
                   </div>
                   {projectAccessRequests.length > 0 && (
                     <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)", backgroundColor: "var(--warning-200)", padding: "2px 8px", borderRadius: "999px" }}>
@@ -639,7 +759,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   )}
                 </div>
                 {projectAccessRequests.length === 0 ? (
-                  <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>No pending access requests.</p>
+                  <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noPendingAccessRequests}</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {projectAccessRequests.slice(0, 2).map(r => (
@@ -649,18 +769,18 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                         <div style={{ display: "flex", gap: "8px" }}>
                           <button onClick={() => approveRequest(r.id, r.name)}
                             style={{ flex: 1, padding: "6px 10px", borderRadius: "6px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-                            Approve
+                            {t.approve}
                           </button>
                           <button onClick={() => dismissRequest(r.id, r.name)}
                             style={{ flex: 1, padding: "6px 10px", borderRadius: "6px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-                            Dismiss
+                            {t.dismiss}
                           </button>
                         </div>
                       </div>
                     ))}
                     {projectAccessRequests.length > 2 && (
                       <button onClick={() => onTabChange("users")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", textAlign: "left" }}>
-                        View {projectAccessRequests.length - 2} more →
+                        {t.viewMore(projectAccessRequests.length - 2)}
                       </button>
                     )}
                   </div>
@@ -670,10 +790,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
                   <span style={{ display: "flex", color: "var(--gray-500)" }}><ClockIcon /></span>
-                  <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px" }}>RECENT ADMIN ACTIVITY</p>
+                  <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px" }}>{t.recentAdminActivity}</p>
                 </div>
                 {recentActivity.length === 0 ? (
-                  <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>No admin activity yet.</p>
+                  <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noAdminActivity}</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     {recentActivity.map((a, i) => (
@@ -685,7 +805,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                         <div style={{ paddingBottom: "14px", minWidth: 0 }}>
                           <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)" }}>{a.message}</p>
                           <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "2px" }}>
-                            {a.actor}{nowMs !== null ? ` · ${formatElapsed(nowMs - new Date(a.at).getTime())} ago` : ""}
+                            {a.actor}{nowMs !== null ? ` · ${formatElapsed(nowMs - new Date(a.at).getTime())}${t.agoSuffix}` : ""}
                           </p>
                         </div>
                       </div>
@@ -697,8 +817,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
-            <MetricTrendCard label="AI Detections" values={aiDetectionsDaily} color="var(--success-400)" chartType="line" onViewMore={() => onTabChange("cameras")} />
-            <MetricTrendCard label="Alerts" values={alertsDaily} color="var(--danger-400)" chartType="bar" onViewMore={() => onTabChange("vip")} />
+            <MetricTrendCard label={t.aiDetections} values={aiDetectionsDaily} color="var(--success-400)" chartType="line" onViewMore={() => onTabChange("cameras")} />
+            <MetricTrendCard label={t.alerts} values={alertsDaily} color="var(--danger-400)" chartType="bar" onViewMore={() => onTabChange("vip")} />
           </div>
         </>
       )}

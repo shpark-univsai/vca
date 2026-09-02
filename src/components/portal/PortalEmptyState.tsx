@@ -1,17 +1,49 @@
 "use client";
 
+import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER } from "./PortalShared";
+
+const T = {
+  en: {
+    eyebrow: "Projects",
+    title: "Deploy AI Monitoring for Any Environment",
+    subtitle: "Create your first project, connect a camera stream, and start monitoring in minutes.",
+    newProject: "New Project",
+    gallery: {
+      vip: "VIP / watchlist detection",
+      tracking: "Cross-camera tracking",
+      vehicle: "Vehicle recognition",
+      attendance: "Campus attendance (face recognition)",
+      blindSpot: "Blind-spot monitoring",
+      crowd: "Public area crowd monitoring",
+    },
+  },
+  ko: {
+    eyebrow: "프로젝트",
+    title: "모든 환경에 AI 모니터링을 적용하세요",
+    subtitle: "첫 프로젝트를 생성하고 카메라 스트림을 연결하면 몇 분 안에 모니터링을 시작할 수 있습니다.",
+    newProject: "새 프로젝트",
+    gallery: {
+      vip: "VIP / 관심인물 탐지",
+      tracking: "교차 카메라 추적",
+      vehicle: "차량 인식",
+      attendance: "캠퍼스 출결 관리 (얼굴 인식)",
+      blindSpot: "사각지대 모니터링",
+      crowd: "공공장소 인파 모니터링",
+    },
+  },
+} as const;
 
 // Drop matching image files into public/portal/gallery/ using these exact filenames — each
 // card wires up automatically once the file exists. Until then the card just shows its label on
 // a plain placeholder background (the <img> hides itself via onError, no broken-image icon).
-const GALLERY_ITEMS: { label: string; file: string; height: number }[] = [
-  { label: "VIP / watchlist detection", file: "vip-detection.jpg", height: 150 },
-  { label: "Cross-camera tracking", file: "cross-camera-tracking.jpg", height: 190 },
-  { label: "Vehicle recognition", file: "vehicle-recognition.jpg", height: 170 },
-  { label: "Campus attendance (face recognition)", file: "campus-attendance.jpg", height: 210 },
-  { label: "Blind-spot monitoring", file: "blind-spot-monitoring.jpg", height: 150 },
-  { label: "Public area crowd monitoring", file: "crowd-monitoring.jpg", height: 180 },
+const GALLERY_ITEMS: { key: keyof typeof T["en"]["gallery"]; file: string; height: number }[] = [
+  { key: "vip", file: "vip-detection.jpg", height: 150 },
+  { key: "tracking", file: "cross-camera-tracking.jpg", height: 190 },
+  { key: "vehicle", file: "vehicle-recognition.jpg", height: 170 },
+  { key: "attendance", file: "campus-attendance.jpg", height: 210 },
+  { key: "blindSpot", file: "blind-spot-monitoring.jpg", height: 150 },
+  { key: "crowd", file: "crowd-monitoring.jpg", height: 180 },
 ];
 
 function GalleryCard({ label, file, height }: { label: string; file: string; height: number }) {
@@ -38,15 +70,17 @@ interface PortalEmptyStateProps {
 }
 
 export default function PortalEmptyState({ onNewProject }: PortalEmptyStateProps) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "48px", alignItems: "center" }}>
       <div>
-        <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary-400)", marginBottom: "12px" }}>Projects</p>
+        <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary-400)", marginBottom: "12px" }}>{t.eyebrow}</p>
         <p style={{ fontSize: "26px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "40px" }}>
-          Deploy AI Monitoring for Any Environment
+          {t.title}
         </p>
         <p style={{ fontSize: "14px", color: "var(--gray-500)", marginTop: "12px", lineHeight: "22px" }}>
-          Create your first project, connect a camera stream, and start monitoring in minutes.
+          {t.subtitle}
         </p>
         <button onClick={onNewProject}
           style={{
@@ -55,12 +89,12 @@ export default function PortalEmptyState({ onNewProject }: PortalEmptyStateProps
             backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer",
           }}>
           <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          New Project
+          {t.newProject}
         </button>
       </div>
 
       <div style={{ columnCount: 2, columnGap: "16px" }}>
-        {GALLERY_ITEMS.map(item => <GalleryCard key={item.file} {...item} />)}
+        {GALLERY_ITEMS.map(item => <GalleryCard key={item.file} label={t.gallery[item.key]} file={item.file} height={item.height} />)}
       </div>
     </div>
   );
