@@ -25,8 +25,15 @@ function PasswordSetupForm() {
   // Request flows is just `/password-setup?token=<portalUser id>` (see PortalUsersPage.tsx). Look
   // that user up the same way login/page.tsx matches by email, then route by their permission
   // instead of always bouncing to /login.
-  const token = useSearchParams().get("token");
+  const params = useSearchParams();
+  const token = params.get("token");
+  // Why this screen is being shown. "temp" means the person just logged in with a password an
+  // administrator generated and read out to them, so the copy has to say that rather than greet
+  // them as a new invitee — they are not setting up an account, they are taking a shared password
+  // back into their own hands.
+  const forcedByTempPassword = params.get("reason") === "temp";
   const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
+  const clearTemporaryPassword = useVcaStore(s => s.clearTemporaryPassword);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -49,6 +56,9 @@ function PasswordSetupForm() {
       return;
     }
     updatePortalUserStatus(invitedUser.id, "active");
+    // Retires the temporary password: the must-change flag comes off, and Portal's Users table
+    // stops flagging this account as one somebody else has the password to.
+    clearTemporaryPassword(invitedUser.id);
     router.push(invitedUser.permission === "admin" ? "/portal" : "/");
   };
 
@@ -62,8 +72,14 @@ function PasswordSetupForm() {
           display: "flex", flexDirection: "column", gap: "40px", alignItems: "center",
         }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
-            <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>Set password</h1>
-            <p style={{ margin: 0, fontSize: "16px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.32px" }}>Please set your new password.</p>
+            <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>
+              {forcedByTempPassword ? "Choose your own password" : "Set password"}
+            </h1>
+            <p style={{ margin: 0, fontSize: "16px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.32px", textAlign: "center", lineHeight: 1.6 }}>
+              {forcedByTempPassword
+                ? <>The password you were given is temporary and someone else has seen it.<br />Replace it before you continue.</>
+                : "Please set your new password."}
+            </p>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>

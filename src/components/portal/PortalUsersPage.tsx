@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useVcaStore, isNetworkIsolated, type PortalPermission, type PortalUserStatus } from "@/lib/vcaStore";
+import { useSearchParams } from "next/navigation";
+import { useVcaStore, isNetworkIsolated, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
+import { TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
+import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
 import { BORDER, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -339,6 +342,130 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   );
 }
 
+/**
+ * The administrator half of the no-mail recovery path (authConfig's passwordRecovery: "adminOnly"):
+ * the operator telephones the security desk, and the desk sets a password for them and reads it
+ * back down the line. It is also the escape hatch in a mail-enabled deployment for the person who
+ * can no longer open their own mailbox — which is why the action is not hidden when mail works.
+ *
+ * Two steps in one box, and the split is the point. Setting someone else's credential is not
+ * undoable and cuts them off from their current password immediately, so the first step states
+ * what is about to happen while there is still a Cancel; the second shows the result, once. There
+ * is no route back to step one, because a second look at the same password does not exist — a
+ * lost password is reissued, not recovered.
+ */
+function TempPasswordModal({ user, onClose }: { user: PortalUser; onClose: () => void }) {
+  useEscapeKey(onClose);
+  const issueTemporaryPassword = useVcaStore(s => s.issueTemporaryPassword);
+  const { showToast } = useToast();
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  const [password, setPassword] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const generate = () => {
+    const issued = issueTemporaryPassword(user.id);
+    if (!issued) return;
+    setPassword(issued);
+    showToast({ variant: "success", title: t.tempIssuedTitle, desc: t.tempIssuedDesc(user.name) });
+  };
+
+  // Clipboard write can be refused (an insecure origin, or the browser's permission), and a "Copied"
+  // label over a clipboard that did not take is how a password gets pasted as whatever was there
+  // before. Only flip the label once the write actually resolved; on failure the password is still
+  // on screen to read off.
+  const copy = () => {
+    if (!password) return;
+    navigator.clipboard?.writeText(password).then(
+      () => { setCopied(true); setTimeout(() => setCopied(false), 2000); },
+      () => setCopied(false),
+    );
+  };
+
+  const bullet = (text: string) => (
+    <li style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>{text}</li>
+  );
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+        <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
+            {password ? t.tempResultTitle : t.tempModalTitle}
+          </p>
+          <button onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+        </div>
+
+        {password === null ? (
+          <>
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ padding: "12px 14px", borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
+                <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{t.tempForLabel}</p>
+                <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)", marginTop: "4px" }}>{user.name}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{user.email}</p>
+              </div>
+              <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>{t.tempConfirmIntro}</p>
+              <ul style={{ display: "flex", flexDirection: "column", gap: "6px", margin: 0, paddingLeft: "18px" }}>
+                {bullet(t.tempConsequenceInvalidate)}
+                {bullet(t.tempConsequenceOnce)}
+                {bullet(t.tempConsequenceMustChange)}
+                {bullet(t.tempConsequenceExpiry(TEMP_PASSWORD_VALIDITY_HOURS))}
+              </ul>
+            </div>
+            <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+              <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                {t.cancel}
+              </button>
+              <button onClick={generate}
+                style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                {t.tempGenerate}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+              <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.tempResultFor(user.name)}</p>
+
+              {/* Monospace and letter-spaced because this string gets read aloud a character at a
+                  time. user-select stays on: the copy button is a convenience, not the only way
+                  to get it out of the box. */}
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "14px", borderRadius: "10px", border: "1px solid var(--gray-300)", backgroundColor: "var(--gray-50)" }}>
+                <code style={{ flex: 1, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "18px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "1px", wordBreak: "break-all" }}>
+                  {password}
+                </code>
+                <button onClick={copy}
+                  style={{ flexShrink: 0, padding: "7px 12px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: copied ? "var(--success-400)" : "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                  {copied ? t.tempCopied : t.tempCopy}
+                </button>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)" }}>{t.tempShownOnce}</p>
+                <span style={{ flexShrink: 0, fontSize: "12px", color: "var(--gray-500)" }}>{t.tempExpires(TEMP_PASSWORD_VALIDITY_HOURS)}</span>
+              </div>
+
+              <div style={{ padding: "12px 14px", borderRadius: "10px", backgroundColor: "var(--warning-100)" }}>
+                <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--warning-500)", letterSpacing: "0.4px" }}>{t.tempHandoverTitle}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.7, marginTop: "4px" }}>{t.tempHandover}</p>
+              </div>
+            </div>
+            <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end" }}>
+              <button onClick={onClose}
+                style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                {t.tempDone}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const STATUS_COLORS: Record<PortalUserStatus, { bg: string; color: string }> = {
   active: { bg: "var(--gray-100)", color: "var(--success-400)" },
   invited: { bg: "var(--warning-200)", color: "var(--warning-500)" },
@@ -368,6 +495,69 @@ function MfaBadge({ enabled }: { enabled?: boolean }) {
     <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "18px", height: "18px", borderRadius: "5px", backgroundColor: "var(--success-100)" }} title={t.mfaEnabledTitle}>
       <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="var(--success-400)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
     </span>
+  );
+}
+
+/**
+ * Shows in the status column while an account is still on a password an administrator handed over.
+ * That state is worth seeing at a glance: for as long as it lasts, two people know the password,
+ * and the account is only as private as the phone call it travelled on. It disappears the moment
+ * the user sets their own.
+ *
+ * Once past the expiry the wording changes rather than the badge vanishing — an expired temporary
+ * password means the person never used it and is still locked out, which is precisely when an
+ * administrator needs to notice them.
+ */
+function TempPasswordBadge({ issuedAt }: { issuedAt: string }) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  // Read after mount for the same reason as AccessRequestsPanel: expiry is a comparison against
+  // the clock, and doing it during render makes the server's frame disagree with the browser's.
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
+
+  const issuedMs = new Date(issuedAt).getTime();
+  const expiresMs = issuedMs + TEMP_PASSWORD_VALIDITY_HOURS * 60 * 60 * 1000;
+  const expired = nowMs !== null && nowMs > expiresMs;
+  const tone = expired
+    ? { bg: "var(--danger-100)", color: "var(--danger-500)" }
+    : { bg: "var(--warning-200)", color: "var(--warning-500)" };
+
+  return (
+    <span
+      title={t.tempBadgeTitle(new Date(issuedAt).toLocaleString())}
+      style={{
+        display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px",
+        backgroundColor: tone.bg, color: tone.color, fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap",
+      }}
+    >
+      {expired ? t.tempBadgeExpired : t.tempBadge}
+    </span>
+  );
+}
+
+/**
+ * Standing explanation of why this page's mail actions are missing, shown only where they are.
+ * Without it the absence reads as a bug, and an administrator hunting for "send password reset"
+ * has no way to learn that the temporary-password action IS the reset here.
+ */
+function RecoveryModeNotice({ supportContact }: { supportContact: string | null }) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  return (
+    <div style={{ display: "flex", gap: "12px", padding: "14px 16px", borderRadius: "12px", backgroundColor: "var(--info-100)", border: "1px solid var(--info-200)", marginBottom: "16px" }}>
+      <span style={{ flexShrink: 0, display: "flex", color: "var(--info-500)", marginTop: "1px" }}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3"/><path d="M8 7.2v4M8 5.1v.9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+      </span>
+      <div>
+        <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.recoveryNoticeTitle}</p>
+        <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7, marginTop: "4px" }}>{t.recoveryNoticeBody}</p>
+        <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px", marginTop: "10px" }}>{t.recoveryNoticeContactLabel}</p>
+        <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-800)", marginTop: "2px" }}>
+          {supportContact ?? t.recoveryNoticeContactFallback}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -466,8 +656,23 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const [showInvite, setShowInvite] = useState(false);
+  // The user a temporary password is being issued for, or null. Held as the user rather than an id
+  // so the modal keeps rendering the right name even if the row scrolls out from under it.
+  const [tempPasswordFor, setTempPasswordFor] = useState<PortalUser | null>(null);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
+
+  // Which recovery path this installation actually has. Everything mail-dependent on this page is
+  // gated on it, because a "Send password reset" that quietly posts to nowhere is worse than no
+  // button: the administrator hangs up believing the operator has a code coming.
+  //
+  // HANDOFF NOTE — the ?recovery=adminOnly override goes away with the hardcoded config.
+  // getAuthConfig() is fixed at "emailCode", so the no-mail half of this page cannot be reached by
+  // using the app; open /portal?...&recovery=adminOnly to see what a site with no SMTP relay gets.
+  // Same convention as /forgot-password?demo=adminOnly, which is the login-side half of it.
+  const authConfig = getAuthConfig();
+  const recoveryOverride = useSearchParams().get("recovery");
+  const mailAvailable = recoveryOverride === "adminOnly" ? false : hasOutboundMail(authConfig);
 
   const orgName = (teamId: string) => teams.find(o => o.id === teamId)?.name ?? teamId;
   const projectName = (id: string) => projects.find(p => p.id === id)?.name ?? id;
@@ -496,6 +701,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           {t.inviteUser}
         </button>
       </div>
+
+      {!mailAvailable && <RecoveryModeNotice supportContact={authConfig.supportContact} />}
 
       <AccessRequestsPanel projectId={projectId} />
 
@@ -569,18 +776,22 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             />
             <MfaBadge enabled={u.mfaEnabled} />
             <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.lastLoginAt ?? "—"}</span>
-            <StatusBadge status={u.status} />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "4px" }}>
+              <StatusBadge status={u.status} />
+              {u.tempPasswordIssuedAt && <TempPasswordBadge issuedAt={u.tempPasswordIssuedAt} />}
+            </div>
             {/* Two mail actions, because the two ways a person gets locked out need different
                 messages: an invite that never arrived is resent, an account whose password is
                 forgotten gets a reset. Resend only shows for users still sitting at "invited" —
                 offering it for an active account would send a link that sets up an account which
-                already exists. */}
+                already exists. Both disappear entirely where there is no mail to send them with;
+                that deployment recovers people through the temporary password below instead. */}
             <RowActionsMenu actions={[
-              ...(u.status === "invited" ? [{
+              ...(mailAvailable && u.status === "invited" ? [{
                 label: t.resendInvite,
                 onClick: () => showToast({ variant: "success", title: t.inviteResentTitle, desc: `/password-setup?token=${u.id}` }),
               }] : []),
-              {
+              ...(mailAvailable ? [{
                 label: t.sendPasswordReset,
                 // Says "code", not "link": /forgot-password now verifies an 8-digit code instead of
                 // following an emailed link. OPEN QUESTION for the backend — if the user then uses
@@ -588,6 +799,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 // one. Either this action mails the code and the mail says where to type it, or it
                 // does nothing but tell the user to start the flow themselves.
                 onClick: () => showToast({ variant: "success", title: t.resetCodeSentTitle, desc: t.resetCodeSentDesc(u.email) }),
+              }] : []),
+              {
+                // Offered in every deployment, not only the mail-less one. Where mail works this is
+                // the fallback for someone who has lost the mailbox the code would go to — a leaver's
+                // account reassigned, a shared operations address nobody can open. Where it does not,
+                // it is the only way back in and the phone number on the login screen leads here.
+                label: t.generateTempPassword,
+                onClick: () => setTempPasswordFor(u),
               },
               u.status === "suspended"
                 ? {
@@ -613,6 +832,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       </div>
 
       {showInvite && <InviteUserModal defaultProjectId={projectId} onClose={() => setShowInvite(false)} />}
+      {tempPasswordFor && <TempPasswordModal user={tempPasswordFor} onClose={() => setTempPasswordFor(null)} />}
     </div>
   );
 }
