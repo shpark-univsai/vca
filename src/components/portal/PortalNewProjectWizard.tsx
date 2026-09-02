@@ -107,12 +107,17 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, defaultType
                   borderRadius: "14px", padding: "10px 15px 14px", minHeight: "110px",
                 }}
               >
+                {/* Inside the card's padding box, on the same top line as the icon — not hung off
+                    the corner. Hanging outside meant the badge sat on whatever was behind the card
+                    (the neighbouring template, the panel edge) and read as a floating element
+                    rather than as this card's own selected state; it also clipped against the
+                    modal edge for the right-hand template. No shadow either: there is no edge to
+                    lift off of in here. */}
                 {selected && (
                   <span style={{
-                    position: "absolute", top: "-8px", right: "-8px",
+                    position: "absolute", top: "10px", right: "15px",
                     width: "24px", height: "24px", borderRadius: "50%",
                     backgroundColor: "var(--primary-400)", display: "flex", alignItems: "center", justifyContent: "center",
-                    boxShadow: "0 2px 4px rgba(90,61,251,0.3)",
                   }}>
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                       <path d="M2.5 6.5L4.5 8.5L9.5 3.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
