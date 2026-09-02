@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
@@ -95,6 +95,9 @@ const T = {
     setupIssuedTitle: "Setup code issued",
     setupIssuedDesc: (name: string) => `${name} sets their own password with it at /register`,
     setupBadge: "Setup code",
+    soleAdminTitle: "Only one administrator can sign in",
+    soleAdminBody: "Granting permissions is an administrator-only power, and there is no supplier account behind this installation. If this one account is locked out, nobody can grant anything and there is no way back in. Make a second person an administrator.",
+    lastAdminReason: "The only administrator who can sign in. Make someone else an administrator first — with nobody in this role, no one can grant permissions and there is no way back in.",
     tempExpires: (hours: number) => `Expires in ${hours} hours`,
     tempDone: "Done",
 
@@ -176,6 +179,9 @@ const T = {
     setupIssuedTitle: "설치 코드 발급됨",
     setupIssuedDesc: (name: string) => `${name} 이 /register 에서 직접 비밀번호를 설정합니다`,
     setupBadge: "설치 코드",
+    soleAdminTitle: "로그인 가능한 관리자가 한 명입니다",
+    soleAdminBody: "권한 부여는 관리자만 할 수 있고, 이 설치에는 공급사 계정이 없습니다. 이 한 계정이 잠기면 아무도 권한을 부여할 수 없고 되돌릴 방법도 없습니다. 두 번째 관리자를 지정하세요.",
+    lastAdminReason: "로그인할 수 있는 유일한 관리자입니다. 다른 사람을 먼저 관리자로 지정하세요 — 이 역할이 비면 아무도 권한을 부여할 수 없고 되돌릴 방법이 없습니다.",
     reactivateUser: "사용자 재활성화",
     suspendUser: "사용자 정지",
     removeUser: "사용자 제거",
@@ -744,6 +750,32 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
 
   return (
     <div>
+      {/* Stays up until a second administrator exists. Not dismissible: it is not a tip, it is a
+          single point of failure with no recovery path — the supplier has no account here, so
+          losing the one administrator ends the customer's ability to grant anything. Counted across
+          all users, not the filtered view. */}
+      {portalUsers.filter(u => u.permission === "admin" && u.status === "active").length <= 1 && (
+        <div style={{
+          display: "flex", gap: "12px", alignItems: "flex-start",
+          padding: "14px 16px", borderRadius: "12px", marginBottom: "16px",
+          backgroundColor: "var(--warning-100)", border: "1px solid var(--warning-200)",
+        }}>
+          <span style={{ display: "flex", flexShrink: 0, marginTop: "1px", color: "var(--warning-500)" }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 1.8 1.5 13.2h13L8 1.8Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+              <path d="M8 6v3.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              <circle cx="8" cy="11.2" r="0.75" fill="currentColor"/>
+            </svg>
+          </span>
+          <div>
+            <p style={{ fontSize: "13px", fontWeight: 800, color: "var(--gray-900)" }}>{t.soleAdminTitle}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.7, marginTop: "3px", maxWidth: "72ch" }}>
+              {t.soleAdminBody}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "20px" }}>
         <div>
           <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
@@ -804,6 +836,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         )}
         {scopedUsers.map((u, i) => {
           const isLast = i === scopedUsers.length - 1;
+          // Computed against the whole user list, not the filtered view: a project filter can hide
+          // the other administrators, and "last one visible" is not "last one there is".
+          const lastAdmin = isLastActiveAdmin(portalUsers, u.id);
           return (
           <div key={u.id} style={{
             display: "grid", gridTemplateColumns: "1.4fr 1fr 1.3fr 0.9fr 0.5fr 0.9fr 0.8fr 36px", padding: "12px 16px", alignItems: "center",
@@ -891,8 +926,17 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                       showToast({ variant: "warning", title: t.userSuspendedTitle, desc: t.userSuspendedDesc(u.name) });
                     },
                     danger: true,
+                    // Refused, not warned about: this deployment is on-premise with the top
+                    // administrator on the customer's side, so there is no supplier account to
+                    // undo it with. The store refuses these too — see isLastActiveAdmin.
+                    disabled: lastAdmin,
+                    reason: lastAdmin ? t.lastAdminReason : undefined,
                   },
-              { label: t.removeUser, onClick: () => removePortalUser(u.id), danger: true },
+              {
+                label: t.removeUser, onClick: () => removePortalUser(u.id), danger: true,
+                disabled: lastAdmin,
+                reason: lastAdmin ? t.lastAdminReason : undefined,
+              },
             ]} />
           </div>
           );

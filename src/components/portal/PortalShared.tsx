@@ -41,6 +41,13 @@ interface RowAction {
   label: string;
   onClick: () => void;
   danger?: boolean;
+  /**
+   * Shown greyed out and unclickable, with `reason` explaining why. Kept in the menu rather than
+   * removed: an action that quietly disappears looks like a missing feature, and the administrator
+   * goes looking for it elsewhere. Present-but-refused says the system decided.
+   */
+  disabled?: boolean;
+  reason?: string;
 }
 
 interface SelectOption {
@@ -162,18 +169,29 @@ export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
           minWidth: "140px", padding: "4px",
         }}>
           {actions.map(a => (
-            <button
-              key={a.label}
-              className="portal-menu-item"
-              onClick={() => { a.onClick(); setOpen(false); }}
-              style={{
-                display: "block", width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: "6px",
-                border: "none", background: "none", cursor: "pointer",
-                fontSize: "12px", fontWeight: 600, color: a.danger ? "var(--danger-500)" : "var(--gray-600)",
-              }}
-            >
-              {a.label}
-            </button>
+            <div key={a.label}>
+              <button
+                className={a.disabled ? undefined : "portal-menu-item"}
+                disabled={a.disabled}
+                onClick={() => { if (a.disabled) return; a.onClick(); setOpen(false); }}
+                style={{
+                  display: "block", width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: "6px",
+                  border: "none", background: "none",
+                  cursor: a.disabled ? "default" : "pointer",
+                  fontSize: "12px", fontWeight: 600,
+                  color: a.disabled ? "var(--gray-400)" : a.danger ? "var(--danger-500)" : "var(--gray-600)",
+                }}
+              >
+                {a.label}
+              </button>
+              {/* The reason sits under the label instead of in a title attribute: a tooltip on a
+                  disabled control is unreliable across browsers, and this one has to be read. */}
+              {a.disabled && a.reason && (
+                <p style={{ margin: "0 0 4px", padding: "0 10px", fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5 }}>
+                  {a.reason}
+                </p>
+              )}
+            </div>
           ))}
         </div>
       )}

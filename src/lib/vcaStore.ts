@@ -896,6 +896,8 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   },
   updatePortalUserPermission: (userId, permission) =>
     set(state => {
+      // Demoting the last administrator locks the customer out just as surely as deleting them.
+      if (permission !== "admin" && isLastActiveAdmin(state.portalUsers, userId)) return state;
       const user = state.portalUsers.find(u => u.id === userId);
       const auditEntry: AuditEvent = { id: `audit-${++auditSeq}`, projectId: user?.projectIds[0], message: `${user?.name ?? userId}'s permission changed to ${permission}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() };
       return {
@@ -906,7 +908,12 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   updatePortalUserProjects: (userId, projectIds) =>
     set(state => ({ portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, projectIds } : u)) })),
   updatePortalUserStatus: (userId, status) =>
-    set(state => ({ portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, status } : u)) })),
+    set(state => {
+      // Safety net behind the UI, which already refuses to offer these. Both layers are wanted: the
+      // UI so the administrator is told why, this so a stray call cannot lock the customer out.
+      if (status !== "active" && isLastActiveAdmin(state.portalUsers, userId)) return state;
+      return { portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, status } : u)) };
+    }),
   issueTemporaryPassword: (userId) => {
     const user = get().portalUsers.find(u => u.id === userId);
     if (!user) return null;
@@ -976,6 +983,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     })),
   removePortalUser: (userId) =>
     set(state => {
+      if (isLastActiveAdmin(state.portalUsers, userId)) return state;
       const user = state.portalUsers.find(u => u.id === userId);
       const auditEntry: AuditEvent = { id: `audit-${++auditSeq}`, projectId: user?.projectIds[0], message: `User ${user?.name ?? userId} removed`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() };
       return {
@@ -1153,6 +1161,24 @@ export function todaysDetectionHits(events: VcaEvent[]): DetectionHit[] {
  * project before an admin has filled the mail section in — and callers should say "not configured"
  * rather than pretend a domain.
  */
+/**
+ * Is this the only administrator who can still sign in?
+ *
+ * It matters because granting permissions is an administrator-only power, and this deployment is
+ * on-premise with the top administrator on the customer's side — so if the last one is suspended,
+ * deleted or demoted, nobody inside the customer can grant anything and the supplier has no
+ * account to fix it with. There is no recovery path, which is why the actions that would cause it
+ * are refused rather than warned about.
+ *
+ * Counts only accounts that can actually sign in: an invited or suspended administrator is not
+ * standing by to help.
+ */
+export function isLastActiveAdmin(users: PortalUser[], userId: string): boolean {
+  const target = users.find(u => u.id === userId);
+  if (!target || target.permission !== "admin" || target.status !== "active") return false;
+  return users.filter(u => u.permission === "admin" && u.status === "active").length <= 1;
+}
+
 export function resolveMailConfig(
   projectId: string,
   projects: Project[],
