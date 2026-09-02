@@ -14,8 +14,22 @@
 export interface AuthConfig {
   /** Admin invites by mail; the recipient sets a password from the link. Needs outbound mail. */
   inviteByEmail: boolean;
-  /** A visitor bounced from a project link asks for access; an admin approves. Needs outbound mail
-   *  to notify, and the approval lands in Portal. */
+  /**
+   * A visitor bounced from a project link asks for access; an admin approves in Portal.
+   *
+   * Off, and not because it is unbuilt — /request-access and Portal's approval queue both exist.
+   * It is off because on-premise-only deployment (decided 2026-09-02) leaves it without a person
+   * to serve: an outsider cannot reach a closed network to follow the link in the first place, and
+   * anyone who can reach it is already staff, who arrive through the roster's registration codes or
+   * an invitation. The screen also asks a visitor for their name and email, which is a question you
+   * only ask someone the installation has never heard of.
+   *
+   * Kept as an explicit false rather than deleted, the same way selfSignup is: the absence should
+   * read as a decision. The case that WOULD survive here is a different feature — an operator who
+   * already has an account asking for one more project — and that one needs no mail at all, because
+   * the request lands in Portal rather than in an inbox. If that is ever wanted, reshape
+   * /request-access around a signed-in user instead of switching this flag back on.
+   */
   accessRequest: boolean;
   /** A visitor creates their own account against this domain, no invitation. Not built, and with
    *  on-premise-only deployment there is no case for it — an installation belongs to one company
@@ -61,7 +75,7 @@ export interface AuthConfig {
 export function getAuthConfig(): AuthConfig {
   return {
     inviteByEmail: true,
-    accessRequest: true,
+    accessRequest: false,
     selfSignup: false,
     registrationCode: true,
     passwordRecovery: "emailCode",

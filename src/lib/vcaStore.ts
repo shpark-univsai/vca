@@ -441,11 +441,11 @@ const PORTAL_USERS: PortalUser[] = [
   { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", teamId: "team-univs", projectIds: ["proj-sg"], permission: "operator", status: "suspended", mfaEnabled: false, lastLoginAt: "2026-06-02 08:30" },
 ];
 
-const ACCESS_REQUESTS: AccessRequest[] = [
-  { id: "req-1", name: "Daniel Foo", email: "daniel.foo@univs.ai", projectId: "proj-sg", reason: "Covering the night shift this week and need to check camera status.", requestedAt: auditAt(45) },
-  { id: "req-2", name: "Siti Aminah", email: "siti.aminah@univs.ai", projectId: "proj-sg", reason: "New hire on the ops team, was told to request access here.", requestedAt: auditAt(3 * 60) },
-  { id: "req-3", name: "Marcus Lee", email: "marcus.lee2@univs.ai", projectId: "proj-riverside", requestedAt: auditAt(26 * 60) },
-];
+// Empty on purpose. Three sample requests used to sit here, and no path in the app could produce
+// one: /request-access is unreachable (nothing routes to it — see its own note), and the flow is
+// switched off for on-premise deployment anyway (authConfig's accessRequest). Seeded rows that
+// cannot occur teach whoever reads the screen that the queue means something it does not.
+const ACCESS_REQUESTS: AccessRequest[] = [];
 
 // Mock stand-in for an Excel-imported staff roster (see ProjectRosterTab.tsx — the real import
 // isn't built yet). Mix of all four code statuses on purpose, across both projects, so the tab's

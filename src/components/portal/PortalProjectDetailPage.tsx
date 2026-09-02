@@ -6,6 +6,7 @@ import { formatElapsed } from "@/lib/time";
 import { BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage, type PortalLanguage } from "@/lib/i18n";
+import { getAuthConfig } from "@/lib/authConfig";
 import type { DetailTab } from "./ProjectSidebar";
 import ProjectCamerasTab from "./ProjectCamerasTab";
 import ProjectVipTab from "./ProjectVipTab";
@@ -42,6 +43,8 @@ const T = {
     accountsSuffix: "accounts",
     pendingAccessRequest: (n: number) => `${n} pending access request${n === 1 ? "" : "s"}`,
     noPendingAccessRequests: "No pending access requests.",
+    pendingInvites: (n: number) => `${n} invitation${n === 1 ? "" : "s"} not yet accepted`,
+    allAccountsActive: "All accounts active",
     adminOperatorLabel: (admin: number, operator: number) => `Admin: ${admin} | Operator: ${operator}`,
     cameraStatusTitle: "Camera Status",
     // This card is the page's answer to "is this deployment working". Deliberately not joined by a
@@ -100,6 +103,8 @@ const T = {
     accountsSuffix: "개 계정",
     pendingAccessRequest: (n: number) => `대기 중인 접근 요청 ${n}건`,
     noPendingAccessRequests: "대기 중인 접근 요청이 없습니다.",
+    pendingInvites: (n: number) => `수락하지 않은 초대 ${n}건`,
+    allAccountsActive: "모든 계정 활성",
     adminOperatorLabel: (admin: number, operator: number) => `관리자: ${admin} | 운영자: ${operator}`,
     cameraStatusTitle: "카메라 상태",
     cameraStatusSubtitle: "이 프로젝트에 연결된 카메라의 스트리밍 상태",
@@ -283,6 +288,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const licenseExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry >= 0 && daysUntilExpiry <= 30;
   const overChannelLimit = !!channelLimit && projectCameras.length > channelLimit;
   const projectAccessRequests = accessRequests.filter(r => r.projectId === projectId);
+  // Whether this Overview says anything about access requests at all. Off for on-premise (see
+  // authConfig's accessRequest), where no request can ever be made — but still on while real
+  // requests exist, so flipping the flag off later cannot bury someone who already asked.
+  const showAccessRequests = getAuthConfig().accessRequest || projectAccessRequests.length > 0;
+  const pendingInviteCount = projectUsers.filter(u => u.status === "invited").length;
 
   const recentActivity = auditLog
     .filter(a => a.projectId === projectId)
@@ -339,15 +349,17 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 <UserPlusIcon /> {t.registerVip}
               </button>
-              <button onClick={() => onTabChange("users")}
-                style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                <ShieldIcon /> {t.approveAccessRequests}
-                {projectAccessRequests.length > 0 && (
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)", backgroundColor: "var(--warning-200)", padding: "2px 7px", borderRadius: "999px" }}>
-                    {projectAccessRequests.length}
-                  </span>
-                )}
-              </button>
+              {showAccessRequests && (
+                <button onClick={() => onTabChange("users")}
+                  style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                  <ShieldIcon /> {t.approveAccessRequests}
+                  {projectAccessRequests.length > 0 && (
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)", backgroundColor: "var(--warning-200)", padding: "2px 7px", borderRadius: "999px" }}>
+                      {projectAccessRequests.length}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
           </div>
 
@@ -425,14 +437,27 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectUsers.length}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.accountsSuffix}</p>
               </div>
+              {/* This card stays — it counts accounts, which has nothing to do with access requests.
+                  Only its middle line changes: with requests switched off, "No pending access
+                  requests" would be a permanent non-answer, so the slot reports the one account
+                  state an administrator here can actually act on instead. The 18px is load-bearing
+                  (it keeps all four cards' footer dividers on the same line), so the slot is
+                  refilled, never emptied. */}
               <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
                 {projectAccessRequests.length > 0 ? (
                   <button onClick={() => onTabChange("users")} style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%", overflow: "hidden", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", color: "var(--warning-500)" }}>
                     <ShieldIcon />
                     <span style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.pendingAccessRequest(projectAccessRequests.length)}</span>
                   </button>
-                ) : (
+                ) : showAccessRequests ? (
                   <p style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.noPendingAccessRequests}</p>
+                ) : pendingInviteCount > 0 ? (
+                  <button onClick={() => onTabChange("users")} style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%", overflow: "hidden", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", color: "var(--warning-500)" }}>
+                    <ShieldIcon />
+                    <span style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.pendingInvites(pendingInviteCount)}</span>
+                  </button>
+                ) : (
+                  <p style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.allAccountsActive}</p>
                 )}
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px" }}>
@@ -541,8 +566,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
             </div>
 
-            {/* Same width as the Portal Accounts & Permissions metric card above it. */}
+            {/* Same width as the Portal Accounts & Permissions metric card above it. The Access
+                Requests card inside is hidden along with the flow it reports on — with accessRequest
+                off nothing can ever land there, and a permanently empty "Access Requests · none
+                pending" describes a door this deployment does not have. Only that card: Recent
+                Activity shares this column and is unrelated. Still shown while real requests exist,
+                so turning the flag off later cannot strand someone who already asked. */}
             <div style={{ gridColumn: "4 / span 1", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
+              {showAccessRequests && (
               <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -583,6 +614,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   </div>
                 )}
               </div>
+              )}
 
               <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>

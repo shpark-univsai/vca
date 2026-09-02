@@ -743,6 +743,11 @@ function RecoveryModeNotice({ supportContact }: { supportContact: string | null 
   );
 }
 
+/**
+ * The master's inbox for /request-access. Renders nothing unless the deployment actually offers
+ * that way in — with it off (the on-premise default, see authConfig's accessRequest) no request can
+ * ever arrive, and an empty queue titled "Access Requests" implies a door that is not there.
+ */
 function AccessRequestsPanel({ projectId }: { projectId: string }) {
   const accessRequests = useVcaStore(s => s.accessRequests);
   const approveAccessRequests = useVcaStore(s => s.approveAccessRequests);
@@ -758,6 +763,9 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
   useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
 
   const requests = accessRequests.filter(r => r.projectId === projectId);
+  // Requests already in flight still show if the flag is turned off later — abandoning people who
+  // asked while the door was open would be worse than the inconsistency.
+  if (!getAuthConfig().accessRequest && requests.length === 0) return null;
   if (requests.length === 0) return null;
 
   const toggle = (id: string) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
