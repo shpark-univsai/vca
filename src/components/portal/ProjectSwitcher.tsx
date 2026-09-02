@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useVcaStore, type Project } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER } from "./PortalShared";
+import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH } from "./PortalShared";
 
 interface ProjectSwitcherProps {
   /** The team whose projects this picker lists. Projects belong to exactly one team, and the
@@ -149,7 +149,10 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
           padding: "6px 8px", borderRadius: "999px", color: "var(--gray-900)",
         }}
       >
-        <span style={{ fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <span
+          title={current?.name}
+          style={{ fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", maxWidth: BREADCRUMB_PROJECT_MAX_WIDTH, overflow: "hidden", textOverflow: "ellipsis" }}
+        >
           {current?.name ?? t.selectProject}
         </span>
         <span style={{ color: "var(--gray-600)", display: "flex" }}><ChevronDown size={14} /></span>

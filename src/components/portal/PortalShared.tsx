@@ -18,14 +18,23 @@ export const CONTROL_HEIGHT = "36px";
  */
 export const TABLE_COLUMN_GAP = "12px";
 /**
- * How wide the team name in the breadcrumb may get before it is ellipsised. It was 260px, which cut
- * a perfectly ordinary customer name ("City of Singapore — Smart Infrastructure Office") in half
- * while about a thousand pixels of header sat empty to the right of it. Truncating is for the name
- * that genuinely does not fit, not for the one we declined to give room to. Both places that render
- * the team crumb — the switcher trigger and the wizard's static label — read this, so they clip at
- * the same point instead of at two.
+ * How wide each breadcrumb name may get before it is ellipsised. They were 260px and 220px, which
+ * cut perfectly ordinary names ("City of Singapore — Smart Infrastructure Office", "Marina Bay &
+ * CBD Surveillance Network") in half while about a thousand pixels of header sat empty to the right
+ * of them. Truncating is for the name that genuinely does not fit, not for the one we declined to
+ * give room to.
+ *
+ * A viewport term as well as a pixel cap, because the pixel cap alone is only generous on a wide
+ * window: on a narrow one two long names plus the language switcher and the exit button add up to
+ * more than the bar, and a flex row with nothing to give pushes the right-hand buttons off the
+ * edge. min() lets the names take the room when it exists and hands it back when it does not.
+ *
+ * Team gets more than project because the team name is the one that is usually a full legal
+ * organisation name. Both crumbs' render sites read these, so a name clips at one width rather than
+ * at whichever number that particular component happened to be written with.
  */
-export const BREADCRUMB_TEAM_MAX_WIDTH = "360px";
+export const BREADCRUMB_TEAM_MAX_WIDTH = "min(360px, 26vw)";
+export const BREADCRUMB_PROJECT_MAX_WIDTH = "min(320px, 22vw)";
 export const PANEL_SHADOW = "none";
 
 export const TYPE_META: Record<ProjectType, { label: string; bg: string; color: string }> = {
