@@ -44,9 +44,10 @@ const T = {
     resendInvite: "Resend invite",
     sendPasswordReset: "Send password reset",
     generateTempPassword: "Generate temporary password",
-    reactivateUser: "Reactivate user",
-    suspendUser: "Suspend user",
-    removeUser: "Remove user",
+    // "user" is redundant in a menu that opens from a user's own row — the row already says who.
+    reactivateUser: "Reactivate",
+    suspendUser: "Suspend",
+    removeUser: "Remove",
 
     // Row action toasts
     inviteResentTitle: "Invite resent",
@@ -80,7 +81,13 @@ const T = {
     tempCopied: "Copied",
     tempHandoverTitle: "HANDING IT OVER",
     tempHandover: "Read it out on the internal line, or hand it over in person or on internal messenger.",
-    issueSetupCode: "Issue setup code",
+    deliveryQuestion: "How will you get it to them?",
+    deliveryPasswordTitle: "I can tell them the password",
+    deliveryPasswordHow: "Internal line, in person, or internal messenger",
+    deliveryPasswordResult: "A temporary password is generated and shown to you once.",
+    deliveryCodeTitle: "I can only hand over a code",
+    deliveryCodeHow: "On paper, or printed",
+    deliveryCodeResult: "They set their own password with it — you never see it.",
     setupModalTitle: "Issue setup code",
     setupConfirmIntro: "Use this when a password cannot be handed over safely — the first administrator at an on-premise handover, or anyone you should not read a password out to.",
     setupConsequenceReplace: "Any setup code issued to them earlier stops working.",
@@ -167,7 +174,13 @@ const T = {
     resendInvite: "초대 재전송",
     sendPasswordReset: "비밀번호 재설정 코드 전송",
     generateTempPassword: "임시 비밀번호 생성",
-    issueSetupCode: "설치 코드 발급",
+    deliveryQuestion: "어떻게 전달하시겠어요?",
+    deliveryPasswordTitle: "비밀번호를 직접 알려줄 수 있어요",
+    deliveryPasswordHow: "내선 전화 · 대면 · 사내 메신저",
+    deliveryPasswordResult: "임시 비밀번호를 만들어 한 번 보여드립니다.",
+    deliveryCodeTitle: "코드만 전달할 수 있어요",
+    deliveryCodeHow: "종이 · 인쇄물",
+    deliveryCodeResult: "본인이 비밀번호를 직접 정합니다 — 관리자는 그 비밀번호를 모릅니다.",
     setupModalTitle: "설치 코드 발급",
     setupConfirmIntro: "비밀번호를 안전하게 전달할 수 없을 때 씁니다 — 온프레미스 인계의 첫 관리자, 또는 비밀번호를 불러줄 수 없는 상대.",
     setupConsequenceReplace: "이전에 발급한 설치 코드는 즉시 무효가 됩니다.",
@@ -184,9 +197,9 @@ const T = {
     soleAdminTitle: "로그인 가능한 관리자가 한 명입니다",
     soleAdminBody: "권한 부여는 관리자만 할 수 있고, 이 설치에는 공급사 계정이 없습니다. 이 한 계정이 잠기면 아무도 권한을 부여할 수 없고 되돌릴 방법도 없습니다. 두 번째 관리자를 지정하세요.",
     lastAdminReason: "로그인할 수 있는 유일한 관리자입니다. 다른 사람을 먼저 관리자로 지정하세요.",
-    reactivateUser: "사용자 재활성화",
-    suspendUser: "사용자 정지",
-    removeUser: "사용자 제거",
+    reactivateUser: "재활성화",
+    suspendUser: "정지",
+    removeUser: "제거",
 
     // Row action toasts
     inviteResentTitle: "초대 재전송됨",
@@ -403,7 +416,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
  * is no route back to step one, because a second look at the same password does not exist — a
  * lost password is reissued, not recovered.
  */
-function TempPasswordModal({ user, kind, onClose }: { user: PortalUser; kind: CredentialKind; onClose: () => void }) {
+function TempPasswordModal({ user, onClose }: { user: PortalUser; onClose: () => void }) {
   useEscapeKey(onClose);
   const issueTemporaryPassword = useVcaStore(s => s.issueTemporaryPassword);
   const issueSetupCode = useVcaStore(s => s.issueSetupCode);
@@ -412,6 +425,12 @@ function TempPasswordModal({ user, kind, onClose }: { user: PortalUser; kind: Cr
   const t = T[lang];
   const [password, setPassword] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  /* Chosen here rather than in the row menu. Both paths do the same job — hand this person a way
+     in — so two menu entries made the administrator learn the difference between a temporary
+     password and a setup code before they could pick one. Asked as a question about their own
+     situation instead: can you tell this person a password, or can you only pass them a slip of
+     paper? The mechanism follows from the answer. */
+  const [kind, setKind] = useState<CredentialKind>("password");
 
   /* The two credentials share this box because the careful parts are identical — a confirm step
      before an irreversible action, a result shown once, a clipboard write that only claims success
@@ -494,6 +513,44 @@ function TempPasswordModal({ user, kind, onClose }: { user: PortalUser; kind: Cr
               {c.intro && (
                 <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>{c.intro}</p>
               )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-700)" }}>{t.deliveryQuestion}</p>
+                {([
+                  { value: "password" as CredentialKind, title: t.deliveryPasswordTitle, how: t.deliveryPasswordHow, result: t.deliveryPasswordResult },
+                  { value: "code" as CredentialKind, title: t.deliveryCodeTitle, how: t.deliveryCodeHow, result: t.deliveryCodeResult },
+                ]).map(opt => {
+                  const on = kind === opt.value;
+                  return (
+                    <label
+                      key={opt.value}
+                      style={{
+                        display: "flex", gap: "10px", alignItems: "flex-start", cursor: "pointer",
+                        padding: "12px 14px", borderRadius: "10px",
+                        border: on ? "1px solid var(--primary-300)" : "1px solid var(--gray-300)",
+                        backgroundColor: on ? "var(--primary-50)" : "white",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="credential-kind"
+                        checked={on}
+                        onChange={() => setKind(opt.value)}
+                        style={{ width: "16px", height: "16px", accentColor: "var(--primary-400)", cursor: "pointer", marginTop: "1px", flexShrink: 0 }}
+                      />
+                      <div>
+                        <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{opt.title}</p>
+                        <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{opt.how}</p>
+                        {/* What happens if you pick this, on the card itself. Deciding then finding
+                            out is how an administrator ends up reading a password down a phone line
+                            they meant to avoid. */}
+                        <p style={{ fontSize: "12px", color: "var(--gray-700)", marginTop: "5px", lineHeight: 1.6 }}>{opt.result}</p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+
               <ul style={{ display: "flex", flexDirection: "column", gap: "6px", margin: 0, paddingLeft: "18px" }}>
                 {c.consequences.map(line => bullet(line))}
               </ul>
@@ -743,7 +800,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const [showInvite, setShowInvite] = useState(false);
   // The user a temporary password is being issued for, or null. Held as the user rather than an id
   // so the modal keeps rendering the right name even if the row scrolls out from under it.
-  const [credentialFor, setCredentialFor] = useState<{ user: PortalUser; kind: CredentialKind } | null>(null);
+  const [credentialFor, setCredentialFor] = useState<PortalUser | null>(null);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
 
@@ -919,16 +976,12 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 // the fallback for someone who has lost the mailbox the code would go to — a leaver's
                 // account reassigned, a shared operations address nobody can open. Where it does not,
                 // it is the only way back in and the phone number on the login screen leads here.
+                // One entry, not two. A temporary password and a setup code are the same job with
+                // different delivery, so the choice belongs inside the box, phrased as a question
+                // about the administrator's situation — not as two menu items whose difference they
+                // have to already understand.
                 label: t.generateTempPassword,
-                onClick: () => setCredentialFor({ user: u, kind: "password" }),
-              },
-              {
-                // The fallback for when a password cannot be passed on: nobody to read it out to,
-                // or a handover where the supplier should not end up holding a working credential.
-                // Offered on every row rather than only the first administrator, because "I cannot
-                // safely read this person a password" happens well beyond handover day.
-                label: t.issueSetupCode,
-                onClick: () => setCredentialFor({ user: u, kind: "code" }),
+                onClick: () => setCredentialFor(u),
               },
               u.status === "suspended"
                 ? {
@@ -963,9 +1016,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       </div>
 
       {showInvite && <InviteUserModal defaultProjectId={projectId} onClose={() => setShowInvite(false)} />}
-      {credentialFor && (
-        <TempPasswordModal user={credentialFor.user} kind={credentialFor.kind} onClose={() => setCredentialFor(null)} />
-      )}
+      {credentialFor && <TempPasswordModal user={credentialFor} onClose={() => setCredentialFor(null)} />}
     </div>
   );
 }
