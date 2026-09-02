@@ -5,7 +5,7 @@ import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type Se
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort } from "./PortalShared";
+import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch } from "./PortalShared";
 
 const SERVER_TYPES: ServerType[] = ["AI Camera", "Normal Camera", "Face Recognition", "Image Store", "Database"];
 
@@ -204,9 +204,13 @@ const NETWORK_T = {
     isolated: "Isolated", connected: "Connected",
     autoDetected: "Auto-detected via outbound ping:",
     noResponse: "No response (isolated)", reachable: "Reachable",
-    overrideLabel: "Override auto-detection",
-    overrideDesc: "A firewall or security policy can make the ping check unreliable — turn this on to set the status manually.",
-    optConnected: "Internet-connected", optIsolated: "Internet-isolated",
+    switchLabel: "Internet-isolated",
+    switchDesc: "Off means this site can reach the internet, so invites go out by external email. On routes them through the project's internal mailbox instead.",
+    followingDetection: "Following auto-detection.",
+    overriddenIsolated: "Set manually to isolated, overriding auto-detection.",
+    overriddenConnected: "Set manually to connected, overriding auto-detection.",
+    revertToDetection: "Use auto-detection",
+    overrideWhy: "A firewall or security policy can make the ping check unreliable, so the switch always wins over what was detected.",
   },
   ko: {
     heading: "네트워크 연결 상태",
@@ -214,9 +218,13 @@ const NETWORK_T = {
     isolated: "격리됨", connected: "연결됨",
     autoDetected: "외부 핑(ping)을 통한 자동 감지:",
     noResponse: "응답 없음(격리됨)", reachable: "연결 가능",
-    overrideLabel: "자동 감지 재정의",
-    overrideDesc: "방화벽이나 보안 정책으로 인해 핑 확인이 부정확할 수 있습니다. 상태를 직접 설정하려면 이 옵션을 켜세요.",
-    optConnected: "인터넷 연결", optIsolated: "인터넷 격리",
+    switchLabel: "인터넷 격리",
+    switchDesc: "꺼두면 이 사이트가 인터넷에 도달할 수 있다는 뜻이고, 초대장이 외부 이메일로 나갑니다. 켜면 프로젝트의 내부 메일함으로 발송됩니다.",
+    followingDetection: "자동 감지 결과를 따르는 중입니다.",
+    overriddenIsolated: "자동 감지를 무시하고 격리로 직접 설정했습니다.",
+    overriddenConnected: "자동 감지를 무시하고 연결로 직접 설정했습니다.",
+    revertToDetection: "자동 감지 사용",
+    overrideWhy: "방화벽이나 보안 정책 때문에 핑 확인이 부정확할 수 있어, 이 스위치가 감지 결과보다 항상 우선합니다.",
   },
 } as const;
 
@@ -277,38 +285,41 @@ function NetworkStatus({ projectId }: { projectId: string }) {
         </p>
       </div>
 
-      <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: BORDER }}>
-        <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
-          <input type="checkbox" checked={hasOverride} onChange={e => setOverride(e.target.checked ? detected : null)}
-            style={{ marginTop: "3px", accentColor: "var(--gray-900)", cursor: "pointer" }} />
-          <span>
-            <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.overrideLabel}</span>
-            <span style={{ display: "block", fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
-              {t.overrideDesc}
-            </span>
-          </span>
-        </label>
+      {/* One switch for the state itself, instead of a checkbox that revealed a second control.
+          "Override auto-detection" asked the reader to opt into the idea of overriding before they
+          could say the thing they came to say, and named the mechanism rather than the setting —
+          nobody arrives here wanting to override something, they arrive knowing the site is
+          isolated. Flipping the switch IS the override now.
 
-        {hasOverride && (
-          // One shared track with the active side getting the white pill, same look as the
-          // Table/Grid and EN/한국어 toggles elsewhere — two separately-bordered buttons read as
-          // two unrelated actions rather than one on/off choice, which was the actual complaint.
-          <div style={{ marginTop: "12px", display: "inline-flex", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px" }}>
-            {[{ v: false, label: t.optConnected }, { v: true, label: t.optIsolated }].map(opt => {
-              const active = overrideValue === opt.v;
-              return (
-                <button key={String(opt.v)} onClick={() => setOverride(opt.v)}
-                  style={{
-                    padding: "7px 14px", borderRadius: "8px", border: "none", cursor: "pointer",
-                    backgroundColor: active ? "white" : "transparent", boxShadow: active ? PANEL_SHADOW : "none",
-                    fontSize: "12px", fontWeight: 700, color: active ? "var(--gray-900)" : "var(--gray-400)",
-                  }}>
-                  {opt.label}
-                </button>
-              );
-            })}
+          Three states are still reachable, because the third one is not a position of the switch:
+          the switch shows the effective value, and a line underneath says whether that value came
+          from detection or from a person, with the way back to detection offered only when there
+          is something to go back from. */}
+      <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: BORDER }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.switchLabel}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px", lineHeight: 1.6 }}>{t.switchDesc}</p>
           </div>
-        )}
+          <div style={{ marginTop: "2px" }}>
+            <Switch checked={effective} onChange={setOverride} label={t.switchLabel} />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginTop: "12px" }}>
+          <p style={{ fontSize: "12px", color: hasOverride ? "var(--gray-700)" : "var(--gray-400)" }}>
+            {!hasOverride
+              ? t.followingDetection
+              : overrideValue ? t.overriddenIsolated : t.overriddenConnected}
+          </p>
+          {hasOverride && (
+            <button onClick={() => setOverride(null)}
+              style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
+              {t.revertToDetection}
+            </button>
+          )}
+        </div>
+        <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px", lineHeight: 1.6 }}>{t.overrideWhy}</p>
       </div>
     </div>
   );

@@ -361,6 +361,44 @@ export function ActiveFilterCount({ count, onClear, label }: { count: number; on
   );
 }
 
+/**
+ * An on/off switch. Portal had none — every boolean was a checkbox, which is the right control for
+ * "tick this to agree" but the wrong one for a setting that is in one of two named states right
+ * now. A switch shows its current state at a glance; a checkbox makes you read its label to work
+ * out what unticked means.
+ */
+export function Switch({ checked, onChange, label, disabled }: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  /** Announced to screen readers. The visible label lives next to the switch, in the caller. */
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      style={{
+        position: "relative", flexShrink: 0, width: "38px", height: "22px", borderRadius: "999px",
+        border: "none", padding: 0, cursor: disabled ? "not-allowed" : "pointer",
+        backgroundColor: checked ? "var(--gray-900)" : "var(--gray-200)",
+        opacity: disabled ? 0.5 : 1,
+        transition: "background-color 0.15s",
+      }}
+    >
+      <span style={{
+        position: "absolute", top: "3px", left: checked ? "19px" : "3px",
+        width: "16px", height: "16px", borderRadius: "999px", backgroundColor: "white",
+        boxShadow: "0 1px 3px rgba(14,22,42,0.3)", transition: "left 0.15s",
+      }} />
+    </button>
+  );
+}
+
 // ── Sortable table headings ──────────────────────────────────────────────────
 
 export type SortDirection = "asc" | "desc";
