@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
-import { BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 
 // Cumulative — each tier includes everything the tier before it unlocks. "Attendance / Reports"
@@ -101,7 +101,7 @@ function CheckIcon() {
 
 function usageCard(label: string, used: number, limit: number | undefined, t: (typeof T)[keyof typeof T]) {
   return (
-    <div key={label} style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
+    <div key={label} style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</p>
         <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.channelsCount(used)}</p>
@@ -220,7 +220,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
         <div>
           <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>{t.channelSubscriptions}</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div style={{ backgroundColor: "white", border: overLimit ? "1px solid var(--danger-400)" : BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
+            <div style={{ backgroundColor: "white", border: overLimit ? "1px solid var(--danger-400)" : CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.channelSubscriptionCard}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)", whiteSpace: "nowrap" }}>{t.perChannelPerYear(PRICE_PER_CHANNEL_PER_YEAR)}</p>

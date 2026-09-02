@@ -5,7 +5,7 @@ import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, proj
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, TABLE_HEADER_COLOR } from "./PortalShared";
+import { BORDER, CARD_BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, TABLE_HEADER_COLOR } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -557,7 +557,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
       </div>
 
       {/* Metrics */}
-      <div style={{ backgroundColor: "white", border: overLimit ? "1px solid var(--danger-400)" : BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, marginBottom: "16px", overflow: "hidden" }}>
+      <div style={{ backgroundColor: "white", border: overLimit ? "1px solid var(--danger-400)" : CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, marginBottom: "16px", overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
           <div style={{ padding: "16px", borderRight: BORDER }}>
             <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricChannelUsage.toUpperCase()}</p>

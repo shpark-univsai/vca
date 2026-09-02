@@ -447,7 +447,7 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
         <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
           <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.8fr 1fr 1.1fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
             {[t.colName, t.colEmployeeId, t.colDepartment, t.colPermission, t.colStatus, t.colCode, ""].map(h => (
-              <span key={h} style={{ fontSize: "12px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+              <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
             ))}
           </div>
           {visibleRoster.map((entry, i) => {

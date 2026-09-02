@@ -8,7 +8,7 @@ import { formatElapsed } from "@/lib/time";
 import { TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, TABLE_HEADER_COLOR } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, TABLE_HEADER_COLOR } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 
 const T = {
@@ -783,7 +783,7 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
   };
 
   return (
-    <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, marginBottom: "16px", overflow: "hidden" }}>
+    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, marginBottom: "16px", overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: BORDER, backgroundColor: "var(--gray-50)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
@@ -948,7 +948,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
         <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1.4fr 0.6fr 0.5fr 0.9fr 0.8fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
           {[t.colUser, t.colTeam, t.colProjects, t.colPermission, t.colMfa, t.colLastLogin, t.colStatus, ""].map((h, i) => (
-            <span key={i} style={{ fontSize: "12px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+            <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
           ))}
         </div>
         {scopedUsers.length === 0 && (
