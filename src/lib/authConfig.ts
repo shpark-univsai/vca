@@ -17,9 +17,14 @@ export interface AuthConfig {
   /** A visitor bounced from a project link asks for access; an admin approves. Needs outbound mail
    *  to notify, and the approval lands in Portal. */
   accessRequest: boolean;
-  /** A visitor creates their own account against this domain, no invitation. Not built yet — the
-   *  screen does not exist, so leaving this false is the only honest setting today. */
+  /** A visitor creates their own account against this domain, no invitation. Not built, and with
+   *  on-premise-only deployment there is no case for it — an installation belongs to one company
+   *  and its staff arrive through the roster. Kept as an explicit false rather than removed, so the
+   *  absence reads as a decision. */
   selfSignup: boolean;
+  /** Registration by a per-person code the administrator issues from the staff roster and hands
+   *  over on paper. The only path that works with no outbound mail at all. See /register. */
+  registrationCode: boolean;
   /**
    * How a forgotten password is recovered.
    * - "emailCode": the 8-digit code flow at /forgot-password. Needs outbound mail.
@@ -31,18 +36,20 @@ export interface AuthConfig {
 }
 
 /**
- * HANDOFF NOTE: hardcoded until it is settled where this comes from. The two deployment shapes want
- * different answers and the choice is still being discussed:
- *   - separate install per company (on-premise) → build/env configuration, fixed at deploy time
- *   - one install serving many domains (subscription) → looked up per hostname before login, which
- *     means an unauthenticated endpoint the login screen can call
- * Both end up here, so this is the only call site that has to change.
+ * HANDOFF NOTE: hardcoded for now, but the shape of the answer is settled. Deployment is
+ * on-premise only (decided 2026-09-02) — one installation per company — so this is build/env
+ * configuration fixed at deploy time, NOT a per-hostname lookup. No unauthenticated tenant-config
+ * endpoint is needed, and nothing here should be made async in anticipation of one.
+ *
+ * Wire it to environment variables (NEXT_PUBLIC_*) so an installation can be configured without a
+ * rebuild of the app source. This stays the only call site.
  */
 export function getAuthConfig(): AuthConfig {
   return {
     inviteByEmail: true,
     accessRequest: true,
     selfSignup: false,
+    registrationCode: true,
     passwordRecovery: "emailCode",
   };
 }

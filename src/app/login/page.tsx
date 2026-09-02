@@ -154,11 +154,19 @@ export default function LoginPage() {
                   first-time visitor does ask the question.) */}
               <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", lineHeight: 1.6 }}>
                 Don&apos;t have an account?<br />
-                {authConfig.selfSignup
-                  ? "Create one to get started."
-                  : authConfig.accessRequest
-                    ? "Open the project link you were sent to request access."
-                    : "Ask your administrator to send you an invitation."}
+                {authConfig.registrationCode ? (
+                  <>
+                    Ask your administrator for a registration code, then{" "}
+                    <button
+                      onClick={() => router.push("/register")}
+                      style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
+                    >
+                      create your account
+                    </button>.
+                  </>
+                ) : authConfig.accessRequest
+                  ? "Open the project link you were sent to request access."
+                  : "Ask your administrator to send you an invitation."}
               </p>
             </div>
           </div>
