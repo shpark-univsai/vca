@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Ban, Clock, EyeOff, KeyRound, ShieldOff, type LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -504,7 +505,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
         modalTitle: t.resetPassword, intro: undefined as string | undefined, generate: t.sendCode,
         resultTitle: t.resetCodeSentTitle, note: "",
         handoverTitle: "", handover: "",
-        consequences: [] as string[],
+        consequences: [] as Consequence[],
         showExpiry: false, expiryLabel: "",
       }
     : kind === "password"
@@ -514,9 +515,14 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
         modalTitle: t.tempModalTitle, intro: undefined as string | undefined, generate: t.tempGenerate,
         resultTitle: t.tempResultTitle, note: t.tempShownOnce,
         handoverTitle: t.tempHandoverTitle, handover: t.tempHandover,
+        // One icon per line, because these four say different KINDS of thing — one is
+        // irreversible, one is about what you will see, one is about what the user must do, one is
+        // a clock. As a plain bulleted list they read as one long warning and get skimmed.
         consequences: [
-          t.tempConsequenceInvalidate, t.tempConsequenceOnce,
-          t.tempConsequenceMustChange, t.tempConsequenceExpiry(TEMP_PASSWORD_VALIDITY_HOURS),
+          { Icon: Ban, text: t.tempConsequenceInvalidate, tone: "danger" as const },
+          { Icon: EyeOff, text: t.tempConsequenceOnce },
+          { Icon: KeyRound, text: t.tempConsequenceMustChange },
+          { Icon: Clock, text: t.tempConsequenceExpiry(TEMP_PASSWORD_VALIDITY_HOURS) },
         ],
         showExpiry: true, expiryLabel: t.tempExpires(TEMP_PASSWORD_VALIDITY_HOURS),
       }
@@ -525,8 +531,10 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
         resultTitle: t.setupResultTitle, note: t.setupShownOnce,
         handoverTitle: t.setupHandoverTitle, handover: t.setupHandover,
         consequences: [
-          t.setupConsequenceReplace, t.setupConsequenceNoLogin, t.setupConsequenceWhere,
-          t.tempConsequenceExpiryDays(SETUP_CODE_TTL_DAYS),
+          { Icon: Ban, text: t.setupConsequenceReplace, tone: "danger" as const },
+          { Icon: ShieldOff, text: t.setupConsequenceNoLogin },
+          { Icon: KeyRound, text: t.setupConsequenceWhere },
+          { Icon: Clock, text: t.tempConsequenceExpiryDays(SETUP_CODE_TTL_DAYS) },
         ],
         // The expiry line is real now: a code carries an issue date and /register refuses it past
         // SETUP_CODE_TTL_DAYS. It stays in the neutral tone rather than the warning one — unlike a
@@ -571,8 +579,19 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
     );
   };
 
-  const bullet = (text: string) => (
-    <li style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>{text}</li>
+  /* Was a <li> relying on the default disc marker, which renders as empty indent here — so the
+     four lines arrived as an unlabelled block. The icon is the marker now: it distinguishes the
+     lines from each other, and the one irreversible line is the only one carrying colour. */
+  const bullet = ({ Icon, text, tone }: Consequence) => (
+    <li key={text} style={{ display: "flex", gap: "8px", alignItems: "flex-start", listStyle: "none" }}>
+      <Icon
+        size={14}
+        strokeWidth={2}
+        aria-hidden
+        style={{ flexShrink: 0, marginTop: "3px", color: tone === "danger" ? "var(--danger-400)" : "var(--gray-400)" }}
+      />
+      <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>{text}</span>
+    </li>
   );
 
   return (
@@ -645,7 +664,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
                 })}
               </div>
 
-              <ul style={{ display: "flex", flexDirection: "column", gap: "6px", margin: 0, paddingLeft: "18px" }}>
+              <ul style={{ display: "flex", flexDirection: "column", gap: "8px", margin: 0, padding: 0, listStyle: "none" }}>
                 {c.consequences.map(line => bullet(line))}
               </ul>
             </div>
@@ -703,6 +722,14 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
 /** How the way-back-in reaches the person. Mail sends a code they redeem themselves; password is
  *  read out; code is handed over on paper. */
 type CredentialKind = "mail" | "password" | "code";
+
+/** One line of "here is what this button does", with the icon that tells it apart from the others.
+ *  `tone: "danger"` is for the one consequence that cannot be undone. */
+interface Consequence {
+  Icon: LucideIcon;
+  text: string;
+  tone?: "danger";
+}
 
 const STATUS_COLORS: Record<PortalUserStatus, { bg: string; color: string }> = {
   active: { bg: "var(--gray-100)", color: "var(--success-400)" },
