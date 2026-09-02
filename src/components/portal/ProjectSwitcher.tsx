@@ -26,7 +26,7 @@ function ChevronDown({ size = 12 }: { size?: number }) {
   );
 }
 
-function OrgIcon() {
+function TeamIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1" stroke="var(--gray-400)" strokeWidth="1.2"/>
@@ -63,7 +63,7 @@ function CheckIcon() {
 
 export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProject }: ProjectSwitcherProps) {
   const projects = useVcaStore(s => s.projects);
-  const organizations = useVcaStore(s => s.organizations);
+  const teams = useVcaStore(s => s.teams);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -71,14 +71,14 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
   const [starred, setStarred] = useState<Set<string>>(new Set());
 
   const current = projects.find(p => p.id === currentProjectId);
-  const org = organizations[0];
+  const team = teams[0];
   useEscapeKey(() => setOpen(false), open);
 
   const q = query.toLowerCase();
   const visibleProjects = projects
     .filter(p => p.name.toLowerCase().includes(q))
     .filter(p => tab !== "starred" || starred.has(p.id));
-  const showOrgRow = tab !== "starred" && org && org.name.toLowerCase().includes(q);
+  const showTeamRow = tab !== "starred" && team && team.name.toLowerCase().includes(q);
 
   const toggleStar = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -140,7 +140,7 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
                 border: BORDER, borderRadius: "8px", padding: "6px 10px", marginBottom: "12px",
                 fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
               }}>
-                {org?.name ?? "No Organization"}
+                {team?.name ?? "No Team"}
                 <ChevronDown size={10} />
               </div>
 
@@ -192,19 +192,19 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
                 ))}
               </div>
 
-              {showOrgRow && (
+              {showTeamRow && (
                 <div style={{ display: "grid", gridTemplateColumns: "28px 1.6fr 0.9fr 1.3fr 32px", padding: "8px 20px", gap: "8px", alignItems: "center" }}>
                   <span />
                   <span style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
-                    <OrgIcon /> {org?.name}
+                    <TeamIcon /> {team?.name}
                   </span>
-                  <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>Organization</span>
-                  <span style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{org?.id}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>Team</span>
+                  <span style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{team?.id}</span>
                   <span />
                 </div>
               )}
 
-              {visibleProjects.length === 0 && !showOrgRow && (
+              {visibleProjects.length === 0 && !showTeamRow && (
                 <p style={{ fontSize: "12px", color: "var(--gray-400)", padding: "20px", textAlign: "center" }}>
                   {tab === "starred" ? "No starred projects yet." : `No results for "${query}".`}
                 </p>

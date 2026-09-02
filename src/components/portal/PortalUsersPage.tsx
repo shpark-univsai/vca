@@ -9,13 +9,13 @@ import { BORDER, PANEL_SHADOW, RowActionsMenu, FilterSelect } from "./PortalShar
 
 function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: string; onClose: () => void }) {
   useEscapeKey(onClose);
-  const organizations = useVcaStore(s => s.organizations);
+  const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const addPortalUser = useVcaStore(s => s.addPortalUser);
   const { showToast } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [orgId, setOrgId] = useState(organizations[0]?.id ?? "");
+  const [teamId, setOrgId] = useState(teams[0]?.id ?? "");
   const [permission, setPermission] = useState<PortalPermission>("operator");
   const [projectIds, setProjectIds] = useState<string[]>(defaultProjectId ? [defaultProjectId] : []);
 
@@ -38,8 +38,8 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
         : "Invite will be sent by external email.";
 
   const submit = () => {
-    if (!name.trim() || !email.trim() || !orgId) return;
-    const id = addPortalUser({ name: name.trim(), email: email.trim(), orgId, projectIds, permission, status: "invited" });
+    if (!name.trim() || !email.trim() || !teamId) return;
+    const id = addPortalUser({ name: name.trim(), email: email.trim(), teamId, projectIds, permission, status: "invited" });
     showToast({ variant: "success", title: "Invite sent", desc: `/password-setup?token=${id}` });
     onClose();
   };
@@ -66,8 +66,8 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }} />
           </div>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Organization</label>
-            <FilterSelect value={orgId} onChange={setOrgId} options={organizations.map(o => ({ value: o.id, label: o.name }))} />
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Team</label>
+            <FilterSelect value={teamId} onChange={setOrgId} options={teams.map(o => ({ value: o.id, label: o.name }))} />
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>Permission level</label>
@@ -235,7 +235,7 @@ interface PortalUsersPageProps {
 
 export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const portalUsers = useVcaStore(s => s.portalUsers);
-  const organizations = useVcaStore(s => s.organizations);
+  const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const updatePortalUserPermission = useVcaStore(s => s.updatePortalUserPermission);
   const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
@@ -245,7 +245,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
 
-  const orgName = (orgId: string) => organizations.find(o => o.id === orgId)?.name ?? orgId;
+  const orgName = (teamId: string) => teams.find(o => o.id === teamId)?.name ?? teamId;
   const projectName = (id: string) => projects.find(p => p.id === id)?.name ?? id;
   const currentProject = projects.find(p => p.id === projectId);
   const q = search.trim().toLowerCase();
@@ -296,7 +296,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           itself instead. */}
       <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
         <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.3fr 0.9fr 0.5fr 0.9fr 0.8fr 36px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
-          {["User", "Organization", "Projects", "Permission", "MFA", "Last Login", "Status", ""].map(h => (
+          {["User", "Team", "Projects", "Permission", "MFA", "Last Login", "Status", ""].map(h => (
             <span key={h} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
           ))}
         </div>
@@ -319,7 +319,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{u.name}</p>
               <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.email}</p>
             </div>
-            <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{orgName(u.orgId)}</span>
+            <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{orgName(u.teamId)}</span>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
               {u.projectIds.length === 0
                 ? <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>

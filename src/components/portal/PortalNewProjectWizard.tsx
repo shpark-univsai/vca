@@ -10,21 +10,21 @@ const TEMPLATES: { type: ProjectType; icon: string; title: string; description: 
 ];
 
 interface PortalNewProjectWizardProps {
-  orgId: string;
+  teamId: string;
   onDeployed: (projectId: string) => void;
   defaultType?: ProjectType;
 }
 
-export default function PortalNewProjectWizard({ orgId, onDeployed, defaultType = "smart_city" }: PortalNewProjectWizardProps) {
+export default function PortalNewProjectWizard({ teamId, onDeployed, defaultType = "smart_city" }: PortalNewProjectWizardProps) {
   const addProject = useVcaStore(s => s.addProject);
   const [selectedType, setSelectedType] = useState<ProjectType>(defaultType);
   const [name, setName] = useState("");
   const [rtspUrl, setRtspUrl] = useState("");
 
   const deploy = () => {
-    if (!name.trim() || !orgId) return;
+    if (!name.trim() || !teamId) return;
     const existingIds = new Set(useVcaStore.getState().projects.map(p => p.id));
-    addProject({ name: name.trim(), orgId, type: selectedType });
+    addProject({ name: name.trim(), teamId, type: selectedType });
     const created = useVcaStore.getState().projects.find(p => !existingIds.has(p.id));
     onDeployed(created?.id ?? "");
   };

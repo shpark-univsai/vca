@@ -311,7 +311,7 @@ interface PortalProjectDetailPageProps {
 }
 
 export default function PortalProjectDetailPage({ projectId, tab, onTabChange }: PortalProjectDetailPageProps) {
-  const organizations = useVcaStore(s => s.organizations);
+  const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const cameras = useVcaStore(s => s.cameras);
   const portalUsers = useVcaStore(s => s.portalUsers);
@@ -347,7 +347,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   }
 
   const meta = TYPE_META[project.type];
-  const orgName = organizations.find(o => o.id === project.orgId)?.name ?? project.orgId;
+  const orgName = teams.find(o => o.id === project.teamId)?.name ?? project.teamId;
   const onlineCount = projectCameras.filter(c => c.status === "online").length;
   const offlineCount = projectCameras.length - onlineCount;
   const projectUsers = portalUsers.filter(u => u.projectIds.includes(projectId));

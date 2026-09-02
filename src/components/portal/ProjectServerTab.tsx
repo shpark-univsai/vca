@@ -135,9 +135,9 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
  * fields to change (auth credentials, a connection test, a per-event sender) and keep them in one
  * block so that change stays local.
  *
- * Settings inherit from the organization and can be overridden per project. The inherited case is
+ * Settings inherit from the team and can be overridden per project. The inherited case is
  * the normal one (one company, one mail server), and the override exists because `regionOnPrem`
- * sits on the project: one organization really can hold an on-prem project routing through an
+ * sits on the project: one team really can hold an on-prem project routing through an
  * internal server alongside a cloud project that does not.
  */
 function MailIcon() {
@@ -151,13 +151,13 @@ function MailIcon() {
 
 function MailSettings({ projectId }: { projectId: string }) {
   const projects = useVcaStore(s => s.projects);
-  const organizations = useVcaStore(s => s.organizations);
+  const teams = useVcaStore(s => s.teams);
   const updateProjectMail = useVcaStore(s => s.updateProjectMail);
   const { showToast } = useToast();
 
   const project = projects.find(p => p.id === projectId);
-  const org = project ? organizations.find(o => o.id === project.orgId) : undefined;
-  const inherited = resolveMailConfig(projectId, projects, organizations);
+  const team = project ? teams.find(o => o.id === project.teamId) : undefined;
+  const inherited = resolveMailConfig(projectId, projects, teams);
   const overridden = !!project?.mailDomain || !!project?.smtp;
 
   const [override, setOverride] = useState(overridden);
@@ -181,7 +181,7 @@ function MailSettings({ projectId }: { projectId: string }) {
     if (!canSave) return;
     if (!override) {
       updateProjectMail(projectId, { mailDomain: undefined, smtp: undefined });
-      showToast({ variant: "success", title: "Using organization mail settings" });
+      showToast({ variant: "success", title: "Using team mail settings" });
       return;
     }
     updateProjectMail(projectId, {
@@ -194,7 +194,7 @@ function MailSettings({ projectId }: { projectId: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
-      {/* A project that hasn't overridden anything is quietly relying on the org default — easy to
+      {/* A project that hasn't overridden anything is quietly relying on the team default — easy to
           miss until an on-prem site's invites silently fail because that default can't reach it.
           Surface it as an actionable banner rather than only inside the read-only card below. */}
       {!override && inherited.mailDomain && (
@@ -206,7 +206,7 @@ function MailSettings({ projectId }: { projectId: string }) {
             <span style={{ display: "flex", color: "var(--warning-500)", flexShrink: 0 }}><MailIcon /></span>
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>
-                Using {org?.name ?? "the organization"}&apos;s default mail server
+                Using {team?.name ?? "the team"}&apos;s default mail server
               </p>
               <p style={{ fontSize: "12px", color: "var(--gray-600)", marginTop: "2px" }}>
                 Set up a dedicated SMTP server if this project needs its own — e.g. an on-prem site with no internet access.
@@ -221,7 +221,7 @@ function MailSettings({ projectId }: { projectId: string }) {
       )}
 
       {/* What is in force right now, before any of the editing below. Only relevant once this project
-          is actually using its own server — the banner above already covers the "inheriting the org
+          is actually using its own server — the banner above already covers the "inheriting the team
           default" case, so repeating those same values in a second card here would be redundant. A
           project with nothing configured anywhere is still a real problem worth surfacing regardless
           of override state, so that case bypasses the override check. */}
@@ -233,14 +233,14 @@ function MailSettings({ projectId }: { projectId: string }) {
               <SettingRow label="Domain" value={inherited.mailDomain} />
               <SettingRow label="SMTP host" value={inherited.smtp ? `${inherited.smtp.host}:${inherited.smtp.port}` : "—"} />
               <SettingRow label="Sent from" value={inherited.smtp?.fromAddress ?? "—"} />
-              <SettingRow label="Source" value={overridden ? "This project" : `Inherited from ${org?.name ?? "organization"}`} />
+              <SettingRow label="Source" value={overridden ? "This project" : `Inherited from ${team?.name ?? "team"}`} />
             </div>
           ) : (
             /* A project with no mail configured cannot invite anyone, so this says so plainly rather
                than showing empty fields that look merely unfilled. */
             <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "8px", lineHeight: 1.6 }}>
               No mail server configured. Invitations and password resets cannot be sent until one is
-              set here or on the organization.
+              set here or on the team.
             </p>
           )}
         </div>
@@ -253,7 +253,7 @@ function MailSettings({ projectId }: { projectId: string }) {
           <span>
             <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>Use a different mail server for this project</span>
             <span style={{ display: "block", fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
-              Leave off to follow the organization&apos;s settings. Turn on for an on-prem project that
+              Leave off to follow the team&apos;s settings. Turn on for an on-prem project that
               routes through its own internal server.
             </span>
           </span>
@@ -292,7 +292,7 @@ function MailSettings({ projectId }: { projectId: string }) {
           </div>
         )}
 
-        {/* Nothing to save while unchecked and already on the org default — that's a no-op click.
+        {/* Nothing to save while unchecked and already on the team default — that's a no-op click.
             Stays visible if unchecking just turned OFF a previously-saved override, since that's a
             real change (revert to default) that still needs to be committed. */}
         {(override || overridden) && (

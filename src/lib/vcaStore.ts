@@ -41,7 +41,7 @@ export interface SmtpConfig {
   useTls?: boolean;
 }
 
-export interface Organization {
+export interface Team {
   id: string;
   name: string;
   region: string;
@@ -61,7 +61,7 @@ export type ProjectType = "smart_city" | "smart_school";
 
 export interface Project {
   id: string;
-  orgId: string;
+  teamId: string;
   name: string;
   type: ProjectType;
   // Set/edited from the project's License tab in Portal — governs how many camera channels this
@@ -84,10 +84,10 @@ export interface Project {
   regionName?: string;
   regionOnPrem?: boolean;
   /**
-   * Overrides the organization's mail settings for this one project. Optional because the normal
+   * Overrides the team's mail settings for this one project. Optional because the normal
    * case is a company running a single mail server: filling this per project would mean retyping
-   * the same host ten times for ten projects. But `regionOnPrem` sits on the PROJECT, not the org,
-   * and the seed data already has one org holding both an on-prem and a cloud project — so mail
+   * the same host ten times for ten projects. But `regionOnPrem` sits on the PROJECT, not the team,
+   * and the seed data already has one team holding both an on-prem and a cloud project — so mail
    * genuinely differs between projects (internal server vs external), and the override earns its
    * place. Read through resolveMailConfig(), never directly, so the fallback is decided in one
    * spot instead of re-implemented per screen.
@@ -193,7 +193,7 @@ export interface Person {
 
 
 interface VcaStoreState {
-  organizations: Organization[];
+  teams: Team[];
   projects: Project[];
   cameras: Camera[];
   persons: Person[];
@@ -213,7 +213,7 @@ interface VcaStoreState {
   addProject: (project: Omit<Project, "id">) => void;
   updateProjectLicense: (projectId: string, updates: Pick<Project, "licenseChannelLimit" | "licensePlan" | "licenseExpiresAt">) => void;
   updateProjectMail: (projectId: string, updates: Pick<Project, "mailDomain" | "smtp">) => void;
-  updateOrganizationMail: (orgId: string, updates: Pick<Organization, "mailDomain" | "smtp">) => void;
+  updateTeamMail: (teamId: string, updates: Pick<Team, "mailDomain" | "smtp">) => void;
   addPerson: (person: Omit<Person, "id">) => void;
   removePerson: (personId: string) => void;
   addEvent: (event: Omit<VcaEvent, "id">) => void;
@@ -226,7 +226,7 @@ interface VcaStoreState {
   requestAccess: (request: Omit<AccessRequest, "id" | "requestedAt">) => void;
   approveAccessRequests: (requestIds: string[]) => string[];
   dismissAccessRequest: (requestId: string) => void;
-  addOrganization: (org: Omit<Organization, "id">) => string;
+  addTeam: (team: Omit<Team, "id">) => string;
   addServer: (server: Omit<Server, "id">) => void;
   updateServer: (serverId: string, updates: Partial<Omit<Server, "id" | "projectId">>) => void;
   removeServer: (serverId: string) => void;
@@ -252,9 +252,9 @@ export interface AuditEvent {
   at: string;
 }
 
-const ORGANIZATIONS: Organization[] = [
+const TEAMS: Team[] = [
   {
-    id: "org-univs", name: "City of Singapore — Smart Infrastructure Office", region: "Singapore",
+    id: "team-univs", name: "City of Singapore — Smart Infrastructure Office", region: "Singapore",
     mailDomain: "smartcity.gov.sg",
     smtp: { host: "mail.smartcity.gov.sg", port: 587, fromAddress: "vca-noreply@smartcity.gov.sg", useTls: true },
   },
@@ -262,14 +262,14 @@ const ORGANIZATIONS: Organization[] = [
 
 const PROJECTS: Project[] = [
   {
-    id: "proj-sg", orgId: "org-univs", name: "Marina Bay & CBD Surveillance Network", type: "smart_city",
+    id: "proj-sg", teamId: "team-univs", name: "Marina Bay & CBD Surveillance Network", type: "smart_city",
     licensePlan: "Enterprise", licenseChannelLimit: 100, licenseExpiresAt: "2029-06-04",
     computeInstance: "vca.large", gpuCount: 4, modelVersion: "model_v2_prod", lastMigration: "v2_alert_schema",
     lastBackupAt: auditAt(19 * 60),
     regionName: "Singapore", regionOnPrem: false, regionFlag: "🇸🇬", regionCenterCount: 1, regionSubcenterCount: 2,
   },
   {
-    id: "proj-riverside", orgId: "org-univs", name: "Riverside International School", type: "smart_school",
+    id: "proj-riverside", teamId: "team-univs", name: "Riverside International School", type: "smart_school",
     licensePlan: "Professional", licenseChannelLimit: 40, licenseExpiresAt: "2027-09-01",
     computeInstance: "vca.medium", gpuCount: 2, modelVersion: "model_v2_prod", lastMigration: "v2_alert_schema",
     lastBackupAt: auditAt(7 * 60),
@@ -309,7 +309,7 @@ export interface PortalUser {
   id: string;
   name: string;
   email: string;
-  orgId: string;
+  teamId: string;
   projectIds: string[];
   permission: PortalPermission;
   status: PortalUserStatus;
@@ -338,11 +338,11 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", orgId: "org-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "admin", status: "active", mfaEnabled: true, lastLoginAt: "2026-08-25 09:14" },
-  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", orgId: "org-univs", projectIds: ["proj-sg"], permission: "operator", status: "active", mfaEnabled: true, lastLoginAt: "2026-08-24 18:02" },
-  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", orgId: "org-univs", projectIds: ["proj-riverside"], permission: "operator", status: "active", mfaEnabled: false, lastLoginAt: "2026-08-20 11:47" },
-  { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", orgId: "org-univs", projectIds: ["proj-sg"], permission: "operator", status: "invited" },
-  { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", orgId: "org-univs", projectIds: ["proj-sg"], permission: "operator", status: "suspended", mfaEnabled: false, lastLoginAt: "2026-06-02 08:30" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "admin", status: "active", mfaEnabled: true, lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", teamId: "team-univs", projectIds: ["proj-sg"], permission: "operator", status: "active", mfaEnabled: true, lastLoginAt: "2026-08-24 18:02" },
+  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "operator", status: "active", mfaEnabled: false, lastLoginAt: "2026-08-20 11:47" },
+  { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", teamId: "team-univs", projectIds: ["proj-sg"], permission: "operator", status: "invited" },
+  { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", teamId: "team-univs", projectIds: ["proj-sg"], permission: "operator", status: "suspended", mfaEnabled: false, lastLoginAt: "2026-06-02 08:30" },
 ];
 
 const ACCESS_REQUESTS: AccessRequest[] = [
@@ -599,7 +599,7 @@ let projectSeq = PROJECTS.length;
 let personSeq = PERSONS.length;
 let eventSeq = SEED_EVENTS.length;
 let portalUserSeq = PORTAL_USERS.length;
-let orgSeq = ORGANIZATIONS.length;
+let orgSeq = TEAMS.length;
 let serverSeq = SERVERS.length;
 let accessRequestSeq = ACCESS_REQUESTS.length;
 
@@ -691,7 +691,7 @@ function personHitHistory(events: VcaEvent[], personName: string, nowMs: number)
 }
 
 export const useVcaStore = create<VcaStoreState>((set, get) => ({
-  organizations: ORGANIZATIONS,
+  teams: TEAMS,
   projects: PROJECTS,
   cameras: CAMERAS,
   persons: PERSONS,
@@ -741,10 +741,10 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)),
       auditLog: [{ id: `audit-${++auditSeq}`, projectId, message: `Project mail settings updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
     })),
-  updateOrganizationMail: (orgId, updates) =>
+  updateTeamMail: (teamId, updates) =>
     set(state => ({
-      organizations: state.organizations.map(o => (o.id === orgId ? { ...o, ...updates } : o)),
-      auditLog: [{ id: `audit-${++auditSeq}`, message: `Organization mail settings updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+      teams: state.teams.map(o => (o.id === teamId ? { ...o, ...updates } : o)),
+      auditLog: [{ id: `audit-${++auditSeq}`, message: `Team mail settings updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
     })),
   addPerson: (person) =>
     set(state => ({
@@ -850,7 +850,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         id: `user-${++portalUserSeq}`,
         name: r.name,
         email: r.email,
-        orgId: project?.orgId ?? state.organizations[0]?.id ?? "",
+        teamId: project?.teamId ?? state.teams[0]?.id ?? "",
         projectIds: [r.projectId],
         permission: "operator",
         status: "invited",
@@ -869,9 +869,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   },
   dismissAccessRequest: (requestId) =>
     set(state => ({ accessRequests: state.accessRequests.filter(r => r.id !== requestId) })),
-  addOrganization: (org) => {
-    const id = `org-${++orgSeq}`;
-    set(state => ({ organizations: [...state.organizations, { ...org, id }] }));
+  addTeam: (team) => {
+    const id = `team-${++orgSeq}`;
+    set(state => ({ teams: [...state.teams, { ...team, id }] }));
     return id;
   },
   addServer: (server) =>
@@ -995,7 +995,7 @@ export function todaysDetectionHits(events: VcaEvent[]): DetectionHit[] {
 }
 
 /**
- * The one place the organization → project fallback is decided. Screens ask this instead of
+ * The one place the team → project fallback is decided. Screens ask this instead of
  * reaching for `project.mailDomain` themselves; otherwise each one re-implements the fallback and
  * they drift apart — the invite modal would refuse an address the request form accepted.
  *
@@ -1010,13 +1010,13 @@ export function todaysDetectionHits(events: VcaEvent[]): DetectionHit[] {
 export function resolveMailConfig(
   projectId: string,
   projects: Project[],
-  organizations: Organization[],
+  teams: Team[],
 ): { mailDomain: string | null; smtp: SmtpConfig | null } {
   const project = projects.find(p => p.id === projectId);
-  const org = project ? organizations.find(o => o.id === project.orgId) : undefined;
+  const team = project ? teams.find(o => o.id === project.teamId) : undefined;
   return {
-    mailDomain: project?.mailDomain ?? org?.mailDomain ?? null,
-    smtp: project?.smtp ?? org?.smtp ?? null,
+    mailDomain: project?.mailDomain ?? team?.mailDomain ?? null,
+    smtp: project?.smtp ?? team?.smtp ?? null,
   };
 }
 

@@ -34,22 +34,22 @@ export default function PortalShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
   // Landed here from the signup wizard's "Start Creating Your Project" — open straight into the
-  // New Project Wizard, pre-selecting the industry chosen at signup and the org it just created.
+  // New Project Wizard, pre-selecting the industry chosen at signup and the team it just created.
   const newProjectParam = searchParams.get("newProject") === "1";
   const typeParam = searchParams.get("type");
   const defaultWizardType: ProjectType | undefined = typeParam === "smart_city" || typeParam === "smart_school" ? typeParam : undefined;
-  const orgIdParam = searchParams.get("orgId");
+  const teamIdParam = searchParams.get("teamId");
 
   const [showWizard, setShowWizard] = useState(newProjectParam);
-  const organizations = useVcaStore(s => s.organizations);
+  const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const currentAdmin = useVcaStore(s => s.portalUsers.find(u => u.permission === "admin")) ?? null;
   const [currentProjectId, setCurrentProjectId] = useState(projects[0]?.id ?? "");
-  // Resolve ?orgId= against the real list rather than trusting it: an id that matches nothing used
+  // Resolve ?teamId= against the real list rather than trusting it: an id that matches nothing used
   // to flow straight into the New Project wizard, which would have filed the project under an
-  // organization that does not exist. Falling back to the first organization keeps the header and
+  // team that does not exist. Falling back to the first team keeps the header and
   // the wizard describing the same place.
-  const currentOrg = organizations.find(o => o.id === orgIdParam) ?? organizations[0];
+  const currentOrg = teams.find(o => o.id === teamIdParam) ?? teams[0];
   const currentOrgId = currentOrg?.id ?? "";
   const [tab, setTab] = useState<DetailTab>("overview");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -83,7 +83,7 @@ export default function PortalShell() {
         .portal-hamburger-btn:hover{background-color:var(--gray-100)}
       `}</style>
 
-      {/* Top bar — logo · product name · org · project switcher (Clerk-style breadcrumb) */}
+      {/* Top bar — logo · product name · team · project switcher (Clerk-style breadcrumb) */}
       <div style={{
         height: "62px", backgroundColor: "white", borderBottom: "1px solid var(--gray-200)",
         display: "flex", alignItems: "center", padding: "0 24px", flexShrink: 0, gap: "10px",
@@ -106,16 +106,16 @@ export default function PortalShell() {
 
         <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-300)", margin: "0 2px" }}>/</span>
 
-        {/* Reads the current organization, not organizations[0]. Portal can hold several (the signup
-            wizard calls addOrganization), so pinning the header to the first one made it name a
-            different organization than the page was actually showing. Still not a switcher — that
+        {/* Reads the current team, not teams[0]. Portal can hold several (the signup
+            wizard calls addTeam), so pinning the header to the first one made it name a
+            different team than the page was actually showing. Still not a switcher — that
             lives one level down, on project. */}
         <span style={{
           display: "flex", alignItems: "center", gap: "6px",
           border: "1px solid var(--gray-200)", borderRadius: "8px", padding: "6px 10px",
           fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", whiteSpace: "nowrap",
         }}>
-          {currentOrg?.name ?? "No Organization"}
+          {currentOrg?.name ?? "No Team"}
         </span>
         <BreadcrumbChevron />
         <ProjectSwitcher currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />
@@ -140,7 +140,7 @@ export default function PortalShell() {
       </div>
 
       {showWizard ? (
-        <PortalNewProjectWizard orgId={currentOrgId} onDeployed={deployedFromWizard} defaultType={defaultWizardType} />
+        <PortalNewProjectWizard teamId={currentOrgId} onDeployed={deployedFromWizard} defaultType={defaultWizardType} />
       ) : (
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           {projects.length > 0 && (

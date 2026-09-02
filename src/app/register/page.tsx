@@ -25,7 +25,7 @@ function fieldBorder(active: boolean) {
 
 /**
  * Sign-up for a company's own staff, as opposed to /signup, which is the Portal wizard a master uses
- * to create an organization.
+ * to create an team.
  *
  * Built for deployments with no outbound mail, so there is no emailed link and no emailed code. An
  * administrator loads the staff roster into Portal and hands each person a registration code on

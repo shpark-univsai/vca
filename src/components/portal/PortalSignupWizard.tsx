@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useVcaStore, type ProjectType } from "@/lib/vcaStore";
 import { BORDER, FilterSelect } from "./PortalShared";
 
-type SignupStep = "account" | "organization" | "done";
+type SignupStep = "account" | "team" | "done";
 
 const STEP_PILLS: { key: SignupStep | "landing"; label: string }[] = [
   { key: "landing", label: "Sign In / Landing" },
   { key: "account", label: "Step 1 — Create Account" },
-  { key: "organization", label: "Step 2 — Set Up Organization" },
+  { key: "team", label: "Step 2 — Set Up Team" },
   { key: "done", label: "Done — Get Started" },
 ];
 
@@ -112,7 +112,7 @@ const inputStyle: React.CSSProperties = {
 export default function PortalSignupWizard() {
   const router = useRouter();
   const portalUsers = useVcaStore(s => s.portalUsers);
-  const addOrganization = useVcaStore(s => s.addOrganization);
+  const addTeam = useVcaStore(s => s.addTeam);
   const addPortalUser = useVcaStore(s => s.addPortalUser);
 
   const [step, setStep] = useState<SignupStep>("account");
@@ -162,7 +162,7 @@ export default function PortalSignupWizard() {
     ? "Passwords do not match." : "";
   const nameError = touched.fullName && !nameValid ? "Full name is required." : "";
 
-  const orgNameError = touched2.orgName && !orgNameValid ? "Organization name is required (min 2 characters)." : "";
+  const orgNameError = touched2.orgName && !orgNameValid ? "Team name is required (min 2 characters)." : "";
   const channelCountError = touched2.channelCount && !channelCountValid ? "Enter a valid number of channels." : "";
   const tosError = touched2.agreedToS && !agreedToS ? "You must agree to the Terms of Service to continue." : "";
 
@@ -176,7 +176,7 @@ export default function PortalSignupWizard() {
 
   const handleContinueStep1 = () => {
     setTouched({ email: true, password: true, confirmPassword: true, fullName: true });
-    if (step1Valid) setStep("organization");
+    if (step1Valid) setStep("team");
   };
 
   const useSuggestedDomain = () => {
@@ -188,9 +188,9 @@ export default function PortalSignupWizard() {
 
   const completeSignup = () => {
     if (!step2Valid) return;
-    const orgId = addOrganization({ name: orgName.trim(), region: "", industry: industry || undefined });
-    addPortalUser({ name: fullName.trim(), email: email.trim(), orgId, projectIds: [], permission: "admin", status: "active" });
-    setCreatedOrgId(orgId);
+    const teamId = addTeam({ name: orgName.trim(), region: "", industry: industry || undefined });
+    addPortalUser({ name: fullName.trim(), email: email.trim(), teamId, projectIds: [], permission: "admin", status: "active" });
+    setCreatedOrgId(teamId);
     setStep("done");
   };
 
@@ -201,13 +201,13 @@ export default function PortalSignupWizard() {
 
   const goToFirstProject = () => {
     const type = industryToProjectType(industry);
-    router.push(`/portal?newProject=1&type=${type}&orgId=${createdOrgId}`);
+    router.push(`/portal?newProject=1&type=${type}&teamId=${createdOrgId}`);
   };
 
   // Lets someone who just wants to look around land on the Projects dashboard (empty-state
   // gallery) instead of being pushed straight into the New Project Wizard.
   const goToDashboard = () => {
-    router.push(`/portal?orgId=${createdOrgId}`);
+    router.push(`/portal?teamId=${createdOrgId}`);
   };
 
   // Honors the "redirecting automatically" copy — the button below still lets the user skip the wait.
@@ -310,19 +310,19 @@ export default function PortalSignupWizard() {
                 cursor: "pointer", opacity: step1Valid ? 1 : 0.5,
               }}
             >
-              Continue — Set Up Organization →
+              Continue — Set Up Team →
             </button>
           </StepCard>
         )}
 
-        {step === "organization" && (
+        {step === "team" && (
           <StepCard>
             <BackLink label="Back" onClick={() => setStep("account")} />
-            <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>Step 2 / 2 — Set Up Your Organization</p>
+            <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>Step 2 / 2 — Set Up Your Team</p>
             <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>Create the top-level workspace that will contain all your projects.</p>
             <div style={{ height: "4px", backgroundColor: "var(--primary-400)", borderRadius: "2px", marginTop: "16px", marginBottom: "20px" }} />
 
-            <FieldLabel>Organization / Company Name *</FieldLabel>
+            <FieldLabel>Team / Company Name *</FieldLabel>
             <div style={{ display: "flex", gap: "8px" }}>
               <input
                 value={orgName}
@@ -345,7 +345,7 @@ export default function PortalSignupWizard() {
             </div>
             {orgNameError
               ? <FieldError text={orgNameError} />
-              : <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "6px" }}>Enter an organization name → the system will create your workspace automatically</p>}
+              : <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "6px" }}>Enter an team name → the system will create your workspace automatically</p>}
 
             <div style={{ marginTop: "16px" }}>
               <FieldLabel>Primary Industry (optional)</FieldLabel>
@@ -420,7 +420,7 @@ export default function PortalSignupWizard() {
               </span>
               <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)", marginTop: "20px" }}>🎉 Welcome, {fullName || "there"}!</p>
               <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", marginTop: "12px", lineHeight: "18px" }}>
-                Your organization has been created.<br />Let&apos;s start your first AI surveillance project.
+                Your team has been created.<br />Let&apos;s start your first AI surveillance project.
               </p>
               <div style={{ width: "100%", backgroundColor: "var(--primary-100)", borderRadius: "10px", padding: "11px 0", marginTop: "24px" }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary-400)", textAlign: "center" }}>→ Redirecting automatically to Create First Project</p>

@@ -38,7 +38,7 @@ function RequestAccessForm() {
   // choose would mean the master has to second-guess the answer on every approval.
   const projectId = useSearchParams().get("project") ?? "";
   const projects = useVcaStore(s => s.projects);
-  const organizations = useVcaStore(s => s.organizations);
+  const teams = useVcaStore(s => s.teams);
   const project = projects.find(p => p.id === projectId);
 
   const [name, setName] = useState("");
@@ -62,9 +62,9 @@ function RequestAccessForm() {
   // Refused here rather than after approval. On an internet-separated network the mail server can
   // only deliver inside its own domain, so an outside address means the master approves, the invite
   // is sent, and it goes nowhere — the requester waits forever on something that already happened.
-  // `projects`/`organizations` come from the store above, so the hint below follows a domain an
+  // `projects`/`teams` come from the store above, so the hint below follows a domain an
   // admin sets while this page is open.
-  const { mailDomain } = resolveMailConfig(projectId, projects, organizations);
+  const { mailDomain } = resolveMailConfig(projectId, projects, teams);
   const undeliverable = emailValid && !isMailDeliverable(email, mailDomain);
 
   const nameError = touched.name && !nameValid ? "Enter your name." : "";
