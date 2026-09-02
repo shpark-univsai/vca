@@ -13,19 +13,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" style={{ height: "100%" }}>
-      <head>
-        <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/gh/sunn-us/SUIT@latest/fonts/variable/woff2/SUIT-Variable.css"
-        />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Jockey+One&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+      {/* No <head> font links: the faces are declared in globals.css and served from
+          public/fonts. See the comment there — a CDN stylesheet fails silently on an
+          internet-isolated network, which is the only kind this product is deployed to. */}
       <body style={{ height: "100%", margin: 0, padding: 0 }}>{children}</body>
     </html>
   );

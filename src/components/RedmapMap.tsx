@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { DISTRICTS } from "@/lib/mockData";
+import { MAP_TILE_URL, tileLayerOptions } from "@/lib/mapTiles";
 
 export interface TrackingHit {
   lat: number;
@@ -168,14 +169,7 @@ export default function RedmapMap({
 
       if (cancelled) { map.remove(); return; }
 
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-        {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-          subdomains: "abcd",
-          maxZoom: 20,
-        }
-      ).addTo(map);
+      L.tileLayer(MAP_TILE_URL, tileLayerOptions()).addTo(map);
 
       map.zoomControl.setPosition("topright");
       map.on("zoomend", () => setZoom(map.getZoom()));

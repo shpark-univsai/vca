@@ -8,6 +8,7 @@ import { useVcaStore, vcaEventsToLiveEvents, VIP_SIMULATION_CAMERAS, type Camera
 import { useApiData } from "@/hooks/useApiData";
 import { getDistricts } from "@/lib/api/dashboard";
 import { isTodaySgt } from "@/lib/time";
+import { MAP_TILE_URL, tileLayerOptions } from "@/lib/mapTiles";
 
 // Leaflet popups are raw HTML strings, not React — values dropped into an inline onclick="...('...')"
 // attribute need their quotes escaped so a name/label containing one can't break the attribute.
@@ -385,14 +386,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         return;
       }
 
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-        {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-          subdomains: "abcd",
-          maxZoom: 20,
-        }
-      ).addTo(map);
+      L.tileLayer(MAP_TILE_URL, tileLayerOptions()).addTo(map);
 
       map.zoomControl.setPosition("topright");
       map.on("zoomend", () => setZoom(map.getZoom()));
