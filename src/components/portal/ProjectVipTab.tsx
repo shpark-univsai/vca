@@ -31,7 +31,7 @@ interface VipDict {
   registered: (date: string) => string;
   removeVip: string;
   confirmRemoveTitle: string;
-  confirmRemoveBody: (name: string) => string;
+  confirmRemoveBody: string;
   removeAction: string;
   vipRemovedTitle: string;
   modalTitle: string;
@@ -64,7 +64,7 @@ const T: Record<"en" | "ko", VipDict> = {
     registered: (date: string) => `Registered ${date}`,
     removeVip: "Remove VIP",
     confirmRemoveTitle: "Remove this VIP?",
-    confirmRemoveBody: (name: string) => `${name} will be removed from this project's watchlist. Cameras will no longer detect them as a registered VIP.`,
+    confirmRemoveBody: "They will be removed from this project's watchlist. Cameras will no longer detect them as a registered VIP.",
     removeAction: "Remove",
     vipRemovedTitle: "VIP removed",
     modalTitle: "Add New Person",
@@ -94,8 +94,8 @@ const T: Record<"en" | "ko", VipDict> = {
     noVips: "이 프로젝트에 등록된 VIP가 아직 없습니다.",
     registered: (date: string) => `등록일 ${date}`,
     removeVip: "VIP 삭제",
-    confirmRemoveTitle: "이 VIP를 삭제하시겠습니까?",
-    confirmRemoveBody: (name: string) => `${name} 님이 이 프로젝트의 관심인물 목록에서 삭제됩니다. 이후 카메라는 이 인물을 등록된 VIP로 탐지하지 않습니다.`,
+    confirmRemoveTitle: "정말 삭제하시겠습니까?",
+    confirmRemoveBody: "이 프로젝트의 관심인물 목록에서 삭제됩니다. 이후 카메라는 이 인물을 등록된 VIP로 탐지하지 않습니다.",
     removeAction: "삭제",
     vipRemovedTitle: "VIP 삭제됨",
     modalTitle: "새 인물 추가",
@@ -216,9 +216,11 @@ function RemoveVipConfirmModal({ t, person, onClose, onConfirm }: { t: VipDict; 
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "380px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
-        <div style={{ padding: "20px" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.confirmRemoveTitle}</p>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px" }}>{t.confirmRemoveBody(person.name)}</p>
+        <div style={{ padding: "24px 20px 20px", textAlign: "center" }}>
+          <img src={person.photoUrl} alt="" style={{ width: "72px", height: "72px", borderRadius: "50%", objectFit: "cover", margin: "0 auto 14px" }} />
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{person.name}</p>
+          <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginTop: "12px" }}>{t.confirmRemoveTitle}</p>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px" }}>{t.confirmRemoveBody}</p>
         </div>
         <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
