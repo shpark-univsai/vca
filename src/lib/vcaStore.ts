@@ -252,6 +252,17 @@ interface VcaStoreState {
   issueTemporaryPassword: (userId: string) => string | null;
   /** Called once the user has set a password of their own — retires the temporary one. */
   clearTemporaryPassword: (userId: string) => void;
+  /**
+   * Issue a setup code for an account and return it. The alternative to a temporary password for
+   * the same job: handing someone their first way in. Use it when a password cannot be passed on
+   * safely — nobody to read it out to, or a handover where the supplier should not end up holding a
+   * credential that works.
+   *
+   * A reissue replaces the previous code, so the old slip of paper stops working.
+   */
+  issueSetupCode: (userId: string) => string | null;
+  /** Called once the code has been redeemed, or when revoking an unused one. */
+  clearSetupCode: (userId: string) => void;
   removePortalUser: (userId: string) => void;
   requestAccess: (request: Omit<AccessRequest, "id" | "requestedAt">) => void;
   approveAccessRequests: (requestIds: string[]) => string[];
@@ -364,6 +375,21 @@ export interface PortalUser {
    * shared password.
    */
   mustChangePassword?: boolean;
+  /**
+   * A single-use code that lets this person set their own password, used where a temporary password
+   * cannot be handed over — the first administrator at an on-premise handover, or anyone the
+   * administrator cannot safely read a password out to.
+   *
+   * Unlike a temporary password this IS stored, and the difference is the point: a temporary
+   * password is a working credential, so keeping it would mean keeping something that can sign in.
+   * A setup code cannot sign in at all — it only unlocks the set-a-password screen, and it burns on
+   * use — so it has to be stored to be verifiable.
+   *
+   * HANDOFF NOTE: the backend stores a hash, not this. It must also expire codes and rate-limit
+   * attempts; the code is the only thing standing in front of an account.
+   */
+  setupCode?: string;
+  setupCodeIssuedAt?: string;
 }
 
 // Someone who found a project link but has no access yet, asking a Portal admin to grant it —
@@ -913,6 +939,39 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         u.id === userId
           ? { ...u, tempPasswordIssuedAt: undefined, mustChangePassword: false }
           : u
+      ),
+    })),
+  issueSetupCode: (userId) => {
+    const user = get().portalUsers.find(u => u.id === userId);
+    if (!user) return null;
+    // Unique across both pools: /register accepts a code from either, so a collision would send
+    // someone to the wrong identity.
+    const taken = new Set<string>([
+      ...get().portalUsers.map(u => u.setupCode).filter((c): c is string => !!c),
+      ...get().staffRoster.map(r => r.code).filter((c): c is string => !!c),
+    ]);
+    const code = generateRegistrationCode(taken);
+    const auditEntry = {
+      id: `audit-${++auditSeq}`,
+      message: `Setup code issued for ${user.email}`,
+      actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+    };
+    // mustChangePassword is not set: there is no password to change yet. The code is what stands
+    // between this account and its first password, and /register enforces that.
+    set(state => ({
+      portalUsers: state.portalUsers.map(u =>
+        u.id === userId
+          ? { ...u, setupCode: code, setupCodeIssuedAt: new Date().toISOString() }
+          : u
+      ),
+      auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+    }));
+    return code;
+  },
+  clearSetupCode: (userId) =>
+    set(state => ({
+      portalUsers: state.portalUsers.map(u =>
+        u.id === userId ? { ...u, setupCode: undefined, setupCodeIssuedAt: undefined } : u
       ),
     })),
   removePortalUser: (userId) =>

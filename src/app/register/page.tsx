@@ -7,11 +7,32 @@ import VerificationCodeInput from "@/components/VerificationCodeInput";
 import { LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import {
-  REGISTRATION_CODE_LENGTH, RosterEntry, resolveRegistrationCode,
+  REGISTRATION_CODE_LENGTH, normalizeCode, resolveRegistrationCode,
 } from "@/lib/staffRoster";
 import { useVcaStore } from "@/lib/vcaStore";
 
 type Step = "code" | "confirm" | "password" | "done";
+
+/**
+ * What a code turned out to belong to. Two pools issue codes and both land here:
+ *
+ *  - the staff roster, for people an administrator imported ahead of time
+ *  - an existing account, for someone who cannot be handed a temporary password — the first
+ *    administrator at an on-premise handover above all, who has no roster row because the roster
+ *    is something they will create later
+ *
+ * Normalised so the confirmation screen does not branch: it only ever shows the fields it was
+ * given, and a code from either pool reads the same to the person holding it.
+ */
+interface Activation {
+  name: string;
+  employeeId?: string;
+  department?: string;
+  projectId?: string;
+  permission: "admin" | "operator";
+  /** Which pool it came from — only needed for the handoff notes about what to burn. */
+  source: "roster" | "account";
+}
 
 const CODE_ERRORS: Record<"unknown" | "used" | "expired", string> = {
   unknown: "We don’t recognise that code. Check it against the sheet you were given.",
@@ -38,12 +59,15 @@ function fieldBorder(active: boolean) {
 export default function RegisterPage() {
   const router = useRouter();
   const staffRoster = useVcaStore(s => s.staffRoster);
+  const portalUsers = useVcaStore(s => s.portalUsers);
   const projects = useVcaStore(s => s.projects);
+  const clearSetupCode = useVcaStore(s => s.clearSetupCode);
+  const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
   const [step, setStep] = useState<Step>("code");
 
   const [digits, setDigits] = useState<string[]>(() => Array(REGISTRATION_CODE_LENGTH).fill(""));
   const [codeError, setCodeError] = useState("");
-  const [entry, setEntry] = useState<RosterEntry | null>(null);
+  const [entry, setEntry] = useState<Activation | null>(null);
   const code = digits.join("");
   const codeComplete = code.length === REGISTRATION_CODE_LENGTH;
 
@@ -64,24 +88,56 @@ export default function RegisterPage() {
     setStep("code");
   };
 
-  // HANDOFF NOTE: resolves against mock roster data in lib/staffRoster.ts. The real call goes to the
-  // backend, which must throttle attempts — the code is the only gate on this screen.
+  // HANDOFF NOTE: resolves against mock data in the store. The real call is one request to the
+  // backend, which must throttle attempts — the code is the only gate on this screen — and which
+  // decides for itself which pool the code belongs to.
   const submitCode = () => {
     if (!codeComplete) return;
-    const result = resolveRegistrationCode(code, staffRoster);
-    if (!result.ok) {
-      setCodeError(CODE_ERRORS[result.reason]);
+
+    const rosterResult = resolveRegistrationCode(code, staffRoster);
+    if (rosterResult.ok) {
+      const r = rosterResult.entry;
+      setCodeError("");
+      setEntry({
+        name: r.name, employeeId: r.employeeId, department: r.department,
+        projectId: r.projectId, permission: r.permission, source: "roster",
+      });
+      setStep("confirm");
       return;
     }
-    setCodeError("");
-    setEntry(result.entry);
-    setStep("confirm");
+
+    // A setup code issued against an existing account. Checked after the roster so an imported
+    // person keeps the richer details their row carries.
+    const account = portalUsers.find(u => u.setupCode && u.setupCode === normalizeCode(code));
+    if (account) {
+      setCodeError("");
+      setEntry({
+        name: account.name,
+        projectId: account.projectIds[0],
+        permission: account.permission === "operator" ? "operator" : "admin",
+        source: "account",
+      });
+      setStep("confirm");
+      return;
+    }
+
+    // "unknown" for anything unmatched, including a code that exists but was already used. Saying
+    // which would tell someone holding a stale slip that the account is real.
+    setCodeError(CODE_ERRORS[rosterResult.ok ? "unknown" : rosterResult.reason]);
   };
 
-  // HANDOFF NOTE: creates nothing. The real call sets the password, activates the account against
-  // this roster row, and burns the code so it cannot be used a second time.
+  // HANDOFF NOTE: sets no password — there is nowhere to set one. The real call stores it, activates
+  // the account, and burns the code. Burning it here for an account-issued code is not cosmetic:
+  // the code is held in the store, so leaving it would let the same slip of paper be used twice.
   const savePassword = () => {
-    if (!canSetPassword) return;
+    if (!canSetPassword || !entry) return;
+    if (entry.source === "account") {
+      const account = portalUsers.find(u => u.setupCode === normalizeCode(code));
+      if (account) {
+        clearSetupCode(account.id);
+        updatePortalUserStatus(account.id, "active");
+      }
+    }
     setStep("done");
   };
 
@@ -211,9 +267,11 @@ export default function RegisterPage() {
                 }}>
                   <p style={{ margin: 0, fontSize: "18px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.36px" }}>{entry.name}</p>
                   <div style={{ height: "1px", backgroundColor: "var(--gray-200)" }} />
-                  {detailRow("Employee ID", entry.employeeId)}
+                  {entry.employeeId && detailRow("Employee ID", entry.employeeId)}
                   {entry.department && detailRow("Department", entry.department)}
-                  {detailRow("Project", projects.find(p => p.id === entry.projectId)?.name ?? entry.projectId)}
+                  {entry.projectId
+                    ? detailRow("Project", projects.find(p => p.id === entry.projectId)?.name ?? entry.projectId)
+                    : detailRow("Scope", "All teams and projects")}
                   {detailRow("Permission", entry.permission === "admin" ? "Administrator" : "Operator")}
                 </div>
 

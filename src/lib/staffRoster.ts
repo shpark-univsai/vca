@@ -60,8 +60,14 @@ export type CodeLookup =
  * before anyone commits to a password — a person handed the wrong code finds out here rather than
  * after creating an account under someone else's name.
  */
+/** Upper-cases and strips anything the code alphabet does not contain, so a dash, a space or a
+ *  lower-case transcription all match the stored value. */
+export function normalizeCode(code: string): string {
+  return code.toUpperCase().replace(/[^A-Z2-9]/g, "");
+}
+
 export function resolveRegistrationCode(code: string, roster: RosterEntry[]): CodeLookup {
-  const normalized = code.toUpperCase().replace(/[^A-Z2-9]/g, "");
+  const normalized = normalizeCode(code);
   const entry = roster.find(r => r.code === normalized);
   if (!entry) return { ok: false, reason: "unknown" };
   // A "not-issued" row has no code, so it can never actually be matched above — this branch only
