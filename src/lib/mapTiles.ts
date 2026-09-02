@@ -44,10 +44,18 @@ export const MAP_MAX_ZOOM = Number(process.env.NEXT_PUBLIC_MAP_MAX_ZOOM) || 19;
  * colour, so the calm backdrop is produced here rather than by hunting for a grey tile set that an
  * isolated network may not have.
  *
+ * The default is tuned for the fallback OpenStreetMap source, which draws building footprints in a
+ * fairly dark grey — in Singapore's HDB estates that reads as a field of grey squares competing
+ * with the camera dots. Pushing brightness up and contrast down washes those out. It is a blunt
+ * instrument: roads and labels fade with them, because a filter cannot pick out one kind of
+ * feature. A basemap that simply does not draw those elements (CARTO Positron, Protomaps light) is
+ * the real fix, and with one of those this should drop back to a light touch-up —
+ * "grayscale(0.1) brightness(0.98)" is what the CARTO basemap used.
+ *
  * Set NEXT_PUBLIC_MAP_TILE_FILTER=none where the customer's own tiles are already styled.
  */
 export const MAP_TILE_FILTER =
-  process.env.NEXT_PUBLIC_MAP_TILE_FILTER || "grayscale(1) brightness(1.06) contrast(0.94)";
+  process.env.NEXT_PUBLIC_MAP_TILE_FILTER || "grayscale(1) brightness(1.22) contrast(0.72)";
 
 /** The options object both maps pass to L.tileLayer, so they cannot drift apart again. */
 export function tileLayerOptions() {
