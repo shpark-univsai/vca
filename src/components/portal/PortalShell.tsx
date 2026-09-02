@@ -9,6 +9,13 @@ import PortalNewProjectWizard from "./PortalNewProjectWizard";
 import ProjectSidebar, { type DetailTab } from "./ProjectSidebar";
 import { ToastProvider } from "../Toast";
 import { useVcaStore, type ProjectType } from "@/lib/vcaStore";
+import { usePortalLanguage } from "@/lib/i18n";
+import { LanguageSwitcher } from "./PortalShared";
+
+const T = {
+  en: { noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar", exit: "Exit to App" },
+  ko: { noTeam: "팀 없음", expand: "사이드바 펼치기", collapse: "사이드바 접기", exit: "앱으로 나가기" },
+} as const;
 
 function BreadcrumbChevron() {
   return (
@@ -53,6 +60,8 @@ export default function PortalShell() {
   const currentOrgId = currentOrg?.id ?? "";
   const [tab, setTab] = useState<DetailTab>("overview");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
 
   useEffect(() => {
     if (newProjectParam) router.replace("/portal");
@@ -97,7 +106,7 @@ export default function PortalShell() {
               width: "32px", height: "32px", borderRadius: "999px", border: "none",
               backgroundColor: "transparent", cursor: "pointer", flexShrink: 0, marginRight: "2px",
             }}
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={sidebarCollapsed ? t.expand : t.collapse}
           >
             <SidebarToggleIcon />
           </button>
@@ -115,12 +124,13 @@ export default function PortalShell() {
           border: "1px solid var(--gray-200)", borderRadius: "8px", padding: "6px 10px",
           fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", whiteSpace: "nowrap",
         }}>
-          {currentOrg?.name ?? "No Team"}
+          {currentOrg?.name ?? t.noTeam}
         </span>
         <BreadcrumbChevron />
         <ProjectSwitcher currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />
 
         <div style={{ flex: 1 }} />
+        <LanguageSwitcher />
         <button
           className="portal-exit-btn"
           onClick={() => router.push("/")}
@@ -135,7 +145,7 @@ export default function PortalShell() {
             <path d="M8.75 9.91667L12.25 6.41667L8.75 2.91667" stroke="var(--gray-600)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M12.25 6.41667H5.25" stroke="var(--gray-600)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          Exit to App
+          {t.exit}
         </button>
       </div>
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { usePortalLanguage } from "@/lib/i18n";
 
 export const BORDER = "1px solid var(--gray-200)";
 export const PANEL_SHADOW = "none";
@@ -11,6 +12,26 @@ export const TYPE_META: Record<ProjectType, { label: string; bg: string; color: 
   smart_city: { label: "Smart City", bg: "white", color: "var(--primary-400)" },
   smart_school: { label: "Smart School", bg: "white", color: "var(--success-400)" },
 };
+
+// One global switcher lives in PortalShell's top bar — every Portal screen reads the same
+// usePortalLanguage() subscription, so switching here takes effect everywhere without a reload.
+export function LanguageSwitcher() {
+  const [lang, setLang] = usePortalLanguage();
+  return (
+    <div style={{ display: "flex", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "999px", padding: "3px", flexShrink: 0 }}>
+      {(["en", "ko"] as const).map(l => (
+        <button key={l} onClick={() => setLang(l)}
+          style={{
+            padding: "5px 11px", borderRadius: "999px", border: "none", cursor: "pointer",
+            backgroundColor: lang === l ? "white" : "transparent", boxShadow: lang === l ? PANEL_SHADOW : "none",
+            fontSize: "12px", fontWeight: 700, color: lang === l ? "var(--gray-900)" : "var(--gray-400)",
+          }}>
+          {l === "en" ? "EN" : "한국어"}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 interface RowAction {
   label: string;

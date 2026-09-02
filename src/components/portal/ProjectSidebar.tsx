@@ -1,6 +1,7 @@
 "use client";
 
 import type { ComponentType } from "react";
+import { usePortalLanguage } from "@/lib/i18n";
 
 export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "roster" | "users";
 
@@ -78,14 +79,14 @@ function UsersIcon({ color }: IconProps) {
   );
 }
 
-export const PROJECT_TABS: { id: DetailTab; label: string; icon: ComponentType<IconProps> }[] = [
-  { id: "overview", label: "Overview", icon: OverviewIcon },
-  { id: "cameras", label: "Cameras", icon: CamerasIcon },
-  { id: "vip", label: "VIP Registry", icon: VipIcon },
-  { id: "license", label: "License", icon: LicenseIcon },
-  { id: "server", label: "Server & API", icon: ServerIcon },
-  { id: "roster", label: "Staff Roster", icon: RosterIcon },
-  { id: "users", label: "Users & Permissions", icon: UsersIcon },
+export const PROJECT_TABS: { id: DetailTab; label: { en: string; ko: string }; icon: ComponentType<IconProps> }[] = [
+  { id: "overview", label: { en: "Overview", ko: "개요" }, icon: OverviewIcon },
+  { id: "cameras", label: { en: "Cameras", ko: "카메라" }, icon: CamerasIcon },
+  { id: "vip", label: { en: "VIP Registry", ko: "VIP 등록" }, icon: VipIcon },
+  { id: "license", label: { en: "License", ko: "라이선스" }, icon: LicenseIcon },
+  { id: "server", label: { en: "Server & API", ko: "서버 및 API" }, icon: ServerIcon },
+  { id: "roster", label: { en: "Staff Roster", ko: "직원 명부" }, icon: RosterIcon },
+  { id: "users", label: { en: "Users & Permissions", ko: "사용자 및 권한" }, icon: UsersIcon },
 ];
 
 interface ProjectSidebarProps {
@@ -96,6 +97,7 @@ interface ProjectSidebarProps {
 }
 
 export default function ProjectSidebar({ tab, onTabChange, collapsed, admin }: ProjectSidebarProps) {
+  const [lang] = usePortalLanguage();
   return (
     <div
       style={{
@@ -120,7 +122,7 @@ export default function ProjectSidebar({ tab, onTabChange, collapsed, admin }: P
             <button
               key={t.id}
               onClick={() => onTabChange(t.id)}
-              title={collapsed ? t.label : undefined}
+              title={collapsed ? t.label[lang] : undefined}
               className="portal-navitem"
               style={{
                 display: "flex", alignItems: "center", gap: "12px",
@@ -134,7 +136,7 @@ export default function ProjectSidebar({ tab, onTabChange, collapsed, admin }: P
               }}
             >
               <span style={{ display: "flex", flexShrink: 0 }}><Icon color={active ? "white" : "var(--gray-600)"} /></span>
-              {!collapsed && t.label}
+              {!collapsed && t.label[lang]}
             </button>
           );
         })}
