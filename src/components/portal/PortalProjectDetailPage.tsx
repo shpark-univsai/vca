@@ -443,9 +443,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>/ {projectCameras.length} connected</p>
               </div>
-              <div style={{ height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
-                <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--success-400)" }} />
-                <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
+              {/* Fixed-height row so the footer divider below lands at the same y across all 4 cards —
+                  the other two cards fill this slot with a text line instead of a bar, and text's
+                  natural height doesn't match an 8px bar without this. */}
+              <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
+                <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
+                  <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--success-400)" }} />
+                  <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
+                </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px" }}>
                 <SubStat color="var(--success-400)" label={`Online ${onlineCount}`} />
@@ -458,8 +463,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectCameras.length}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>/ {channelLimit ?? "∞"} channels used</p>
               </div>
-              <div style={{ height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--info-500)" }} />
+              <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
+                <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--info-500)" }} />
+                </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -487,7 +494,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   </span>
                 )}
               </div>
-              <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>Registered watchlist individuals for this project.</p>
+              <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)", width: "100%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>Registered watchlist individuals for this project.</p>
+              </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px" }}>
                 <p style={{ fontSize: "12px", color: "var(--primary-400)", fontWeight: 600 }}>High priority: {highPriorityVipCount}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>Registered today: {todayVipCount}</p>
@@ -499,13 +508,16 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectUsers.length}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>accounts</p>
               </div>
-              {projectAccessRequests.length > 0 ? (
-                <button onClick={() => onTabChange("users")} style={{ display: "flex", alignItems: "center", gap: "4px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", color: "var(--warning-500)" }}>
-                  <ShieldIcon /> {projectAccessRequests.length} pending access request{projectAccessRequests.length === 1 ? "" : "s"}
-                </button>
-              ) : (
-                <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>No pending access requests.</p>
-              )}
+              <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
+                {projectAccessRequests.length > 0 ? (
+                  <button onClick={() => onTabChange("users")} style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%", overflow: "hidden", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", color: "var(--warning-500)" }}>
+                    <ShieldIcon />
+                    <span style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{projectAccessRequests.length} pending access request{projectAccessRequests.length === 1 ? "" : "s"}</span>
+                  </button>
+                ) : (
+                  <p style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>No pending access requests.</p>
+                )}
+              </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px" }}>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>Admin: {adminCount} | Operator: {operatorCount}</p>
                 <button onClick={() => onTabChange("users")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>Manage →</button>
