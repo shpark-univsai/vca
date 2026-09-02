@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Globe, Mail } from "lucide-react";
 import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
@@ -179,23 +180,12 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
  * (see getAuthConfig()'s doc comment) — that's a separate axis from whether a given site can
  * reach the internet, which is what this override is actually keyed on.
  */
-function MailIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-      <rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M2.5 4.5L8 9L13.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
+// Lucide — see PortalProjectDetailPage's note. Globe rather than Lucide's own Network for the one
+// below: the drawing it replaces was a globe with meridians, and what that card is about is whether
+// this site can reach the outside world, not the shape of its internal topology.
+function MailIcon() { return <Mail size={18} strokeWidth={1.2} />; }
 
-function NetworkIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M2 8h12M8 2c1.8 1.7 2.8 3.8 2.8 6s-1 4.3-2.8 6c-1.8-1.7-2.8-3.8-2.8-6s1-4.3 2.8-6Z" stroke="currentColor" strokeWidth="1.2"/>
-    </svg>
-  );
-}
+function NetworkIcon() { return <Globe size={18} strokeWidth={1.2} />; }
 
 const NETWORK_T = {
   en: {

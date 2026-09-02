@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Check, Lock } from "lucide-react";
 import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
 import { CARD_BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -85,21 +86,9 @@ const T = {
   },
 } as const;
 
-function LockIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <rect x="2.5" y="5.5" width="7" height="5" rx="1.2" stroke="currentColor" strokeWidth="1.1"/>
-      <path d="M4 5.5V3.8a2 2 0 0 1 4 0V5.5" stroke="currentColor" strokeWidth="1.1"/>
-    </svg>
-  );
-}
-function CheckIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <path d="M2.5 6.3L4.8 8.6L9.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
+// Lucide, at the sizes and weights these were drawn at — see PortalProjectDetailPage's note.
+function LockIcon() { return <Lock size={12} strokeWidth={1.1} />; }
+function CheckIcon() { return <Check size={12} strokeWidth={1.6} />; }
 
 /**
  * What the licensed channels are being spent on, in Vimeo's Billing-seats shape: the total, then a

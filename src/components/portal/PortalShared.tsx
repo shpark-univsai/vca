@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Check } from "lucide-react";
 import type { ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -397,6 +398,17 @@ export function Switch({ checked, onChange, label, disabled }: {
       }} />
     </button>
   );
+}
+
+/**
+ * The "this one is selected" tick. It existed three times — in the license tab, the project switcher
+ * and the team switcher — at three sizes and two colours, which meant the same idea looked slightly
+ * different depending on which menu you were in. One definition, size passed in because a tick in a
+ * 12px feature list and a tick in a switcher row genuinely are different sizes; colour is inherited
+ * so a caller can tint it.
+ */
+export function SelectedCheckIcon({ size = 14 }: { size?: number }) {
+  return <Check size={size} strokeWidth={1.8} />;
 }
 
 // ── Sortable table headings ──────────────────────────────────────────────────

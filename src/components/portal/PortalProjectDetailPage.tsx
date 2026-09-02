@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import { ArrowUp, Clock, Key, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
 import { useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR } from "./PortalShared";
@@ -133,71 +134,29 @@ const T = {
   },
 } as const;
 
-function VideoIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M2 5.5C2 4.67 2.67 4 3.5 4H9.5C10.33 4 11 4.67 11 5.5V10.5C11 11.33 10.33 12 9.5 12H3.5C2.67 12 2 11.33 2 10.5V5.5Z" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M11 6.8L14 5V11L11 9.2" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-function KeyIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="5.5" cy="10.5" r="3" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M7.6 8.4L13 3M11 5L12.5 6.5M9 7L10.2 8.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-function UsersGroupIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="6" cy="5.3" r="2.2" stroke="currentColor" strokeWidth="1.1"/>
-      <path d="M1.8 13c0-2.21 1.88-4 4.2-4s4.2 1.79 4.2 4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
-      <circle cx="11.6" cy="6" r="1.7" stroke="currentColor" strokeWidth="1.1"/>
-      <path d="M9.9 13c0.1-1.76 1.6-3.1 3.3-3.1 1.02 0 1.94 0.46 2.55 1.18" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
-    </svg>
-  );
-}
-function SettingsIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M8 2v1.6M8 12.4V14M14 8h-1.6M3.6 8H2M12.1 3.9l-1.1 1.1M5 10l-1.1 1.1M12.1 12.1L11 11M5 6L3.9 4.9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  );
-}
-function ShieldIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M8 2L13.5 4V7.5C13.5 10.9 11.2 13.4 8 14.3C4.8 13.4 2.5 10.9 2.5 7.5V4L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-function ClockIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M8 4.5V8L10.5 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-function PlusIcon() {
-  return <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>;
-}
-function UserPlusIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-      <circle cx="6" cy="5.3" r="2.2" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M1.8 13c0-2.21 1.88-4 4.2-4s4.2 1.79 4.2 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M12 5.5V9.5M10 7.5H14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  );
-}
-function ArrowUpIcon() {
-  return <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 8V2M5 2L2 5M5 2L8 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-}
-
+/**
+ * Lucide, wrapped one-to-one under the names this file already used.
+ *
+ * These were nine hand-drawn SVGs, and hand-drawn is how a set stops being a set: the two people
+ * icons carried 1.1 strokes while the shield beside them carried 1.2, and "the same icon" was three
+ * different drawings in three files. Lucide is already a dependency (Sidebar, BestFramePage, the
+ * password toggles) and is bundled rather than fetched, which is what makes it usable on an
+ * installation with no route out.
+ *
+ * Each keeps its original pixel size and stroke weight rather than taking Lucide's default 2, so
+ * this swaps the drawing without redrawing the page. Wrappers rather than imports at the call
+ * sites, because MetricCard takes `icon: () => JSX.Element` and because one definition per icon is
+ * the whole point.
+ */
+function VideoIcon() { return <Video size={16} strokeWidth={1.2} />; }
+function KeyIcon() { return <Key size={16} strokeWidth={1.2} />; }
+function UsersGroupIcon() { return <Users size={16} strokeWidth={1.1} />; }
+function SettingsIcon() { return <Settings size={16} strokeWidth={1.2} />; }
+function ShieldIcon() { return <Shield size={16} strokeWidth={1.2} />; }
+function ClockIcon() { return <Clock size={16} strokeWidth={1.2} />; }
+function PlusIcon() { return <Plus size={14} strokeWidth={1.4} />; }
+function UserPlusIcon() { return <UserPlus size={14} strokeWidth={1.2} />; }
+function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={1.4} />; }
 
 // Shared shell for the four Overview metric cards — header (eyebrow label + icon badge), then
 // whatever body content each card needs (big value, progress bar, footer stats) as children.

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useVcaStore } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH, TEAM_INDUSTRIES } from "./PortalShared";
+import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH, TEAM_INDUSTRIES, SelectedCheckIcon } from "./PortalShared";
 
 const T = {
   en: {
@@ -43,14 +43,6 @@ function ChevronDown({ size = 12 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 12 12" fill="none">
       <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="var(--gray-900)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }
@@ -148,7 +140,7 @@ export default function TeamSwitcher({ currentTeamId, onSelect }: TeamSwitcherPr
                     backgroundColor: hovered === team.id ? "var(--gray-100)" : "transparent",
                   }}
                 >
-                  <span style={{ display: "flex", width: "14px", flexShrink: 0 }}>{isCurrent && <CheckIcon />}</span>
+                  <span style={{ display: "flex", width: "14px", flexShrink: 0 }}>{isCurrent && <span style={{ display: "flex", color: "var(--gray-900)" }}><SelectedCheckIcon size={14} /></span>}</span>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: "block", fontSize: "12px", fontWeight: isCurrent ? 700 : 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {team.name}

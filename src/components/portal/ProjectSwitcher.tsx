@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useVcaStore, type Project } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH, TABLE_HEADER_COLOR } from "./PortalShared";
+import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH, TABLE_HEADER_COLOR, SelectedCheckIcon } from "./PortalShared";
 
 interface ProjectSwitcherProps {
   /** The team whose projects this picker lists. Projects belong to exactly one team, and the
@@ -89,14 +89,6 @@ function StarIcon({ filled }: { filled: boolean }) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill={filled ? "var(--warning-400)" : "none"}>
       <path d="M8 1.5L9.85 5.6L14.3 6.15L11 9.25L11.85 13.7L8 11.5L4.15 13.7L5 9.25L1.7 6.15L6.15 5.6L8 1.5Z" stroke={filled ? "var(--warning-400)" : "var(--gray-300)"} strokeWidth="1.1" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-      <path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="var(--gray-900)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }
@@ -272,7 +264,7 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
                       alignItems: "center", cursor: "pointer",
                     }}
                   >
-                    <span style={{ display: "flex", color: "var(--gray-900)" }}>{isCurrent && <CheckIcon />}</span>
+                    <span style={{ display: "flex", color: "var(--gray-900)" }}>{isCurrent && <span style={{ display: "flex", color: "var(--gray-900)" }}><SelectedCheckIcon size={16} /></span>}</span>
                     <span style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       <ProjectIcon /> {p.name}
                     </span>
