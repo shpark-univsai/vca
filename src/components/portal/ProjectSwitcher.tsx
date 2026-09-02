@@ -7,6 +7,10 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER } from "./PortalShared";
 
 interface ProjectSwitcherProps {
+  /** The team whose projects this picker lists. Projects belong to exactly one team, and the
+   *  breadcrumb to the left of this control already says which team you are in — listing every
+   *  team's projects here would contradict it. */
+  teamId: string;
   currentProjectId: string;
   onSelect: (projectId: string) => void;
   onNewProject: () => void;
@@ -97,7 +101,7 @@ function CheckIcon() {
   );
 }
 
-export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProject }: ProjectSwitcherProps) {
+export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, onNewProject }: ProjectSwitcherProps) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const TAB_LABELS: Record<Tab, string> = { recent: t.tabRecent, starred: t.tabStarred, all: t.tabAll };
@@ -110,11 +114,12 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
   const [starred, setStarred] = useState<Set<string>>(new Set());
 
   const current = projects.find(p => p.id === currentProjectId);
-  const team = teams[0];
+  const team = teams.find(o => o.id === teamId) ?? teams[0];
   useEscapeKey(() => setOpen(false), open);
 
   const q = query.toLowerCase();
   const visibleProjects = projects
+    .filter(p => p.teamId === team?.id)
     .filter(p => p.name.toLowerCase().includes(q))
     .filter(p => tab !== "starred" || starred.has(p.id));
   const showTeamRow = tab !== "starred" && team && team.name.toLowerCase().includes(q);
@@ -173,14 +178,17 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
             </div>
 
             <div style={{ padding: "14px 20px 0" }}>
-              {/* Org filter */}
+              {/* Which team's projects are listed. It used to carry a chevron and open nothing —
+                  a control that looks like a menu and is not. Switching teams is a real thing now,
+                  but it belongs to the breadcrumb behind this modal, so this states the filter and
+                  leaves the switching there. */}
               <div style={{
                 display: "inline-flex", alignItems: "center", gap: "6px",
                 border: BORDER, borderRadius: "8px", padding: "6px 10px", marginBottom: "12px",
                 fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
               }}>
+                <TeamIcon />
                 {team?.name ?? t.noTeam}
-                <ChevronDown size={10} />
               </div>
 
               {/* Search */}

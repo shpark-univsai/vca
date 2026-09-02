@@ -66,7 +66,6 @@ const T = {
     // Temporary password modal — confirm step
     tempModalTitle: "Generate temporary password",
     tempForLabel: "FOR",
-    tempConfirmIntro: "Use this when the person cannot receive a reset code — no mail server here, or they have lost access to their mailbox.",
     tempConsequenceInvalidate: "Their current password stops working the moment you generate this.",
     tempConsequenceOnce: "The new password is shown once, on the next screen. It is never stored and cannot be looked up again.",
     tempConsequenceMustChange: "They must set a password of their own the first time they log in with it.",
@@ -80,7 +79,7 @@ const T = {
     tempCopy: "Copy",
     tempCopied: "Copied",
     tempHandoverTitle: "HANDING IT OVER",
-    tempHandover: "Read it out on the internal line, or hand it over in person or on internal messenger. Do not email it — mail is exactly what this path exists to avoid.",
+    tempHandover: "Read it out on the internal line, or hand it over in person or on internal messenger.",
     issueSetupCode: "Issue setup code",
     setupModalTitle: "Issue setup code",
     setupConfirmIntro: "Use this when a password cannot be handed over safely — the first administrator at an on-premise handover, or anyone you should not read a password out to.",
@@ -207,7 +206,6 @@ const T = {
     // Temporary password modal — confirm step
     tempModalTitle: "임시 비밀번호 생성",
     tempForLabel: "대상",
-    tempConfirmIntro: "재설정 코드를 받을 수 없는 경우에 사용하세요 — 메일 서버가 없거나, 본인 메일함에 접근할 수 없는 상황입니다.",
     tempConsequenceInvalidate: "생성하는 즉시 기존 비밀번호는 사용할 수 없게 됩니다.",
     tempConsequenceOnce: "새 비밀번호는 다음 화면에 한 번만 표시됩니다. 저장되지 않으며 다시 확인할 수 없습니다.",
     tempConsequenceMustChange: "사용자는 이 비밀번호로 처음 로그인할 때 반드시 본인 비밀번호를 새로 설정해야 합니다.",
@@ -221,7 +219,7 @@ const T = {
     tempCopy: "복사",
     tempCopied: "복사됨",
     tempHandoverTitle: "전달 방법",
-    tempHandover: "내선 전화로 불러주거나, 대면 또는 사내 메신저로 전달하세요. 이메일로는 보내지 마세요 — 메일을 쓸 수 없어서 존재하는 경로입니다.",
+    tempHandover: "내선 전화로 불러주거나, 대면 또는 사내 메신저로 전달하세요.",
     tempExpires: (hours: number) => `${hours}시간 후 만료`,
     tempDone: "완료",
 
@@ -269,19 +267,33 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const t = T[lang];
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [teamId, setOrgId] = useState(teams[0]?.id ?? "");
+  // Defaults to the team that owns the project this page is scoped to — not teams[0]. With more
+  // than one team in the installation those are different answers, and the first one silently
+  // filed an invite under a team the admin was not even looking at.
+  const [teamId, setOrgId] = useState(
+    () => projects.find(p => p.id === defaultProjectId)?.teamId ?? teams[0]?.id ?? ""
+  );
   const [permission, setPermission] = useState<PortalPermission>("operator");
   const [projectIds, setProjectIds] = useState<string[]>(defaultProjectId ? [defaultProjectId] : []);
 
   const toggleProject = (id: string) =>
     setProjectIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
 
+  // Only the chosen team's projects can be ticked. A project belongs to exactly one team, so
+  // granting access to another team's project would file the user under one team and let them into
+  // another. Changing the team therefore also drops any tick that no longer belongs.
+  const teamProjects = projects.filter(p => p.teamId === teamId);
+  const changeTeam = (nextTeamId: string) => {
+    setOrgId(nextTeamId);
+    setProjectIds(prev => prev.filter(id => projects.find(p => p.id === id)?.teamId === nextTeamId));
+  };
+
   // Every invite goes through the same flow (admin sets no password — the user verifies by email
   // and sets their own) regardless of deployment — every deployment is on-premise (see
   // getAuthConfig()'s doc comment) — only the mail transport changes. A project on an
   // internet-isolated site can't reach an external mail provider, so that one routes through the
   // project's internal mailbox instead. See the 2026-08-28 backend-meeting decision this mirrors.
-  const selectedProjects = projects.filter(p => projectIds.includes(p.id));
+  const selectedProjects = teamProjects.filter(p => projectIds.includes(p.id));
   const hasIsolated = selectedProjects.some(isNetworkIsolated);
   const hasReachable = selectedProjects.some(p => !isNetworkIsolated(p));
   const mailTransportNote = selectedProjects.length === 0
@@ -322,7 +334,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.teamLabel}</label>
-            <FilterSelect value={teamId} onChange={setOrgId} options={teams.map(o => ({ value: o.id, label: o.name }))} />
+            <FilterSelect value={teamId} onChange={changeTeam} options={teams.map(o => ({ value: o.id, label: o.name }))} />
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.permissionLabel}</label>
@@ -344,7 +356,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.projectsLabel}</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-              {projects.map(p => {
+              {teamProjects.map(p => {
                 const active = projectIds.includes(p.id);
                 return (
                   <button key={p.id} onClick={() => toggleProject(p.id)}
@@ -407,7 +419,9 @@ function TempPasswordModal({ user, kind, onClose }: { user: PortalUser; kind: Cr
      the two drift. */
   const c = kind === "password"
     ? {
-        modalTitle: t.tempModalTitle, intro: t.tempConfirmIntro, generate: t.tempGenerate,
+        // No intro line: the consequence list below says the same thing more precisely, and a
+        // sentence that only restates the bullets pushes them further from the button.
+        modalTitle: t.tempModalTitle, intro: undefined as string | undefined, generate: t.tempGenerate,
         resultTitle: t.tempResultTitle, note: t.tempShownOnce,
         handoverTitle: t.tempHandoverTitle, handover: t.tempHandover,
         consequences: [
@@ -477,7 +491,9 @@ function TempPasswordModal({ user, kind, onClose }: { user: PortalUser; kind: Cr
                 <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)", marginTop: "4px" }}>{user.name}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{user.email}</p>
               </div>
-              <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>{c.intro}</p>
+              {c.intro && (
+                <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>{c.intro}</p>
+              )}
               <ul style={{ display: "flex", flexDirection: "column", gap: "6px", margin: 0, paddingLeft: "18px" }}>
                 {c.consequences.map(line => bullet(line))}
               </ul>

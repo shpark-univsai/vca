@@ -6,6 +6,7 @@ import PortalProjectDetailPage from "./PortalProjectDetailPage";
 import PortalEmptyState from "./PortalEmptyState";
 import ProjectSwitcher from "./ProjectSwitcher";
 import PortalNewProjectWizard from "./PortalNewProjectWizard";
+import TeamSwitcher from "./TeamSwitcher";
 import ProjectSidebar, { type DetailTab } from "./ProjectSidebar";
 import { ToastProvider } from "../Toast";
 import { useVcaStore, type ProjectType } from "@/lib/vcaStore";
@@ -51,13 +52,25 @@ export default function PortalShell() {
   const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const currentAdmin = useVcaStore(s => s.portalUsers.find(u => u.permission === "admin")) ?? null;
-  const [currentProjectId, setCurrentProjectId] = useState(projects[0]?.id ?? "");
   // Resolve ?teamId= against the real list rather than trusting it: an id that matches nothing used
   // to flow straight into the New Project wizard, which would have filed the project under an
   // team that does not exist. Falling back to the first team keeps the header and
   // the wizard describing the same place.
   const currentOrg = teams.find(o => o.id === teamIdParam) ?? teams[0];
   const currentOrgId = currentOrg?.id ?? "";
+  // Everything below this line is the current team's, not the whole installation's. Before the
+  // header could switch teams this distinction cost nothing, because there was only ever one team
+  // on screen; now a shell that kept reading the global list would show one team's name over
+  // another team's projects.
+  const teamProjects = projects.filter(p => p.teamId === currentOrgId);
+  // The selection is *derived*, not stored: hold the id the user picked, but fall back to this
+  // team's first project whenever that id is not one of them. Keeping it in plain state instead
+  // meant a team switch left the previous team's project selected until an effect caught up, and
+  // for one render the detail page rendered a project the breadcrumb no longer claimed.
+  const [pickedProjectId, setPickedProjectId] = useState("");
+  const currentProjectId = teamProjects.some(p => p.id === pickedProjectId)
+    ? pickedProjectId
+    : (teamProjects[0]?.id ?? "");
   const [tab, setTab] = useState<DetailTab>("overview");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [lang] = usePortalLanguage();
@@ -69,7 +82,7 @@ export default function PortalShell() {
   }, []);
 
   const selectFromSwitcher = (projectId: string) => {
-    setCurrentProjectId(projectId);
+    setPickedProjectId(projectId);
     setTab("overview");
     setShowWizard(false);
   };
@@ -77,9 +90,18 @@ export default function PortalShell() {
   const deployedFromWizard = (projectId: string) => {
     setShowWizard(false);
     if (projectId) {
-      setCurrentProjectId(projectId);
+      setPickedProjectId(projectId);
       setTab("overview");
     }
+  };
+
+  // The current team lives in the URL, so switching is a navigation. That also means the back
+  // button returns to the team you came from, and a link to a particular team is shareable —
+  // both of which a piece of component state would have thrown away.
+  const switchTeam = (teamId: string) => {
+    setShowWizard(false);
+    setTab("overview");
+    router.push(`/portal?teamId=${teamId}`);
   };
 
   return (
@@ -97,7 +119,7 @@ export default function PortalShell() {
         height: "62px", backgroundColor: "white", borderBottom: "1px solid var(--gray-200)",
         display: "flex", alignItems: "center", padding: "0 24px", flexShrink: 0, gap: "10px",
       }}>
-        {!showWizard && projects.length > 0 && (
+        {!showWizard && teamProjects.length > 0 && (
           <button
             className="portal-hamburger-btn"
             onClick={() => setSidebarCollapsed(v => !v)}
@@ -115,19 +137,12 @@ export default function PortalShell() {
 
         <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-300)", margin: "0 2px" }}>/</span>
 
-        {/* Reads the current team, not teams[0]. Portal can hold several (the signup
-            wizard calls addTeam), so pinning the header to the first one made it name a
-            different team than the page was actually showing. Still not a switcher — that
-            lives one level down, on project. */}
-        <span style={{
-          display: "flex", alignItems: "center", gap: "6px",
-          border: "1px solid var(--gray-200)", borderRadius: "8px", padding: "6px 10px",
-          fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", whiteSpace: "nowrap",
-        }}>
-          {currentOrg?.name ?? t.noTeam}
-        </span>
+        {/* Reads the current team, not teams[0]. Portal can hold several (the signup wizard calls
+            addTeam, and the switcher's own "New team" does), so pinning the header to the first one
+            made it name a different team than the page was actually showing. */}
+        <TeamSwitcher currentTeamId={currentOrgId} onSelect={switchTeam} />
         <BreadcrumbChevron />
-        <ProjectSwitcher currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />
+        <ProjectSwitcher teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />
 
         <div style={{ flex: 1 }} />
         <LanguageSwitcher />
@@ -153,11 +168,11 @@ export default function PortalShell() {
         <PortalNewProjectWizard teamId={currentOrgId} onDeployed={deployedFromWizard} defaultType={defaultWizardType} />
       ) : (
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          {projects.length > 0 && (
+          {teamProjects.length > 0 && (
             <ProjectSidebar tab={tab} onTabChange={setTab} collapsed={sidebarCollapsed} admin={currentAdmin} />
           )}
           <div style={{ flex: 1, overflow: "auto", padding: "32px 72px", backgroundColor: "var(--gray-100)" }}>
-            {projects.length === 0
+            {teamProjects.length === 0
               ? <PortalEmptyState onNewProject={() => setShowWizard(true)} />
               : <PortalProjectDetailPage projectId={currentProjectId} tab={tab} onTabChange={setTab} />}
           </div>

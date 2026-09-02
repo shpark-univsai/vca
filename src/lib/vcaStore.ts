@@ -299,6 +299,15 @@ const TEAMS: Team[] = [
     mailDomain: "smartcity.gov.sg",
     smtp: { host: "mail.smartcity.gov.sg", port: 587, fromAddress: "vca-noreply@smartcity.gov.sg", useTls: true },
   },
+  // A second team, so the header's team switcher has somewhere to switch to and every screen that
+  // scopes by team is exercised by more than one row. Deliberately unlike the first: a different
+  // mail domain, no `smtp` at all (a site whose relay has not been configured yet — the state the
+  // Server tab's mail settings exist to fix), and projects with no cameras registered, which is
+  // what a team looks like the week it is onboarded.
+  {
+    id: "team-northgate", name: "Northgate Education Trust", region: "Singapore",
+    mailDomain: "northgate.edu.sg", industry: "Smart School",
+  },
 ];
 
 const PROJECTS: Project[] = [
@@ -315,6 +324,24 @@ const PROJECTS: Project[] = [
     computeInstance: "vca.medium", gpuCount: 2, modelVersion: "model_v2_prod", lastMigration: "v2_alert_schema",
     lastBackupAt: auditAt(7 * 60),
     regionName: "Singapore", networkIsolatedDetected: true, regionFlag: "🇸🇬", regionCenterCount: 1, regionSubcenterCount: 0,
+  },
+  // team-northgate's projects. No cameras seeded against these ids on purpose — the camera fixtures
+  // below are Singapore-CBD coordinates that the main app's map and Live Monitoring draw from, and
+  // dropping a second city's worth of pins in there would change screens nobody asked to change.
+  // Zero cameras is also just what a freshly provisioned project is.
+  {
+    id: "proj-northgate-main", teamId: "team-northgate", name: "Northgate Secondary — Main Campus", type: "smart_school",
+    licensePlan: "Professional", licenseChannelLimit: 24, licenseExpiresAt: "2028-03-31",
+    computeInstance: "vca.medium", gpuCount: 1, modelVersion: "model_v2_prod", lastMigration: "v2_alert_schema",
+    lastBackupAt: auditAt(31 * 60),
+    regionName: "Singapore", networkIsolatedDetected: true, regionFlag: "🇸🇬", regionCenterCount: 1, regionSubcenterCount: 0,
+  },
+  {
+    id: "proj-northgate-junior", teamId: "team-northgate", name: "Northgate Junior College", type: "smart_school",
+    licensePlan: "Standard", licenseChannelLimit: 12, licenseExpiresAt: "2027-12-31",
+    computeInstance: "vca.small", gpuCount: 1, modelVersion: "model_v2_prod", lastMigration: "v2_alert_schema",
+    lastBackupAt: auditAt(52 * 60),
+    regionName: "Singapore", networkIsolatedDetected: false, regionFlag: "🇸🇬", regionCenterCount: 1, regionSubcenterCount: 0,
   },
 ];
 
