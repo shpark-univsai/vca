@@ -37,7 +37,7 @@ const CODE_FAILURE_TEXT: Record<Exclude<CodeFailure, "throttled">, string> = {
 };
 
 function fieldBorder(active: boolean) {
-  return active ? "1px solid var(--primary-300)" : FIELD_BORDER;
+  return active ? "1px solid var(--gray-900)" : FIELD_BORDER;
 }
 
 /**

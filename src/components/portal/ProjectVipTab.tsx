@@ -350,7 +350,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           onBlur={() => setSearchFocused(false)}
           style={{
             width: "100%", boxSizing: "border-box", height: CONTROL_HEIGHT, padding: "0 10px 0 30px", borderRadius: "10px",
-            border: searchFocused ? "1px solid var(--gray-400)" : BORDER, outline: "none",
+            border: searchFocused ? "1px solid var(--gray-900)" : BORDER, outline: "none",
             boxShadow: searchFocused ? "0 0 0 3px var(--gray-100)" : "none",
             fontSize: "12px", fontFamily: "inherit", backgroundColor: "white",
           }}

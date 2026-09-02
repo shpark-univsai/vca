@@ -8,7 +8,7 @@ import { useVcaStore } from "@/lib/vcaStore";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 
 function fieldBorder(active: boolean) {
-  return active ? "1px solid var(--primary-300)" : "1px solid var(--gray-300)";
+  return active ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)";
 }
 
 export default function PasswordSetupPage() {

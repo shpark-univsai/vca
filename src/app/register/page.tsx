@@ -41,7 +41,7 @@ const CODE_ERRORS: Record<"unknown" | "used" | "expired", string> = {
 };
 
 function fieldBorder(active: boolean) {
-  return active ? "1px solid var(--primary-300)" : "1px solid var(--gray-300)";
+  return active ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)";
 }
 
 /**

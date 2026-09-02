@@ -107,7 +107,11 @@ export default function VerificationCodeInput({
             border: error
               ? "1px solid var(--danger-400)"
               : digit ? "1px solid var(--primary-300)" : "1px solid var(--gray-300)",
-            borderRadius: "8px", outline: "none",
+            // No `outline: none` here on purpose. These boxes had no focus style of their own —
+            // the border only marks whether a digit is filled — so suppressing the outline left a
+            // keyboard user with no way to see which of the eight they were typing into. The app's
+            // shared focus ring (globals.css) draws it now.
+            borderRadius: "8px",
             fontSize: "18px", fontWeight: 700,
             color: "var(--gray-800)",
             transition: "border-color 0.12s",

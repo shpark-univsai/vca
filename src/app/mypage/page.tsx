@@ -182,7 +182,7 @@ function ThresholdField({ label, value, onChange, min, max }: { label: string; v
 }
 
 function fieldBorder(active: boolean) {
-  return active ? "1px solid var(--primary-300)" : "1px solid var(--gray-300)";
+  return active ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)";
 }
 
 // Changing a password from Settings shouldn't feel like leaving the app — this stays as an

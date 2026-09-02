@@ -197,7 +197,7 @@ export default function ProjectSwitcher({ currentProjectId, onSelect, onNewProje
                   placeholder={t.searchPlaceholder}
                   style={{
                     width: "100%", boxSizing: "border-box", padding: "10px 12px 10px 34px", borderRadius: "10px",
-                    border: searchFocused ? "1px solid var(--gray-400)" : BORDER, outline: "none",
+                    border: searchFocused ? "1px solid var(--gray-900)" : BORDER, outline: "none",
                     fontSize: "13px", fontFamily: "inherit",
                   }}
                 />
