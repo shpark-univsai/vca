@@ -82,15 +82,21 @@ export interface Project {
   lastMigration?: string;
   lastBackupAt?: string;
   regionName?: string;
+  // Whether THIS project's site sits on an internet-isolated network — not a hosting-model flag.
+  // Every deployment is on-premise (decided 2026-09-02, see getAuthConfig()'s doc comment); that
+  // settled whether VCA is ever offered as cloud-hosted SaaS (no), but it didn't settle whether a
+  // given on-prem site can still reach the internet, which varies per customer site and is what
+  // this field actually tracks. true = air-gapped, mail can only go through that site's internal
+  // mailbox; false = the site has outbound internet, external email works normally.
   regionOnPrem?: boolean;
   /**
    * Overrides the team's mail settings for this one project. Optional because the normal
    * case is a company running a single mail server: filling this per project would mean retyping
    * the same host ten times for ten projects. But `regionOnPrem` sits on the PROJECT, not the team,
-   * and the seed data already has one team holding both an on-prem and a cloud project — so mail
-   * genuinely differs between projects (internal server vs external), and the override earns its
-   * place. Read through resolveMailConfig(), never directly, so the fallback is decided in one
-   * spot instead of re-implemented per screen.
+   * and the seed data already has one team holding both an internet-isolated and an internet-reachable
+   * project — so mail genuinely differs between projects (internal-only server vs normal external
+   * relay), and the override earns its place. Read through resolveMailConfig(), never directly, so
+   * the fallback is decided in one spot instead of re-implemented per screen.
    */
   mailDomain?: string;
   smtp?: SmtpConfig;

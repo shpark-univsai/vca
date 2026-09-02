@@ -137,8 +137,10 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
  *
  * Settings inherit from the team and can be overridden per project. The inherited case is
  * the normal one (one company, one mail server), and the override exists because `regionOnPrem`
- * sits on the project: one team really can hold an on-prem project routing through an
- * internal server alongside a cloud project that does not.
+ * sits on the project: one team really can hold an internet-isolated project routing through an
+ * internal server alongside an internet-reachable project that does not. Every deployment is
+ * on-premise (see getAuthConfig()'s doc comment) — that's a separate axis from whether a given
+ * site can reach the internet, which is what this override is actually keyed on.
  */
 function MailIcon() {
   return (
@@ -253,8 +255,8 @@ function MailSettings({ projectId }: { projectId: string }) {
           <span>
             <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>Use a different mail server for this project</span>
             <span style={{ display: "block", fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
-              Leave off to follow the team&apos;s settings. Turn on for an on-prem project that
-              routes through its own internal server.
+              Leave off to follow the team&apos;s settings. Turn on for a project on an
+              internet-isolated site that routes through its own internal server.
             </span>
           </span>
         </label>

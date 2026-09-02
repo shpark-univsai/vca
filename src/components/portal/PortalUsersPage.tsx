@@ -23,18 +23,19 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
     setProjectIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
 
   // Every invite goes through the same flow (admin sets no password — the user verifies by email
-  // and sets their own) regardless of deployment; only the mail transport changes. Fully offline
-  // on-prem projects can't reach an external mail provider, so those route through the project's
-  // internal mailbox instead. See the 2026-08-28 backend-meeting decision this mirrors.
+  // and sets their own) regardless of deployment — every deployment is on-premise (see
+  // getAuthConfig()'s doc comment) — only the mail transport changes. A project on an
+  // internet-isolated site can't reach an external mail provider, so that one routes through the
+  // project's internal mailbox instead. See the 2026-08-28 backend-meeting decision this mirrors.
   const selectedProjects = projects.filter(p => projectIds.includes(p.id));
-  const hasOnPrem = selectedProjects.some(p => p.regionOnPrem);
-  const hasCloud = selectedProjects.some(p => !p.regionOnPrem);
+  const hasIsolated = selectedProjects.some(p => p.regionOnPrem);
+  const hasReachable = selectedProjects.some(p => !p.regionOnPrem);
   const mailTransportNote = selectedProjects.length === 0
     ? null
-    : hasOnPrem && hasCloud
-      ? "Invite will be sent by external email for cloud projects, and the on-prem mailbox for offline projects."
-      : hasOnPrem
-        ? "This project is offline (on-prem) — invite will be sent through its internal mailbox, not external email."
+    : hasIsolated && hasReachable
+      ? "Invite will be sent by external email for internet-connected projects, and the internal mailbox for internet-isolated ones."
+      : hasIsolated
+        ? "This project's site is internet-isolated — invite will be sent through its internal mailbox, not external email."
         : "Invite will be sent by external email.";
 
   const submit = () => {
