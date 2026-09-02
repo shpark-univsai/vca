@@ -44,6 +44,11 @@ const T = {
     noPendingAccessRequests: "No pending access requests.",
     adminOperatorLabel: (admin: number, operator: number) => `Admin: ${admin} | Operator: ${operator}`,
     cameraStatusTitle: "Camera Status",
+    // This card is the page's answer to "is this deployment working". Deliberately not joined by a
+    // "last detection" line: every event in this system is a VIP match (EventType is VIP |
+    // Tracking, and Tracking is derived from VIP hits across cameras), so days with none are the
+    // normal case — an elapsed-time readout would show a healthy site as stale. Whether cameras are
+    // streaming is the health question; who walked past is not.
     cameraStatusSubtitle: "Streaming status for cameras connected to this project",
     filterAll: (n: number) => `All (${n})`,
     filterOffline: (n: number) => `Offline (${n})`,
@@ -65,12 +70,6 @@ const T = {
     recentAdminActivity: "RECENT ADMIN ACTIVITY",
     noAdminActivity: "No admin activity yet.",
     agoSuffix: " ago",
-    livenessLastDetection: (elapsed: string) => `Last detection · ${elapsed} ago`,
-    livenessNoDetections: "No detections received yet",
-    livenessNoCameras: "No cameras registered",
-    livenessLoading: "Checking for detections…",
-    livenessViewCameras: "View cameras",
-    livenessAddCameras: "Add a camera",
     toastApprovedTitle: "Access approved — invite sent",
     toastDismissedTitle: "Request dismissed",
   },
@@ -124,12 +123,6 @@ const T = {
     recentAdminActivity: "최근 관리자 활동",
     noAdminActivity: "아직 관리자 활동이 없습니다.",
     agoSuffix: " 전",
-    livenessLastDetection: (elapsed: string) => `마지막 탐지 · ${elapsed} 전`,
-    livenessNoDetections: "아직 수신된 탐지가 없습니다",
-    livenessNoCameras: "등록된 카메라가 없습니다",
-    livenessLoading: "탐지 확인 중…",
-    livenessViewCameras: "카메라 보기",
-    livenessAddCameras: "카메라 추가",
     toastApprovedTitle: "접근 승인됨 — 초대장 발송됨",
     toastDismissedTitle: "요청 거절됨",
   },
@@ -201,79 +194,6 @@ function ArrowUpIcon() {
 }
 
 
-/**
- * Is anything actually reaching this project? One line, because that is the whole question an
- * administrator has here.
- *
- * It replaces two 14-day trend charts (AI Detections, Alerts) whose numbers were generated from the
- * project id — the only invented figures on a page where every other number comes from real store
- * state, which taught the reader to discount the real ones too. They also answered an operator's
- * question, not an administrator's: what to do about a detection trend lives in the app, and both
- * charts' own "View more" led to tabs that show neither detections nor alerts.
- *
- * This reads the same event stream the app does — newest event whose camera belongs to this project
- * — so it says nothing the data cannot support, including when the answer is "nothing yet".
- *
- * HANDOFF NOTE: `events` is a client-side stream seeded from mockData and topped up while Live
- * Monitoring is open, so a fresh Portal-only session sees the seeded events and nothing newer. When
- * detections come from the backend this should read a per-project "last event at" instead of
- * scanning the list. The four states below are the contract either way.
- */
-function DetectionLivenessStrip({ lastDetection, cameraCount, nowMs, onViewCameras }: {
-  lastDetection: { at: string; label: string } | null;
-  cameraCount: number;
-  nowMs: number | null;
-  onViewCameras: () => void;
-}) {
-  const [lang] = usePortalLanguage();
-  const t = T[lang];
-
-  // Anything older than this is stale rather than live. Not an error — a school campus at night
-  // legitimately detects nothing — so it changes the colour and nothing else.
-  const LIVE_WINDOW_MS = 15 * 60 * 1000;
-  const ageMs = lastDetection && nowMs !== null ? nowMs - new Date(lastDetection.at).getTime() : null;
-  const live = ageMs !== null && ageMs <= LIVE_WINDOW_MS;
-
-  const tone = cameraCount === 0 || !lastDetection
-    ? { dot: "var(--gray-300)", text: "var(--gray-500)" }
-    : live
-      ? { dot: "var(--success-400)", text: "var(--gray-900)" }
-      : { dot: "var(--warning-400)", text: "var(--gray-900)" };
-
-  const headline = cameraCount === 0
-    ? t.livenessNoCameras
-    : !lastDetection
-      ? t.livenessNoDetections
-      : ageMs === null
-        // Before the clock is read on the client. Naming the state beats rendering an elapsed time
-        // the server and the browser would disagree about.
-        ? t.livenessLoading
-        : t.livenessLastDetection(formatElapsed(ageMs));
-
-  return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: "10px",
-      backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW,
-      padding: "14px 16px",
-    }}>
-      <span style={{ width: "8px", height: "8px", borderRadius: "999px", backgroundColor: tone.dot, flexShrink: 0 }} />
-      <p style={{ fontSize: "13px", fontWeight: 700, color: tone.text }}>{headline}</p>
-      {lastDetection && cameraCount > 0 && (
-        <p style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {lastDetection.label}
-        </p>
-      )}
-      <div style={{ flex: 1 }} />
-      <button
-        onClick={onViewCameras}
-        style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}
-      >
-        {cameraCount === 0 ? t.livenessAddCameras : t.livenessViewCameras}
-      </button>
-    </div>
-  );
-}
-
 // Shared shell for the four Overview metric cards — header (eyebrow label + icon badge), then
 // whatever body content each card needs (big value, progress bar, footer stats) as children.
 function MetricCard({ label, iconBg, iconColor, icon, children }: {
@@ -315,7 +235,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const portalUsers = useVcaStore(s => s.portalUsers);
   const persons = useVcaStore(s => s.persons);
   const auditLog = useVcaStore(s => s.auditLog);
-  const events = useVcaStore(s => s.events);
   const accessRequests = useVcaStore(s => s.accessRequests);
   const approveAccessRequests = useVcaStore(s => s.approveAccessRequests);
   const dismissAccessRequest = useVcaStore(s => s.dismissAccessRequest);
@@ -385,17 +304,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // however many cameras the project has. "View all" below covers the rest.
   const visibleCameraRows = filteredCameraRows.slice(0, 5);
 
-  // Newest event from a camera in this project. Scanned rather than indexed because `events` is
-  // capped at 500 and this runs once per render of one page — see DetectionLivenessStrip's handoff
-  // note for what replaces it.
-  const projectCameraIds = new Set(projectCameras.map(c => c.id));
-  const lastDetection = events
-    .filter(e => projectCameraIds.has(e.cameraId))
-    .reduce<{ at: string; label: string } | null>((newest, e) => {
-      if (newest && e.timestamp <= newest.at) return newest;
-      const camera = projectCameras.find(c => c.id === e.cameraId);
-      return { at: e.timestamp, label: e.cameraLabel ?? e.location ?? camera?.name ?? e.cameraId };
-    }, null);
 
   const approveRequest = (id: string, name: string) => {
     approveAccessRequests([id]);
@@ -705,12 +613,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </div>
           </div>
 
-          <DetectionLivenessStrip
-            lastDetection={lastDetection}
-            cameraCount={projectCameras.length}
-            nowMs={nowMs}
-            onViewCameras={() => onTabChange("cameras")}
-          />
+
         </>
       )}
       {tab === "cameras" && <ProjectCamerasTab projectId={projectId} />}
