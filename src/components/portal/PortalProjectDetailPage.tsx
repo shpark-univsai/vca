@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { useVcaStore, seededRandom, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
+import { useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR } from "./PortalShared";
 import { useToast } from "../Toast";
-import { usePortalLanguage, type PortalLanguage } from "@/lib/i18n";
+import { usePortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
 import type { DetailTab } from "./ProjectSidebar";
 import ProjectCamerasTab from "./ProjectCamerasTab";

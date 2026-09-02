@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
+import { CARD_BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 
 // Cumulative — each tier includes everything the tier before it unlocks. "Attendance / Reports"
@@ -49,14 +49,15 @@ const T = {
     channelSubscriptions: "Channel Subscriptions",
     comingSoon: "Coming soon",
     requiresSmartSchool: "Requires Smart School license",
-    channelSubscriptionCard: "Channel Subscription",
     perChannelPerYear: (price: number) => `$${price}/channel/yr`,
-    channelsAndCost: (limit: number, cost: string) => `${limit} channels · $${cost}/yr`,
     noLimitSet: "No limit set",
     overLimit: (used: number, limit: number) => `Over licensed limit (${used} / ${limit})`,
     aiCameras: "AI Cameras",
     normalCameras: "Normal Cameras (CCTV)",
-    channelsCount: (n: number) => `${n} channels`,
+    channelsTotal: (n: number) => `${n} channels`,
+    channelsAvailable: "Available",
+    channelsUnlimited: "No limit set — channels are not capped for this project",
+    channelsCostPerYear: (cost: string) => `$${cost}/yr`,
   },
   ko: {
     title: "라이선스 관리",
@@ -72,14 +73,15 @@ const T = {
     channelSubscriptions: "채널 구독",
     comingSoon: "출시 예정",
     requiresSmartSchool: "Smart School 라이선스 필요",
-    channelSubscriptionCard: "채널 구독",
     perChannelPerYear: (price: number) => `채널당 연 $${price}`,
-    channelsAndCost: (limit: number, cost: string) => `${limit}채널 · 연 $${cost}`,
     noLimitSet: "한도 미설정",
     overLimit: (used: number, limit: number) => `라이선스 한도 초과 (${used} / ${limit})`,
     aiCameras: "AI 카메라",
     normalCameras: "일반 카메라 (CCTV)",
-    channelsCount: (n: number) => `${n}채널`,
+    channelsTotal: (n: number) => `${n}채널`,
+    channelsAvailable: "미사용",
+    channelsUnlimited: "한도 미설정 — 이 프로젝트는 채널 수 제한이 없습니다",
+    channelsCostPerYear: (cost: string) => `연 $${cost}`,
   },
 } as const;
 
@@ -99,16 +101,71 @@ function CheckIcon() {
   );
 }
 
-function usageCard(label: string, used: number, limit: number | undefined, t: (typeof T)[keyof typeof T]) {
+/**
+ * What the licensed channels are being spent on, in Vimeo's Billing-seats shape: the total, then a
+ * flat breakdown under it, then one bar showing the split.
+ *
+ * It replaces three stacked cards (a full-width "subscription" bar, then AI cameras, then normal
+ * cameras) that each drew their own bar against the same denominator, so the reader had to add two
+ * of them up to learn anything. The number that was missing from all three is the one that decides
+ * whether you can install another camera: how many channels are unused. Vimeo shows the same figure
+ * as "Unassigned", and it is the whole reason the breakdown is worth drawing.
+ */
+function ChannelBreakdown({ aiCount, normalCount, limit, yearlyCost, overLimit, t }: {
+  aiCount: number;
+  normalCount: number;
+  limit: number | undefined;
+  yearlyCost: number;
+  overLimit: boolean;
+  t: (typeof T)[keyof typeof T];
+}) {
+  const used = aiCount + normalCount;
+  const available = limit === undefined ? undefined : Math.max(0, limit - used);
+  const pct = (n: number) => (limit ? Math.min(100, (n / limit) * 100) : 0);
+
+  const figures = [
+    { label: t.aiCameras, value: aiCount, dot: "var(--gray-900)" },
+    { label: t.normalCameras, value: normalCount, dot: "var(--gray-400)" },
+    // Only meaningful against a limit. With none set there is nothing to be left over from.
+    ...(available === undefined ? [] : [{ label: t.channelsAvailable, value: available, dot: "var(--gray-200)" }]),
+  ];
+
   return (
-    <div key={label} style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</p>
-        <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.channelsCount(used)}</p>
+    <div style={{ backgroundColor: "white", border: overLimit ? "1px solid var(--danger-400)" : CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+        <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>
+          {limit ? t.channelsTotal(limit) : t.noLimitSet}
+        </p>
+        <p style={{ fontSize: "12px", color: "var(--gray-500)", whiteSpace: "nowrap" }}>
+          {t.perChannelPerYear(PRICE_PER_CHANNEL_PER_YEAR)}
+          {limit ? ` · ${t.channelsCostPerYear(yearlyCost.toLocaleString())}` : ""}
+        </p>
       </div>
-      <div style={{ height: "5px", backgroundColor: "var(--gray-100)", borderRadius: "3px", marginTop: "10px" }}>
-        <div style={{ height: "5px", width: `${limit ? Math.min(100, (used / limit) * 100) : 0}%`, backgroundColor: "var(--gray-900)", borderRadius: "3px" }} />
+
+      {/* One bar, segmented, instead of three bars against the same denominator. */}
+      <div style={{ display: "flex", height: "5px", backgroundColor: "var(--gray-100)", borderRadius: "3px", overflow: "hidden", marginTop: "12px" }}>
+        <div style={{ width: `${pct(aiCount)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--gray-900)" }} />
+        <div style={{ width: `${pct(normalCount)}%`, backgroundColor: overLimit ? "var(--danger-200)" : "var(--gray-400)" }} />
       </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", marginTop: "14px" }}>
+        {figures.map(f => (
+          <div key={f.label}>
+            <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{f.value}</p>
+            <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
+              <span style={{ width: "7px", height: "7px", borderRadius: "2px", backgroundColor: f.dot, flexShrink: 0 }} />
+              {f.label}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {limit === undefined && (
+        <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "12px", lineHeight: 1.6 }}>{t.channelsUnlimited}</p>
+      )}
+      {overLimit && (
+        <p style={{ fontSize: "10px", color: "var(--danger-400)", marginTop: "12px" }}>{t.overLimit(used, limit ?? 0)}</p>
+      )}
     </div>
   );
 }
@@ -219,23 +276,14 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
 
         <div>
           <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>{t.channelSubscriptions}</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div style={{ backgroundColor: "white", border: overLimit ? "1px solid var(--danger-400)" : CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.channelSubscriptionCard}</p>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)", whiteSpace: "nowrap" }}>{t.perChannelPerYear(PRICE_PER_CHANNEL_PER_YEAR)}</p>
-              </div>
-              <div style={{ height: "5px", backgroundColor: "var(--gray-100)", borderRadius: "3px", marginTop: "10px" }}>
-                <div style={{ height: "5px", width: "100%", backgroundColor: overLimit ? "var(--danger-400)" : "var(--gray-900)", borderRadius: "3px" }} />
-              </div>
-              <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "8px" }}>
-                {limit ? t.channelsAndCost(limit, subscriptionYearlyCost.toLocaleString()) : t.noLimitSet}
-              </p>
-              {overLimit && <p style={{ fontSize: "10px", color: "var(--danger-400)", marginTop: "4px" }}>{t.overLimit(projectCameras.length, limit ?? 0)}</p>}
-            </div>
-            {usageCard(t.aiCameras, aiCameraCount, limit, t)}
-            {usageCard(t.normalCameras, normalCameraCount, limit, t)}
-          </div>
+          <ChannelBreakdown
+            aiCount={aiCameraCount}
+            normalCount={normalCameraCount}
+            limit={limit}
+            yearlyCost={subscriptionYearlyCost}
+            overLimit={overLimit}
+            t={t}
+          />
         </div>
       </div>
     </div>
