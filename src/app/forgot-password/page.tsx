@@ -89,11 +89,23 @@ function ForgotPasswordFlow() {
     return "email";
   });
 
-  // ── step 1: email ──────────────────────────────────────────────────────────
-  const [email, setEmail] = useState(demo ? DEMO_EMAIL : "");
-  const [emailTouched, setEmailTouched] = useState(false);
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const emailError = emailTouched && !emailValid ? "Enter a valid email address." : "";
+  // ── step 1: who ────────────────────────────────────────────────────────────
+  // Accepts an employee number as well as an email, matching the login prompt. Someone who signs in
+  // with a number and has no address of their own would otherwise be locked out of recovery
+  // entirely — the code still goes to whatever address the account carries.
+  const [identifier, setIdentifier] = useState(demo ? DEMO_EMAIL : "");
+  const [identifierTouched, setIdentifierTouched] = useState(false);
+  const typedEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier.trim());
+  // An employee number is whatever the roster uses, so the only thing worth checking here is that
+  // something was typed and it is not a half-finished email. Whether it exists is the server's
+  // business, and deliberately not answered on screen.
+  const looksLikeId = identifier.trim().length >= 3 && !identifier.includes("@");
+  const identifierValid = authConfig.employeeIdLogin ? (typedEmail || looksLikeId) : typedEmail;
+  const identifierError = identifierTouched && !identifierValid
+    ? (authConfig.employeeIdLogin
+        ? "Enter your employee number or email address."
+        : "Enter a valid email address.")
+    : "";
 
   // ── step 2: code ───────────────────────────────────────────────────────────
   const [digits, setDigits] = useState<string[]>(() => Array(RESET_CODE_LENGTH).fill(""));
@@ -141,8 +153,8 @@ function ForgotPasswordFlow() {
   // out who has an account here. The backend simply sends nothing when there is no match, and an
   // attacker learns only that they cannot guess an 8-digit code.
   const sendCode = () => {
-    setEmailTouched(true);
-    if (!emailValid) return;
+    setIdentifierTouched(true);
+    if (!identifierValid) return;
     resetCodeEntry();
     setCooldown(RESEND_COOLDOWN_SEC);
     setStep("code");
@@ -272,7 +284,9 @@ function ForgotPasswordFlow() {
           {step === "email" && (
             <>
               {heading("Forgot your password?", [
-                "Enter the email you registered with",
+                authConfig.employeeIdLogin
+                  ? "Enter your employee number or the email you registered with"
+                  : "Enter the email you registered with",
                 "We’ll send you a verification code",
               ])}
 
@@ -280,27 +294,27 @@ function ForgotPasswordFlow() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                   <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>Email</label>
                   <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px",
-                    border: emailError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: "8px" }}>
+                    border: identifierError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: "8px" }}>
                     <PersonFieldIcon />
                     <input
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      onBlur={() => setEmailTouched(true)}
+                      value={identifier}
+                      onChange={e => setIdentifier(e.target.value)}
+                      onBlur={() => setIdentifierTouched(true)}
                       onKeyDown={e => { if (e.key === "Enter") sendCode(); }}
-                      placeholder="user@email.com"
+                      placeholder={authConfig.employeeIdLogin ? "EMP-2041 or user@email.com" : "user@email.com"}
                       autoFocus
                       style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                     />
                   </div>
-                  {emailError && (
+                  {identifierError && (
                     <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.24px" }}>
-                      <ErrorCircleIcon /> {emailError}
+                      <ErrorCircleIcon /> {identifierError}
                     </p>
                   )}
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
-                  {primaryButton("Send code", emailValid, sendCode)}
+                  {primaryButton("Send code", identifierValid, sendCode)}
                   <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
                     Remembered it? {textButton("Log in", () => router.push("/login"), "primary")}
                   </p>
@@ -346,7 +360,12 @@ function ForgotPasswordFlow() {
               {/* The deadline replaces "Type it in below", which the boxes already say. Someone who
                   walks to another machine to read the mail needs to know they are on a clock. */}
               {heading("Enter your verification code", [
-                `We sent an ${RESET_CODE_LENGTH}-digit code to ${email.trim()}`,
+                // Echoes the address only when they typed one — they already know it, so there is
+                // nothing to leak. An employee number resolves to an address the screen has no
+                // business printing, so it says where it went without saying where that is.
+                typedEmail
+                  ? `We sent an ${RESET_CODE_LENGTH}-digit code to ${identifier.trim()}`
+                  : `We sent an ${RESET_CODE_LENGTH}-digit code to the address on this account`,
                 `It expires in ${RESET_CODE_TTL_MIN} minutes`,
               ])}
 
@@ -402,7 +421,12 @@ function ForgotPasswordFlow() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
                   {primaryButton("Next", codeComplete, verifyCode)}
                   <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                    Wrong address? {textButton("Use a different email", () => { resetCodeEntry(); setStep("email"); }, "primary")}
+                    {authConfig.employeeIdLogin ? "Wrong one?" : "Wrong address?"}{" "}
+                    {textButton(
+                      authConfig.employeeIdLogin ? "Start over" : "Use a different email",
+                      () => { resetCodeEntry(); setStep("email"); },
+                      "primary",
+                    )}
                   </p>
                 </div>
               </div>

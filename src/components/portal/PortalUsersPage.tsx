@@ -21,6 +21,22 @@ const T = {
     inviteUser: "Invite user",
     searchPlaceholder: "Search by user name or email address",
 
+    // Role/status summary strip
+    countAdmins: "Admins",
+    countOperators: "Operators",
+    countInvited: "Invited",
+    countSuspended: "Suspended",
+    countTotal: "Total",
+    invitedHint: "Invited but has not set a password yet — they cannot sign in until they do.",
+    suspendedHint: "Kept on the list but blocked from signing in.",
+
+    // Toolbar filters
+    filterBy: "Filter by",
+    filterAllPermissions: "All permissions",
+    filterAllStatuses: "All statuses",
+    emptyFiltered: "No users match these filters.",
+    clearFilters: "Clear filters",
+
     // Table
     colUser: "User",
     colTeam: "Team",
@@ -155,6 +171,22 @@ const T = {
     descUnscoped: "포털(관리자) 또는 앱(운영자) 접근 권한을 부여하고, 사용자가 이용할 프로젝트를 지정하세요.",
     inviteUser: "사용자 초대",
     searchPlaceholder: "사용자 이름 또는 이메일 주소로 검색",
+
+    // Role/status summary strip
+    countAdmins: "관리자",
+    countOperators: "운영자",
+    countInvited: "초대됨",
+    countSuspended: "정지됨",
+    countTotal: "전체",
+    invitedHint: "초대는 됐지만 아직 비밀번호를 설정하지 않았습니다 — 설정 전까지 로그인할 수 없습니다.",
+    suspendedHint: "명단에는 남아 있지만 로그인이 차단된 상태입니다.",
+
+    // Toolbar filters
+    filterBy: "필터",
+    filterAllPermissions: "전체 권한",
+    filterAllStatuses: "전체 상태",
+    emptyFiltered: "이 필터에 해당하는 사용자가 없습니다.",
+    clearFilters: "필터 지우기",
 
     // Table
     colUser: "사용자",
@@ -830,6 +862,48 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
   );
 }
 
+/**
+ * Who is on this project, broken out by role and by the two states that need an administrator to do
+ * something about them. Modelled on Vimeo's Members header, which puts the same strip above its
+ * table — the point is that you learn whether there is anything to act on before you read a single
+ * row, which a table alone cannot tell you.
+ *
+ * Plain figures on the page rather than four more cards: this sits directly above a table and a row
+ * of boxes there would compete with it. The two actionable counts carry a title explaining what the
+ * state means, because "Invited: 3" only reads as a to-do if you know an invited account cannot
+ * sign in yet.
+ */
+function UserCountStrip({ users }: { users: PortalUser[] }) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+
+  const counts = [
+    { label: t.countAdmins, value: users.filter(u => u.permission === "admin").length },
+    { label: t.countOperators, value: users.filter(u => u.permission === "operator").length },
+    { label: t.countInvited, value: users.filter(u => u.status === "invited").length, hint: t.invitedHint, actionable: true },
+    { label: t.countSuspended, value: users.filter(u => u.status === "suspended").length, hint: t.suspendedHint, actionable: true },
+    { label: t.countTotal, value: users.length },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "32px", marginBottom: "16px" }}>
+      {counts.map(c => (
+        <div key={c.label} title={c.hint}>
+          <p style={{
+            fontSize: "20px", fontWeight: 800,
+            // A zero here is good news (nobody stuck, nobody blocked), so it is not worth the same
+            // ink as a number you have to do something about.
+            color: c.actionable && c.value > 0 ? "var(--warning-500)" : c.value === 0 ? "var(--gray-300)" : "var(--gray-900)",
+          }}>
+            {c.value}
+          </p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{c.label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 interface PortalUsersPageProps {
   /** Scopes the table to users who have access to this project — mirrors Clerk's per-application Users tab. */
   projectId: string;
@@ -851,6 +925,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const [credentialFor, setCredentialFor] = useState<PortalUser | null>(null);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
+  const [permissionFilter, setPermissionFilter] = useState<PortalPermission | "ALL">("ALL");
+  const [statusFilter, setStatusFilter] = useState<PortalUserStatus | "ALL">("ALL");
 
   // Which recovery path this installation actually has. Everything mail-dependent on this page is
   // gated on it, because a "Send password reset" that quietly posts to nowhere is worse than no
@@ -868,9 +944,15 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const projectName = (id: string) => projects.find(p => p.id === id)?.name ?? id;
   const currentProject = projects.find(p => p.id === projectId);
   const q = search.trim().toLowerCase();
-  const scopedUsers = portalUsers
-    .filter(u => u.projectIds.includes(projectId))
-    .filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+  // Split in two: the strip above the table counts everyone on the project, the table shows what is
+  // left after filtering. Counting the filtered set instead would make the summary agree with the
+  // table and stop being a summary — filter to "Suspended" and it would proudly report zero admins.
+  const projectUsers = portalUsers.filter(u => u.projectIds.includes(projectId));
+  const filtersActive = permissionFilter !== "ALL" || statusFilter !== "ALL";
+  const scopedUsers = projectUsers
+    .filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+    .filter(u => permissionFilter === "ALL" || u.permission === permissionFilter)
+    .filter(u => statusFilter === "ALL" || u.status === statusFilter);
 
   return (
     <div>
