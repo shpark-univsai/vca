@@ -124,7 +124,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
         <div>
-          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>Included Features</p>
+          <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>Included Features</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             {ALL_FEATURES.map(f => {
               const isSchoolOnly = f === SCHOOL_ONLY_FEATURE;
@@ -148,7 +148,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
         </div>
 
         <div>
-          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>Channel Subscriptions</p>
+          <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>Channel Subscriptions</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <div style={{ backgroundColor: "white", border: overLimit ? "1px solid var(--danger-400)" : BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
