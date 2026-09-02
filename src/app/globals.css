@@ -33,13 +33,6 @@
 @import "tailwindcss";
 @import 'leaflet/dist/leaflet.css';
 
-@font-face {
-  font-family: 'SUIT';
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('https://cdn.jsdelivr.net/gh/sunn-us/SUIT@latest/fonts/variable/woff2/SUIT-Variable.woff2') format('woff2-variations');
-}
-
 /* ── Design tokens ────────────────────────────────────────────
    VCA Figma 라이브러리("VCA 작업")에 정의된 변수 값 그대로입니다.
    여기 없는 색은 쓰지 마세요. 화면에 필요한 단계가 없으면(예: danger-200
