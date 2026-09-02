@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useVcaStore } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER } from "./PortalShared";
+import { BORDER, FilterSelect } from "./PortalShared";
 
 const T = {
   en: {
@@ -16,20 +16,14 @@ const T = {
 
     // New team modal
     modalTitle: "New team",
-    modalIntro: "A team owns its own projects, users and mail settings. Nothing is shared with the teams already here.",
+    modalIntro: "A team keeps its own projects, users and mail settings. Nothing is shared with the teams already here.",
     nameLabel: "Team name",
     namePlaceholder: "e.g. Northgate Education Trust",
-    regionLabel: "Region",
-    regionPlaceholder: "e.g. Singapore",
-    mailDomainLabel: "Mail domain",
-    mailDomainPlaceholder: "e.g. northgate.edu.sg",
-    mailDomainHint: "Invites and access requests are refused for addresses outside this domain. Leave it empty if you are not sure yet.",
     industryLabel: "Primary industry",
+    industryHint: "Pre-selects the matching template on the next screen. Optional.",
     industryNone: "Not set",
     cancel: "Cancel",
     create: "Create team",
-    createdTitle: "Team created",
-    createdDesc: (name: string) => `${name} — create its first project next`,
   },
   ko: {
     noTeam: "팀 없음",
@@ -43,17 +37,11 @@ const T = {
     modalIntro: "팀은 각자의 프로젝트, 사용자, 메일 설정을 따로 가집니다. 기존 팀과 공유되는 것은 없습니다.",
     nameLabel: "팀 이름",
     namePlaceholder: "예: Northgate Education Trust",
-    regionLabel: "지역",
-    regionPlaceholder: "예: Singapore",
-    mailDomainLabel: "메일 도메인",
-    mailDomainPlaceholder: "예: northgate.edu.sg",
-    mailDomainHint: "이 도메인 밖의 주소로는 초대와 접근 요청이 거절됩니다. 아직 정해지지 않았다면 비워두세요.",
     industryLabel: "주요 산업",
+    industryHint: "다음 화면에서 맞는 템플릿을 미리 선택해 둡니다. 선택 사항입니다.",
     industryNone: "미설정",
     cancel: "취소",
     create: "팀 만들기",
-    createdTitle: "팀이 생성됨",
-    createdDesc: (name: string) => `${name} — 이어서 첫 프로젝트를 만드세요`,
   },
 } as const;
 
@@ -209,8 +197,16 @@ export default function TeamSwitcher({ currentTeamId, onSelect }: TeamSwitcherPr
 
 /**
  * Creating a team was only possible at signup, so an installation was stuck with whatever it was
- * named on day one. Same fields the signup wizard collects, plus the two that only become
- * answerable later — region and the mail domain invites are checked against.
+ * named on day one.
+ *
+ * Name, and one optional hint about what the team does. It started out also asking for a region and
+ * a mail domain and was the heaviest create-a-team box of any console we looked at — every one of
+ * them (Devin, Framer, Miro, Tally, Mistral, PandaDoc, Notion) asks for a name and at most a couple
+ * of extras, because at the moment a team is created most of its settings are not yet knowable.
+ * Region went because nothing in the app ever reads Team.region. Mail domain went because it is
+ * already editable, with far better context, in the project's Server & API tab — and the hint under
+ * it here literally said "leave it empty if you are not sure yet", which is the field telling you
+ * it does not belong on this screen.
  *
  * On success the shell switches to the new team, which has no projects yet and therefore lands on
  * the empty state inviting the first one. That is the intended next step, not a dead end.
@@ -221,39 +217,18 @@ function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const [name, setName] = useState("");
-  const [region, setRegion] = useState("");
-  const [mailDomain, setMailDomain] = useState("");
   const [industry, setIndustry] = useState("");
 
   const canSubmit = name.trim().length > 0;
 
   const submit = () => {
     if (!canSubmit) return;
-    const id = addTeam({
-      name: name.trim(),
-      region: region.trim(),
-      // Empty stays undefined rather than "": resolveMailConfig and the invite forms test for a
-      // domain being set at all, and an empty string is a domain nothing can match.
-      mailDomain: mailDomain.trim() || undefined,
-      industry: industry || undefined,
-    });
+    // region is left empty the same way signup leaves it — the field exists on Team but no screen
+    // reads it, so asking for it would collect something nobody ever sees.
+    const id = addTeam({ name: name.trim(), region: "", industry: industry || undefined });
     onClose();
     onCreated(id);
   };
-
-  const field = (label: string, value: string, onChange: (v: string) => void, placeholder: string, hint?: string) => (
-    <div>
-      <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{label}</label>
-      <input
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        onKeyDown={e => { if (e.key === "Enter") submit(); }}
-        style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }}
-      />
-      {hint && <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.6 }}>{hint}</p>}
-    </div>
-  );
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
@@ -266,33 +241,30 @@ function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
           </button>
         </div>
 
-        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", maxHeight: "60vh", overflowY: "auto" }}>
+        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
           <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>{t.modalIntro}</p>
-          {field(t.nameLabel, name, setName, t.namePlaceholder)}
-          {field(t.regionLabel, region, setRegion, t.regionPlaceholder)}
-          {field(t.mailDomainLabel, mailDomain, setMailDomain, t.mailDomainPlaceholder, t.mailDomainHint)}
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder={t.namePlaceholder}
+              onKeyDown={e => { if (e.key === "Enter") submit(); }}
+              autoFocus
+              style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }}
+            />
+          </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.industryLabel}</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-              {["", ...INDUSTRIES].map(value => {
-                const active = industry === value;
-                return (
-                  <button
-                    key={value || "__none"}
-                    onClick={() => setIndustry(value)}
-                    style={{
-                      padding: "6px 10px", borderRadius: "999px", cursor: "pointer",
-                      border: active ? "1px solid var(--gray-900)" : BORDER,
-                      backgroundColor: active ? "var(--gray-100)" : "white",
-                      color: active ? "var(--gray-900)" : "var(--gray-600)",
-                      fontSize: "12px", fontWeight: 700,
-                    }}
-                  >
-                    {value || t.industryNone}
-                  </button>
-                );
-              })}
-            </div>
+            {/* One select rather than a row of seven chips. Chips are for a choice you want read at
+                a glance; this one is optional and is read once, at which point a closed control
+                keeps the box short enough to take in whole. */}
+            <FilterSelect
+              value={industry}
+              onChange={setIndustry}
+              options={[{ value: "", label: t.industryNone }, ...INDUSTRIES.map(i => ({ value: i, label: i }))]}
+            />
+            <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.6 }}>{t.industryHint}</p>
           </div>
         </div>
 
