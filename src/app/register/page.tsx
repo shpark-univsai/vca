@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import VerificationCodeInput from "@/components/VerificationCodeInput";
 import { LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
+import { getAuthConfig } from "@/lib/authConfig";
 import {
   REGISTRATION_CODE_LENGTH, normalizeCode, resolveRegistrationCode,
 } from "@/lib/staffRoster";
@@ -56,8 +57,27 @@ function fieldBorder(active: boolean) {
  *
  * Issuing the code is the approval, so nothing here waits for a second review.
  */
+/**
+ * HANDOFF NOTE — states that cannot be reached by using the screen, because the responses that
+ * produce them do not exist yet:
+ *
+ *   /register?demo=throttled   too many wrong codes, entry locked
+ *
+ * The rest are reachable with the seeded codes: BPXW-4762 works, QRST-5678 is already used,
+ * VXYZ-2345 has expired.
+ */
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterFlow />
+    </Suspense>
+  );
+}
+
+function RegisterFlow() {
   const router = useRouter();
+  const demo = useSearchParams().get("demo");
+  const authConfig = getAuthConfig();
   const staffRoster = useVcaStore(s => s.staffRoster);
   const portalUsers = useVcaStore(s => s.portalUsers);
   const projects = useVcaStore(s => s.projects);
@@ -67,6 +87,9 @@ export default function RegisterPage() {
 
   const [digits, setDigits] = useState<string[]>(() => Array(REGISTRATION_CODE_LENGTH).fill(""));
   const [codeError, setCodeError] = useState("");
+  // Separate from codeError because it is not an inline message — it replaces the entry step. See
+  // the panel below for why.
+  const [throttled, setThrottled] = useState(demo === "throttled");
   const [entry, setEntry] = useState<Activation | null>(null);
   const code = digits.join("");
   const codeComplete = code.length === REGISTRATION_CODE_LENGTH;
@@ -84,6 +107,7 @@ export default function RegisterPage() {
   const restart = () => {
     setDigits(Array(REGISTRATION_CODE_LENGTH).fill(""));
     setCodeError("");
+    setThrottled(false);
     setEntry(null);
     setStep("code");
   };
@@ -212,7 +236,32 @@ export default function RegisterPage() {
           display: "flex", flexDirection: "column", gap: "40px", alignItems: "center",
         }}>
 
-          {step === "code" && (
+          {/* A wall, not an inline hint. Leaving the boxes usable invites a tenth attempt that
+              cannot succeed, and this code is the only thing standing in front of an account, so
+              the attempt limit is the security control rather than an annoyance to soften. */}
+          {step === "code" && throttled && (
+            <>
+              {heading("Too many attempts", ["Code entry is locked for now"])}
+              <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
+                <div style={{
+                  display: "flex", flexDirection: "column", gap: "10px",
+                  padding: "20px", borderRadius: "12px", backgroundColor: "var(--danger-100)",
+                }}>
+                  <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-700)", letterSpacing: "-0.26px", lineHeight: 1.7 }}>
+                    Wait a few minutes and try again, or ask your administrator to issue a new code
+                    for you.
+                  </p>
+                  <div style={{ height: "1px", backgroundColor: "var(--danger-200)", margin: "2px 0" }} />
+                  <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
+                    {authConfig.supportContact ?? "Your security operations team"}
+                  </p>
+                </div>
+                {primaryButton("Back to log in", true, () => router.push("/login"))}
+              </div>
+            </>
+          )}
+
+          {step === "code" && !throttled && (
             <>
               {heading("Enter your registration code", [
                 `Your administrator gave you an ${REGISTRATION_CODE_LENGTH}-character code`,

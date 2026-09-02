@@ -84,7 +84,7 @@ function ForgotPasswordFlow() {
   const demo = useSearchParams().get("demo");
   const authConfig = getAuthConfig();
   const [step, setStep] = useState<Step>(() => {
-    if (demo === "code" || demo === "wrong" || demo === "expired" || demo === "throttled") return "code";
+    if (demo === "code" || demo === "wrong" || demo === "expired" || demo === "throttled" || demo === "resendLimit") return "code";
     if (demo === "password" || demo === "done") return demo === "done" ? "done" : "password";
     return "email";
   });
