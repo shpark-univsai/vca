@@ -578,7 +578,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
      of thing. An asterisk is the mark those already carry in print. A wrapped line stays hanging
      off it instead of sliding under it. */
   const bullet = (text: string) => (
-    <li key={text} style={{ display: "flex", gap: "8px", alignItems: "flex-start", listStyle: "none" }}>
+    <li key={text} style={{ display: "flex", gap: "5px", alignItems: "flex-start", listStyle: "none" }}>
       <Asterisk
         size={14}
         strokeWidth={2}
