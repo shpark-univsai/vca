@@ -143,7 +143,14 @@ export interface Camera {
   // Hardware details shown in Portal's Cameras table — set from the Add/Edit Camera form.
   // Optional/cosmetic, same as protocol: nothing downstream branches on these.
   maker?: string;
+  model?: string;
   resolution?: string;
+  /** Account the stream authenticates with. The password that goes with it is deliberately NOT
+   *  here — see the Add Camera form's note. */
+  username?: string;
+  /** Which of the project's servers processes this camera. Optional: a camera can be registered
+   *  before anyone has decided where it runs. */
+  serverId?: string;
 }
 
 // Infrastructure nodes shown in Portal's Server & API Management tab — separate from `Camera`

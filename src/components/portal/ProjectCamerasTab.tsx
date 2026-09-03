@@ -65,6 +65,20 @@ const T = {
     toastUploadRemovedTitle: "Upload removed",
     emptyNoSources: "Nothing registered for this project yet.",
     gridCamerasOnly: "Grid shows cameras only — switch to Table to see uploaded footage.",
+    fieldIp: "IP address",
+    fieldIpPlaceholder: "10.20.4.11",
+    fieldModel: "Model",
+    fieldModelPlaceholder: "e.g. XNP-6400R",
+    fieldUsername: "User ID",
+    fieldUsernamePlaceholder: "Stream account",
+    fieldPassword: "Password",
+    fieldPasswordPlaceholder: "Stream password",
+    fieldPasswordEditHint: "Leave blank to keep the current password.",
+    passwordNotStoredHint: "Sent to the server with the camera and never read back — it is not kept in this browser.",
+    fieldServer: "Associated server",
+    fieldServerNone: "Not assigned",
+    fieldLat: "Latitude",
+    fieldLng: "Longitude",
     clearFilters: "Clear all filters",
     selectedCount: (n: number) => `${n} selected`,
     bulkClearSelection: "Clear selection",
@@ -194,6 +208,20 @@ const T = {
     toastUploadRemovedTitle: "업로드가 삭제됨",
     emptyNoSources: "이 프로젝트에 등록된 소스가 없습니다.",
     gridCamerasOnly: "그리드는 카메라만 보여줍니다 — 업로드한 영상은 테이블에서 볼 수 있습니다.",
+    fieldIp: "IP 주소",
+    fieldIpPlaceholder: "10.20.4.11",
+    fieldModel: "모델",
+    fieldModelPlaceholder: "예: XNP-6400R",
+    fieldUsername: "사용자 ID",
+    fieldUsernamePlaceholder: "스트림 계정",
+    fieldPassword: "비밀번호",
+    fieldPasswordPlaceholder: "스트림 비밀번호",
+    fieldPasswordEditHint: "비워두면 기존 비밀번호를 그대로 사용합니다.",
+    passwordNotStoredHint: "카메라와 함께 서버로 전송되며 다시 읽어오지 않습니다 — 브라우저에는 남지 않습니다.",
+    fieldServer: "연결 서버",
+    fieldServerNone: "미지정",
+    fieldLat: "위도",
+    fieldLng: "경도",
     clearFilters: "필터 모두 지우기",
     selectedCount: (n: number) => `${n}대 선택됨`,
     bulkClearSelection: "선택 해제",
@@ -354,19 +382,34 @@ type InputKind = typeof INPUT_KINDS[number];
 
 interface CameraFormValues {
   name: string;
+  ip: string;
   location: string;
   zone: string;
   rtspUrl: string;
   resolution: string;
   maker: string;
+  model: string;
+  username: string;
+  /**
+   * Held in the form only. It is never written to the store and never read back into the form on
+   * edit — a stream credential in browser state is a credential in every future persistence layer
+   * and in any state dump. The real call posts it with the camera and the server keeps only its own
+   * copy; editing shows an empty box, which is what "unchanged" looks like everywhere else.
+   */
+  password: string;
+  serverId: string;
+  lat: string;
+  lng: string;
   inputKind: InputKind;
   aiFeatures: CameraAiFeature[];
   status: CameraStatus;
 }
 
 const EMPTY_FORM: CameraFormValues = {
-  name: "", location: "", zone: "", rtspUrl: "",
-  resolution: RESOLUTIONS[0], maker: MAKERS[0], inputKind: "CCTV", aiFeatures: [], status: "offline",
+  name: "", ip: "", location: "", zone: "", rtspUrl: "",
+  resolution: RESOLUTIONS[0], maker: MAKERS[0], model: "", username: "", password: "",
+  serverId: "", lat: "", lng: "",
+  inputKind: "CCTV", aiFeatures: [], status: "offline",
 };
 
 // Camera codes are an internal identifier (shown in the table, used in mock RTSP paths) — the
@@ -378,11 +421,14 @@ function generateCameraCode(name: string, existingCount: number): string {
 }
 
 function CameraFormModal({
-  title, initial, isEdit, onClose, onSubmit, t,
+  title, initial, isEdit, servers, onClose, onSubmit, t,
 }: {
   title: string;
   initial: CameraFormValues;
   isEdit: boolean;
+  /** This project's servers, for the Associated server picker. Empty is a valid state — a project
+   *  can have cameras before it has anywhere to run them. */
+  servers: { id: string; name: string }[];
   onClose: () => void;
   onSubmit: (values: CameraFormValues) => void;
   t: (typeof T)["en"] | (typeof T)["ko"];
@@ -391,13 +437,21 @@ function CameraFormModal({
   const [form, setForm] = useState<CameraFormValues>(initial);
   const valid = form.name.trim().length > 0 && form.rtspUrl.trim().length > 0;
 
-  const field = (key: "name" | "location" | "zone" | "rtspUrl", label: string, placeholder: string) => (
+  const field = (
+    key: "name" | "ip" | "location" | "zone" | "rtspUrl" | "model" | "username" | "password" | "lat" | "lng",
+    label: string,
+    placeholder: string,
+    opts?: { type?: string; inputMode?: "decimal" },
+  ) => (
     <div>
       <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{label}</label>
       <input
         value={form[key]}
         onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
         placeholder={placeholder}
+        type={opts?.type}
+        inputMode={opts?.inputMode}
+        autoComplete={key === "password" ? "new-password" : undefined}
         style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }}
       />
     </div>
@@ -432,22 +486,71 @@ function CameraFormModal({
           </button>
         </div>
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+          {/* Source type first, as two buttons rather than a select: it is a required choice
+              between exactly two things and it changes what the rest of the form means. */}
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldInputKind}</label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              {INPUT_KINDS.map(kind => {
+                const active = form.inputKind === kind;
+                return (
+                  <button key={kind} onClick={() => setInputKind(kind)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "8px", padding: "10px 12px", borderRadius: "10px", cursor: "pointer",
+                      border: active ? "1px solid var(--gray-900)" : BORDER,
+                      backgroundColor: active ? "var(--gray-100)" : "white",
+                      color: active ? "var(--gray-900)" : "var(--gray-600)",
+                      fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
+                    }}>
+                    <VideoIcon size={16} strokeWidth={1.4} />
+                    {kind === "AI Camera" ? t.aiCameraOption : t.cctvOption}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {field("name", t.fieldDeviceName, t.fieldDeviceNamePlaceholder)}
+          {field("ip", t.fieldIp, t.fieldIpPlaceholder)}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            {selectField(t.fieldMaker, form.maker, MAKERS.map(m => ({ value: m, label: m })), v => setForm(f => ({ ...f, maker: v })))}
+            {field("model", t.fieldModel, t.fieldModelPlaceholder)}
+          </div>
+
+          <div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              {field("username", t.fieldUsername, t.fieldUsernamePlaceholder)}
+              {field("password", t.fieldPassword, t.fieldPasswordPlaceholder, { type: "password" })}
+            </div>
+            {/* Says where the password goes, because an empty box on the edit form otherwise reads
+                as "we lost it" rather than "we never had it". */}
+            <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.6 }}>
+              {isEdit ? `${t.fieldPasswordEditHint} ${t.passwordNotStoredHint}` : t.passwordNotStoredHint}
+            </p>
+          </div>
+
+          {field("rtspUrl", t.fieldRtspUrl, "rtsp://10.20.4.11:554/stream1")}
+
+          {selectField(
+            t.fieldServer,
+            form.serverId,
+            [{ value: "", label: t.fieldServerNone }, ...servers.map(sv => ({ value: sv.id, label: sv.name }))],
+            v => setForm(f => ({ ...f, serverId: v })),
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            {field("lat", t.fieldLat, "0.0", { inputMode: "decimal" })}
+            {field("lng", t.fieldLng, "0.0", { inputMode: "decimal" })}
+          </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             {field("location", t.fieldLocation, t.fieldLocationPlaceholder)}
             {field("zone", t.fieldZone, t.fieldZonePlaceholder)}
           </div>
 
-          {field("rtspUrl", t.fieldRtspUrl, "rtsp://10.20.4.11:554/stream1")}
-
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             {selectField(t.fieldResolution, form.resolution, RESOLUTIONS.map(r => ({ value: r, label: r })), v => setForm(f => ({ ...f, resolution: v })))}
-            {selectField(t.fieldMaker, form.maker, MAKERS.map(m => ({ value: m, label: m })), v => setForm(f => ({ ...f, maker: v })))}
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            {selectField(t.fieldInputKind, form.inputKind, INPUT_KINDS.map(k => ({ value: k, label: k === "AI Camera" ? t.aiCameraOption : t.cctvOption })), v => setInputKind(v as InputKind))}
             {!isEdit && selectField(t.fieldStatus, form.status === "online" ? "Online" : "Offline", [{ value: "Online", label: t.online }, { value: "Offline", label: t.offline }], v => setForm(f => ({ ...f, status: v === "Online" ? "online" : "offline" })))}
           </div>
         </div>
@@ -552,6 +655,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
   const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
   const cameras = useVcaStore(s => s.cameras);
   const uploads = useVcaStore(s => s.uploads);
+  const servers = useVcaStore(s => s.servers);
   const addUpload = useVcaStore(s => s.addUpload);
   const removeUpload = useVcaStore(s => s.removeUpload);
   const addCamera = useVcaStore(s => s.addCamera);
@@ -591,6 +695,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
 
   const projectCameras = cameras.filter(c => c.projectId === projectId);
   const projectUploads = uploads.filter(u => u.projectId === projectId);
+  const projectServers = servers.filter(sv => sv.projectId === projectId);
 
   useEffect(() => {
     if (!addMenuOpen) return;
@@ -715,12 +820,16 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
   const limit = project ? projectChannelLimit(project) : undefined;
   const overLimit = !!limit && projectCameras.length > limit;
 
+  // `password` is read off the form and dropped here on purpose — see CameraFormValues. Everything
+  // else the form collects is stored.
   const createCamera = (values: CameraFormValues) => {
     addCamera({
       projectId, name: values.name.trim(), code: generateCameraCode(values.name.trim(), projectCameras.length), rtspUrl: values.rtspUrl.trim(),
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
-      maker: values.maker, resolution: values.resolution, aiFeatures: values.aiFeatures,
-      ip: "", mac: "", status: values.status, thumbnail: DEFAULT_THUMBNAIL, lat: 0, lng: 0,
+      maker: values.maker, model: values.model.trim() || undefined, resolution: values.resolution, aiFeatures: values.aiFeatures,
+      username: values.username.trim() || undefined, serverId: values.serverId || undefined,
+      ip: values.ip.trim(), mac: "", status: values.status, thumbnail: DEFAULT_THUMBNAIL,
+      lat: Number(values.lat) || 0, lng: Number(values.lng) || 0,
     });
     setShowAdd(false);
     showToast({ variant: "success", title: t.toastCameraAddedTitle, desc: t.toastCameraAddedDesc(values.name.trim()) });
@@ -729,9 +838,12 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
   const saveEdit = (values: CameraFormValues) => {
     if (!editingCamera) return;
     updateCamera(editingCamera.id, {
-      name: values.name.trim(), rtspUrl: values.rtspUrl.trim(),
+      name: values.name.trim(), rtspUrl: values.rtspUrl.trim(), ip: values.ip.trim(),
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
-      maker: values.maker, resolution: values.resolution, aiFeatures: values.aiFeatures,
+      maker: values.maker, model: values.model.trim() || undefined, resolution: values.resolution,
+      username: values.username.trim() || undefined, serverId: values.serverId || undefined,
+      lat: Number(values.lat) || 0, lng: Number(values.lng) || 0,
+      aiFeatures: values.aiFeatures,
     });
     setEditingCamera(null);
     showToast({ variant: "success", title: t.toastCameraUpdatedTitle, desc: values.name.trim() });
@@ -1254,20 +1366,27 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
       )}
 
       {showAdd && (
-        <CameraFormModal title={t.addModalTitle} initial={EMPTY_FORM} isEdit={false} onClose={() => setShowAdd(false)} onSubmit={createCamera} t={t} />
+        <CameraFormModal title={t.addModalTitle} initial={EMPTY_FORM} isEdit={false} servers={projectServers} onClose={() => setShowAdd(false)} onSubmit={createCamera} t={t} />
       )}
       {editingCamera && (
         <CameraFormModal
           title={t.editModalTitle}
           isEdit
           initial={{
-            name: editingCamera.name, rtspUrl: editingCamera.rtspUrl,
+            name: editingCamera.name, ip: editingCamera.ip, rtspUrl: editingCamera.rtspUrl,
             location: editingCamera.location, zone: editingCamera.zone,
-            maker: editingCamera.maker ?? MAKERS[0], resolution: editingCamera.resolution ?? RESOLUTIONS[0],
+            maker: editingCamera.maker ?? MAKERS[0], model: editingCamera.model ?? "",
+            resolution: editingCamera.resolution ?? RESOLUTIONS[0],
+            username: editingCamera.username ?? "",
+            // Always blank. The store has no password to put here, which is the point.
+            password: "",
+            serverId: editingCamera.serverId ?? "",
+            lat: String(editingCamera.lat ?? ""), lng: String(editingCamera.lng ?? ""),
             inputKind: (editingCamera.aiFeatures ?? []).length > 0 ? "AI Camera" : "CCTV",
             aiFeatures: editingCamera.aiFeatures ?? [],
             status: editingCamera.status,
           }}
+          servers={projectServers}
           onClose={() => setEditingCamera(null)}
           onSubmit={saveEdit}
           t={t}
