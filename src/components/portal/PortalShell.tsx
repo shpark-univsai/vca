@@ -8,7 +8,7 @@ import { NewTeamModal } from "./TeamSwitcher";
 import ProjectSwitcher from "./ProjectSwitcher";
 import PortalNewProjectWizard from "./PortalNewProjectWizard";
 import TeamSwitcher from "./TeamSwitcher";
-import ProjectSidebar, { type DetailTab } from "./ProjectSidebar";
+import ProjectSidebar, { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
 import { ToastProvider } from "../Toast";
 import { useVcaStore, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -48,6 +48,11 @@ export default function PortalShell() {
   const typeParam = searchParams.get("type");
   const defaultWizardType: ProjectType | undefined = typeParam === "smart_city" || typeParam === "smart_school" ? typeParam : undefined;
   const teamIdParam = searchParams.get("teamId");
+  // Which project tab to open on. The tab used to be state only, so /portal always landed on
+  // Overview and there was no way to send someone "the Cameras tab of this project" — every link
+  // to Portal was a link to the same screen. Read once, as the initial value: after that the tab is
+  // component state, so clicking around does not push a history entry per tab.
+  const tabParam = searchParams.get("tab");
 
   const [showWizard, setShowWizard] = useState(newProjectParam);
   // A fresh installation can arrive with no team at all — one company may run several teams here,
@@ -76,7 +81,9 @@ export default function PortalShell() {
   const currentProjectId = teamProjects.some(p => p.id === pickedProjectId)
     ? pickedProjectId
     : (teamProjects[0]?.id ?? "");
-  const [tab, setTab] = useState<DetailTab>("overview");
+  const [tab, setTab] = useState<DetailTab>(
+    () => (PROJECT_TABS.some(t => t.id === tabParam) ? (tabParam as DetailTab) : "overview"),
+  );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [lang] = usePortalLanguage();
   const t = T[lang];
