@@ -53,9 +53,6 @@ export interface Team {
    */
   mailDomain?: string;
   smtp?: SmtpConfig;
-  // Set at signup (Step 2 — "Primary Industry"); pre-highlights the matching template on the
-  // New Project Wizard that follows signup. Optional since existing/legacy orgs won't have it.
-  industry?: string;
 }
 
 export type ProjectType = "smart_city" | "smart_school";
@@ -331,7 +328,7 @@ const TEAMS: Team[] = [
   // what a team looks like the week it is onboarded.
   {
     id: "team-northgate", name: "Northgate Education Trust", region: "Singapore",
-    mailDomain: "northgate.edu.sg", industry: "Smart School",
+    mailDomain: "northgate.edu.sg",
   },
 ];
 

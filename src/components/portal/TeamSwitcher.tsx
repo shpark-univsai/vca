@@ -208,15 +208,12 @@ export function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCr
 
   const submit = () => {
     if (!canSubmit) return;
-    // Neither region nor industry is asked for, for the same reason: the fields exist on Team but
-    // nothing reads them back. Industry had one reader — industryToProjectType(), which pre-selects
-    // the template in the project wizard right after /signup — and that route is closed on an
-    // on-premise build (2026-09-02). So the answer went nowhere while being required to proceed.
-    //
-    // It was also the wrong question to put on a team: the template belongs to a PROJECT, chosen in
-    // the wizard, and one team legitimately holds both kinds (the seeded City of Singapore team has
-    // a Smart City project and a Smart School one). Asking here invited an answer that the data
-    // could then contradict.
+    // Name only. Industry is not asked here — the solution template belongs to a PROJECT and the
+    // project wizard's first step asks it with both options on screen as cards, so putting it on
+    // the team asked the same question one screen earlier. A team also legitimately holds both
+    // kinds: the seeded City of Singapore team has a Smart City project and a Smart School one, so
+    // any single answer at team level would have been contradicted by its own data. The field is
+    // gone from Team altogether now, along with the signup step that set it.
     const id = addTeam({ name: name.trim(), region: "" });
     onClose();
     onCreated(id);

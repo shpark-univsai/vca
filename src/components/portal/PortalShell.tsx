@@ -43,7 +43,8 @@ export default function PortalShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
   // Landed here from the signup wizard's "Start Creating Your Project" — open straight into the
-  // New Project Wizard, pre-selecting the industry chosen at signup and the team it just created.
+  // New Project Wizard for the team it just created. `type` may still arrive from an older link;
+  // the wizard treats it as a pre-selection, and nothing sets it any more.
   const newProjectParam = searchParams.get("newProject") === "1";
   const typeParam = searchParams.get("type");
   const defaultWizardType: ProjectType | undefined = typeParam === "smart_city" || typeParam === "smart_school" ? typeParam : undefined;
