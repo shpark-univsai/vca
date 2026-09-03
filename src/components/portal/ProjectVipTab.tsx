@@ -6,7 +6,11 @@ import { getFacePhoto } from "@/lib/mockData";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, CONTROL_HEIGHT, PANEL_SHADOW, FilterSelect } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, FilterSelect, SortableHeader, sortRows, useTableSort } from "./PortalShared";
+
+type VipSortKey = "name" | "role" | "priority" | "registered";
+
+const VIP_GRID = "40px 1.2fr 0.7fr 0.7fr 0.8fr 1.4fr 32px";
 
 const ROLE_LABELS = ["Regular", "Lead", "Captain", "Health", "Special"];
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -29,6 +33,13 @@ interface VipDict {
   noSearchResults: string;
   noVips: string;
   registered: (date: string) => string;
+  viewGrid: string;
+  viewTable: string;
+  colVip: string;
+  colRole: string;
+  colPriority: string;
+  colRegistered: string;
+  colNote: string;
   removeVip: string;
   confirmRemoveTitle: string;
   confirmRemoveBody: string;
@@ -62,6 +73,13 @@ const T: Record<"en" | "ko", VipDict> = {
     noSearchResults: "No VIPs match this search.",
     noVips: "No VIPs registered for this project yet.",
     registered: (date: string) => `Registered ${date}`,
+    viewGrid: "Grid",
+    viewTable: "Table",
+    colVip: "VIP",
+    colRole: "Role",
+    colPriority: "Priority",
+    colRegistered: "Registered",
+    colNote: "Note",
     removeVip: "Remove VIP",
     confirmRemoveTitle: "Remove this VIP?",
     confirmRemoveBody: "They will be removed from this project's watchlist. Cameras will no longer detect them as a registered VIP.",
@@ -93,6 +111,13 @@ const T: Record<"en" | "ko", VipDict> = {
     noSearchResults: "검색 결과와 일치하는 VIP가 없습니다.",
     noVips: "이 프로젝트에 등록된 VIP가 아직 없습니다.",
     registered: (date: string) => `등록일 ${date}`,
+    viewGrid: "그리드",
+    viewTable: "테이블",
+    colVip: "VIP",
+    colRole: "역할",
+    colPriority: "우선순위",
+    colRegistered: "등록일",
+    colNote: "메모",
     removeVip: "VIP 삭제",
     confirmRemoveTitle: "정말 삭제하시겠습니까?",
     confirmRemoveBody: "이 프로젝트의 관심인물 목록에서 삭제됩니다. 이후 카메라는 이 인물을 등록된 VIP로 탐지하지 않습니다.",
@@ -263,13 +288,32 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const [showRegister, setShowRegister] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState<Person | null>(null);
   const [search, setSearch] = useState("");
+  // Grid by default: a watchlist is looked at face-first, and the photo is the thing an operator
+  // recognises. Table is for the other job — comparing role, priority and when someone was added
+  // across the whole list, which a wall of cards cannot do.
+  const [view, setView] = useState<"grid" | "table">("grid");
+  const { sort, toggle: toggleSort } = useTableSort<VipSortKey>({ key: "registered", direction: "desc" });
   const [searchFocused, setSearchFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const q = search.trim().toLowerCase();
-  const projectPersons = persons
+  const matchingPersons = persons
     .filter(p => p.projectId === projectId)
     .filter(p => !q || p.name.toLowerCase().includes(q));
+  // Sorting only applies to the table — the grid keeps registration order, because a wall of cards
+  // has no column headings to say what it is sorted by.
+  const projectPersons = view === "table"
+    ? sortRows(matchingPersons, sort, (person, key) => {
+        switch (key) {
+          case "name": return person.name.toLowerCase();
+          case "role": return person.roleLabel;
+          // Ranked, not alphabetical: "very_high" has to sit above "high", and alphabetically it
+          // would sit below it.
+          case "priority": return person.priorityLabel ? PRIORITY_LABELS.indexOf(person.priorityLabel) : undefined;
+          case "registered": return person.registeredAt;
+        }
+      })
+    : matchingPersons;
 
   const register = (values: RegisterValues) => {
     addPerson({
@@ -338,7 +382,8 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      <div style={{ position: "relative", marginBottom: "16px", maxWidth: "320px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+      <div style={{ position: "relative", flex: 1, maxWidth: "320px" }}>
         <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
         </span>
@@ -356,12 +401,68 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           }}
         />
       </div>
+        <div style={{ flex: 1 }} />
+        {/* Same segmented control the Input Sources tab uses, so the one gesture for "show me this
+            differently" looks the same in both places. */}
+        <div style={{ display: "flex", alignItems: "center", height: CONTROL_HEIGHT, boxSizing: "border-box", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px", flexShrink: 0 }}>
+          {(["grid", "table"] as const).map(v => (
+            <button key={v} onClick={() => setView(v)}
+              style={{
+                height: "100%", padding: "0 10px", borderRadius: "8px", border: "none", cursor: "pointer", fontFamily: "inherit",
+                backgroundColor: view === v ? "white" : "transparent", boxShadow: view === v ? PANEL_SHADOW : "none",
+                fontSize: "12px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
+              }}>
+              {v === "grid" ? t.viewGrid : t.viewTable}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {projectPersons.length === 0 ? (
         <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", padding: "32px", textAlign: "center" }}>
           <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
             {q ? t.noSearchResults : t.noVips}
           </p>
+        </div>
+      ) : view === "table" ? (
+        <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
+          <div style={{ display: "grid", gridTemplateColumns: VIP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+            {/* The photo and the note carry no sortKey — a face has no order, and a free-text note
+                sorted alphabetically answers nothing. */}
+            <span />
+            {([
+              { label: t.colVip, key: "name" },
+              { label: t.colRole, key: "role" },
+              { label: t.colPriority, key: "priority" },
+              { label: t.colRegistered, key: "registered" },
+              { label: t.colNote },
+              { label: "" },
+            ] as { label: string; key?: VipSortKey }[]).map((h, i) => (
+              <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
+            ))}
+          </div>
+          {projectPersons.map((person, i) => {
+            const isLast = i === projectPersons.length - 1;
+            return (
+              <div key={person.id} style={{
+                display: "grid", gridTemplateColumns: VIP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
+                borderBottom: isLast ? "none" : BORDER,
+                borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
+              }}>
+                <img src={person.photoUrl} alt="" style={{ width: "32px", height: "32px", borderRadius: "8px", objectFit: "cover" }} />
+                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.name}</p>
+                <span>{person.roleLabel ? <RoleTag label={t.roleText[person.roleLabel] ?? person.roleLabel} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
+                <span>{person.priorityLabel ? <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{person.registeredAt}</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.description || "—"}</span>
+                <button onClick={() => setConfirmingRemove(person)} title={t.removeVip} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", justifySelf: "end" }}>
+                  <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+                    <path d="M2.91663 4.08333H11.0833M5.83329 6.41667V9.33333M8.16663 6.41667V9.33333M3.49996 4.08333L4.08329 10.9167C4.08329 11.2261 4.20621 11.5228 4.42501 11.7416C4.6438 11.9604 4.9405 12.0833 5.24996 12.0833H8.74996C9.05942 12.0833 9.35612 11.9604 9.57491 11.7416C9.79371 11.5228 9.91663 11.2261 9.91663 10.9167L10.5 4.08333M5.24996 4.08333V2.33333C5.24996 2.17862 5.31142 2.03025 5.42082 1.92085C5.53022 1.81146 5.67858 1.75 5.83329 1.75H8.16663C8.32134 1.75 8.4697 1.81146 8.5791 1.92085C8.68849 2.03025 8.74996 2.17862 8.74996 2.33333V4.08333" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "12px" }}>
