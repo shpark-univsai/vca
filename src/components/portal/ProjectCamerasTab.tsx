@@ -23,10 +23,6 @@ const T = {
     offline: "Offline",
     onlineSuffix: "online",
     offlineSuffix: (n: number) => `${n} offline`,
-    metricAiCoverage: "AI Engine Coverage",
-    aiMappedSuffix: (total: number) => `/ ${total} mapped`,
-    metricZoneCoverage: "Zone Coverage",
-    zonesSuffix: "zones",
     searchPlaceholder: "Search by camera name, code, RTSP URL, or IP address",
     filterAllZones: "All zones",
     filterAllStatus: "All status",
@@ -45,8 +41,8 @@ const T = {
     sourceImage: "Image",
     colAddress: "Address / Resolution",
     uploadsSuffix: (n: number) => `${n} uploaded`,
-    metricUploads: "Uploaded footage",
-    uploadsAnalysed: (n: number) => `${n} analysed`,
+    metricUploads: "Uploads waiting",
+    uploadsWaitingSub: (total: number, done: number) => `${total} total · ${done} analysed`,
     statusPending: "Queued",
     statusAnalyzing: "Analysing",
     statusDone: "Analysed",
@@ -166,10 +162,6 @@ const T = {
     offline: "오프라인",
     onlineSuffix: "온라인",
     offlineSuffix: (n: number) => `${n} 오프라인`,
-    metricAiCoverage: "AI 엔진 커버리지",
-    aiMappedSuffix: (total: number) => `/ ${total} 매핑됨`,
-    metricZoneCoverage: "구역 커버리지",
-    zonesSuffix: "구역",
     searchPlaceholder: "카메라 이름, 코드, RTSP URL, IP 주소로 검색",
     filterAllZones: "전체 구역",
     filterAllStatus: "전체 상태",
@@ -188,8 +180,8 @@ const T = {
     sourceImage: "이미지",
     colAddress: "주소 / 해상도",
     uploadsSuffix: (n: number) => `업로드 ${n}건`,
-    metricUploads: "업로드 영상",
-    uploadsAnalysed: (n: number) => `분석 완료 ${n}건`,
+    metricUploads: "업로드 대기",
+    uploadsWaitingSub: (total: number, done: number) => `전체 ${total}건 · 분석 완료 ${done}건`,
     statusPending: "대기",
     statusAnalyzing: "분석 중",
     statusDone: "분석 완료",
@@ -812,10 +804,9 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
 
   const onlineCount = projectCameras.filter(c => c.status === "online").length;
   const offlineCount = projectCameras.length - onlineCount;
-  const aiMappedCount = projectCameras.filter(c => (c.aiFeatures ?? []).length > 0).length;
-  const zoneCounts = zones
-    .map(zone => ({ zone, count: projectCameras.filter(c => c.zone === zone).length }))
-    .sort((a, b) => b.count - a.count);
+  // Anything not yet analysed — queued or mid-run. Both are "not done", and an administrator does
+  // the same thing about either: wait, or find out why.
+  const pendingUploads = projectUploads.filter(u => u.status === "pending" || u.status === "analyzing").length;
 
   const limit = project ? projectChannelLimit(project) : undefined;
   const overLimit = !!limit && projectCameras.length > limit;
@@ -973,7 +964,12 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
 
       {/* Metrics */}
       <div style={{ backgroundColor: "white", border: overLimit ? "1px solid var(--danger-400)" : CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, marginBottom: "16px", overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)" }}>
+        {/* Three, not five. AI coverage and zone coverage were dropped: a ratio is only worth a card
+            if there is a number you are trying to reach, and neither has one — most cameras are
+            plain CCTV on purpose (AI and normal draw on the same channel quota at the same price),
+            and a project having four zones rather than five is neither good nor bad. Channels have
+            a hard ceiling, offline has a target of zero, and a queued upload is work not yet done. */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
           <div style={{ padding: "16px", borderRight: BORDER }}>
             <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricChannelUsage.toUpperCase()}</p>
             <p style={{ fontSize: "20px", fontWeight: 800, color: overLimit ? "var(--danger-400)" : "var(--gray-900)", marginTop: "6px" }}>
@@ -990,26 +986,17 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--success-400)", marginTop: "6px" }}>{onlineCount} <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)" }}>{t.onlineSuffix}</span></p>
             <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px" }}>{t.offlineSuffix(offlineCount)}</p>
           </div>
-          <div style={{ padding: "16px", borderRight: BORDER }}>
-            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricAiCoverage.toUpperCase()}</p>
-            <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", marginTop: "6px" }}>{aiMappedCount} <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)" }}>{t.aiMappedSuffix(projectCameras.length)}</span></p>
-          </div>
-          {/* Uploads get their own figure rather than joining the channel count beside it. The
-              previous product's INPUT screen headed a mixed table with "TOTAL CAMERAS 4" over seven
-              rows; keeping the two numbers apart is what stops that. A file consumes no licensed
-              channel, so it must not appear in the number that is measured against the licence. */}
-          <div style={{ padding: "16px", borderRight: BORDER }}>
-            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricUploads.toUpperCase()}</p>
-            <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", marginTop: "6px" }}>{projectUploads.length}</p>
-            <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px" }}>
-              {t.uploadsAnalysed(projectUploads.filter(u => u.status === "done").length)}
-            </p>
-          </div>
+          {/* Counted apart from the channel figure beside it, and led by the number that asks for
+              something. The total says nothing to act on; the queue does. A file consumes no
+              licensed channel, so it must never join the number measured against the licence —
+              which is exactly what the previous product's "TOTAL CAMERAS 4" over seven rows did. */}
           <div style={{ padding: "16px" }}>
-            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricZoneCoverage.toUpperCase()}</p>
-            <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", marginTop: "6px" }}>{zones.length} <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)" }}>{t.zonesSuffix}</span></p>
-            <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {zoneCounts.slice(0, 3).map(z => `${z.zone} (${z.count})`).join(" · ") || "—"}
+            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricUploads.toUpperCase()}</p>
+            <p style={{ fontSize: "20px", fontWeight: 800, marginTop: "6px", color: pendingUploads > 0 ? "var(--warning-500)" : "var(--gray-300)" }}>
+              {pendingUploads}
+            </p>
+            <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px" }}>
+              {t.uploadsWaitingSub(projectUploads.length, projectUploads.filter(u => u.status === "done").length)}
             </p>
           </div>
         </div>
