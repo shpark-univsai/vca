@@ -972,55 +972,63 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           one bordered box with internal rules this used to be. Same job one screen over should not
           be a different component. */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: CARD_GAP, marginBottom: "16px" }}>
-        {/* No icon badge on this page: the three cards sit directly above the table, and the badge
-            was buying decoration with vertical room the rows need. State is already carried by the
-            value's colour and the bar. Overview keeps its badges. */}
+        {/* Dense form: the label and the figure share a line, the bar is the only thing under it,
+            and the online/offline split sits beside the number instead of in a bordered footer.
+            These three cards are a header for the table below — they were spending ~145px of
+            height on what reads in ~70. Overview keeps the tall form. */}
         <MetricCard
           label={t.metricChannelUsage}
+          dense
           accentBorder={overLimit ? "1px solid var(--danger-400)" : undefined}
+          value={
+            <span style={{ display: "flex", alignItems: "baseline", gap: "3px" }}>
+              <span style={{ fontSize: "20px", fontWeight: 800, color: overLimit ? "var(--danger-400)" : "var(--gray-900)" }}>{projectCameras.length}</span>
+              {limit ? <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{`/ ${limit}`}</span> : null}
+            </span>
+          }
         >
-          <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-            <p style={{ fontSize: "24px", fontWeight: 800, color: overLimit ? "var(--danger-400)" : "var(--gray-900)" }}>{projectCameras.length}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{limit ? `/ ${limit}` : ""}</p>
-          </div>
-          {/* Fixed-height slot so all three cards' footers land on the same line — the other two
-              fill it with text rather than a bar. */}
-          <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
+          {/* 14px bottom row on every card, so the three end on the same line without a spacer. */}
+          <div style={{ height: "14px", display: "flex", alignItems: "center" }}>
             {limit ? (
-              <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
+              <div style={{ width: "100%", height: "6px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${Math.min(100, (projectCameras.length / limit) * 100)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--info-500)" }} />
               </div>
-            ) : <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noLicenseLimit}</p>}
+            ) : <p style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.noLicenseLimit}</p>}
           </div>
         </MetricCard>
 
-        <MetricCard label={t.metricStreamHealth}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-            <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.onlineSuffix}</p>
-          </div>
-          <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
-            <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
+        <MetricCard
+          label={t.metricStreamHealth}
+          dense
+          value={
+            <span style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+              <span style={{ display: "flex", alignItems: "baseline", gap: "3px" }}>
+                <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.onlineSuffix}</span>
+              </span>
+              {/* Beside the number, not under the card: the two counts are one reading. */}
+              <SubStat color="var(--danger-400)" label={t.offlineCountLabel(offlineCount)} />
+            </span>
+          }
+        >
+          <div style={{ height: "14px", display: "flex", alignItems: "center" }}>
+            <div style={{ width: "100%", height: "6px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
               <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--success-400)" }} />
               <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
             </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
-            <SubStat color="var(--success-400)" label={t.onlineCountLabel(onlineCount)} />
-            <SubStat color="var(--danger-400)" label={t.offlineCountLabel(offlineCount)} />
           </div>
         </MetricCard>
 
         {/* Counted apart from the channel figure beside it, and led by the number that asks for
             something. The total says nothing to act on; the queue does. A file consumes no licensed
-            channel, so it must never join the number measured against the licence — which is
-            exactly what the previous product's "TOTAL CAMERAS 4" over seven rows did. */}
-        <MetricCard label={t.metricUploads}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-            <p style={{ fontSize: "24px", fontWeight: 800, color: pendingUploads > 0 ? "var(--warning-500)" : "var(--gray-300)" }}>{pendingUploads}</p>
-          </div>
-          <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
-            <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>
+            channel, so it must never join the number measured against the licence. */}
+        <MetricCard
+          label={t.metricUploads}
+          dense
+          value={<span style={{ fontSize: "20px", fontWeight: 800, color: pendingUploads > 0 ? "var(--warning-500)" : "var(--gray-300)" }}>{pendingUploads}</span>}
+        >
+          <div style={{ height: "14px", display: "flex", alignItems: "center" }}>
+            <p style={{ fontSize: "11px", color: "var(--gray-400)" }}>
               {t.uploadsWaitingSub(projectUploads.length, projectUploads.filter(u => u.status === "done").length)}
             </p>
           </div>

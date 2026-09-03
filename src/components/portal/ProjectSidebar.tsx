@@ -87,10 +87,12 @@ function UsersIcon({ color }: IconProps) {
 
 export const PROJECT_TABS: { id: DetailTab; label: { en: string; ko: string }; icon: ComponentType<IconProps> }[] = [
   { id: "overview", label: { en: "Overview", ko: "개요" }, icon: OverviewIcon },
+  // VIP above the sources (asked for 2026-09-03): what the project watches FOR is the list an
+  // operator maintains day to day; the camera and upload list is the plumbing under it.
+  { id: "vip", label: { en: "VIP Registry", ko: "VIP 등록" }, icon: VipIcon },
   // The id stays "cameras" — it is a route key, and renaming it would only churn every call site.
   // The label changed because the tab now lists uploaded footage alongside cameras.
   { id: "cameras", label: { en: "Input Sources", ko: "입력 소스" }, icon: CamerasIcon },
-  { id: "vip", label: { en: "VIP Registry", ko: "VIP 등록" }, icon: VipIcon },
   { id: "server", label: { en: "Server & API", ko: "서버 및 API" }, icon: ServerIcon },
   { id: "license", label: { en: "License", ko: "라이선스" }, icon: LicenseIcon },
   { id: "roster", label: { en: "Staff Roster", ko: "직원 명부" }, icon: RosterIcon },

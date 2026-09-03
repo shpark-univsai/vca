@@ -419,7 +419,7 @@ export function SelectedCheckIcon({ size = 14 }: { size?: number }) {
  * two — the Input Sources strip was a single bordered box with three columns divided by rules,
  * which read as a different component doing the same job one screen over.
  */
-export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, children }: {
+export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense, value, children }: {
   label: string;
   /** Optional. Input Sources drops the badge: its cards sit directly above a long table, so the
    *  32px badge was spending a sixth of the card's height on decoration that the value and the
@@ -429,6 +429,15 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, child
   icon?: () => React.JSX.Element;
   /** Overrides the (absent) card edge — used to put a red rim on a card that is over its limit. */
   accentBorder?: string;
+  /**
+   * Compact form for cards that sit directly above a table (Input Sources). The label and the
+   * figure share one line instead of stacking, padding drops to 12/14, and the card keeps only a
+   * thin bottom row — roughly half the height of the dashboard form. Overview stays un-dense: its
+   * cards are the page, not a header above one.
+   */
+  dense?: boolean;
+  /** Dense only: the figure, placed on the label's line. */
+  value?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const Icon = icon;
@@ -437,14 +446,20 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, child
     // number and the bar are one statement and 12 read as two. The eyebrow above and the footer
     // below each add 6 back, so those gaps stay where they were. Doing it here rather than per card
     // is what keeps every card on both pages identical.
-    <div style={{ backgroundColor: "white", border: accentBorder ?? CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "16px", display: "flex", flexDirection: "column", gap: "6px", flex: 1, minWidth: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: Icon ? "6px" : "2px" }}>
-        <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px" }}>{label.toUpperCase()}</p>
-        {Icon && (
-          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
-            <Icon />
-          </span>
-        )}
+    <div style={{
+      backgroundColor: "white", border: accentBorder ?? CARD_BORDER, borderRadius: dense ? "12px" : "16px",
+      boxShadow: PANEL_SHADOW, padding: dense ? "12px 14px" : "16px",
+      display: "flex", flexDirection: "column", gap: dense ? "8px" : "6px", flex: 1, minWidth: 0,
+    }}>
+      <div style={{ display: "flex", alignItems: dense ? "baseline" : "center", justifyContent: "space-between", gap: "10px", marginBottom: dense ? 0 : (Icon ? "6px" : "2px") }}>
+        <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px", whiteSpace: "nowrap" }}>{label.toUpperCase()}</p>
+        {dense
+          ? value
+          : Icon && (
+            <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
+              <Icon />
+            </span>
+          )}
       </div>
       {children}
     </div>
