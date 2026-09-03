@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Users } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER } from "./PortalShared";
 
@@ -11,7 +13,10 @@ const T = {
     newProject: "New Project",
     // Shown when the installation has no team yet. A project has to live in a team, so the first
     // ask is the team — offering "New Project" here would open a wizard with nowhere to file it.
-    noTeamSubtitle: "Start with a team — projects live inside one. A team usually maps to one customer or site.",
+    noTeamTitle: "No teams yet",
+    noTeamSubtitle: "A team holds this installation's projects, users and mail settings. Create one to get started.",
+    teamNameLabel: "Team name",
+    teamNamePlaceholder: "e.g. Northgate Education Trust",
     createTeam: "Create team",
     gallery: {
       vip: "VIP / watchlist detection",
@@ -27,7 +32,10 @@ const T = {
     title: "모든 환경에 AI 모니터링을 적용하세요",
     subtitle: "첫 프로젝트를 생성하고 카메라 스트림을 연결하면 몇 분 안에 모니터링을 시작할 수 있습니다.",
     newProject: "새 프로젝트",
-    noTeamSubtitle: "먼저 팀을 만드세요 — 프로젝트는 팀 안에 들어갑니다. 팀은 보통 고객사나 사이트 하나에 해당합니다.",
+    noTeamTitle: "아직 팀이 없습니다",
+    noTeamSubtitle: "팀은 이 설치본의 프로젝트, 사용자, 메일 설정을 담습니다. 하나 만들어 시작하세요.",
+    teamNameLabel: "팀 이름",
+    teamNamePlaceholder: "예: Northgate Education Trust",
     createTeam: "팀 만들기",
     gallery: {
       vip: "VIP / 관심인물 탐지",
@@ -73,16 +81,83 @@ function GalleryCard({ label, file, height }: { label: string; file: string; hei
 
 interface PortalEmptyStateProps {
   onNewProject: () => void;
-  /** No team exists yet in this installation — ask for the team first. The gallery and the rest of
-   *  the page stay identical: this is the same landing, one step earlier. */
+  /**
+   * No team exists yet in this installation — ask for the team first, on a centred panel with the
+   * name field right there.
+   *
+   * NOT the gallery landing with the button swapped. That page is a pitch for what the product
+   * does, which is the wrong thing to show someone who has already bought it and is trying to
+   * finish setup; and a modal over it would darken a page with nothing on it worth preserving.
+   * There is one field, so the field goes on the screen.
+   */
   noTeam?: boolean;
-  onCreateTeam?: () => void;
+  /** Receives the typed team name. */
+  onCreateTeam?: (name: string) => void;
 }
 
 export default function PortalEmptyState({ onNewProject, noTeam = false, onCreateTeam }: PortalEmptyStateProps) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
+  const [teamName, setTeamName] = useState("");
+  const [nameFocused, setNameFocused] = useState(false);
   const askTeam = noTeam && !!onCreateTeam;
+
+  if (askTeam) {
+    const canSubmit = teamName.trim().length > 0;
+    const submit = () => { if (canSubmit) onCreateTeam(teamName.trim()); };
+    return (
+      // Centred, because there is exactly one thing to do here.
+      <div style={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: "480px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <span style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            width: "56px", height: "56px", borderRadius: "16px",
+            backgroundColor: "white", border: BORDER, color: "var(--gray-500)",
+          }}>
+            <Users size={24} strokeWidth={1.3} />
+          </span>
+          {/* States the situation before the action — "No teams yet", not a product headline. */}
+          <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)", marginTop: "20px" }}>{t.noTeamTitle}</p>
+          <p style={{ fontSize: "14px", color: "var(--gray-500)", marginTop: "8px", textAlign: "center", lineHeight: 1.6 }}>
+            {t.noTeamSubtitle}
+          </p>
+
+          <div style={{ width: "100%", marginTop: "28px" }}>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
+              {t.teamNameLabel} <span style={{ color: "var(--danger-400)" }}>*</span>
+            </label>
+            <input
+              value={teamName}
+              onChange={e => setTeamName(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") submit(); }}
+              onFocus={() => setNameFocused(true)}
+              onBlur={() => setNameFocused(false)}
+              placeholder={t.teamNamePlaceholder}
+              autoFocus
+              style={{
+                width: "100%", boxSizing: "border-box", height: "44px", padding: "0 12px", borderRadius: "10px",
+                border: nameFocused ? "1px solid var(--gray-900)" : BORDER, outline: "none",
+                fontSize: "14px", fontFamily: "inherit", backgroundColor: "white",
+              }}
+            />
+          </div>
+
+          <button
+            onClick={submit}
+            disabled={!canSubmit}
+            style={{
+              width: "100%", marginTop: "16px", padding: "13px 20px", borderRadius: "999px", border: "none",
+              backgroundColor: "var(--primary-400)", color: "white", fontSize: "14px", fontWeight: 700,
+              cursor: canSubmit ? "pointer" : "not-allowed", opacity: canSubmit ? 1 : 0.5,
+            }}
+          >
+            {t.createTeam}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "48px", alignItems: "center" }}>
       <div>
@@ -91,16 +166,16 @@ export default function PortalEmptyState({ onNewProject, noTeam = false, onCreat
           {t.title}
         </p>
         <p style={{ fontSize: "14px", color: "var(--gray-500)", marginTop: "12px", lineHeight: "22px" }}>
-          {askTeam ? t.noTeamSubtitle : t.subtitle}
+          {t.subtitle}
         </p>
-        <button onClick={askTeam ? onCreateTeam : onNewProject}
+        <button onClick={onNewProject}
           style={{
             display: "flex", alignItems: "center", gap: "6px", marginTop: "24px",
             padding: "12px 20px", borderRadius: "999px", border: "none",
             backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer",
           }}>
           <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          {askTeam ? t.createTeam : t.newProject}
+          {t.newProject}
         </button>
       </div>
 

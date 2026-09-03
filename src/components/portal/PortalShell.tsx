@@ -62,6 +62,7 @@ export default function PortalShell() {
   const [showNewTeam, setShowNewTeam] = useState(false);
   const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
+  const addTeam = useVcaStore(s => s.addTeam);
   const currentAdmin = useVcaStore(s => s.portalUsers.find(u => u.permission === "admin")) ?? null;
   // Resolve ?teamId= against the real list rather than trusting it: an id that matches nothing used
   // to flow straight into the New Project wizard, which would have filed the project under an
@@ -111,6 +112,15 @@ export default function PortalShell() {
   // The current team lives in the URL, so switching is a navigation. That also means the back
   // button returns to the team you came from, and a link to a particular team is shareable —
   // both of which a piece of component state would have thrown away.
+  // Creating the first team goes straight on to the project wizard: the team is not the goal, it is
+  // the container the project needs. Stopping at an empty team would leave the admin on the same
+  // landing page they just acted on.
+  const createFirstTeam = (name: string) => {
+    const teamId = addTeam({ name, region: "" });
+    router.replace(`/portal?teamId=${teamId}`);
+    setShowWizard(true);
+  };
+
   const switchTeam = (teamId: string) => {
     setShowWizard(false);
     setTab("overview");
@@ -242,20 +252,19 @@ export default function PortalShell() {
               ? <PortalEmptyState
                   onNewProject={() => setShowWizard(true)}
                   noTeam={teams.length === 0}
-                  onCreateTeam={() => setShowNewTeam(true)}
+                  onCreateTeam={createFirstTeam}
                 />
               : <PortalProjectDetailPage projectId={currentProjectId} tab={tab} onTabChange={setTab} />}
           </div>
         </div>
       )}
 
-      {/* Creating the first team goes straight on to the project wizard: the team is not the goal,
-          it is the container the project needs. Stopping at an empty team would leave the admin on
-          the same landing page they just acted on. */}
+      {/* The switcher's "New team" still opens the modal — there the page behind it is worth
+          preserving. The first-team case does not use it: that landing has the field on it. */}
       {showNewTeam && (
         <NewTeamModal
           onClose={() => setShowNewTeam(false)}
-          onCreated={teamId => { router.replace(`/portal?teamId=${teamId}`); setShowWizard(true); }}
+          onCreated={teamId => { router.replace(`/portal?teamId=${teamId}`); }}
         />
       )}
     </div>
