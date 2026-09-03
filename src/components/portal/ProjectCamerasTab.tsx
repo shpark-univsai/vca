@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Film as FilmIcon, Image as ImageIcon, Video as VideoIcon } from "lucide-react";
+import { Film as FilmIcon, Image as ImageIcon, Key, Video as VideoIcon } from "lucide-react";
 import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type UploadedMedia, type UploadStatus, projectChannelLimit, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, CARD_BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ActiveFilterCount } from "./PortalShared";
+import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ActiveFilterCount, CARD_GAP, MetricCard, SubStat } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -23,6 +23,8 @@ const T = {
     offline: "Offline",
     onlineSuffix: "online",
     offlineSuffix: (n: number) => `${n} offline`,
+    onlineCountLabel: (n: number) => `${n} online`,
+    offlineCountLabel: (n: number) => `${n} offline`,
     searchPlaceholder: "Search by camera name, code, RTSP URL, or IP address",
     filterAllZones: "All zones",
     filterAllStatus: "All status",
@@ -162,6 +164,8 @@ const T = {
     offline: "오프라인",
     onlineSuffix: "온라인",
     offlineSuffix: (n: number) => `${n} 오프라인`,
+    onlineCountLabel: (n: number) => `온라인 ${n}`,
+    offlineCountLabel: (n: number) => `오프라인 ${n}`,
     searchPlaceholder: "카메라 이름, 코드, RTSP URL, IP 주소로 검색",
     filterAllZones: "전체 구역",
     filterAllStatus: "전체 상태",
@@ -345,6 +349,11 @@ function useStickyHeader<T extends HTMLElement>() {
 
   return { contentRef, stuck, rect, height };
 }
+
+// Badge icons for the metric cards, at the size the Overview's badges use.
+function KeyIcon() { return <Key size={16} strokeWidth={1.2} />; }
+function VideoBadgeIcon() { return <VideoIcon size={16} strokeWidth={1.2} />; }
+function FilmBadgeIcon() { return <FilmIcon size={16} strokeWidth={1.2} />; }
 
 const DEFAULT_THUMBNAIL = "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80";
 type CameraSortKey = "name" | "maker" | "resolution" | "zone" | "status";
@@ -962,44 +971,63 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
         </div>
       </div>
 
-      {/* Metrics */}
-      <div style={{ backgroundColor: "white", border: overLimit ? "1px solid var(--danger-400)" : CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, marginBottom: "16px", overflow: "hidden" }}>
-        {/* Three, not five. AI coverage and zone coverage were dropped: a ratio is only worth a card
-            if there is a number you are trying to reach, and neither has one — most cameras are
-            plain CCTV on purpose (AI and normal draw on the same channel quota at the same price),
-            and a project having four zones rather than five is neither good nor bad. Channels have
-            a hard ceiling, offline has a target of zero, and a queued upload is work not yet done. */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
-          <div style={{ padding: "16px", borderRight: BORDER }}>
-            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricChannelUsage.toUpperCase()}</p>
-            <p style={{ fontSize: "20px", fontWeight: 800, color: overLimit ? "var(--danger-400)" : "var(--gray-900)", marginTop: "6px" }}>
-              {projectCameras.length}{limit ? ` / ${limit}` : ""}
-            </p>
+      {/* Metrics — the same MetricCard the Overview uses, three of them in a row, rather than the
+          one bordered box with internal rules this used to be. Same job one screen over should not
+          be a different component. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: CARD_GAP, marginBottom: "16px" }}>
+        <MetricCard
+          label={t.metricChannelUsage}
+          icon={KeyIcon}
+          iconBg="var(--info-100)"
+          iconColor="var(--info-500)"
+          accentBorder={overLimit ? "1px solid var(--danger-400)" : undefined}
+        >
+          <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+            <p style={{ fontSize: "24px", fontWeight: 800, color: overLimit ? "var(--danger-400)" : "var(--gray-900)" }}>{projectCameras.length}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{limit ? `/ ${limit}` : ""}</p>
+          </div>
+          {/* Fixed-height slot so all three cards' footers land on the same line — the other two
+              fill it with text rather than a bar. */}
+          <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
             {limit ? (
-              <div style={{ height: "4px", backgroundColor: "var(--gray-100)", borderRadius: "2px", marginTop: "8px" }}>
-                <div style={{ height: "4px", width: `${Math.min(100, (projectCameras.length / limit) * 100)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--gray-900)", borderRadius: "2px" }} />
+              <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${Math.min(100, (projectCameras.length / limit) * 100)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--info-500)" }} />
               </div>
-            ) : <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px" }}>{t.noLicenseLimit}</p>}
+            ) : <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noLicenseLimit}</p>}
           </div>
-          <div style={{ padding: "16px", borderRight: BORDER }}>
-            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricStreamHealth.toUpperCase()}</p>
-            <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--success-400)", marginTop: "6px" }}>{onlineCount} <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)" }}>{t.onlineSuffix}</span></p>
-            <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px" }}>{t.offlineSuffix(offlineCount)}</p>
+        </MetricCard>
+
+        <MetricCard label={t.metricStreamHealth} icon={VideoBadgeIcon} iconBg="var(--success-100)" iconColor="var(--success-400)">
+          <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+            <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.onlineSuffix}</p>
           </div>
-          {/* Counted apart from the channel figure beside it, and led by the number that asks for
-              something. The total says nothing to act on; the queue does. A file consumes no
-              licensed channel, so it must never join the number measured against the licence —
-              which is exactly what the previous product's "TOTAL CAMERAS 4" over seven rows did. */}
-          <div style={{ padding: "16px" }}>
-            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricUploads.toUpperCase()}</p>
-            <p style={{ fontSize: "20px", fontWeight: 800, marginTop: "6px", color: pendingUploads > 0 ? "var(--warning-500)" : "var(--gray-300)" }}>
-              {pendingUploads}
-            </p>
-            <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px" }}>
+          <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
+            <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
+              <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--success-400)" }} />
+              <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
+            <SubStat color="var(--success-400)" label={t.onlineCountLabel(onlineCount)} />
+            <SubStat color="var(--danger-400)" label={t.offlineCountLabel(offlineCount)} />
+          </div>
+        </MetricCard>
+
+        {/* Counted apart from the channel figure beside it, and led by the number that asks for
+            something. The total says nothing to act on; the queue does. A file consumes no licensed
+            channel, so it must never join the number measured against the licence — which is
+            exactly what the previous product's "TOTAL CAMERAS 4" over seven rows did. */}
+        <MetricCard label={t.metricUploads} icon={FilmBadgeIcon} iconBg="var(--warning-100)" iconColor="var(--warning-500)">
+          <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+            <p style={{ fontSize: "24px", fontWeight: 800, color: pendingUploads > 0 ? "var(--warning-500)" : "var(--gray-300)" }}>{pendingUploads}</p>
+          </div>
+          <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
+            <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>
               {t.uploadsWaitingSub(projectUploads.length, projectUploads.filter(u => u.status === "done").length)}
             </p>
           </div>
-        </div>
+        </MetricCard>
       </div>
 
       {/* Top-level cut of the list, with counts on the tabs. An underlined tab row rather than a

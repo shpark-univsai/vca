@@ -9,6 +9,10 @@ const T = {
     title: "Deploy AI Monitoring for Any Environment",
     subtitle: "Create your first project, connect a camera stream, and start monitoring in minutes.",
     newProject: "New Project",
+    // Shown when the installation has no team yet. A project has to live in a team, so the first
+    // ask is the team — offering "New Project" here would open a wizard with nowhere to file it.
+    noTeamSubtitle: "Start with a team — projects live inside one. A team usually maps to one customer or site.",
+    createTeam: "Create team",
     gallery: {
       vip: "VIP / watchlist detection",
       tracking: "Cross-camera tracking",
@@ -23,6 +27,8 @@ const T = {
     title: "모든 환경에 AI 모니터링을 적용하세요",
     subtitle: "첫 프로젝트를 생성하고 카메라 스트림을 연결하면 몇 분 안에 모니터링을 시작할 수 있습니다.",
     newProject: "새 프로젝트",
+    noTeamSubtitle: "먼저 팀을 만드세요 — 프로젝트는 팀 안에 들어갑니다. 팀은 보통 고객사나 사이트 하나에 해당합니다.",
+    createTeam: "팀 만들기",
     gallery: {
       vip: "VIP / 관심인물 탐지",
       tracking: "교차 카메라 추적",
@@ -67,11 +73,16 @@ function GalleryCard({ label, file, height }: { label: string; file: string; hei
 
 interface PortalEmptyStateProps {
   onNewProject: () => void;
+  /** No team exists yet in this installation — ask for the team first. The gallery and the rest of
+   *  the page stay identical: this is the same landing, one step earlier. */
+  noTeam?: boolean;
+  onCreateTeam?: () => void;
 }
 
-export default function PortalEmptyState({ onNewProject }: PortalEmptyStateProps) {
+export default function PortalEmptyState({ onNewProject, noTeam = false, onCreateTeam }: PortalEmptyStateProps) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
+  const askTeam = noTeam && !!onCreateTeam;
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "48px", alignItems: "center" }}>
       <div>
@@ -80,16 +91,16 @@ export default function PortalEmptyState({ onNewProject }: PortalEmptyStateProps
           {t.title}
         </p>
         <p style={{ fontSize: "14px", color: "var(--gray-500)", marginTop: "12px", lineHeight: "22px" }}>
-          {t.subtitle}
+          {askTeam ? t.noTeamSubtitle : t.subtitle}
         </p>
-        <button onClick={onNewProject}
+        <button onClick={askTeam ? onCreateTeam : onNewProject}
           style={{
             display: "flex", alignItems: "center", gap: "6px", marginTop: "24px",
             padding: "12px 20px", borderRadius: "999px", border: "none",
             backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer",
           }}>
           <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          {t.newProject}
+          {askTeam ? t.createTeam : t.newProject}
         </button>
       </div>
 

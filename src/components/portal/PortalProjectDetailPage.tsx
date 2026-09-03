@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { ArrowUp, Clock, Key, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
 import { useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
@@ -160,36 +160,6 @@ function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={1.4} />; }
 
 // Shared shell for the four Overview metric cards — header (eyebrow label + icon badge), then
 // whatever body content each card needs (big value, progress bar, footer stats) as children.
-function MetricCard({ label, iconBg, iconColor, icon, children }: {
-  label: string; iconBg: string; iconColor: string; icon: () => React.JSX.Element; children: React.ReactNode;
-}) {
-  const Icon = icon;
-  return (
-    // The card's own gap is the space between the big value and the bar under it — halved to 6,
-    // because the number and the bar are one statement and 12 read as two. The other two gaps are
-    // not: the eyebrow above and the footer below each add 6 back, so they stay where they were.
-    // Doing it here rather than per card is what keeps the four identical.
-    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "16px", display: "flex", flexDirection: "column", gap: "6px", flex: 1, minWidth: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-        <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px" }}>{label.toUpperCase()}</p>
-        <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
-          <Icon />
-        </span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function SubStat({ color, label }: { color: string; label: string }) {
-  return (
-    <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color }}>
-      <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: color, flexShrink: 0 }} />
-      {label}
-    </span>
-  );
-}
-
 interface PortalProjectDetailPageProps {
   projectId: string;
   tab: DetailTab;

@@ -411,6 +411,51 @@ export function SelectedCheckIcon({ size = 14 }: { size?: number }) {
   return <Check size={size} strokeWidth={1.8} />;
 }
 
+/**
+ * The metric card used above the Overview and the Input Sources tables: an eyebrow label, a tinted
+ * icon badge, then whatever figure the caller puts under it.
+ *
+ * It lives here rather than in one of those pages because they are the same card and were briefly
+ * two — the Input Sources strip was a single bordered box with three columns divided by rules,
+ * which read as a different component doing the same job one screen over.
+ */
+export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, children }: {
+  label: string;
+  iconBg: string;
+  iconColor: string;
+  icon: () => React.JSX.Element;
+  /** Overrides the (absent) card edge — used to put a red rim on a card that is over its limit. */
+  accentBorder?: string;
+  children: React.ReactNode;
+}) {
+  const Icon = icon;
+  return (
+    // The card's own gap is the space between the big value and the bar under it — 6, because the
+    // number and the bar are one statement and 12 read as two. The eyebrow above and the footer
+    // below each add 6 back, so those gaps stay where they were. Doing it here rather than per card
+    // is what keeps every card on both pages identical.
+    <div style={{ backgroundColor: "white", border: accentBorder ?? CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "16px", display: "flex", flexDirection: "column", gap: "6px", flex: 1, minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+        <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px" }}>{label.toUpperCase()}</p>
+        <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
+          <Icon />
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** A dot-and-label pair for a metric card's footer — "56 online", "3 offline". */
+export function SubStat({ color, label }: { color: string; label: string }) {
+  return (
+    <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color }}>
+      <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: color, flexShrink: 0 }} />
+      {label}
+    </span>
+  );
+}
+
 // ── Sortable table headings ──────────────────────────────────────────────────
 
 export type SortDirection = "asc" | "desc";

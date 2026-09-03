@@ -197,7 +197,7 @@ export default function TeamSwitcher({ currentTeamId, onSelect }: TeamSwitcherPr
  * On success the shell switches to the new team, which has no projects yet and therefore lands on
  * the empty state inviting the first one. That is the intended next step, not a dead end.
  */
-function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: (teamId: string) => void }) {
+export function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: (teamId: string) => void }) {
   useEscapeKey(onClose);
   const addTeam = useVcaStore(s => s.addTeam);
   const [lang] = usePortalLanguage();
