@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useVcaStore } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH, TEAM_INDUSTRIES, SelectedCheckIcon } from "./PortalShared";
+import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH, SelectedCheckIcon } from "./PortalShared";
 
 const T = {
   en: {
@@ -18,7 +18,6 @@ const T = {
     modalTitle: "New team",
     nameLabel: "Team name",
     namePlaceholder: "e.g. Northgate Education Trust",
-    industryLabel: "Primary industry",
     cancel: "Cancel",
     create: "Create team",
   },
@@ -33,7 +32,6 @@ const T = {
     modalTitle: "새 팀",
     nameLabel: "팀 이름",
     namePlaceholder: "예: Northgate Education Trust",
-    industryLabel: "주요 산업",
     cancel: "취소",
     create: "팀 만들기",
   },
@@ -205,17 +203,21 @@ function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const [name, setName] = useState("");
-  const [industry, setIndustry] = useState("");
 
-  // Both required. Industry is not a nicety: it decides which of the two solution templates this
-  // team's projects start from, and an unanswered one would just quietly mean Smart City.
-  const canSubmit = name.trim().length > 0 && industry.length > 0;
+  const canSubmit = name.trim().length > 0;
 
   const submit = () => {
     if (!canSubmit) return;
-    // region is left empty the same way signup leaves it — the field exists on Team but no screen
-    // reads it, so asking for it would collect something nobody ever sees.
-    const id = addTeam({ name: name.trim(), region: "", industry });
+    // Neither region nor industry is asked for, for the same reason: the fields exist on Team but
+    // nothing reads them back. Industry had one reader — industryToProjectType(), which pre-selects
+    // the template in the project wizard right after /signup — and that route is closed on an
+    // on-premise build (2026-09-02). So the answer went nowhere while being required to proceed.
+    //
+    // It was also the wrong question to put on a team: the template belongs to a PROJECT, chosen in
+    // the wizard, and one team legitimately holds both kinds (the seeded City of Singapore team has
+    // a Smart City project and a Smart School one). Asking here invited an answer that the data
+    // could then contradict.
+    const id = addTeam({ name: name.trim(), region: "" });
     onClose();
     onCreated(id);
   };
@@ -247,34 +249,6 @@ function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
               // afterwards — worth reading at the size you would read a title at.
               style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "14px", fontFamily: "inherit" }}
             />
-          </div>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
-              {t.industryLabel} <span style={{ color: "var(--danger-400)" }}>*</span>
-            </label>
-            {/* Two buttons, not a dropdown. A required choice between exactly two things should be
-                answerable in one click with both answers on screen; a closed select hides half the
-                question and adds a click to a question that cannot be skipped. */}
-            <div style={{ display: "flex", gap: "8px" }}>
-              {TEAM_INDUSTRIES.map(option => {
-                const active = industry === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    onClick={() => setIndustry(option.value)}
-                    style={{
-                      flex: 1, padding: "10px 12px", borderRadius: "10px", cursor: "pointer",
-                      border: active ? "1px solid var(--gray-900)" : BORDER,
-                      backgroundColor: active ? "var(--gray-100)" : "white",
-                      color: active ? "var(--gray-900)" : "var(--gray-600)",
-                      fontSize: "13px", fontWeight: 700,
-                    }}
-                  >
-                    {option.label[lang]}
-                  </button>
-                );
-              })}
-            </div>
           </div>
         </div>
 
