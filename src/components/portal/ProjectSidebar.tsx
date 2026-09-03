@@ -91,8 +91,8 @@ export const PROJECT_TABS: { id: DetailTab; label: { en: string; ko: string }; i
   // The label changed because the tab now lists uploaded footage alongside cameras.
   { id: "cameras", label: { en: "Input Sources", ko: "입력 소스" }, icon: CamerasIcon },
   { id: "vip", label: { en: "VIP Registry", ko: "VIP 등록" }, icon: VipIcon },
-  { id: "license", label: { en: "License", ko: "라이선스" }, icon: LicenseIcon },
   { id: "server", label: { en: "Server & API", ko: "서버 및 API" }, icon: ServerIcon },
+  { id: "license", label: { en: "License", ko: "라이선스" }, icon: LicenseIcon },
   { id: "roster", label: { en: "Staff Roster", ko: "직원 명부" }, icon: RosterIcon },
   { id: "users", label: { en: "Users & Permissions", ko: "사용자 및 권한" }, icon: UsersIcon },
 ];
