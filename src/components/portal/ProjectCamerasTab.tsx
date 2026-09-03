@@ -367,6 +367,26 @@ type CameraSortKey = "name" | "maker" | "resolution" | "zone" | "status";
  * are "how this source is identified"), and the metrics above the table count the two separately,
  * because only cameras consume a licensed channel.
  */
+/**
+ * Sort order for the status column, as a rank rather than the raw value.
+ *
+ * Sorting on the strings put uploads above cameras, because "done" happens to precede "offline"
+ * alphabetically — an accident of spelling deciding what an administrator sees first on a tab whose
+ * main job is the camera fleet. The rank says what the order is for: cameras before files, and
+ * within each group whatever needs attention before whatever does not.
+ *
+ * The two groups still read as two axes on screen (green/grey for a connection, blue/grey for an
+ * analysis); this only settles which row comes first when they share a list.
+ */
+const STATUS_RANK: Record<CameraStatus | UploadStatus, number> = {
+  offline: 0,
+  online: 1,
+  failed: 2,
+  pending: 3,
+  analyzing: 4,
+  done: 5,
+};
+
 type SourceKind = "camera" | "video" | "image";
 type SourceRow =
   | { kind: "camera"; id: string; name: string; camera: Camera }
@@ -751,7 +771,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
         case "maker": return c.maker?.toLowerCase();
         case "resolution": return c.resolution?.toLowerCase();
         case "zone": return c.zone?.toLowerCase();
-        case "status": return c.status;
+        case "status": return STATUS_RANK[c.status];
       }
     }
     // A file has no maker and no zone — undefined sinks it to the bottom of those sorts rather
@@ -759,7 +779,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
     switch (key) {
       case "name": return r.upload.fileName.toLowerCase();
       case "resolution": return undefined;
-      case "status": return r.upload.status;
+      case "status": return STATUS_RANK[r.upload.status];
       default: return undefined;
     }
   });
