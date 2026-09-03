@@ -1,6 +1,7 @@
 "use client";
 
 import type { ComponentType } from "react";
+import { Crown } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 
 export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "roster" | "users";
@@ -29,12 +30,17 @@ function CamerasIcon({ color }: IconProps) {
   );
 }
 
+/**
+ * The crown the app already uses for VIP — Sidebar, the map pins and the detection chips all draw
+ * lucide's Crown at this size. This was a hand-drawn five-pointed star, which matched neither the
+ * app's icon nor the idea: a star is a favourite or a rating, and the registry is a watchlist of
+ * specific people.
+ *
+ * strokeWidth 1 rather than Lucide's default 2, so it sits at the same weight as the other seven
+ * icons in this rail.
+ */
 function VipIcon({ color }: IconProps) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M8 1.8L9.8 5.6L14 6.15L11 9.1L11.75 13.3L8 11.3L4.25 13.3L5 9.1L2 6.15L6.2 5.6L8 1.8Z" stroke={color} strokeWidth="1" strokeLinejoin="round"/>
-    </svg>
-  );
+  return <Crown size={16} strokeWidth={1} color={color} />;
 }
 
 function LicenseIcon({ color }: IconProps) {
