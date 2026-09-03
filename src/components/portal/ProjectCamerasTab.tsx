@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Film as FilmIcon, Image as ImageIcon, Key, Video as VideoIcon } from "lucide-react";
+import { Film as FilmIcon, Image as ImageIcon, Video as VideoIcon } from "lucide-react";
 import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type UploadedMedia, type UploadStatus, projectChannelLimit, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -351,9 +351,6 @@ function useStickyHeader<T extends HTMLElement>() {
 }
 
 // Badge icons for the metric cards, at the size the Overview's badges use.
-function KeyIcon() { return <Key size={16} strokeWidth={1.2} />; }
-function VideoBadgeIcon() { return <VideoIcon size={16} strokeWidth={1.2} />; }
-function FilmBadgeIcon() { return <FilmIcon size={16} strokeWidth={1.2} />; }
 
 const DEFAULT_THUMBNAIL = "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80";
 type CameraSortKey = "name" | "maker" | "resolution" | "zone" | "status";
@@ -975,11 +972,11 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           one bordered box with internal rules this used to be. Same job one screen over should not
           be a different component. */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: CARD_GAP, marginBottom: "16px" }}>
+        {/* No icon badge on this page: the three cards sit directly above the table, and the badge
+            was buying decoration with vertical room the rows need. State is already carried by the
+            value's colour and the bar. Overview keeps its badges. */}
         <MetricCard
           label={t.metricChannelUsage}
-          icon={KeyIcon}
-          iconBg="var(--info-100)"
-          iconColor="var(--info-500)"
           accentBorder={overLimit ? "1px solid var(--danger-400)" : undefined}
         >
           <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
@@ -997,7 +994,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           </div>
         </MetricCard>
 
-        <MetricCard label={t.metricStreamHealth} icon={VideoBadgeIcon} iconBg="var(--success-100)" iconColor="var(--success-400)">
+        <MetricCard label={t.metricStreamHealth}>
           <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
             <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</p>
             <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.onlineSuffix}</p>
@@ -1018,7 +1015,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             something. The total says nothing to act on; the queue does. A file consumes no licensed
             channel, so it must never join the number measured against the licence — which is
             exactly what the previous product's "TOTAL CAMERAS 4" over seven rows did. */}
-        <MetricCard label={t.metricUploads} icon={FilmBadgeIcon} iconBg="var(--warning-100)" iconColor="var(--warning-500)">
+        <MetricCard label={t.metricUploads}>
           <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
             <p style={{ fontSize: "24px", fontWeight: 800, color: pendingUploads > 0 ? "var(--warning-500)" : "var(--gray-300)" }}>{pendingUploads}</p>
           </div>

@@ -421,9 +421,12 @@ export function SelectedCheckIcon({ size = 14 }: { size?: number }) {
  */
 export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, children }: {
   label: string;
-  iconBg: string;
-  iconColor: string;
-  icon: () => React.JSX.Element;
+  /** Optional. Input Sources drops the badge: its cards sit directly above a long table, so the
+   *  32px badge was spending a sixth of the card's height on decoration that the value and the
+   *  bar already colour-code. Overview keeps it — there the cards ARE the page. */
+  iconBg?: string;
+  iconColor?: string;
+  icon?: () => React.JSX.Element;
   /** Overrides the (absent) card edge — used to put a red rim on a card that is over its limit. */
   accentBorder?: string;
   children: React.ReactNode;
@@ -435,11 +438,13 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, child
     // below each add 6 back, so those gaps stay where they were. Doing it here rather than per card
     // is what keeps every card on both pages identical.
     <div style={{ backgroundColor: "white", border: accentBorder ?? CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "16px", display: "flex", flexDirection: "column", gap: "6px", flex: 1, minWidth: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: Icon ? "6px" : "2px" }}>
         <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px" }}>{label.toUpperCase()}</p>
-        <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
-          <Icon />
-        </span>
+        {Icon && (
+          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
+            <Icon />
+          </span>
+        )}
       </div>
       {children}
     </div>
