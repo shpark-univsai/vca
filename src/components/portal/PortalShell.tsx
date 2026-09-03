@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PortalProjectDetailPage from "./PortalProjectDetailPage";
 import PortalEmptyState from "./PortalEmptyState";
+import { NewTeamModal } from "./TeamSwitcher";
 import ProjectSwitcher from "./ProjectSwitcher";
 import PortalNewProjectWizard from "./PortalNewProjectWizard";
 import TeamSwitcher from "./TeamSwitcher";
@@ -49,6 +50,10 @@ export default function PortalShell() {
   const teamIdParam = searchParams.get("teamId");
 
   const [showWizard, setShowWizard] = useState(newProjectParam);
+  // A fresh installation can arrive with no team at all — one company may run several teams here,
+  // so the supplier does not necessarily create one during handover. The landing page then asks
+  // for the team instead of the project, and this holds that modal.
+  const [showNewTeam, setShowNewTeam] = useState(false);
   const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const currentAdmin = useVcaStore(s => s.portalUsers.find(u => u.permission === "admin")) ?? null;
@@ -226,10 +231,24 @@ export default function PortalShell() {
           )}
           <div style={{ flex: 1, overflow: "auto", padding: "32px 72px", backgroundColor: "var(--gray-100)" }}>
             {teamProjects.length === 0
-              ? <PortalEmptyState onNewProject={() => setShowWizard(true)} />
+              ? <PortalEmptyState
+                  onNewProject={() => setShowWizard(true)}
+                  noTeam={teams.length === 0}
+                  onCreateTeam={() => setShowNewTeam(true)}
+                />
               : <PortalProjectDetailPage projectId={currentProjectId} tab={tab} onTabChange={setTab} />}
           </div>
         </div>
+      )}
+
+      {/* Creating the first team goes straight on to the project wizard: the team is not the goal,
+          it is the container the project needs. Stopping at an empty team would leave the admin on
+          the same landing page they just acted on. */}
+      {showNewTeam && (
+        <NewTeamModal
+          onClose={() => setShowNewTeam(false)}
+          onCreated={teamId => { router.replace(`/portal?teamId=${teamId}`); setShowWizard(true); }}
+        />
       )}
     </div>
     </ToastProvider>
