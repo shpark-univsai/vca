@@ -213,6 +213,7 @@ interface VcaStoreState {
   cameras: Camera[];
   persons: Person[];
   events: VcaEvent[];
+  uploads: UploadedMedia[];
   portalUsers: PortalUser[];
   servers: Server[];
   auditLog: AuditEvent[];
@@ -231,6 +232,9 @@ interface VcaStoreState {
    * about twelve cameras — which is the thing anyone reading the log later needs to know.
    */
   removeCameras: (cameraIds: string[]) => void;
+  /** Register an uploaded recording/snapshot against a project. Returns its id. */
+  addUpload: (upload: Omit<UploadedMedia, "id" | "uploadedAt" | "status">) => string;
+  removeUpload: (uploadId: string) => void;
   /** Move several cameras into one zone. Same one-entry-per-action reasoning as removeCameras. */
   setCamerasZone: (cameraIds: string[], zone: string) => void;
   addProject: (project: Omit<Project, "id">) => void;
@@ -357,6 +361,60 @@ const PROJECTS: Project[] = [
     lastBackupAt: auditAt(52 * 60),
     regionName: "Singapore", networkIsolatedDetected: false, regionFlag: "🇸🇬", regionCenterCount: 1, regionSubcenterCount: 0,
   },
+];
+
+/**
+ * A recording or snapshot an administrator uploaded for after-the-fact review — not a camera.
+ *
+ * It is deliberately NOT a Camera: it has no IP, no RTSP URL, no zone, and it consumes no licensed
+ * channel, so putting it in the cameras table would make every column on that table read "—" and
+ * the channel count wrong. It gets its own Portal tab, and it surfaces in the app's Best Frame
+ * page, whose sidebar already separates a "File" list from the live "Network" list.
+ *
+ * `id` is the join. Best Frame keys its per-feed data by camera id, so an upload's id has to be the
+ * id Best Frame looks up — this is the same id-space that has already bitten us once, when Live
+ * Monitoring's camera codes and Re-ID's mock ids turned out never to overlap. One list, in the
+ * store, read by both sides.
+ */
+export type UploadKind = "video" | "image";
+/**
+ * Where the analysis got to. Nothing moves a new upload past "pending" today, because extracting
+ * frames and matching faces is the core's work and there is no endpoint for it yet — see
+ * addUpload's note. The seeded rows sit at "done" so the finished state is visible.
+ */
+export type UploadStatus = "pending" | "analyzing" | "done" | "failed";
+
+export interface UploadedMedia {
+  id: string;
+  projectId: string;
+  /** As given by the person who uploaded it — the only name they will recognise it by. */
+  fileName: string;
+  kind: UploadKind;
+  /** Seconds. Undefined for an image, which has no duration. */
+  durationSec?: number;
+  sizeBytes?: number;
+  /** As read off the file. Sits in the same table cell as a camera's stream address — both answer
+   *  "how is this source identified", which is what stops that column being half empty. */
+  resolution?: string;
+  uploadedAt: string;
+  uploadedBy: string;
+  status: UploadStatus;
+  /** Faces the analysis found. Undefined until it has run — 0 means it ran and found none, which
+   *  is a different answer and has to look different on screen. */
+  detectionCount?: number;
+}
+
+/**
+ * Seeded from Best Frame's own hardcoded Video/Image lists (v1-v3, i1). They live here now so the
+ * Portal tab that registers uploads and the Best Frame page that plays them read the same array —
+ * Best Frame's ids ARE these ids, which is the whole reason this is in the store and not in either
+ * screen. Their `status` is "done" because Best Frame already has detections keyed to them.
+ */
+const UPLOADS: UploadedMedia[] = [
+  { id: "v1", projectId: "proj-sg", fileName: "marina_bay_0831_1420.mp4", kind: "video", durationSec: 902, sizeBytes: 418_000_000, resolution: "3840×2160", uploadedAt: auditAt(51 * 60), uploadedBy: "Grace Tan", status: "done", detectionCount: 14 },
+  { id: "v2", projectId: "proj-sg", fileName: "cbd_northgate_0829.mp4", kind: "video", durationSec: 187, sizeBytes: 96_000_000, resolution: "2560×1440", uploadedAt: auditAt(74 * 60), uploadedBy: "Grace Tan", status: "done", detectionCount: 6 },
+  { id: "v3", projectId: "proj-riverside", fileName: "campus_gate_0828.mp4", kind: "video", durationSec: 341, sizeBytes: 152_000_000, resolution: "1920×1080", uploadedAt: auditAt(96 * 60), uploadedBy: "Marcus Lee", status: "done", detectionCount: 9 },
+  { id: "i1", projectId: "proj-sg", fileName: "west_gate_snapshot.jpg", kind: "image", sizeBytes: 2_400_000, resolution: "1920×1080", uploadedAt: auditAt(28 * 60), uploadedBy: "Grace Tan", status: "done", detectionCount: 2 },
 ];
 
 // Portal-managed accounts — separate from `persons` (the VIP/watchlist registry). A PortalUser is
@@ -723,6 +781,7 @@ export const PERSONS: Person[] = (() => {
 })();
 
 let cameraSeq = CAMERAS.length;
+let uploadSeq = UPLOADS.length;
 let projectSeq = PROJECTS.length;
 let personSeq = PERSONS.length;
 let eventSeq = SEED_EVENTS.length;
@@ -822,6 +881,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   teams: TEAMS,
   projects: PROJECTS,
   cameras: CAMERAS,
+  uploads: UPLOADS,
   persons: PERSONS,
   events: SEED_EVENTS,
   portalUsers: PORTAL_USERS,
@@ -884,6 +944,38 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
       return {
         cameras: state.cameras.map(c => (ids.has(c.id) ? { ...c, zone } : c)),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
+  addUpload: (upload) => {
+    const id = `upload-${++uploadSeq}`;
+    // HANDOFF NOTE: status starts at "pending" and nothing moves it. Extracting frames and matching
+    // faces is the core's work (media + analysis) and there is no endpoint for it yet, so faking a
+    // progress bar that finishes would claim an analysis that never ran. The seeded rows show what
+    // "done" looks like. When the endpoint lands, this call posts the file and the row follows
+    // whatever the job reports.
+    const entry: UploadedMedia = { ...upload, id, uploadedAt: new Date().toISOString(), status: "pending" };
+    const auditEntry: AuditEvent = {
+      id: `audit-${++auditSeq}`, projectId: upload.projectId,
+      message: `${upload.kind === "image" ? "Image" : "Video"} uploaded — ${upload.fileName}`,
+      actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+    };
+    set(state => ({
+      uploads: [entry, ...state.uploads],
+      auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+    }));
+    return id;
+  },
+  removeUpload: (uploadId) =>
+    set(state => {
+      const upload = state.uploads.find(u => u.id === uploadId);
+      if (!upload) return {};
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: upload.projectId,
+        message: `Upload removed — ${upload.fileName}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        uploads: state.uploads.filter(u => u.id !== uploadId),
         auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
       };
     }),

@@ -81,7 +81,9 @@ function UsersIcon({ color }: IconProps) {
 
 export const PROJECT_TABS: { id: DetailTab; label: { en: string; ko: string }; icon: ComponentType<IconProps> }[] = [
   { id: "overview", label: { en: "Overview", ko: "개요" }, icon: OverviewIcon },
-  { id: "cameras", label: { en: "Cameras", ko: "카메라" }, icon: CamerasIcon },
+  // The id stays "cameras" — it is a route key, and renaming it would only churn every call site.
+  // The label changed because the tab now lists uploaded footage alongside cameras.
+  { id: "cameras", label: { en: "Input Sources", ko: "입력 소스" }, icon: CamerasIcon },
   { id: "vip", label: { en: "VIP Registry", ko: "VIP 등록" }, icon: VipIcon },
   { id: "license", label: { en: "License", ko: "라이선스" }, icon: LicenseIcon },
   { id: "server", label: { en: "Server & API", ko: "서버 및 API" }, icon: ServerIcon },

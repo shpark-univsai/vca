@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, projectChannelLimit } from "@/lib/vcaStore";
+import { Film as FilmIcon, Image as ImageIcon, Video as VideoIcon } from "lucide-react";
+import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type UploadedMedia, type UploadStatus, projectChannelLimit, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
@@ -10,8 +11,8 @@ import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
   en: {
-    pageTitle: "Cameras",
-    pageDesc: "Connect and manage this project's camera streams and AI engine mapping.",
+    pageTitle: "Input Sources",
+    pageDesc: "Camera streams and uploaded footage — everything this project feeds to analysis.",
     reconnectAll: "Reconnect All",
     exportCsv: "Export CSV",
     addCamera: "Add camera",
@@ -31,6 +32,39 @@ const T = {
     filterAllStatus: "All status",
     filterAllAiEngines: "All AI engines",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
+
+    // Source kinds — cameras and uploaded footage share one table
+    kindTabAll: "All",
+    kindTabCamera: "Cameras",
+    kindTabVideo: "Videos",
+    kindTabImage: "Images",
+    colSource: "Source",
+    sourceCamera: "Camera",
+    sourceAiCamera: "AI camera",
+    sourceVideo: "Video",
+    sourceImage: "Image",
+    colAddress: "Address / Resolution",
+    uploadsSuffix: (n: number) => `${n} uploaded`,
+    metricUploads: "Uploaded footage",
+    uploadsAnalysed: (n: number) => `${n} analysed`,
+    statusPending: "Queued",
+    statusAnalyzing: "Analysing",
+    statusDone: "Analysed",
+    statusFailed: "Failed",
+    detectionsFound: (n: number) => `${n} face${n === 1 ? "" : "s"}`,
+    addSource: "Add source",
+    addCameraOption: "Camera (RTSP)",
+    uploadFileOption: "Upload video or image",
+    uploadTitle: "Upload footage",
+    uploadDrop: "Drag a file here",
+    uploadHint: "MP4, MOV, JPG, PNG. Analysed for faces and shown in Best Frame.",
+    uploadChoose: "Choose file",
+    uploadPendingNotice: "Analysis runs on the server and is not connected yet — uploads stay queued.",
+    toastUploadedTitle: "Uploaded",
+    removeUploadAction: "Remove upload",
+    toastUploadRemovedTitle: "Upload removed",
+    emptyNoSources: "Nothing registered for this project yet.",
+    gridCamerasOnly: "Grid shows cameras only — switch to Table to see uploaded footage.",
     clearFilters: "Clear all filters",
     selectedCount: (n: number) => `${n} selected`,
     bulkClearSelection: "Clear selection",
@@ -106,8 +140,8 @@ const T = {
     } as Record<CameraAiFeature, string>,
   },
   ko: {
-    pageTitle: "카메라",
-    pageDesc: "이 프로젝트의 카메라 스트림과 AI 엔진 연결을 관리합니다.",
+    pageTitle: "입력 소스",
+    pageDesc: "카메라 스트림과 업로드한 영상 — 이 프로젝트가 분석에 넣는 모든 것.",
     reconnectAll: "전체 재연결",
     exportCsv: "CSV 내보내기",
     addCamera: "카메라 추가",
@@ -127,6 +161,39 @@ const T = {
     filterAllStatus: "전체 상태",
     filterAllAiEngines: "전체 AI 엔진",
     filtersActive: (n: number) => `필터 ${n}개`,
+
+    // Source kinds — cameras and uploaded footage share one table
+    kindTabAll: "전체",
+    kindTabCamera: "카메라",
+    kindTabVideo: "영상",
+    kindTabImage: "이미지",
+    colSource: "종류",
+    sourceCamera: "카메라",
+    sourceAiCamera: "AI 카메라",
+    sourceVideo: "영상",
+    sourceImage: "이미지",
+    colAddress: "주소 / 해상도",
+    uploadsSuffix: (n: number) => `업로드 ${n}건`,
+    metricUploads: "업로드 영상",
+    uploadsAnalysed: (n: number) => `분석 완료 ${n}건`,
+    statusPending: "대기",
+    statusAnalyzing: "분석 중",
+    statusDone: "분석 완료",
+    statusFailed: "실패",
+    detectionsFound: (n: number) => `얼굴 ${n}개`,
+    addSource: "소스 추가",
+    addCameraOption: "카메라 (RTSP)",
+    uploadFileOption: "영상·이미지 업로드",
+    uploadTitle: "영상 업로드",
+    uploadDrop: "여기에 파일을 놓으세요",
+    uploadHint: "MP4, MOV, JPG, PNG. 얼굴을 분석해 베스트 프레임에서 볼 수 있습니다.",
+    uploadChoose: "파일 선택",
+    uploadPendingNotice: "분석은 서버에서 돌아가며 아직 연결되지 않았습니다 — 업로드는 대기 상태로 남습니다.",
+    toastUploadedTitle: "업로드됨",
+    removeUploadAction: "업로드 삭제",
+    toastUploadRemovedTitle: "업로드가 삭제됨",
+    emptyNoSources: "이 프로젝트에 등록된 소스가 없습니다.",
+    gridCamerasOnly: "그리드는 카메라만 보여줍니다 — 업로드한 영상은 테이블에서 볼 수 있습니다.",
     clearFilters: "필터 모두 지우기",
     selectedCount: (n: number) => `${n}대 선택됨`,
     bulkClearSelection: "선택 해제",
@@ -261,6 +328,23 @@ function useStickyHeader<T extends HTMLElement>() {
 
 const DEFAULT_THUMBNAIL = "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80";
 type CameraSortKey = "name" | "maker" | "resolution" | "zone" | "status";
+
+/**
+ * One row type for both kinds of input source.
+ *
+ * A camera and an uploaded recording are different objects with different fields, but they answer
+ * the same question for an administrator — "what is feeding analysis on this project" — so they
+ * share a table, the way the previous product's INPUT screen did. What that screen got wrong is
+ * worth not repeating: it had a CONNECTION INFO column that was blank on every file row and a
+ * RESOLUTION column blank on every camera row, and a "TOTAL CAMERAS 4" header sitting above seven
+ * rows. Here the two are one `address` field (an IP for a camera, a resolution for a file — both
+ * are "how this source is identified"), and the metrics above the table count the two separately,
+ * because only cameras consume a licensed channel.
+ */
+type SourceKind = "camera" | "video" | "image";
+type SourceRow =
+  | { kind: "camera"; id: string; name: string; camera: Camera }
+  | { kind: "video" | "image"; id: string; name: string; upload: UploadedMedia };
 
 const AI_FEATURES: CameraAiFeature[] = ["Re-ID Analysis", "License Plate Recognition", "Intrusion Detection"];
 const MAKERS = ["Hanwha", "Hikvision", "Dahua"];
@@ -434,6 +518,32 @@ function AiFeatureBadges({ features, t }: { features?: CameraAiFeature[]; t: (ty
   );
 }
 
+/**
+ * Status colours for an upload. Deliberately not the camera palette: green/grey there means a live
+ * connection is up or down, and an analysis that has finished is not the same kind of fact as a
+ * stream that is alive. Blue for done, grey for waiting, red for failed — so a glance at the column
+ * tells you which of the two questions a row is answering.
+ */
+const UPLOAD_STATUS_TONE: Record<UploadStatus, { dot: string; text: string; label: "statusPending" | "statusAnalyzing" | "statusDone" | "statusFailed" }> = {
+  pending:   { dot: "var(--gray-300)",  text: "var(--gray-500)",  label: "statusPending" },
+  analyzing: { dot: "var(--info-500)",  text: "var(--info-500)",  label: "statusAnalyzing" },
+  done:      { dot: "var(--info-500)",  text: "var(--info-500)",  label: "statusDone" },
+  failed:    { dot: "var(--danger-400)", text: "var(--danger-400)", label: "statusFailed" },
+};
+
+function formatDuration(seconds?: number): string {
+  if (seconds === undefined) return "";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function formatBytes(bytes?: number): string {
+  if (bytes === undefined) return "";
+  const mb = bytes / 1_000_000;
+  return mb >= 1000 ? `${(mb / 1000).toFixed(1)} GB` : `${Math.round(mb)} MB`;
+}
+
 function csvEscape(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
 }
@@ -441,6 +551,9 @@ function csvEscape(value: string): string {
 export default function ProjectCamerasTab({ projectId }: { projectId: string }) {
   const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
   const cameras = useVcaStore(s => s.cameras);
+  const uploads = useVcaStore(s => s.uploads);
+  const addUpload = useVcaStore(s => s.addUpload);
+  const removeUpload = useVcaStore(s => s.removeUpload);
   const addCamera = useVcaStore(s => s.addCamera);
   const updateCamera = useVcaStore(s => s.updateCamera);
   const removeCamera = useVcaStore(s => s.removeCamera);
@@ -465,9 +578,28 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
   const [zoneFilter, setZoneFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "online" | "offline">("ALL");
   const [aiFilter, setAiFilter] = useState<"ALL" | CameraAiFeature>("ALL");
+  // Which kind of source the table is showing. A tab row, not another select in the filter strip:
+  // it is the top-level cut of the list, and the counts belong on it.
+  const [kindTab, setKindTab] = useState<"ALL" | SourceKind>("ALL");
+  const [showUpload, setShowUpload] = useState(false);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [hoveredAddItem, setHoveredAddItem] = useState<string | null>(null);
+  const addMenuRef = useRef<HTMLDivElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
   const [hoveredAction, setHoveredAction] = useState<"reconnect" | "export" | "add" | null>(null);
 
   const projectCameras = cameras.filter(c => c.projectId === projectId);
+  const projectUploads = uploads.filter(u => u.projectId === projectId);
+
+  useEffect(() => {
+    if (!addMenuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) setAddMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [addMenuOpen]);
   const zones = Array.from(new Set(projectCameras.map(c => c.zone).filter(Boolean)));
   const { sort, toggle: toggleSort } = useTableSort<CameraSortKey>({ key: "status", direction: "asc" });
   // Search is not counted. It is visible as text in its own box and clearing it is obvious, whereas
@@ -488,18 +620,58 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
     const matchesAi = aiFilter === "ALL" || (c.aiFeatures ?? []).includes(aiFilter);
     return matchesSearch && matchesZone && matchesStatus && matchesAi;
   });
+  const matchingUploads = projectUploads.filter(u => {
+    const matchesSearch = !q || u.fileName.toLowerCase().includes(q);
+    // Zone and AI-engine are camera properties. A file has neither, so any of those filters being
+    // set means the person is looking at cameras and files should drop out — hiding them is the
+    // honest answer, not showing them as if they had passed a filter they cannot be judged by.
+    const cameraOnlyFilterSet = zoneFilter !== "ALL" || aiFilter !== "ALL";
+    // Status filter is shared but its values are not: "online"/"offline" describe a connection and
+    // a file has none, so the same reasoning applies.
+    return matchesSearch && !cameraOnlyFilterSet && statusFilter === "ALL";
+  });
+
+  // Cameras and uploads become one row list before sorting, so a sort is a sort of the table and
+  // not of two stacked tables.
+  const allRows: SourceRow[] = [
+    ...matchingCameras.map((c): SourceRow => ({ kind: "camera", id: c.id, name: c.name, camera: c })),
+    ...matchingUploads.map((u): SourceRow => ({ kind: u.kind, id: u.id, name: u.fileName, upload: u })),
+  ].filter(r => kindTab === "ALL" || r.kind === kindTab);
+
   // Offline first by default. The table's job here is "what needs attention", and a fleet sorted
   // alphabetically buries the three cameras that are down among the ninety-seven that are not.
-  // "desc" on status because the values sort "offline" < "online" alphabetically.
-  const visibleCameras = sortRows(matchingCameras, sort, (c, key) => {
+  const visibleRows = sortRows(allRows, sort, (r, key) => {
+    if (r.kind === "camera") {
+      const c = r.camera;
+      switch (key) {
+        case "name": return c.name.toLowerCase();
+        case "maker": return c.maker?.toLowerCase();
+        case "resolution": return c.resolution?.toLowerCase();
+        case "zone": return c.zone?.toLowerCase();
+        case "status": return c.status;
+      }
+    }
+    // A file has no maker and no zone — undefined sinks it to the bottom of those sorts rather
+    // than inventing a value that would put it in a position it has not earned.
     switch (key) {
-      case "name": return c.name.toLowerCase();
-      case "maker": return c.maker?.toLowerCase();
-      case "resolution": return c.resolution?.toLowerCase();
-      case "zone": return c.zone?.toLowerCase();
-      case "status": return c.status;
+      case "name": return r.upload.fileName.toLowerCase();
+      case "resolution": return undefined;
+      case "status": return r.upload.status;
+      default: return undefined;
     }
   });
+  // The grid view and the camera-only actions (batch reconnect, CSV export) still work on cameras.
+  const visibleCameras = visibleRows.filter((r): r is Extract<SourceRow, { kind: "camera" }> => r.kind === "camera").map(r => r.camera);
+
+  // Maker, zone and AI engines are camera facts. On a files-only tab they would be a column of
+  // dashes on every row — which is exactly the fault in the screen this replaces — so the tab drops
+  // them instead of printing them empty. On the combined tab they stay, because a mixed list has
+  // rows that fill them.
+  const showCameraColumns = kindTab === "ALL" || kindTab === "camera";
+  const effectiveView = showCameraColumns ? view : "table";
+  const GRID = showCameraColumns
+    ? "28px 56px 1.4fr 0.7fr 0.7fr 0.7fr 1.2fr 1fr 0.8fr 70px"
+    : "28px 56px 2fr 0.8fr 1.2fr 0.9fr 70px";
 
   // Only rows that are actually on screen count as selected. Filtering to Offline while three
   // online cameras are ticked would otherwise leave a delete button armed with rows the person
@@ -582,6 +754,25 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
     showToast({ variant: "success", title: t.toastBatchReconnectTitle, desc: t.toastBatchReconnectDesc(offline.length) });
   };
 
+  // Reads only what the browser can tell us without decoding the file: its name, size and whether
+  // it is video or image. Duration and resolution come from the server once it has opened the file
+  // — guessing them here would put numbers on screen that nothing measured.
+  const acceptFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const accepted = Array.from(files).filter(f => f.type.startsWith("video/") || f.type.startsWith("image/"));
+    accepted.forEach(f => addUpload({
+      projectId,
+      fileName: f.name,
+      kind: f.type.startsWith("image/") ? "image" : "video",
+      sizeBytes: f.size,
+      uploadedBy: SIGNED_IN_USER.name,
+    }));
+    if (accepted.length === 0) return;
+    setShowUpload(false);
+    setKindTab("ALL");
+    showToast({ variant: "success", title: t.toastUploadedTitle, desc: accepted.map(f => f.name).join(", ") });
+  };
+
   const exportCsv = () => {
     const header = [t.csvHeaderName, t.csvHeaderCode, t.csvHeaderZone, t.csvHeaderLocation, t.csvHeaderRtspUrl, t.csvHeaderStatus, t.csvHeaderAiFeatures];
     const rows = projectCameras.map(c => [
@@ -627,18 +818,50 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1.75V9.33M7 9.33 4.08 6.42M7 9.33 9.92 6.42M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             {t.exportCsv}
           </button>
-          <button onClick={() => setShowAdd(true)}
-            onMouseEnter={() => setHoveredAction("add")} onMouseLeave={() => setHoveredAction(null)}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0, filter: hoveredAction === "add" ? "brightness(0.92)" : "none" }}>
-            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
-            {t.addCamera}
-          </button>
+          {/* One primary action for both kinds, because "add a source" is one intention with two
+              answers — a menu is what keeps the header from growing a second primary button that
+              competes with this one. */}
+          <div ref={addMenuRef} style={{ position: "relative", flexShrink: 0 }}>
+            <button onClick={() => setAddMenuOpen(o => !o)}
+              onMouseEnter={() => setHoveredAction("add")} onMouseLeave={() => setHoveredAction(null)}
+              style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", filter: hoveredAction === "add" ? "brightness(0.92)" : "none" }}>
+              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
+              {t.addSource}
+            </button>
+            {addMenuOpen && (
+              <div style={{
+                position: "absolute", top: "100%", right: 0, marginTop: "4px", zIndex: 60,
+                backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "0 8px 20px rgba(14,22,42,0.12)",
+                minWidth: "200px", padding: "4px",
+              }}>
+                {[
+                  { label: t.addCameraOption, onClick: () => setShowAdd(true) },
+                  { label: t.uploadFileOption, onClick: () => setShowUpload(true) },
+                ].map(item => (
+                  <button
+                    key={item.label}
+                    onClick={() => { setAddMenuOpen(false); item.onClick(); }}
+                    onMouseEnter={() => setHoveredAddItem(item.label)}
+                    onMouseLeave={() => setHoveredAddItem(null)}
+                    style={{
+                      display: "block", width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: "6px",
+                      border: "none", cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit",
+                      backgroundColor: hoveredAddItem === item.label ? "var(--gray-100)" : "transparent",
+                      fontSize: "12px", fontWeight: 600, color: "var(--gray-900)",
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Metrics */}
       <div style={{ backgroundColor: "white", border: overLimit ? "1px solid var(--danger-400)" : CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, marginBottom: "16px", overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)" }}>
           <div style={{ padding: "16px", borderRight: BORDER }}>
             <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricChannelUsage.toUpperCase()}</p>
             <p style={{ fontSize: "20px", fontWeight: 800, color: overLimit ? "var(--danger-400)" : "var(--gray-900)", marginTop: "6px" }}>
@@ -659,6 +882,17 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricAiCoverage.toUpperCase()}</p>
             <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", marginTop: "6px" }}>{aiMappedCount} <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)" }}>{t.aiMappedSuffix(projectCameras.length)}</span></p>
           </div>
+          {/* Uploads get their own figure rather than joining the channel count beside it. The
+              previous product's INPUT screen headed a mixed table with "TOTAL CAMERAS 4" over seven
+              rows; keeping the two numbers apart is what stops that. A file consumes no licensed
+              channel, so it must not appear in the number that is measured against the licence. */}
+          <div style={{ padding: "16px", borderRight: BORDER }}>
+            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricUploads.toUpperCase()}</p>
+            <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", marginTop: "6px" }}>{projectUploads.length}</p>
+            <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px" }}>
+              {t.uploadsAnalysed(projectUploads.filter(u => u.status === "done").length)}
+            </p>
+          </div>
           <div style={{ padding: "16px" }}>
             <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{t.metricZoneCoverage.toUpperCase()}</p>
             <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", marginTop: "6px" }}>{zones.length} <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)" }}>{t.zonesSuffix}</span></p>
@@ -667,6 +901,37 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Top-level cut of the list, with counts on the tabs. An underlined tab row rather than a
+          fourth select in the filter strip below: which kind of source you are looking at is a
+          different question from how you are narrowing that kind, and the counts belong where the
+          choice is made. Same arrangement the previous product's INPUT screen used. */}
+      <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
+        {([
+          { id: "ALL", label: t.kindTabAll, count: projectCameras.length + projectUploads.length },
+          { id: "camera", label: t.kindTabCamera, count: projectCameras.length },
+          { id: "video", label: t.kindTabVideo, count: projectUploads.filter(u => u.kind === "video").length },
+          { id: "image", label: t.kindTabImage, count: projectUploads.filter(u => u.kind === "image").length },
+        ] as { id: "ALL" | SourceKind; label: string; count: number }[]).map(tab => {
+          const active = kindTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setKindTab(tab.id)}
+              style={{
+                display: "flex", alignItems: "center", gap: "6px",
+                background: "none", border: "none", cursor: "pointer",
+                padding: "0 2px 10px", fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
+                color: active ? "var(--gray-900)" : "var(--gray-500)",
+                borderBottom: active ? "2px solid var(--gray-900)" : "2px solid transparent",
+              }}
+            >
+              {tab.label}
+              <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{tab.count}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Search & filters */}
@@ -733,6 +998,11 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             </button>
           </>
         )}
+        {/* Grid is a wall of camera thumbnails, and an unanalysed file has no frame to put in one.
+            Rather than let file rows vanish the moment someone picks Grid, the toggle is only
+            offered on the tabs where both views can show the same rows — and `effectiveView` below
+            makes sure a Grid choice made earlier does not silently hide the files. */}
+        {showCameraColumns && (
         <div style={{ display: "flex", alignItems: "center", height: CONTROL_HEIGHT, boxSizing: "border-box", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px" }}>
           {(["table", "grid"] as const).map(v => (
             <button key={v} onClick={() => setView(v)}
@@ -745,18 +1015,19 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             </button>
           ))}
         </div>
+        )}
       </div>
 
       {/* Table's own column header stays fixed with everything above it — only the data rows
           scroll underneath. Rendered here (still inside the fixed/sticky block) as the top half of
           the card; the data rows below are the bottom half, in normal flow, meeting it with no
           border between them so the two halves read as one continuous card. */}
-      {view === "table" && visibleCameras.length > 0 && (
+      {effectiveView === "table" && visibleRows.length > 0 && (
         <div style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: "12px", borderTopRightRadius: "12px", boxShadow: PANEL_SHADOW }}>
-          <div style={{ display: "grid", gridTemplateColumns: "28px 56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
-            {/* The thumbnail, RTSP URL and AI-engine columns carry no sortKey — a picture has no
-                order, a stream URL sorts by whatever the IP happens to start with, and AI engines
-                is a set per camera rather than one value. */}
+          <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+            {/* The thumbnail, address and AI-engine columns carry no sortKey — a picture has no
+                order, an address sorts by whatever the IP happens to start with, and AI engines is
+                a set per camera rather than one value. */}
             <input
               type="checkbox"
               checked={allVisibleSelected}
@@ -767,11 +1038,10 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             {([
               { label: "" },
               { label: t.colCamera, key: "name" },
-              { label: t.colMaker, key: "maker" },
-              { label: t.colResolution, key: "resolution" },
-              { label: t.colZone, key: "zone" },
-              { label: t.colRtspStream },
-              { label: t.colAiEngines },
+              { label: t.colSource },
+              ...(showCameraColumns ? [{ label: t.colMaker, key: "maker" as CameraSortKey }, { label: t.colZone, key: "zone" as CameraSortKey }] : []),
+              { label: t.colAddress },
+              ...(showCameraColumns ? [{ label: t.colAiEngines }] : []),
               { label: t.colStatus, key: "status" },
               { label: "" },
             ] as { label: string; key?: CameraSortKey }[]).map((h, i) => (
@@ -782,52 +1052,102 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
       )}
       </div>
 
-      {visibleCameras.length === 0 ? (
+      {visibleRows.length === 0 ? (
         <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", padding: "32px", textAlign: "center" }}>
           <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
-            {projectCameras.length === 0 ? t.emptyAll : t.emptyFiltered}
+            {projectCameras.length + projectUploads.length === 0 ? t.emptyNoSources : t.emptyFiltered}
           </p>
         </div>
-      ) : view === "table" ? (
+      ) : effectiveView === "table" ? (
         // No overflow:hidden on the container — it would clip a RowActionsMenu dropdown that opens
         // past the bottom edge (the last row's menu becomes invisible, not just cut off).
         // Header/last-row corners are radiused directly instead. Top border/radius omitted — the
         // fixed column-header block above already draws that edge, and the two must read as one card.
         <div style={{ backgroundColor: "white", borderLeft: BORDER, borderRight: BORDER, borderBottom: BORDER, boxShadow: PANEL_SHADOW }}>
-          {visibleCameras.map((cam, i) => {
+          {visibleRows.map((row, i) => {
+            const isLast = i === visibleRows.length - 1;
+            const rowStyle: React.CSSProperties = {
+              display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
+              borderBottom: isLast ? "none" : BORDER,
+              borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
+            };
+            const checkbox = (
+              <input
+                type="checkbox"
+                checked={selectedIds.has(row.id)}
+                onChange={() => toggleRow(row.id)}
+                aria-label={row.name}
+                style={{ accentColor: "var(--gray-900)", cursor: "pointer", justifySelf: "start" }}
+              />
+            );
+
+            if (row.kind !== "camera") {
+              const u = row.upload;
+              const tone = UPLOAD_STATUS_TONE[u.status];
+              return (
+                <div key={row.id} style={rowStyle}>
+                  {checkbox}
+                  {/* A file has no live thumbnail to show, so the tile carries its kind instead of
+                      a frame we do not have. Inventing a poster image would imply the analysis had
+                      already looked at it. */}
+                  <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "40px", height: "40px", borderRadius: "8px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)" }}>
+                    {u.kind === "image" ? <ImageIcon size={18} strokeWidth={1.4} /> : <FilmIcon size={18} strokeWidth={1.4} />}
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.fileName}</p>
+                    <p style={{ fontSize: "10px", color: "var(--gray-400)" }}>
+                      {[formatDuration(u.durationSec), formatBytes(u.sizeBytes)].filter(Boolean).join(" · ") || "—"}
+                    </p>
+                  </div>
+                  <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "var(--gray-600)" }}>
+                    {u.kind === "image" ? <ImageIcon size={13} strokeWidth={1.4} /> : <FilmIcon size={13} strokeWidth={1.4} />}
+                    {u.kind === "image" ? t.sourceImage : t.sourceVideo}
+                  </span>
+                  {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}
+                  {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}
+                  <span style={{ fontSize: "10px", color: "var(--gray-600)", fontFamily: "monospace" }}>{u.resolution ?? "—"}</span>
+                  {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}
+                  <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: tone.dot, flexShrink: 0 }} />
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: tone.text }}>{t[tone.label]}</span>
+                    {u.status === "done" && u.detectionCount !== undefined && (
+                      <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{t.detectionsFound(u.detectionCount)}</span>
+                    )}
+                  </span>
+                  <RowActionsMenu actions={[
+                    { label: t.removeUploadAction, onClick: () => { removeUpload(u.id); showToast({ variant: "warning", title: t.toastUploadRemovedTitle, desc: u.fileName }); }, danger: true },
+                  ]} />
+                </div>
+              );
+            }
+
+            const cam = row.camera;
             const online = cam.status === "online";
             const isAiCamera = (cam.aiFeatures ?? []).length > 0;
-            const isLast = i === visibleCameras.length - 1;
             return (
-              <div key={cam.id} style={{
-                display: "grid", gridTemplateColumns: "28px 56px 1.3fr 0.7fr 0.7fr 0.7fr 1.1fr 1fr 0.8fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
-                borderBottom: isLast ? "none" : BORDER,
-                borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
-              }}>
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(cam.id)}
-                  onChange={() => toggleRow(cam.id)}
-                  aria-label={cam.name}
-                  style={{ accentColor: "var(--gray-900)", cursor: "pointer", justifySelf: "start" }}
-                />
+              <div key={row.id} style={rowStyle}>
+                {checkbox}
                 <button onClick={() => setInspectingCameraId(cam.id)} style={{ width: "40px", height: "40px", borderRadius: "8px", overflow: "hidden", backgroundColor: "var(--gray-100)", border: "none", cursor: "pointer", padding: 0 }}>
                   <img src={cam.thumbnail || DEFAULT_THUMBNAIL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </button>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{cam.name}</p>
-                    <span style={{ fontSize: "10px", fontWeight: 600, color: isAiCamera ? "var(--gray-900)" : "var(--gray-500)", backgroundColor: isAiCamera ? "var(--gray-200)" : "var(--gray-100)", padding: "1px 5px", borderRadius: "999px" }}>
-                      {isAiCamera ? t.aiCameraBadge : t.cctvBadge}
-                    </span>
-                  </div>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.name}</p>
                   <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{cam.code}</p>
                 </div>
-                <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{cam.maker ?? "—"}</span>
-                <span style={{ fontSize: "10px", color: "var(--gray-600)" }}>{cam.resolution ?? "—"}</span>
-                <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{cam.zone}</span>
-                <span style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.rtspUrl}</span>
-                <AiFeatureBadges features={cam.aiFeatures} t={t} />
+                <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "var(--gray-600)" }}>
+                  <VideoIcon size={13} strokeWidth={1.4} />
+                  {isAiCamera ? t.sourceAiCamera : t.sourceCamera}
+                </span>
+                {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{cam.maker ?? "—"}</span>}
+                {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{cam.zone}</span>}
+                {/* Stream address and resolution in one cell — the same column a file fills with
+                    its resolution alone. Two separate columns left one of them blank on every row
+                    of the other kind. */}
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.rtspUrl}</p>
+                  <p style={{ fontSize: "10px", color: "var(--gray-600)", fontFamily: "monospace" }}>{cam.resolution ?? "—"}</p>
+                </div>
+                {showCameraColumns && <AiFeatureBadges features={cam.aiFeatures} t={t} />}
                 <button onClick={() => setConfirmingStatusCam(cam)} style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                   <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: online ? "var(--success-400)" : "var(--gray-400)", flexShrink: 0 }} />
                   <span style={{ fontSize: "12px", fontWeight: 700, color: online ? "var(--success-400)" : "var(--gray-400)" }}>{online ? t.online : t.offline}</span>
@@ -841,6 +1161,10 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           })}
         </div>
       ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {kindTab === "ALL" && projectUploads.length > 0 && (
+            <p style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.gridCamerasOnly}</p>
+          )}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "12px" }}>
           {visibleCameras.map(cam => {
             const online = cam.status === "online";
@@ -878,6 +1202,54 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
               </div>
             );
           })}
+        </div>
+        </div>
+      )}
+
+      {/* Same drop-zone shape Redmap's image upload already uses — dashed border on a gray-50 field
+          with a Choose button — so the two upload surfaces in the product are one pattern. Accepts
+          video as well as image, which is the only real difference. */}
+      {showUpload && (
+        <div onClick={e => { if (e.target === e.currentTarget) setShowUpload(false); }}
+          style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ backgroundColor: "white", borderRadius: "16px", maxWidth: "520px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+            <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.uploadTitle}</p>
+              <button onClick={() => setShowUpload(false)} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+              <div
+                onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={e => { e.preventDefault(); setDragging(false); acceptFiles(e.dataTransfer.files); }}
+                style={{
+                  borderRadius: "12px", border: `1px dashed ${dragging ? "var(--gray-900)" : "var(--gray-300)"}`,
+                  backgroundColor: dragging ? "var(--gray-100)" : "var(--gray-50)",
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  gap: "12px", padding: "32px 24px", textAlign: "center",
+                }}>
+                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", borderRadius: "24px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)" }}>
+                  <FilmIcon size={22} strokeWidth={1.3} />
+                </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{t.uploadDrop}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6 }}>{t.uploadHint}</span>
+                </div>
+                <button onClick={() => uploadInputRef.current?.click()}
+                  style={{ padding: "9px 16px", borderRadius: "999px", border: "none", cursor: "pointer", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700 }}>
+                  {t.uploadChoose}
+                </button>
+                <input ref={uploadInputRef} type="file" multiple accept="video/*,image/*"
+                  onChange={e => { acceptFiles(e.target.files); e.target.value = ""; }}
+                  style={{ display: "none" }} />
+              </div>
+              {/* Says the analysis has not run rather than showing a progress bar that finishes on
+                  its own. A file sitting at "Queued" is the truth until the core has an endpoint. */}
+              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.6 }}>{t.uploadPendingNotice}</p>
+            </div>
+          </div>
         </div>
       )}
 

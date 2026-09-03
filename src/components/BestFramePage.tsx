@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { Search } from "lucide-react";
+import { useVcaStore, type UploadedMedia } from "@/lib/vcaStore";
 import BestFrameDetailPage from "./BestFrameDetailPage";
 import { useToast } from "./Toast";
 import type { DetType, MonitorState, Camera, Detection, CamData, HUDState } from "@/types/detection";
@@ -228,14 +229,25 @@ export const NORMAL_CAMS_INIT: Camera[] = [
     monitor: (cam.status === "online" ? "normal" : "alert") as MonitorState,
   })),
 ];
-export const VIDEO_CAMS_INIT: Camera[] = [
-  { id:"v1", name:"BS1", checked:false, monitor:"normal" },
-  { id:"v2", name:"BS1", checked:false, monitor:"normal" },
-  { id:"v3", name:"BS1", checked:false, monitor:"normal" },
-];
-export const IMAGE_CAMS_INIT: Camera[] = [
-  { id:"i1", name:"BS1", checked:false, monitor:"normal" },
-];
+/**
+ * The sidebar's Video list / Image list, built from the project's uploads.
+ *
+ * These used to be two hardcoded arrays (v1-v3, i1, all named "BS1") with no way to add to them, so
+ * anything uploaded in Portal could never show up here — two id spaces that never met, the failure
+ * Live Monitoring and Re-ID already hit once. The store now holds one list; Portal's Input Sources
+ * tab writes it and this reads it, which is what makes an upload's id the id CAM_DATA is keyed by.
+ *
+ * Only analysed uploads are listed. A file still queued has no detections, and a row that opens
+ * onto nothing is worse than no row.
+ *
+ * `checked` is carried over from the previous list rather than reset, so adding one upload does not
+ * clear the selection the operator had built up.
+ */
+function uploadsToCams(uploads: UploadedMedia[], kind: "video" | "image", prev: Camera[]): Camera[] {
+  return uploads
+    .filter(u => u.kind === kind && u.status === "done")
+    .map(u => ({ id: u.id, name: u.fileName, checked: prev.find(c => c.id === u.id)?.checked ?? false, monitor: "normal" as const }));
+}
 
 /* ── Checkbox icon ────────────────────────────────────────── */
 function CheckboxIcon({ checked }: { checked: boolean }) {
@@ -741,8 +753,26 @@ function getGridLayout(n: number): { cols: number; rows: number; sidePanelOnHove
 /* ── Main component ──────────────────────────────────────────── */
 export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedmapTrace, analyzeFrameLocation, analyzeFrameAt, onAnalyzeFrameConsumed }: { focusLocation?: string | null; onFocusConsumed?: () => void; onGoRedmapTrace?: (name: string) => void; analyzeFrameLocation?: string | null; analyzeFrameAt?: { date: string; time: string } | null; onAnalyzeFrameConsumed?: () => void } = {}) {
   const [normalCams, setNormalCams] = useState<Camera[]>(NORMAL_CAMS_INIT);
-  const [videoCams,  setVideoCams]  = useState<Camera[]>(VIDEO_CAMS_INIT);
-  const [imageCams,  setImageCams]  = useState<Camera[]>(IMAGE_CAMS_INIT);
+  // The File lists are the project's uploads, from the store — Portal's Input Sources tab is what
+  // adds to them. They were two hardcoded arrays here, so anything uploaded in Portal could never
+  // appear on this page: two id spaces that never met, the same failure Live Monitoring and Re-ID
+  // hit once already.
+  //
+  // Still local state, because `checked` is this page's business and not the store's. The effect
+  // below reconciles the list when an upload is added or removed and keeps whatever was ticked.
+  const storeUploads = useVcaStore(s => s.uploads);
+  const [videoCams,  setVideoCams]  = useState<Camera[]>(() => uploadsToCams(storeUploads, "video", []));
+  const [imageCams,  setImageCams]  = useState<Camera[]>(() => uploadsToCams(storeUploads, "image", []));
+
+  // Reconciled during render against the previous store value, not from an effect — an effect
+  // paints the stale list once before correcting it, and the lint rule reads the synchronous
+  // setState inside one as cascading renders. Same idiom ProjectServerTab uses for its own resets.
+  const [prevUploads, setPrevUploads] = useState(storeUploads);
+  if (prevUploads !== storeUploads) {
+    setPrevUploads(storeUploads);
+    setVideoCams(prev => uploadsToCams(storeUploads, "video", prev));
+    setImageCams(prev => uploadsToCams(storeUploads, "image", prev));
+  }
   const [camSearch, setCamSearch] = useState("");
   const [camTypeFilter, setCamTypeFilter] = useState<CamTypeFilter>("All");
   const [expanded, setExpanded] = useState({ normal:true, video:true, image:true });
