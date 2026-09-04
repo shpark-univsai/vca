@@ -37,6 +37,26 @@ const T = {
     pageDesc: "Issue registration codes for offline sign-up — no mail required. See who hasn't joined yet.",
     importExcel: "Import from Excel",
     comingSoon: "Coming soon",
+    addPerson: "Add person",
+    editEntry: "Edit",
+    modalAddTitle: "Add to roster",
+    modalEditTitle: "Edit roster entry",
+    fieldName: "Name",
+    fieldNamePlaceholder: "Full name",
+    fieldEmployeeId: "Employee number",
+    fieldEmployeeIdPlaceholder: "e.g. EMP-3021",
+    fieldEmployeeIdLocked: "Cannot be changed — remove and add again instead.",
+    fieldDepartment: "Department",
+    fieldDepartmentPlaceholder: "e.g. Control Room",
+    fieldEmail: "Email",
+    fieldEmailOptional: "Optional",
+    fieldEmailPlaceholder: "Leave empty where there is no mail",
+    fieldPermission: "Permission",
+    duplicateId: "That employee number is already on a roster.",
+    save: "Save",
+    addNote: "Adding someone here does not give them a way in — issue their code afterwards.",
+    toastAddedTitle: "Added to roster",
+    toastUpdatedTitle: "Roster entry updated",
     exportCsv: "Export CSV",
     printHandout: "Print handout sheet",
     issueCodesTo: (n: number) => `Issue codes to ${n} unassigned`,
@@ -94,6 +114,26 @@ const T = {
     pageTitle: "직원 명부",
     pageDesc: "메일 없이 오프라인 가입을 위한 등록 코드를 발급합니다. 아직 가입하지 않은 직원을 확인하세요.",
     importExcel: "엑셀로 가져오기",
+    addPerson: "사람 추가",
+    editEntry: "편집",
+    modalAddTitle: "명부에 추가",
+    modalEditTitle: "명부 수정",
+    fieldName: "이름",
+    fieldNamePlaceholder: "전체 이름",
+    fieldEmployeeId: "사번",
+    fieldEmployeeIdPlaceholder: "예: EMP-3021",
+    fieldEmployeeIdLocked: "사번은 바꿀 수 없습니다 — 지우고 다시 추가하세요.",
+    fieldDepartment: "부서",
+    fieldDepartmentPlaceholder: "예: 관제실",
+    fieldEmail: "이메일",
+    fieldEmailOptional: "선택",
+    fieldEmailPlaceholder: "메일이 없는 곳은 비워 두세요",
+    fieldPermission: "권한",
+    duplicateId: "이미 명부에 있는 사번입니다.",
+    save: "저장",
+    addNote: "여기에 추가한다고 들어올 수 있게 되지는 않습니다 — 코드는 그다음에 발급합니다.",
+    toastAddedTitle: "명부에 추가했습니다",
+    toastUpdatedTitle: "명부를 수정했습니다",
     comingSoon: "준비 중",
     exportCsv: "CSV 내보내기",
     printHandout: "배포용 시트 인쇄",
@@ -188,6 +228,150 @@ function RosterCodeCell({ entry, onReveal }: { entry: RosterEntry; onReveal: () 
     <span style={{ fontFamily: "monospace", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
       {formatCode(entry.code ?? "")}
     </span>
+  );
+}
+
+/**
+ * Add or edit one roster row.
+ *
+ * The roster is a shortcut for setting many people up at once, not the only way in — so a person
+ * can be entered here by hand, one at a time, and the Excel import is what saves repeating it.
+ * Everything the import would carry is on this form: name, employee number, department, an optional
+ * address, and the role the account will get when they register.
+ *
+ * The employee number is the roster's matching key (a code resolves to exactly one row), so it can
+ * be typed when adding and is read-only afterwards — silently rewriting it would point an already
+ * printed code at a different person.
+ */
+function RosterEntryModal({ entry, projectId, onClose, t }: {
+  entry: RosterEntry | null;
+  projectId: string;
+  onClose: () => void;
+  t: Translations;
+}) {
+  useEscapeKey(onClose);
+  const addRosterEntry = useVcaStore(s => s.addRosterEntry);
+  const updateRosterEntry = useVcaStore(s => s.updateRosterEntry);
+  const { showToast } = useToast();
+  const editing = !!entry;
+
+  const [name, setName] = useState(entry?.name ?? "");
+  const [employeeId, setEmployeeId] = useState(entry?.employeeId ?? "");
+  const [department, setDepartment] = useState(entry?.department ?? "");
+  const [email, setEmail] = useState(entry?.email ?? "");
+  const [permission, setPermission] = useState<"admin" | "operator">(entry?.permission ?? "operator");
+  const [duplicate, setDuplicate] = useState(false);
+
+  const canSubmit = name.trim().length > 0 && employeeId.trim().length > 0;
+
+  const submit = () => {
+    if (!canSubmit) return;
+    if (editing) {
+      updateRosterEntry(entry.employeeId, {
+        name: name.trim(),
+        department: department.trim() || undefined,
+        email: email.trim() || undefined,
+        permission,
+      });
+      showToast({ variant: "success", title: t.toastUpdatedTitle, desc: name.trim() });
+      onClose();
+      return;
+    }
+    const ok = addRosterEntry({
+      name: name.trim(),
+      employeeId: employeeId.trim(),
+      department: department.trim() || undefined,
+      email: email.trim() || undefined,
+      projectId,
+      permission,
+    });
+    if (!ok) { setDuplicate(true); return; }
+    showToast({ variant: "success", title: t.toastAddedTitle, desc: `${name.trim()} (${employeeId.trim()})` });
+    onClose();
+  };
+
+  const label = (text: string, hint?: string) => (
+    <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>
+      {text}
+      {hint && <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-400)" }}>{hint}</span>}
+    </label>
+  );
+  const inputStyle: React.CSSProperties = {
+    width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px",
+    border: BORDER, fontSize: "13px", fontFamily: "inherit",
+  };
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+        <div style={{ padding: "16px 20px", borderBottom: BORDER }}>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{editing ? t.modalEditTitle : t.modalAddTitle}</p>
+        </div>
+
+        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", maxHeight: "60vh", overflowY: "auto" }}>
+          <div>
+            {label(t.fieldName)}
+            <input value={name} onChange={e => setName(e.target.value)} placeholder={t.fieldNamePlaceholder} autoFocus style={inputStyle} />
+          </div>
+          <div>
+            {label(t.fieldEmployeeId)}
+            <input
+              value={employeeId}
+              onChange={e => { setEmployeeId(e.target.value); setDuplicate(false); }}
+              placeholder={t.fieldEmployeeIdPlaceholder}
+              disabled={editing}
+              style={{ ...inputStyle, backgroundColor: editing ? "var(--gray-50)" : "white", color: editing ? "var(--gray-500)" : "var(--gray-900)" }}
+            />
+            {editing && <p style={{ margin: "6px 0 0", fontSize: "11px", color: "var(--gray-400)" }}>{t.fieldEmployeeIdLocked}</p>}
+            {duplicate && <p style={{ margin: "6px 0 0", fontSize: "11px", fontWeight: 700, color: "var(--danger-400)" }}>{t.duplicateId}</p>}
+          </div>
+          <div>
+            {label(t.fieldDepartment, t.fieldEmailOptional)}
+            <input value={department} onChange={e => setDepartment(e.target.value)} placeholder={t.fieldDepartmentPlaceholder} style={inputStyle} />
+          </div>
+          <div>
+            {label(t.fieldEmail, t.fieldEmailOptional)}
+            <input value={email} onChange={e => setEmail(e.target.value)} placeholder={t.fieldEmailPlaceholder} style={inputStyle} />
+          </div>
+          <div>
+            {label(t.fieldPermission)}
+            {/* Two buttons rather than a select: the answer is one of two and both fit on screen. */}
+            <div style={{ display: "flex", gap: "8px" }}>
+              {(["operator", "admin"] as const).map(p => {
+                const active = permission === p;
+                return (
+                  <button key={p} onClick={() => setPermission(p)}
+                    style={{
+                      flex: 1, padding: "10px 12px", borderRadius: "10px", cursor: "pointer",
+                      border: active ? "1px solid var(--gray-900)" : BORDER,
+                      backgroundColor: active ? "var(--gray-100)" : "white",
+                      color: active ? "var(--gray-900)" : "var(--gray-600)",
+                      fontSize: "13px", fontWeight: 700,
+                    }}>
+                    {p === "admin" ? t.admin : t.operator}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {!editing && <p style={{ margin: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.6 }}>{t.addNote}</p>}
+        </div>
+
+        <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {t.cancel}
+          </button>
+          <button onClick={submit} disabled={!canSubmit}
+            style={{
+              padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white",
+              fontSize: "13px", fontWeight: 700, cursor: canSubmit ? "pointer" : "not-allowed", opacity: canSubmit ? 1 : 0.5,
+            }}>
+            {t.save}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -348,6 +532,8 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
   const [issuingEntry, setIssuingEntry] = useState<RosterEntry | null>(null);
   const [removingEntry, setRemovingEntry] = useState<RosterEntry | null>(null);
   const [showPrintSheet, setShowPrintSheet] = useState(false);
+  // null = 닫힘, { entry: null } = 추가, { entry } = 편집
+  const [editorFor, setEditorFor] = useState<{ entry: RosterEntry | null } | null>(null);
 
   const projectName = project?.name ?? projectId;
   // Read through withEffectiveStatus so a code that outlived REGISTRATION_CODE_TTL_DAYS reads as
@@ -427,6 +613,13 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
           </p>
         </div>
         <div style={{ display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap" }}>
+          {/* 한 명씩 넣는 길이 기본이고, 엑셀은 그걸 여러 번 반복하지 않으려고 있는 지름길이다.
+              그래서 추가 버튼이 먼저 오고 가져오기가 그 옆에 선다. */}
+          <button onClick={() => setEditorFor({ entry: null })}
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
+            {t.addPerson}
+          </button>
           <button disabled title={t.comingSoon}
             style={{ padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: "not-allowed" }}>
             {t.importExcel}
@@ -497,6 +690,7 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
                 <div><StatusBadge status={entry.status} meta={statusMeta} /></div>
                 <RosterCodeCell entry={entry} onReveal={() => logRosterCodeViewed(entry.employeeId)} />
                 <RowActionsMenu actions={[
+                  { label: t.editEntry, onClick: () => setEditorFor({ entry }) },
                   { label: entry.code ? t.reissueCodeAction : t.issueCodeAction, onClick: () => setIssuingEntry(entry) },
                   { label: t.removeFromRoster, onClick: () => setRemovingEntry(entry), danger: true },
                 ]} />
@@ -504,6 +698,10 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
             );
           })}
         </div>
+      )}
+
+      {editorFor && (
+        <RosterEntryModal entry={editorFor.entry} projectId={projectId} onClose={() => setEditorFor(null)} t={t} />
       )}
 
       {issuingEntry && (
