@@ -71,7 +71,7 @@ const T = {
     approve: "Approve",
     dismiss: "Dismiss",
     viewMore: (n: number) => `View ${n} more →`,
-    recentAdminActivity: "RECENT ADMIN ACTIVITY",
+    recentAdminActivity: "Recent Admin Activity",
     noAdminActivity: "No admin activity yet.",
     agoSuffix: " ago",
     toastApprovedTitle: "Access approved — invite sent",
@@ -518,7 +518,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ display: "flex", color: "var(--warning-500)" }}><ShieldIcon /></span>
+                    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--warning-100)", color: "var(--warning-500)", flexShrink: 0 }}><ShieldIcon /></span>
                     <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.accessRequestsTitle}</p>
                   </div>
                   {projectAccessRequests.length > 0 && (
@@ -559,8 +559,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px", flexShrink: 0 }}>
-                  <span style={{ display: "flex", color: "var(--gray-500)" }}><ClockIcon /></span>
-                  <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px" }}>{t.recentAdminActivity}</p>
+                  <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)", flexShrink: 0 }}><ClockIcon /></span>
+                  <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.recentAdminActivity}</p>
                 </div>
                 {recentActivity.length === 0 ? (
                   <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noAdminActivity}</p>

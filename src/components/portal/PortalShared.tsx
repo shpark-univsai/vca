@@ -444,7 +444,12 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
       display: "flex", flexDirection: "column", gap: dense ? "8px" : "6px", flex: 1, minWidth: 0,
     }}>
       <div style={{ display: "flex", alignItems: dense ? "baseline" : "center", justifyContent: "space-between", gap: "10px", marginBottom: dense ? 0 : (Icon ? "6px" : "2px") }}>
-        <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px", whiteSpace: "nowrap" }}>{label.toUpperCase()}</p>
+        {/* Sentence case, not caps. The label carries multi-word names ("Portal Accounts &
+            Permissions"), which all-caps at 10px turns into a block to decode rather than read —
+            and toUpperCase() did nothing at all to the Korean strings, so the two languages were
+            drawing two different headings. Same 12px/600/gray-500 as every other secondary line
+            on these cards. */}
+        <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap" }}>{label}</p>
         {dense
           ? value
           : Icon && (
