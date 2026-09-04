@@ -899,7 +899,11 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                   </div>
                 )}
                 {person.description && <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "5px" }}>{person.description}</p>}
-                <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "4px" }}>{t.registered(person.registeredAt)}</p>
+                {/* The date alone. On a card there is only one date it could be, and "Registered"
+                    in front of it was a word repeated on every card to say what the screen it sits
+                    on already says. The detail sheet and the table both keep the label, where a
+                    date sits next to other labelled values and needs to say which one it is. */}
+                <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "4px" }}>{person.registeredAt}</p>
               </div>
               {/* stopPropagation, or removing somebody also opens their detail behind the dialog. */}
               <button onClick={e => { e.stopPropagation(); setConfirmingRemove(person); }} title={t.removeVip} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", flexShrink: 0 }}>
