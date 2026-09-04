@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ActiveFilterCount } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ActiveFilterCount, ConfirmModal } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 
 const T = {
@@ -83,6 +83,20 @@ const T = {
     reactivateUser: "Reactivate",
     suspendUser: "Suspend",
     removeUser: "Remove",
+
+    // Confirmation dialogs for the account actions above. Each body says what changes for the
+    // person, not what the button does — "Suspend this user?" tells an administrator nothing they
+    // did not already read in the menu item they just clicked.
+    confirmSuspendTitle: (name: string) => `Suspend ${name}?`,
+    confirmSuspendBody: "They are signed out and cannot sign in again until an owner reactivates the account. Nothing they registered is deleted.",
+    confirmReactivateTitle: (name: string) => `Reactivate ${name}?`,
+    confirmReactivateBody: "They can sign in again immediately, with the permissions the account had before it was suspended.",
+    confirmRemoveTitle: (name: string) => `Remove ${name}?`,
+    confirmRemoveBody: "The account and its permissions are deleted. This cannot be undone from this menu — getting this person back in means inviting them again.",
+    confirmSearchGrantTitle: (name: string) => `Allow ${name} to search for people?`,
+    confirmSearchGrantBody: "They will be able to look up any registered individual in the app's Data and Redmap searches.",
+    confirmSearchRevokeTitle: (name: string) => `Block ${name} from searching for people?`,
+    confirmSearchRevokeBody: "Person search in the app stops working for them. Their console permission is unchanged.",
 
     // Row action toasts
     inviteResentTitle: "Invite resent",
@@ -293,6 +307,17 @@ const T = {
     reactivateUser: "재활성화",
     suspendUser: "정지",
     removeUser: "제거",
+
+    confirmSuspendTitle: (name: string) => `${name} 님을 정지할까요?`,
+    confirmSuspendBody: "즉시 로그아웃되며, 소유자가 다시 활성화하기 전까지 로그인할 수 없습니다. 등록한 내용은 삭제되지 않습니다.",
+    confirmReactivateTitle: (name: string) => `${name} 님을 재활성화할까요?`,
+    confirmReactivateBody: "바로 다시 로그인할 수 있게 되며, 정지 전에 가지고 있던 권한이 그대로 복구됩니다.",
+    confirmRemoveTitle: (name: string) => `${name} 님을 제거할까요?`,
+    confirmRemoveBody: "계정과 권한이 삭제됩니다. 이 메뉴로는 되돌릴 수 없고, 다시 들어오게 하려면 새로 초대해야 합니다.",
+    confirmSearchGrantTitle: (name: string) => `${name} 님에게 인물 검색을 허용할까요?`,
+    confirmSearchGrantBody: "앱의 Data · Redmap 검색에서 등록된 인물을 모두 조회할 수 있게 됩니다.",
+    confirmSearchRevokeTitle: (name: string) => `${name} 님의 인물 검색을 차단할까요?`,
+    confirmSearchRevokeBody: "앱에서 인물 검색이 동작하지 않게 됩니다. 콘솔 권한은 그대로입니다.",
 
     // Row action toasts
     inviteResentTitle: "초대 재전송됨",
@@ -1104,6 +1129,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   // The user a temporary password is being issued for, or null. Held as the user rather than an id
   // so the modal keeps rendering the right name even if the row scrolls out from under it.
   const [credentialFor, setCredentialFor] = useState<PortalUser | null>(null);
+  /**
+   * The account action waiting on a yes. One piece of state rather than a flag per action: the
+   * dialog is the same dialog every time and only its wording and its callback differ, and four
+   * booleans would let two of them be open at once.
+   */
+  const [confirming, setConfirming] = useState<{
+    title: string; body: string; confirmLabel: string; danger?: boolean; onConfirm: () => void;
+  } | null>(null);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [permissionFilter, setPermissionFilter] = useState<PortalPermission | "ALL">("ALL");
@@ -1399,11 +1432,19 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 reason: manageAccess ? undefined : t.reasonNotOwner,
                 onClick: () => {
                   const next = !u.appSearch;
-                  setAppSearch(u.id, next);
-                  showToast({
-                    variant: next ? "success" : "warning",
-                    title: next ? t.appSearchToastOn : t.appSearchToastOff,
-                    desc: t.appSearchToastDesc(u.name),
+                  setConfirming({
+                    title: next ? t.confirmSearchGrantTitle(u.name) : t.confirmSearchRevokeTitle(u.name),
+                    body: next ? t.confirmSearchGrantBody : t.confirmSearchRevokeBody,
+                    confirmLabel: next ? t.appSearchGrant : t.appSearchRevoke,
+                    danger: !next,
+                    onConfirm: () => {
+                      setAppSearch(u.id, next);
+                      showToast({
+                        variant: next ? "success" : "warning",
+                        title: next ? t.appSearchToastOn : t.appSearchToastOff,
+                        desc: t.appSearchToastDesc(u.name),
+                      });
+                    },
                   });
                 },
               },
@@ -1412,17 +1453,28 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                     label: t.reactivateUser,
                     disabled: !manageAccess,
                     reason: manageAccess ? undefined : t.reasonNotOwner,
-                    onClick: () => {
-                      updatePortalUserStatus(u.id, "active");
-                      showToast({ variant: "success", title: t.userReactivatedTitle, desc: u.name });
-                    },
+                    onClick: () => setConfirming({
+                      title: t.confirmReactivateTitle(u.name),
+                      body: t.confirmReactivateBody,
+                      confirmLabel: t.reactivateUser,
+                      onConfirm: () => {
+                        updatePortalUserStatus(u.id, "active");
+                        showToast({ variant: "success", title: t.userReactivatedTitle, desc: u.name });
+                      },
+                    }),
                   }
                 : {
                     label: t.suspendUser,
-                    onClick: () => {
-                      updatePortalUserStatus(u.id, "suspended");
-                      showToast({ variant: "warning", title: t.userSuspendedTitle, desc: t.userSuspendedDesc(u.name) });
-                    },
+                    onClick: () => setConfirming({
+                      title: t.confirmSuspendTitle(u.name),
+                      body: t.confirmSuspendBody,
+                      confirmLabel: t.suspendUser,
+                      danger: true,
+                      onConfirm: () => {
+                        updatePortalUserStatus(u.id, "suspended");
+                        showToast({ variant: "warning", title: t.userSuspendedTitle, desc: t.userSuspendedDesc(u.name) });
+                      },
+                    }),
                     danger: true,
                     // Refused, not warned about: this deployment is on-premise with the top
                     // administrator on the customer's side, so there is no supplier account to
@@ -1431,7 +1483,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                     reason: lastAdmin ? t.lastAdminReason : manageAccess ? undefined : t.reasonNotOwner,
                   },
               {
-                label: t.removeUser, onClick: () => removePortalUser(u.id), danger: true,
+                label: t.removeUser, danger: true,
+                onClick: () => setConfirming({
+                  title: t.confirmRemoveTitle(u.name),
+                  body: t.confirmRemoveBody,
+                  confirmLabel: t.removeUser,
+                  danger: true,
+                  onConfirm: () => removePortalUser(u.id),
+                }),
                 disabled: lastAdmin || !manageAccess,
                 reason: lastAdmin ? t.lastAdminReason : manageAccess ? undefined : t.reasonNotOwner,
               },
@@ -1441,6 +1500,17 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         })}
       </div>
 
+      {confirming && (
+        <ConfirmModal
+          title={confirming.title}
+          body={confirming.body}
+          confirmLabel={confirming.confirmLabel}
+          cancelLabel={t.cancel}
+          danger={confirming.danger}
+          onConfirm={() => { confirming.onConfirm(); setConfirming(null); }}
+          onClose={() => setConfirming(null)}
+        />
+      )}
       {showInvite && <InviteUserModal defaultProjectId={projectId} onClose={() => setShowInvite(false)} />}
       {credentialFor && (
         <TempPasswordModal user={credentialFor} mailAvailable={mailAvailable} onClose={() => setCredentialFor(null)} />

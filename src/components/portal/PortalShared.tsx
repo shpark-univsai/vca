@@ -562,3 +562,54 @@ export function SortableHeader<K extends string>({ label, sortKey, sort, onToggl
     </button>
   );
 }
+
+/**
+ * Confirmation step for a row action that changes someone's access.
+ *
+ * The Users table's account actions live behind a kebab menu, which is exactly the shape of control
+ * a misclick lands on — and suspending, reactivating or removing an account takes effect against a
+ * real person the moment the item is clicked. So the menu item now asks first.
+ *
+ * Deliberately not applied to every action on that menu: a confirmation that appears for everything
+ * is one people learn to click through, which costs the two that matter. Actions that only produce
+ * something to hand over (a reset code, a resend) stay one click.
+ *
+ * The three older bespoke copies of this dialog (ProjectRosterTab's Issue/Remove, ProjectVipTab's
+ * Remove) predate it and still carry their own markup — worth folding in here, but not while they
+ * are untouched by the change that needed this.
+ */
+export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, onConfirm, onClose }: {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  /** Red confirm button — for the ones that take access away or cannot be undone from the menu. */
+  danger?: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  useEscapeKey(onClose);
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+        <div style={{ padding: "20px" }}>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{title}</p>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.6 }}>{body}</p>
+        </div>
+        <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {cancelLabel}
+          </button>
+          {/* Non-danger confirms are gray-900, not primary: restoring an account is a normal
+              administrative act, and primary-400 here would spend the page's accent on a dialog
+              nobody is meant to linger in. */}
+          <button onClick={onConfirm}
+            style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: danger ? "var(--danger-400)" : "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
