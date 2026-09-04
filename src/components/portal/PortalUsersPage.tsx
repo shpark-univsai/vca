@@ -88,7 +88,7 @@ const T = {
     colAccess: "Access",
     colAppSearch: "Person Search",
     colLastLogin: "Last Login",
-    colStatus: "Stage",
+    colStatus: "Status",
     emptySearch: "No users match this search.",
     emptyNoUsers: "No users have access to this project yet.",
 
@@ -319,7 +319,7 @@ const T = {
     colAccess: "접근",
     colAppSearch: "인물 검색",
     colLastLogin: "마지막 로그인",
-    colStatus: "단계",
+    colStatus: "상태",
     emptySearch: "검색 결과와 일치하는 사용자가 없습니다.",
     emptyNoUsers: "이 프로젝트에 접근 권한이 있는 사용자가 아직 없습니다.",
 
