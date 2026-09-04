@@ -47,6 +47,7 @@ const T = {
     colTeam: "Team",
     colProjects: "Projects",
     colPermission: "Permission",
+    colAppSearch: "Person Search",
     colMfa: "MFA",
     colLastLogin: "Last Login",
     colStatus: "Status",
@@ -63,7 +64,7 @@ const T = {
     permAuditorDesc: "Sees every Portal screen and the audit log. Changes nothing.",
     permOperatorDesc: "No Portal access. Signs in to the monitoring app instead.",
     reasonNotOwner: "Only an owner can change access.",
-    appSearchOn: "Person search: on",
+    appSearchOn: "On",
     appSearchGrant: "Allow person search in the app",
     appSearchRevoke: "Block person search in the app",
     appSearchToastOn: "Person search allowed",
@@ -224,6 +225,7 @@ const T = {
     colTeam: "팀",
     colProjects: "프로젝트",
     colPermission: "권한",
+    colAppSearch: "인물 검색",
     colMfa: "MFA",
     colLastLogin: "마지막 로그인",
     colStatus: "상태",
@@ -240,7 +242,7 @@ const T = {
     permAuditorDesc: "Portal의 모든 화면과 감사 로그를 봅니다. 아무것도 바꾸지 않습니다.",
     permOperatorDesc: "Portal에 들어오지 않습니다. 관제 앱으로 로그인합니다.",
     reasonNotOwner: "권한 변경은 최고관리자만 할 수 있습니다.",
-    appSearchOn: "검색 허용",
+    appSearchOn: "허용",
     appSearchGrant: "앱에서 인물 검색 허용",
     appSearchRevoke: "앱에서 인물 검색 차단",
     appSearchToastOn: "인물 검색을 허용했습니다",
@@ -1254,7 +1256,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           past the container's bottom edge (invisible, not just cut off). Radius the header row
           itself instead. */}
       <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1.4fr 0.6fr 0.5fr 0.9fr 0.8fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1.4fr 0.6fr 0.6fr 0.5fr 0.9fr 0.8fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
           {/* Projects and MFA carry no sortKey: a user belongs to several projects, so there is no
               single value to order by, and MFA is display-only mock data it would be misleading to
               let anyone rank people with. */}
@@ -1263,6 +1265,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             { label: t.colTeam, key: "team" },
             { label: t.colProjects },
             { label: t.colPermission, key: "permission" },
+            { label: t.colAppSearch },
             { label: t.colMfa },
             { label: t.colLastLogin, key: "lastLogin" },
             { label: t.colStatus, key: "status" },
@@ -1295,7 +1298,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           const lastAdmin = isLastActiveAdmin(portalUsers, u.id);
           return (
           <div key={u.id} style={{
-            display: "grid", gridTemplateColumns: "1.5fr 1fr 1.4fr 0.6fr 0.5fr 0.9fr 0.8fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
+            display: "grid", gridTemplateColumns: "1.5fr 1fr 1.4fr 0.6fr 0.6fr 0.5fr 0.9fr 0.8fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
             borderBottom: isLast ? "none" : BORDER,
             borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
           }}>
@@ -1330,13 +1333,20 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             ) : (
               <span title={t.reasonNotOwner} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{roleLabel(t, u.permission)}</span>
             )}
-            {/* Search is a separate grant from the console role, so it shows as its own chip rather
-                than being folded into the role label — the two answer different questions. */}
-            {u.appSearch && (
-              <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px", backgroundColor: "var(--info-100)", color: "var(--info-500)", fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap" }}>
-                {t.appSearchOn}
-              </span>
-            )}
+            {/* Search is a separate grant from the console role, so it gets its own column rather
+                than being folded into the role label — the two answer different questions. The cell
+                is always emitted, "—" included: this is a grid, so a conditional cell does not
+                leave a hole, it slides every cell after it one column left and pushes the row's
+                actions menu onto a second line. */}
+            <span>
+              {u.appSearch ? (
+                <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px", backgroundColor: "var(--info-100)", color: "var(--info-500)", fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap" }}>
+                  {t.appSearchOn}
+                </span>
+              ) : (
+                <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
+              )}
+            </span>
             <MfaBadge enabled={u.mfaEnabled} />
             <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.lastLoginAt ?? "—"}</span>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "4px" }}>
