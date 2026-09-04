@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useVcaStore, type Person, type PersonGroup } from "@/lib/vcaStore";
 import { getFacePhoto } from "@/lib/mockData";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, Tooltip, sortRows, useTableSort } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SelectedCheckIcon, SortableHeader, Tooltip, sortRows, useTableSort } from "./PortalShared";
 
 type VipSortKey = "name" | "role" | "priority" | "registered";
 
@@ -508,6 +508,15 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
    */
   const [draftGroupId, setDraftGroupId] = useState(person.groupId ?? "");
   const dirty = draftGroupId !== (person.groupId ?? "");
+  /**
+   * Saved a moment ago. The button used to just vanish once the pick matched what was stored, which
+   * is what "it saved" looks like from the code's side and looks like nothing from the reader's —
+   * the control they clicked disappeared and the value beside it had not moved. A tick in the same
+   * spot answers the question the click asked, then gets out of the way.
+   */
+  const [justSaved, setJustSaved] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (savedTimer.current) clearTimeout(savedTimer.current); }, []);
 
   const row = (label: string, value: React.ReactNode) => (
     <div style={{ display: "flex", gap: "12px", alignItems: "baseline" }}>
@@ -554,7 +563,7 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
                   onChange={setDraftGroupId}
                   options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
                 />
-                {dirty && (
+                {dirty ? (
                   <button
                     onClick={() => {
                       setPersonGroup(person.id, draftGroupId || undefined);
@@ -562,11 +571,18 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
                         variant: "success", title: t.groupChangedTitle,
                         desc: `${person.name} — ${groups.find(g => g.id === draftGroupId)?.name ?? t.groupNone}`,
                       });
+                      setJustSaved(true);
+                      if (savedTimer.current) clearTimeout(savedTimer.current);
+                      savedTimer.current = setTimeout(() => setJustSaved(false), 2200);
                     }}
                     style={{ padding: "6px 12px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                     {t.groupSave}
                   </button>
-                )}
+                ) : justSaved ? (
+                  <span title={t.groupChangedTitle} style={{ display: "inline-flex", alignItems: "center", color: "var(--success-400)" }}>
+                    <SelectedCheckIcon size={16} />
+                  </span>
+                ) : null}
               </span>
             ))}
           </div>
