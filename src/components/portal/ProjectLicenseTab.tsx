@@ -237,9 +237,27 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
+      {/* Channels first, features second, each the full width — the order and shape the design
+          settles on. It is also the order the two answer questions in: how much of what you paid
+          for is in use is the thing an administrator opens this page for, and which capabilities
+          the plan includes is a fact that only changes when the plan does. Side by side they were
+          competing for the same glance and the segmented bar had half a page to say something a
+          full width says better. */}
+      <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>{t.channelSubscriptions}</p>
+      <div style={{ marginBottom: "20px" }}>
+        <ChannelBreakdown
+          aiCount={aiCameraCount}
+          normalCount={normalCameraCount}
+          limit={limit}
+          yearlyCost={subscriptionYearlyCost}
+          overLimit={overLimit}
+          t={t}
+        />
+      </div>
+
+      <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>{t.includedFeatures}</p>
+      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px 20px", marginBottom: "20px" }}>
         <div>
-          <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>{t.includedFeatures}</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             {ALL_FEATURES.map(f => {
               const isSchoolOnly = f === SCHOOL_ONLY_FEATURE;
@@ -261,18 +279,6 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
               );
             })}
           </div>
-        </div>
-
-        <div>
-          <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>{t.channelSubscriptions}</p>
-          <ChannelBreakdown
-            aiCount={aiCameraCount}
-            normalCount={normalCameraCount}
-            limit={limit}
-            yearlyCost={subscriptionYearlyCost}
-            overLimit={overLimit}
-            t={t}
-          />
         </div>
       </div>
     </div>
