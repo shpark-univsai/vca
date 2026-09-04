@@ -78,8 +78,8 @@ const T = {
 
     // Table
     colUser: "User",
-    colTeam: "Team",
-    colProjects: "Projects",
+    colOtherProjects: "Other projects",
+    otherProjectsNone: "This project only",
     colPermission: "Permission",
     colAccess: "Access",
     colAppSearch: "Person Search",
@@ -309,8 +309,8 @@ const T = {
 
     // Table
     colUser: "사용자",
-    colTeam: "팀",
-    colProjects: "프로젝트",
+    colOtherProjects: "다른 프로젝트",
+    otherProjectsNone: "이 프로젝트만",
     colPermission: "권한",
     colAccess: "접근",
     colAppSearch: "인물 검색",
@@ -1376,7 +1376,7 @@ function UserCountStrip({ users, rosterWaiting }: { users: PortalUser[]; rosterW
   );
 }
 
-type UserSortKey = "name" | "team" | "permission" | "lastLogin" | "status";
+type UserSortKey = "name" | "permission" | "lastLogin" | "status";
 
 interface PortalUsersPageProps {
   /** Scopes the table to users who have access to this project — mirrors Clerk's per-application Users tab. */
@@ -1385,7 +1385,6 @@ interface PortalUsersPageProps {
 
 export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const portalUsers = useVcaStore(s => s.portalUsers);
-  const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const updatePortalUserPermission = useVcaStore(s => s.updatePortalUserPermission);
   const updatePortalUserAccess = useVcaStore(s => s.updatePortalUserAccess);
@@ -1463,8 +1462,6 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   // The roster modals speak their own dictionary — they were written for the tab that used to own
   // them and take it as a prop, which is exactly why they could be shared instead of rewritten.
   const rt = ROSTER_T[lang];
-  // A roster row carries a project, not a team; the team is the project's.
-  const projectTeamId = projects.find(p => p.id === projectId)?.teamId ?? "";
 
   // The account-only columns: role, access, person search, MFA, last login. Dropped on the roster
   // tab rather than printed as five dashes per row.
@@ -1477,8 +1474,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
    * ellipsise instead of pushing the row taller.
    */
   const GRID = showAccountColumns
-    ? "minmax(140px, 1.05fr) 1.2fr 1.25fr 0.75fr 0.7fr 0.45fr 0.35fr 0.85fr 0.55fr 36px"
-    : "minmax(140px, 1.1fr) 1.2fr 1.25fr 0.9fr 1.1fr 0.6fr 36px";
+    ? "minmax(160px, 1.15fr) 1.1fr 0.8fr 0.75fr 0.5fr 0.4fr 0.9fr 0.6fr 36px"
+    : "minmax(180px, 1.4fr) 1fr 1.2fr 0.7fr 36px";
 
   const bulkIssueCodes = () => {
     if (notIssuedIds.length === 0) return;
@@ -1486,7 +1483,6 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
     showToast({ variant: "success", title: t.toastBulkIssued(notIssuedIds.length) });
   };
 
-  const orgName = (teamId: string) => teams.find(o => o.id === teamId)?.name ?? teamId;
   const projectName = (id: string) => projects.find(p => p.id === id)?.name ?? id;
   const currentProject = projects.find(p => p.id === projectId);
   const q = search.trim().toLowerCase();
@@ -1516,7 +1512,6 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const scopedUsers = sortRows(filteredUsers, sort, (u, key) => {
     switch (key) {
       case "name": return u.name.toLowerCase();
-      case "team": return orgName(u.teamId).toLowerCase();
       case "permission": return u.permission;
       // Undefined, not "" — someone who has never signed in has no date, and sortRows sinks
       // undefined to the bottom either way rather than letting it win "oldest first".
@@ -1691,8 +1686,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               let anyone rank people with. */}
           {((showAccountColumns ? [
             { label: t.colUser, key: "name" },
-            { label: t.colTeam, key: "team" },
-            { label: t.colProjects },
+            { label: t.colOtherProjects },
             { label: t.colPermission, key: "permission" },
             { label: t.colAccess },
             { label: t.colAppSearch },
@@ -1705,8 +1699,6 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             // account's Permission and does not pretend to be — it is what this person will be
             // granted when they redeem their code, which is the roster's own field.
             { label: t.colUser, key: "name" },
-            { label: t.colTeam, key: "team" },
-            { label: t.colProjects },
             { label: t.colPlannedPermission, key: "permission" },
             { label: t.colCode },
             { label: t.colStatus, key: "status", align: "right" as const },
@@ -1738,27 +1730,22 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               <p title={u.name} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</p>
               <p title={u.email} style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</p>
             </div>
-            {/* Two lines, not one line and an ellipsis. A legal organisation name ("City of
-                Singapore — Smart Infrastructure Office") reads perfectly well over two and is
-                unrecognisable cut off at one; the clamp is only there so a longer one cannot push
-                the row to three. */}
-            <span title={orgName(u.teamId)} style={{
-              fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.4,
-              display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden",
-            }}>{orgName(u.teamId)}</span>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-              {u.projectIds.length === 0
-                ? <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
-                : u.projectIds.map((pid, i) => (
-                  <span key={pid} style={{
-                    fontSize: "12px",
-                    fontWeight: pid === projectId ? 700 : 400,
-                    color: pid === projectId ? "var(--gray-900)" : "var(--gray-500)",
-                  }}>
+            {/* The project this page is scoped to is on every row by definition, so listing it is
+                a column of the same name repeated. What is not known is whether this person has
+                anywhere else — which is the question behind removing them from here. */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", minWidth: 0 }}>
+              {(() => {
+                const others = u.projectIds.filter(pid => pid !== projectId);
+                if (others.length === 0) {
+                  return <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>{t.otherProjectsNone}</span>;
+                }
+                return others.map((pid, i) => (
+                  <span key={pid} style={{ fontSize: "12px", color: "var(--gray-500)" }}>
                     {i > 0 && <span style={{ color: "var(--gray-300)" }}>, </span>}
                     {projectName(pid)}
                   </span>
-                ))}
+                ));
+              })()}
             </div>
             {/* Only an owner may change this. For everyone else the cell reads as text — a select
                 that opens and then refuses is worse than a value that never looked editable.
@@ -1958,11 +1945,6 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 <p title={entry.name} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.name}</p>
                 <p title={entry.email || entry.employeeId} style={{ fontSize: "12px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.email || entry.employeeId}</p>
               </div>
-              <span title={orgName(projectTeamId)} style={{
-                fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.4,
-                display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden",
-              }}>{orgName(projectTeamId)}</span>
-              <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{projectName(entry.projectId)}</span>
                   <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>
                     {entry.permission === "admin" ? rt.admin : rt.operator}
                   </span>
