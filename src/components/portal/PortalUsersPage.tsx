@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import RosterImportModal from "./RosterImportModal";
@@ -1615,8 +1615,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             /* On the tab rather than a line under it. The tab name is a state ("On the roster"),
                which is the right name for what the tab holds but says nothing about what you came
                here to do; a permanent sentence answering that would be clutter for everybody who
-               already knows, and the count strip's own hints are already tooltips. */
-            <button key={tab.id} onClick={() => setPeopleTab(tab.id)} title={tab.hint}
+               already knows. Our own Tooltip, not the browser's `title` — that one wants the
+               pointer held still for over a second and this hint has to be findable. */
+            <Tooltip key={tab.id} text={tab.hint}>
+            <button onClick={() => setPeopleTab(tab.id)}
               style={{
                 display: "flex", alignItems: "center", gap: "6px",
                 background: "none", border: "none", cursor: "pointer",
@@ -1627,6 +1629,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               {tab.label}
               <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{tab.count}</span>
             </button>
+            </Tooltip>
           );
         })}
       </div>

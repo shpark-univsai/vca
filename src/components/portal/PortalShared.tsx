@@ -617,3 +617,67 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, o
     </div>
   );
 }
+
+/**
+ * A tooltip that actually appears.
+ *
+ * The browser's own `title` needs the pointer held still for a second or more and vanishes on the
+ * smallest movement, which is fine for a nicety and useless for anything a reader is meant to find.
+ * The Users page's tab hints were written to answer "what is in this half of the table" and nobody
+ * saw them.
+ *
+ * Opens after a short delay (long enough that sweeping the mouse across a row of tabs does not
+ * flash three of them), closes at once. Keyboard focus opens it too — a hint only a mouse can reach
+ * is not a hint for everybody.
+ */
+export function Tooltip({ text, children, placement = "bottom" }: {
+  text: string;
+  children: React.ReactNode;
+  placement?: "top" | "bottom";
+}) {
+  const [open, setOpen] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const show = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setOpen(true), 250);
+  };
+  const hide = () => {
+    if (timer.current) clearTimeout(timer.current);
+    setOpen(false);
+  };
+  // A timer that fires after the component is gone would set state on nothing.
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  return (
+    <span
+      style={{ position: "relative", display: "inline-flex" }}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
+    >
+      {children}
+      {open && (
+        <span
+          role="tooltip"
+          style={{
+            position: "absolute", left: 0, zIndex: 400,
+            ...(placement === "bottom" ? { top: "calc(100% + 6px)" } : { bottom: "calc(100% + 6px)" }),
+            // Wide enough for a sentence, capped so it never becomes a paragraph nobody reads, and
+            // pinned to the trigger's left edge rather than centred so a tab near the window edge
+            // does not push it off screen.
+            width: "max-content", maxWidth: "280px",
+            backgroundColor: "var(--gray-900)", color: "white",
+            fontSize: "11px", fontWeight: 400, lineHeight: 1.5, textAlign: "left",
+            padding: "8px 10px", borderRadius: "8px",
+            boxShadow: "0 8px 24px rgba(14,22,42,0.18)",
+            pointerEvents: "none", whiteSpace: "normal",
+          }}
+        >
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
