@@ -55,13 +55,16 @@ const T = {
     overLimit: (used: number, limit: number) => `Over licensed limit (${used} / ${limit})`,
     aiCameras: "AI Cameras",
     normalCameras: "Normal Cameras (CCTV)",
-    channelsTotal: (n: number) => `${n} channels`,
     // "Available" said what the number was, not what it lets you do. This column exists to answer
     // "can I install another camera", so it answers it.
     channelsAvailable: "Can add",
     atLimit: "Every licensed channel is in use — no further camera can be connected until the limit is raised.",
     nearLimit: (n: number) => `${n} channel(s) left before this project reaches its licensed limit.`,
-    contractNote: "More channels, or a longer term? A license is not changed from this screen — ask whoever holds the contract.",
+    contractNote: "Channels and term are changed by contract, not here.",
+    bannerChannels: "Channels",
+    bannerContract: "Contract",
+    channelsUsedOfLimit: (used: number, limit: number) => `${used} of ${limit} channels`,
+    canAddN: (n: number) => `${n} can be added`,
     channelsUnlimited: "No limit set — channels are not capped for this project",
     channelsCostPerYear: (cost: string) => `$${cost}/yr`,
   },
@@ -84,11 +87,14 @@ const T = {
     overLimit: (used: number, limit: number) => `라이선스 한도 초과 (${used} / ${limit})`,
     aiCameras: "AI 카메라",
     normalCameras: "일반 카메라 (CCTV)",
-    channelsTotal: (n: number) => `${n}채널`,
     channelsAvailable: "추가 가능",
     atLimit: "라이선스 채널을 모두 쓰고 있습니다 — 한도를 올리기 전까지 카메라를 더 연결할 수 없습니다.",
     nearLimit: (n: number) => `라이선스 한도까지 ${n}채널 남았습니다.`,
-    contractNote: "채널을 늘리거나 기간을 연장하려면 계약 담당자에게 문의하세요. 이 화면에서는 라이선스를 바꿀 수 없습니다.",
+    contractNote: "채널과 기간은 계약으로 변경되며 이 화면에서는 바꿀 수 없습니다.",
+    bannerChannels: "채널",
+    bannerContract: "계약 문의",
+    channelsUsedOfLimit: (used: number, limit: number) => `${limit}채널 중 ${used}채널 사용 중`,
+    canAddN: (n: number) => `${n}채널 추가 가능`,
     channelsUnlimited: "한도 미설정 — 이 프로젝트는 채널 수 제한이 없습니다",
     channelsCostPerYear: (cost: string) => `연 $${cost}`,
   },
@@ -142,7 +148,7 @@ function ChannelBreakdown({ aiCount, normalCount, limit, yearlyCost, overLimit, 
     <div style={{ backgroundColor: "white", border: overLimit ? "1px solid var(--danger-400)" : CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
         <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>
-          {limit ? t.channelsTotal(limit) : t.noLimitSet}
+          {limit ? t.channelsUsedOfLimit(used, limit) : t.noLimitSet}
         </p>
         <p style={{ fontSize: "12px", color: "var(--gray-500)", whiteSpace: "nowrap" }}>
           {t.perChannelPerYear(PRICE_PER_CHANNEL_PER_YEAR)}
@@ -230,7 +236,12 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
       <div style={{
         backgroundColor: "var(--gray-900)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px",
         boxShadow: PANEL_SHADOW, marginBottom: "20px", padding: "22px 26px",
-        display: "flex", alignItems: "center", gap: "28px", flexWrap: "wrap",
+        // Equal columns, no divider. Vimeo, Loom, GitHub and Rows all lay a licence summary out as
+        // a row of three or four label-over-value columns; clustering the figures at the left with
+        // a rule between them was the minority form and left the right half of a wide banner
+        // empty. auto-fit so it folds to two-by-two rather than squeezing on a narrow window.
+        display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+        gap: "24px", alignItems: "start",
       }}>
         <div>
           <p style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.5)", letterSpacing: "0.6px" }}>{t.currentPlan}</p>
@@ -254,7 +265,6 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
             )}
           </div>
         </div>
-        <div style={{ width: "1px", height: "36px", backgroundColor: "rgba(255,255,255,0.12)", flexShrink: 0 }} />
         <div>
           <p style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.5)", letterSpacing: "0.6px", whiteSpace: "nowrap" }}>{t.licensePeriod}</p>
           <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "8px" }}>
@@ -264,24 +274,43 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
             {yearsRemaining ? <span style={{ fontSize: "12px", fontWeight: 700, color: "rgba(255,255,255,0.5)", whiteSpace: "nowrap" }}>{t.yrRemaining(yearsRemaining)}</span> : null}
           </div>
         </div>
-        <div style={{ flex: 1, minWidth: "16px" }} />
+        {/* Channels, at a glance. The card below breaks the same number down; this is the figure
+            the banner exists to carry, the way Vimeo puts "Storage used 64GB of 7TB" beside the
+            plan and still gives storage its own section. */}
+        <div>
+          <p style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.5)", letterSpacing: "0.6px", whiteSpace: "nowrap" }}>{t.bannerChannels}</p>
+          <div style={{ marginTop: "8px" }}>
+            <p style={{ fontSize: "18px", fontWeight: 800, color: "white", fontFamily: "monospace" }}>
+              {limit ? `${projectCameras.length} / ${limit}` : String(projectCameras.length)}
+            </p>
+            <p style={{ fontSize: "12px", fontWeight: 700, color: "rgba(255,255,255,0.5)", marginTop: "2px" }}>
+              {limit ? t.canAddN(Math.max(0, limit - projectCameras.length)) : t.noLimitSet}
+            </p>
+          </div>
+        </div>
+
         {/* Where every subscription page puts Change plan / Upgrade / Add seats. This product has no
             such button and should not: the licence is an on-premise contract, not a card on file.
             But the page was silent about that, so an administrator who needed a hundred channels
-            and had forty-one found nothing here and no hint of where to go instead.
+            and had forty-one found nothing here and no hint of where to go instead. As a column
+            like the rest, and terse like the rest — the label says what the contact is for, so the
+            paragraph that used to say it shrinks to one line.
             The named contact is Team.accountManager — seeded, and the supplier's record rather
             than anything the customer edits here. */}
-        <div style={{ maxWidth: "260px", flexShrink: 0 }}>
-          <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", lineHeight: 1.7 }}>{t.contractNote}</p>
-          {accountManager && (
-            <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.75)", marginTop: "6px", lineHeight: 1.6 }}>
-              {accountManager.name}
-              {" · "}
-              <a href={`mailto:${accountManager.email}`} style={{ color: "white", textDecoration: "underline", textUnderlineOffset: "2px" }}>
-                {accountManager.email}
-              </a>
-            </p>
-          )}
+        <div>
+          <p style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.5)", letterSpacing: "0.6px", whiteSpace: "nowrap" }}>{t.bannerContract}</p>
+          <div style={{ marginTop: "8px" }}>
+            {accountManager && (
+              <>
+                <p style={{ fontSize: "13px", fontWeight: 700, color: "white" }}>{accountManager.name}</p>
+                <a href={`mailto:${accountManager.email}`}
+                  style={{ display: "inline-block", fontSize: "12px", color: "rgba(255,255,255,0.75)", textDecoration: "underline", textUnderlineOffset: "2px", marginTop: "2px" }}>
+                  {accountManager.email}
+                </a>
+              </>
+            )}
+            <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginTop: "6px", lineHeight: 1.6 }}>{t.contractNote}</p>
+          </div>
         </div>
       </div>
 
@@ -306,7 +335,11 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
       <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>{t.includedFeatures}</p>
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px 20px", marginBottom: "20px" }}>
         <div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {/* Two columns. Seven single-line rows made a tall card with an empty right half — and
+              unlike the layout above, this one is not copied from anywhere: none of the billing
+              pages worth referencing lists features at all (Rows gives a sentence, GitHub links
+              out to a comparison), so the shape is ours to choose. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "10px 20px" }}>
             {ALL_FEATURES.map(f => {
               const isSchoolOnly = f === SCHOOL_ONLY_FEATURE;
               const isAlwaysLocked = ALWAYS_LOCKED_FEATURES.includes(f);
