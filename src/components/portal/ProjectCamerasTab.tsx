@@ -318,9 +318,6 @@ function useStickyHeader<T extends HTMLElement>() {
     }
     if (!scrollParent) return;
     const sp = scrollParent;
-    // Where the header naturally sits within the scrollable content, measured once before
-    // anything sticks — the scrollTop past which it should switch to fixed.
-    const naturalTop = el.getBoundingClientRect().top - sp.getBoundingClientRect().top + sp.scrollTop;
 
     const update = () => {
       const spRect = sp.getBoundingClientRect();
@@ -328,8 +325,15 @@ function useStickyHeader<T extends HTMLElement>() {
       const padLeft = parseFloat(spStyle.paddingLeft) || 0;
       const padRight = parseFloat(spStyle.paddingRight) || 0;
       const padTop = parseFloat(spStyle.paddingTop) || 0;
-      setHeight(el.offsetHeight);
-      setStuck(sp.scrollTop >= naturalTop);
+      // The fixed box pins the header to where it sits at scrollTop 0, so it must engage on the
+      // very first pixel of scroll. Waiting until the header's own offset (the container's
+      // top padding) is passed let it scroll up that far and then snap back down when it engaged.
+      const nextStuck = sp.scrollTop > 0;
+      // Measure the header only while it is still in normal flow. Once fixed, offsetHeight also
+      // counts the padTop below, which the container's own padding already provides — a spacer
+      // sized to that pushes every row down by that much the moment the header engages.
+      if (!nextStuck) setHeight(el.offsetHeight);
+      setStuck(nextStuck);
       // top sits at the container's own border edge (not +padTop) so the fixed box's background
       // covers the container's top-padding strip too — otherwise that strip shows whatever
       // scrolled-content happens to align there once scrolled deep enough to clear it (bleed-
@@ -927,7 +931,11 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
       {stuck && <div style={{ height: stickyHeight }} />}
       <div ref={stickyRef} style={stuck && rect ? {
         position: "fixed", top: rect.top, left: rect.left, width: rect.width, zIndex: 20,
-        backgroundColor: "var(--gray-100)", paddingTop: rect.padTop, paddingBottom: "16px",
+        // No paddingBottom: the block's last child is the table's column-header card, so any
+        // padding under it paints a grey strip between that header and the rows scrolling behind,
+        // splitting the one card in two and stranding a sliver of a half-scrolled row below it.
+        // Ending flush at the card's bottom edge lets rows pass directly under the header.
+        backgroundColor: "var(--gray-100)", paddingTop: rect.padTop,
       } : undefined}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px" }}>
         <div>
