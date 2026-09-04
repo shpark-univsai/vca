@@ -56,7 +56,12 @@ const T = {
     aiCameras: "AI Cameras",
     normalCameras: "Normal Cameras (CCTV)",
     channelsTotal: (n: number) => `${n} channels`,
-    channelsAvailable: "Available",
+    // "Available" said what the number was, not what it lets you do. This column exists to answer
+    // "can I install another camera", so it answers it.
+    channelsAvailable: "Can add",
+    atLimit: "Every licensed channel is in use — no further camera can be connected until the limit is raised.",
+    nearLimit: (n: number) => `${n} channel(s) left before this project reaches its licensed limit.`,
+    contractNote: "More channels, or a longer term? A license is not changed from this screen — ask whoever holds the contract.",
     channelsUnlimited: "No limit set — channels are not capped for this project",
     channelsCostPerYear: (cost: string) => `$${cost}/yr`,
   },
@@ -80,7 +85,10 @@ const T = {
     aiCameras: "AI 카메라",
     normalCameras: "일반 카메라 (CCTV)",
     channelsTotal: (n: number) => `${n}채널`,
-    channelsAvailable: "미사용",
+    channelsAvailable: "추가 가능",
+    atLimit: "라이선스 채널을 모두 쓰고 있습니다 — 한도를 올리기 전까지 카메라를 더 연결할 수 없습니다.",
+    nearLimit: (n: number) => `라이선스 한도까지 ${n}채널 남았습니다.`,
+    contractNote: "채널을 늘리거나 기간을 연장하려면 계약 담당자에게 문의하세요. 이 화면에서는 라이선스를 바꿀 수 없습니다.",
     channelsUnlimited: "한도 미설정 — 이 프로젝트는 채널 수 제한이 없습니다",
     channelsCostPerYear: (cost: string) => `연 $${cost}`,
   },
@@ -111,6 +119,17 @@ function ChannelBreakdown({ aiCount, normalCount, limit, yearlyCost, overLimit, 
   const used = aiCount + normalCount;
   const available = limit === undefined ? undefined : Math.max(0, limit - used);
   const pct = (n: number) => (limit ? Math.min(100, (n / limit) * 100) : 0);
+  /**
+   * Said before the wall, not at it.
+   *
+   * The card only spoke up once the limit was already exceeded — which means the first time anybody
+   * learned they were out of channels was a camera that refused to be added. A tenth of the limit
+   * (floor of five, because a tenth of ten is one) is enough notice to raise it through a contract,
+   * which is the only way it can be raised.
+   */
+  const atLimit = available === 0 && !overLimit;
+  const nearLimit = limit !== undefined && available !== undefined && available > 0
+    && available <= Math.max(5, Math.ceil(limit * 0.1));
 
   const figures = [
     { label: t.aiCameras, value: aiCount, dot: "var(--gray-900)" },
@@ -154,6 +173,14 @@ function ChannelBreakdown({ aiCount, normalCount, limit, yearlyCost, overLimit, 
       )}
       {overLimit && (
         <p style={{ fontSize: "10px", color: "var(--danger-400)", marginTop: "12px" }}>{t.overLimit(used, limit ?? 0)}</p>
+      )}
+      {/* Not a coloured border: the rim is kept for the state that is already wrong. These two are
+          a heads-up, so they are a line of text in warning ink and nothing more. */}
+      {atLimit && (
+        <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--warning-500)", marginTop: "12px", lineHeight: 1.6 }}>{t.atLimit}</p>
+      )}
+      {!atLimit && nearLimit && (
+        <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--warning-500)", marginTop: "12px", lineHeight: 1.6 }}>{t.nearLimit(available!)}</p>
       )}
     </div>
   );
@@ -235,6 +262,16 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
             {yearsRemaining ? <span style={{ fontSize: "12px", fontWeight: 700, color: "rgba(255,255,255,0.5)", whiteSpace: "nowrap" }}>{t.yrRemaining(yearsRemaining)}</span> : null}
           </div>
         </div>
+        <div style={{ flex: 1, minWidth: "16px" }} />
+        {/* Where every subscription page puts Change plan / Upgrade / Add seats. This product has no
+            such button and should not: the licence is an on-premise contract, not a card on file.
+            But the page was silent about that, so an administrator who needed a hundred channels
+            and had forty-one found nothing here and no hint of where to go instead.
+            HANDOFF NOTE: no contact is named because no field holds one — Team carries a mail
+            domain and SMTP, not an account manager. Once there is one, it belongs on this line. */}
+        <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", lineHeight: 1.7, maxWidth: "260px", flexShrink: 0 }}>
+          {t.contractNote}
+        </p>
       </div>
 
       {/* Channels first, features second, each the full width — the order and shape the design
