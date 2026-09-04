@@ -1513,6 +1513,15 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       // The roster's own permission field is a two-value thing ("admin" | "operator") describing
       // what the person is being hired onto the system as, not a Portal console role. Its
       // "operator" is the app-only shape, which is now spelled as a role of none plus app access.
+      //
+      // Its "admin" becomes a full admin, NOT the auditor that PortalUsersPage's Access select
+      // hands out when it first lets an account into Portal. That looks inconsistent and is not:
+      // the select is widening someone's access as a side effect of a different question, so it
+      // takes the least it can, whereas an administrator ticking "관리자" on a roster row has
+      // answered exactly this question about exactly this person. Auditor here would also be
+      // useless — admin is the only role among the two this path can reach that can actually do
+      // anything in Portal, so a read-only "admin" would be an option that grants nothing, on the
+      // one enrolment path an on-premise site with no mail actually has.
       permission: entry.permission === "admin" ? "admin" : "none",
       appAccess: true,
       status: "active",
