@@ -1339,7 +1339,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           past the container's bottom edge (invisible, not just cut off). Radius the header row
           itself instead. */}
       <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 0.9fr 1.2fr 0.7fr 0.8fr 0.6fr 0.5fr 0.85fr 0.75fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+        {/* Column widths, and why they are these: the two columns that are usually "—" (Person
+            Search, MFA) and Status, whose badge is a word, were each wider than their content, and
+            the width had to come from somewhere — it came from Team and Projects, which are the
+            long names, so on a narrow window they wrapped to three lines while Status sat in a
+            cell with a hand's width of nothing to its right. Narrowing those three moves Status
+            right, up against the actions menu where it belongs, and gives the names their room
+            back. */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.35fr 1.1fr 1.25fr 0.75fr 0.7fr 0.45fr 0.35fr 0.85fr 0.6fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
           {/* Projects and MFA carry no sortKey: a user belongs to several projects, so there is no
               single value to order by, and MFA is display-only mock data it would be misleading to
               let anyone rank people with. */}
@@ -1372,7 +1379,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           const lastAdmin = isLastActiveAdmin(portalUsers, u.id);
           return (
           <div key={u.id} style={{
-            display: "grid", gridTemplateColumns: "1.4fr 0.9fr 1.2fr 0.7fr 0.8fr 0.6fr 0.5fr 0.85fr 0.75fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
+            display: "grid", gridTemplateColumns: "1.35fr 1.1fr 1.25fr 0.75fr 0.7fr 0.45fr 0.35fr 0.85fr 0.6fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
             borderBottom: isLast ? "none" : BORDER,
             borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
           }}>
@@ -1380,7 +1387,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{u.name}</p>
               <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.email}</p>
             </div>
-            <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{orgName(u.teamId)}</span>
+            {/* Given room above rather than truncated by default — but a legal organisation name
+                ("City of Singapore — Smart Infrastructure Office") outruns any column eventually,
+                and three wrapped lines on every row is worse than one line and a tooltip. */}
+            <span title={orgName(u.teamId)} style={{ fontSize: "12px", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{orgName(u.teamId)}</span>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
               {u.projectIds.length === 0
                 ? <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
