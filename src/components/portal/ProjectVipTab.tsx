@@ -97,6 +97,7 @@ interface VipDict {
   close: string;
   detailNoNote: string;
   groupChangedTitle: string;
+  savedLabel: string;
 }
 
 const T: Record<"en" | "ko", VipDict> = {
@@ -170,6 +171,7 @@ const T: Record<"en" | "ko", VipDict> = {
     close: "Close",
     detailNoNote: "No note",
     groupChangedTitle: "Group changed",
+    savedLabel: "Saved",
     bulkEmptyDesc: "Expected CSV rows as \"name,description\".",
   },
   ko: {
@@ -242,6 +244,7 @@ const T: Record<"en" | "ko", VipDict> = {
     close: "닫기",
     detailNoNote: "메모 없음",
     groupChangedTitle: "그룹을 변경했습니다",
+    savedLabel: "저장됨",
     bulkEmptyDesc: "CSV 행은 \"이름,설명\" 형식이어야 합니다.",
   },
 };
@@ -482,6 +485,13 @@ function GroupModal({ t, group, projectId, onClose }: {
  * It is also the only place a group can be set from the grid: the Group select lives in the table
  * view's row, so without this, switching to cards took the ability away.
  */
+/** One footprint for Save and Saved, so the row does not move when the state changes. */
+const SAVE_PILL: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  minWidth: "78px", height: "30px", padding: "0 12px", borderRadius: "999px",
+  fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0,
+};
+
 function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
   t: VipDict;
   person: Person;
@@ -540,7 +550,8 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
         <img src={person.photoUrl} alt=""
           style={{ width: "100%", aspectRatio: "1 / 1", maxHeight: "320px", objectFit: "cover", display: "block", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", backgroundColor: "var(--gray-100)" }} />
         <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: "12px" }}>
-          <div>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
+          <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>{person.name}</p>
             {(group || person.priorityLabel) && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "6px" }}>
@@ -548,6 +559,14 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
                 {person.priorityLabel && <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} />}
               </div>
             )}
+          </div>
+          {/* Removing a face lives in the overflow menu, not on a button. Every contact-detail
+              panel worth copying does it this way (Front, folk, Lightfield, HubSpot): the one thing
+              on the sheet that cannot be undone is the one thing that should not be a step away
+              from a stray click, and red belongs in the confirmation, not in the furniture. */}
+          <RowActionsMenu actions={[
+            { label: t.removeAction, onClick: onRemove, danger: true },
+          ]} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: BORDER, paddingTop: "12px" }}>
             {row(t.colRole, person.roleLabel
@@ -568,37 +587,45 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
                     options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
                   />
                 </span>
-                {dirty ? (
-                  <button
-                    onClick={() => {
-                      setPersonGroup(person.id, draftGroupId || undefined);
-                      showToast({
-                        variant: "success", title: t.groupChangedTitle,
-                        desc: `${person.name} — ${groups.find(g => g.id === draftGroupId)?.name ?? t.groupNone}`,
-                      });
-                      setJustSaved(true);
-                      if (savedTimer.current) clearTimeout(savedTimer.current);
-                      savedTimer.current = setTimeout(() => setJustSaved(false), 2200);
-                    }}
-                    style={{ padding: "6px 12px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-                    {t.groupSave}
-                  </button>
-                ) : justSaved ? (
-                  <span title={t.groupChangedTitle} style={{ display: "inline-flex", alignItems: "center", color: "var(--success-400)" }}>
-                    <SelectedCheckIcon size={16} />
-                  </span>
-                ) : null}
+                {/* The pill keeps its footprint through both states — Save, then Saved with a
+                    tick — so confirming a change does not shove the row sideways, which is the
+                    same reason the select beside it stopped sizing to its label. The saved state
+                    is a tinted pill rather than a second filled colour: it reports, it does not
+                    ask. */}
+                {(dirty || justSaved) && (
+                  dirty ? (
+                    <button
+                      onClick={() => {
+                        setPersonGroup(person.id, draftGroupId || undefined);
+                        showToast({
+                          variant: "success", title: t.groupChangedTitle,
+                          desc: `${person.name} — ${groups.find(g => g.id === draftGroupId)?.name ?? t.groupNone}`,
+                        });
+                        setJustSaved(true);
+                        if (savedTimer.current) clearTimeout(savedTimer.current);
+                        savedTimer.current = setTimeout(() => setJustSaved(false), 2200);
+                      }}
+                      style={{ ...SAVE_PILL, border: "none", backgroundColor: "var(--primary-400)", color: "white", cursor: "pointer" }}>
+                      {t.groupSave}
+                    </button>
+                  ) : (
+                    <span style={{ ...SAVE_PILL, backgroundColor: "var(--success-100)", color: "var(--success-400)", gap: "4px" }}>
+                      <SelectedCheckIcon size={13} />
+                      {t.savedLabel}
+                    </span>
+                  )
+                )}
               </span>
             ))}
           </div>
         </div>
-        <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "space-between", gap: "8px" }}>
-          <button onClick={onRemove}
-            style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--danger-400)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.removeAction}
-          </button>
+        {/* Outlined, not filled. A dark Close next to a red Remove was two saturated blocks
+            arguing on a sheet whose job is to show a photograph, and neither of them was the
+            action anybody came for. The only filled button here is Save, and only while there is
+            something to save. */}
+        <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end" }}>
           <button onClick={onClose}
-            style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.close}
           </button>
         </div>
