@@ -528,16 +528,20 @@ export function sortRows<T, K extends string>(
  * other common choice, but it puts a piece of chrome in every heading to say "you could", and the
  * hover already says that.
  */
-export function SortableHeader<K extends string>({ label, sortKey, sort, onToggle }: {
+export function SortableHeader<K extends string>({ label, sortKey, sort, onToggle, align }: {
   label: string;
   sortKey?: K;
   sort: SortState<K>;
   onToggle: (key: K) => void;
+  /** Right for a column whose cells are right-aligned — a heading that stays left while its data
+   *  sits at the other end of the cell reads as two different columns. */
+  align?: "left" | "right";
 }) {
   const [hovered, setHovered] = useState(false);
   const headingStyle = { fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px" } as const;
+  const justify = align === "right" ? "flex-end" : "flex-start";
 
-  if (!sortKey) return <span style={{ ...headingStyle, color: TABLE_HEADER_COLOR }}>{label.toUpperCase()}</span>;
+  if (!sortKey) return <span style={{ ...headingStyle, color: TABLE_HEADER_COLOR, display: "flex", justifyContent: justify }}>{label.toUpperCase()}</span>;
 
   const active = sort.key === sortKey;
   return (
@@ -548,8 +552,8 @@ export function SortableHeader<K extends string>({ label, sortKey, sort, onToggl
       onMouseLeave={() => setHovered(false)}
       style={{
         ...headingStyle,
-        display: "flex", alignItems: "center", gap: "3px", padding: 0, border: "none", background: "none",
-        cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+        display: "flex", alignItems: "center", justifyContent: justify, gap: "3px", padding: 0, border: "none", background: "none",
+        cursor: "pointer", textAlign: align === "right" ? "right" : "left", fontFamily: "inherit",
         color: active || hovered ? "var(--gray-900)" : TABLE_HEADER_COLOR,
       }}
     >

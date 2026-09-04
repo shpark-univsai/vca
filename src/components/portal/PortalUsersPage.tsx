@@ -1346,7 +1346,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             cell with a hand's width of nothing to its right. Narrowing those three moves Status
             right, up against the actions menu where it belongs, and gives the names their room
             back. */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.35fr 1.1fr 1.25fr 0.75fr 0.7fr 0.45fr 0.35fr 0.85fr 0.6fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1.2fr 1.25fr 0.75fr 0.7fr 0.45fr 0.35fr 0.85fr 0.55fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
           {/* Projects and MFA carry no sortKey: a user belongs to several projects, so there is no
               single value to order by, and MFA is display-only mock data it would be misleading to
               let anyone rank people with. */}
@@ -1359,10 +1359,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             { label: t.colAppSearch },
             { label: t.colMfa },
             { label: t.colLastLogin, key: "lastLogin" },
-            { label: t.colStatus, key: "status" },
+            { label: t.colStatus, key: "status", align: "right" as const },
             { label: "" },
-          ] as { label: string; key?: UserSortKey }[]).map((h, i) => (
-            <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
+          ] as { label: string; key?: UserSortKey; align?: "left" | "right" }[]).map((h, i) => (
+            <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} align={h.align} />
           ))}
         </div>
         {scopedUsers.length === 0 && (
@@ -1379,7 +1379,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           const lastAdmin = isLastActiveAdmin(portalUsers, u.id);
           return (
           <div key={u.id} style={{
-            display: "grid", gridTemplateColumns: "1.35fr 1.1fr 1.25fr 0.75fr 0.7fr 0.45fr 0.35fr 0.85fr 0.6fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
+            display: "grid", gridTemplateColumns: "1.3fr 1.2fr 1.25fr 0.75fr 0.7fr 0.45fr 0.35fr 0.85fr 0.55fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
             borderBottom: isLast ? "none" : BORDER,
             borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
           }}>
@@ -1387,10 +1387,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{u.name}</p>
               <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.email}</p>
             </div>
-            {/* Given room above rather than truncated by default — but a legal organisation name
-                ("City of Singapore — Smart Infrastructure Office") outruns any column eventually,
-                and three wrapped lines on every row is worse than one line and a tooltip. */}
-            <span title={orgName(u.teamId)} style={{ fontSize: "12px", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{orgName(u.teamId)}</span>
+            {/* Two lines, not one line and an ellipsis. A legal organisation name ("City of
+                Singapore — Smart Infrastructure Office") reads perfectly well over two and is
+                unrecognisable cut off at one; the clamp is only there so a longer one cannot push
+                the row to three. */}
+            <span title={orgName(u.teamId)} style={{
+              fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.4,
+              display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden",
+            }}>{orgName(u.teamId)}</span>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
               {u.projectIds.length === 0
                 ? <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
@@ -1458,7 +1462,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             </span>
             <MfaBadge enabled={u.mfaEnabled} />
             <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.lastLoginAt ?? "—"}</span>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "4px" }}>
+            {/* Right-aligned. Left-aligned, the badge sat at the near edge of its cell with a
+                hand's width of nothing between it and the actions menu — most visible once the
+                window narrows, which is when the columns to the left need that space most. */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
               <StatusBadge status={u.status} />
               {u.tempPasswordIssuedAt && <TempPasswordBadge issuedAt={u.tempPasswordIssuedAt} />}
               {u.setupCode && <SetupCodeBadge issuedAt={u.setupCodeIssuedAt} />}
