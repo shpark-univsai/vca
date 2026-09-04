@@ -862,7 +862,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "12px" }}>
-          {projectPersons.map(person => (
+          {projectPersons.map(person => {
+            const elevated = person.priorityLabel === "high" || person.priorityLabel === "very_high";
+            return (
             <div key={person.id}
               onClick={() => setDetailFor(person)}
               role="button" tabIndex={0}
@@ -879,17 +881,21 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                     for the thing a watchlist card is actually scanned for — a face and a name. The
                     group and the priority qualify that name, so they read after it. */}
                 <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{person.name}</p>
-                {(person.priorityLabel || person.groupId) && (
-                  /* Group and priority only. The role tag came off: three stacked pills made every
-                     card a different height, and role is the one of the three a card is not read
-                     for — it is a column in the table view, where comparing it across the list is
-                     the actual job. Wraps, so a long group name and the priority beside it stack
-                     rather than squeeze each other. */
+                {(elevated || person.groupId) && (
+                  /* Group, and priority only when it is raised.
+                     "Normal" is the register form's default, so a grey NORMAL pill sat on nearly
+                     every card and said nothing — and once the role tag came off it was the only
+                     tag on an ungrouped card, in the slot where other cards carry a group name,
+                     which made it read as "this person is an individual". A tag on a card now
+                     means something is true of this person: they are in a party, or they are
+                     above normal. The table's Priority column still states it either way.
+                     Wraps, so a long group name and the priority beside it stack rather than
+                     squeeze each other. */
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", margin: "5px 0 0" }}>
                     {person.groupId && groupById.has(person.groupId) && (
                       <Tag label={groupById.get(person.groupId)!.name} bg="var(--info-100)" color="var(--info-500)" />
                     )}
-                    {person.priorityLabel && <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} />}
+                    {elevated && <PriorityTag priority={person.priorityLabel!} text={t.priorityText[person.priorityLabel!]} />}
                   </div>
                 )}
                 {person.description && <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "5px" }}>{person.description}</p>}
@@ -902,7 +908,8 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 </svg>
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
