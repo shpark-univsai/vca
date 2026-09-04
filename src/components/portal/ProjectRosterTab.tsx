@@ -3,12 +3,10 @@
 import { useState } from "react";
 import { Eye } from "lucide-react";
 import { useVcaStore } from "@/lib/vcaStore";
-import { REGISTRATION_CODE_TTL_DAYS, formatCode, withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
+import { REGISTRATION_CODE_TTL_DAYS, formatCode, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, TABLE_COLUMN_GAP, PANEL_SHADOW, FilterSelect, RowActionsMenu, SortableHeader, sortRows, useTableSort } from "./PortalShared";
-import RosterImportModal from "./RosterImportModal";
+import { BORDER } from "./PortalShared";
 
 const T = {
   en: {
@@ -519,231 +517,50 @@ function PrintSheet({ entries, projectName, onClose, t }: { entries: RosterEntry
   );
 }
 
-function getStatusFilterOptions(t: Translations): { value: "ALL" | RosterCodeStatus; label: string }[] {
-  return [
-    { value: "ALL", label: t.filterAllStatuses },
-    { value: "not-issued", label: t.statusNotIssued },
-    { value: "unused", label: t.statusIssued },
-    { value: "used", label: t.statusUsed },
-    { value: "expired", label: t.statusExpired },
-  ];
-}
-
-type RosterSortKey = "name" | "employeeId" | "department" | "permission" | "status";
-
-export default function ProjectRosterTab({ projectId }: { projectId: string }) {
-  const [lang] = usePortalLanguage();
-  const t = T[lang];
+/**
+ * Download the project's roster as the CSV the importer reads back.
+ *
+ * Lifted out of the page body when the roster tab was folded into Users & Permissions — the button
+ * moved, the file it writes did not. Takes the entries rather than reading the store so the caller
+ * decides the scope (the whole project's roster, used rows included, not just who is still waiting).
+ */
+export function exportRosterCsv(entries: RosterEntry[], projectName: string, t: Translations): number {
   const statusMeta = getStatusMeta(t);
-  const statusFilterOptions = getStatusFilterOptions(t);
-  const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
-  const staffRoster = useVcaStore(s => s.staffRoster);
-  const issueRegistrationCodes = useVcaStore(s => s.issueRegistrationCodes);
-  const reissueRegistrationCode = useVcaStore(s => s.reissueRegistrationCode);
-  const removeRosterEntry = useVcaStore(s => s.removeRosterEntry);
-  const logRosterCodeViewed = useVcaStore(s => s.logRosterCodeViewed);
-  const { showToast } = useToast();
-
-  const [statusFilter, setStatusFilter] = useState<"ALL" | RosterCodeStatus>("ALL");
-  const { sort, toggle: toggleSort } = useTableSort<RosterSortKey>({ key: "status", direction: "asc" });
-  const [issuingEntry, setIssuingEntry] = useState<RosterEntry | null>(null);
-  const [removingEntry, setRemovingEntry] = useState<RosterEntry | null>(null);
-  const [showPrintSheet, setShowPrintSheet] = useState(false);
-  const [showImport, setShowImport] = useState(false);
-  // null = 닫힘, { entry: null } = 추가, { entry } = 편집
-  const [editorFor, setEditorFor] = useState<{ entry: RosterEntry | null } | null>(null);
-
-  const projectName = project?.name ?? projectId;
-  // Read through withEffectiveStatus so a code that outlived REGISTRATION_CODE_TTL_DAYS reads as
-  // expired everywhere below at once — the badge, the status filter, the reveal control, the CSV
-  // and the printable handout. Before this, expiry was a value somebody typed into the seed data.
-  const projectRoster = withEffectiveStatus(staffRoster.filter(r => r.projectId === projectId));
-  // Not-issued first by default: the roster exists so somebody can work out who still needs a code,
-  // and "not-issued" sorts before "unused"/"used" alphabetically.
-  const visibleRoster = sortRows(
-    projectRoster.filter(r => statusFilter === "ALL" || r.status === statusFilter),
-    sort,
-    (r, key) => {
-      switch (key) {
-        case "name": return r.name.toLowerCase();
-        case "employeeId": return r.employeeId.toLowerCase();
-        case "department": return r.department?.toLowerCase();
-        case "permission": return r.permission;
-        case "status": return r.status;
-      }
-    },
-  );
-  const notIssuedCount = projectRoster.filter(r => r.status === "not-issued").length;
-  const printableEntries = projectRoster.filter(r => r.status === "unused" && r.code);
-
-  const bulkIssue = () => {
-    const employeeIds = projectRoster.filter(r => r.status === "not-issued").map(r => r.employeeId);
-    if (employeeIds.length === 0) return;
-    issueRegistrationCodes(employeeIds);
-    showToast({ variant: "success", title: t.toastCodesIssuedTitle, desc: t.toastCodesIssuedDesc(employeeIds.length) });
-  };
-
-  const confirmIssueOrReissue = () => {
-    if (!issuingEntry) return;
-    if (issuingEntry.code) {
-      reissueRegistrationCode(issuingEntry.employeeId);
-      showToast({ variant: "success", title: t.toastCodeReissuedTitle, desc: t.toastCodeReissuedDesc(issuingEntry.name) });
-    } else {
-      issueRegistrationCodes([issuingEntry.employeeId]);
-      showToast({ variant: "success", title: t.toastCodeIssuedTitle, desc: issuingEntry.name });
-    }
-    setIssuingEntry(null);
-  };
-
-  const confirmRemove = () => {
-    if (!removingEntry) return;
-    removeRosterEntry(removingEntry.employeeId);
-    showToast({ variant: "warning", title: t.toastRemovedTitle, desc: removingEntry.name });
-    setRemovingEntry(null);
-  };
-
-  const exportCsv = () => {
-    // Email is here so the export is a file the importer can read back: export, fix it in Excel,
-    // import. Leaving the column out meant a round trip silently dropped everyone's address.
-    const header = [t.csvHeaderName, t.csvHeaderEmployeeId, t.csvHeaderDepartment, t.csvHeaderEmail, t.csvHeaderPermission, t.csvHeaderStatus, t.csvHeaderCode];
-    const rows = projectRoster.map(r => [
-      r.name, r.employeeId, r.department ?? "", r.email ?? "", r.permission === "admin" ? t.admin : t.operator,
-      statusMeta[r.status].label,
-      // Only a still-usable code is worth exporting — a used/expired one can't get anyone signed up.
-      r.status === "unused" && r.code ? formatCode(r.code) : "",
-    ]);
-    const csv = [header, ...rows].map(row => row.map(csvEscape).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${projectName}-staff-roster.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast({ variant: "success", title: t.toastExportTitle, desc: t.toastExportDesc(projectRoster.length) });
-  };
-
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px", gap: "12px", flexWrap: "wrap" }}>
-        <div>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.pageTitle}</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>
-            {t.pageDesc}
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap" }}>
-          {/* 한 명씩 넣는 길이 기본이고, 엑셀은 그걸 여러 번 반복하지 않으려고 있는 지름길이다.
-              그래서 추가 버튼이 먼저 오고 가져오기가 그 옆에 선다. */}
-          <button onClick={() => setEditorFor({ entry: null })}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
-            {t.addPerson}
-          </button>
-          <button onClick={() => setShowImport(true)}
-            style={{ padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-            {t.importRoster}
-          </button>
-          <button onClick={exportCsv}
-            style={{ padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-            {t.exportCsv}
-          </button>
-          <button onClick={() => setShowPrintSheet(true)} disabled={printableEntries.length === 0}
-            style={{
-              padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white",
-              color: printableEntries.length === 0 ? "var(--gray-300)" : "var(--gray-600)",
-              fontSize: "12px", fontWeight: 700, cursor: printableEntries.length === 0 ? "not-allowed" : "pointer",
-            }}>
-            {t.printHandout}
-          </button>
-          <button onClick={bulkIssue} disabled={notIssuedCount === 0}
-            style={{
-              padding: "10px 16px", borderRadius: "999px", border: "none",
-              backgroundColor: notIssuedCount === 0 ? "var(--gray-200)" : "var(--primary-400)",
-              color: notIssuedCount === 0 ? "var(--gray-400)" : "white",
-              fontSize: "12px", fontWeight: 700, cursor: notIssuedCount === 0 ? "not-allowed" : "pointer",
-            }}>
-            {t.issueCodesTo(notIssuedCount)}
-          </button>
-        </div>
-      </div>
-
-      <div style={{ marginBottom: "16px", maxWidth: "220px" }}>
-        <FilterSelect value={statusFilter} onChange={v => setStatusFilter(v as typeof statusFilter)} options={statusFilterOptions} />
-      </div>
-
-      {visibleRoster.length === 0 ? (
-        <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", padding: "32px", textAlign: "center" }}>
-          <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
-            {statusFilter === "ALL" ? t.emptyAll : t.emptyFiltered}
-          </p>
-        </div>
-      ) : (
-        <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.95fr 0.9fr 1.1fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
-            {/* The code column has no sortKey: ordering people by a random 8-character code answers
-                no question anybody has. */}
-            {([
-              { label: t.colName, key: "name" },
-              { label: t.colEmployeeId, key: "employeeId" },
-              { label: t.colDepartment, key: "department" },
-              { label: t.colPermission, key: "permission" },
-              { label: t.colStatus, key: "status" },
-              { label: t.colCode },
-              { label: "" },
-            ] as { label: string; key?: RosterSortKey }[]).map((h, i) => (
-              <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
-            ))}
-          </div>
-          {visibleRoster.map((entry, i) => {
-            const isLast = i === visibleRoster.length - 1;
-            return (
-              <div key={entry.employeeId} style={{
-                display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.95fr 0.9fr 1.1fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
-                borderBottom: isLast ? "none" : BORDER,
-                borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
-              }}>
-                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{entry.name}</p>
-                <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace" }}>{entry.employeeId}</span>
-                <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{entry.department ?? "—"}</span>
-                {/* Both halves, because this column is where somebody checks a row weeks after
-                    filling the form in — "관리자" alone leaves them to remember which doors that
-                    was. Same two words the Users table's Access column uses. */}
-                <div>
-                  <p style={{ fontSize: "12px", color: "var(--gray-600)" }}>{entry.permission === "admin" ? t.admin : t.operator}</p>
-                  <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "1px" }}>
-                    {entry.permission === "admin" ? t.accessBoth : t.accessAppOnly}
-                  </p>
-                </div>
-                <div><StatusBadge status={entry.status} meta={statusMeta} /></div>
-                <RosterCodeCell entry={entry} onReveal={() => logRosterCodeViewed(entry.employeeId)} />
-                <RowActionsMenu actions={[
-                  { label: t.editEntry, onClick: () => setEditorFor({ entry }) },
-                  { label: entry.code ? t.reissueCodeAction : t.issueCodeAction, onClick: () => setIssuingEntry(entry) },
-                  { label: t.removeFromRoster, onClick: () => setRemovingEntry(entry), danger: true },
-                ]} />
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {editorFor && (
-        <RosterEntryModal entry={editorFor.entry} projectId={projectId} onClose={() => setEditorFor(null)} t={t} />
-      )}
-
-      {issuingEntry && (
-        <IssueConfirmModal entry={issuingEntry} onClose={() => setIssuingEntry(null)} onConfirm={confirmIssueOrReissue} t={t} />
-      )}
-      {removingEntry && (
-        <RemoveConfirmModal entry={removingEntry} onClose={() => setRemovingEntry(null)} onConfirm={confirmRemove} t={t} />
-      )}
-      {showImport && (
-        <RosterImportModal projectId={projectId} onClose={() => setShowImport(false)} />
-      )}
-      {showPrintSheet && (
-        <PrintSheet entries={printableEntries} projectName={projectName} onClose={() => setShowPrintSheet(false)} t={t} />
-      )}
-    </div>
-  );
+  const header = [t.csvHeaderName, t.csvHeaderEmployeeId, t.csvHeaderDepartment, t.csvHeaderEmail, t.csvHeaderPermission, t.csvHeaderStatus, t.csvHeaderCode];
+  const rows = entries.map(r => [
+    r.name, r.employeeId, r.department ?? "", r.email ?? "", r.permission === "admin" ? t.admin : t.operator,
+    statusMeta[r.status].label,
+    // Only a still-usable code is worth exporting — a used/expired one can't get anyone signed up.
+    r.status === "unused" && r.code ? formatCode(r.code) : "",
+  ]);
+  const csv = [header, ...rows].map(row => row.map(csvEscape).join(",")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${projectName}-staff-roster.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  return entries.length;
 }
+
+
+/**
+ * The roster's own pieces, re-exported for the merged Users & Permissions page.
+ *
+ * The two screens became one (a roster row and the account it turns into are the same person at two
+ * points of one lifecycle), and the merged table lives in PortalUsersPage. The modals, the code cell
+ * and this file's dictionary did not need to move to get there — they are self-contained and take
+ * everything they need as props, so they are shared from where they were written rather than copied
+ * or dragged across.
+ */
+export {
+  T as ROSTER_T,
+  getStatusMeta as getRosterStatusMeta,
+  StatusBadge as RosterStatusBadge,
+  RosterCodeCell,
+  RosterEntryModal,
+  IssueConfirmModal,
+  RemoveConfirmModal,
+  PrintSheet,
+};
+export type { Translations as RosterTranslations };

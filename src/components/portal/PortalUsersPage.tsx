@@ -12,6 +12,12 @@ import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
 import { BORDER, CARD_BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
+import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
+import RosterImportModal from "./RosterImportModal";
+import {
+  ROSTER_T, RosterCodeCell, RosterEntryModal, IssueConfirmModal, RemoveConfirmModal, PrintSheet,
+  exportRosterCsv,
+} from "./ProjectRosterTab";
 
 const T = {
   en: {
@@ -28,6 +34,21 @@ const T = {
     countAdmins: "Admins",
     countAuditors: "Read-only",
     countAppOnly: "App only",
+    countRosterWaiting: "On the roster",
+    rosterWaitingHint: "On the staff roster with no account yet — they sign up with a registration code, no mail needed.",
+    rosterGroupHeading: "On the roster — no account yet",
+    stageRosterListed: "Listed",
+    stageCodeIssued: "Code issued",
+    stageCodeExpired: "Code expired",
+    // Roster tools, moved here with the rows they act on.
+    addToRoster: "Add to roster",
+    importRoster: "Import CSV",
+    bulkIssue: (n: number) => `Issue ${n} code${n === 1 ? "" : "s"}`,
+    printHandout: "Print slips",
+    exportRoster: "Export CSV",
+    toastRosterExported: (n: number) => `${n} roster row(s) exported`,
+    rosterEmpty: "Nobody is waiting on the roster.",
+    toastBulkIssued: (n: number) => `${n} registration code(s) issued`,
     countPortalOnly: "Portal only",
     countInvited: "Invited",
     countSuspended: "Suspended",
@@ -46,7 +67,7 @@ const T = {
     colAppSearch: "Person Search",
     colMfa: "MFA",
     colLastLogin: "Last Login",
-    colStatus: "Status",
+    colStatus: "Stage",
     emptySearch: "No users match this search.",
     emptyNoUsers: "No users have access to this project yet.",
 
@@ -226,6 +247,20 @@ const T = {
     countAdmins: "관리자",
     countAuditors: "읽기 전용",
     countAppOnly: "앱 전용",
+    countRosterWaiting: "명부 대기",
+    rosterWaitingHint: "직원 명부에 있고 아직 계정이 없습니다 — 등록 코드로 가입하며 메일이 필요 없습니다.",
+    rosterGroupHeading: "명부 대기 — 아직 계정 없음",
+    stageRosterListed: "명부 등록",
+    stageCodeIssued: "코드 발급",
+    stageCodeExpired: "코드 만료",
+    addToRoster: "명부에 추가",
+    importRoster: "CSV 가져오기",
+    bulkIssue: (n: number) => `코드 ${n}개 발급`,
+    printHandout: "안내장 인쇄",
+    exportRoster: "CSV 내보내기",
+    toastRosterExported: (n: number) => `명부 ${n}개 행을 내보냈습니다`,
+    rosterEmpty: "명부에서 기다리는 사람이 없습니다.",
+    toastBulkIssued: (n: number) => `등록 코드 ${n}개를 발급했습니다`,
     countPortalOnly: "포털 전용",
     countInvited: "초대됨",
     countSuspended: "정지됨",
@@ -244,7 +279,7 @@ const T = {
     colAppSearch: "인물 검색",
     colMfa: "MFA",
     colLastLogin: "마지막 로그인",
-    colStatus: "상태",
+    colStatus: "단계",
     emptySearch: "검색 결과와 일치하는 사용자가 없습니다.",
     emptyNoUsers: "이 프로젝트에 접근 권한이 있는 사용자가 아직 없습니다.",
 
@@ -1138,7 +1173,47 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
  * state means, because "Invited: 3" only reads as a to-do if you know an invited account cannot
  * sign in yet.
  */
-function UserCountStrip({ users }: { users: PortalUser[] }) {
+/**
+ * Where a person is between "on the list" and "using the system".
+ *
+ * The Staff Roster used to be its own tab, which split one lifecycle down the middle: the roster
+ * answered "who has not joined yet" (its own page description said so) and this page answered who
+ * had. Somebody checking whether a named person was in yet had to look in two places and know which
+ * one to look in first. It is one ladder, so it is one table — see the roster group below.
+ *
+ * Ordered as the funnel runs, so the value doubles as a sort key.
+ */
+const SECONDARY_BTN: React.CSSProperties = {
+  display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "999px",
+  border: BORDER, backgroundColor: "white", color: "var(--gray-600)",
+  fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0,
+};
+
+const STAGES = ["rosterListed", "codeIssued", "codeExpired", "invited", "active", "suspended"] as const;
+type Stage = (typeof STAGES)[number];
+
+function stageOfRosterEntry(status: RosterCodeStatus): Stage {
+  // "used" never reaches here — a used row's person has an account, and the account is their row.
+  return status === "unused" ? "codeIssued" : status === "expired" ? "codeExpired" : "rosterListed";
+}
+
+/** One badge for every rung of the ladder, so a reader compares like with like down the column. */
+function StageBadge({ stage, t }: { stage: Stage; t: { stageRosterListed: string; stageCodeIssued: string; stageCodeExpired: string } }) {
+  const meta: Record<"rosterListed" | "codeIssued" | "codeExpired", { label: string; bg: string; color: string }> = {
+    rosterListed: { label: t.stageRosterListed, bg: "var(--gray-100)", color: "var(--gray-500)" },
+    codeIssued: { label: t.stageCodeIssued, bg: "var(--info-100)", color: "var(--info-500)" },
+    codeExpired: { label: t.stageCodeExpired, bg: "var(--warning-200)", color: "var(--warning-500)" },
+  };
+  const m = meta[stage as "rosterListed" | "codeIssued" | "codeExpired"];
+  if (!m) return null;
+  return (
+    <span style={{ fontSize: "10px", fontWeight: 700, padding: "3px 8px", borderRadius: "999px", backgroundColor: m.bg, color: m.color, whiteSpace: "nowrap" }}>
+      {m.label}
+    </span>
+  );
+}
+
+function UserCountStrip({ users, rosterWaiting }: { users: PortalUser[]; rosterWaiting: number }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
 
@@ -1150,7 +1225,8 @@ function UserCountStrip({ users }: { users: PortalUser[] }) {
     { label: t.countPortalOnly, value: users.filter(u => accessModeOf(u) === "portalOnly").length },
     { label: t.countInvited, value: users.filter(u => u.status === "invited").length, hint: t.invitedHint, actionable: true },
     { label: t.countSuspended, value: users.filter(u => u.status === "suspended").length, hint: t.suspendedHint, actionable: true },
-    { label: t.countTotal, value: users.length },
+    { label: t.countRosterWaiting, value: rosterWaiting, hint: t.rosterWaitingHint, actionable: true },
+    { label: t.countTotal, value: users.length + rosterWaiting },
   ];
 
   return (
@@ -1185,6 +1261,11 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const projects = useVcaStore(s => s.projects);
   const updatePortalUserPermission = useVcaStore(s => s.updatePortalUserPermission);
   const updatePortalUserAccess = useVcaStore(s => s.updatePortalUserAccess);
+  const staffRoster = useVcaStore(s => s.staffRoster);
+  const issueRegistrationCodes = useVcaStore(s => s.issueRegistrationCodes);
+  const reissueRegistrationCode = useVcaStore(s => s.reissueRegistrationCode);
+  const removeRosterEntry = useVcaStore(s => s.removeRosterEntry);
+  const logRosterCodeViewed = useVcaStore(s => s.logRosterCodeViewed);
   const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
   const removePortalUser = useVcaStore(s => s.removePortalUser);
   const setAppSearch = useVcaStore(s => s.setAppSearch);
@@ -1210,6 +1291,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const [confirming, setConfirming] = useState<{
     title: string; body: string; confirmLabel: string; danger?: boolean; onConfirm: () => void;
   } | null>(null);
+  // Roster-side dialogs. They are the roster tab's own components, imported rather than rebuilt —
+  // the tab is gone, the work it did is not.
+  const [issuingEntry, setIssuingEntry] = useState<RosterEntry | null>(null);
+  const [removingEntry, setRemovingEntry] = useState<RosterEntry | null>(null);
+  const [showPrintSheet, setShowPrintSheet] = useState(false);
+  const [showRosterImport, setShowRosterImport] = useState(false);
+  /** null = closed, { entry: null } = add, { entry } = edit. */
+  const [rosterEditorFor, setRosterEditorFor] = useState<{ entry: RosterEntry | null } | null>(null);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   // Name ascending to start: the only order that is stable and that a reader can predict before
@@ -1229,6 +1318,18 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const recoveryOverride = useSearchParams().get("recovery");
   const mailAvailable = recoveryOverride === "adminOnly" ? false : hasOutboundMail(authConfig);
 
+  // The roster modals speak their own dictionary — they were written for the tab that used to own
+  // them and take it as a prop, which is exactly why they could be shared instead of rewritten.
+  const rt = ROSTER_T[lang];
+  // A roster row carries a project, not a team; the team is the project's.
+  const projectTeamId = projects.find(p => p.id === projectId)?.teamId ?? "";
+
+  const bulkIssueCodes = () => {
+    if (notIssuedIds.length === 0) return;
+    issueRegistrationCodes(notIssuedIds);
+    showToast({ variant: "success", title: t.toastBulkIssued(notIssuedIds.length) });
+  };
+
   const orgName = (teamId: string) => teams.find(o => o.id === teamId)?.name ?? teamId;
   const projectName = (id: string) => projects.find(p => p.id === id)?.name ?? id;
   const currentProject = projects.find(p => p.id === projectId);
@@ -1239,6 +1340,23 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const projectUsers = portalUsers.filter(u => u.projectIds.includes(projectId));
   const filteredUsers = projectUsers
     .filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+  /**
+   * Roster rows for this project that are still waiting — matched against accounts by employee
+   * number, which is the roster's own key. Status "used" is not enough on its own: an account can
+   * also arrive by invitation and later be matched to a roster row, and the person should appear
+   * once, as the account, not twice.
+   */
+  const accountEmployeeIds = new Set(
+    portalUsers.map(u => u.employeeId?.toLowerCase()).filter(Boolean) as string[]
+  );
+  const projectRosterAll = withEffectiveStatus(staffRoster.filter(r => r.projectId === projectId));
+  const rosterWaiting = projectRosterAll
+    .filter(r => r.status !== "used" && !accountEmployeeIds.has(r.employeeId.toLowerCase()))
+    .filter(r => !q || r.name.toLowerCase().includes(q) || r.employeeId.toLowerCase().includes(q))
+    .sort((a, b) => STAGES.indexOf(stageOfRosterEntry(a.status)) - STAGES.indexOf(stageOfRosterEntry(b.status)) || a.name.localeCompare(b.name));
+  const notIssuedIds = rosterWaiting.filter(r => r.status === "not-issued").map(r => r.employeeId);
+  const printableEntries = rosterWaiting.filter(r => r.status === "unused" && r.code);
+
   const scopedUsers = sortRows(filteredUsers, sort, (u, key) => {
     switch (key) {
       case "name": return u.name.toLowerCase();
@@ -1290,6 +1408,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               : t.descUnscoped}
           </p>
         </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" }}>
         {/* Disabled with the reason on it rather than hidden: a control that vanishes reads as a
             missing feature and sends the admin looking elsewhere for it. */}
         <button
@@ -1300,11 +1419,34 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke={manageAccess ? "white" : "var(--gray-400)"} strokeWidth="1.4" strokeLinecap="round"/></svg>
           {t.inviteUser}
         </button>
+        {/* The roster's four tools, kept together to the right of Invite. They act on the waiting
+            half of the same table now, so this is their toolbar. */}
+        <button onClick={() => setRosterEditorFor({ entry: null })}
+          style={SECONDARY_BTN}>{t.addToRoster}</button>
+        <button onClick={() => setShowRosterImport(true)}
+          style={SECONDARY_BTN}>{t.importRoster}</button>
+        <button onClick={bulkIssueCodes} disabled={notIssuedIds.length === 0}
+          style={{ ...SECONDARY_BTN, color: notIssuedIds.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: notIssuedIds.length === 0 ? "not-allowed" : "pointer" }}>
+          {t.bulkIssue(notIssuedIds.length)}
+        </button>
+        <button onClick={() => {
+            const n = exportRosterCsv(projectRosterAll, currentProject?.name ?? projectId, rt);
+            showToast({ variant: "success", title: t.toastRosterExported(n) });
+          }}
+          disabled={projectRosterAll.length === 0}
+          style={{ ...SECONDARY_BTN, color: projectRosterAll.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: projectRosterAll.length === 0 ? "not-allowed" : "pointer" }}>
+          {t.exportRoster}
+        </button>
+        <button onClick={() => setShowPrintSheet(true)} disabled={printableEntries.length === 0}
+          style={{ ...SECONDARY_BTN, color: printableEntries.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: printableEntries.length === 0 ? "not-allowed" : "pointer" }}>
+          {t.printHandout}
+        </button>
+        </div>
       </div>
 
       {!mailAvailable && <RecoveryModeNotice supportContact={authConfig.supportContact} />}
 
-      <UserCountStrip users={projectUsers} />
+      <UserCountStrip users={projectUsers} rosterWaiting={rosterWaiting.length} />
 
       <AccessRequestsPanel projectId={projectId} />
 
@@ -1365,7 +1507,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} align={h.align} />
           ))}
         </div>
-        {scopedUsers.length === 0 && (
+        {/* Only when BOTH halves are empty. With roster rows waiting below, "no users have access"
+            is answered by the rows underneath it. */}
+        {scopedUsers.length === 0 && rosterWaiting.length === 0 && (
           <div style={{ padding: "32px 16px", textAlign: "center", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}>
             <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
               {q ? t.emptySearch : t.emptyNoUsers}
@@ -1581,7 +1725,102 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           </div>
           );
         })}
+
+        {/* The waiting half of the same list. A group band rather than a second table: these are
+            the same people one step earlier, and Productboard's members screen groups the same way
+            — the rows that cannot act yet sit under their own heading, dimmed, with the controls
+            they have no answer for left blank instead of disabled-and-clickable. */}
+        {rosterWaiting.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 16px", backgroundColor: "var(--gray-50)", borderTop: BORDER, borderBottom: BORDER }}>
+            <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px" }}>
+              {t.rosterGroupHeading.toUpperCase()}
+            </span>
+            <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-600)", backgroundColor: "var(--gray-100)", padding: "1px 7px", borderRadius: "999px" }}>
+              {rosterWaiting.length}
+            </span>
+          </div>
+        )}
+        {rosterWaiting.map((entry, i) => {
+          const isLast = i === rosterWaiting.length - 1;
+          const stage = stageOfRosterEntry(entry.status);
+          return (
+            <div key={entry.employeeId} style={{
+              display: "grid", gridTemplateColumns: "1.3fr 1.2fr 1.25fr 0.75fr 0.7fr 0.45fr 0.35fr 0.85fr 0.55fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
+              borderBottom: isLast ? "none" : BORDER,
+              borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
+            }}>
+              {/* The second line is the employee number, not an address: a roster row often has no
+                  address at all (that is the reason this path exists), and the number is what the
+                  code is handed over against. */}
+              <div>
+                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)" }}>{entry.name}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{entry.email || entry.employeeId}</p>
+              </div>
+              <span title={orgName(projectTeamId)} style={{
+                fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.4,
+                display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden",
+              }}>{orgName(projectTeamId)}</span>
+              <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{projectName(entry.projectId)}</span>
+              {/* No role and no access yet — this person has no account for either to apply to. */}
+              <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
+              <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
+              {/* The registration code takes the three columns an account fills and a roster row
+                  cannot (person search, MFA, last login). It is the one thing about this row an
+                  administrator is here to read. */}
+              <div style={{ gridColumn: "span 3", minWidth: 0 }}>
+                <RosterCodeCell entry={entry} onReveal={() => logRosterCodeViewed(entry.employeeId)} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <StageBadge stage={stage} t={t} />
+              </div>
+              <RowActionsMenu actions={[
+                { label: rt.editEntry, onClick: () => setRosterEditorFor({ entry }) },
+                {
+                  label: entry.code ? rt.reissueConfirm : rt.issueConfirm,
+                  onClick: () => setIssuingEntry(entry),
+                },
+                { label: rt.remove, onClick: () => setRemovingEntry(entry), danger: true },
+              ]} />
+            </div>
+          );
+        })}
+        {scopedUsers.length > 0 && rosterWaiting.length === 0 && (
+          <div style={{ padding: "10px 16px", borderTop: BORDER }}>
+            <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.rosterEmpty}</p>
+          </div>
+        )}
       </div>
+
+      {rosterEditorFor && (
+        <RosterEntryModal entry={rosterEditorFor.entry} projectId={projectId} onClose={() => setRosterEditorFor(null)} t={rt} />
+      )}
+      {issuingEntry && (
+        <IssueConfirmModal entry={issuingEntry} t={rt}
+          onClose={() => setIssuingEntry(null)}
+          onConfirm={() => {
+            if (issuingEntry.code) {
+              reissueRegistrationCode(issuingEntry.employeeId);
+              showToast({ variant: "success", title: rt.toastCodeReissuedTitle, desc: rt.toastCodeReissuedDesc(issuingEntry.name) });
+            } else {
+              issueRegistrationCodes([issuingEntry.employeeId]);
+              showToast({ variant: "success", title: rt.toastCodeIssuedTitle, desc: issuingEntry.name });
+            }
+            setIssuingEntry(null);
+          }} />
+      )}
+      {removingEntry && (
+        <RemoveConfirmModal entry={removingEntry} t={rt}
+          onClose={() => setRemovingEntry(null)}
+          onConfirm={() => {
+            removeRosterEntry(removingEntry.employeeId);
+            showToast({ variant: "warning", title: rt.toastRemovedTitle, desc: removingEntry.name });
+            setRemovingEntry(null);
+          }} />
+      )}
+      {showRosterImport && <RosterImportModal projectId={projectId} onClose={() => setShowRosterImport(false)} />}
+      {showPrintSheet && (
+        <PrintSheet entries={printableEntries} projectName={currentProject?.name ?? projectId} onClose={() => setShowPrintSheet(false)} t={rt} />
+      )}
 
       {confirming && (
         <ConfirmModal
