@@ -190,6 +190,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
+  const teams = useVcaStore(s => s.teams);
   const cameras = useVcaStore(s => s.cameras);
 
   // Read after mount, not during render: the clock is not a pure input, and this is the only thing
@@ -201,6 +202,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
   if (!project) return null;
 
   const meta = TYPE_META[project.type];
+  const accountManager = teams.find(o => o.id === project.teamId)?.accountManager;
   const projectCameras = cameras.filter(c => c.projectId === projectId);
   const aiCameraCount = projectCameras.filter(c => (c.aiFeatures ?? []).length > 0).length;
   const normalCameraCount = projectCameras.length - aiCameraCount;
@@ -267,11 +269,20 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
             such button and should not: the licence is an on-premise contract, not a card on file.
             But the page was silent about that, so an administrator who needed a hundred channels
             and had forty-one found nothing here and no hint of where to go instead.
-            HANDOFF NOTE: no contact is named because no field holds one — Team carries a mail
-            domain and SMTP, not an account manager. Once there is one, it belongs on this line. */}
-        <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", lineHeight: 1.7, maxWidth: "260px", flexShrink: 0 }}>
-          {t.contractNote}
-        </p>
+            The named contact is Team.accountManager — seeded, and the supplier's record rather
+            than anything the customer edits here. */}
+        <div style={{ maxWidth: "260px", flexShrink: 0 }}>
+          <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", lineHeight: 1.7 }}>{t.contractNote}</p>
+          {accountManager && (
+            <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.75)", marginTop: "6px", lineHeight: 1.6 }}>
+              {accountManager.name}
+              {" · "}
+              <a href={`mailto:${accountManager.email}`} style={{ color: "white", textDecoration: "underline", textUnderlineOffset: "2px" }}>
+                {accountManager.email}
+              </a>
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Channels first, features second, each the full width — the order and shape the design

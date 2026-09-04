@@ -53,6 +53,17 @@ export interface Team {
    */
   mailDomain?: string;
   smtp?: SmtpConfig;
+  /**
+   * Who to ask about the contract — the supplier's account manager for this customer.
+   *
+   * On the team rather than the project because one manager holds every project a customer has,
+   * and it is the License page's answer to the question every other product answers with a
+   * "Change plan" button: this licence is a contract, so the way to change it is a person.
+   *
+   * HANDOFF NOTE: seeded. The real value comes from whatever the supplier's own records are, not
+   * from anything the customer can edit here.
+   */
+  accountManager?: { name: string; email: string };
 }
 
 export type ProjectType = "smart_city" | "smart_school";
@@ -387,6 +398,7 @@ const TEAMS: Team[] = [
     id: "team-univs", name: "City of Singapore — Smart Infrastructure Office", region: "Singapore",
     mailDomain: "smartcity.gov.sg",
     smtp: { host: "mail.smartcity.gov.sg", port: 587, fromAddress: "vca-noreply@smartcity.gov.sg", useTls: true },
+    accountManager: { name: "Jihoon Park", email: "jihoon.park@univs.ai" },
   },
   // A second team, so the header's team switcher has somewhere to switch to and every screen that
   // scopes by team is exercised by more than one row. Deliberately unlike the first: a different
@@ -395,6 +407,7 @@ const TEAMS: Team[] = [
   // what a team looks like the week it is onboarded.
   {
     id: "team-northgate", name: "Northgate Education Trust", region: "Singapore",
+    accountManager: { name: "Mina Seo", email: "mina.seo@univs.ai" },
     mailDomain: "northgate.edu.sg",
   },
 ];
