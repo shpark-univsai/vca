@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Asterisk } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, currentPortalRole, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEnterPortal, currentPortalRole, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
@@ -20,6 +20,10 @@ const T = {
     descScopedPrefix: "Showing users with access to",
     descScopedSuffix: "",
     descUnscoped: "Set what each person may do in Portal — or keep them app-only — and scope them to projects.",
+    // The Access column names two doors and nothing on the page said what is behind them. Spelled
+    // out here rather than in a tooltip: it is the definition the whole table is read against.
+    accessExplainerLead: "Access",
+    accessExplainerBody: " decides which doors an account has — Portal is the settings console (Input Sources · VIP Registry · Users · Server · License), the App is the monitoring screens. The Portal role only means something once Portal is one of them.",
     inviteUser: "Invite user",
     searchPlaceholder: "Search by user name or email address",
 
@@ -27,7 +31,8 @@ const T = {
     countOwners: "Owners",
     countAdmins: "Admins",
     countAuditors: "Read-only",
-    countOperators: "App only",
+    countAppOnly: "App only",
+    countPortalOnly: "Portal only",
     countInvited: "Invited",
     countSuspended: "Suspended",
     countTotal: "Total",
@@ -47,6 +52,7 @@ const T = {
     colTeam: "Team",
     colProjects: "Projects",
     colPermission: "Permission",
+    colAccess: "Access",
     colAppSearch: "Person Search",
     colMfa: "MFA",
     colLastLogin: "Last Login",
@@ -58,11 +64,20 @@ const T = {
     permOwner: "Owner",
     permAdmin: "Admin",
     permAuditor: "Read-only admin",
-    permOperator: "App only",
+    permNone: "No Portal role",
     permOwnerDesc: "Grants and revokes access, and removes people. The only role that can.",
     permAdminDesc: "Changes cameras, VIP registry, roster and license — but not who has access.",
     permAuditorDesc: "Sees every Portal screen and the audit log. Changes nothing.",
-    permOperatorDesc: "No Portal access. Signs in to the monitoring app instead.",
+    permNoneDesc: "Does not open Portal at all.",
+    // Access — where the person may sign in. Independent of the Portal role above: a role says what
+    // they may do once inside Portal, this says whether Portal is one of the doors they have.
+    accessBoth: "Portal + App",
+    accessAppOnly: "App only",
+    accessPortalOnly: "Portal only",
+    accessBothDesc: "Both the settings console and the monitoring app.",
+    accessAppOnlyDesc: "Signs straight into the monitoring app. No Portal.",
+    accessPortalOnlyDesc: "Settings console only — no monitoring app.",
+    accessGainsRoleNote: (role: string) => `Given the ${role} role, which changes nothing until you raise it.`,
     reasonNotOwner: "Only an owner can change access.",
     appSearchOn: "On",
     appSearchGrant: "Allow person search in the app",
@@ -186,7 +201,8 @@ const T = {
     namePlaceholder: "Full name",
     emailLabel: "Email",
     teamLabel: "Team",
-    permissionLabel: "Permission level",
+    accessLabel: "Where they sign in",
+    permissionLabel: "Portal role",
     projectsLabel: "Projects",
     mailNoteBoth: "Invite will be sent by external email for internet-connected projects, and the internal mailbox for internet-isolated ones.",
     mailNoteIsolated: "This project's site is internet-isolated — invite will be sent through its internal mailbox, not external email.",
@@ -212,6 +228,8 @@ const T = {
     descScopedPrefix: "",
     descScopedSuffix: "프로젝트에 접근 권한이 있는 사용자를 표시합니다.",
     descUnscoped: "각 사용자가 Portal에서 무엇을 할 수 있는지 정하거나 앱 전용으로 두고, 이용할 프로젝트를 지정하세요.",
+    accessExplainerLead: "접근",
+    accessExplainerBody: "이 계정에 열리는 문을 정합니다 — 포털은 설정 콘솔(입력 소스 · VIP 등록 · 사용자 · 서버 · 라이선스)이고, 앱은 관제 화면입니다. 포털 역할은 포털이 그 문에 포함될 때만 의미가 있습니다.",
     inviteUser: "사용자 초대",
     searchPlaceholder: "사용자 이름 또는 이메일 주소로 검색",
 
@@ -219,7 +237,8 @@ const T = {
     countOwners: "최고관리자",
     countAdmins: "관리자",
     countAuditors: "읽기 전용",
-    countOperators: "앱 전용",
+    countAppOnly: "앱 전용",
+    countPortalOnly: "포털 전용",
     countInvited: "초대됨",
     countSuspended: "정지됨",
     countTotal: "전체",
@@ -239,6 +258,7 @@ const T = {
     colTeam: "팀",
     colProjects: "프로젝트",
     colPermission: "권한",
+    colAccess: "접근",
     colAppSearch: "인물 검색",
     colMfa: "MFA",
     colLastLogin: "마지막 로그인",
@@ -250,11 +270,18 @@ const T = {
     permOwner: "최고관리자",
     permAdmin: "관리자",
     permAuditor: "읽기 전용 관리자",
-    permOperator: "앱 전용",
+    permNone: "포털 역할 없음",
     permOwnerDesc: "권한을 주고 회수하고, 사람을 지웁니다. 이걸 할 수 있는 유일한 역할입니다.",
     permAdminDesc: "카메라·VIP 등록·명부·라이선스를 바꿉니다. 누가 접근하는지는 못 바꿉니다.",
     permAuditorDesc: "Portal의 모든 화면과 감사 로그를 봅니다. 아무것도 바꾸지 않습니다.",
-    permOperatorDesc: "Portal에 들어오지 않습니다. 관제 앱으로 로그인합니다.",
+    permNoneDesc: "Portal에는 들어오지 않습니다.",
+    accessBoth: "포털 + 앱",
+    accessAppOnly: "앱만",
+    accessPortalOnly: "포털만",
+    accessBothDesc: "설정 콘솔과 관제 앱 둘 다.",
+    accessAppOnlyDesc: "로그인하면 바로 관제 앱. Portal은 못 봅니다.",
+    accessPortalOnlyDesc: "설정 콘솔만 — 관제 앱은 못 씁니다.",
+    accessGainsRoleNote: (role: string) => `${role} 역할로 들어갑니다. 올리기 전까지는 바꾸는 게 없습니다.`,
     reasonNotOwner: "권한 변경은 최고관리자만 할 수 있습니다.",
     appSearchOn: "허용",
     appSearchGrant: "앱에서 인물 검색 허용",
@@ -371,7 +398,8 @@ const T = {
     namePlaceholder: "전체 이름",
     emailLabel: "이메일",
     teamLabel: "팀",
-    permissionLabel: "권한 수준",
+    accessLabel: "어디로 로그인하나",
+    permissionLabel: "포털 역할",
     projectsLabel: "프로젝트",
     mailNoteBoth: "인터넷에 연결된 프로젝트에는 외부 이메일로, 인터넷이 차단된 프로젝트에는 내부 메일함으로 초대장이 발송됩니다.",
     mailNoteIsolated: "이 프로젝트의 사이트는 인터넷이 차단되어 있습니다 — 초대장은 외부 이메일이 아닌 내부 메일함으로 발송됩니다.",
@@ -410,7 +438,10 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const [teamId, setOrgId] = useState(
     () => projects.find(p => p.id === defaultProjectId)?.teamId ?? teams[0]?.id ?? ""
   );
-  const [permission, setPermission] = useState<PortalPermission>("operator");
+  // Access first, role second — the same order the table now reads in, and the order the questions
+  // actually come in: whether this person opens Portal at all, then what they may do there.
+  const [accessMode, setAccessMode] = useState<AccessMode>("appOnly");
+  const [permission, setPermission] = useState<PortalPermission>("admin");
   const [projectIds, setProjectIds] = useState<string[]>(defaultProjectId ? [defaultProjectId] : []);
 
   const toggleProject = (id: string) =>
@@ -443,7 +474,11 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
 
   const submit = () => {
     if (!name.trim() || !email.trim() || !teamId) return;
-    const id = addPortalUser({ name: name.trim(), email: email.trim(), teamId, projectIds, permission, status: "invited" });
+    const resolved = applyAccessMode(accessMode, permission);
+    const id = addPortalUser({
+      name: name.trim(), email: email.trim(), teamId, projectIds,
+      permission: resolved.permission, appAccess: resolved.appAccess, status: "invited",
+    });
     // The link carries a minted token, not the account id it used to carry — see PortalUser.
     // inviteToken. The toast stands in for the mail nobody can send yet.
     const token = issueInviteToken(id);
@@ -477,22 +512,34 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
             <FilterSelect value={teamId} onChange={changeTeam} options={teams.map(o => ({ value: o.id, label: o.name }))} />
           </div>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.permissionLabel}</label>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.accessLabel}</label>
             <div style={{ display: "flex", gap: "8px" }}>
-              {(["admin", "operator"] as PortalPermission[]).map(perm => (
-                <button key={perm} onClick={() => setPermission(perm)}
+              {(["both", "appOnly", "portalOnly"] as AccessMode[]).map(mode => (
+                <button key={mode} onClick={() => setAccessMode(mode)}
                   style={{
-                    flex: 1, padding: "10px 12px", borderRadius: "10px", cursor: "pointer", textTransform: "capitalize",
-                    border: permission === perm ? "1px solid var(--gray-900)" : BORDER,
-                    backgroundColor: permission === perm ? "var(--gray-100)" : "white",
-                    color: permission === perm ? "var(--gray-900)" : "var(--gray-600)",
-                    fontSize: "13px", fontWeight: 700,
+                    flex: 1, padding: "10px 8px", borderRadius: "10px", cursor: "pointer",
+                    border: accessMode === mode ? "1px solid var(--gray-900)" : BORDER,
+                    backgroundColor: accessMode === mode ? "var(--gray-100)" : "white",
+                    color: accessMode === mode ? "var(--gray-900)" : "var(--gray-600)",
+                    fontSize: "12px", fontWeight: 700,
                   }}>
-                  {perm === "admin" ? t.permAdmin : t.permOperator}
+                  {accessLabel(t, mode)}
                 </button>
               ))}
             </div>
           </div>
+          {/* Only asked once Portal is one of the doors. An app-only invite has no Portal role to
+              set, and a disabled select there would be a question with no answer. */}
+          {accessMode !== "appOnly" && (
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.permissionLabel}</label>
+              <FilterSelect
+                value={permission}
+                onChange={v => setPermission(v as PortalPermission)}
+                options={consoleRoleOptions(t)}
+              />
+            </div>
+          )}
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.projectsLabel}</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
@@ -818,22 +865,64 @@ const MODAL_BODY: React.CSSProperties = {
  * changes. Order is the ladder: owner → admin → read-only → no console.
  */
 interface RoleCopy {
-  permOwner: string; permAdmin: string; permAuditor: string; permOperator: string;
-  permOwnerDesc: string; permAdminDesc: string; permAuditorDesc: string; permOperatorDesc: string;
+  permOwner: string; permAdmin: string; permAuditor: string; permNone: string;
+  permOwnerDesc: string; permAdminDesc: string; permAuditorDesc: string; permNoneDesc: string;
 }
 
-function roleOptions(t: RoleCopy) {
+interface AccessCopy {
+  accessBoth: string; accessAppOnly: string; accessPortalOnly: string;
+  accessBothDesc: string; accessAppOnlyDesc: string; accessPortalOnlyDesc: string;
+}
+
+/** The roles that mean something inside Portal. "none" is not offered here — it is not a role a
+ *  person is given, it is what they have when Access says they do not open Portal. */
+function consoleRoleOptions(t: RoleCopy) {
   return [
     { value: "owner", label: t.permOwner, description: t.permOwnerDesc },
     { value: "admin", label: t.permAdmin, description: t.permAdminDesc },
     { value: "auditor", label: t.permAuditor, description: t.permAuditorDesc },
-    { value: "operator", label: t.permOperator, description: t.permOperatorDesc },
   ];
 }
 
 /** Short label for a role, for table cells and toasts. */
 function roleLabel(t: RoleCopy, p: PortalPermission): string {
-  return p === "owner" ? t.permOwner : p === "admin" ? t.permAdmin : p === "auditor" ? t.permAuditor : t.permOperator;
+  return p === "owner" ? t.permOwner : p === "admin" ? t.permAdmin : p === "auditor" ? t.permAuditor : t.permNone;
+}
+
+/**
+ * The three combinations of (Portal role, app access) that an account can usefully be in. The
+ * fourth — no role and no app — is an account that can reach nothing, so it is not a mode anything
+ * can select; see hasSomeAccess in the store.
+ */
+type AccessMode = "both" | "appOnly" | "portalOnly";
+
+/** The console role an account picks up when Access first lets it into Portal. Read-only on
+ *  purpose: granting Portal and granting the power to change things are two decisions, and this
+ *  control is only making the first one. */
+const DEFAULT_ROLE_ON_PORTAL_GRANT: PortalPermission = "auditor";
+
+function accessModeOf(u: Pick<PortalUser, "permission" | "appAccess">): AccessMode {
+  if (!canEnterPortal(u.permission)) return "appOnly";
+  return u.appAccess ? "both" : "portalOnly";
+}
+
+/** What (role, appAccess) a mode resolves to, given the role the account already has. */
+function applyAccessMode(mode: AccessMode, current: PortalPermission): { permission: PortalPermission; appAccess: boolean } {
+  if (mode === "appOnly") return { permission: "none", appAccess: true };
+  const permission = canEnterPortal(current) ? current : DEFAULT_ROLE_ON_PORTAL_GRANT;
+  return { permission, appAccess: mode === "both" };
+}
+
+function accessOptions(t: AccessCopy) {
+  return [
+    { value: "both", label: t.accessBoth, description: t.accessBothDesc },
+    { value: "appOnly", label: t.accessAppOnly, description: t.accessAppOnlyDesc },
+    { value: "portalOnly", label: t.accessPortalOnly, description: t.accessPortalOnlyDesc },
+  ];
+}
+
+function accessLabel(t: AccessCopy, mode: AccessMode): string {
+  return mode === "both" ? t.accessBoth : mode === "appOnly" ? t.accessAppOnly : t.accessPortalOnly;
 }
 
 /** How the way-back-in reaches the person. Mail sends a code they redeem themselves; password is
@@ -1075,7 +1164,8 @@ function UserCountStrip({ users }: { users: PortalUser[] }) {
     { label: t.countOwners, value: users.filter(u => u.permission === "owner").length },
     { label: t.countAdmins, value: users.filter(u => u.permission === "admin").length },
     { label: t.countAuditors, value: users.filter(u => u.permission === "auditor").length },
-    { label: t.countOperators, value: users.filter(u => u.permission === "operator").length },
+    { label: t.countAppOnly, value: users.filter(u => accessModeOf(u) === "appOnly").length },
+    { label: t.countPortalOnly, value: users.filter(u => accessModeOf(u) === "portalOnly").length },
     { label: t.countInvited, value: users.filter(u => u.status === "invited").length, hint: t.invitedHint, actionable: true },
     { label: t.countSuspended, value: users.filter(u => u.status === "suspended").length, hint: t.suspendedHint, actionable: true },
     { label: t.countTotal, value: users.length },
@@ -1112,6 +1202,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const updatePortalUserPermission = useVcaStore(s => s.updatePortalUserPermission);
+  const updatePortalUserAccess = useVcaStore(s => s.updatePortalUserAccess);
   const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
   const removePortalUser = useVcaStore(s => s.removePortalUser);
   const setAppSearch = useVcaStore(s => s.setAppSearch);
@@ -1223,6 +1314,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 : <>{t.descScopedPrefix} <strong style={{ color: "var(--gray-600)" }}>{currentProject.name}</strong>.</>)
               : t.descUnscoped}
           </p>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "4px", maxWidth: "78ch", lineHeight: 1.6 }}>
+            <strong style={{ color: "var(--gray-600)" }}>{t.accessExplainerLead}</strong>{t.accessExplainerBody}
+          </p>
         </div>
         {/* Disabled with the reason on it rather than hidden: a control that vanishes reads as a
             missing feature and sends the admin looking elsewhere for it. */}
@@ -1269,7 +1363,11 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         <FilterSelect
           value={permissionFilter}
           onChange={v => setPermissionFilter(v as PortalPermission | "ALL")}
-          options={[{ value: "ALL", label: t.filterAllPermissions }, ...roleOptions(t).map(o => ({ value: o.value, label: o.label }))]}
+          options={[
+            { value: "ALL", label: t.filterAllPermissions },
+            ...consoleRoleOptions(t).map(o => ({ value: o.value, label: o.label })),
+            { value: "none", label: t.permNone },
+          ]}
         />
         <FilterSelect
           value={statusFilter}
@@ -1289,7 +1387,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           past the container's bottom edge (invisible, not just cut off). Radius the header row
           itself instead. */}
       <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1.4fr 0.6fr 0.6fr 0.5fr 0.9fr 0.8fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 0.9fr 1.2fr 0.7fr 0.8fr 0.6fr 0.5fr 0.85fr 0.75fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
           {/* Projects and MFA carry no sortKey: a user belongs to several projects, so there is no
               single value to order by, and MFA is display-only mock data it would be misleading to
               let anyone rank people with. */}
@@ -1298,6 +1396,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             { label: t.colTeam, key: "team" },
             { label: t.colProjects },
             { label: t.colPermission, key: "permission" },
+            { label: t.colAccess },
             { label: t.colAppSearch },
             { label: t.colMfa },
             { label: t.colLastLogin, key: "lastLogin" },
@@ -1331,7 +1430,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           const lastAdmin = isLastActiveAdmin(portalUsers, u.id);
           return (
           <div key={u.id} style={{
-            display: "grid", gridTemplateColumns: "1.5fr 1fr 1.4fr 0.6fr 0.6fr 0.5fr 0.9fr 0.8fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
+            display: "grid", gridTemplateColumns: "1.4fr 0.9fr 1.2fr 0.7fr 0.8fr 0.6fr 0.5fr 0.85fr 0.75fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
             borderBottom: isLast ? "none" : BORDER,
             borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
           }}>
@@ -1355,16 +1454,41 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 ))}
             </div>
             {/* Only an owner may change this. For everyone else the cell reads as text — a select
-                that opens and then refuses is worse than a value that never looked editable. */}
-            {manageAccess ? (
+                that opens and then refuses is worse than a value that never looked editable.
+
+                An account with no Portal access has no role to pick, and offering one would imply
+                a Portal role can be held without Portal. The cell says so and the Access select
+                next to it is where that changes. */}
+            {!canEnterPortal(u.permission) ? (
+              <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
+            ) : manageAccess ? (
               <FilterSelect
                 fitContent
                 value={u.permission}
                 onChange={v => updatePortalUserPermission(u.id, v as PortalPermission)}
-                options={roleOptions(t)}
+                options={consoleRoleOptions(t)}
               />
             ) : (
               <span title={t.reasonNotOwner} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{roleLabel(t, u.permission)}</span>
+            )}
+            {/* Where this person may sign in. Its own control rather than a fourth role, because it
+                is a second question — see PortalPermission's doc. */}
+            {manageAccess ? (
+              <FilterSelect
+                fitContent
+                value={accessModeOf(u)}
+                onChange={v => {
+                  const next = applyAccessMode(v as AccessMode, u.permission);
+                  updatePortalUserAccess(u.id, next.permission, next.appAccess);
+                  // Say it when the change quietly hands out a Portal role the owner did not pick.
+                  if (!canEnterPortal(u.permission) && canEnterPortal(next.permission)) {
+                    showToast({ variant: "info", title: accessLabel(t, v as AccessMode), desc: t.accessGainsRoleNote(roleLabel(t, next.permission)) });
+                  }
+                }}
+                options={accessOptions(t)}
+              />
+            ) : (
+              <span title={t.reasonNotOwner} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{accessLabel(t, accessModeOf(u))}</span>
             )}
             {/* Search is a separate grant from the console role, so it gets its own column rather
                 than being folded into the role label — the two answer different questions. The cell

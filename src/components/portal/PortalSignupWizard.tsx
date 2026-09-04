@@ -312,7 +312,7 @@ export default function PortalSignupWizard() {
   const completeSignup = () => {
     if (!step2Valid) return;
     const teamId = addTeam({ name: orgName.trim(), region: "" });
-    addPortalUser({ name: fullName.trim(), email: email.trim(), teamId, projectIds: [], permission: "admin", status: "active" });
+    addPortalUser({ name: fullName.trim(), email: email.trim(), teamId, projectIds: [], permission: "admin", appAccess: true, status: "active" });
     setCreatedOrgId(teamId);
     setStep("done");
   };

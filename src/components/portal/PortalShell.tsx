@@ -10,7 +10,7 @@ import PortalNewProjectWizard from "./PortalNewProjectWizard";
 import TeamSwitcher from "./TeamSwitcher";
 import ProjectSidebar, { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
 import { ToastProvider } from "../Toast";
-import { useVcaStore, type ProjectType } from "@/lib/vcaStore";
+import { useVcaStore, canEnterApp, canEnterPortal, currentPortalUser, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { LanguageSwitcher, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 
@@ -63,7 +63,24 @@ export default function PortalShell() {
   const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const addTeam = useVcaStore(s => s.addTeam);
-  const currentAdmin = useVcaStore(s => s.portalUsers.find(u => u.permission === "admin")) ?? null;
+  /**
+   * The account viewing Portal, where there is one. Two things hang off it: whether "Exit to App"
+   * is a door this person actually has, and whether they belong on this route at all.
+   *
+   * HANDOFF NOTE: this is a client-side check against the stand-in identity, so it is a UI
+   * correction, not a security boundary — someone who types /portal with the bundle in hand can
+   * still render it. The real gate is the server refusing Portal's endpoints to a role of "none";
+   * this exists so the front end stops offering doors that are not there, and so the check has a
+   * home the moment a session does.
+   */
+  // Also what the sidebar footer names. It used to name "the first account with permission admin",
+  // which was nobody at all while every seeded account was an owner or app-only, and the wrong
+  // person the moment one of them became an admin — the footer is meant to say who you are.
+  const me = useVcaStore(s => currentPortalUser(s.portalUsers));
+  const locked = !!me && !canEnterPortal(me.permission);
+  useEffect(() => {
+    if (locked) router.replace("/");
+  }, [locked, router]);
   // Resolve ?teamId= against the real list rather than trusting it: an id that matches nothing used
   // to flow straight into the New Project wizard, which would have filed the project under an
   // team that does not exist. Falling back to the first team keeps the header and
@@ -222,6 +239,10 @@ export default function PortalShell() {
           </button>
         )}
         <LanguageSwitcher />
+        {/* Only for someone who has the app. A Portal-only account (the customer's security officer
+            reading the audit trail, say) would land on a screen it cannot use, and the button would
+            be the console advertising a door that is locked. */}
+        {(!me || canEnterApp(me)) && (
         <button
           className="portal-exit-btn"
           onClick={() => router.push("/")}
@@ -238,6 +259,7 @@ export default function PortalShell() {
           </svg>
           {t.exit}
         </button>
+        )}
       </div>
 
       {showWizard ? (
@@ -245,7 +267,7 @@ export default function PortalShell() {
       ) : (
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           {teamProjects.length > 0 && (
-            <ProjectSidebar tab={tab} onTabChange={setTab} collapsed={sidebarCollapsed} admin={currentAdmin} />
+            <ProjectSidebar tab={tab} onTabChange={setTab} collapsed={sidebarCollapsed} admin={me ?? null} />
           )}
           <div style={{ flex: 1, overflow: "auto", padding: "32px 72px", backgroundColor: "var(--gray-100)" }}>
             {teamProjects.length === 0

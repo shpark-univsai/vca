@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { ArrowUp, Clock, Key, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
-import { useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
+import { canEnterPortal, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat } from "./PortalShared";
 import { useToast } from "../Toast";
@@ -46,7 +46,7 @@ const T = {
     noPendingAccessRequests: "No pending access requests.",
     pendingInvites: (n: number) => `${n} invitation${n === 1 ? "" : "s"} not yet accepted`,
     allAccountsActive: "All accounts active",
-    adminOperatorLabel: (admin: number, operator: number) => `Admin: ${admin} | Operator: ${operator}`,
+    accessSplitLabel: (portal: number, app: number) => `Portal: ${portal} | App: ${app}`,
     cameraStatusTitle: "Camera Status",
     // This card is the page's answer to "is this deployment working". Deliberately not joined by a
     // "last detection" line: every event in this system is a VIP match (EventType is VIP |
@@ -106,7 +106,7 @@ const T = {
     noPendingAccessRequests: "대기 중인 접근 요청이 없습니다.",
     pendingInvites: (n: number) => `수락하지 않은 초대 ${n}건`,
     allAccountsActive: "모든 계정 활성",
-    adminOperatorLabel: (admin: number, operator: number) => `관리자: ${admin} | 운영자: ${operator}`,
+    accessSplitLabel: (portal: number, app: number) => `포털: ${portal} | 앱: ${app}`,
     cameraStatusTitle: "카메라 상태",
     cameraStatusSubtitle: "이 프로젝트에 연결된 카메라의 스트리밍 상태",
     filterAll: (n: number) => `전체 (${n})`,
@@ -209,8 +209,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const onlineCount = projectCameras.filter(c => c.status === "online").length;
   const offlineCount = projectCameras.length - onlineCount;
   const projectUsers = portalUsers.filter(u => u.projectIds.includes(projectId));
-  const adminCount = projectUsers.filter(u => u.permission === "admin").length;
-  const operatorCount = projectUsers.length - adminCount;
+  // Counted by door, not by role. "Admin: n | Operator: n" filed owners and read-only admins under
+  // "operator" simply because they were not the literal string "admin", so the second figure was
+  // never the number of anything.
+  const portalUserCount = projectUsers.filter(u => canEnterPortal(u.permission)).length;
+  const appUserCount = projectUsers.filter(u => u.appAccess).length;
 
   const channelLimit = projectChannelLimit(project);
   const isUnlimitedExpiry = project.licenseExpiresAt === UNLIMITED_EXPIRY;
@@ -394,7 +397,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 )}
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.adminOperatorLabel(adminCount, operatorCount)}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.accessSplitLabel(portalUserCount, appUserCount)}</p>
                 <button onClick={() => onTabChange("users")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.manage}</button>
               </div>
             </MetricCard>

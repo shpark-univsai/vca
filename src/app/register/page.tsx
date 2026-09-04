@@ -10,7 +10,7 @@ import { getAuthConfig } from "@/lib/authConfig";
 import {
   REGISTRATION_CODE_LENGTH, SETUP_CODE_TTL_DAYS, isCodeExpired, normalizeCode, resolveRegistrationCode,
 } from "@/lib/staffRoster";
-import { useVcaStore } from "@/lib/vcaStore";
+import { canEnterPortal, useVcaStore } from "@/lib/vcaStore";
 
 type Step = "code" | "confirm" | "password" | "done";
 
@@ -176,7 +176,9 @@ function RegisterFlow() {
       setEntry({
         name: account.name,
         projectId: account.projectIds[0],
-        permission: account.permission === "operator" ? "operator" : "admin",
+        // This screen speaks the roster's two-value language ("Administrator" / "Operator"), so a
+        // console role collapses to whether it opens Portal at all.
+        permission: canEnterPortal(account.permission) ? "admin" : "operator",
         source: "account",
       });
       setStep("confirm");
