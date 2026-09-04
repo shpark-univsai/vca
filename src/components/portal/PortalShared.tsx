@@ -667,9 +667,9 @@ export function Tooltip({ text, children, placement = "bottom" }: {
             // Wide enough for a sentence, capped so it never becomes a paragraph nobody reads, and
             // pinned to the trigger's left edge rather than centred so a tab near the window edge
             // does not push it off screen.
-            width: "max-content", maxWidth: "280px",
+            width: "max-content", maxWidth: "300px",
             backgroundColor: "var(--gray-900)", color: "white",
-            fontSize: "11px", fontWeight: 400, lineHeight: 1.5, textAlign: "left",
+            fontSize: "12px", fontWeight: 400, lineHeight: 1.55, textAlign: "left",
             padding: "8px 10px", borderRadius: "8px",
             boxShadow: "0 8px 24px rgba(14,22,42,0.18)",
             pointerEvents: "none", whiteSpace: "normal",
