@@ -68,7 +68,7 @@ const T = {
     colPermission: "Permission",
     colStatus: "Status",
     colCode: "Code",
-    admin: "Admin",
+    admin: "Portal admin",
     operator: "App user",
     // The two roster options mint two very different accounts (see activateRosterEntry), and
     // "Operator" said nothing about which. The hint under each button is the Access value the
@@ -153,7 +153,7 @@ const T = {
     colPermission: "권한",
     colStatus: "상태",
     colCode: "코드",
-    admin: "관리자",
+    admin: "포털 관리자",
     operator: "앱 사용자",
     accessBoth: "포털 + 앱",
     accessAppOnly: "앱만",

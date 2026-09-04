@@ -71,8 +71,8 @@ const HEADER_SYNONYMS: Record<ColumnKey, string[]> = {
  * somebody is about to import, so the old words stay readable forever.
  */
 const PERMISSION_VALUES: Record<string, "admin" | "operator"> = {
-  admin: "admin", administrator: "admin", owner: "admin", portalapp: "admin",
-  관리자: "admin", 어드민: "admin", 운영관리자: "admin", 포털앱: "admin",
+  admin: "admin", administrator: "admin", owner: "admin", portalapp: "admin", portaladmin: "admin",
+  관리자: "admin", 어드민: "admin", 운영관리자: "admin", 포털앱: "admin", 포털관리자: "admin",
   operator: "operator", user: "operator", member: "operator", staff: "operator",
   appuser: "operator", apponly: "operator", app: "operator",
   운영자: "operator", 오퍼레이터: "operator", 사용자: "operator", 일반: "operator",
