@@ -773,13 +773,16 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             <div key={person.id} style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "14px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
               <img src={person.photoUrl} alt="" style={{ width: "44px", height: "44px", borderRadius: "10px", objectFit: "cover", flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                {(person.roleLabel || person.priorityLabel || person.groupId) && (
-                  /* Wraps, so two tags in a narrow card stack rather than squeezing each other. */
+                {(person.priorityLabel || person.groupId) && (
+                  /* Group and priority only. The role tag came off: three stacked pills pushed the
+                     name to the third line and made every card a different height, and role is the
+                     one of the three a card is not read for — it is a column in the table view,
+                     where comparing it across the list is the actual job. Wraps, so a long group
+                     name and the priority beside it stack rather than squeeze each other. */
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "4px" }}>
                     {person.groupId && groupById.has(person.groupId) && (
                       <Tag label={groupById.get(person.groupId)!.name} bg="var(--info-100)" color="var(--info-500)" />
                     )}
-                    {person.roleLabel && <RoleTag label={t.roleText[person.roleLabel] ?? person.roleLabel} />}
                     {person.priorityLabel && <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} />}
                   </div>
                 )}
