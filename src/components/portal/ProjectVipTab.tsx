@@ -94,6 +94,8 @@ interface VipDict {
   groupKeepMembers: (members: number) => string;
   groupDeleteMembers: (members: number) => string;
   groupRemovedWithMembersTitle: (members: number) => string;
+  close: string;
+  detailNoNote: string;
 }
 
 const T: Record<"en" | "ko", VipDict> = {
@@ -164,6 +166,8 @@ const T: Record<"en" | "ko", VipDict> = {
     groupKeepMembers: (members: number) => `Keep ${members}`,
     groupDeleteMembers: (members: number) => `Delete ${members} too`,
     groupRemovedWithMembersTitle: (members: number) => `Group and ${members} member(s) removed`,
+    close: "Close",
+    detailNoNote: "No note",
     bulkEmptyDesc: "Expected CSV rows as \"name,description\".",
   },
   ko: {
@@ -233,6 +237,8 @@ const T: Record<"en" | "ko", VipDict> = {
     groupKeepMembers: (members: number) => `${members}명은 남기기`,
     groupDeleteMembers: (members: number) => `${members}명도 삭제`,
     groupRemovedWithMembersTitle: (members: number) => `그룹과 ${members}명을 삭제했습니다`,
+    close: "닫기",
+    detailNoNote: "메모 없음",
     bulkEmptyDesc: "CSV 행은 \"이름,설명\" 형식이어야 합니다.",
   },
 };
@@ -463,6 +469,86 @@ function GroupModal({ t, group, projectId, onClose }: {
   );
 }
 
+/**
+ * One registered face, big enough to recognise.
+ *
+ * The grid's 60px thumbnail is a locator, not a likeness — it says which card is whose, and an
+ * operator asking "is this the person I am looking at" cannot answer it from that. This is where
+ * the enrolled photo is actually looked at, so the photo is the largest thing on it.
+ *
+ * It is also the only place a group can be set from the grid: the Group select lives in the table
+ * view's row, so without this, switching to cards took the ability away.
+ */
+function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
+  t: VipDict;
+  person: Person;
+  groups: PersonGroup[];
+  onClose: () => void;
+  onRemove: () => void;
+}) {
+  useEscapeKey(onClose);
+  const setPersonGroup = useVcaStore(s => s.setPersonGroup);
+  // Read off the person passed in, which the caller re-reads from the store each render — a group
+  // handed down as its own prop would be the value from the moment the sheet opened, so changing
+  // the group here would leave the tag above saying the old one.
+  const group = groups.find(g => g.id === person.groupId);
+
+  const row = (label: string, value: React.ReactNode) => (
+    <div style={{ display: "flex", gap: "12px", alignItems: "baseline" }}>
+      <span style={{ fontSize: "12px", color: "var(--gray-500)", minWidth: "72px", flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: "13px", color: "var(--gray-900)", minWidth: 0 }}>{value}</span>
+    </div>
+  );
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "380px", width: "100%", maxHeight: "88vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+        {/* Square, edge to edge, and the corners only rounded at the top so it reads as the sheet's
+            own header rather than a picture sitting inside it. */}
+        <img src={person.photoUrl} alt=""
+          style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", display: "block", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", backgroundColor: "var(--gray-100)" }} />
+        <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div>
+            <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>{person.name}</p>
+            {(group || person.priorityLabel) && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "6px" }}>
+                {group && <Tag label={group.name} bg="var(--info-100)" color="var(--info-500)" />}
+                {person.priorityLabel && <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} />}
+              </div>
+            )}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: BORDER, paddingTop: "12px" }}>
+            {row(t.colRole, person.roleLabel
+              ? (t.roleText[person.roleLabel] ?? person.roleLabel)
+              : <span style={{ color: "var(--gray-300)" }}>—</span>)}
+            {row(t.colRegistered, person.registeredAt)}
+            {row(t.colNote, person.description || <span style={{ color: "var(--gray-400)" }}>{t.detailNoNote}</span>)}
+            {row(t.colGroup, (
+              <FilterSelect
+                fitContent
+                value={person.groupId ?? ""}
+                onChange={v => setPersonGroup(person.id, v || undefined)}
+                options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
+              />
+            ))}
+          </div>
+        </div>
+        <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "space-between", gap: "8px" }}>
+          <button onClick={onRemove}
+            style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--danger-400)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {t.removeAction}
+          </button>
+          <button onClick={onClose}
+            style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {t.close}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const persons = useVcaStore(s => s.persons);
   const personGroups = useVcaStore(s => s.personGroups);
@@ -491,6 +577,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const showGroupColumn = vipTab === "all";
   const [groupModalFor, setGroupModalFor] = useState<{ group: PersonGroup | null } | null>(null);
   const [confirmingGroupRemove, setConfirmingGroupRemove] = useState<PersonGroup | null>(null);
+  const [detailFor, setDetailFor] = useState<Person | null>(null);
   const { sort, toggle: toggleSort } = useTableSort<VipSortKey>({ key: "registered", direction: "desc" });
   const [searchFocused, setSearchFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -770,8 +857,17 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "12px" }}>
           {projectPersons.map(person => (
-            <div key={person.id} style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "14px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
-              <img src={person.photoUrl} alt="" style={{ width: "44px", height: "44px", borderRadius: "10px", objectFit: "cover", flexShrink: 0 }} />
+            <div key={person.id}
+              onClick={() => setDetailFor(person)}
+              role="button" tabIndex={0}
+              onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDetailFor(person); } }}
+              style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "14px", display: "flex", gap: "12px", alignItems: "flex-start", cursor: "pointer" }}>
+              {/* 60, not 44. At 44 the thumbnail told you which card was whose and nothing more —
+                  a face that small cannot be compared to a person standing in front of you, which
+                  is what a watchlist is for. The detail sheet behind the card carries the size that
+                  actually answers that; this is the largest the grid can give without the tags and
+                  the name losing their line. */}
+              <img src={person.photoUrl} alt="" style={{ width: "60px", height: "60px", borderRadius: "10px", objectFit: "cover", flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 {/* Name first. The tags used to sit above it, which put a pill where the eye goes
                     for the thing a watchlist card is actually scanned for — a face and a name. The
@@ -793,7 +889,8 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 {person.description && <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "5px" }}>{person.description}</p>}
                 <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "4px" }}>{t.registered(person.registeredAt)}</p>
               </div>
-              <button onClick={() => setConfirmingRemove(person)} title={t.removeVip} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", flexShrink: 0 }}>
+              {/* stopPropagation, or removing somebody also opens their detail behind the dialog. */}
+              <button onClick={e => { e.stopPropagation(); setConfirmingRemove(person); }} title={t.removeVip} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", flexShrink: 0 }}>
                 <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
                   <path d="M2.91663 4.08333H11.0833M5.83329 6.41667V9.33333M8.16663 6.41667V9.33333M3.49996 4.08333L4.08329 10.9167C4.08329 11.2261 4.20621 11.5228 4.42501 11.7416C4.6438 11.9604 4.9405 12.0833 5.24996 12.0833H8.74996C9.05942 12.0833 9.35612 11.9604 9.57491 11.7416C9.79371 11.5228 9.91663 11.2261 9.91663 10.9167L10.5 4.08333M5.24996 4.08333V2.33333C5.24996 2.17862 5.31142 2.03025 5.42082 1.92085C5.53022 1.81146 5.67858 1.75 5.83329 1.75H8.16663C8.32134 1.75 8.4697 1.81146 8.5791 1.92085C8.68849 2.03025 8.74996 2.17862 8.74996 2.33333V4.08333" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -806,6 +903,15 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       {showRegister && <RegisterVipModal t={t} onClose={() => setShowRegister(false)} onSubmit={register} />}
       {confirmingRemove && (
         <RemoveVipConfirmModal t={t} person={confirmingRemove} onClose={() => setConfirmingRemove(null)} onConfirm={confirmRemove} />
+      )}
+      {detailFor && (
+        <PersonDetailModal
+          t={t}
+          person={persons.find(p => p.id === detailFor.id) ?? detailFor}
+          groups={personGroups.filter(g => g.projectId === projectId)}
+          onClose={() => setDetailFor(null)}
+          onRemove={() => { setConfirmingRemove(detailFor); setDetailFor(null); }}
+        />
       )}
       {groupModalFor && (
         <GroupModal t={t} group={groupModalFor.group} projectId={projectId} onClose={() => setGroupModalFor(null)} />
