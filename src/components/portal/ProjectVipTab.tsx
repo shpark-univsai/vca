@@ -261,21 +261,32 @@ function RemoveVipConfirmModal({ t, person, onClose, onConfirm }: { t: VipDict; 
   );
 }
 
-function RoleTag({ label }: { label: string }) {
+/**
+ * Pill shared by both tags.
+ *
+ * nowrap is the whole point: "VERY HIGH" is two words, and inside a card that narrows with the grid
+ * it broke across two lines, turning a pill into a lozenge twice the height of the one beside it.
+ * A tag is a label, not a paragraph — it keeps its line and the row wraps around it instead.
+ */
+function Tag({ label, bg, color }: { label: string; bg: string; color: string }) {
   return (
-    <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 6px", borderRadius: "999px", backgroundColor: "var(--gray-100)", color: "var(--gray-600)", textTransform: "uppercase" }}>
+    <span style={{
+      display: "inline-flex", alignItems: "center", height: "18px",
+      fontSize: "10px", fontWeight: 600, padding: "0 7px", borderRadius: "999px",
+      backgroundColor: bg, color, textTransform: "uppercase", whiteSpace: "nowrap", flexShrink: 0,
+    }}>
       {label}
     </span>
   );
 }
 
+function RoleTag({ label }: { label: string }) {
+  return <Tag label={label} bg="var(--gray-100)" color="var(--gray-600)" />;
+}
+
 function PriorityTag({ priority, text }: { priority: NonNullable<Person["priorityLabel"]>; text: string }) {
   const { bg, color } = PRIORITY_COLOR[priority];
-  return (
-    <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 6px", borderRadius: "999px", backgroundColor: bg, color, textTransform: "uppercase" }}>
-      {text}
-    </span>
-  );
+  return <Tag label={text} bg={bg} color={color} />;
 }
 
 export default function ProjectVipTab({ projectId }: { projectId: string }) {
@@ -471,7 +482,8 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               <img src={person.photoUrl} alt="" style={{ width: "44px", height: "44px", borderRadius: "10px", objectFit: "cover", flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 {(person.roleLabel || person.priorityLabel) && (
-                  <div style={{ display: "flex", gap: "4px", marginBottom: "4px" }}>
+                  /* Wraps, so two tags in a narrow card stack rather than squeezing each other. */
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "4px" }}>
                     {person.roleLabel && <RoleTag label={t.roleText[person.roleLabel] ?? person.roleLabel} />}
                     {person.priorityLabel && <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} />}
                   </div>
