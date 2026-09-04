@@ -1,16 +1,19 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useVcaStore, type Person } from "@/lib/vcaStore";
+import { useVcaStore, type Person, type PersonGroup } from "@/lib/vcaStore";
 import { getFacePhoto } from "@/lib/mockData";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, FilterSelect, SortableHeader, sortRows, useTableSort } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, Tooltip, sortRows, useTableSort } from "./PortalShared";
 
 type VipSortKey = "name" | "role" | "priority" | "registered";
 
 const VIP_GRID = "40px 1.2fr 0.7fr 0.7fr 0.8fr 1.4fr 32px";
+/** The All tab adds a Group column; the Individuals tab would print "Individual" on every row. */
+const VIP_GRID_WITH_GROUP = "40px 1.1fr 0.9fr 0.65fr 0.7fr 0.75fr 1.1fr 32px";
+const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const ROLE_LABELS = ["Regular", "Lead", "Captain", "Health", "Special"];
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -61,6 +64,33 @@ interface VipDict {
   bulkEmptyTitle: string;
   bulkSuccessDesc: (count: number, fileName: string) => string;
   bulkEmptyDesc: string;
+  // Tabs and groups
+  tabAll: string;
+  tabIndividuals: string;
+  tabGroups: string;
+  tabAllHint: string;
+  tabIndividualsHint: string;
+  tabGroupsHint: string;
+  addGroup: string;
+  colGroup: string;
+  colMembers: string;
+  groupNone: string;
+  noIndividuals: string;
+  noGroups: string;
+  groupModalAddTitle: string;
+  groupModalEditTitle: string;
+  groupNameLabel: string;
+  groupNamePlaceholder: string;
+  groupDescLabel: string;
+  groupDescPlaceholder: string;
+  groupSave: string;
+  editGroup: string;
+  removeGroup: string;
+  groupAddedTitle: string;
+  groupUpdatedTitle: string;
+  groupRemovedTitle: string;
+  confirmRemoveGroupTitle: (name: string) => string;
+  confirmRemoveGroupBody: (members: number) => string;
 }
 
 const T: Record<"en" | "ko", VipDict> = {
@@ -100,6 +130,34 @@ const T: Record<"en" | "ko", VipDict> = {
     bulkSuccessTitle: "Bulk upload complete",
     bulkEmptyTitle: "No rows imported",
     bulkSuccessDesc: (count: number, fileName: string) => `${count} VIP(s) registered from ${fileName}.`,
+    tabAll: "All",
+    tabIndividuals: "Individuals",
+    tabGroups: "Groups",
+    tabAllHint: "Every person registered for this project, whether or not they belong to a group.",
+    tabIndividualsHint: "People registered on their own — nobody in a group.",
+    tabGroupsHint: "Parties registered together: a visiting delegation, a protection detail. Removing a group keeps its members registered.",
+    addGroup: "Add group",
+    colGroup: "Group",
+    colMembers: "Members",
+    groupNone: "Individual",
+    noIndividuals: "Everybody registered here belongs to a group.",
+    noGroups: "No groups yet.",
+    groupModalAddTitle: "Add group",
+    groupModalEditTitle: "Edit group",
+    groupNameLabel: "Group name *",
+    groupNamePlaceholder: "e.g. City Hall delegation",
+    groupDescLabel: "Note",
+    groupDescPlaceholder: "e.g. Quarterly inspection visit",
+    groupSave: "Save",
+    editGroup: "Edit",
+    removeGroup: "Remove group",
+    groupAddedTitle: "Group added",
+    groupUpdatedTitle: "Group updated",
+    groupRemovedTitle: "Group removed",
+    confirmRemoveGroupTitle: (name: string) => `Remove ${name}?`,
+    confirmRemoveGroupBody: (members: number) => members === 0
+      ? "The group has no members. Nothing else changes."
+      : `Its ${members} member(s) stay registered and become individuals — their faces are still enrolled and still matched. Only the grouping goes.`,
     bulkEmptyDesc: "Expected CSV rows as \"name,description\".",
   },
   ko: {
@@ -138,6 +196,34 @@ const T: Record<"en" | "ko", VipDict> = {
     bulkSuccessTitle: "일괄 업로드 완료",
     bulkEmptyTitle: "가져온 행이 없습니다",
     bulkSuccessDesc: (count: number, fileName: string) => `${fileName}에서 VIP ${count}명이 등록되었습니다.`,
+    tabAll: "전체",
+    tabIndividuals: "개인",
+    tabGroups: "그룹",
+    tabAllHint: "이 프로젝트에 등록된 사람 전부입니다. 그룹에 속했는지와 무관합니다.",
+    tabIndividualsHint: "혼자 등록된 사람입니다 — 그룹에 속한 사람은 빠집니다.",
+    tabGroupsHint: "함께 등록된 일행입니다: 방문단, 경호 대상. 그룹을 지워도 소속된 사람은 등록된 채로 남습니다.",
+    addGroup: "그룹 추가",
+    colGroup: "그룹",
+    colMembers: "인원",
+    groupNone: "개인",
+    noIndividuals: "여기 등록된 사람은 모두 그룹에 속해 있습니다.",
+    noGroups: "아직 그룹이 없습니다.",
+    groupModalAddTitle: "그룹 추가",
+    groupModalEditTitle: "그룹 편집",
+    groupNameLabel: "그룹 이름 *",
+    groupNamePlaceholder: "예: 시청 방문단",
+    groupDescLabel: "메모",
+    groupDescPlaceholder: "예: 분기 정기 시찰",
+    groupSave: "저장",
+    editGroup: "편집",
+    removeGroup: "그룹 삭제",
+    groupAddedTitle: "그룹을 추가했습니다",
+    groupUpdatedTitle: "그룹을 수정했습니다",
+    groupRemovedTitle: "그룹을 삭제했습니다",
+    confirmRemoveGroupTitle: (name: string) => `${name}을 삭제할까요?`,
+    confirmRemoveGroupBody: (members: number) => members === 0
+      ? "소속된 사람이 없습니다. 달라지는 것이 없습니다."
+      : `소속된 ${members}명은 등록된 채로 남아 개인이 됩니다 — 얼굴은 그대로 등록돼 있고 계속 인식됩니다. 묶음만 사라집니다.`,
     bulkEmptyDesc: "CSV 행은 \"이름,설명\" 형식이어야 합니다.",
   },
 };
@@ -289,8 +375,90 @@ function PriorityTag({ priority, text }: { priority: NonNullable<Person["priorit
   return <Tag label={text} bg={bg} color={color} />;
 }
 
+/** Add or edit a party. Membership is not set here — a person is put in a group from their own row. */
+function GroupModal({ t, group, projectId, onClose }: {
+  t: VipDict; group: PersonGroup | null; projectId: string; onClose: () => void;
+}) {
+  useEscapeKey(onClose);
+  const addPersonGroup = useVcaStore(s => s.addPersonGroup);
+  const updatePersonGroup = useVcaStore(s => s.updatePersonGroup);
+  const { showToast } = useToast();
+  const [name, setName] = useState(group?.name ?? "");
+  const [description, setDescription] = useState(group?.description ?? "");
+  const [priority, setPriority] = useState<NonNullable<Person["priorityLabel"]>>(group?.priorityLabel ?? "normal");
+
+  const save = () => {
+    if (!name.trim()) return;
+    if (group) {
+      updatePersonGroup(group.id, { name: name.trim(), description: description.trim() || undefined, priorityLabel: priority });
+      showToast({ variant: "success", title: t.groupUpdatedTitle, desc: name.trim() });
+    } else {
+      addPersonGroup({
+        name: name.trim(), description: description.trim() || undefined, priorityLabel: priority,
+        projectId, registeredAt: new Date().toISOString().slice(0, 10),
+      });
+      showToast({ variant: "success", title: t.groupAddedTitle, desc: name.trim() });
+    }
+    onClose();
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px",
+    border: BORDER, fontSize: "13px", fontFamily: "inherit",
+  };
+  const label = (text: string) => (
+    <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{text}</label>
+  );
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "420px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
+            {group ? t.groupModalEditTitle : t.groupModalAddTitle}
+          </p>
+          <div>
+            {label(t.groupNameLabel)}
+            <input value={name} onChange={e => setName(e.target.value)} placeholder={t.groupNamePlaceholder} style={inputStyle} />
+          </div>
+          <div>
+            {label(t.groupDescLabel)}
+            <input value={description} onChange={e => setDescription(e.target.value)} placeholder={t.groupDescPlaceholder} style={inputStyle} />
+          </div>
+          <div>
+            {label(t.priorityLabel)}
+            <FilterSelect
+              value={priority}
+              onChange={v => setPriority(v as NonNullable<Person["priorityLabel"]>)}
+              options={PRIORITY_LABELS.map(pl => ({ value: pl, label: t.priorityText[pl] }))}
+            />
+          </div>
+        </div>
+        <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {t.cancel}
+          </button>
+          <button onClick={save} disabled={!name.trim()}
+            style={{
+              padding: "9px 16px", borderRadius: "999px", border: "none",
+              backgroundColor: name.trim() ? "var(--primary-400)" : "var(--gray-200)",
+              color: name.trim() ? "white" : "var(--gray-400)",
+              fontSize: "13px", fontWeight: 700, cursor: name.trim() ? "pointer" : "not-allowed",
+            }}>
+            {t.groupSave}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const persons = useVcaStore(s => s.persons);
+  const personGroups = useVcaStore(s => s.personGroups);
+  const removePersonGroup = useVcaStore(s => s.removePersonGroup);
+  const setPersonGroup = useVcaStore(s => s.setPersonGroup);
   const addPerson = useVcaStore(s => s.addPerson);
   const removePerson = useVcaStore(s => s.removePerson);
   const { showToast } = useToast();
@@ -303,13 +471,33 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   // recognises. Table is for the other job — comparing role, priority and when someone was added
   // across the whole list, which a wall of cards cannot do.
   const [view, setView] = useState<"grid" | "table">("grid");
+  /**
+   * All / Individuals / Groups. Same underlined tab row Input Sources and Users & Permissions use.
+   *
+   * "All" is a real answer here in a way it was not on the Users page: a group's members are
+   * people, so the combined tab is a list of people with a Group column — every row fills every
+   * column. Individuals is the same list minus anyone in a group; Groups is the parties themselves.
+   */
+  const [vipTab, setVipTab] = useState<"all" | "individuals" | "groups">("all");
+  const showGroupColumn = vipTab === "all";
+  const [groupModalFor, setGroupModalFor] = useState<{ group: PersonGroup | null } | null>(null);
+  const [confirmingGroupRemove, setConfirmingGroupRemove] = useState<PersonGroup | null>(null);
   const { sort, toggle: toggleSort } = useTableSort<VipSortKey>({ key: "registered", direction: "desc" });
   const [searchFocused, setSearchFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const q = search.trim().toLowerCase();
-  const matchingPersons = persons
-    .filter(p => p.projectId === projectId)
+  const allProjectPersons = persons.filter(p => p.projectId === projectId);
+  const projectGroups = personGroups
+    .filter(g => g.projectId === projectId)
+    .filter(g => !q || g.name.toLowerCase().includes(q));
+  const groupById = new Map(personGroups.map(g => [g.id, g]));
+  // Derived, never stored — a stored member count is a number that goes wrong the first time
+  // somebody removes a person. See PersonGroup in the store.
+  const memberCountOf = (groupId: string) => allProjectPersons.filter(p => p.groupId === groupId).length;
+
+  const matchingPersons = allProjectPersons
+    .filter(p => vipTab !== "individuals" || !p.groupId)
     .filter(p => !q || p.name.toLowerCase().includes(q));
   // Sorting only applies to the table — the grid keeps registration order, because a wall of cards
   // has no column headings to say what it is sorted by.
@@ -378,8 +566,17 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.pageTitle}</p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.pageDesc}</p>
         </div>
-        <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={handleBulkUpload} style={{ display: "none" }} />
+          {/* Tools follow the tab: registering a face and creating a party are different jobs, and
+              a bulk face upload has nothing to do with the list of parties. */}
+          {vipTab === "groups" ? (
+            <button onClick={() => setGroupModalFor({ group: null })}
+              style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
+              {t.addGroup}
+            </button>
+          ) : (<>
           <button onClick={() => fileInputRef.current?.click()}
             style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 9.33V1.75M7 1.75 4.08 4.67M7 1.75 9.92 4.67M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -390,7 +587,34 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
             {t.registerVip}
           </button>
+          </>)}
         </div>
+      </div>
+
+      {/* All / Individuals / Groups. Same underlined row as Input Sources and Users & Permissions. */}
+      <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
+        {([
+          { id: "all", label: t.tabAll, count: allProjectPersons.length, hint: t.tabAllHint },
+          { id: "individuals", label: t.tabIndividuals, count: allProjectPersons.filter(p => !p.groupId).length, hint: t.tabIndividualsHint },
+          { id: "groups", label: t.tabGroups, count: personGroups.filter(g => g.projectId === projectId).length, hint: t.tabGroupsHint },
+        ] as { id: "all" | "individuals" | "groups"; label: string; count: number; hint: string }[]).map(tab => {
+          const active = vipTab === tab.id;
+          return (
+            <Tooltip key={tab.id} text={tab.hint}>
+              <button onClick={() => setVipTab(tab.id)}
+                style={{
+                  display: "flex", alignItems: "center", gap: "6px",
+                  background: "none", border: "none", cursor: "pointer",
+                  padding: "0 2px 10px", fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
+                  color: active ? "var(--gray-900)" : "var(--gray-500)",
+                  borderBottom: active ? "2px solid var(--gray-900)" : "2px solid transparent",
+                }}>
+                {tab.label}
+                <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{tab.count}</span>
+              </button>
+            </Tooltip>
+          );
+        })}
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
@@ -414,7 +638,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       </div>
         <div style={{ flex: 1 }} />
         {/* Same segmented control the Input Sources tab uses, so the one gesture for "show me this
-            differently" looks the same in both places. */}
+            differently" looks the same in both places. Not on the Groups tab: a party has no face,
+            so a wall of cards would be a wall of empty squares. */}
+        {vipTab !== "groups" && (
         <div style={{ display: "flex", alignItems: "center", height: CONTROL_HEIGHT, boxSizing: "border-box", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px", flexShrink: 0 }}>
           {(["grid", "table"] as const).map(v => (
             <button key={v} onClick={() => setView(v)}
@@ -427,22 +653,65 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             </button>
           ))}
         </div>
+        )}
       </div>
 
-      {projectPersons.length === 0 ? (
+      {vipTab === "groups" ? (
+        projectGroups.length === 0 ? (
+          <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", padding: "32px", textAlign: "center" }}>
+            <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>{q ? t.noSearchResults : t.noGroups}</p>
+          </div>
+        ) : (
+          <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
+            <div style={{ display: "grid", gridTemplateColumns: GROUP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+              {[t.colGroup, t.colMembers, t.colPriority, t.colNote, ""].map((h, i) => (
+                <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+              ))}
+            </div>
+            {projectGroups.map((group, i) => {
+              const isLast = i === projectGroups.length - 1;
+              const members = memberCountOf(group.id);
+              return (
+                <div key={group.id} style={{
+                  display: "grid", gridTemplateColumns: GROUP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
+                  borderBottom: isLast ? "none" : BORDER,
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.name}</p>
+                    <p style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.registered(group.registeredAt)}</p>
+                  </div>
+                  {/* Derived from Person.groupId, so it cannot disagree with the rows it counts. */}
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: members === 0 ? "var(--gray-300)" : "var(--gray-900)" }}>{members}</span>
+                  <span>{group.priorityLabel
+                    ? <PriorityTag priority={group.priorityLabel} text={t.priorityText[group.priorityLabel]} />
+                    : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
+                  <span title={group.description} style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {group.description || <span style={{ color: "var(--gray-300)" }}>—</span>}
+                  </span>
+                  <RowActionsMenu actions={[
+                    { label: t.editGroup, onClick: () => setGroupModalFor({ group }) },
+                    { label: t.removeGroup, onClick: () => setConfirmingGroupRemove(group), danger: true },
+                  ]} />
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : projectPersons.length === 0 ? (
         <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", padding: "32px", textAlign: "center" }}>
           <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
-            {q ? t.noSearchResults : t.noVips}
+            {q ? t.noSearchResults : vipTab === "individuals" ? t.noIndividuals : t.noVips}
           </p>
         </div>
       ) : view === "table" ? (
         <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
-          <div style={{ display: "grid", gridTemplateColumns: VIP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
             {/* The photo and the note carry no sortKey — a face has no order, and a free-text note
                 sorted alphabetically answers nothing. */}
             <span />
             {([
               { label: t.colVip, key: "name" },
+              ...(showGroupColumn ? [{ label: t.colGroup }] : []),
               { label: t.colRole, key: "role" },
               { label: t.colPriority, key: "priority" },
               { label: t.colRegistered, key: "registered" },
@@ -456,12 +725,26 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             const isLast = i === projectPersons.length - 1;
             return (
               <div key={person.id} style={{
-                display: "grid", gridTemplateColumns: VIP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
+                display: "grid", gridTemplateColumns: showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
                 borderBottom: isLast ? "none" : BORDER,
                 borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
               }}>
                 <img src={person.photoUrl} alt="" style={{ width: "32px", height: "32px", borderRadius: "8px", objectFit: "cover" }} />
                 <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.name}</p>
+                {/* Membership is set from the person, not from the group. Putting a member list in
+                    the group editor would mean two places that have to agree about who is in it;
+                    one select on the person's own row is the single place that decides. */}
+                {showGroupColumn && (
+                  <FilterSelect
+                    fitContent
+                    value={person.groupId ?? ""}
+                    onChange={v => setPersonGroup(person.id, v || undefined)}
+                    options={[
+                      { value: "", label: t.groupNone },
+                      ...personGroups.filter(g => g.projectId === projectId).map(g => ({ value: g.id, label: g.name })),
+                    ]}
+                  />
+                )}
                 <span>{person.roleLabel ? <RoleTag label={t.roleText[person.roleLabel] ?? person.roleLabel} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
                 <span>{person.priorityLabel ? <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
                 <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{person.registeredAt}</span>
@@ -481,9 +764,12 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             <div key={person.id} style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "14px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
               <img src={person.photoUrl} alt="" style={{ width: "44px", height: "44px", borderRadius: "10px", objectFit: "cover", flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                {(person.roleLabel || person.priorityLabel) && (
+                {(person.roleLabel || person.priorityLabel || person.groupId) && (
                   /* Wraps, so two tags in a narrow card stack rather than squeezing each other. */
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "4px" }}>
+                    {person.groupId && groupById.has(person.groupId) && (
+                      <Tag label={groupById.get(person.groupId)!.name} bg="var(--info-100)" color="var(--info-500)" />
+                    )}
                     {person.roleLabel && <RoleTag label={t.roleText[person.roleLabel] ?? person.roleLabel} />}
                     {person.priorityLabel && <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} />}
                   </div>
@@ -505,6 +791,24 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       {showRegister && <RegisterVipModal t={t} onClose={() => setShowRegister(false)} onSubmit={register} />}
       {confirmingRemove && (
         <RemoveVipConfirmModal t={t} person={confirmingRemove} onClose={() => setConfirmingRemove(null)} onConfirm={confirmRemove} />
+      )}
+      {groupModalFor && (
+        <GroupModal t={t} group={groupModalFor.group} projectId={projectId} onClose={() => setGroupModalFor(null)} />
+      )}
+      {confirmingGroupRemove && (
+        <ConfirmModal
+          title={t.confirmRemoveGroupTitle(confirmingGroupRemove.name)}
+          body={t.confirmRemoveGroupBody(memberCountOf(confirmingGroupRemove.id))}
+          confirmLabel={t.removeGroup}
+          cancelLabel={t.cancel}
+          danger
+          onConfirm={() => {
+            removePersonGroup(confirmingGroupRemove.id);
+            showToast({ variant: "warning", title: t.groupRemovedTitle, desc: confirmingGroupRemove.name });
+            setConfirmingGroupRemove(null);
+          }}
+          onClose={() => setConfirmingGroupRemove(null)}
+        />
       )}
     </div>
   );

@@ -208,6 +208,33 @@ export interface Person {
   // configured) still type-check.
   roleLabel?: string;
   priorityLabel?: "normal" | "high" | "very_high";
+  /**
+   * The group this person belongs to, if any.
+   *
+   * One group at most, not a list: a group here is a party that arrives and is watched together (a
+   * visiting delegation, an executive detail), and being in two of those at once is not a thing
+   * that happens. Absent means an individual registration, which is the ordinary case — the VIP
+   * registry's People tab is exactly the rows with none of these.
+   */
+  groupId?: string;
+}
+
+/**
+ * A party registered together in the Face DB — a visiting delegation, an executive detail.
+ *
+ * It carries no member list of its own. Membership lives on Person.groupId, so a person can be
+ * registered, moved between groups and removed without a second place having to agree about it, and
+ * the count on a group row is derived rather than stored (a stored count is a number that goes
+ * wrong the first time somebody deletes a person).
+ */
+export interface PersonGroup {
+  id: string;
+  name: string;
+  description?: string;
+  /** The group's default for its members — the same three levels a Person carries. */
+  priorityLabel?: "normal" | "high" | "very_high";
+  projectId?: string;
+  registeredAt: string;
 }
 
 
@@ -216,6 +243,7 @@ interface VcaStoreState {
   projects: Project[];
   cameras: Camera[];
   persons: Person[];
+  personGroups: PersonGroup[];
   events: VcaEvent[];
   uploads: UploadedMedia[];
   portalUsers: PortalUser[];
@@ -249,6 +277,11 @@ interface VcaStoreState {
   updateTeamMail: (teamId: string, updates: Pick<Team, "mailDomain" | "smtp">) => void;
   addPerson: (person: Omit<Person, "id">) => void;
   removePerson: (personId: string) => void;
+  addPersonGroup: (group: Omit<PersonGroup, "id">) => string;
+  updatePersonGroup: (groupId: string, updates: Partial<Omit<PersonGroup, "id">>) => void;
+  /** Removes the group only. Its members stay registered and become individuals again. */
+  removePersonGroup: (groupId: string) => void;
+  setPersonGroup: (personId: string, groupId: string | undefined) => void;
   addEvent: (event: Omit<VcaEvent, "id">) => void;
   markNotificationsRead: () => void;
   addPortalUser: (user: Omit<PortalUser, "id">) => string;
@@ -952,9 +985,11 @@ export const PERSONS: Person[] = (() => {
   // auto-generated entries above predate per-project scoping (see the Person.projectId comment)
   // and are invisible there, so that panel has nothing to show for proj-sg without these.
   persons.push(
-    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2026-09-01", projectId: "proj-sg", roleLabel: "Lead", priorityLabel: "high" },
-    { id: "person-portal-2", name: "Sarah Lim", type: "VIP", photoUrl: getFacePhoto("person-portal-2"), registeredAt: "2026-08-30", projectId: "proj-sg", roleLabel: "Regular", priorityLabel: "normal" },
-    { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28", projectId: "proj-sg", roleLabel: "Special", priorityLabel: "very_high" },
+    // Two of these sit in a group and two do not, so the registry's People tab (individuals only)
+    // and its Groups tab both have rows without either being empty.
+    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2026-09-01", projectId: "proj-sg", roleLabel: "Lead", priorityLabel: "high", groupId: "pgroup-1" },
+    { id: "person-portal-2", name: "Sarah Lim", type: "VIP", photoUrl: getFacePhoto("person-portal-2"), registeredAt: "2026-08-30", projectId: "proj-sg", roleLabel: "Regular", priorityLabel: "normal", groupId: "pgroup-1" },
+    { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28", projectId: "proj-sg", roleLabel: "Special", priorityLabel: "very_high", groupId: "pgroup-2" },
     { id: "person-portal-4", name: "Rachel Wong", type: "VIP", photoUrl: getFacePhoto("person-portal-4"), registeredAt: "2026-08-25", projectId: "proj-sg", roleLabel: "Regular", priorityLabel: "normal" },
   );
   return persons;
@@ -963,7 +998,16 @@ export const PERSONS: Person[] = (() => {
 let cameraSeq = CAMERAS.length;
 let uploadSeq = UPLOADS.length;
 let projectSeq = PROJECTS.length;
+/**
+ * Seeded parties. Members are attached below by groupId rather than listed here — see PersonGroup.
+ */
+const PERSON_GROUPS: PersonGroup[] = [
+  { id: "pgroup-1", name: "City Hall delegation", description: "Quarterly inspection visit", priorityLabel: "high", projectId: "proj-sg", registeredAt: "2026-08-30" },
+  { id: "pgroup-2", name: "Executive detail", description: "Standing protection list", priorityLabel: "very_high", projectId: "proj-sg", registeredAt: "2026-08-21" },
+];
+
 let personSeq = PERSONS.length;
+let personGroupSeq = PERSON_GROUPS.length;
 let eventSeq = SEED_EVENTS.length;
 let portalUserSeq = PORTAL_USERS.length;
 let orgSeq = TEAMS.length;
@@ -1063,6 +1107,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   cameras: CAMERAS,
   uploads: UPLOADS,
   persons: PERSONS,
+  personGroups: PERSON_GROUPS,
   events: SEED_EVENTS,
   portalUsers: PORTAL_USERS,
   servers: SERVERS,
@@ -1199,6 +1244,38 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     })),
   removePerson: (personId) =>
     set(state => ({ persons: state.persons.filter(p => p.id !== personId) })),
+  addPersonGroup: (group) => {
+    const id = `pgroup-${++personGroupSeq}`;
+    set(state => ({
+      personGroups: [...state.personGroups, { ...group, id }],
+      auditLog: [{ id: `audit-${++auditSeq}`, projectId: group.projectId, message: `VIP group created: ${group.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+    }));
+    return id;
+  },
+  updatePersonGroup: (groupId, updates) =>
+    set(state => {
+      const group = state.personGroups.find(g => g.id === groupId);
+      if (!group) return {};
+      return {
+        personGroups: state.personGroups.map(g => (g.id === groupId ? { ...g, ...updates } : g)),
+        auditLog: [{ id: `audit-${++auditSeq}`, projectId: group.projectId, message: `VIP group updated: ${updates.name ?? group.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+      };
+    }),
+  removePersonGroup: (groupId) =>
+    set(state => {
+      const group = state.personGroups.find(g => g.id === groupId);
+      const freed = state.persons.filter(p => p.groupId === groupId).length;
+      return {
+        personGroups: state.personGroups.filter(g => g.id !== groupId),
+        // Deleting the party does not un-register the people in it. Their faces are still enrolled
+        // and still matched; they simply stop being a party. Deleting people too would make a
+        // grouping mistake cost the enrolment work, which is the expensive half.
+        persons: state.persons.map(p => (p.groupId === groupId ? { ...p, groupId: undefined } : p)),
+        auditLog: [{ id: `audit-${++auditSeq}`, projectId: group?.projectId, message: `VIP group removed: ${group?.name ?? groupId}${freed > 0 ? ` — ${freed} member(s) kept as individuals` : ""}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+      };
+    }),
+  setPersonGroup: (personId, groupId) =>
+    set(state => ({ persons: state.persons.map(p => (p.id === personId ? { ...p, groupId } : p)) })),
   addEvent: (event) =>
     set(state => {
       if (!event.personName || !event.location) {
