@@ -501,13 +501,19 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
   );
 
   return (
+    // The scroll lives on the backdrop, not on the sheet. On the sheet, overflow-y makes a clipping
+    // context, and the Group select below opens as an absolutely positioned list — inside that
+    // context the list was cut off at the sheet's edge. The backdrop is the viewport, so scrolling
+    // there clips nothing the browser would not clip anyway. `margin: auto` on the sheet is what
+    // keeps a tall one scrollable from its top instead of having its head cut off by centring.
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "380px", width: "100%", maxHeight: "88vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
-        {/* Square, edge to edge, and the corners only rounded at the top so it reads as the sheet's
-            own header rather than a picture sitting inside it. */}
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "380px", width: "100%", margin: "auto", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+        {/* Square, edge to edge, corners rounded only at the top so it reads as the sheet's own
+            header rather than a picture sitting inside it. Capped so the sheet does not need to be
+            taller than a short window on account of the photo alone. */}
         <img src={person.photoUrl} alt=""
-          style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", display: "block", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", backgroundColor: "var(--gray-100)" }} />
+          style={{ width: "100%", aspectRatio: "1 / 1", maxHeight: "320px", objectFit: "cover", display: "block", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", backgroundColor: "var(--gray-100)" }} />
         <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: "12px" }}>
           <div>
             <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>{person.name}</p>

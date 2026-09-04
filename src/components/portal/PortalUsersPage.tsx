@@ -545,15 +545,17 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
+      {/* margin auto, not just centring: with the scroll on the backdrop, a form taller than the
+          window has its top cut off under plain align-items centre. */}
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", margin: "auto", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
         <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.modalTitle}</p>
           <button onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
-        <div style={MODAL_BODY}>
+        <div style={MODAL_BODY_WITH_SELECT}>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder={t.namePlaceholder}
@@ -914,6 +916,19 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
 const MODAL_BODY: React.CSSProperties = {
   padding: "20px", display: "flex", flexDirection: "column", gap: "16px",
   maxHeight: "60vh", overflowY: "auto",
+};
+
+/**
+ * The same body for a modal that contains a FilterSelect.
+ *
+ * overflow-y makes a clipping context, and FilterSelect opens as an absolutely positioned list —
+ * inside one, the list is cut off at the body's edge, which is how the invite modal's Team and Role
+ * options were half-invisible. The scroll moves to the backdrop instead (see the invite modal's own
+ * shell), where it clips nothing the viewport would not. The trade is that a long form scrolls its
+ * header away too; a select you cannot read is the worse of the two.
+ */
+const MODAL_BODY_WITH_SELECT: React.CSSProperties = {
+  padding: "20px", display: "flex", flexDirection: "column", gap: "16px",
 };
 
 /**
