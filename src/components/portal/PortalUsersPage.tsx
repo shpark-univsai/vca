@@ -1467,9 +1467,16 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   // The account-only columns: role, access, person search, MFA, last login. Dropped on the roster
   // tab rather than printed as five dashes per row.
   const showAccountColumns = peopleTab === "accounts";
+  /**
+   * The User column was the widest share of the table (1.3fr, 1.5fr on the roster tab) for content
+   * that is a name over an address — both short. Everything it was holding in reserve was width the
+   * two long-name columns beside it were wrapping for. Narrowed, with a floor rather than a bare
+   * fraction so it cannot collapse to nothing on a small window, and the two lines inside it now
+   * ellipsise instead of pushing the row taller.
+   */
   const GRID = showAccountColumns
-    ? "1.3fr 1.2fr 1.25fr 0.75fr 0.7fr 0.45fr 0.35fr 0.85fr 0.55fr 36px"
-    : "1.5fr 1.2fr 1.25fr 0.9fr 1.1fr 0.6fr 36px";
+    ? "minmax(140px, 1.05fr) 1.2fr 1.25fr 0.75fr 0.7fr 0.45fr 0.35fr 0.85fr 0.55fr 36px"
+    : "minmax(140px, 1.1fr) 1.2fr 1.25fr 0.9fr 1.1fr 0.6fr 36px";
 
   const bulkIssueCodes = () => {
     if (notIssuedIds.length === 0) return;
@@ -1725,9 +1732,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             borderBottom: isLast ? "none" : BORDER,
             borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
           }}>
-            <div>
-              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{u.name}</p>
-              <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.email}</p>
+            <div style={{ minWidth: 0 }}>
+              <p title={u.name} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</p>
+              <p title={u.email} style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</p>
             </div>
             {/* Two lines, not one line and an ellipsis. A legal organisation name ("City of
                 Singapore — Smart Infrastructure Office") reads perfectly well over two and is
@@ -1936,9 +1943,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               {/* The second line is the employee number, not an address: a roster row often has no
                   address at all (that is the reason this path exists), and the number is what the
                   code is handed over against. */}
-              <div>
-                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)" }}>{entry.name}</p>
-                <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{entry.email || entry.employeeId}</p>
+              <div style={{ minWidth: 0 }}>
+                <p title={entry.name} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.name}</p>
+                <p title={entry.email || entry.employeeId} style={{ fontSize: "12px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.email || entry.employeeId}</p>
               </div>
               <span title={orgName(projectTeamId)} style={{
                 fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.4,
