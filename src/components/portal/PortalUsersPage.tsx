@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ActiveFilterCount, ConfirmModal } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 
 const T = {
@@ -36,12 +36,6 @@ const T = {
     suspendedHint: "Kept on the list but blocked from signing in.",
 
     // Toolbar filters
-    filterBy: "Filter by",
-    filterAllPermissions: "All permissions",
-    filterAllStatuses: "All statuses",
-    emptyFiltered: "No users match these filters.",
-    clearFilters: "Clear filters",
-    filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
 
     // Table
     colUser: "User",
@@ -240,12 +234,6 @@ const T = {
     suspendedHint: "명단에는 남아 있지만 로그인이 차단된 상태입니다.",
 
     // Toolbar filters
-    filterBy: "필터",
-    filterAllPermissions: "전체 권한",
-    filterAllStatuses: "전체 상태",
-    emptyFiltered: "이 필터에 해당하는 사용자가 없습니다.",
-    clearFilters: "필터 지우기",
-    filtersActive: (n: number) => `필터 ${n}개`,
 
     // Table
     colUser: "사용자",
@@ -1224,12 +1212,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   } | null>(null);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
-  const [permissionFilter, setPermissionFilter] = useState<PortalPermission | "ALL">("ALL");
   // Name ascending to start: the only order that is stable and that a reader can predict before
   // they have looked. The sortable columns are the ones an administrator asks questions about —
   // who, which team, what permission, when they last signed in, what state they are in.
   const { sort, toggle: toggleSort } = useTableSort<UserSortKey>({ key: "name", direction: "asc" });
-  const [statusFilter, setStatusFilter] = useState<PortalUserStatus | "ALL">("ALL");
 
   // Which recovery path this installation actually has. Everything mail-dependent on this page is
   // gated on it, because a "Send password reset" that quietly posts to nowhere is worse than no
@@ -1248,16 +1234,11 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const currentProject = projects.find(p => p.id === projectId);
   const q = search.trim().toLowerCase();
   // Split in two: the strip above the table counts everyone on the project, the table shows what is
-  // left after filtering. Counting the filtered set instead would make the summary agree with the
-  // table and stop being a summary — filter to "Suspended" and it would proudly report zero admins.
+  // left after the search. Counting the searched set instead would make the summary agree with the
+  // table and stop being a summary.
   const projectUsers = portalUsers.filter(u => u.projectIds.includes(projectId));
-  const activeFilterCount = [permissionFilter, statusFilter].filter(v => v !== "ALL").length;
-  const filtersActive = activeFilterCount > 0;
-  const clearFilters = () => { setPermissionFilter("ALL"); setStatusFilter("ALL"); };
   const filteredUsers = projectUsers
-    .filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
-    .filter(u => permissionFilter === "ALL" || u.permission === permissionFilter)
-    .filter(u => statusFilter === "ALL" || u.status === statusFilter);
+    .filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
   const scopedUsers = sortRows(filteredUsers, sort, (u, key) => {
     switch (key) {
       case "name": return u.name.toLowerCase();
@@ -1327,8 +1308,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
 
       <AccessRequestsPanel projectId={projectId} />
 
-      {/* Search on the left, filters on the right — the Vimeo Members arrangement, and the same one
-          the Cameras tab already uses, so the two toolbars in Portal finally read the same way. */}
+      {/* Search alone. The permission and status filters that used to sit on the right are gone: the
+          counts strip directly above already answers what they were for (how many owners, how many
+          invited, how many suspended), the columns they filtered on are sortable, and a project's
+          account list is short enough to read. */}
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
       <div style={{ position: "relative", flex: 1, minWidth: "220px", maxWidth: "320px" }}>
         <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
@@ -1349,28 +1332,6 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         />
       </div>
 
-        <div style={{ flex: 1 }} />
-        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", flexShrink: 0 }}>{t.filterBy}</span>
-        <FilterSelect
-          value={permissionFilter}
-          onChange={v => setPermissionFilter(v as PortalPermission | "ALL")}
-          options={[
-            { value: "ALL", label: t.filterAllPermissions },
-            ...consoleRoleOptions(t).map(o => ({ value: o.value, label: o.label })),
-            { value: "none", label: t.permNone },
-          ]}
-        />
-        <FilterSelect
-          value={statusFilter}
-          onChange={v => setStatusFilter(v as PortalUserStatus | "ALL")}
-          options={[
-            { value: "ALL", label: t.filterAllStatuses },
-            { value: "active", label: t.statusActive },
-            { value: "invited", label: t.statusInvited },
-            { value: "suspended", label: t.statusSuspended },
-          ]}
-        />
-        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
       </div>
 
       {/* No overflow:hidden here — it used to clip the header row's flat corners to match the
@@ -1400,18 +1361,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         {scopedUsers.length === 0 && (
           <div style={{ padding: "32px 16px", textAlign: "center", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}>
             <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
-              {q ? t.emptySearch : filtersActive ? t.emptyFiltered : t.emptyNoUsers}
+              {q ? t.emptySearch : t.emptyNoUsers}
             </p>
-            {/* A filter that hides everyone looks identical to a project with no users, and the way
-                out is not discoverable from the empty table. Offer it here. */}
-            {filtersActive && (
-              <button
-                onClick={clearFilters}
-                style={{ marginTop: "10px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}
-              >
-                {t.clearFilters}
-              </button>
-            )}
           </div>
         )}
         {scopedUsers.map((u, i) => {
