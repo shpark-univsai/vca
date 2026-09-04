@@ -327,7 +327,7 @@ function RegisterVipModal({ t, onClose, onSubmit }: { t: VipDict; onClose: () =>
             </button>
           </div>
         </div>
-        <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
@@ -354,7 +354,7 @@ function RemoveVipConfirmModal({ t, person, onClose, onConfirm }: { t: VipDict; 
           <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginTop: "12px" }}>{t.confirmRemoveTitle}</p>
           <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px" }}>{t.confirmRemoveBody}</p>
         </div>
-        <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
@@ -456,7 +456,7 @@ function GroupModal({ t, group, projectId, onClose }: {
             />
           </div>
         </div>
-        <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
@@ -623,7 +623,7 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
             arguing on a sheet whose job is to show a photograph, and neither of them was the
             action anybody came for. The only filled button here is Save, and only while there is
             something to save. */}
-        <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
           <button onClick={onClose}
             style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.close}

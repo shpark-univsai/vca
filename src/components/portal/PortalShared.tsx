@@ -610,7 +610,15 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, a
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{title}</p>
           <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.6 }}>{body}</p>
         </div>
-        <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+        {/* No rule above the buttons.
+            Every modal in Portal drew one, and stacked with the header rule, the card edges, the
+            table headings and the row dividers, a dialog was mostly lines — the same reason
+            CARD_BORDER above is "none". The padding already separates the buttons from the text,
+            and a line that is only ever in the same place carries no information.
+            It is kept in the two modals whose body actually scrolls (the credential sheet, the
+            roster import preview), where it marks the edge of the scroll region rather than
+            decorating one. */}
+        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {cancelLabel}
           </button>

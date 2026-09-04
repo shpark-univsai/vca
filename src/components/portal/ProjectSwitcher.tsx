@@ -279,7 +279,7 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
             </div>
 
             {/* Footer */}
-            <div style={{ padding: "12px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end" }}>
+            <div style={{ padding: "12px 20px", display: "flex", justifyContent: "flex-end" }}>
               <button
                 onClick={() => setOpen(false)}
                 style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
