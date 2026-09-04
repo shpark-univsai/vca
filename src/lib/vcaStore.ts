@@ -197,6 +197,17 @@ export interface Person {
   name: string;
   type: EventType;
   photoUrl: string;
+  /**
+   * When this face was enrolled.
+   *
+   * Either a plain date ("2026-08-30") or a full ISO instant — new registrations record the
+   * instant, the seeded rows predate that and only ever had a date. Readers that want the day
+   * take the first ten characters; the detail sheet shows a time only when there is one to show,
+   * because a time nobody recorded is not a time to display.
+   *
+   * HANDOFF NOTE: which zone a recorded instant is read back in is the project-level timezone
+   * setting that is not wired yet — the detail sheet currently formats in the viewer's zone.
+   */
   registeredAt: string;
   description?: string;
   // Which project registered this person — set on everything registered via Portal going

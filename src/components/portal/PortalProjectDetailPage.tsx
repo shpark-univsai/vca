@@ -239,7 +239,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // nowMs-derived, not new Date() directly, so this stays in sync with the same not-yet-mounted ->
   // mounted correction every other clock-reading value on this page already follows.
   const todayStr = nowMs !== null ? new Date(nowMs).toISOString().slice(0, 10) : null;
-  const todayVipCount = todayStr ? projectPersons.filter(p => p.registeredAt === todayStr).length : 0;
+  // startsWith, not equality: registeredAt is a date on the seeded rows and a full ISO instant on
+  // anything registered through Portal now, and "===" quietly counted none of the new ones.
+  const todayVipCount = todayStr ? projectPersons.filter(p => p.registeredAt.startsWith(todayStr)).length : 0;
   const highPriorityVipCount = projectPersons.filter(p => p.priorityLabel === "high" || p.priorityLabel === "very_high").length;
 
   const filteredCameraRows = (cameraStatusFilter === "offline" ? projectCameras.filter(c => c.status === "offline") : projectCameras)
@@ -500,7 +502,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                         <img src={p.photoUrl} alt="" style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
                         <div style={{ minWidth: 0 }}>
                           <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
-                          <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{p.registeredAt}</p>
+                          <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{p.registeredAt.slice(0, 10)}</p>
                         </div>
                       </div>
                     ))}

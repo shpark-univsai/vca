@@ -416,7 +416,7 @@ function GroupModal({ t, group, projectId, onClose }: {
     } else {
       addPersonGroup({
         name: name.trim(), description: description.trim() || undefined, priorityLabel: priority,
-        projectId, registeredAt: new Date().toISOString().slice(0, 10),
+        projectId, registeredAt: new Date().toISOString(),
       });
       showToast({ variant: "success", title: t.groupAddedTitle, desc: name.trim() });
     }
@@ -485,6 +485,22 @@ function GroupModal({ t, group, projectId, onClose }: {
  * It is also the only place a group can be set from the grid: the Group select lives in the table
  * view's row, so without this, switching to cards took the ability away.
  */
+/**
+ * The registration moment as the detail sheet shows it: the day, plus the time when the stored
+ * value carries one. Rows enrolled before Portal recorded instants have only a date, and inventing
+ * a time for them would be making up a fact about when somebody was put on a watchlist.
+ *
+ * Only called from the sheet, which exists after a click, so formatting in the viewer's zone
+ * cannot mismatch between server and client render.
+ */
+function registeredLong(value: string): string {
+  const day = value.slice(0, 10);
+  if (!value.includes("T")) return day;
+  const at = new Date(value);
+  if (Number.isNaN(at.getTime())) return day;
+  return `${day} ${at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+}
+
 /** One footprint for Save and Saved, so the row does not move when the state changes. */
 const SAVE_PILL: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -528,8 +544,15 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (savedTimer.current) clearTimeout(savedTimer.current); }, []);
 
+  /**
+   * The gap between rows was already even (8px), but the Group row holds a 30px control and the
+   * others hold a line of text, so the rhythm read as uneven — the spacing around Group looked
+   * larger because the row itself was. A shared minimum height makes every row the same height
+   * whether it carries a control or a sentence, and centring means the label sits level with
+   * either.
+   */
   const row = (label: string, value: React.ReactNode) => (
-    <div style={{ display: "flex", gap: "12px", alignItems: "baseline" }}>
+    <div style={{ display: "flex", gap: "12px", alignItems: "center", minHeight: "30px" }}>
       <span style={{ fontSize: "12px", color: "var(--gray-500)", minWidth: "72px", flexShrink: 0 }}>{label}</span>
       <span style={{ fontSize: "13px", color: "var(--gray-900)", minWidth: 0 }}>{value}</span>
     </div>
@@ -553,10 +576,12 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
           <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>{person.name}</p>
-            {(group || person.priorityLabel) && (
+            {/* Priority only. The group used to be a tag here too, two rows above the select that
+                sets it — the same fact stated twice, once unchangeable and once not. Priority has
+                no control on this sheet, so the tag is the only place it is said. */}
+            {person.priorityLabel && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "6px" }}>
-                {group && <Tag label={group.name} bg="var(--info-100)" color="var(--info-500)" />}
-                {person.priorityLabel && <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} />}
+                <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} />
               </div>
             )}
           </div>
@@ -569,11 +594,6 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
           ]} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: BORDER, paddingTop: "12px" }}>
-            {row(t.colRole, person.roleLabel
-              ? (t.roleText[person.roleLabel] ?? person.roleLabel)
-              : <span style={{ color: "var(--gray-300)" }}>—</span>)}
-            {row(t.colRegistered, person.registeredAt)}
-            {row(t.colNote, person.description || <span style={{ color: "var(--gray-400)" }}>{t.detailNoNote}</span>)}
             {row(t.colGroup, (
               <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 {/* Fixed box, not fitContent. Sized to its own label, the control changed width
@@ -617,6 +637,17 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
                 )}
               </span>
             ))}
+            {/* Group first, then what qualifies the person, then the note, then when they were
+                enrolled — last because it is the one value nobody comes here to read and the only
+                one that never changes. The time is shown as well: this is the detail view, and on
+                a watchlist "when was this face put in" is a question an inspection asks by the
+                minute, not by the day. Rows enrolled before Portal recorded a time show only the
+                date rather than a made-up one. */}
+            {row(t.colRole, person.roleLabel
+              ? (t.roleText[person.roleLabel] ?? person.roleLabel)
+              : <span style={{ color: "var(--gray-300)" }}>—</span>)}
+            {row(t.colNote, person.description || <span style={{ color: "var(--gray-400)" }}>{t.detailNoNote}</span>)}
+            {row(t.colRegistered, registeredLong(person.registeredAt))}
           </div>
         </div>
         {/* Outlined, not filled. A dark Close next to a red Remove was two saturated blocks
@@ -698,7 +729,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const register = (values: RegisterValues) => {
     addPerson({
       name: values.name, type: "VIP", photoUrl: values.photoUrl ?? getFacePhoto(values.name),
-      registeredAt: new Date().toISOString().slice(0, 10),
+      registeredAt: new Date().toISOString(),
       roleLabel: values.roleLabel, priorityLabel: values.priorityLabel,
       projectId,
     });
@@ -726,7 +757,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         if (!name) return;
         addPerson({
           name, type: "VIP", photoUrl: getFacePhoto(name),
-          registeredAt: new Date().toISOString().slice(0, 10),
+          registeredAt: new Date().toISOString(),
           description: description || undefined,
           projectId,
         });
@@ -929,7 +960,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 )}
                 <span>{person.roleLabel ? <RoleTag label={t.roleText[person.roleLabel] ?? person.roleLabel} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
                 <span>{person.priorityLabel ? <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
-                <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{person.registeredAt}</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{person.registeredAt.slice(0, 10)}</span>
                 <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.description || "—"}</span>
                 <button onClick={() => setConfirmingRemove(person)} title={t.removeVip} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", justifySelf: "end" }}>
                   <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
@@ -983,7 +1014,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                     in front of it was a word repeated on every card to say what the screen it sits
                     on already says. The detail sheet and the table both keep the label, where a
                     date sits next to other labelled values and needs to say which one it is. */}
-                <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "4px" }}>{person.registeredAt}</p>
+                <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "4px" }}>{person.registeredAt.slice(0, 10)}</p>
               </div>
               {/* stopPropagation, or removing somebody also opens their detail behind the dialog. */}
               <button onClick={e => { e.stopPropagation(); setConfirmingRemove(person); }} title={t.removeVip} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", flexShrink: 0 }}>
