@@ -215,6 +215,7 @@ const T = {
     // rule — with nobody in this role no one can grant permissions and there is no way back in —
     // belongs in isLastActiveAdmin's comment, not in a 280px menu.
     lastAdminReason: "The only administrator who can sign in. Make someone else an administrator first.",
+    lastAdminRoleFixed: "The only owner — the role cannot be changed until there is another one.",
     tempExpires: (hours: number) => `Expires in ${hours} hours`,
     tempDone: "Done",
 
@@ -384,6 +385,7 @@ const T = {
     soleAdminTitle: "로그인 가능한 관리자가 한 명입니다",
     soleAdminBody: "권한 부여는 관리자만 할 수 있고, 이 설치에는 공급사 계정이 없습니다. 이 한 계정이 잠기면 아무도 권한을 부여할 수 없고 되돌릴 방법도 없습니다. 두 번째 관리자를 지정하세요.",
     lastAdminReason: "로그인할 수 있는 유일한 관리자입니다. 다른 사람을 먼저 관리자로 지정하세요.",
+    lastAdminRoleFixed: "유일한 소유자입니다 — 다른 소유자가 생기기 전까지 역할을 바꿀 수 없습니다.",
     reactivateUser: "재활성화",
     suspendUser: "정지",
     removeUser: "제거",
@@ -1766,6 +1768,12 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 next to it is where that changes. */}
             {!canEnterPortal(u.permission) ? (
               <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
+            ) : lastAdmin ? (
+              /* The last owner's role is the one the store refuses to change (isLastActiveAdmin) —
+                 demoting them locks the customer out of their own installation. As a select it
+                 opened, offered three roles and then did nothing with the answer. Plain text with
+                 the reason on it says the same thing without the dead end. */
+              <span title={t.lastAdminRoleFixed} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{roleLabel(t, u.permission)}</span>
             ) : manageAccess ? (
               <FilterSelect
                 fitContent
@@ -1790,7 +1798,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                     showToast({ variant: "info", title: accessLabel(t, v as AccessMode), desc: t.accessGainsRoleNote(roleLabel(t, next.permission)) });
                   }
                 }}
-                options={accessOptions(t)}
+                /* App-only would strip Portal from the last owner, which the store refuses on the
+                   same guard — so it is not offered on that row rather than offered and ignored.
+                   Portal-only stays: taking the app away from an owner locks nobody out. */
+                options={lastAdmin ? accessOptions(t).filter(o => o.value !== "appOnly") : accessOptions(t)}
               />
             ) : (
               <span title={t.reasonNotOwner} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{accessLabel(t, accessModeOf(u))}</span>
