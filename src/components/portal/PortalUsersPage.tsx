@@ -20,10 +20,6 @@ const T = {
     descScopedPrefix: "Showing users with access to",
     descScopedSuffix: "",
     descUnscoped: "Set what each person may do in Portal — or keep them app-only — and scope them to projects.",
-    // The Access column names two doors and nothing on the page said what is behind them. Spelled
-    // out here rather than in a tooltip: it is the definition the whole table is read against.
-    accessExplainerLead: "Access",
-    accessExplainerBody: " decides which doors an account has — Portal is the settings console (Input Sources · VIP Registry · Users · Server · License), the App is the monitoring screens. The Portal role only means something once Portal is one of them.",
     inviteUser: "Invite user",
     searchPlaceholder: "Search by user name or email address",
 
@@ -228,8 +224,6 @@ const T = {
     descScopedPrefix: "",
     descScopedSuffix: "프로젝트에 접근 권한이 있는 사용자를 표시합니다.",
     descUnscoped: "각 사용자가 Portal에서 무엇을 할 수 있는지 정하거나 앱 전용으로 두고, 이용할 프로젝트를 지정하세요.",
-    accessExplainerLead: "접근",
-    accessExplainerBody: "이 계정에 열리는 문을 정합니다 — 포털은 설정 콘솔(입력 소스 · VIP 등록 · 사용자 · 서버 · 라이선스)이고, 앱은 관제 화면입니다. 포털 역할은 포털이 그 문에 포함될 때만 의미가 있습니다.",
     inviteUser: "사용자 초대",
     searchPlaceholder: "사용자 이름 또는 이메일 주소로 검색",
 
@@ -1313,9 +1307,6 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 ? <><strong style={{ color: "var(--gray-600)" }}>{currentProject.name}</strong> {t.descScopedSuffix}</>
                 : <>{t.descScopedPrefix} <strong style={{ color: "var(--gray-600)" }}>{currentProject.name}</strong>.</>)
               : t.descUnscoped}
-          </p>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "4px", maxWidth: "78ch", lineHeight: 1.6 }}>
-            <strong style={{ color: "var(--gray-600)" }}>{t.accessExplainerLead}</strong>{t.accessExplainerBody}
           </p>
         </div>
         {/* Disabled with the reason on it rather than hidden: a control that vanishes reads as a
