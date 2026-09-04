@@ -6,7 +6,7 @@ import AuthHeader from "@/components/AuthHeader";
 import { getAuthConfig } from "@/lib/authConfig";
 import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { LOGIN_NOTICES, parseLoginNotice, type LoginFailure } from "@/lib/authErrors";
-import { useVcaStore } from "@/lib/vcaStore";
+import { canEnterPortal, useVcaStore } from "@/lib/vcaStore";
 
 const FIELD_BORDER = "1px solid var(--gray-300)";
 /** Only ever holds the identifier. Never the password, never a session token. */
@@ -129,7 +129,9 @@ function LoginForm() {
       router.push(`/password-setup?token=${matchedUser.id}&reason=temp`);
       return;
     }
-    router.push(matchedUser?.permission === "admin" ? "/portal" : "/");
+    // Every console role lands in Portal — owner, admin and the read-only auditor. "operator"
+    // means no console at all, so it goes to the monitoring app.
+    router.push(matchedUser && canEnterPortal(matchedUser.permission) ? "/portal" : "/");
   };
 
   return (

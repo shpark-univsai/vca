@@ -253,6 +253,9 @@ interface VcaStoreState {
   markNotificationsRead: () => void;
   addPortalUser: (user: Omit<PortalUser, "id">) => string;
   updatePortalUserPermission: (userId: string, permission: PortalPermission) => void;
+  /** Grant or take away person-search in the app. Logged: who may search is worth an audit trail
+   *  in a face-recognition installation, and so is the moment it changed. */
+  setAppSearch: (userId: string, allowed: boolean) => void;
   updatePortalUserProjects: (userId: string, projectIds: string[]) => void;
   updatePortalUserStatus: (userId: string, status: PortalUserStatus) => void;
   /**
@@ -293,6 +296,16 @@ interface VcaStoreState {
   // Registration-code actions for the staff roster — see staffRoster.ts for the type/alphabet and
   // ProjectRosterTab.tsx for the screen. Keyed by employeeId (the roster's own matching key), not a
   // generated id, since these never need one of their own.
+  /**
+   * Add one person to a project's roster by hand. The roster is a convenience, not a gate: an
+   * administrator sets someone up one at a time here, and the Excel import exists only for doing
+   * many at once. Returns false when the employee number is already on the roster — that number is
+   * the roster's matching key, so a duplicate would make a code resolve to two people.
+   */
+  addRosterEntry: (entry: Omit<RosterEntry, "status" | "code" | "issuedAt">) => boolean;
+  /** Edit a roster row in place. The employee number is the key, so it is passed separately from
+   *  the fields being changed and cannot itself be edited (remove and re-add instead). */
+  updateRosterEntry: (employeeId: string, updates: Partial<Omit<RosterEntry, "employeeId" | "status" | "code" | "issuedAt">>) => void;
   issueRegistrationCodes: (employeeIds: string[]) => void;
   reissueRegistrationCode: (employeeId: string) => void;
   /** Someone finished /register with their roster code: burn the code and give them the account it
@@ -425,7 +438,80 @@ const UPLOADS: UploadedMedia[] = [
 // someone who can log into this same app; `permission` decides whether they land in the Portal
 // back-office shell or straight into the Smart City/School app (see PortalShell/ClientLayout),
 // and `projectIds` scopes which project(s) an operator can see once inside the app.
-export type PortalPermission = "admin" | "operator";
+/**
+ * What an account can do in the PORTAL — this is a console role, not a product role.
+ *
+ * The distinction matters because one field used to answer two different questions at once
+ * ("can this person open Portal?" and "what may they do in the monitoring app?"), which is why
+ * splitting "operator" into manager/viewer never made sense: operator was never a console role,
+ * it meant "no console".
+ *
+ * Console consoles model this as one ladder plus a read-only twin (Cloudflare's Domain
+ * Administrator / Domain Administrator Read Only, Vanta's Admin / View-only Admin / Auditor), and
+ * scope it by resource rather than inventing more roles — we scope with projectIds.
+ *
+ * - owner    최고관리자. The only role that can grant or revoke permissions, and the only one that
+ *            can remove people. Kept to a named few; the app refuses to leave fewer than one.
+ * - admin    관리자. Changes the installation's settings — cameras, VIP registry, roster, license —
+ *            but cannot change who has access.
+ * - auditor  읽기 전용 관리자. Sees every Portal screen and the audit log, changes nothing. For
+ *            handover, inspection, and the customer's security officer.
+ * - operator No console access at all. Signs into the monitoring app instead.
+ *
+ * HANDOFF NOTE: the frontend only decides what to show and what to disable. Every mutating
+ * endpoint has to check the caller's role again — see the auth-flow doc, section 07.
+ */
+export type PortalPermission = "owner" | "admin" | "auditor" | "operator";
+
+/** Roles that may open Portal at all. `operator` is routed to the app by login. */
+export const PORTAL_CONSOLE_ROLES: PortalPermission[] = ["owner", "admin", "auditor"];
+
+/** May change settings (cameras, VIP, roster, license, server). Auditor may not. */
+export function canEditPortal(permission: PortalPermission): boolean {
+  return permission === "owner" || permission === "admin";
+}
+
+/**
+ * May grant/revoke access — invite, change a permission, reset a password, suspend, remove.
+ * Deliberately narrower than canEditPortal: role granting is the one power that creates more of
+ * itself, so it stays with the owner (see the permission-model doc).
+ */
+export function canManageAccess(permission: PortalPermission): boolean {
+  return permission === "owner";
+}
+
+/** May open Portal (any console role). */
+export function canEnterPortal(permission: PortalPermission): boolean {
+  return PORTAL_CONSOLE_ROLES.includes(permission);
+}
+
+/**
+ * Whether the person using the monitoring app may run person searches.
+ *
+ * HANDOFF NOTE: same stand-in as currentPortalRole — there is no session, so this resolves
+ * SIGNED_IN_USER's address against the account list. When the address matches nobody (the default
+ * demo identity does not), it answers true so the app stays fully explorable; a real build reads
+ * the flag off the session and defaults to denied. Replace the body, not the call sites.
+ */
+export function canSearchInApp(users: PortalUser[]): boolean {
+  const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
+  return me ? me.appSearch === true : true;
+}
+
+/**
+ * The role Portal should treat the current visitor as.
+ *
+ * HANDOFF NOTE: this is the one thing a session would answer for free. With no login response to
+ * read, it resolves SIGNED_IN_USER's address against the account list and falls back to the first
+ * owner — so the mock behaves like the person who would normally be sitting here. Replace the whole
+ * body with the role from the session; the call sites do not change.
+ */
+export function currentPortalRole(users: PortalUser[]): PortalPermission {
+  const byEmail = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
+  if (byEmail) return byEmail.permission;
+  const owner = users.find(u => u.permission === "owner" && u.status === "active");
+  return owner ? owner.permission : "admin";
+}
 export type PortalUserStatus = "active" | "invited" | "suspended";
 
 // Who is signed in. Stands in for the login response — login is still a no-op that routes on an
@@ -456,6 +542,19 @@ export interface PortalUser {
   teamId: string;
   projectIds: string[];
   permission: PortalPermission;
+  /**
+   * May run person searches in the monitoring app (Data's search screens and Redmap).
+   *
+   * Kept apart from `permission`, which is a console role: a person can be app-only and still be
+   * the one who runs searches, and a Portal admin may have no business searching at all. It is one
+   * flag rather than an app role ladder because search is the only weighted action the app actually
+   * has — no export, no VIP editing, no camera control lives there (checked 2026-09-04). When more
+   * of those arrive, this is the seam to widen.
+   *
+   * Undefined means not granted. Reconstructing where a person went is the app's most invasive
+   * capability, so it is given deliberately, not inherited.
+   */
+  appSearch?: boolean;
   status: PortalUserStatus;
   // Security/audit columns shown in Portal's Users & Permissions table. Optional so existing/seeded
   // users (none of which have this configured) still type-check.
@@ -525,8 +624,8 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "admin", status: "active", mfaEnabled: true, lastLoginAt: "2026-08-25 09:14" },
-  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "operator", status: "active", mfaEnabled: true, lastLoginAt: "2026-08-24 18:02" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", status: "active", mfaEnabled: true, lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "operator", appSearch: true, status: "active", mfaEnabled: true, lastLoginAt: "2026-08-24 18:02" },
   { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "operator", status: "active", mfaEnabled: false, lastLoginAt: "2026-08-20 11:47" },
   { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", employeeId: "EMP-2044", teamId: "team-univs", projectIds: ["proj-sg"], permission: "operator", status: "invited" },
   { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", employeeId: "EMP-2045", teamId: "team-univs", projectIds: ["proj-sg"], permission: "operator", status: "suspended", mfaEnabled: false, lastLoginAt: "2026-06-02 08:30" },
@@ -1084,11 +1183,25 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   updatePortalUserPermission: (userId, permission) =>
     set(state => {
       // Demoting the last administrator locks the customer out just as surely as deleting them.
-      if (permission !== "admin" && isLastActiveAdmin(state.portalUsers, userId)) return state;
+      // Demoting the last owner locks the customer out just as surely as deleting them.
+      if (!canManageAccess(permission) && isLastActiveAdmin(state.portalUsers, userId)) return state;
       const user = state.portalUsers.find(u => u.id === userId);
       const auditEntry: AuditEvent = { id: `audit-${++auditSeq}`, projectId: user?.projectIds[0], message: `${user?.name ?? userId}'s permission changed to ${permission}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() };
       return {
         portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, permission } : u)),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
+  setAppSearch: (userId, allowed) =>
+    set(state => {
+      const user = state.portalUsers.find(u => u.id === userId);
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: user?.projectIds[0],
+        message: `${allowed ? "Person search granted" : "Person search revoked"}: ${user?.name ?? userId}`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, appSearch: allowed } : u)),
         auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
       };
     }),
@@ -1317,6 +1430,36 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   // Deleting the row is what kills an unused code (a departing employee's paper code must not stay
   // a working key into the system) — there is no separate "revoke code" action because a roster row
   // with no person behind it has nothing left to protect.
+  addRosterEntry: (entry) => {
+    const exists = get().staffRoster.some(r => r.employeeId.toLowerCase() === entry.employeeId.toLowerCase());
+    if (exists) return false;
+    const auditEntry: AuditEvent = {
+      id: `audit-${++auditSeq}`, projectId: entry.projectId,
+      message: `Roster entry added: ${entry.name} (${entry.employeeId})`,
+      actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+    };
+    // status "not-issued": on the roster, no code yet. Issuing is a separate, deliberate action —
+    // adding someone to the list is not the same as handing them a way in.
+    set(state => ({
+      staffRoster: [...state.staffRoster, { ...entry, status: "not-issued" as const }],
+      auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+    }));
+    return true;
+  },
+  updateRosterEntry: (employeeId, updates) =>
+    set(state => {
+      const entry = state.staffRoster.find(r => r.employeeId === employeeId);
+      if (!entry) return {};
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: entry.projectId,
+        message: `Roster entry updated: ${updates.name ?? entry.name} (${employeeId})`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        staffRoster: state.staffRoster.map(r => (r.employeeId === employeeId ? { ...r, ...updates } : r)),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
   removeRosterEntry: (employeeId) =>
     set(state => {
       const entry = state.staffRoster.find(r => r.employeeId === employeeId);
@@ -1418,10 +1561,18 @@ export function todaysDetectionHits(events: VcaEvent[]): DetectionHit[] {
  * Counts only accounts that can actually sign in: an invited or suspended administrator is not
  * standing by to help.
  */
+/**
+ * The account being acted on is the last one that can still grant permissions. Suspending,
+ * deleting or demoting it would leave an installation where nobody can give anyone access and no
+ * supplier account exists to unlock it.
+ *
+ * Counts owners, not every admin: after the console roles split, an admin cannot grant access, so
+ * a room full of admins is still a locked-out installation.
+ */
 export function isLastActiveAdmin(users: PortalUser[], userId: string): boolean {
   const target = users.find(u => u.id === userId);
-  if (!target || target.permission !== "admin" || target.status !== "active") return false;
-  return users.filter(u => u.permission === "admin" && u.status === "active").length <= 1;
+  if (!target || !canManageAccess(target.permission) || target.status !== "active") return false;
+  return users.filter(u => canManageAccess(u.permission) && u.status === "active").length <= 1;
 }
 
 export function resolveMailConfig(

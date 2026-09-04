@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MatchItem, ReIDStatus } from "@/types/reid";
-import { CAMERA_CODES, useVcaStore } from "@/lib/vcaStore";
+import { CAMERA_CODES, canSearchInApp, useVcaStore } from "@/lib/vcaStore";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import RemoveImageButton from "./RemoveImageButton";
@@ -645,6 +645,10 @@ function LiveSearchSidebar({
   cardFace?: string; cardBody?: string;
   onSearch: () => void; onCollapse: () => void;
 }) {
+  // Read from the store rather than threaded through props: this is the only place in Data that
+  // starts a search, so the check belongs next to the button, not in every caller.
+  const portalUsers = useVcaStore(state => state.portalUsers);
+  const searchAllowed = canSearchInApp(portalUsers);
   const {
     setSearchType, selectedTarget, selectRecentTarget, activeVIP, selectVIP,
     threshold, setThreshold, gender, setGender,
@@ -888,7 +892,15 @@ function LiveSearchSidebar({
         <button onClick={() => { reset(); setUploadedFace(null); setUploadedBody(null); }} aria-label="Reset" style={{ padding:"0 14px", height:"38px", borderRadius:"8px", border:"1px solid var(--gray-300)", backgroundColor:"white", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <ResetIconSm />
         </button>
-        <button onClick={onSearch} style={{ flex:1, height:"38px", borderRadius:"8px", border:"none", backgroundColor:"var(--gray-900)", color:"white", fontSize:"13px", fontWeight:700, cursor:"pointer" }}>
+        {/* Person search is granted per account (PortalUser.appSearch) — reconstructing where
+            someone went is the app's most invasive action. Disabled with the reason attached rather
+            than hidden: an operator who cannot search should know that the capability exists and
+            who to ask, not conclude the product cannot do it. */}
+        <button
+          onClick={() => { if (searchAllowed) onSearch(); }}
+          disabled={!searchAllowed}
+          title={searchAllowed ? undefined : "인물 검색 권한이 없습니다 — 관리자에게 요청하세요"}
+          style={{ flex:1, height:"38px", borderRadius:"8px", border:"none", backgroundColor: searchAllowed ? "var(--gray-900)" : "var(--gray-100)", color: searchAllowed ? "white" : "var(--gray-400)", fontSize:"13px", fontWeight:700, cursor: searchAllowed ? "pointer" : "not-allowed" }}>
           Search
         </button>
       </div>

@@ -6,6 +6,7 @@ import type { RedmapMode as Mode, SimilarityLimit, HitResult, DateRange } from "
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "./Toast";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
+import { canSearchInApp, useVcaStore } from "@/lib/vcaStore";
 import RemoveImageButton from "./RemoveImageButton";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 
@@ -590,6 +591,10 @@ function DateRangePicker({ value, onChange }: { value: DateRange; onChange: (v: 
 /* ── Component ─────────────────────────────────────────────── */
 export default function RedmapPage({ initialSearchName, onInitialSearchConsumed }: { initialSearchName?: string | null; onInitialSearchConsumed?: () => void } = {}) {
   const { showToast } = useToast();
+  // Redmap is search and nothing else — with no search there is no map to look at, so the whole
+  // screen is gated rather than its button. See PortalUser.appSearch.
+  const portalUsers = useVcaStore(state => state.portalUsers);
+  const searchAllowed = canSearchInApp(portalUsers);
   const [mode, setMode] = useState<Mode>("person");
   const [similarity, setSimilarity] = useState<SimilarityLimit>(70);
   const [dateRange, setDateRange] = useState<DateRange>(DEFAULT_DATE_RANGE);
@@ -897,6 +902,24 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
     fontSize: "13px", fontWeight: 600, color: "var(--gray-800)",
     fontFamily: "'SUIT', sans-serif",
   };
+
+  // Redmap is search and nothing else — with no search there is no map to look at, so the whole
+  // screen is gated rather than its button. Portal grants this per account (PortalUser.appSearch).
+  if (!searchAllowed) {
+    return (
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px" }}>
+        <div style={{ maxWidth: "420px", textAlign: "center" }}>
+          <p style={{ margin: 0, fontSize: "18px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.36px" }}>
+            인물 검색 권한이 필요합니다
+          </p>
+          <p style={{ margin: "10px 0 0", fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", lineHeight: 1.7 }}>
+            Redmap은 검색으로만 결과를 보여주는 화면이라, 검색 권한 없이는 보여줄 것이 없습니다.
+            관리자에게 요청하면 Portal의 사용자·권한에서 열어 줄 수 있습니다.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, position: "relative" }}>

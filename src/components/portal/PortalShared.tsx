@@ -122,6 +122,12 @@ interface RowAction {
 interface SelectOption {
   value: string;
   label: string;
+  /**
+   * One line under the label, shown only in the open list. Roles are the case this exists for:
+   * an administrator does not memorise what "Auditor" means, they read the sentence at the moment
+   * they pick it. Jira, StackAI and Vanta all put the sentence in the dropdown for the same reason.
+   */
+  description?: string;
 }
 
 // Custom dropdown for filter selects — a native <select>'s popup is positioned by the browser,
@@ -195,16 +201,21 @@ export function FilterSelect({ value, onChange, options, fitContent }: {
                 onMouseEnter={() => setHoveredOption(o.value)}
                 onMouseLeave={() => setHoveredOption(null)}
                 style={{
-                  display: "flex", alignItems: "center", gap: "6px", width: "100%", textAlign: "left", padding: "8px 12px",
+                  display: "flex", alignItems: o.description ? "flex-start" : "center", gap: "6px", width: "100%", textAlign: "left", padding: "8px 12px",
                   border: "none", cursor: "pointer",
                   backgroundColor: active ? "var(--gray-100)" : hoveredOption === o.value ? "var(--gray-50)" : "white",
                   fontSize: "12px", fontWeight: active ? 700 : 500, color: active ? "var(--gray-900)" : "var(--gray-700)",
                 }}
               >
-                <span style={{ display: "flex", width: "12px", flexShrink: 0 }}>
+                <span style={{ display: "flex", width: "12px", flexShrink: 0, marginTop: o.description ? "2px" : 0 }}>
                   {active && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                 </span>
-                {o.label}
+                {o.description ? (
+                  <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
+                    <span>{o.label}</span>
+                    <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--gray-500)", lineHeight: 1.5, whiteSpace: "normal" }}>{o.description}</span>
+                  </span>
+                ) : o.label}
               </button>
             );
           })}

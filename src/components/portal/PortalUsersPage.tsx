@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Asterisk } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, currentPortalRole, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
@@ -19,13 +19,15 @@ const T = {
     title: "Users & Permissions",
     descScopedPrefix: "Showing users with access to",
     descScopedSuffix: "",
-    descUnscoped: "Grant Portal (admin) or app (operator) access and scope users to projects.",
+    descUnscoped: "Set what each person may do in Portal — or keep them app-only — and scope them to projects.",
     inviteUser: "Invite user",
     searchPlaceholder: "Search by user name or email address",
 
     // Role/status summary strip
+    countOwners: "Owners",
     countAdmins: "Admins",
-    countOperators: "Operators",
+    countAuditors: "Read-only",
+    countOperators: "App only",
     countInvited: "Invited",
     countSuspended: "Suspended",
     countTotal: "Total",
@@ -52,8 +54,22 @@ const T = {
     emptyNoUsers: "No users have access to this project yet.",
 
     // Permission / status / MFA display labels
+    permOwner: "Owner",
     permAdmin: "Admin",
-    permOperator: "Operator",
+    permAuditor: "Read-only admin",
+    permOperator: "App only",
+    permOwnerDesc: "Grants and revokes access, and removes people. The only role that can.",
+    permAdminDesc: "Changes cameras, VIP registry, roster and license — but not who has access.",
+    permAuditorDesc: "Sees every Portal screen and the audit log. Changes nothing.",
+    permOperatorDesc: "No Portal access. Signs in to the monitoring app instead.",
+    reasonNotOwner: "Only an owner can change access.",
+    appSearchOn: "Person search: on",
+    appSearchGrant: "Allow person search in the app",
+    appSearchRevoke: "Block person search in the app",
+    appSearchToastOn: "Person search allowed",
+    appSearchToastOff: "Person search blocked",
+    appSearchToastDesc: (name: string) => `${name} — Data and Redmap searches`,
+    reasonReadOnly: "Read-only admins cannot change settings.",
     statusActive: "Active",
     statusInvited: "Invited",
     statusSuspended: "Suspended",
@@ -180,13 +196,15 @@ const T = {
     title: "사용자 및 권한",
     descScopedPrefix: "",
     descScopedSuffix: "프로젝트에 접근 권한이 있는 사용자를 표시합니다.",
-    descUnscoped: "포털(관리자) 또는 앱(운영자) 접근 권한을 부여하고, 사용자가 이용할 프로젝트를 지정하세요.",
+    descUnscoped: "각 사용자가 Portal에서 무엇을 할 수 있는지 정하거나 앱 전용으로 두고, 이용할 프로젝트를 지정하세요.",
     inviteUser: "사용자 초대",
     searchPlaceholder: "사용자 이름 또는 이메일 주소로 검색",
 
     // Role/status summary strip
+    countOwners: "최고관리자",
     countAdmins: "관리자",
-    countOperators: "운영자",
+    countAuditors: "읽기 전용",
+    countOperators: "앱 전용",
     countInvited: "초대됨",
     countSuspended: "정지됨",
     countTotal: "전체",
@@ -213,8 +231,22 @@ const T = {
     emptyNoUsers: "이 프로젝트에 접근 권한이 있는 사용자가 아직 없습니다.",
 
     // Permission / status / MFA display labels
+    permOwner: "최고관리자",
     permAdmin: "관리자",
-    permOperator: "운영자",
+    permAuditor: "읽기 전용 관리자",
+    permOperator: "앱 전용",
+    permOwnerDesc: "권한을 주고 회수하고, 사람을 지웁니다. 이걸 할 수 있는 유일한 역할입니다.",
+    permAdminDesc: "카메라·VIP 등록·명부·라이선스를 바꿉니다. 누가 접근하는지는 못 바꿉니다.",
+    permAuditorDesc: "Portal의 모든 화면과 감사 로그를 봅니다. 아무것도 바꾸지 않습니다.",
+    permOperatorDesc: "Portal에 들어오지 않습니다. 관제 앱으로 로그인합니다.",
+    reasonNotOwner: "권한 변경은 최고관리자만 할 수 있습니다.",
+    appSearchOn: "검색 허용",
+    appSearchGrant: "앱에서 인물 검색 허용",
+    appSearchRevoke: "앱에서 인물 검색 차단",
+    appSearchToastOn: "인물 검색을 허용했습니다",
+    appSearchToastOff: "인물 검색을 차단했습니다",
+    appSearchToastDesc: (name: string) => `${name} — Data · Redmap 검색`,
+    reasonReadOnly: "읽기 전용 관리자는 설정을 바꿀 수 없습니다.",
     statusActive: "활성",
     statusInvited: "초대됨",
     statusSuspended: "정지됨",
@@ -753,6 +785,30 @@ const MODAL_BODY: React.CSSProperties = {
   maxHeight: "60vh", overflowY: "auto",
 };
 
+/**
+ * The four console roles, with the sentence that explains each. One definition, used by the row
+ * select, the filter and the invite modal — three lists of roles would drift the first time one
+ * changes. Order is the ladder: owner → admin → read-only → no console.
+ */
+interface RoleCopy {
+  permOwner: string; permAdmin: string; permAuditor: string; permOperator: string;
+  permOwnerDesc: string; permAdminDesc: string; permAuditorDesc: string; permOperatorDesc: string;
+}
+
+function roleOptions(t: RoleCopy) {
+  return [
+    { value: "owner", label: t.permOwner, description: t.permOwnerDesc },
+    { value: "admin", label: t.permAdmin, description: t.permAdminDesc },
+    { value: "auditor", label: t.permAuditor, description: t.permAuditorDesc },
+    { value: "operator", label: t.permOperator, description: t.permOperatorDesc },
+  ];
+}
+
+/** Short label for a role, for table cells and toasts. */
+function roleLabel(t: RoleCopy, p: PortalPermission): string {
+  return p === "owner" ? t.permOwner : p === "admin" ? t.permAdmin : p === "auditor" ? t.permAuditor : t.permOperator;
+}
+
 /** How the way-back-in reaches the person. Mail sends a code they redeem themselves; password is
  *  read out; code is handed over on paper. */
 type CredentialKind = "mail" | "password" | "code";
@@ -989,7 +1045,9 @@ function UserCountStrip({ users }: { users: PortalUser[] }) {
   const t = T[lang];
 
   const counts = [
+    { label: t.countOwners, value: users.filter(u => u.permission === "owner").length },
     { label: t.countAdmins, value: users.filter(u => u.permission === "admin").length },
+    { label: t.countAuditors, value: users.filter(u => u.permission === "auditor").length },
     { label: t.countOperators, value: users.filter(u => u.permission === "operator").length },
     { label: t.countInvited, value: users.filter(u => u.status === "invited").length, hint: t.invitedHint, actionable: true },
     { label: t.countSuspended, value: users.filter(u => u.status === "suspended").length, hint: t.suspendedHint, actionable: true },
@@ -1029,11 +1087,16 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const updatePortalUserPermission = useVcaStore(s => s.updatePortalUserPermission);
   const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
   const removePortalUser = useVcaStore(s => s.removePortalUser);
+  const setAppSearch = useVcaStore(s => s.setAppSearch);
   const issueInviteToken = useVcaStore(s => s.issueInviteToken);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const [showInvite, setShowInvite] = useState(false);
+  // What this visitor may do here. Granting access is the owner's alone — an admin changes the
+  // installation's settings, not who can get in. See PortalPermission in vcaStore.
+  const myRole = currentPortalRole(portalUsers);
+  const manageAccess = canManageAccess(myRole);
   // The user whose already-issued setup code is being looked up again, or null.
   const [viewingCodeFor, setViewingCodeFor] = useState<PortalUser | null>(null);
   // The user a temporary password is being issued for, or null. Held as the user rather than an id
@@ -1126,9 +1189,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               : t.descUnscoped}
           </p>
         </div>
-        <button onClick={() => setShowInvite(true)}
-          style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-          <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
+        {/* Disabled with the reason on it rather than hidden: a control that vanishes reads as a
+            missing feature and sends the admin looking elsewhere for it. */}
+        <button
+          onClick={() => manageAccess && setShowInvite(true)}
+          disabled={!manageAccess}
+          title={manageAccess ? undefined : t.reasonNotOwner}
+          style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: manageAccess ? "var(--primary-400)" : "var(--gray-100)", color: manageAccess ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed", flexShrink: 0 }}>
+          <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke={manageAccess ? "white" : "var(--gray-400)"} strokeWidth="1.4" strokeLinecap="round"/></svg>
           {t.inviteUser}
         </button>
       </div>
@@ -1166,11 +1234,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         <FilterSelect
           value={permissionFilter}
           onChange={v => setPermissionFilter(v as PortalPermission | "ALL")}
-          options={[
-            { value: "ALL", label: t.filterAllPermissions },
-            { value: "admin", label: t.permAdmin },
-            { value: "operator", label: t.permOperator },
-          ]}
+          options={[{ value: "ALL", label: t.filterAllPermissions }, ...roleOptions(t).map(o => ({ value: o.value, label: o.label }))]}
         />
         <FilterSelect
           value={statusFilter}
@@ -1254,12 +1318,25 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                   </span>
                 ))}
             </div>
-            <FilterSelect
-              fitContent
-              value={u.permission}
-              onChange={v => updatePortalUserPermission(u.id, v as PortalPermission)}
-              options={[{ value: "admin", label: t.permAdmin }, { value: "operator", label: t.permOperator }]}
-            />
+            {/* Only an owner may change this. For everyone else the cell reads as text — a select
+                that opens and then refuses is worse than a value that never looked editable. */}
+            {manageAccess ? (
+              <FilterSelect
+                fitContent
+                value={u.permission}
+                onChange={v => updatePortalUserPermission(u.id, v as PortalPermission)}
+                options={roleOptions(t)}
+              />
+            ) : (
+              <span title={t.reasonNotOwner} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{roleLabel(t, u.permission)}</span>
+            )}
+            {/* Search is a separate grant from the console role, so it shows as its own chip rather
+                than being folded into the role label — the two answer different questions. */}
+            {u.appSearch && (
+              <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px", backgroundColor: "var(--info-100)", color: "var(--info-500)", fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap" }}>
+                {t.appSearchOn}
+              </span>
+            )}
             <MfaBadge enabled={u.mfaEnabled} />
             <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.lastLoginAt ?? "—"}</span>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "4px" }}>
@@ -1273,9 +1350,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 offering it for an active account would send a link that sets up an account which
                 already exists. Both disappear entirely where there is no mail to send them with;
                 that deployment recovers people through the temporary password below instead. */}
+            {/* Every action in this menu grants or takes away a way in, so the whole menu is the
+                owner's. A non-owner still sees the items with the reason attached — knowing the
+                action exists and who can do it beats a menu that quietly has three fewer rows. */}
             <RowActionsMenu actions={[
               ...(mailAvailable && u.status === "invited" ? [{
                 label: t.resendInvite,
+                disabled: !manageAccess,
+                reason: manageAccess ? undefined : t.reasonNotOwner,
                 // A resend is a reissue: the previous link stops working, which is the point when
                 // the first one has been sitting in a forwarded mail thread for a week.
                 onClick: () => showToast({ variant: "success", title: t.inviteResentTitle, desc: `/password-setup?token=${issueInviteToken(u.id)}` }),
@@ -1288,6 +1370,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 // derives the mechanism from that.
                 label: t.resetPassword,
                 onClick: () => setCredentialFor(u),
+                disabled: !manageAccess,
+                reason: manageAccess ? undefined : t.reasonNotOwner,
               },
               // The code's result screen says it can be looked up again from this menu while it is
               // unused — and until now it could not, so the modal was promising a menu item that
@@ -1296,10 +1380,28 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               ...(u.setupCode ? [{
                 label: t.viewSetupCode,
                 onClick: () => setViewingCodeFor(u),
+                disabled: !manageAccess,
+                reason: manageAccess ? undefined : t.reasonNotOwner,
               }] : []),
+              {
+                label: u.appSearch ? t.appSearchRevoke : t.appSearchGrant,
+                disabled: !manageAccess,
+                reason: manageAccess ? undefined : t.reasonNotOwner,
+                onClick: () => {
+                  const next = !u.appSearch;
+                  setAppSearch(u.id, next);
+                  showToast({
+                    variant: next ? "success" : "warning",
+                    title: next ? t.appSearchToastOn : t.appSearchToastOff,
+                    desc: t.appSearchToastDesc(u.name),
+                  });
+                },
+              },
               u.status === "suspended"
                 ? {
                     label: t.reactivateUser,
+                    disabled: !manageAccess,
+                    reason: manageAccess ? undefined : t.reasonNotOwner,
                     onClick: () => {
                       updatePortalUserStatus(u.id, "active");
                       showToast({ variant: "success", title: t.userReactivatedTitle, desc: u.name });
@@ -1315,13 +1417,13 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                     // Refused, not warned about: this deployment is on-premise with the top
                     // administrator on the customer's side, so there is no supplier account to
                     // undo it with. The store refuses these too — see isLastActiveAdmin.
-                    disabled: lastAdmin,
-                    reason: lastAdmin ? t.lastAdminReason : undefined,
+                    disabled: lastAdmin || !manageAccess,
+                    reason: lastAdmin ? t.lastAdminReason : manageAccess ? undefined : t.reasonNotOwner,
                   },
               {
                 label: t.removeUser, onClick: () => removePortalUser(u.id), danger: true,
-                disabled: lastAdmin,
-                reason: lastAdmin ? t.lastAdminReason : undefined,
+                disabled: lastAdmin || !manageAccess,
+                reason: lastAdmin ? t.lastAdminReason : manageAccess ? undefined : t.reasonNotOwner,
               },
             ]} />
           </div>
