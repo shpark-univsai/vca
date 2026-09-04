@@ -83,7 +83,6 @@ const T = {
     colPermission: "Permission",
     colAccess: "Access",
     colAppSearch: "Person Search",
-    colMfa: "MFA",
     colLastLogin: "Last Login",
     colStatus: "Stage",
     emptySearch: "No users match this search.",
@@ -118,7 +117,6 @@ const T = {
     statusActive: "Active",
     statusInvited: "Invited",
     statusSuspended: "Suspended",
-    mfaEnabledTitle: "MFA enabled",
 
     // Row actions
     resendInvite: "Resend invite",
@@ -314,7 +312,6 @@ const T = {
     colPermission: "권한",
     colAccess: "접근",
     colAppSearch: "인물 검색",
-    colMfa: "MFA",
     colLastLogin: "마지막 로그인",
     colStatus: "단계",
     emptySearch: "검색 결과와 일치하는 사용자가 없습니다.",
@@ -347,7 +344,6 @@ const T = {
     statusActive: "활성",
     statusInvited: "초대됨",
     statusSuspended: "정지됨",
-    mfaEnabledTitle: "MFA 사용 중",
 
     // Row actions
     resendInvite: "초대 재전송",
@@ -1006,17 +1002,6 @@ function StatusBadge({ status }: { status: PortalUserStatus }) {
   );
 }
 
-function MfaBadge({ enabled }: { enabled?: boolean }) {
-  const [lang] = usePortalLanguage();
-  const t = T[lang];
-  if (!enabled) return <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>;
-  return (
-    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "18px", height: "18px", borderRadius: "5px", backgroundColor: "var(--success-100)" }} title={t.mfaEnabledTitle}>
-      <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="var(--success-400)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-    </span>
-  );
-}
-
 /**
  * Shows in the status column while an account is still on a password an administrator handed over.
  * That state is worth seeing at a glance: for as long as it lasts, two people know the password,
@@ -1474,7 +1459,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
    * ellipsise instead of pushing the row taller.
    */
   const GRID = showAccountColumns
-    ? "minmax(160px, 1.15fr) 1.1fr 0.8fr 0.75fr 0.5fr 0.4fr 0.9fr 0.6fr 36px"
+    ? "minmax(160px, 1.15fr) 1.15fr 0.85fr 0.8fr 0.55fr 0.95fr 0.6fr 36px"
     : "minmax(180px, 1.4fr) 1fr 1.2fr 0.7fr 36px";
 
   const bulkIssueCodes = () => {
@@ -1690,7 +1675,6 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             { label: t.colPermission, key: "permission" },
             { label: t.colAccess },
             { label: t.colAppSearch },
-            { label: t.colMfa },
             { label: t.colLastLogin, key: "lastLogin" },
             { label: t.colStatus, key: "status", align: "right" as const },
             { label: "" },
@@ -1807,7 +1791,6 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
               )}
             </span>
-            <MfaBadge enabled={u.mfaEnabled} />
             <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.lastLoginAt ?? "—"}</span>
             {/* Right-aligned. Left-aligned, the badge sat at the near edge of its cell with a
                 hand's width of nothing between it and the actions menu — most visible once the

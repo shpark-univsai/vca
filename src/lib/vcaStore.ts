@@ -621,9 +621,17 @@ export interface PortalUser {
    */
   appAccess: boolean;
   status: PortalUserStatus;
-  // Security/audit columns shown in Portal's Users & Permissions table. Optional so existing/seeded
-  // users (none of which have this configured) still type-check.
-  mfaEnabled?: boolean;
+  /**
+   * Last sign-in, for the Users & Permissions table.
+   *
+   * A second field used to sit here recording whether the account had MFA, with a column reading
+   * it. Nothing in the product could set it: there is no second factor anywhere in the sign-in
+   * flow, no enrolment screen, and no code that decided anything from the value — it was a tick
+   * mark whose only source was the seed data, telling an administrator their people were protected
+   * by something that does not exist. Removed 2026-09-04 along with the column. When MFA is
+   * actually built (see the deferral note: phones on site, NTP drift, resetting a lost factor), it
+   * comes back with a real source behind it.
+   */
   lastLoginAt?: string;
   /**
    * The employee number this person signs in with, where the deployment allows it
@@ -689,15 +697,15 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, status: "active", mfaEnabled: true, lastLoginAt: "2026-08-25 09:14" },
-  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appSearch: true, status: "active", mfaEnabled: true, lastLoginAt: "2026-08-24 18:02" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, status: "active", lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appSearch: true, status: "active", lastLoginAt: "2026-08-24 18:02" },
   // Admin who also works the app — the combination the single-field model could not hold.
-  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, status: "active", mfaEnabled: false, lastLoginAt: "2026-08-20 11:47" },
+  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, status: "active", lastLoginAt: "2026-08-20 11:47" },
   { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", employeeId: "EMP-2044", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "invited" },
-  { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", employeeId: "EMP-2045", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "suspended", mfaEnabled: false, lastLoginAt: "2026-06-02 08:30" },
+  { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", employeeId: "EMP-2045", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "suspended", lastLoginAt: "2026-06-02 08:30" },
   // The customer's security officer: reads Portal for the audit trail, has no business in the
   // monitoring app. The other new combination.
-  { id: "user-6", name: "Aaron Sim", email: "aaron.sim@univs.ai", employeeId: "EMP-2046", teamId: "team-univs", projectIds: ["proj-sg"], permission: "auditor", appAccess: false, status: "active", mfaEnabled: true, lastLoginAt: "2026-08-22 16:05" },
+  { id: "user-6", name: "Aaron Sim", email: "aaron.sim@univs.ai", employeeId: "EMP-2046", teamId: "team-univs", projectIds: ["proj-sg"], permission: "auditor", appAccess: false, status: "active", lastLoginAt: "2026-08-22 16:05" },
 ];
 
 // Empty on purpose. Three sample requests used to sit here, and no path in the app could produce
