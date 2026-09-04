@@ -1095,7 +1095,11 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
       </div>
 
       {/* Search & filters */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
+      {/* alignItems center, not the default stretch: every control in this row sets its own height
+          (CONTROL_HEIGHT), so stretch looked fine until a bare <span> joined them — the selection
+          count stretched to the row's 36px and drew its text at the top of that box, sitting a
+          third of a line above the Delete button beside it. */}
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
         <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
           <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>

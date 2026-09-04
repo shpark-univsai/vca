@@ -726,7 +726,9 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
       {subTab === "api" ? <ApiDocumentation projectId={projectId} />
         : subTab === "mail" ? <MailSettings projectId={projectId} /> : (
         <>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
+          {/* Centred for the same reason as the Input Sources toolbar: the controls carry their own
+              height, so anything unstyled dropped in here would draw itself against the top edge. */}
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
             <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
               <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
