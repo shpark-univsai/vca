@@ -34,6 +34,11 @@ const T = {
     countAdmins: "Admins",
     countAuditors: "Read-only",
     countAppOnly: "App only",
+    peopleTabAll: "All",
+    peopleTabAccounts: "Accounts",
+    peopleTabRoster: "On the roster",
+    colPlannedPermission: "Permission on signup",
+    colCode: "Registration code",
     countRosterWaiting: "On the roster",
     rosterWaitingHint: "On the staff roster with no account yet — they sign up with a registration code, no mail needed.",
     rosterGroupHeading: "On the roster — no account yet",
@@ -247,6 +252,11 @@ const T = {
     countAdmins: "관리자",
     countAuditors: "읽기 전용",
     countAppOnly: "앱 전용",
+    peopleTabAll: "전체",
+    peopleTabAccounts: "계정",
+    peopleTabRoster: "명부 대기",
+    colPlannedPermission: "가입 시 권한",
+    colCode: "등록 코드",
     countRosterWaiting: "명부 대기",
     rosterWaitingHint: "직원 명부에 있고 아직 계정이 없습니다 — 등록 코드로 가입하며 메일이 필요 없습니다.",
     rosterGroupHeading: "명부 대기 — 아직 계정 없음",
@@ -1299,6 +1309,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const [showRosterImport, setShowRosterImport] = useState(false);
   /** null = closed, { entry: null } = add, { entry } = edit. */
   const [rosterEditorFor, setRosterEditorFor] = useState<{ entry: RosterEntry | null } | null>(null);
+  /**
+   * Top-level cut of the list. Same arrangement Input Sources uses for its kinds, for the same
+   * reason: which half of the lifecycle you are looking at is a different question from how you are
+   * narrowing it, and the columns and the tools that make sense differ per half — five of the ten
+   * columns can only ever be blank for somebody with no account, and the roster's bulk tools have
+   * nothing to act on among people who already have one.
+   */
+  const [peopleTab, setPeopleTab] = useState<"ALL" | "accounts" | "roster">("ALL");
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   // Name ascending to start: the only order that is stable and that a reader can predict before
@@ -1323,6 +1341,13 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const rt = ROSTER_T[lang];
   // A roster row carries a project, not a team; the team is the project's.
   const projectTeamId = projects.find(p => p.id === projectId)?.teamId ?? "";
+
+  // The account-only columns: role, access, person search, MFA, last login. Dropped on the roster
+  // tab rather than printed as five dashes per row.
+  const showAccountColumns = peopleTab !== "roster";
+  const GRID = showAccountColumns
+    ? "1.3fr 1.2fr 1.25fr 0.75fr 0.7fr 0.45fr 0.35fr 0.85fr 0.55fr 36px"
+    : "1.5fr 1.2fr 1.25fr 0.9fr 1.1fr 0.6fr 36px";
 
   const bulkIssueCodes = () => {
     if (notIssuedIds.length === 0) return;
@@ -1408,9 +1433,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               : t.descUnscoped}
           </p>
         </div>
+        {/* Tools follow the tab. Six buttons in one row was every tool for both halves of the
+            lifecycle competing at once, and four of them could not act on what the reader was
+            looking at. The two ways of adding a person stay on the combined tab; the roster's bulk
+            work lives with the roster rows. */}
         <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" }}>
-        {/* Disabled with the reason on it rather than hidden: a control that vanishes reads as a
-            missing feature and sends the admin looking elsewhere for it. */}
+        {peopleTab !== "roster" && (
+        /* Disabled with the reason on it rather than hidden: a control that vanishes reads as a
+           missing feature and sends the admin looking elsewhere for it. */
         <button
           onClick={() => manageAccess && setShowInvite(true)}
           disabled={!manageAccess}
@@ -1419,10 +1449,12 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke={manageAccess ? "white" : "var(--gray-400)"} strokeWidth="1.4" strokeLinecap="round"/></svg>
           {t.inviteUser}
         </button>
-        {/* The roster's four tools, kept together to the right of Invite. They act on the waiting
-            half of the same table now, so this is their toolbar. */}
+        )}
+        {peopleTab !== "accounts" && (
         <button onClick={() => setRosterEditorFor({ entry: null })}
           style={SECONDARY_BTN}>{t.addToRoster}</button>
+        )}
+        {peopleTab === "roster" && (<>
         <button onClick={() => setShowRosterImport(true)}
           style={SECONDARY_BTN}>{t.importRoster}</button>
         <button onClick={bulkIssueCodes} disabled={notIssuedIds.length === 0}
@@ -1441,7 +1473,33 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           style={{ ...SECONDARY_BTN, color: printableEntries.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: printableEntries.length === 0 ? "not-allowed" : "pointer" }}>
           {t.printHandout}
         </button>
+        </>)}
         </div>
+      </div>
+
+      {/* Top-level cut of the list, with counts on the tabs — the same underlined row Input Sources
+          uses for its kinds. */}
+      <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
+        {([
+          { id: "ALL", label: t.peopleTabAll, count: projectUsers.length + rosterWaiting.length },
+          { id: "accounts", label: t.peopleTabAccounts, count: projectUsers.length },
+          { id: "roster", label: t.peopleTabRoster, count: rosterWaiting.length },
+        ] as { id: "ALL" | "accounts" | "roster"; label: string; count: number }[]).map(tab => {
+          const active = peopleTab === tab.id;
+          return (
+            <button key={tab.id} onClick={() => setPeopleTab(tab.id)}
+              style={{
+                display: "flex", alignItems: "center", gap: "6px",
+                background: "none", border: "none", cursor: "pointer",
+                padding: "0 2px 10px", fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
+                color: active ? "var(--gray-900)" : "var(--gray-500)",
+                borderBottom: active ? "2px solid var(--gray-900)" : "2px solid transparent",
+              }}>
+              {tab.label}
+              <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{tab.count}</span>
+            </button>
+          );
+        })}
       </div>
 
       {!mailAvailable && <RecoveryModeNotice supportContact={authConfig.supportContact} />}
@@ -1488,11 +1546,11 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             cell with a hand's width of nothing to its right. Narrowing those three moves Status
             right, up against the actions menu where it belongs, and gives the names their room
             back. */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1.2fr 1.25fr 0.75fr 0.7fr 0.45fr 0.35fr 0.85fr 0.55fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
           {/* Projects and MFA carry no sortKey: a user belongs to several projects, so there is no
               single value to order by, and MFA is display-only mock data it would be misleading to
               let anyone rank people with. */}
-          {([
+          {((showAccountColumns ? [
             { label: t.colUser, key: "name" },
             { label: t.colTeam, key: "team" },
             { label: t.colProjects },
@@ -1503,7 +1561,18 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             { label: t.colLastLogin, key: "lastLogin" },
             { label: t.colStatus, key: "status", align: "right" as const },
             { label: "" },
-          ] as { label: string; key?: UserSortKey; align?: "left" | "right" }[]).map((h, i) => (
+          ] : [
+            // The roster tab's own set. "Permission on signup" is not the same column as an
+            // account's Permission and does not pretend to be — it is what this person will be
+            // granted when they redeem their code, which is the roster's own field.
+            { label: t.colUser, key: "name" },
+            { label: t.colTeam, key: "team" },
+            { label: t.colProjects },
+            { label: t.colPlannedPermission, key: "permission" },
+            { label: t.colCode },
+            { label: t.colStatus, key: "status", align: "right" as const },
+            { label: "" },
+          ]) as { label: string; key?: UserSortKey; align?: "left" | "right" }[]).map((h, i) => (
             <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} align={h.align} />
           ))}
         </div>
@@ -1516,14 +1585,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             </p>
           </div>
         )}
-        {scopedUsers.map((u, i) => {
+        {(peopleTab === "roster" ? [] : scopedUsers).map((u, i) => {
           const isLast = i === scopedUsers.length - 1;
           // Computed against the whole user list, not the filtered view: a project filter can hide
           // the other administrators, and "last one visible" is not "last one there is".
           const lastAdmin = isLastActiveAdmin(portalUsers, u.id);
           return (
           <div key={u.id} style={{
-            display: "grid", gridTemplateColumns: "1.3fr 1.2fr 1.25fr 0.75fr 0.7fr 0.45fr 0.35fr 0.85fr 0.55fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
+            display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
             borderBottom: isLast ? "none" : BORDER,
             borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
           }}>
@@ -1730,7 +1799,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             the same people one step earlier, and Productboard's members screen groups the same way
             — the rows that cannot act yet sit under their own heading, dimmed, with the controls
             they have no answer for left blank instead of disabled-and-clickable. */}
-        {rosterWaiting.length > 0 && (
+        {peopleTab === "ALL" && rosterWaiting.length > 0 && scopedUsers.length > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 16px", backgroundColor: "var(--gray-50)", borderTop: BORDER, borderBottom: BORDER }}>
             <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px" }}>
               {t.rosterGroupHeading.toUpperCase()}
@@ -1740,12 +1809,12 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             </span>
           </div>
         )}
-        {rosterWaiting.map((entry, i) => {
+        {(peopleTab === "accounts" ? [] : rosterWaiting).map((entry, i) => {
           const isLast = i === rosterWaiting.length - 1;
           const stage = stageOfRosterEntry(entry.status);
           return (
             <div key={entry.employeeId} style={{
-              display: "grid", gridTemplateColumns: "1.3fr 1.2fr 1.25fr 0.75fr 0.7fr 0.45fr 0.35fr 0.85fr 0.55fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
+              display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
               borderBottom: isLast ? "none" : BORDER,
               borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
             }}>
@@ -1761,15 +1830,30 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden",
               }}>{orgName(projectTeamId)}</span>
               <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{projectName(entry.projectId)}</span>
-              {/* No role and no access yet — this person has no account for either to apply to. */}
-              <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
-              <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
-              {/* The registration code takes the three columns an account fills and a roster row
-                  cannot (person search, MFA, last login). It is the one thing about this row an
-                  administrator is here to read. */}
-              <div style={{ gridColumn: "span 3", minWidth: 0 }}>
-                <RosterCodeCell entry={entry} onReveal={() => logRosterCodeViewed(entry.employeeId)} />
-              </div>
+              {showAccountColumns ? (
+                <>
+                  {/* Nothing granted yet — on the combined tab this column means what an account
+                      HAS, and this person has no account for it to apply to. The roster tab shows
+                      what they are down for instead, under its own heading. */}
+                  <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
+                  {/* The registration code takes the three columns an account fills and a roster
+                      row cannot (person search, MFA, last login). It is the one thing about this
+                      row an administrator is here to read. */}
+                  <div style={{ gridColumn: "span 3", minWidth: 0 }}>
+                    <RosterCodeCell entry={entry} onReveal={() => logRosterCodeViewed(entry.employeeId)} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>
+                    {entry.permission === "admin" ? rt.admin : rt.operator}
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <RosterCodeCell entry={entry} onReveal={() => logRosterCodeViewed(entry.employeeId)} />
+                  </div>
+                </>
+              )}
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <StageBadge stage={stage} t={t} />
               </div>
