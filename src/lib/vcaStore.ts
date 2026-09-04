@@ -256,6 +256,9 @@ interface VcaStoreState {
   /** Grant or take away person-search in the app. Logged: who may search is worth an audit trail
    *  in a face-recognition installation, and so is the moment it changed. */
   setAppSearch: (userId: string, allowed: boolean) => void;
+  /** Which project the monitoring app is watching. Empty until something picks one. */
+  activeProjectId: string;
+  setActiveProjectId: (projectId: string) => void;
   updatePortalUserProjects: (userId: string, projectIds: string[]) => void;
   updatePortalUserStatus: (userId: string, status: PortalUserStatus) => void;
   /**
@@ -483,6 +486,22 @@ export function canManageAccess(permission: PortalPermission): boolean {
 /** May open Portal (any console role). */
 export function canEnterPortal(permission: PortalPermission): boolean {
   return PORTAL_CONSOLE_ROLES.includes(permission);
+}
+
+/**
+ * The projects the app may show the person using it — their own, and only their own.
+ *
+ * An account belongs to one team and is scoped to projects inside it (the invite modal only offers
+ * that team's projects), so this never crosses a team boundary. Another team's cameras appearing on
+ * this wall would be an incident, not a feature.
+ *
+ * HANDOFF NOTE: same stand-in as the other two — with no session, an address that matches no
+ * account falls back to every project so the demo still has something to switch between.
+ */
+export function projectsVisibleInApp(users: PortalUser[], projects: Project[]): Project[] {
+  const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
+  if (!me) return projects;
+  return projects.filter(p => me.projectIds.includes(p.id));
 }
 
 /**
@@ -992,6 +1011,10 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   auditLog: AUDIT_LOG,
   accessRequests: ACCESS_REQUESTS,
   staffRoster: STAFF_ROSTER,
+  // The app watches one project at a time. Empty here rather than guessed: the header resolves it
+  // against the account's own projects on first render, and only that account's projects are ever
+  // offered — a team's cameras have no business appearing on another team's wall.
+  activeProjectId: "",
   lastReadNotifAt: LATEST_SEED_TIMESTAMP,
   setCameraStatus: (cameraId, status) =>
     set(state => {
@@ -1192,6 +1215,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
       };
     }),
+  setActiveProjectId: (projectId) => set({ activeProjectId: projectId }),
   setAppSearch: (userId, allowed) =>
     set(state => {
       const user = state.portalUsers.find(u => u.id === userId);

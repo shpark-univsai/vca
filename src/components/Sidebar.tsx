@@ -981,18 +981,19 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
       <div style={{ display:"flex", gap:"6px", padding:"0 20px 16px", flexShrink:0 }}>
         {SYSTEM_STATUS_FILTERS.map(id => {
           const active = statusFilter === id;
-          const dotColor = id === "Live" ? "var(--success-400)" : id === "Off" ? "var(--danger-400)" : "var(--gray-400)";
           return (
             <button key={id} onClick={() => { setStatusFilter(id); setPage(1); }}
               onMouseEnter={e => { if (!active) e.currentTarget.style.backgroundColor = "var(--gray-200)"; }}
               onMouseLeave={e => { if (!active) e.currentTarget.style.backgroundColor = "var(--gray-100)"; }}
+              // No status dot. These are filters, not statuses — the dot said "green means live"
+              // beside a word that already said Live, and the same colours mean "this row is live"
+              // in the list below, so a filter wearing them read as a row that had been selected.
               style={{
-                display:"flex", alignItems:"center", gap:"5px",
-                padding:"4px 8px", borderRadius:"999px", border:"none", cursor:"pointer",
+                display:"flex", alignItems:"center",
+                padding:"4px 10px", borderRadius:"999px", border:"none", cursor:"pointer",
                 backgroundColor: active ? "var(--primary-400)" : "var(--gray-100)",
                 color: active ? "white" : "var(--gray-700)", fontSize:"12px", fontWeight:600, letterSpacing:"-0.24px", transition:"all 0.15s",
               }}>
-              <span style={{ width:"6px", height:"6px", borderRadius:"50%", backgroundColor: active ? "white" : dotColor, flexShrink:0 }} />
               {id === "Off" ? "Out" : id}
             </button>
           );

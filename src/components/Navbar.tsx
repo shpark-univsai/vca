@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatTimeAgo, LiveEvent } from "@/lib/mockData";
-import { SIGNED_IN_USER, useVcaStore, vcaEventsToLiveEvents } from "@/lib/vcaStore";
+import { SIGNED_IN_USER, projectsVisibleInApp, useVcaStore, vcaEventsToLiveEvents } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useApiData } from "@/hooks/useApiData";
 import { getDashboardStats } from "@/lib/api/dashboard";
@@ -44,6 +44,18 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
   // genuinely-empty fleet — showing "—" instead makes a load failure visibly different from a
   // real zero.
   const { data: dashboardStats, error: dashboardStatsError } = useApiData(() => getDashboardStats(), []);
+  // Which site this wall is showing. Only the account's own projects are offered — a team's
+  // cameras have no business on another team's screen — so a one-project account sees a plain
+  // label with nothing to open.
+  const projects = useVcaStore(s => s.projects);
+  const portalUsers = useVcaStore(s => s.portalUsers);
+  const activeProjectId = useVcaStore(s => s.activeProjectId);
+  const setActiveProjectId = useVcaStore(s => s.setActiveProjectId);
+  const myProjects = projectsVisibleInApp(portalUsers, projects);
+  const activeProject = myProjects.find(p => p.id === activeProjectId) ?? myProjects[0] ?? null;
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  useEscapeKey(() => setProjectMenuOpen(false), projectMenuOpen);
+
   const aiRunning = dashboardStatsError ? "—" : dashboardStats?.aiRunning ?? 0;
   const aiStopped = dashboardStatsError ? "—" : dashboardStats?.aiStopped ?? 0;
   const location = dashboardStats?.location ?? "Singapore";
@@ -137,6 +149,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
       .navbar-dropdown-item--danger:hover{background-color:var(--danger-100)}
       .navbar-dropdown-item--danger:hover::before{background-color:var(--danger-400)}
       .navbar-logo-btn{transition:opacity .15s}
+      @media (max-width: 1400px){ .navbar-ai-status{display:none} }
       .navbar-logo-btn:hover{opacity:.8}
     `}</style>
     <nav style={{
@@ -145,7 +158,10 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
       flexShrink: 0, zIndex: 5000, position: "relative",
     }}>
       {/* ── Left: logo + AI status ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "20px", flexShrink: 0 }}>
+      {/* Hard ceiling rather than hope: the tab row is absolutely centred, so a left group that
+          grows past half-the-window-minus-half-the-tabs would slide under it. 236px is half the
+          tab row plus a margin; the project name truncates inside whatever is left. */}
+      <div className="navbar-left" style={{ display: "flex", alignItems: "center", gap: "16px", minWidth: 0, maxWidth: "calc(50% - 236px)", overflow: "hidden" }}>
         {/* Logo — click returns to the Dashboard, same convention as any app's home button */}
         <button
           className="navbar-logo-btn"
@@ -163,8 +179,68 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
           </svg>
         </button>
 
-        {/* AI status */}
-        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+        {/* Which site — read before the numbers beside it, which are this site's cameras. Long
+            names are cut rather than wrapped: the header is one line and the full name is a
+            hover away. */}
+        {activeProject && (
+          <div style={{ position: "relative", flexShrink: 1, minWidth: 0 }}>
+            <button
+              onClick={() => { if (myProjects.length > 1) setProjectMenuOpen(o => !o); }}
+              title={activeProject.name}
+              aria-haspopup={myProjects.length > 1 ? "menu" : undefined}
+              style={{
+                display: "flex", alignItems: "center", gap: "6px", maxWidth: "260px",
+                background: "none", border: "none", padding: 0,
+                cursor: myProjects.length > 1 ? "pointer" : "default",
+              }}
+            >
+              <span style={{
+                fontSize: "13px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.26px",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {activeProject.name}
+              </span>
+              {myProjects.length > 1 && (
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
+                  <path d="M3 4.5L6 7.5L9 4.5" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </button>
+
+            {projectMenuOpen && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 8px)", left: 0, minWidth: "240px",
+                backgroundColor: "white", border: BORDER, borderRadius: "12px",
+                boxShadow: "0 12px 32px rgba(14,22,42,0.14)", padding: "6px", zIndex: 6000,
+              }}>
+                {myProjects.map(p => (
+                  <button
+                    key={p.id}
+                    className="navbar-dropdown-item"
+                    onClick={() => { setActiveProjectId(p.id); setProjectMenuOpen(false); }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "8px", width: "100%", textAlign: "left",
+                      padding: "9px 10px", border: "none", borderRadius: "8px", cursor: "pointer",
+                      fontSize: "13px", fontWeight: p.id === activeProject.id ? 800 : 600,
+                    }}
+                  >
+                    <span style={{ display: "flex", width: "12px", flexShrink: 0 }}>
+                      {p.id === activeProject.id && (
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      )}
+                    </span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* AI status — folded away under 1400px so the site name keeps its room. The same two
+            numbers are on the Dashboard, which is where someone goes when they want to act on
+            them; up here they are a glance, and a glance is what gets sacrificed first. */}
+        <div className="navbar-ai-status" style={{ display: "flex", alignItems: "center", gap: "20px", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           {/* Running icon */}
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ flexShrink:0, animation:"run-icon 1.8s ease-in-out infinite" }}>
@@ -174,8 +250,10 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
             <path d="M1.66675 17.4993V14.166" stroke="var(--gray-900)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M5.83337 7.5H5.84067" stroke="var(--gray-900)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span style={{ fontWeight: 800, fontSize: "13px", color: "var(--gray-800)", letterSpacing: "-0.26px", lineHeight: "16px" }}>
-            {aiRunning} Running
+          {/* Number only: the icon beside it already says which, and the words were costing the
+              header the width the project name now needs. The word survives as a tooltip. */}
+          <span title={`${aiRunning} running`} style={{ fontWeight: 800, fontSize: "13px", color: "var(--gray-800)", letterSpacing: "-0.26px", lineHeight: "16px" }}>
+            {aiRunning}
           </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -197,8 +275,8 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
               </clipPath>
             </defs>
           </svg>
-          <span style={{ fontWeight: 800, fontSize: "13px", color: "var(--danger-400)", letterSpacing: "-0.26px", lineHeight: "16px" }}>
-            {aiStopped} Stopped
+          <span title={`${aiStopped} stopped`} style={{ fontWeight: 800, fontSize: "13px", color: "var(--danger-400)", letterSpacing: "-0.26px", lineHeight: "16px" }}>
+            {aiStopped}
           </span>
           </div>
         </div>
