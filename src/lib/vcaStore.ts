@@ -1288,7 +1288,22 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
     }),
   setPersonGroup: (personId, groupId) =>
-    set(state => ({ persons: state.persons.map(p => (p.id === personId ? { ...p, groupId } : p)) })),
+    set(state => {
+      const person = state.persons.find(p => p.id === personId);
+      if (!person) return {};
+      const to = groupId ? state.personGroups.find(g => g.id === groupId)?.name ?? groupId : null;
+      // Logged like every other group change. Who is in a watchlist party is the kind of thing an
+      // inspection asks about later, and the three group actions beside this one already log.
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: person.projectId,
+        message: to ? `${person.name} added to VIP group: ${to}` : `${person.name} removed from their VIP group`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        persons: state.persons.map(p => (p.id === personId ? { ...p, groupId } : p)),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
   addEvent: (event) =>
     set(state => {
       if (!event.personName || !event.location) {

@@ -96,6 +96,7 @@ interface VipDict {
   groupRemovedWithMembersTitle: (members: number) => string;
   close: string;
   detailNoNote: string;
+  groupChangedTitle: string;
 }
 
 const T: Record<"en" | "ko", VipDict> = {
@@ -168,6 +169,7 @@ const T: Record<"en" | "ko", VipDict> = {
     groupRemovedWithMembersTitle: (members: number) => `Group and ${members} member(s) removed`,
     close: "Close",
     detailNoNote: "No note",
+    groupChangedTitle: "Group changed",
     bulkEmptyDesc: "Expected CSV rows as \"name,description\".",
   },
   ko: {
@@ -239,6 +241,7 @@ const T: Record<"en" | "ko", VipDict> = {
     groupRemovedWithMembersTitle: (members: number) => `그룹과 ${members}명을 삭제했습니다`,
     close: "닫기",
     detailNoNote: "메모 없음",
+    groupChangedTitle: "그룹을 변경했습니다",
     bulkEmptyDesc: "CSV 행은 \"이름,설명\" 형식이어야 합니다.",
   },
 };
@@ -488,10 +491,23 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
 }) {
   useEscapeKey(onClose);
   const setPersonGroup = useVcaStore(s => s.setPersonGroup);
+  const { showToast } = useToast();
   // Read off the person passed in, which the caller re-reads from the store each render — a group
   // handed down as its own prop would be the value from the moment the sheet opened, so changing
   // the group here would leave the tag above saying the old one.
   const group = groups.find(g => g.id === person.groupId);
+  /**
+   * The picked group, held until it is saved.
+   *
+   * The table's own group select writes straight through, which is right there — it is the row's
+   * control, and every other select in a Portal table behaves that way. Here it is not: this field
+   * sits in a column of read-only values (role, registered, note), so a change that took effect the
+   * instant the list closed would be the one thing on the sheet that quietly did something. The
+   * Save button appears only once the pick differs from what is stored, so it is also the sheet
+   * saying there is something unsaved.
+   */
+  const [draftGroupId, setDraftGroupId] = useState(person.groupId ?? "");
+  const dirty = draftGroupId !== (person.groupId ?? "");
 
   const row = (label: string, value: React.ReactNode) => (
     <div style={{ display: "flex", gap: "12px", alignItems: "baseline" }}>
@@ -531,12 +547,27 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
             {row(t.colRegistered, person.registeredAt)}
             {row(t.colNote, person.description || <span style={{ color: "var(--gray-400)" }}>{t.detailNoNote}</span>)}
             {row(t.colGroup, (
-              <FilterSelect
-                fitContent
-                value={person.groupId ?? ""}
-                onChange={v => setPersonGroup(person.id, v || undefined)}
-                options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
-              />
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                <FilterSelect
+                  fitContent
+                  value={draftGroupId}
+                  onChange={setDraftGroupId}
+                  options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
+                />
+                {dirty && (
+                  <button
+                    onClick={() => {
+                      setPersonGroup(person.id, draftGroupId || undefined);
+                      showToast({
+                        variant: "success", title: t.groupChangedTitle,
+                        desc: `${person.name} — ${groups.find(g => g.id === draftGroupId)?.name ?? t.groupNone}`,
+                      });
+                    }}
+                    style={{ padding: "6px 12px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                    {t.groupSave}
+                  </button>
+                )}
+              </span>
             ))}
           </div>
         </div>
