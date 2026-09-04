@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Asterisk } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEnterPortal, currentPortalRole, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
@@ -34,6 +34,21 @@ const T = {
     countAdmins: "Admins",
     countAuditors: "Read-only",
     countAppOnly: "App only",
+    whatRolesMean: "What the roles mean",
+    guideTitle: "Access and roles",
+    guideLead: "Access decides which doors an account has. The role decides what it may do once inside Portal.",
+    guideRolesHeading: "Portal roles — where they differ",
+    guideRowGrant: "Users and granting access",
+    guideRowSettings: "Cameras, VIP, roster, license, server",
+    guideRowAudit: "Audit log",
+    guideEdit: "Change",
+    guideViewOnly: "View only",
+    guideView: "View",
+    guideNone: "No access",
+    guideSameNote: "Every other Portal screen behaves like the settings row — there is one difference between Owner and Admin, and it is the first row.",
+    guideAppHeading: "Inside the app",
+    guideAppSearchNote: "Person search is granted per account and has nothing to do with the Portal role — an app-only operator can have it and a Portal admin can be without it.",
+    guideClose: "Close",
     peopleTabAccounts: "Accounts",
     peopleTabRoster: "On the roster",
     colPlannedPermission: "Permission on signup",
@@ -250,6 +265,21 @@ const T = {
     countAdmins: "관리자",
     countAuditors: "읽기 전용",
     countAppOnly: "앱 전용",
+    whatRolesMean: "권한 안내",
+    guideTitle: "접근과 역할",
+    guideLead: "접근은 계정에 열리는 문을 정하고, 역할은 포털 안에서 할 수 있는 일을 정합니다.",
+    guideRolesHeading: "포털 역할 — 서로 다른 것만",
+    guideRowGrant: "사용자 · 권한 부여",
+    guideRowSettings: "카메라 · VIP · 명부 · 라이선스 · 서버",
+    guideRowAudit: "감사 로그",
+    guideEdit: "변경",
+    guideViewOnly: "보기만",
+    guideView: "보기",
+    guideNone: "접근 없음",
+    guideSameNote: "나머지 포털 화면은 모두 설정 행과 똑같이 동작합니다 — 소유자와 관리자의 차이는 하나뿐이고, 그게 첫 줄입니다.",
+    guideAppHeading: "앱 안에서",
+    guideAppSearchNote: "인물 검색은 계정마다 따로 부여하며 포털 역할과 무관합니다 — 앱 전용 운영자가 가질 수도 있고, 포털 관리자가 없을 수도 있습니다.",
+    guideClose: "닫기",
     peopleTabAccounts: "계정",
     peopleTabRoster: "명부 대기",
     colPlannedPermission: "가입 시 권한",
@@ -1203,6 +1233,96 @@ function stageOfRosterEntry(status: RosterCodeStatus): Stage {
   return status === "unused" ? "codeIssued" : status === "expired" ? "codeExpired" : "rosterListed";
 }
 
+/**
+ * What the two axes mean, as a reference an owner can open while deciding.
+ *
+ * Deliberately NOT the role x capability matrix the big consoles draw (Vanta, StackAI, Workable).
+ * Those carry five to eight roles, custom ones included, over dozens of capabilities. This
+ * installation has three roles, and six of the seven rows such a matrix would have are identical
+ * between Owner and Admin — it would be a wall of "Change / Change / View only" restating three
+ * sentences. Only the row that differs is worth a table.
+ *
+ * Every cell is derived from the same helpers the app enforces with (canManageAccess,
+ * canEditPortal, canEnterPortal) rather than typed out. A hand-written permissions table is a
+ * document that starts telling the truth and stops the first time one of those functions changes.
+ */
+function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko"]; onClose: () => void }) {
+  const roles: PortalPermission[] = ["owner", "admin", "auditor"];
+  const cell = (allowed: boolean, yes: string, no: string) => ({
+    label: allowed ? yes : no,
+    color: allowed ? "var(--gray-900)" : "var(--gray-500)",
+    weight: allowed ? 700 : 400,
+  });
+  const rows = [
+    { label: t.guideRowGrant, of: (r: PortalPermission) => cell(canManageAccess(r), t.guideEdit, t.guideViewOnly) },
+    { label: t.guideRowSettings, of: (r: PortalPermission) => cell(canEditPortal(r), t.guideEdit, t.guideViewOnly) },
+    { label: t.guideRowAudit, of: (r: PortalPermission) => cell(canEnterPortal(r), t.guideView, t.guideNone) },
+  ];
+  const GUIDE_GRID = "1.6fr repeat(3, 1fr)";
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "560px", width: "100%", maxHeight: "86vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+        <div style={{ padding: "20px 20px 0" }}>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.guideTitle}</p>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.6 }}>{t.guideLead}</p>
+        </div>
+
+        {/* The doors. This is the half people actually get wrong — the roles read fine on their own,
+            it is their relationship to app access that needs saying. */}
+        <div style={{ padding: "16px 20px 0", display: "flex", flexDirection: "column", gap: "8px" }}>
+          {([
+            { label: t.accessBoth, desc: t.accessBothDesc },
+            { label: t.accessAppOnly, desc: t.accessAppOnlyDesc },
+            { label: t.accessPortalOnly, desc: t.accessPortalOnlyDesc },
+          ]).map(a => (
+            <div key={a.label} style={{ display: "flex", gap: "10px", alignItems: "baseline", border: BORDER, borderRadius: "10px", padding: "10px 12px" }}>
+              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap", minWidth: "88px" }}>{a.label}</span>
+              <span style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{a.desc}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ padding: "20px 20px 0" }}>
+          <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.guideRolesHeading}</p>
+          <div style={{ border: BORDER, borderRadius: "10px", overflow: "hidden" }}>
+            <div style={{ display: "grid", gridTemplateColumns: GUIDE_GRID, gap: "8px", padding: "8px 12px", backgroundColor: "var(--gray-50)", borderBottom: BORDER }}>
+              <span />
+              {roles.map(r => (
+                <span key={r} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px" }}>
+                  {roleLabel(t, r).toUpperCase()}
+                </span>
+              ))}
+            </div>
+            {rows.map((row, i) => (
+              <div key={row.label} style={{ display: "grid", gridTemplateColumns: GUIDE_GRID, gap: "8px", padding: "9px 12px", borderBottom: i === rows.length - 1 ? "none" : BORDER, alignItems: "baseline" }}>
+                <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.4 }}>{row.label}</span>
+                {roles.map(r => {
+                  const c = row.of(r);
+                  return <span key={r} style={{ fontSize: "12px", fontWeight: c.weight, color: c.color }}>{c.label}</span>;
+                })}
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "8px", lineHeight: 1.6 }}>{t.guideSameNote}</p>
+        </div>
+
+        <div style={{ padding: "20px 20px 0" }}>
+          <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>{t.guideAppHeading}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6 }}>{t.guideAppSearchNote}</p>
+        </div>
+
+        <div style={{ padding: "20px", display: "flex", justifyContent: "flex-end" }}>
+          <button onClick={onClose}
+            style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {t.guideClose}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** One badge for every rung of the ladder, so a reader compares like with like down the column. */
 function StageBadge({ stage, t }: { stage: Stage; t: { stageRosterListed: string; stageCodeIssued: string; stageCodeExpired: string } }) {
   const meta: Record<"rosterListed" | "codeIssued" | "codeExpired", { label: string; bg: string; color: string }> = {
@@ -1303,6 +1423,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const [removingEntry, setRemovingEntry] = useState<RosterEntry | null>(null);
   const [showPrintSheet, setShowPrintSheet] = useState(false);
   const [showRosterImport, setShowRosterImport] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   /** null = closed, { entry: null } = add, { entry } = edit. */
   const [rosterEditorFor, setRosterEditorFor] = useState<{ entry: RosterEntry | null } | null>(null);
   /**
@@ -1425,7 +1546,16 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
 
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "20px" }}>
         <div>
-          <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap" }}>
+            <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
+            {/* The role descriptions only exist inside the role select, which means the answer to
+                "what is the difference between Admin and read-only" is behind opening a control you
+                may not be allowed to use. This is that answer, in the open. */}
+            <button onClick={() => setShowGuide(true)}
+              style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", textDecoration: "underline", textUnderlineOffset: "3px" }}>
+              {t.whatRolesMean}
+            </button>
+          </div>
           <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "4px" }}>
             {currentProject
               ? (lang === "ko"
@@ -1863,6 +1993,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             setRemovingEntry(null);
           }} />
       )}
+      {showGuide && <AccessGuideModal t={t} onClose={() => setShowGuide(false)} />}
       {showRosterImport && <RosterImportModal projectId={projectId} onClose={() => setShowRosterImport(false)} />}
       {showPrintSheet && (
         <PrintSheet entries={printableEntries} projectName={currentProject?.name ?? projectId} onClose={() => setShowPrintSheet(false)} t={rt} />
