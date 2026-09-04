@@ -8,6 +8,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import { BORDER, TABLE_COLUMN_GAP, PANEL_SHADOW, FilterSelect, RowActionsMenu, SortableHeader, sortRows, useTableSort } from "./PortalShared";
+import RosterImportModal from "./RosterImportModal";
 
 const T = {
   en: {
@@ -35,8 +36,7 @@ const T = {
     filterAllStatuses: "All statuses",
     pageTitle: "Staff Roster",
     pageDesc: "Issue registration codes for offline sign-up — no mail required. See who hasn't joined yet.",
-    importExcel: "Import from Excel",
-    comingSoon: "Coming soon",
+    importRoster: "Import CSV",
     addPerson: "Add person",
     editEntry: "Edit",
     modalAddTitle: "Add to roster",
@@ -84,6 +84,7 @@ const T = {
     csvHeaderName: "Name",
     csvHeaderEmployeeId: "Employee ID",
     csvHeaderDepartment: "Department",
+    csvHeaderEmail: "Email",
     csvHeaderPermission: "Permission",
     csvHeaderStatus: "Status",
     csvHeaderCode: "Code",
@@ -113,7 +114,7 @@ const T = {
     filterAllStatuses: "전체 상태",
     pageTitle: "직원 명부",
     pageDesc: "메일 없이 오프라인 가입을 위한 등록 코드를 발급합니다. 아직 가입하지 않은 직원을 확인하세요.",
-    importExcel: "엑셀로 가져오기",
+    importRoster: "CSV 가져오기",
     addPerson: "사람 추가",
     editEntry: "편집",
     modalAddTitle: "명부에 추가",
@@ -134,7 +135,6 @@ const T = {
     addNote: "여기에 추가한다고 들어올 수 있게 되지는 않습니다 — 코드는 그다음에 발급합니다.",
     toastAddedTitle: "명부에 추가했습니다",
     toastUpdatedTitle: "명부를 수정했습니다",
-    comingSoon: "준비 중",
     exportCsv: "CSV 내보내기",
     printHandout: "배포용 시트 인쇄",
     issueCodesTo: (n: number) => `미발급 ${n}명에게 코드 발급`,
@@ -162,6 +162,7 @@ const T = {
     csvHeaderName: "이름",
     csvHeaderEmployeeId: "사번",
     csvHeaderDepartment: "부서",
+    csvHeaderEmail: "이메일",
     csvHeaderPermission: "권한",
     csvHeaderStatus: "상태",
     csvHeaderCode: "코드",
@@ -532,6 +533,7 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
   const [issuingEntry, setIssuingEntry] = useState<RosterEntry | null>(null);
   const [removingEntry, setRemovingEntry] = useState<RosterEntry | null>(null);
   const [showPrintSheet, setShowPrintSheet] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   // null = 닫힘, { entry: null } = 추가, { entry } = 편집
   const [editorFor, setEditorFor] = useState<{ entry: RosterEntry | null } | null>(null);
 
@@ -585,9 +587,11 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
   };
 
   const exportCsv = () => {
-    const header = [t.csvHeaderName, t.csvHeaderEmployeeId, t.csvHeaderDepartment, t.csvHeaderPermission, t.csvHeaderStatus, t.csvHeaderCode];
+    // Email is here so the export is a file the importer can read back: export, fix it in Excel,
+    // import. Leaving the column out meant a round trip silently dropped everyone's address.
+    const header = [t.csvHeaderName, t.csvHeaderEmployeeId, t.csvHeaderDepartment, t.csvHeaderEmail, t.csvHeaderPermission, t.csvHeaderStatus, t.csvHeaderCode];
     const rows = projectRoster.map(r => [
-      r.name, r.employeeId, r.department ?? "", r.permission === "admin" ? t.admin : t.operator,
+      r.name, r.employeeId, r.department ?? "", r.email ?? "", r.permission === "admin" ? t.admin : t.operator,
       statusMeta[r.status].label,
       // Only a still-usable code is worth exporting — a used/expired one can't get anyone signed up.
       r.status === "unused" && r.code ? formatCode(r.code) : "",
@@ -620,9 +624,9 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
             {t.addPerson}
           </button>
-          <button disabled title={t.comingSoon}
-            style={{ padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: "not-allowed" }}>
-            {t.importExcel}
+          <button onClick={() => setShowImport(true)}
+            style={{ padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            {t.importRoster}
           </button>
           <button onClick={exportCsv}
             style={{ padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
@@ -709,6 +713,9 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
       )}
       {removingEntry && (
         <RemoveConfirmModal entry={removingEntry} onClose={() => setRemovingEntry(null)} onConfirm={confirmRemove} t={t} />
+      )}
+      {showImport && (
+        <RosterImportModal projectId={projectId} onClose={() => setShowImport(false)} />
       )}
       {showPrintSheet && (
         <PrintSheet entries={printableEntries} projectName={projectName} onClose={() => setShowPrintSheet(false)} t={t} />
