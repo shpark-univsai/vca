@@ -51,6 +51,10 @@ const T = {
     guideClose: "Close",
     peopleTabAccounts: "Accounts",
     peopleTabRoster: "On the roster",
+    // On the tabs themselves. The Accounts one answers the thing this table is most often read
+    // wrongly for: an invited account is already here, before anybody has signed in with it.
+    peopleTabAccountsHint: "Accounts that can reach this project — including people who have been invited and have not signed in yet.",
+    peopleTabRosterHint: "On the staff roster with no account yet. Issue a registration code and hand it over on paper — they sign up without mail.",
     colPlannedPermission: "Permission on signup",
     colCode: "Registration code",
     countRosterWaiting: "On the roster",
@@ -281,6 +285,8 @@ const T = {
     guideClose: "닫기",
     peopleTabAccounts: "계정",
     peopleTabRoster: "명부 대기",
+    peopleTabAccountsHint: "이 프로젝트에 닿을 수 있는 계정입니다 — 초대만 받고 아직 로그인하지 않은 사람도 포함합니다.",
+    peopleTabRosterHint: "명부에 있고 아직 계정이 없는 사람입니다. 등록 코드를 발급해 종이로 건네면 메일 없이 가입합니다.",
     colPlannedPermission: "가입 시 권한",
     colCode: "등록 코드",
     countRosterWaiting: "명부 대기",
@@ -1601,12 +1607,16 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           uses for its kinds. */}
       <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
         {([
-          { id: "accounts", label: t.peopleTabAccounts, count: projectUsers.length },
-          { id: "roster", label: t.peopleTabRoster, count: rosterWaiting.length },
-        ] as { id: "accounts" | "roster"; label: string; count: number }[]).map(tab => {
+          { id: "accounts", label: t.peopleTabAccounts, count: projectUsers.length, hint: t.peopleTabAccountsHint },
+          { id: "roster", label: t.peopleTabRoster, count: rosterWaiting.length, hint: t.peopleTabRosterHint },
+        ] as { id: "accounts" | "roster"; label: string; count: number; hint: string }[]).map(tab => {
           const active = peopleTab === tab.id;
           return (
-            <button key={tab.id} onClick={() => setPeopleTab(tab.id)}
+            /* On the tab rather than a line under it. The tab name is a state ("On the roster"),
+               which is the right name for what the tab holds but says nothing about what you came
+               here to do; a permanent sentence answering that would be clutter for everybody who
+               already knows, and the count strip's own hints are already tooltips. */
+            <button key={tab.id} onClick={() => setPeopleTab(tab.id)} title={tab.hint}
               style={{
                 display: "flex", alignItems: "center", gap: "6px",
                 background: "none", border: "none", cursor: "pointer",
