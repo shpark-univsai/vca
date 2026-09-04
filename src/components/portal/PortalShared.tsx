@@ -615,9 +615,9 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, a
             table headings and the row dividers, a dialog was mostly lines — the same reason
             CARD_BORDER above is "none". The padding already separates the buttons from the text,
             and a line that is only ever in the same place carries no information.
-            It is kept in the two modals whose body actually scrolls (the credential sheet, the
-            roster import preview), where it marks the edge of the scroll region rather than
-            decorating one. */}
+            Not kept anywhere, including the two modals whose body scrolls: the footer buttons are
+            outlined pills, so a rule directly above them is a line sitting on a row of lines, and
+            a scroll region's edge is already told by its scrollbar and by content being cut off. */}
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {cancelLabel}

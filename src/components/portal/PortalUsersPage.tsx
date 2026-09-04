@@ -854,7 +854,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
                 </ul>
               </div>
             )}
-            <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+            <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
               <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.cancel}
               </button>
@@ -892,7 +892,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
                 <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.7, marginTop: "4px" }}>{c.handover}</p>
               </div>
             </div>
-            <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end" }}>
+            <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
               <button onClick={onClose}
                 style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.tempDone}
