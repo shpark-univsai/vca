@@ -557,12 +557,17 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
             {row(t.colNote, person.description || <span style={{ color: "var(--gray-400)" }}>{t.detailNoNote}</span>)}
             {row(t.colGroup, (
               <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                <FilterSelect
-                  fitContent
-                  value={draftGroupId}
-                  onChange={setDraftGroupId}
-                  options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
-                />
+                {/* Fixed box, not fitContent. Sized to its own label, the control changed width
+                    every time the group did — "Individual" and "City Hall delegation" are not the
+                    same number of characters — so the row twitched and the Save button beside it
+                    moved with it. A field keeps its shape while its value changes. */}
+                <span style={{ width: "170px", flexShrink: 0 }}>
+                  <FilterSelect
+                    value={draftGroupId}
+                    onChange={setDraftGroupId}
+                    options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
+                  />
+                </span>
                 {dirty ? (
                   <button
                     onClick={() => {
@@ -884,8 +889,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                     the group editor would mean two places that have to agree about who is in it;
                     one select on the person's own row is the single place that decides. */}
                 {showGroupColumn && (
+                  /* Fills the column rather than its label, so the boxes line up down the table
+                     instead of each row drawing a different width. */
                   <FilterSelect
-                    fitContent
                     value={person.groupId ?? ""}
                     onChange={v => setPersonGroup(person.id, v || undefined)}
                     options={[
