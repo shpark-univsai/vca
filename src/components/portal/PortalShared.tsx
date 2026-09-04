@@ -582,13 +582,22 @@ export function SortableHeader<K extends string>({ label, sortKey, sort, onToggl
  * Remove) predate it and still carry their own markup — worth folding in here, but not while they
  * are untouched by the change that needed this.
  */
-export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, onConfirm, onClose }: {
+export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, altAction, onConfirm, onClose }: {
   title: string;
   body: string;
   confirmLabel: string;
   cancelLabel: string;
   /** Red confirm button — for the ones that take access away or cannot be undone from the menu. */
   danger?: boolean;
+  /**
+   * A second answer to the same question, for the dialogs where "yes" has two meanings and neither
+   * is safe to guess at — deleting a group of registered faces is the case this exists for: the
+   * grouping was a mistake, or the party has left.
+   *
+   * Sits to the LEFT of the main confirm, so the rightmost button — the one a stray Enter or an
+   * impatient click lands on — stays the recoverable one even when this is the destructive answer.
+   */
+  altAction?: { label: string; onClick: () => void; danger?: boolean };
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -605,6 +614,18 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, o
           <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {cancelLabel}
           </button>
+          {altAction && (
+            <button onClick={altAction.onClick}
+              style={{
+                padding: "9px 16px", borderRadius: "999px",
+                border: altAction.danger ? "none" : BORDER,
+                backgroundColor: altAction.danger ? "var(--danger-400)" : "white",
+                color: altAction.danger ? "white" : "var(--gray-600)",
+                fontSize: "13px", fontWeight: 700, cursor: "pointer",
+              }}>
+              {altAction.label}
+            </button>
+          )}
           {/* Non-danger confirms are gray-900, not primary: restoring an account is a normal
               administrative act, and primary-400 here would spend the page's accent on a dialog
               nobody is meant to linger in. */}

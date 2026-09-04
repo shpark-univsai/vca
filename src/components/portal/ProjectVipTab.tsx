@@ -91,6 +91,9 @@ interface VipDict {
   groupRemovedTitle: string;
   confirmRemoveGroupTitle: (name: string) => string;
   confirmRemoveGroupBody: (members: number) => string;
+  groupKeepMembers: (members: number) => string;
+  groupDeleteMembers: (members: number) => string;
+  groupRemovedWithMembersTitle: (members: number) => string;
 }
 
 const T: Record<"en" | "ko", VipDict> = {
@@ -157,7 +160,10 @@ const T: Record<"en" | "ko", VipDict> = {
     confirmRemoveGroupTitle: (name: string) => `Remove ${name}?`,
     confirmRemoveGroupBody: (members: number) => members === 0
       ? "The group has no members. Nothing else changes."
-      : `Its ${members} member(s) stay registered and become individuals — their faces are still enrolled and still matched. Only the grouping goes.`,
+      : `Choose what happens to its ${members} member(s). Kept, their faces stay enrolled and still match — only the party goes.`,
+    groupKeepMembers: (members: number) => `Keep ${members}`,
+    groupDeleteMembers: (members: number) => `Delete ${members} too`,
+    groupRemovedWithMembersTitle: (members: number) => `Group and ${members} member(s) removed`,
     bulkEmptyDesc: "Expected CSV rows as \"name,description\".",
   },
   ko: {
@@ -223,7 +229,10 @@ const T: Record<"en" | "ko", VipDict> = {
     confirmRemoveGroupTitle: (name: string) => `${name}을 삭제할까요?`,
     confirmRemoveGroupBody: (members: number) => members === 0
       ? "소속된 사람이 없습니다. 달라지는 것이 없습니다."
-      : `소속된 ${members}명은 등록된 채로 남아 개인이 됩니다 — 얼굴은 그대로 등록돼 있고 계속 인식됩니다. 묶음만 사라집니다.`,
+      : `소속된 ${members}명을 어떻게 할지 고르세요. 남기면 얼굴은 그대로 등록돼 있고 계속 인식됩니다 — 묶음만 사라집니다.`,
+    groupKeepMembers: (members: number) => `${members}명은 남기기`,
+    groupDeleteMembers: (members: number) => `${members}명도 삭제`,
+    groupRemovedWithMembersTitle: (members: number) => `그룹과 ${members}명을 삭제했습니다`,
     bulkEmptyDesc: "CSV 행은 \"이름,설명\" 형식이어야 합니다.",
   },
 };
@@ -795,21 +804,47 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       {groupModalFor && (
         <GroupModal t={t} group={groupModalFor.group} projectId={projectId} onClose={() => setGroupModalFor(null)} />
       )}
-      {confirmingGroupRemove && (
-        <ConfirmModal
-          title={t.confirmRemoveGroupTitle(confirmingGroupRemove.name)}
-          body={t.confirmRemoveGroupBody(memberCountOf(confirmingGroupRemove.id))}
-          confirmLabel={t.removeGroup}
-          cancelLabel={t.cancel}
-          danger
-          onConfirm={() => {
-            removePersonGroup(confirmingGroupRemove.id);
-            showToast({ variant: "warning", title: t.groupRemovedTitle, desc: confirmingGroupRemove.name });
-            setConfirmingGroupRemove(null);
-          }}
-          onClose={() => setConfirmingGroupRemove(null)}
-        />
-      )}
+      {confirmingGroupRemove && (() => {
+        const group = confirmingGroupRemove;
+        const members = memberCountOf(group.id);
+        const finish = (deleteMembers: boolean) => {
+          removePersonGroup(group.id, { deleteMembers });
+          showToast({
+            variant: "warning",
+            title: deleteMembers ? t.groupRemovedWithMembersTitle(members) : t.groupRemovedTitle,
+            desc: group.name,
+          });
+          setConfirmingGroupRemove(null);
+        };
+        /**
+         * Two answers when there is somebody in the group, because "delete the group" reads both
+         * ways — a folder whose contents go with it, or a label that comes off. Guessing either way
+         * is wrong for half the people who click it, and one of the two guesses destroys enrolled
+         * faces. With nobody in it there is nothing to decide, so it stays one button.
+         */
+        return members === 0 ? (
+          <ConfirmModal
+            title={t.confirmRemoveGroupTitle(group.name)}
+            body={t.confirmRemoveGroupBody(0)}
+            confirmLabel={t.removeGroup}
+            cancelLabel={t.cancel}
+            danger
+            onConfirm={() => finish(false)}
+            onClose={() => setConfirmingGroupRemove(null)}
+          />
+        ) : (
+          <ConfirmModal
+            title={t.confirmRemoveGroupTitle(group.name)}
+            body={t.confirmRemoveGroupBody(members)}
+            // The recoverable answer is the main button, on the right where a stray Enter lands.
+            confirmLabel={t.groupKeepMembers(members)}
+            cancelLabel={t.cancel}
+            altAction={{ label: t.groupDeleteMembers(members), danger: true, onClick: () => finish(true) }}
+            onConfirm={() => finish(false)}
+            onClose={() => setConfirmingGroupRemove(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

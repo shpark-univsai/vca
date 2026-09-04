@@ -279,8 +279,12 @@ interface VcaStoreState {
   removePerson: (personId: string) => void;
   addPersonGroup: (group: Omit<PersonGroup, "id">) => string;
   updatePersonGroup: (groupId: string, updates: Partial<Omit<PersonGroup, "id">>) => void;
-  /** Removes the group only. Its members stay registered and become individuals again. */
-  removePersonGroup: (groupId: string) => void;
+  /**
+   * Removes the group. `deleteMembers` decides what happens to the people in it — the two answers
+   * are both legitimate (the grouping was a mistake / the delegation left), and neither is safe to
+   * guess at, so the caller has to say. See the confirmation dialog in ProjectVipTab.
+   */
+  removePersonGroup: (groupId: string, options?: { deleteMembers?: boolean }) => void;
   setPersonGroup: (personId: string, groupId: string | undefined) => void;
   addEvent: (event: Omit<VcaEvent, "id">) => void;
   markNotificationsRead: () => void;
@@ -1261,17 +1265,26 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         auditLog: [{ id: `audit-${++auditSeq}`, projectId: group.projectId, message: `VIP group updated: ${updates.name ?? group.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
       };
     }),
-  removePersonGroup: (groupId) =>
+  removePersonGroup: (groupId, options) =>
     set(state => {
       const group = state.personGroups.find(g => g.id === groupId);
-      const freed = state.persons.filter(p => p.groupId === groupId).length;
+      const affected = state.persons.filter(p => p.groupId === groupId).length;
+      const deleteMembers = options?.deleteMembers === true;
       return {
         personGroups: state.personGroups.filter(g => g.id !== groupId),
-        // Deleting the party does not un-register the people in it. Their faces are still enrolled
-        // and still matched; they simply stop being a party. Deleting people too would make a
-        // grouping mistake cost the enrolment work, which is the expensive half.
-        persons: state.persons.map(p => (p.groupId === groupId ? { ...p, groupId: undefined } : p)),
-        auditLog: [{ id: `audit-${++auditSeq}`, projectId: group?.projectId, message: `VIP group removed: ${group?.name ?? groupId}${freed > 0 ? ` — ${freed} member(s) kept as individuals` : ""}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+        // Two outcomes, both asked for explicitly. Keeping them is the cheap correction for a
+        // grouping mistake — the faces stay enrolled and matched, only the party goes. Deleting
+        // them is what a delegation leaving actually needs, and doing it one row at a time for
+        // twenty-eight people is not a workflow.
+        persons: deleteMembers
+          ? state.persons.filter(p => p.groupId !== groupId)
+          : state.persons.map(p => (p.groupId === groupId ? { ...p, groupId: undefined } : p)),
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId: group?.projectId,
+          message: `VIP group removed: ${group?.name ?? groupId}`
+            + (affected === 0 ? "" : deleteMembers ? ` — ${affected} member(s) deleted with it` : ` — ${affected} member(s) kept as individuals`),
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...state.auditLog].slice(0, 200),
       };
     }),
   setPersonGroup: (personId, groupId) =>
