@@ -65,11 +65,18 @@ const HEADER_SYNONYMS: Record<ColumnKey, string[]> = {
   permission: ["permission", "role", "accesslevel", "권한", "역할", "등급"],
 };
 
+/**
+ * Both spellings of both values. The roster used to call the app-only option "Operator" / "운영자"
+ * and now calls it "App user" / "앱 사용자" — a roster exported before that rename is still a file
+ * somebody is about to import, so the old words stay readable forever.
+ */
 const PERMISSION_VALUES: Record<string, "admin" | "operator"> = {
-  admin: "admin", administrator: "admin", owner: "admin",
-  관리자: "admin", 어드민: "admin", 운영관리자: "admin",
+  admin: "admin", administrator: "admin", owner: "admin", portalapp: "admin",
+  관리자: "admin", 어드민: "admin", 운영관리자: "admin", 포털앱: "admin",
   operator: "operator", user: "operator", member: "operator", staff: "operator",
+  appuser: "operator", apponly: "operator", app: "operator",
   운영자: "operator", 오퍼레이터: "operator", 사용자: "operator", 일반: "operator",
+  앱사용자: "operator", 앱만: "operator", 앱: "operator",
 };
 
 function normalizeHeader(raw: string): string {

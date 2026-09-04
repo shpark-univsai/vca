@@ -364,7 +364,7 @@ function RegisterFlow() {
                   {entry.projectId
                     ? detailRow("Project", projects.find(p => p.id === entry.projectId)?.name ?? entry.projectId)
                     : detailRow("Scope", "All teams and projects")}
-                  {detailRow("Permission", entry.permission === "admin" ? "Administrator" : "Operator")}
+                  {detailRow("Permission", entry.permission === "admin" ? "Administrator — Portal + App" : "App only")}
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>

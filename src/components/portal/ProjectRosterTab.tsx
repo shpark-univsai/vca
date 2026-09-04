@@ -69,7 +69,14 @@ const T = {
     colStatus: "Status",
     colCode: "Code",
     admin: "Admin",
-    operator: "Operator",
+    operator: "App user",
+    // The two roster options mint two very different accounts (see activateRosterEntry), and
+    // "Operator" said nothing about which. The hint under each button is the Access value the
+    // account actually comes out with, in the same words the Users table uses.
+    accessBoth: "Portal + App",
+    accessAppOnly: "App only",
+    adminHint: "Access: Portal + App",
+    operatorHint: "Access: the app only",
     reissueCodeAction: "Reissue code",
     issueCodeAction: "Issue code",
     removeFromRoster: "Remove from roster",
@@ -147,7 +154,11 @@ const T = {
     colStatus: "상태",
     colCode: "코드",
     admin: "관리자",
-    operator: "운영자",
+    operator: "앱 사용자",
+    accessBoth: "포털 + 앱",
+    accessAppOnly: "앱만",
+    adminHint: "접근: 포털 + 앱",
+    operatorHint: "접근: 앱만",
     reissueCodeAction: "코드 재발급",
     issueCodeAction: "코드 발급",
     removeFromRoster: "명부에서 삭제",
@@ -337,20 +348,25 @@ function RosterEntryModal({ entry, projectId, onClose, t }: {
           </div>
           <div>
             {label(t.fieldPermission)}
-            {/* Two buttons rather than a select: the answer is one of two and both fit on screen. */}
+            {/* Two buttons rather than a select: the answer is one of two and both fit on screen.
+                Each carries the access it grants under the name — this is the one screen where the
+                choice is made on paper terms and read back weeks later off a printed slip. */}
             <div style={{ display: "flex", gap: "8px" }}>
               {(["operator", "admin"] as const).map(p => {
                 const active = permission === p;
                 return (
                   <button key={p} onClick={() => setPermission(p)}
                     style={{
-                      flex: 1, padding: "10px 12px", borderRadius: "10px", cursor: "pointer",
+                      flex: 1, padding: "9px 12px", borderRadius: "10px", cursor: "pointer", textAlign: "left",
                       border: active ? "1px solid var(--gray-900)" : BORDER,
                       backgroundColor: active ? "var(--gray-100)" : "white",
                       color: active ? "var(--gray-900)" : "var(--gray-600)",
                       fontSize: "13px", fontWeight: 700,
                     }}>
                     {p === "admin" ? t.admin : t.operator}
+                    <span style={{ display: "block", fontSize: "12px", fontWeight: 600, color: active ? "var(--gray-600)" : "var(--gray-500)", marginTop: "3px" }}>
+                      {p === "admin" ? t.adminHint : t.operatorHint}
+                    </span>
                   </button>
                 );
               })}
@@ -664,7 +680,7 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
         </div>
       ) : (
         <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.8fr 1fr 1.1fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.95fr 0.9fr 1.1fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
             {/* The code column has no sortKey: ordering people by a random 8-character code answers
                 no question anybody has. */}
             {([
@@ -683,14 +699,22 @@ export default function ProjectRosterTab({ projectId }: { projectId: string }) {
             const isLast = i === visibleRoster.length - 1;
             return (
               <div key={entry.employeeId} style={{
-                display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.8fr 1fr 1.1fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
+                display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.95fr 0.9fr 1.1fr 36px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
                 borderBottom: isLast ? "none" : BORDER,
                 borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
               }}>
                 <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{entry.name}</p>
                 <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace" }}>{entry.employeeId}</span>
                 <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{entry.department ?? "—"}</span>
-                <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{entry.permission === "admin" ? t.admin : t.operator}</span>
+                {/* Both halves, because this column is where somebody checks a row weeks after
+                    filling the form in — "관리자" alone leaves them to remember which doors that
+                    was. Same two words the Users table's Access column uses. */}
+                <div>
+                  <p style={{ fontSize: "12px", color: "var(--gray-600)" }}>{entry.permission === "admin" ? t.admin : t.operator}</p>
+                  <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "1px" }}>
+                    {entry.permission === "admin" ? t.accessBoth : t.accessAppOnly}
+                  </p>
+                </div>
                 <div><StatusBadge status={entry.status} meta={statusMeta} /></div>
                 <RosterCodeCell entry={entry} onReveal={() => logRosterCodeViewed(entry.employeeId)} />
                 <RowActionsMenu actions={[
