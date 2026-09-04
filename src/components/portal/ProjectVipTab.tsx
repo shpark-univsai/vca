@@ -773,21 +773,24 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             <div key={person.id} style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "14px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
               <img src={person.photoUrl} alt="" style={{ width: "44px", height: "44px", borderRadius: "10px", objectFit: "cover", flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
+                {/* Name first. The tags used to sit above it, which put a pill where the eye goes
+                    for the thing a watchlist card is actually scanned for — a face and a name. The
+                    group and the priority qualify that name, so they read after it. */}
+                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{person.name}</p>
                 {(person.priorityLabel || person.groupId) && (
-                  /* Group and priority only. The role tag came off: three stacked pills pushed the
-                     name to the third line and made every card a different height, and role is the
-                     one of the three a card is not read for — it is a column in the table view,
-                     where comparing it across the list is the actual job. Wraps, so a long group
-                     name and the priority beside it stack rather than squeeze each other. */
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "4px" }}>
+                  /* Group and priority only. The role tag came off: three stacked pills made every
+                     card a different height, and role is the one of the three a card is not read
+                     for — it is a column in the table view, where comparing it across the list is
+                     the actual job. Wraps, so a long group name and the priority beside it stack
+                     rather than squeeze each other. */
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", margin: "5px 0 0" }}>
                     {person.groupId && groupById.has(person.groupId) && (
                       <Tag label={groupById.get(person.groupId)!.name} bg="var(--info-100)" color="var(--info-500)" />
                     )}
                     {person.priorityLabel && <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} />}
                   </div>
                 )}
-                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{person.name}</p>
-                {person.description && <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "2px" }}>{person.description}</p>}
+                {person.description && <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "5px" }}>{person.description}</p>}
                 <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "4px" }}>{t.registered(person.registeredAt)}</p>
               </div>
               <button onClick={() => setConfirmingRemove(person)} title={t.removeVip} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", flexShrink: 0 }}>
