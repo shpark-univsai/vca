@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Lock } from "lucide-react";
+import { CalendarClock, Check, Lock, UserRound, Video } from "lucide-react";
 import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
-import { CARD_BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 
 // Cumulative — each tier includes everything the tier before it unlocks. "Attendance / Reports"
@@ -84,7 +84,6 @@ const T = {
   en: {
     title: "License Management",
     subtitle: "This project's license determines which pages and features are exposed.",
-    currentPlan: "CURRENT PLAN",
     notSet: "Not set",
     valid: "Valid",
     expired: "Expired",
@@ -94,7 +93,6 @@ const T = {
     unlimited: "Unlimited",
     yrRemaining: (n: number) => `${n}yr remaining`,
     includedFeatures: "Included Features",
-    channelSubscriptions: "Channel Subscriptions",
     comingSoon: "Coming soon",
     smartSchoolComingSoon: "Smart School · coming soon",
     analysisComingSoon: "assignable to cameras · analysis screen coming soon",
@@ -106,12 +104,13 @@ const T = {
     // "Available" said what the number was, not what it lets you do. This column exists to answer
     // "can I install another camera", so it answers it.
     channelsAvailable: "Can add",
+    channelsInUse: "licensed channels in use",
+    perChannelLabel: "Per channel",
+    yearlyTotalLabel: "Per year",
     atLimit: "Every licensed channel is in use — no further camera can be connected until the limit is raised.",
     nearLimit: (n: number) => `${n} channel(s) left before this project reaches its licensed limit.`,
     contractNote: "Channels and term are changed by contract, not here.",
-    bannerChannels: "Channels",
     bannerContract: "Contract",
-    channelsUsedOfLimit: (used: number, limit: number) => `${used} of ${limit} channels`,
     canAddN: (n: number) => `${n} can be added`,
     channelsUnlimited: "No limit set — channels are not capped for this project",
     channelsCostPerYear: (cost: string) => `$${cost}/yr`,
@@ -119,7 +118,6 @@ const T = {
   ko: {
     title: "라이선스 관리",
     subtitle: "이 프로젝트의 라이선스에 따라 노출되는 페이지와 기능이 결정됩니다.",
-    currentPlan: "현재 플랜",
     notSet: "미설정",
     valid: "유효",
     expired: "만료됨",
@@ -127,7 +125,6 @@ const T = {
     unlimited: "무제한",
     yrRemaining: (n: number) => `잔여 ${n}년`,
     includedFeatures: "포함된 기능",
-    channelSubscriptions: "채널 구독",
     comingSoon: "출시 예정",
     smartSchoolComingSoon: "Smart School · 출시 예정",
     analysisComingSoon: "카메라 지정 가능 · 분석 화면 준비 중",
@@ -137,12 +134,13 @@ const T = {
     aiCameras: "AI 카메라",
     normalCameras: "일반 카메라 (CCTV)",
     channelsAvailable: "추가 가능",
+    channelsInUse: "라이선스 채널 사용 중",
+    perChannelLabel: "채널당",
+    yearlyTotalLabel: "연간",
     atLimit: "라이선스 채널을 모두 쓰고 있습니다 — 한도를 올리기 전까지 카메라를 더 연결할 수 없습니다.",
     nearLimit: (n: number) => `라이선스 한도까지 ${n}채널 남았습니다.`,
     contractNote: "채널과 기간은 계약으로 변경되며 이 화면에서는 바꿀 수 없습니다.",
-    bannerChannels: "채널",
     bannerContract: "계약 문의",
-    channelsUsedOfLimit: (used: number, limit: number) => `${limit}채널 중 ${used}채널 사용 중`,
     canAddN: (n: number) => `${n}채널 추가 가능`,
     channelsUnlimited: "한도 미설정 — 이 프로젝트는 채널 수 제한이 없습니다",
     channelsCostPerYear: (cost: string) => `연 $${cost}`,
@@ -163,84 +161,6 @@ function CheckIcon() { return <Check size={12} strokeWidth={1.6} />; }
  * whether you can install another camera: how many channels are unused. Vimeo shows the same figure
  * as "Unassigned", and it is the whole reason the breakdown is worth drawing.
  */
-function ChannelBreakdown({ aiCount, normalCount, limit, yearlyCost, overLimit, t }: {
-  aiCount: number;
-  normalCount: number;
-  limit: number | undefined;
-  yearlyCost: number;
-  overLimit: boolean;
-  t: (typeof T)[keyof typeof T];
-}) {
-  const used = aiCount + normalCount;
-  const available = limit === undefined ? undefined : Math.max(0, limit - used);
-  const pct = (n: number) => (limit ? Math.min(100, (n / limit) * 100) : 0);
-  /**
-   * Said before the wall, not at it.
-   *
-   * The card only spoke up once the limit was already exceeded — which means the first time anybody
-   * learned they were out of channels was a camera that refused to be added. A tenth of the limit
-   * (floor of five, because a tenth of ten is one) is enough notice to raise it through a contract,
-   * which is the only way it can be raised.
-   */
-  const atLimit = available === 0 && !overLimit;
-  const nearLimit = limit !== undefined && available !== undefined && available > 0
-    && available <= Math.max(5, Math.ceil(limit * 0.1));
-
-  const figures = [
-    { label: t.aiCameras, value: aiCount, dot: "var(--gray-900)" },
-    { label: t.normalCameras, value: normalCount, dot: "var(--gray-400)" },
-    // Only meaningful against a limit. With none set there is nothing to be left over from.
-    ...(available === undefined ? [] : [{ label: t.channelsAvailable, value: available, dot: "var(--gray-200)" }]),
-  ];
-
-  return (
-    <div style={{ backgroundColor: "white", border: overLimit ? "1px solid var(--danger-400)" : CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "16px" }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-        <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>
-          {limit ? t.channelsUsedOfLimit(used, limit) : t.noLimitSet}
-        </p>
-        <p style={{ fontSize: "12px", color: "var(--gray-500)", whiteSpace: "nowrap" }}>
-          {t.perChannelPerYear(PRICE_PER_CHANNEL_PER_YEAR)}
-          {limit ? ` · ${t.channelsCostPerYear(yearlyCost.toLocaleString())}` : ""}
-        </p>
-      </div>
-
-      {/* One bar, segmented, instead of three bars against the same denominator. */}
-      <div style={{ display: "flex", height: "5px", backgroundColor: "var(--gray-100)", borderRadius: "3px", overflow: "hidden", marginTop: "12px" }}>
-        <div style={{ width: `${pct(aiCount)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--gray-900)" }} />
-        <div style={{ width: `${pct(normalCount)}%`, backgroundColor: overLimit ? "var(--danger-200)" : "var(--gray-400)" }} />
-      </div>
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", marginTop: "14px" }}>
-        {figures.map(f => (
-          <div key={f.label}>
-            <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{f.value}</p>
-            <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
-              <span style={{ width: "7px", height: "7px", borderRadius: "2px", backgroundColor: f.dot, flexShrink: 0 }} />
-              {f.label}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {limit === undefined && (
-        <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "12px", lineHeight: 1.6 }}>{t.channelsUnlimited}</p>
-      )}
-      {overLimit && (
-        <p style={{ fontSize: "10px", color: "var(--danger-400)", marginTop: "12px" }}>{t.overLimit(used, limit ?? 0)}</p>
-      )}
-      {/* Not a coloured border: the rim is kept for the state that is already wrong. These two are
-          a heads-up, so they are a line of text in warning ink and nothing more. */}
-      {atLimit && (
-        <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--warning-500)", marginTop: "12px", lineHeight: 1.6 }}>{t.atLimit}</p>
-      )}
-      {!atLimit && nearLimit && (
-        <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--warning-500)", marginTop: "12px", lineHeight: 1.6 }}>{t.nearLimit(available!)}</p>
-      )}
-    </div>
-  );
-}
-
 export default function ProjectLicenseTab({ projectId }: { projectId: string }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -272,40 +192,56 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
 
   const subscriptionYearlyCost = (limit ?? 0) * PRICE_PER_CHANNEL_PER_YEAR;
 
+  const used = projectCameras.length;
+  const available = limit === undefined ? undefined : Math.max(0, limit - used);
+  const atLimit = available === 0 && !overLimit;
+  const nearLimit = limit !== undefined && available !== undefined && available > 0
+    && available <= Math.max(5, Math.ceil(limit * 0.1));
+  const pct = (n: number) => (limit ? Math.min(100, (n / limit) * 100) : 0);
+
+  /** Icon + label on the left, value on the right — the shape the reference's rows use. */
+  const detailRow = (icon: React.ReactNode, label: string, value: React.ReactNode) => (
+    <div style={{ display: "flex", alignItems: "center", gap: "12px", minHeight: "40px", padding: "0 20px", borderTop: BORDER }}>
+      <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}>{icon}</span>
+      <span style={{ fontSize: "13px", color: "var(--gray-600)" }}>{label}</span>
+      <span style={{ flex: 1 }} />
+      <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", textAlign: "right" }}>{value}</span>
+    </div>
+  );
+
   return (
     <div>
       <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
       <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px", marginBottom: "20px" }}>{t.subtitle}</p>
 
-      {/* Content clusters on the left with a fixed gap rather than stretching to justify-space-between
-          — on a wide monitor that would pull "plan" and "expiry" apart to opposite edges of the card,
-          hurting the at-a-glance read. A hairline border + monospace date read as precise/enterprise
-          without leaning on shadow, blur, or gradient — those were deliberately stripped from this app's
-          cards elsewhere, so this stays flat and restrained rather than decorative. */}
-      <div style={{
-        backgroundColor: "var(--gray-900)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px",
-        boxShadow: PANEL_SHADOW, marginBottom: "20px", padding: "20px 24px",
-        // Equal columns, no divider. Vimeo, Loom, GitHub and Rows all lay a licence summary out as
-        // a row of three or four label-over-value columns; clustering the figures at the left with
-        // a rule between them was the minority form and left the right half of a wide banner
-        // empty. auto-fit so it folds to two-by-two rather than squeezing on a narrow window.
-        display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-        gap: "24px", alignItems: "start",
-      }}>
-        <div>
-          <p style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.5)", letterSpacing: "0.6px" }}>{t.currentPlan}</p>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "8px" }}>
-            <p style={{ fontSize: "24px", fontWeight: 800, color: "white" }}>{project.licensePlan ?? t.notSet}</p>
-            <span style={{
-              fontSize: "10px", fontWeight: 700, padding: "4px 10px", borderRadius: "999px", letterSpacing: "0.3px", textTransform: "uppercase",
-              backgroundColor: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.16)", color: "rgba(255,255,255,0.8)",
-            }}>
+      {/*
+        One card for one contract.
+        This was a dark banner, a channel card and a feature list — three blocks for a single thing,
+        each with its own heading. Remote's subscription page is the arrangement borrowed here: a
+        tinted hero carrying the figure the page is opened for, icon-and-value rows under it, and a
+        ruled footer for the two numbers nobody reads first.
+
+        Two things from that reference are deliberately left out. Its hero number is money, which
+        works for a bill that arrives monthly and not for a licence fixed for three years — the
+        figure an administrator comes here for is how much of what they bought is in use, so that
+        is the hero and the money is in the footer. And its generative artwork stays out: this app
+        took shadows and card borders off its cards on purpose, and decoration would walk that back.
+      */}
+      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, overflow: "hidden", marginBottom: "20px" }}>
+        <div style={{
+          backgroundColor: overLimit ? "var(--danger-100)" : "var(--primary-100)",
+          padding: "20px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--primary-400)", letterSpacing: "0.6px", textTransform: "uppercase" }}>
+              {project.licensePlan ?? t.notSet}
+            </p>
+            <span style={{ fontSize: "10px", fontWeight: 700, color: meta.color, backgroundColor: "white", padding: "2px 8px", borderRadius: "999px" }}>
               {meta.label}
             </span>
             {project.licenseExpiresAt && nowMs !== null && (
               <span style={{
-                display: "inline-flex", alignItems: "center", gap: "4px",
-                fontSize: "10px", fontWeight: 600, padding: "4px 10px", borderRadius: "999px", textTransform: "uppercase",
+                fontSize: "10px", fontWeight: 700, padding: "2px 8px", borderRadius: "999px", textTransform: "uppercase",
                 backgroundColor: isExpired ? "var(--danger-100)" : "var(--success-100)",
                 color: isExpired ? "var(--danger-500)" : "var(--success-400)",
               }}>
@@ -313,72 +249,66 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
               </span>
             )}
           </div>
-        </div>
-        <div>
-          <p style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.5)", letterSpacing: "0.6px", whiteSpace: "nowrap" }}>{t.licenseExpiry}</p>
-          <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "8px" }}>
-            <p style={{ fontSize: "18px", fontWeight: 800, color: "white", fontFamily: "monospace" }}>
-              {isUnlimitedExpiry ? t.unlimited : (project.licenseExpiresAt ?? "—")}
-            </p>
-            {yearsRemaining ? <span style={{ fontSize: "12px", fontWeight: 700, color: "rgba(255,255,255,0.5)", whiteSpace: "nowrap" }}>{t.yrRemaining(yearsRemaining)}</span> : null}
-          </div>
-        </div>
-        {/* Channels, at a glance. The card below breaks the same number down; this is the figure
-            the banner exists to carry, the way Vimeo puts "Storage used 64GB of 7TB" beside the
-            plan and still gives storage its own section. */}
-        <div>
-          <p style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.5)", letterSpacing: "0.6px", whiteSpace: "nowrap" }}>{t.bannerChannels}</p>
-          <div style={{ marginTop: "8px" }}>
-            <p style={{ fontSize: "18px", fontWeight: 800, color: "white", fontFamily: "monospace" }}>
-              {limit ? `${projectCameras.length} / ${limit}` : String(projectCameras.length)}
-            </p>
-            <p style={{ fontSize: "12px", fontWeight: 700, color: "rgba(255,255,255,0.5)", marginTop: "2px" }}>
-              {limit ? t.canAddN(Math.max(0, limit - projectCameras.length)) : t.noLimitSet}
-            </p>
-          </div>
+          <p style={{ fontSize: "32px", fontWeight: 800, color: "var(--gray-900)", marginTop: "8px", lineHeight: 1.1 }}>
+            {limit ? `${used} / ${limit}` : String(used)}
+          </p>
+          <p style={{ fontSize: "12px", color: "var(--gray-600)", marginTop: "4px" }}>
+            {limit
+              ? `${t.channelsInUse} · ${t.canAddN(available ?? 0)}`
+              : t.channelsUnlimited}
+          </p>
+          {/* The breakdown stays a single segmented bar: AI cameras and plain CCTV share one
+              denominator, so three bars would hide the relationship the number is about. */}
+          {limit ? (
+            <div style={{ display: "flex", height: "6px", backgroundColor: "white", borderRadius: "3px", overflow: "hidden", marginTop: "14px" }}>
+              <div style={{ width: `${pct(aiCameraCount)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--primary-400)" }} />
+              <div style={{ width: `${pct(normalCameraCount)}%`, backgroundColor: overLimit ? "var(--danger-200)" : "var(--primary-300)" }} />
+            </div>
+          ) : null}
+          {overLimit && (
+            <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", marginTop: "10px", lineHeight: 1.6 }}>{t.overLimit(used, limit ?? 0)}</p>
+          )}
+          {atLimit && (
+            <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--warning-500)", marginTop: "10px", lineHeight: 1.6 }}>{t.atLimit}</p>
+          )}
+          {!atLimit && nearLimit && (
+            <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--warning-500)", marginTop: "10px", lineHeight: 1.6 }}>{t.nearLimit(available!)}</p>
+          )}
         </div>
 
-        {/* Where every subscription page puts Change plan / Upgrade / Add seats. This product has no
-            such button and should not: the licence is an on-premise contract, not a card on file.
-            But the page was silent about that, so an administrator who needed a hundred channels
-            and had forty-one found nothing here and no hint of where to go instead. As a column
-            like the rest, and terse like the rest — the label says what the contact is for, so the
-            paragraph that used to say it shrinks to one line.
-            The named contact is Team.accountManager — seeded, and the supplier's record rather
-            than anything the customer edits here. */}
-        <div>
-          <p style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.5)", letterSpacing: "0.6px", whiteSpace: "nowrap" }}>{t.bannerContract}</p>
-          <div style={{ marginTop: "8px" }}>
-            {accountManager && (
-              <>
-                <p style={{ fontSize: "13px", fontWeight: 700, color: "white" }}>{accountManager.name}</p>
-                <a href={`mailto:${accountManager.email}`}
-                  style={{ display: "inline-block", fontSize: "12px", color: "rgba(255,255,255,0.75)", textDecoration: "underline", textUnderlineOffset: "2px", marginTop: "2px" }}>
-                  {accountManager.email}
-                </a>
-              </>
-            )}
-            <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginTop: "6px", lineHeight: 1.6 }}>{t.contractNote}</p>
-          </div>
-        </div>
-      </div>
+        {detailRow(<Video size={14} strokeWidth={1.2} />, `${t.aiCameras} · ${t.normalCameras}`, `${aiCameraCount} · ${normalCameraCount}`)}
+        {detailRow(
+          <CalendarClock size={14} strokeWidth={1.2} />,
+          t.licenseExpiry,
+          <span style={{ display: "inline-flex", alignItems: "baseline", gap: "8px" }}>
+            <span style={{ fontFamily: "monospace" }}>{isUnlimitedExpiry ? t.unlimited : (project.licenseExpiresAt ?? "—")}</span>
+            {yearsRemaining ? <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}>{t.yrRemaining(yearsRemaining)}</span> : null}
+          </span>,
+        )}
+        {detailRow(
+          <UserRound size={14} strokeWidth={1.2} />,
+          t.bannerContract,
+          accountManager
+            ? <a href={`mailto:${accountManager.email}`} style={{ color: "var(--gray-900)", textDecoration: "underline", textUnderlineOffset: "3px" }}>{accountManager.name}</a>
+            : <span style={{ color: "var(--gray-300)" }}>—</span>,
+        )}
 
-      {/* Channels first, features second, each the full width — the order and shape the design
-          settles on. It is also the order the two answer questions in: how much of what you paid
-          for is in use is the thing an administrator opens this page for, and which capabilities
-          the plan includes is a fact that only changes when the plan does. Side by side they were
-          competing for the same glance and the segmented bar had half a page to say something a
-          full width says better. */}
-      <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>{t.channelSubscriptions}</p>
-      <div style={{ marginBottom: "20px" }}>
-        <ChannelBreakdown
-          aiCount={aiCameraCount}
-          normalCount={normalCameraCount}
-          limit={limit}
-          yearlyCost={subscriptionYearlyCost}
-          overLimit={overLimit}
-          t={t}
-        />
+        {/* The money, below the rule — it is fixed for the length of the contract, so it is the
+            thing on this card nobody opens the page to check. */}
+        <div style={{ display: "flex", gap: "20px", padding: "14px 20px", borderTop: BORDER, backgroundColor: "var(--gray-50)", flexWrap: "wrap" }}>
+          <div>
+            <p style={{ fontSize: "11px", color: "var(--gray-500)" }}>{t.perChannelLabel}</p>
+            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "2px" }}>{t.perChannelPerYear(PRICE_PER_CHANNEL_PER_YEAR)}</p>
+          </div>
+          {limit ? (
+            <div>
+              <p style={{ fontSize: "11px", color: "var(--gray-500)" }}>{t.yearlyTotalLabel}</p>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "2px" }}>{t.channelsCostPerYear(subscriptionYearlyCost.toLocaleString())}</p>
+            </div>
+          ) : null}
+          <span style={{ flex: 1 }} />
+          <p style={{ fontSize: "11px", color: "var(--gray-500)", maxWidth: "280px", lineHeight: 1.6, alignSelf: "center" }}>{t.contractNote}</p>
+        </div>
       </div>
 
       <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>{t.includedFeatures}</p>
