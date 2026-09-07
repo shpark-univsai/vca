@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowUp, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat, Tooltip } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
@@ -54,8 +54,6 @@ const T = {
     attnExpired: "License has expired",
     attnNoCameras: "No source connected yet",
     attnNoVips: "No one registered in the watchlist yet",
-    accountStates: (active: number, invited: number, suspended: number) =>
-      `Active ${active} · Invited ${invited} · Suspended ${suspended}`,
     accessSplitLabel: (portal: number, app: number) => `Portal: ${portal} | App: ${app}`,
     cameraStatusTitle: "Camera Status",
     // This card is the page's answer to "is this deployment working". Deliberately not joined by a
@@ -123,8 +121,6 @@ const T = {
     attnExpired: "라이선스가 만료되었습니다",
     attnNoCameras: "연결된 소스가 없습니다",
     attnNoVips: "등록된 관심대상이 없습니다",
-    accountStates: (active: number, invited: number, suspended: number) =>
-      `활성 ${active} · 초대 대기 ${invited} · 정지 ${suspended}`,
     accessSplitLabel: (portal: number, app: number) => `포털: ${portal} | 앱: ${app}`,
     cameraStatusTitle: "카메라 상태",
     cameraStatusSubtitle: "이 프로젝트에 연결된 카메라의 스트리밍 상태",
@@ -263,8 +259,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // requests exist, so flipping the flag off later cannot bury someone who already asked.
   const showAccessRequests = getAuthConfig().accessRequest || projectAccessRequests.length > 0;
   const pendingInviteCount = projectUsers.filter(u => u.status === "invited").length;
-  const activeUserCount = projectUsers.filter(u => u.status === "active").length;
-  const suspendedUserCount = projectUsers.filter(u => u.status === "suspended").length;
 
   const recentActivity = auditLog
     .filter(a => a.projectId === projectId)
@@ -425,16 +419,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               as state. Colour on this screen now means something or is grey. */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: CARD_GAP, marginBottom: CARD_GAP }}>
             <MetricCard label={t.cameraConnectivity} icon={VideoIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
-              {/* Figure left, bar right, one line — in every card.
-                  Stacked, each card spent a whole row on a bar 8px tall, so the strip was most of
-                  the fold before the reader reached anything under it and the right half of every
-                  card sat empty on a wide monitor.
-                  The bar is a FIXED width, not the leftover space: the figures beside it are
-                  different lengths ("59 / 100 channels used" against "4"), so a flexible bar came
-                  out a different size in every card and four proportions you cannot compare are
-                  worse than no bars. Same width, same left edge for the numbers — that is what
-                  makes them readable side by side. It shrinks only when the column gets too narrow
-                  to hold both. */}
+              {/* Figure left, bar right, one line.
+                  Stacked, the bar cost the card a whole row for something 8px tall, and the right
+                  half of the card sat empty on a wide monitor.
+                  Fixed 88px, not the leftover space: the figures beside it are different lengths
+                  ("59 / 100 channels used" against "51 / 59 connected"), so a flexible bar came out
+                  a different size in each card, and two proportions you cannot compare are worse
+                  than no bars. It shrinks only when the column gets too narrow to hold both. */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
                 <span style={{ display: "flex", alignItems: "baseline", gap: "4px", flexShrink: 0, whiteSpace: "nowrap" }}>
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</span>
@@ -452,16 +443,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </MetricCard>
 
             <MetricCard label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
-              {/* Figure left, bar right, one line — in every card.
-                  Stacked, each card spent a whole row on a bar 8px tall, so the strip was most of
-                  the fold before the reader reached anything under it and the right half of every
-                  card sat empty on a wide monitor.
-                  The bar is a FIXED width, not the leftover space: the figures beside it are
-                  different lengths ("59 / 100 channels used" against "4"), so a flexible bar came
-                  out a different size in every card and four proportions you cannot compare are
-                  worse than no bars. Same width, same left edge for the numbers — that is what
-                  makes them readable side by side. It shrinks only when the column gets too narrow
-                  to hold both. */}
+              {/* Figure left, bar right, one line.
+                  Stacked, the bar cost the card a whole row for something 8px tall, and the right
+                  half of the card sat empty on a wide monitor.
+                  Fixed 88px, not the leftover space: the figures beside it are different lengths
+                  ("59 / 100 channels used" against "51 / 59 connected"), so a flexible bar came out
+                  a different size in each card, and two proportions you cannot compare are worse
+                  than no bars. It shrinks only when the column gets too narrow to hold both. */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
                 <span style={{ display: "flex", alignItems: "baseline", gap: "4px", flexShrink: 0, whiteSpace: "nowrap" }}>
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectCameras.length}</span>
@@ -496,16 +484,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </MetricCard>
 
             <MetricCard label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
-              {/* Figure left, bar right, one line — in every card.
-                  Stacked, each card spent a whole row on a bar 8px tall, so the strip was most of
-                  the fold before the reader reached anything under it and the right half of every
-                  card sat empty on a wide monitor.
-                  The bar is a FIXED width, not the leftover space: the figures beside it are
-                  different lengths ("59 / 100 channels used" against "4"), so a flexible bar came
-                  out a different size in every card and four proportions you cannot compare are
-                  worse than no bars. Same width, same left edge for the numbers — that is what
-                  makes them readable side by side. It shrinks only when the column gets too narrow
-                  to hold both. */}
+              {/* No bar in this card, and none in the one beside it.
+                  A bar needs a denominator that means something. The two cards to the left have
+                  one — cameras installed, channels licensed — and these two do not: nobody manages
+                  "half the watchlist is high priority" or "60% of accounts are active". Both had a
+                  bar for a while, purely so the row of four would look symmetrical, and a
+                  proportion invented to fill a slot is worse than an empty slot. What is actually
+                  worth acting on here is a count, not a share, and the "needs attention" strip at
+                  the top of this page is where counts like that live. */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
                 <span style={{ display: "flex", alignItems: "baseline", gap: "8px", flexShrink: 0, whiteSpace: "nowrap" }}>
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectPersons.length}</span>
@@ -515,12 +501,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     </span>
                   )}
                 </span>
-                {/* The share of the registry that is high priority — the same figure the footer
-                    names in words. primary-400 because the footer's "High priority" label is
-                    already that colour: the bar and its legend have to be the same thing. */}
-                <div style={{ flex: "0 1 88px", minWidth: 0, height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${projectPersons.length ? (highPriorityVipCount / projectPersons.length) * 100 : 0}%`, backgroundColor: "var(--primary-400)" }} />
-                </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
                 <p style={{ fontSize: "12px", color: "var(--primary-400)", fontWeight: 600 }}>{t.highPriorityLabel(highPriorityVipCount)}</p>
@@ -529,42 +509,19 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </MetricCard>
 
             <MetricCard label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
-              {/* Figure left, bar right, one line — in every card.
-                  Stacked, each card spent a whole row on a bar 8px tall, so the strip was most of
-                  the fold before the reader reached anything under it and the right half of every
-                  card sat empty on a wide monitor.
-                  The bar is a FIXED width, not the leftover space: the figures beside it are
-                  different lengths ("59 / 100 channels used" against "4"), so a flexible bar came
-                  out a different size in every card and four proportions you cannot compare are
-                  worse than no bars. Same width, same left edge for the numbers — that is what
-                  makes them readable side by side. It shrinks only when the column gets too narrow
-                  to hold both. */}
+              {/* No bar in this card, and none in the one beside it.
+                  A bar needs a denominator that means something. The two cards to the left have
+                  one — cameras installed, channels licensed — and these two do not: nobody manages
+                  "half the watchlist is high priority" or "60% of accounts are active". Both had a
+                  bar for a while, purely so the row of four would look symmetrical, and a
+                  proportion invented to fill a slot is worse than an empty slot. What is actually
+                  worth acting on here is a count, not a share, and the "needs attention" strip at
+                  the top of this page is where counts like that live. */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
                 <span style={{ display: "flex", alignItems: "baseline", gap: "4px", flexShrink: 0, whiteSpace: "nowrap" }}>
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectUsers.length}</span>
                   <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.accountsSuffix}</span>
                 </span>
-                {/* Account states as one bar, the way the camera card draws online against
-                    offline. This slot used to hold a sentence — "1 invitation not yet accepted" —
-                    which is what made this the one card in the row without a graph. The states it
-                    named are the segments now, in the same colours the Users table badges them
-                    with, so a project with an unaccepted invitation still shows amber here.
-                    Nothing actionable is lost: the access-request panel further down answers those,
-                    and "Manage" below goes to the accounts themselves.
-                    The footer line counts doors (portal / app), not states, so the segments have no
-                    legend of their own — the counts are on hover rather than spending a row on
-                    three numbers that are usually 0. */}
-                <Tooltip text={t.accountStates(activeUserCount, pendingInviteCount, suspendedUserCount)}>
-                  <div style={{ width: "88px", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
-                    {([
-                      [activeUserCount, "var(--success-400)"],
-                      [pendingInviteCount, "var(--warning-500)"],
-                      [suspendedUserCount, "var(--danger-400)"],
-                    ] as const).map(([count, color]) => (
-                      <div key={color} style={{ height: "100%", width: `${projectUsers.length ? (count / projectUsers.length) * 100 : 0}%`, backgroundColor: color }} />
-                    ))}
-                  </div>
-                </Tooltip>
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.accessSplitLabel(portalUserCount, appUserCount)}</p>
