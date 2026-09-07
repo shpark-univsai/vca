@@ -12,7 +12,7 @@ import ProjectSidebar, { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
 import { ToastProvider } from "../Toast";
 import { useVcaStore, canEnterApp, canEnterPortal, currentPortalUser, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { LanguageSwitcher, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
+import { LanguageSwitcher, SupportContactButton, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 
 const T = {
   en: { noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar", exit: "Exit to App", newProject: "New project", cancel: "Cancel" },
@@ -238,6 +238,9 @@ export default function PortalShell() {
             {t.cancel}
           </button>
         )}
+        {/* Left of the language switcher and the way out — the utilities end of the bar, and the
+            one place it is reachable from every screen rather than only the one that needed it. */}
+        <SupportContactButton />
         <LanguageSwitcher />
         {/* Only for someone who has the app. A Portal-only account (the customer's security officer
             reading the audit trail, say) would land on a screen it cannot use, and the button would

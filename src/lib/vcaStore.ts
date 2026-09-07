@@ -666,6 +666,27 @@ export interface SignedInUser {
   team: string;
 }
 
+/**
+ * Who to call when the software misbehaves — the supplier's own desk.
+ *
+ * Deliberately NOT Team.accountManager, which is a different person answering a different
+ * question: the account manager holds the contract (channels, term, renewal) and support holds the
+ * product (a camera that will not connect, a model that stopped matching). Portal now names both,
+ * and naming them separately is the point — an administrator with an offline camera should not be
+ * emailing the person who sells them channels.
+ *
+ * A single constant rather than per-team data: the desk is the supplier's and is the same for every
+ * customer. If a site ever gets a dedicated engineer, that belongs on Team beside accountManager.
+ *
+ * HANDOFF NOTE: seeded. Real values come from whatever the support organisation publishes.
+ */
+export const SUPPORT_CONTACT = {
+  email: "support@univs.ai",
+  phone: "+65 6812 4400",
+  /** Local time at the site, which is the only clock the person reading this has. */
+  hours: { en: "Mon–Fri, 09:00–18:00 (SGT)", ko: "월–금 09:00–18:00 (SGT)" },
+} as const;
+
 export const SIGNED_IN_USER: SignedInUser = {
   name: "John Doe",
   email: "johndoe@email.com",
