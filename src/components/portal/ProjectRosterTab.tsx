@@ -376,8 +376,8 @@ function RosterEntryModal({ entry, projectId, onClose, t }: {
           </button>
           <button className="portal-btn-primary" onClick={submit} disabled={!canSubmit}
             style={{
-              padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white",
-              fontSize: "13px", fontWeight: 700, cursor: canSubmit ? "pointer" : "not-allowed", opacity: canSubmit ? 1 : 0.5,
+              padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-200)", color: canSubmit ? "white" : "var(--gray-400)",
+              fontSize: "13px", fontWeight: 700, cursor: canSubmit ? "pointer" : "not-allowed", 
             }}>
             {t.save}
           </button>

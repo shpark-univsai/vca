@@ -101,7 +101,7 @@ function ServerFormModal({
             {t.cancel}
           </button>
           <button className="portal-btn-primary" onClick={() => valid && onSubmit(form)} disabled={!valid}
-            style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>
+            style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", }}>
             {t.save}
           </button>
         </div>
@@ -747,7 +747,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
             </button>
             <button className="portal-btn-primary" onClick={() => setShowAdd(true)}
               style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
+              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
               {t.addServer}
             </button>
           </div>

@@ -147,8 +147,8 @@ export default function PortalEmptyState({ onNewProject, noTeam = false, onCreat
             disabled={!canSubmit}
             style={{
               width: "100%", marginTop: "16px", padding: "12px 20px", borderRadius: "999px", border: "none",
-              backgroundColor: "var(--primary-400)", color: "white", fontSize: "14px", fontWeight: 700,
-              cursor: canSubmit ? "pointer" : "not-allowed", opacity: canSubmit ? 1 : 0.5,
+              backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-200)", color: canSubmit ? "white" : "var(--gray-400)", fontSize: "14px", fontWeight: 700,
+              cursor: canSubmit ? "pointer" : "not-allowed", 
             }}
           >
             {t.createTeam}
@@ -174,7 +174,7 @@ export default function PortalEmptyState({ onNewProject, noTeam = false, onCreat
             padding: "12px 20px", borderRadius: "999px", border: "none",
             backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer",
           }}>
-          <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
+          <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
           {t.newProject}
         </button>
       </div>
