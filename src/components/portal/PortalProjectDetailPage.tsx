@@ -40,7 +40,6 @@ const T = {
     yrRemaining: (n: number) => `${n}yr left`,
     vipTargetDb: "VIP / Target DB",
     todayBadge: (n: number) => `${n} today`,
-    vipDbSubtitle: "Registered watchlist individuals for this project.",
     highPriorityLabel: (n: number) => `High priority: ${n}`,
     registeredTodayLabel: (n: number) => `Registered today: ${n}`,
     portalAccounts: "Portal Accounts & Permissions",
@@ -102,7 +101,6 @@ const T = {
     yrRemaining: (n: number) => `${n}년 남음`,
     vipTargetDb: "VIP / 관심대상 DB",
     todayBadge: (n: number) => `오늘 ${n}건`,
-    vipDbSubtitle: "이 프로젝트에 등록된 관심대상(워치리스트) 인원입니다.",
     highPriorityLabel: (n: number) => `우선순위 높음: ${n}`,
     registeredTodayLabel: (n: number) => `오늘 등록: ${n}`,
     portalAccounts: "포털 계정 및 권한",
@@ -400,9 +398,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   </span>
                 )}
               </div>
-              <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)", width: "100%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.vipDbSubtitle}</p>
-              </div>
+              {/* Empty on purpose, and still 18px tall.
+                  The other three cards put something real in this slot — two progress bars and an
+                  account-state line — and it is what keeps all four footer dividers on one line.
+                  This card had a sentence describing what the card is ("Registered watchlist
+                  individuals for this project"), which the label above it already says. There is no
+                  second figure here worth the room, so the slot holds the space and nothing else. */}
+              <div style={{ height: "18px" }} />
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
                 <p style={{ fontSize: "12px", color: "var(--primary-400)", fontWeight: 600 }}>{t.highPriorityLabel(highPriorityVipCount)}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.registeredTodayLabel(todayVipCount)}</p>
