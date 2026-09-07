@@ -141,23 +141,30 @@ export default function ProjectSidebar({ tab, onTabChange, collapsed, admin }: P
         })}
       </div>
 
+      {/* Who you are, pinned to the foot of the rail. No divider above it: the rail has room to
+          spare, so the gap already separates it, and a line here would be the third horizontal
+          rule on the screen. The avatar is the one primary-coloured thing in the sidebar —
+          a 28px dot, which is the whole of the purple budget spent on identity. */}
       {admin && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: "10px",
-          borderTop: "1px solid var(--gray-200)", paddingTop: "14px", marginTop: "8px",
-          justifyContent: collapsed ? "center" : "flex-start",
-        }}>
+        <div
+          title={collapsed ? `${admin.name} · ${admin.email}` : undefined}
+          style={{
+            display: "flex", alignItems: "center", gap: "10px",
+            paddingTop: "16px", marginTop: "8px",
+            justifyContent: collapsed ? "center" : "flex-start",
+          }}
+        >
           <span style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0,
-            backgroundColor: "var(--gray-200)", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700,
+            backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700,
           }}>
             {admin.name.charAt(0).toUpperCase()}
           </span>
           {!collapsed && (
             <div style={{ overflow: "hidden" }}>
-              <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{admin.name}</div>
-              <div style={{ fontSize: "10px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{admin.email}</div>
+              <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{admin.name}</div>
+              <div style={{ fontSize: "11px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{admin.email}</div>
             </div>
           )}
         </div>

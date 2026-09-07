@@ -10,7 +10,7 @@ import PortalNewProjectWizard from "./PortalNewProjectWizard";
 import TeamSwitcher from "./TeamSwitcher";
 import ProjectSidebar, { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
 import { ToastProvider } from "../Toast";
-import { useVcaStore, canEnterApp, canEnterPortal, currentPortalUser, type ProjectType } from "@/lib/vcaStore";
+import { useVcaStore, canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { LanguageSwitcher, SupportContactButton, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 
@@ -76,6 +76,9 @@ export default function PortalShell() {
   // Also what the sidebar footer names. It used to name "the first account with permission admin",
   // which was nobody at all while every seeded account was an owner or app-only, and the wrong
   // person the moment one of them became an admin — the footer is meant to say who you are.
+  // Falls back to the stand-in identity, because currentPortalUser answers undefined for the demo
+  // default (its address is in no account list) — and a footer meant to say who you are showed
+  // nothing at all. Name and address only; the account's role and doors still come from `me`.
   const me = useVcaStore(s => currentPortalUser(s.portalUsers));
   const locked = !!me && !canEnterPortal(me.permission);
   useEffect(() => {
@@ -270,7 +273,7 @@ export default function PortalShell() {
       ) : (
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           {teamProjects.length > 0 && (
-            <ProjectSidebar tab={tab} onTabChange={setTab} collapsed={sidebarCollapsed} admin={me ?? null} />
+            <ProjectSidebar tab={tab} onTabChange={setTab} collapsed={sidebarCollapsed} admin={me ?? { name: SIGNED_IN_USER.name, email: SIGNED_IN_USER.email }} />
           )}
           <div style={{ flex: 1, overflow: "auto", padding: "32px 72px", backgroundColor: "var(--gray-100)" }}>
             {teamProjects.length === 0
