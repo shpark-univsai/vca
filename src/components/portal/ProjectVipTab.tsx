@@ -284,21 +284,33 @@ interface RegisterValues {
  * and until now only the bulk CSV import could write it — a note could exist on a row that nobody
  * was able to type.
  */
-function RegisterVipModal({ t, person, groups, onClose, onSubmit }: {
+function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
   t: VipDict;
   /** Absent = registering. Present = editing that person. */
   person?: Person;
   groups: PersonGroup[];
+  projectId: string;
   onClose: () => void;
   onSubmit: (values: RegisterValues) => void;
 }) {
-  useEscapeKey(onClose);
   const editing = person !== undefined;
   const [name, setName] = useState(person?.name ?? "");
   const [roleLabel, setRoleLabel] = useState(person?.roleLabel ?? ROLE_LABELS[0]);
   const [priorityLabel, setPriorityLabel] = useState<NonNullable<Person["priorityLabel"]>>(person?.priorityLabel ?? "normal");
   const [description, setDescription] = useState(person?.description ?? "");
   const [groupId, setGroupId] = useState(person?.groupId ?? "");
+  /**
+   * The group creator, opened from the foot of the group list.
+   *
+   * Registering somebody who arrives with a party whose group does not exist yet was a dead end:
+   * you had to abandon the half-filled form, switch to the Groups tab, make it, and come back. The
+   * new group is selected the moment it is made.
+   */
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  // Both modals mount their own Escape listener, so without this one standing down, Escape closed
+  // the group creator and the half-filled person form underneath it in the same keystroke. This is
+  // the case useEscapeKey's `enabled` argument exists for.
+  useEscapeKey(onClose, !creatingGroup);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFileName, setPhotoFileName] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -351,6 +363,7 @@ function RegisterVipModal({ t, person, groups, onClose, onSubmit }: {
               value={groupId}
               onChange={setGroupId}
               options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
+              footerAction={{ label: t.addGroup, onClick: () => setCreatingGroup(true) }}
             />
           </div>
           <div>
@@ -400,6 +413,13 @@ function RegisterVipModal({ t, person, groups, onClose, onSubmit }: {
           </button>
         </div>
       </div>
+      {creatingGroup && (
+        <GroupModal
+          t={t} group={null} projectId={projectId} zIndex={310}
+          onClose={() => setCreatingGroup(false)}
+          onCreated={id => { setGroupId(id); setCreatingGroup(false); }}
+        />
+      )}
     </div>
   );
 }
@@ -459,8 +479,12 @@ function PriorityTag({ priority, text }: { priority: NonNullable<Person["priorit
 }
 
 /** Add or edit a party. Membership is not set here — a person is put in a group from their own row. */
-function GroupModal({ t, group, projectId, onClose }: {
+function GroupModal({ t, group, projectId, onClose, onCreated, zIndex = 300 }: {
   t: VipDict; group: PersonGroup | null; projectId: string; onClose: () => void;
+  /** Called with the new group's id — lets the caller select what was just made. */
+  onCreated?: (groupId: string) => void;
+  /** Raised when this opens on top of another modal. */
+  zIndex?: number;
 }) {
   useEscapeKey(onClose);
   const addPersonGroup = useVcaStore(s => s.addPersonGroup);
@@ -491,7 +515,7 @@ function GroupModal({ t, group, projectId, onClose }: {
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "420px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
@@ -1096,9 +1120,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      {showRegister && <RegisterVipModal t={t} groups={projectGroupsAll} onClose={() => setShowRegister(false)} onSubmit={register} />}
+      {showRegister && <RegisterVipModal t={t} groups={projectGroupsAll} projectId={projectId} onClose={() => setShowRegister(false)} onSubmit={register} />}
       {editingPerson && (
-        <RegisterVipModal t={t} person={editingPerson} groups={projectGroupsAll} onClose={() => setEditingPerson(null)} onSubmit={saveEdit} />
+        <RegisterVipModal t={t} person={editingPerson} groups={projectGroupsAll} projectId={projectId} onClose={() => setEditingPerson(null)} onSubmit={saveEdit} />
       )}
       {confirmingRemove && (
         <RemoveVipConfirmModal t={t} person={confirmingRemove} onClose={() => setConfirmingRemove(null)} onConfirm={confirmRemove} />

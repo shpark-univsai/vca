@@ -185,10 +185,18 @@ interface SelectOption {
 // and inside this app's nested-scroll shell (PortalShell's outer overflow:hidden + inner
 // overflow:auto content area) that positioning can land the popup far from its trigger. Ported
 // from the main VCA app's SimpleSelect (DataPage.tsx) to match its exact look and behavior.
-export function FilterSelect({ value, onChange, options, fitContent }: {
+export function FilterSelect({ value, onChange, options, fitContent, footerAction }: {
   value: string;
   onChange: (value: string) => void;
   options: SelectOption[];
+  /**
+   * A pinned item at the foot of the open list — "+ Add group" and the like.
+   *
+   * Not an option, because it does not pick anything: it opens something else, and a chooser that
+   * lets you make the missing choice on the spot beats one that sends you to another screen and
+   * back with your form abandoned. Separated by a rule and never shown as selected.
+   */
+  footerAction?: { label: string; onClick: () => void };
   /**
    * Size the trigger to its label instead of filling the space it is given. For a select sitting in
    * a table cell, where the answers are a word long ("Admin", "Operator") and the column is as wide
@@ -280,6 +288,21 @@ export function FilterSelect({ value, onChange, options, fitContent }: {
               </button>
             );
           })}
+          {footerAction && (
+            <button
+              type="button"
+              onClick={() => { setOpen(false); footerAction.onClick(); }}
+              style={{
+                display: "flex", alignItems: "center", gap: "6px", width: "100%", boxSizing: "border-box",
+                padding: "8px 12px", border: "none", borderTop: BORDER, background: "none",
+                cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+                fontSize: "12px", fontWeight: 700, color: "var(--gray-900)",
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+              {footerAction.label}
+            </button>
+          )}
         </div>
       )}
     </div>
