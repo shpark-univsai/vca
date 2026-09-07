@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Globe, Mail } from "lucide-react";
+import { Globe, Mail, RotateCcw } from "lucide-react";
 import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
@@ -740,8 +740,12 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
             </div>
             <FilterSelect value={typeFilter} onChange={v => setTypeFilter(v as typeof typeFilter)}
               options={[{ value: "ALL", label: t.allTypes }, ...SERVER_TYPES.map(ty => ({ value: ty, label: ty }))]} />
+            {/* The only control on this row without a mark of its own — the select had its chevron
+                and Add Server its plus, so Reset read as a word somebody had left there. lucide
+                rather than a hand-drawn path, at the 1.3 stroke the other 14px icons use. */}
             <button onClick={resetFilters}
-              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+              <RotateCcw size={14} strokeWidth={1.3} />
               {t.reset}
             </button>
             <button onClick={() => setShowAdd(true)}
