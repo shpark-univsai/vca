@@ -292,6 +292,13 @@ const T = {
   },
 } as const;
 
+/**
+ * How far the stuck header overhangs the content on each side, to swallow the shadow the cards
+ * underneath cast outside their own boxes. 8px covers PANEL_SHADOW's 6px blur with a pixel to
+ * spare, and lands well inside the shell's 72px gutter.
+ */
+const EDGE_BLEED = 8;
+
 // CSS position:sticky kept fighting PortalShell's padded scroll container — the header either
 // left a gap a scrolled-past row showed through, or (once patched with a negative-margin/padding
 // trick to close that gap) sat taller than every other tab's header, since sticky reserves that
@@ -935,7 +942,18 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           (unlike the earlier CSS sticky attempt, which reserved a taller padded box). */}
       {stuck && <div style={{ height: stickyHeight }} />}
       <div ref={stickyRef} style={stuck && rect ? {
-        position: "fixed", top: rect.top, left: rect.left, width: rect.width, zIndex: 20,
+        position: "fixed", top: rect.top, zIndex: 20,
+        // Wider than the content by EDGE_BLEED on each side, and padded back in by the same amount
+        // (box-sizing is border-box), so the children still start and end where they do unstuck.
+        //
+        // That overhang is the fix for a shadow that appeared at both ends of this header the
+        // moment the page scrolled: the rows card underneath carries PANEL_SHADOW, whose 6px blur
+        // spreads a little outside its own box, and a cover exactly the card's width covered the
+        // card but not its bleed — so the scrolled-away card's shadow was still visible as a soft
+        // vertical smudge down the left and right edges of the stuck block. The overhang lands in
+        // the shell's 72px gutter, which is this same grey, so nothing else changes.
+        left: rect.left - EDGE_BLEED, width: rect.width + EDGE_BLEED * 2,
+        paddingLeft: EDGE_BLEED, paddingRight: EDGE_BLEED,
         // No paddingBottom: the block's last child is the table's column-header card, so any
         // padding under it paints a grey strip between that header and the rows scrolling behind,
         // splitting the one card in two and stranding a sliver of a half-scrolled row below it.
