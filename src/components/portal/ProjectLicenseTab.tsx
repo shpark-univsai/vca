@@ -238,11 +238,15 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
       */}
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, overflow: "hidden", marginBottom: "20px" }}>
         <div style={{
-          backgroundColor: overLimit ? "var(--danger-100)" : "var(--primary-100)",
+          // The full step, not the tint. Everything on the hero inverts with it — text to white,
+          // the bar's track and segments to white at two opacities. Over the limit takes the same
+          // treatment one ramp over, so the state is legible from across a room rather than being
+          // a red hairline somebody has to look for.
+          backgroundColor: overLimit ? "var(--danger-400)" : "var(--primary-400)",
           padding: "20px",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-            <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--primary-400)", letterSpacing: "0.6px", textTransform: "uppercase" }}>
+            <p style={{ fontSize: "10px", fontWeight: 700, color: "rgba(255,255,255,0.75)", letterSpacing: "0.6px", textTransform: "uppercase" }}>
               {project.licensePlan ?? t.notSet}
             </p>
             <span style={{ fontSize: "10px", fontWeight: 700, color: meta.color, backgroundColor: "white", padding: "2px 8px", borderRadius: "999px" }}>
@@ -258,30 +262,36 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
               </span>
             )}
           </div>
-          <p style={{ fontSize: "32px", fontWeight: 800, color: "var(--gray-900)", marginTop: "8px", lineHeight: 1.1 }}>
+          <p style={{ fontSize: "32px", fontWeight: 800, color: "white", marginTop: "8px", lineHeight: 1.1 }}>
             {limit ? `${used} / ${limit}` : String(used)}
           </p>
-          <p style={{ fontSize: "12px", color: "var(--gray-600)", marginTop: "4px" }}>
+          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.8)", marginTop: "4px" }}>
             {limit
               ? `${t.channelsInUse} · ${t.canAddN(available ?? 0)}`
               : t.channelsUnlimited}
           </p>
           {/* The breakdown stays a single segmented bar: AI cameras and plain CCTV share one
-              denominator, so three bars would hide the relationship the number is about. */}
+              denominator, so three bars would hide the relationship the number is about. On a
+              coloured ground the two segments are the same white at two strengths — a second hue
+              here would be a third colour competing inside one figure. */}
           {limit ? (
-            <div style={{ display: "flex", height: "6px", backgroundColor: "white", borderRadius: "3px", overflow: "hidden", marginTop: "14px" }}>
-              <div style={{ width: `${pct(aiCameraCount)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--primary-400)" }} />
-              <div style={{ width: `${pct(normalCameraCount)}%`, backgroundColor: overLimit ? "var(--danger-200)" : "var(--primary-300)" }} />
+            <div style={{ display: "flex", height: "6px", backgroundColor: "rgba(255,255,255,0.25)", borderRadius: "3px", overflow: "hidden", marginTop: "14px" }}>
+              <div style={{ width: `${pct(aiCameraCount)}%`, backgroundColor: "white" }} />
+              <div style={{ width: `${pct(normalCameraCount)}%`, backgroundColor: "rgba(255,255,255,0.55)" }} />
             </div>
           ) : null}
-          {overLimit && (
-            <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", marginTop: "10px", lineHeight: 1.6 }}>{t.overLimit(used, limit ?? 0)}</p>
-          )}
-          {atLimit && (
-            <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--warning-500)", marginTop: "10px", lineHeight: 1.6 }}>{t.atLimit}</p>
-          )}
-          {!atLimit && nearLimit && (
-            <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--warning-500)", marginTop: "10px", lineHeight: 1.6 }}>{t.nearLimit(available!)}</p>
+          {/* Warnings become a light pill rather than coloured text: warning-500 on this purple is
+              unreadable, and dropping it to white would throw away the one thing the colour was
+              carrying. The pill keeps the token and puts a legible ground under it. */}
+          {(overLimit || atLimit || nearLimit) && (
+            <p style={{
+              display: "inline-block", marginTop: "12px", padding: "4px 10px", borderRadius: "999px",
+              backgroundColor: "white", lineHeight: 1.6,
+              fontSize: "11px", fontWeight: 700,
+              color: overLimit ? "var(--danger-500)" : "var(--warning-500)",
+            }}>
+              {overLimit ? t.overLimit(used, limit ?? 0) : atLimit ? t.atLimit : t.nearLimit(available!)}
+            </p>
           )}
         </div>
 
