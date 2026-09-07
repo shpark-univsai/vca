@@ -146,7 +146,7 @@ export default function PortalEmptyState({ onNewProject, noTeam = false, onCreat
             onClick={submit}
             disabled={!canSubmit}
             style={{
-              width: "100%", marginTop: "16px", padding: "12px 20px", borderRadius: "999px", border: "none",
+              width: "100%", marginTop: "16px", padding: "12px 20px", borderRadius: "8px", border: "none",
               backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-200)", color: canSubmit ? "white" : "var(--gray-400)", fontSize: "14px", fontWeight: 700,
               cursor: canSubmit ? "pointer" : "not-allowed", 
             }}
@@ -171,7 +171,7 @@ export default function PortalEmptyState({ onNewProject, noTeam = false, onCreat
         <button className="portal-btn-primary" onClick={onNewProject}
           style={{
             display: "flex", alignItems: "center", gap: "6px", marginTop: "24px",
-            padding: "12px 20px", borderRadius: "999px", border: "none",
+            padding: "12px 20px", borderRadius: "8px", border: "none",
             backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer",
           }}>
           <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>

@@ -290,12 +290,12 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
             <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
               {result.skipped.length > 0 && (
                 <button className="portal-btn-outline" onClick={downloadSkipped}
-                  style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                  style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                   {t.downloadErrors}
                 </button>
               )}
               <button className="portal-btn-primary" onClick={onClose}
-                style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.close}
               </button>
             </div>
@@ -344,17 +344,17 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
             </div>
             <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", gap: "8px", flexShrink: 0 }}>
               <button className="portal-btn-outline" onClick={() => { setParsed(null); setFileError(null); }}
-                style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.chooseAnother}
               </button>
               <div style={{ display: "flex", gap: "8px" }}>
                 <button className="portal-btn-outline" onClick={onClose}
-                  style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                  style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                   {t.cancel}
                 </button>
                 <button onClick={commit} disabled={okRows.length === 0}
                   style={{
-                    padding: "10px 16px", borderRadius: "999px", border: "none",
+                    padding: "10px 16px", borderRadius: "8px", border: "none",
                     backgroundColor: okRows.length === 0 ? "var(--gray-200)" : "var(--primary-400)",
                     color: okRows.length === 0 ? "var(--gray-400)" : "white",
                     fontSize: "13px", fontWeight: 700, cursor: okRows.length === 0 ? "not-allowed" : "pointer",
@@ -400,7 +400,7 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
             </div>
             <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
               <button className="portal-btn-outline" onClick={onClose}
-                style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.cancel}
               </button>
             </div>

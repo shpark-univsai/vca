@@ -370,7 +370,7 @@ export default function PortalSignupWizard() {
                     onClick={checkAvailability}
                     disabled={!email.trim()}
                     style={{
-                      width: "124px", height: "40px", borderRadius: "999px", border: "none", flexShrink: 0,
+                      width: "124px", height: "40px", borderRadius: "8px", border: "none", flexShrink: 0,
                       backgroundColor: emailChecked ? (emailTaken ? "var(--danger-100)" : "var(--gray-100)") : "var(--gray-900)",
                       color: emailChecked ? (emailTaken ? "var(--danger-500)" : "var(--success-400)") : "white",
                       fontSize: "12px", fontWeight: 700, cursor: email.trim() ? "pointer" : "not-allowed",
@@ -428,7 +428,7 @@ export default function PortalSignupWizard() {
             <button className="portal-btn-primary"
               onClick={handleContinueStep1}
               style={{
-                width: "100%", height: "48px", marginTop: "24px", borderRadius: "999px", border: "none",
+                width: "100%", height: "48px", marginTop: "24px", borderRadius: "8px", border: "none",
                 backgroundColor: "var(--gray-900)", color: "white", fontSize: "14px", fontWeight: 700,
                 cursor: "pointer", opacity: step1Valid ? 1 : 0.5,
               }}
@@ -458,7 +458,7 @@ export default function PortalSignupWizard() {
                 onClick={useSuggestedDomain}
                 disabled={!email.split("@")[1]}
                 style={{
-                  minWidth: "91px", height: "40px", borderRadius: "999px", border: "none", flexShrink: 0,
+                  minWidth: "91px", height: "40px", borderRadius: "8px", border: "none", flexShrink: 0,
                   padding: "0 12px",
                   backgroundColor: "var(--primary-100)", color: "var(--primary-400)", fontSize: "12px", fontWeight: 700,
                   cursor: email.split("@")[1] ? "pointer" : "not-allowed",
@@ -518,7 +518,7 @@ export default function PortalSignupWizard() {
             <button className="portal-btn-primary"
               onClick={handleCompleteSignup}
               style={{
-                width: "100%", height: "48px", marginTop: "24px", borderRadius: "999px", border: "none",
+                width: "100%", height: "48px", marginTop: "24px", borderRadius: "8px", border: "none",
                 backgroundColor: "var(--gray-900)", color: "white", fontSize: "14px", fontWeight: 700,
                 cursor: "pointer", opacity: step2Valid ? 1 : 0.5,
               }}
@@ -547,7 +547,7 @@ export default function PortalSignupWizard() {
               <button className="portal-btn-primary"
                 onClick={goToFirstProject}
                 style={{
-                  width: "100%", height: "48px", marginTop: "20px", borderRadius: "999px", border: "none",
+                  width: "100%", height: "48px", marginTop: "20px", borderRadius: "8px", border: "none",
                   backgroundColor: "var(--gray-900)", color: "white", fontSize: "14px", fontWeight: 700, cursor: "pointer",
                 }}
               >
@@ -556,7 +556,7 @@ export default function PortalSignupWizard() {
               <button
                 onClick={goToDashboard}
                 style={{
-                  width: "100%", height: "40px", marginTop: "10px", borderRadius: "999px", border: "none",
+                  width: "100%", height: "40px", marginTop: "10px", borderRadius: "8px", border: "none",
                   backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "12px", fontWeight: 700, cursor: "pointer",
                 }}
               >

@@ -173,7 +173,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, defaultType
           onClick={deploy}
           disabled={!name.trim()}
           style={{
-            width: "100%", height: "52px", marginTop: "16px", borderRadius: "999px", border: "none",
+            width: "100%", height: "52px", marginTop: "16px", borderRadius: "8px", border: "none",
             backgroundColor: name.trim() ? "var(--primary-400)" : "var(--gray-200)", color: name.trim() ? "white" : "var(--gray-400)", fontSize: "14px", fontWeight: 700,
             cursor: name.trim() ? "pointer" : "not-allowed", 
           }}

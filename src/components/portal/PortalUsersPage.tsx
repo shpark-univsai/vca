@@ -605,7 +605,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                 return (
                   <button key={p.id} onClick={() => toggleProject(p.id)}
                     style={{
-                      padding: "6px 10px", borderRadius: "999px", cursor: "pointer",
+                      padding: "6px 10px", borderRadius: "8px", cursor: "pointer",
                       border: active ? "1px solid var(--gray-900)" : BORDER,
                       backgroundColor: active ? "var(--gray-100)" : "white",
                       color: active ? "var(--gray-900)" : "var(--gray-600)",
@@ -622,11 +622,11 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button className="portal-btn-primary" onClick={submit} disabled={!name.trim() || !email.trim()}
-            style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: (name.trim() && email.trim()) ? "pointer" : "not-allowed", opacity: (name.trim() && email.trim()) ? 1 : 0.5 }}>
+            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: (name.trim() && email.trim()) ? "pointer" : "not-allowed", opacity: (name.trim() && email.trim()) ? 1 : 0.5 }}>
             {t.sendInvite}
           </button>
         </div>
@@ -853,11 +853,11 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
               </div>
             )}
             <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-              <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+              <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.cancel}
               </button>
               <button className="portal-btn-primary" onClick={generate}
-                style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {c.generate}
               </button>
             </div>
@@ -875,7 +875,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
                   {password}
                 </code>
                 <button onClick={copy}
-                  style={{ flexShrink: 0, padding: "8px 12px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: copied ? "var(--success-400)" : "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                  style={{ flexShrink: 0, padding: "8px 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: copied ? "var(--success-400)" : "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                   {copied ? t.tempCopied : t.tempCopy}
                 </button>
               </div>
@@ -892,7 +892,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
             </div>
             <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
               <button className="portal-btn-primary" onClick={onClose}
-                style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.tempDone}
               </button>
             </div>
@@ -1167,7 +1167,7 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
         </div>
         {selected.length > 0 && (
           <button onClick={() => approve(selected)}
-            style={{ padding: "8px 14px", borderRadius: "999px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
             {t.approveSelected(selected.length)}
           </button>
         )}
@@ -1189,11 +1189,11 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
             </div>
             <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
               <button className="portal-btn-outline" onClick={() => dismissAccessRequest(r.id)}
-                style={{ padding: "8px 12px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "8px 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                 {t.dismiss}
               </button>
               <button onClick={() => approve([r.id])}
-                style={{ padding: "8px 12px", borderRadius: "999px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                 {t.approve}
               </button>
             </div>
@@ -1320,7 +1320,7 @@ function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko
 
         <div style={{ padding: "20px", display: "flex", justifyContent: "flex-end" }}>
           <button className="portal-btn-primary" onClick={onClose}
-            style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.guideClose}
           </button>
         </div>
@@ -1595,7 +1595,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           onClick={() => manageAccess && setShowInvite(true)}
           disabled={!manageAccess}
           title={manageAccess ? undefined : t.reasonNotOwner}
-          style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: manageAccess ? "var(--primary-400)" : "var(--gray-100)", color: manageAccess ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed", flexShrink: 0 }}>
+          style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: manageAccess ? "var(--primary-400)" : "var(--gray-100)", color: manageAccess ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed", flexShrink: 0 }}>
           <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke={manageAccess ? "white" : "var(--gray-400)"} strokeWidth="1.4" strokeLinecap="round"/></svg>
           {t.inviteUser}
         </button>

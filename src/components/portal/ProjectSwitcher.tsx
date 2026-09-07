@@ -138,7 +138,7 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
         style={{
           display: "flex", alignItems: "center", gap: "6px",
           border: "none", background: "none", cursor: "pointer",
-          padding: "6px 8px", borderRadius: "999px", color: "var(--gray-900)",
+          padding: "6px 8px", borderRadius: "8px", color: "var(--gray-900)",
         }}
       >
         <span
@@ -282,7 +282,7 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
             <div style={{ padding: "12px 20px", display: "flex", justifyContent: "flex-end" }}>
               <button className="portal-btn-outline"
                 onClick={() => setOpen(false)}
-                style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
+                style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
               >
                 {t.cancel}
               </button>
