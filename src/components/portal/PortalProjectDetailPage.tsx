@@ -448,7 +448,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
                 </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
+              {/* No rule above this line. The two cards to the right lost theirs when their detail
+                  moved up beside the figure, which left these two as the only cards ruled inside —
+                  and the rule was separating a figure from the words that describe it. The gap
+                  does that on its own. */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "8px", marginTop: "4px" }}>
                 <SubStat color="var(--success-400)" label={t.onlineCount(onlineCount)} />
                 <SubStat color="var(--danger-400)" label={t.offlineCount(offlineCount)} />
               </div>
@@ -471,7 +475,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--info-500)" }} />
                 </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
+              {/* No rule above this line. The two cards to the right lost theirs when their detail
+                  moved up beside the figure, which left these two as the only cards ruled inside —
+                  and the rule was separating a figure from the words that describe it. The gap
+                  does that on its own. */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "8px", marginTop: "4px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{project.licensePlan ?? t.planNotSet}</p>
                   <button onClick={() => onTabChange("license")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
