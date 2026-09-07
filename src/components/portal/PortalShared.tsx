@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Headset } from "lucide-react";
+import { Check } from "lucide-react";
 import { SUPPORT_CONTACT, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -863,86 +863,70 @@ export function TextField({ value, onChange, placeholder, type, inputMode, autoC
  * only human named anywhere in Portal was the account manager on the licence page — so that is who
  * they would have written to.
  */
-export function SupportContactButton() {
+/**
+ * The support desk's details, as a dialog.
+ *
+ * Was a pill in the top bar with its own popover. It moved into the account menu — support is not
+ * a per-screen action, and the bar had three permanent controls for things taken once a session —
+ * and a popover opened from inside another popover has nowhere reliable to sit, so this is a
+ * dialog. Text only: there is no ticketing system behind Portal, so an address, a number and the
+ * hours are the whole of what can honestly be offered.
+ */
+export function SupportContactModal({ onClose }: { onClose: () => void }) {
   const [lang] = usePortalLanguage();
   const t = SUPPORT_T[lang];
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEscapeKey(() => setOpen(false), open);
-
-  // Same click-outside as FilterSelect: mousedown, so a click that lands on another control both
-  // closes this and reaches that control.
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
+  useEscapeKey(onClose);
 
   const row = (label: string, value: React.ReactNode) => (
     <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-      <span style={{ fontSize: "11px", color: "var(--gray-500)", minWidth: "44px", flexShrink: 0 }}>{label}</span>
-      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", minWidth: 0 }}>{value}</span>
+      <span style={{ fontSize: "12px", color: "var(--gray-500)", minWidth: "56px", flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-900)", minWidth: 0 }}>{value}</span>
     </div>
   );
 
   return (
-    <div ref={ref} style={{ position: "relative", flexShrink: 0 }}>
-      <button
-        className="portal-btn-outline"
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: "flex", alignItems: "center", gap: "6px",
-          border: BORDER, borderRadius: "8px", backgroundColor: "white",
-          padding: "8px 14px", cursor: "pointer",
-          fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit",
-        }}
-      >
-        <Headset size={14} strokeWidth={1.2} color="var(--gray-700)" />
-        {t.button}
-      </button>
-      {open && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 200,
-          width: "max-content", maxWidth: "280px",
-          backgroundColor: "white", border: BORDER, borderRadius: "10px",
-          boxShadow: "0 8px 20px rgba(14,22,42,0.12)", padding: "14px 16px",
-          display: "flex", flexDirection: "column", gap: "8px",
-        }}>
-          <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.heading}</p>
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", marginBottom: "2px" }}>{t.heading}</p>
           {row(t.email, (
-            <a href={`mailto:${SUPPORT_CONTACT.email}`} style={{ color: "var(--gray-900)", textDecoration: "underline", textUnderlineOffset: "3px" }}>
+            <a className="portal-link" href={`mailto:${SUPPORT_CONTACT.email}`} style={{ color: "var(--gray-900)" }}>
               {SUPPORT_CONTACT.email}
             </a>
           ))}
           {row(t.phone, SUPPORT_CONTACT.phone)}
           {row(t.hours, SUPPORT_CONTACT.hours[lang])}
-          <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.6, borderTop: BORDER, paddingTop: "8px", marginTop: "2px" }}>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "4px" }}>
             {t.contractNote}
           </p>
         </div>
-      )}
+        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
+          <button className="portal-btn-outline" onClick={onClose}
+            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {t.close}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
 const SUPPORT_T = {
   en: {
-    button: "Contact support",
     heading: "Support desk",
     email: "Email",
     phone: "Phone",
     hours: "Hours",
     contractNote: "For channels, term or renewal, ask the account manager named on the License page instead.",
+    close: "Close",
   },
   ko: {
-    button: "고객 지원",
     heading: "기술 지원",
     email: "메일",
     phone: "전화",
     hours: "운영 시간",
     contractNote: "채널·기간·갱신은 라이선스 화면의 계약 담당자에게 문의하세요.",
+    close: "닫기",
   },
 } as const;

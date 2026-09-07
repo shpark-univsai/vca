@@ -10,10 +10,11 @@ import PortalNewProjectWizard from "./PortalNewProjectWizard";
 import TeamSwitcher from "./TeamSwitcher";
 import ProjectSidebar, { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
 import PortalMyPage from "./PortalMyPage";
+import PortalAccountMenu from "./PortalAccountMenu";
 import { ToastProvider } from "../Toast";
 import { useVcaStore, canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { SupportContactButton, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
+import { BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 
 const T = {
   en: { noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar", exit: "Exit to App", newProject: "New project", cancel: "Cancel" },
@@ -250,36 +251,21 @@ export default function PortalShell() {
             {t.cancel}
           </button>
         )}
-        {/* The utilities end of the bar. Support is the one thing here now: it is reachable from
-            every screen rather than only the one that needed it.
+        {/*
+          The right end of the bar is who you are. Everything that belongs to the account rather
+          than to the open project is in its menu — the way back to the app, My page, support —
+          and this bar is on every Portal screen, including the ones with no sidebar (an empty
+          team, the wizard), so none of it needs a fallback control any more.
 
-            What left: the language switcher (a setting, not a per-screen control — it lives in My
-            page) and the "Exit to App" pill. That pill sat here permanently for something taken
-            once a session, and the app puts the same door inside ITS account menu, so the two
-            directions were built differently. It moved to the sidebar's account menu, with a
-            visible button on the Overview banner. */}
-        <SupportContactButton />
-        {/* …except where there is no sidebar to hold it: an empty team and the project wizard both
-            render without the rail, and removing the pill unconditionally would strand a person on
-            a screen with no way back to the app at all. */}
-        {!sidebarVisible && (!me || canEnterApp(me)) && (
-        <button
-          className="portal-exit-btn"
-          onClick={() => router.push("/")}
-          style={{
-            display: "flex", alignItems: "center", gap: "6px",
-            border: "1px solid var(--gray-200)", borderRadius: "8px", backgroundColor: "white",
-            padding: "8px 14px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-            <path d="M5.25 12.25H2.9167C2.6072 12.25 2.31005 12.1271 2.09032 11.9074C1.87059 11.6877 1.75 11.3905 1.75 11.0833V2.91667C1.75 2.60942 1.87059 2.31227 2.09032 2.09254C2.31005 1.87281 2.6072 1.75 2.9167 1.75H5.25" stroke="var(--gray-600)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M8.75 9.91667L12.25 6.41667L8.75 2.91667" stroke="var(--gray-600)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M12.25 6.41667H5.25" stroke="var(--gray-600)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          {t.exit}
-        </button>
-        )}
+          What used to be here: an "Exit to App" pill, a language switcher and a "Contact support"
+          pill. Three permanent controls, each for something taken once a session. Language is a
+          preference rather than an action, so it went to My page instead of into the menu.
+        */}
+        <PortalAccountMenu
+          admin={me ?? { name: SIGNED_IN_USER.name, email: SIGNED_IN_USER.email }}
+          appAccess={!me || canEnterApp(me)}
+          onMyPage={() => setShowAccount(true)}
+        />
       </div>
 
       {showWizard ? (
@@ -291,9 +277,6 @@ export default function PortalShell() {
               tab={tab}
               onTabChange={next => { setShowAccount(false); setTab(next); }}
               collapsed={sidebarCollapsed}
-              admin={me ?? { name: SIGNED_IN_USER.name, email: SIGNED_IN_USER.email }}
-              appAccess={!me || canEnterApp(me)}
-              onMyPage={() => setShowAccount(true)}
               myPageOpen={showAccount}
             />
           )}
