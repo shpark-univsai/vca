@@ -7,6 +7,220 @@ import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import RemoveImageButton from "./RemoveImageButton";
 
+import { useLanguage, type AppLanguage } from "@/lib/i18n";
+
+/**
+ * See the per-file pattern note in lib/i18n.ts.
+ *
+ * Two kinds of words live on this screen and only one of them is in here. Camera codes, plate
+ * numbers, VIP names and the seeded target labels are the install's own data and never change.
+ * The attribute VALUES ("Male", "Short Sleeve", "Backpack/Bag") are a third thing: they are what
+ * the model reports and what the filter state holds, so they stay English in state and get
+ * translated only where they are drawn — see ATTR below.
+ */
+const T = {
+  en: {
+    scrollToTop: "Scroll to top",
+    smartSearch: "Smart search",
+    collapse: "Collapse",
+    tabPhoto: "Photo",
+    tabFilter: "Filter",
+    tabVip: "VIP",
+    tabVehicle: "Vehicle",
+    dateRange: "Date range",
+    last7days: "Last 7 days",
+    recentTargets: "Recent targets",
+    targetFace: "Target face",
+    targetBody: "Target body",
+    face: "Face",
+    body: "Body",
+    similarity: "Similarity",
+    labelGender: "Gender",
+    labelHat: "Hat",
+    labelSleeve: "Sleeve length",
+    labelBottoms: "Bottoms",
+    labelBackpack: "Backpack",
+    labelEmotion: "Emotion",
+    labelEthnic: "Ethnic group",
+    topColors: "Top colors",
+    bottomColors: "Bottom colors",
+    shoesColors: "Shoes colors",
+    all: "All",
+    chooseVip: "Choose a VIP",
+    selectedVip: (name: string) => `Selected: ${name}`,
+    licensePlate: "License plate",
+    reset: "Reset",
+    search: "Search",
+    noSearchPermission: "You do not have permission to search people — ask an administrator",
+    searchVips: "Search VIPs",
+    clearSearch: "Clear search",
+    sortRegistered: "Registered",
+    sortAbc: "A–Z",
+    cancel: "Cancel",
+    apply: "Apply",
+    startDate: "Start date",
+    endDate: "End date",
+    allDates: "All dates",
+    person: "Person",
+    similarityAtLeast: (n: number) => `≥ ${n}% similarity`,
+    similarTo: "Similar to",
+    resetFilters: "Reset filters",
+    searchResults: "Search results",
+    noMatches: "No matches for the current filters.",
+    matchedOn: (reasons: string) => `Matched on: ${reasons}`,
+    resultsAsOf: (time: string) => `Results updated as of ${time}`,
+    clickToChange: "Click to change",
+    removeFaceImage: "Remove face image",
+    removeBodyImage: "Remove body image",
+    removeImage: (what: string) => `Remove ${what} image`,
+    noCandidatesMatch: "No candidates match the current filters",
+    chooseTargetOrFilter: "Choose a target or set a filter to see candidates",
+    close: "Close",
+    prevPage: "Previous page",
+    nextPage: "Next page",
+    sharedFramesTitle: "Every frame holding both the primary target and this associate",
+    relationshipAnalytics: "Relationship analytics",
+    sharedFrames: "Shared frames",
+    sharedFramesHint: "Frames the two appear in together, newest first",
+    showEveryFrame: "Show every shared frame again",
+    openFrameFull: "Open this frame full size",
+    colRank: "Rank",
+    colAssociate: "Associate target",
+    colTier: "Tier",
+    colStatus: "Status",
+    colLocations: "Locations",
+    colPeakLocation: "Peak location",
+    colPeakTime: "Peak time",
+    colSpan: "Span",
+    colAction: "Action",
+    prevFrame: "Previous frame",
+    nextFrame: "Next frame",
+    coCaptures: (n: number) => `${n} co-captures`,
+    viewFrames: "View frames",
+    tier: (n: number) => `Tier ${n} link`,
+    lastSeenAt: (when: string, place: string) => `Last seen ${when} · ${place}`,
+    viewPyramid: "See associates laid out by tier",
+    viewGrid: "See associates as a sortable table",
+    pyramidAndZone: "Pyramid & zone",
+    dataGrid: "Data grid",
+    tabLiveMonitoring: "Live Monitoring",
+    tabReid: "Re-ID Analysis",
+    tabRedface: "RedFace",
+    redfaceTooltip: "Finds who shares camera frames with a chosen person, across every camera",
+  },
+  ko: {
+    scrollToTop: "맨 위로",
+    smartSearch: "스마트 검색",
+    collapse: "접기",
+    tabPhoto: "사진",
+    tabFilter: "속성",
+    tabVip: "VIP",
+    tabVehicle: "차량",
+    dateRange: "기간",
+    last7days: "최근 7일",
+    recentTargets: "최근 검색 대상",
+    targetFace: "대상 얼굴",
+    targetBody: "대상 전신",
+    face: "얼굴",
+    body: "전신",
+    similarity: "유사도",
+    labelGender: "성별",
+    labelHat: "모자",
+    labelSleeve: "소매 길이",
+    labelBottoms: "하의",
+    labelBackpack: "가방",
+    labelEmotion: "표정",
+    labelEthnic: "인종",
+    topColors: "상의 색상",
+    bottomColors: "하의 색상",
+    shoesColors: "신발 색상",
+    all: "전체",
+    chooseVip: "VIP를 선택해주세요",
+    selectedVip: (name: string) => `선택: ${name}`,
+    licensePlate: "차량 번호",
+    reset: "초기화",
+    search: "검색",
+    noSearchPermission: "인물 검색 권한이 없습니다 — 관리자에게 요청하세요",
+    searchVips: "VIP 검색",
+    clearSearch: "검색어 지우기",
+    sortRegistered: "등록순",
+    sortAbc: "가나다순",
+    cancel: "취소",
+    apply: "적용",
+    startDate: "시작일",
+    endDate: "종료일",
+    allDates: "전체 기간",
+    person: "사람",
+    similarityAtLeast: (n: number) => `유사도 ${n}% 이상`,
+    similarTo: "유사한 대상:",
+    resetFilters: "조건 초기화",
+    searchResults: "검색 결과",
+    noMatches: "현재 조건에 맞는 결과가 없습니다.",
+    matchedOn: (reasons: string) => `일치한 조건: ${reasons}`,
+    resultsAsOf: (time: string) => `${time} 기준 결과입니다`,
+    clickToChange: "눌러서 변경",
+    removeFaceImage: "얼굴 이미지 삭제",
+    removeBodyImage: "전신 이미지 삭제",
+    removeImage: (what: string) => `${what} 이미지 삭제`,
+    noCandidatesMatch: "현재 조건에 맞는 후보가 없습니다",
+    chooseTargetOrFilter: "대상을 고르거나 조건을 설정하면 후보가 나타납니다",
+    close: "닫기",
+    prevPage: "이전 페이지",
+    nextPage: "다음 페이지",
+    sharedFramesTitle: "기준 대상과 이 동행자가 함께 잡힌 모든 프레임",
+    relationshipAnalytics: "관계 분석",
+    sharedFrames: "함께 잡힌 프레임",
+    sharedFramesHint: "두 사람이 함께 나온 프레임, 최신순",
+    showEveryFrame: "함께 잡힌 프레임 전체 다시 보기",
+    openFrameFull: "이 프레임 원본 크기로 보기",
+    colRank: "순위",
+    colAssociate: "동행 대상",
+    colTier: "단계",
+    colStatus: "상태",
+    colLocations: "장소 수",
+    colPeakLocation: "최다 검출 장소",
+    colPeakTime: "최다 검출 시간",
+    colSpan: "검출 기간",
+    colAction: "동작",
+    prevFrame: "이전 프레임",
+    nextFrame: "다음 프레임",
+    coCaptures: (n: number) => `함께 잡힘 ${n}회`,
+    viewFrames: "프레임 보기",
+    tier: (n: number) => `${n}단계 연결`,
+    lastSeenAt: (when: string, place: string) => `마지막 검출 ${when} · ${place}`,
+    viewPyramid: "단계별로 배치해서 보기",
+    viewGrid: "정렬 가능한 표로 보기",
+    pyramidAndZone: "단계 · 구역",
+    dataGrid: "표로 보기",
+    tabLiveMonitoring: "실시간 관제",
+    tabReid: "Re-ID 분석",
+    tabRedface: "RedFace",
+    redfaceTooltip: "선택한 사람과 같은 프레임에 잡힌 사람을 모든 카메라에서 찾습니다",
+  },
+} as const;
+
+/**
+ * Attribute values the model reports. The state and the search payload keep the English value —
+ * these are what a backend will match on — and this only decides how one is drawn. Anything not
+ * listed falls through unchanged, which is what camera codes and plate numbers rely on.
+ */
+const ATTR_KO: Record<string, string> = {
+  Male: "남성", Female: "여성",
+  Hat: "모자", None: "없음", Exists: "있음",
+  Short: "반팔", Long: "긴팔",
+  "Short Sleeve": "반팔", "Long Sleeve": "긴팔",
+  Trousers: "긴바지", Shorts: "반바지", Skirts: "치마",
+  "Backpack/Bag": "가방", "Wearing Glasses": "안경 착용",
+  Anger: "화남", Disgust: "혐오", Neutral: "무표정", Fear: "두려움",
+  Happiness: "기쁨", Sadness: "슬픔", Surprised: "놀람",
+  "African American": "아프리카계", Indian: "인도계", Asian: "아시아계", Caucasian: "백인계",
+  Person: "사람", Vehicle: "차량",
+  VIP: "VIP", Unknown: "미확인", Suspect: "의심", RedFace: "RedFace",
+};
+function attr(value: string, lang: AppLanguage): string {
+  return lang === "ko" ? (ATTR_KO[value] ?? value) : value;
+}
+
 const BORDER = "1px solid var(--gray-200)";
 export type DataTab = "Live Monitoring" | "Re-ID Analysis" | "Smart Search" | "RedFace";
 
@@ -76,6 +290,7 @@ function ScoreBadge({ score }: { score: number }) {
 
 // ── Person Detail Modal ────────────────────────────────────────
 function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:MatchItem; onClose:()=>void; onGoRedmap?:()=>void; onGoAnalyzeFrame?:(location:string)=>void }) {
+  const [lang] = useLanguage();
   useEscapeKey(onClose);
   return (
     <div onClick={e => { if (e.target===e.currentTarget) onClose(); }}
@@ -91,7 +306,7 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
                 <p style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>Re-ID Object #REC-{String(item.id).padStart(4,"0")}</p>
                 <ScoreBadge score={item.similarity} />
                 <span style={{ fontSize:"10px", fontWeight:700, color:"var(--gray-600)", backgroundColor:"var(--gray-100)", padding:"2px 7px", borderRadius:"999px" }}>{item.cam}</span>
-                <span style={{ fontSize:"10px", fontWeight:800, color:REID_STATUS_STYLE[item.status].text, backgroundColor:`${REID_STATUS_STYLE[item.status].text}1a`, padding:"2px 7px", borderRadius:"999px" }}>{item.status}</span>
+                <span style={{ fontSize:"10px", fontWeight:800, color:REID_STATUS_STYLE[item.status].text, backgroundColor:`${REID_STATUS_STYLE[item.status].text}1a`, padding:"2px 7px", borderRadius:"999px" }}>{attr(item.status, lang)}</span>
               </div>
               <p style={{ fontSize:"10px", color:"var(--gray-400)", marginTop:"1px" }}>{item.time}</p>
             </div>
@@ -218,6 +433,7 @@ function HoverActionBtn({ label, icon, color, onClick }:
 }
 
 function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab, onGoRedmap }: { p: (typeof REID_DATA)[number]; onClick: () => void; showCam?: boolean; fill?: boolean; onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number]) => void; onGoRedmap?: () => void }) {
+  const [lang] = useLanguage();
   const status = REID_STATUS_STYLE[p.status];
   const [hovered, setHovered] = useState(false);
   return (
@@ -260,7 +476,7 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
         border:"none", borderTop:"none", boxShadow:"none", margin:0, marginBottom:0,
         padding:"7px 11px 24px", boxSizing:"border-box", display:"flex", flexDirection:"column", gap:"2px" }}>
         <div style={{ display:"flex", alignItems:"baseline", gap:"3px" }}>
-          <span style={{ fontSize:"12px", fontWeight:800, color:status.text, letterSpacing:"-0.2px" }}>{p.status}</span>
+          <span style={{ fontSize:"12px", fontWeight:800, color:status.text, letterSpacing:"-0.2px" }}>{attr(p.status, lang)}</span>
           {p.status === "VIP" && p.score !== null && <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-600)" }}>{p.score}%</span>}
         </div>
         <div style={{ display:"flex", gap:"4px", fontSize:"12px", fontWeight:600, color:"var(--gray-900)" }}>
@@ -317,6 +533,7 @@ function ScrollUpIconSm() {
 // down, so getting back to the top after scanning through results doesn't mean scrolling back up
 // by hand. `containerRef` must point at the actual scrolling element, not a non-scrolling wrapper.
 function ScrollToTopButton({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
+  const [lang] = useLanguage();
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const el = containerRef.current;
@@ -329,7 +546,7 @@ function ScrollToTopButton({ containerRef }: { containerRef: React.RefObject<HTM
   return (
     <button
       onClick={() => containerRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
-      title="Scroll to top"
+      title={T[lang].scrollToTop}
       style={{ position:"absolute", right:"20px", bottom:"20px", width:"40px", height:"40px", borderRadius:"50%",
         backgroundColor:"var(--gray-900)", color:"white", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
         boxShadow:"0 4px 14px rgba(14,22,42,0.3)", zIndex:20 }}
@@ -510,13 +727,15 @@ function seedLiveFeed(): Record<string, (typeof REID_DATA)> {
 
 // A labeled "All | option | option…" segmented row — Gender/Hat/Sleeve length/Bottoms/Backpack
 // all share this exact shape (one active choice, "All" meaning "don't filter on this").
+// The option strings are the values the filter state holds; `attr()` decides how each is drawn.
 function AllOptionRow({ label, options, value, onChange }: { label:string; options:string[]; value:string; onChange:(v:string)=>void }) {
+  const [lang] = useLanguage();
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
       <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>{label}</span>
       <div style={{ display:"flex", gap:"6px", flexWrap:"wrap" }}>
-        <AttrChip label="All" active={value === ""} onClick={() => onChange("")} size="sm" />
-        {options.map(o => <AttrChip key={o} label={o} active={value === o} onClick={() => onChange(o)} size="sm" />)}
+        <AttrChip label={T[lang].all} active={value === ""} onClick={() => onChange("")} size="sm" />
+        {options.map(o => <AttrChip key={o} label={attr(o, lang)} active={value === o} onClick={() => onChange(o)} size="sm" />)}
       </div>
     </div>
   );
@@ -586,6 +805,7 @@ type LiveSearchTab = "Photo" | "Filter" | "VIP" | "Car";
 // wrapper's width instead, revealing/hiding it like a drawer — the sidebar's own width never
 // changes, only how much of it the wrapper's overflow:hidden currently exposes.
 function SlidingSearchPanel({ expanded, onExpand, sidebar }: { expanded: boolean; onExpand: () => void; sidebar: React.ReactNode }) {
+  const [lang] = useLanguage();
   return (
     <div style={{
       position:"relative", width: expanded ? "320px" : "48px", height:"100%", flexShrink:0,
@@ -606,7 +826,7 @@ function SlidingSearchPanel({ expanded, onExpand, sidebar }: { expanded: boolean
       }}>
         <button
           onClick={onExpand}
-          title="Smart search"
+          title={T[lang].smartSearch}
           style={{
             width:"48px", height:"48px", borderRadius:"16px",
             backgroundColor:"white", border:"none", display:"flex", alignItems:"center", justifyContent:"center",
@@ -649,6 +869,8 @@ function LiveSearchSidebar({
   // starts a search, so the check belongs next to the button, not in every caller.
   const portalUsers = useVcaStore(state => state.portalUsers);
   const searchAllowed = canSearchInApp(portalUsers);
+  const [lang] = useLanguage();
+  const t = T[lang];
   const {
     setSearchType, selectedTarget, selectRecentTarget, activeVIP, selectVIP,
     threshold, setThreshold, gender, setGender,
@@ -712,10 +934,10 @@ function LiveSearchSidebar({
   }
 
   const TABS: { id: LiveSearchTab; label:string; icon:React.ReactNode }[] = [
-    { id:"Photo",  label:"Photo",  icon:<ImageIconSm size={16} /> },
-    { id:"Filter", label:"Filter", icon:<SlidersIconSm size={16} /> },
-    { id:"VIP",    label:"VIP",    icon:<StarIconSm size={16} /> },
-    { id:"Car",    label:"Vehicle", icon:<VehicleIconSm size={19} /> },
+    { id:"Photo",  label: t.tabPhoto,   icon:<ImageIconSm size={16} /> },
+    { id:"Filter", label: t.tabFilter,  icon:<SlidersIconSm size={16} /> },
+    { id:"VIP",    label: t.tabVip,     icon:<StarIconSm size={16} /> },
+    { id:"Car",    label: t.tabVehicle, icon:<VehicleIconSm size={19} /> },
   ];
   const changeTab = (t: LiveSearchTab) => { onTabChange(t); setSearchType(t === "Car" ? "VEHICLE" : "PERSON"); };
   // Same size/weight/color as the "Date range" section label above — was smaller, muted-gray,
@@ -729,9 +951,9 @@ function LiveSearchSidebar({
       <div style={{ padding:"20px 16px 12px", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:"8px", color:"var(--gray-900)" }}>
           <SearchIconSm size={16} />
-          <span style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.28px" }}>Smart search</span>
+          <span style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.28px" }}>{t.smartSearch}</span>
         </div>
-        <button onClick={onCollapse} aria-label="Collapse" style={{ background:"none", border:"none", cursor:"pointer", color:"var(--gray-400)", display:"flex" }}>
+        <button onClick={onCollapse} aria-label={t.collapse} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--gray-400)", display:"flex" }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
       </div>
@@ -764,9 +986,9 @@ function LiveSearchSidebar({
         <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
           <div style={{ display:"flex", alignItems:"center", gap:"6px", color:"var(--gray-700)" }}>
             <CalendarIconSm size={12} color="var(--gray-700)" />
-            <span style={{ fontSize:"12px", fontWeight:700 }}>Date range</span>
+            <span style={{ fontSize:"12px", fontWeight:700 }}>{t.dateRange}</span>
           </div>
-          <DateRangeTrigger value={dateRange} onApply={setDateRange} mode="split" size="sm" emptyText="Last 7 days" showIcon={false} />
+          <DateRangeTrigger value={dateRange} onApply={setDateRange} mode="split" size="sm" emptyText={t.last7days} showIcon={false} />
         </div>
 
         {tab === "Photo" && (
@@ -774,7 +996,7 @@ function LiveSearchSidebar({
             <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
               <div style={{ display:"flex", alignItems:"center", gap:"6px", color:"var(--gray-700)" }}>
                 <HistoryIconSm />
-                <span style={{ fontSize:"12px", fontWeight:700 }}>Recent targets</span>
+                <span style={{ fontSize:"12px", fontWeight:700 }}>{t.recentTargets}</span>
               </div>
               {/* Same card, scrollbar and selected-first ordering as RedFace's target picker —
                   two places offering the same list were reading as two different features, one
@@ -797,12 +1019,12 @@ function LiveSearchSidebar({
               </div>
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-              <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>Target face</span>
+              <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>{t.targetFace}</span>
               {/* Three sources feed these previews: an upload, a chosen Recent target, or the card
                   this sidebar opened from. Only the first two are the user's to remove — clearing a
                   chosen target reuses its own toggle rather than a second code path, and the card
                   photo is the context, not a selection. */}
-              <ImageDropzoneBox icon={<DefaultFaceIconSm />} label="Face" previewSrc={faceSrc} aspect="square"
+              <ImageDropzoneBox icon={<DefaultFaceIconSm />} label={t.face} previewSrc={faceSrc} aspect="square"
                 onClick={() => faceInputRef.current?.click()}
                 onClear={uploadedFace ? clearUploadedFace
                   : selectedTarget >= 0 ? () => selectRecentTarget(selectedTarget)
@@ -810,8 +1032,8 @@ function LiveSearchSidebar({
               <input ref={faceInputRef} type="file" accept="image/*" onChange={handleFaceUpload} style={{ display:"none" }} />
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-              <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>Target body</span>
-              <ImageDropzoneBox icon={<FullBodyIconSm />} label="Body" previewSrc={bodySrc} aspect="portrait"
+              <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>{t.targetBody}</span>
+              <ImageDropzoneBox icon={<FullBodyIconSm />} label={t.body} previewSrc={bodySrc} aspect="portrait"
                 onClick={() => bodyInputRef.current?.click()}
                 onClear={uploadedBody ? clearUploadedBody
                   : selectedTarget >= 0 ? () => selectRecentTarget(selectedTarget)
@@ -819,7 +1041,7 @@ function LiveSearchSidebar({
               <input ref={bodyInputRef} type="file" accept="image/*" onChange={handleBodyUpload} style={{ display:"none" }} />
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-              <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>Similarity</span>
+              <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>{t.similarity}</span>
               <SimilarityControl value={threshold} onChange={setThreshold} height={32} />
             </div>
           </>
@@ -827,33 +1049,33 @@ function LiveSearchSidebar({
 
         {tab === "Filter" && (
           <>
-            <AllOptionRow label="Gender" options={["Male","Female"]} value={gender} onChange={setGender} />
-            <AllOptionRow label="Hat" options={["Hat","None"]} value={hatFilter} onChange={(v) => onHatChange(v as ""|"Hat"|"None")} />
-            <AllOptionRow label="Sleeve length" options={["Short","Long"]} value={sleeveFilter} onChange={(v) => onSleeveChange(v as ""|"Short"|"Long")} />
-            <AllOptionRow label="Bottoms" options={["Trousers","Shorts","Skirts"]} value={bottomsFilter} onChange={(v) => onBottomsChange(v as ""|"Trousers"|"Shorts"|"Skirts")} />
-            <AllOptionRow label="Backpack" options={["Exists","None"]} value={backpackFilter} onChange={(v) => onBackpackChange(v as ""|"Exists"|"None")} />
+            <AllOptionRow label={t.labelGender} options={["Male","Female"]} value={gender} onChange={setGender} />
+            <AllOptionRow label={t.labelHat} options={["Hat","None"]} value={hatFilter} onChange={(v) => onHatChange(v as ""|"Hat"|"None")} />
+            <AllOptionRow label={t.labelSleeve} options={["Short","Long"]} value={sleeveFilter} onChange={(v) => onSleeveChange(v as ""|"Short"|"Long")} />
+            <AllOptionRow label={t.labelBottoms} options={["Trousers","Shorts","Skirts"]} value={bottomsFilter} onChange={(v) => onBottomsChange(v as ""|"Trousers"|"Shorts"|"Skirts")} />
+            <AllOptionRow label={t.labelBackpack} options={["Exists","None"]} value={backpackFilter} onChange={(v) => onBackpackChange(v as ""|"Exists"|"None")} />
             <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
-              <span style={filterLabelStyle}>Emotion</span>
+              <span style={filterLabelStyle}>{t.labelEmotion}</span>
               <SimpleSelect value={emotion} options={EMOTION_OPTIONS} onChange={onEmotionChange} />
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
-              <span style={filterLabelStyle}>Ethnic group</span>
+              <span style={filterLabelStyle}>{t.labelEthnic}</span>
               <SimpleSelect value={ethnicGroup} options={ETHNIC_GROUP_OPTIONS} onChange={onEthnicGroupChange} />
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
-              <span style={filterLabelStyle}>Top colors</span>
+              <span style={filterLabelStyle}>{t.topColors}</span>
               <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
                 {APPAREL_COLORS.map(c => <ColorSwatch key={c.id} hex={c.hex} active={topColors.includes(c.id)} onClick={() => toggleTopColor(c.id)} size={18} />)}
               </div>
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
-              <span style={filterLabelStyle}>Bottom colors</span>
+              <span style={filterLabelStyle}>{t.bottomColors}</span>
               <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
                 {APPAREL_COLORS.map(c => <ColorSwatch key={c.id} hex={c.hex} active={bottomColors.includes(c.id)} onClick={() => toggleBottomColor(c.id)} size={18} />)}
               </div>
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
-              <span style={filterLabelStyle}>Shoes colors</span>
+              <span style={filterLabelStyle}>{t.shoesColors}</span>
               <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
                 {SHOE_COLORS.map(c => <ColorSwatch key={c.id} hex={c.hex} active={shoesColors.includes(c.id)} onClick={() => toggleShoesColor(c.id)} size={18} />)}
               </div>
@@ -864,7 +1086,7 @@ function LiveSearchSidebar({
         {tab === "VIP" && (
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
             <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>
-              {vipName ? `Selected: ${vipName}` : "Choose a VIP"}
+              {vipName ? t.selectedVip(vipName) : t.chooseVip}
             </span>
             <VipQuickSelectRow activeVIP={activeVIP} onSelect={selectVIP} />
           </div>
@@ -872,7 +1094,7 @@ function LiveSearchSidebar({
 
         {tab === "Car" && (
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-            <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>License plate</span>
+            <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>{t.licensePlate}</span>
             <div style={{ display:"flex", alignItems:"center", gap:"6px", height:"34px", padding:"0 10px",
               borderRadius:"8px", border:BORDER, backgroundColor:"white" }}>
               <LicensePlateIconSm />
@@ -889,7 +1111,7 @@ function LiveSearchSidebar({
       </div>
 
       <div style={{ padding:"12px 16px 16px", display:"flex", gap:"8px", flexShrink:0 }}>
-        <button onClick={() => { reset(); setUploadedFace(null); setUploadedBody(null); }} aria-label="Reset" style={{ padding:"0 14px", height:"38px", borderRadius:"8px", border:"1px solid var(--gray-300)", backgroundColor:"white", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <button onClick={() => { reset(); setUploadedFace(null); setUploadedBody(null); }} aria-label={t.reset} style={{ padding:"0 14px", height:"38px", borderRadius:"8px", border:"1px solid var(--gray-300)", backgroundColor:"white", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <ResetIconSm />
         </button>
         {/* Person search is granted per account (PortalUser.appSearch) — reconstructing where
@@ -899,9 +1121,9 @@ function LiveSearchSidebar({
         <button
           onClick={() => { if (searchAllowed) onSearch(); }}
           disabled={!searchAllowed}
-          title={searchAllowed ? undefined : "인물 검색 권한이 없습니다 — 관리자에게 요청하세요"}
+          title={searchAllowed ? undefined : t.noSearchPermission}
           style={{ flex:1, height:"38px", borderRadius:"8px", border:"none", backgroundColor: searchAllowed ? "var(--gray-900)" : "var(--gray-100)", color: searchAllowed ? "white" : "var(--gray-400)", fontSize:"13px", fontWeight:700, cursor: searchAllowed ? "pointer" : "not-allowed" }}>
-          Search
+          {t.search}
         </button>
       </div>
     </div>
@@ -1173,24 +1395,28 @@ function buildMonthGrid(year: number, month: number) {
 // time" mean what it says while leaving the untouched/default-fallback case alone.
 const ALL_TIME_START = new Date(2000, 0, 1);
 const ALL_TIME_END = new Date(2100, 0, 1);
-const QUICK_RANGES: { label: string; range: () => DateRangeValue }[] = [
-  { label: "Today", range: () => { const t = new Date(); t.setHours(0,0,0,0); return { start: t, end: t }; } },
-  { label: "Last 7 days", range: () => { const t = new Date(); t.setHours(0,0,0,0); const s = new Date(t); s.setDate(s.getDate() - 6); return { start: s, end: t }; } },
-  { label: "This month", range: () => { const t = new Date(); return { start: new Date(t.getFullYear(), t.getMonth(), 1), end: new Date(t.getFullYear(), t.getMonth() + 1, 0) }; } },
-  { label: "Last 3 months", range: () => { const t = new Date(); return { start: new Date(t.getFullYear(), t.getMonth() - 3, 1), end: new Date(t.getFullYear(), t.getMonth() + 1, 0) }; } },
-  { label: "Last 6 months", range: () => { const t = new Date(); return { start: new Date(t.getFullYear(), t.getMonth() - 6, 1), end: new Date(t.getFullYear(), t.getMonth() + 1, 0) }; } },
-  { label: "This year", range: () => { const t = new Date(); return { start: new Date(t.getFullYear(), 0, 1), end: new Date(t.getFullYear(), 11, 31) }; } },
-  { label: "All dates", range: () => ({ start: ALL_TIME_START, end: ALL_TIME_END }) },
+const QUICK_RANGES: { label: Record<AppLanguage, string>; range: () => DateRangeValue }[] = [
+  { label: { en: "Today", ko: "오늘" }, range: () => { const t = new Date(); t.setHours(0,0,0,0); return { start: t, end: t }; } },
+  { label: { en: "Last 7 days", ko: "최근 7일" }, range: () => { const t = new Date(); t.setHours(0,0,0,0); const s = new Date(t); s.setDate(s.getDate() - 6); return { start: s, end: t }; } },
+  { label: { en: "This month", ko: "이번 달" }, range: () => { const t = new Date(); return { start: new Date(t.getFullYear(), t.getMonth(), 1), end: new Date(t.getFullYear(), t.getMonth() + 1, 0) }; } },
+  { label: { en: "Last 3 months", ko: "최근 3개월" }, range: () => { const t = new Date(); return { start: new Date(t.getFullYear(), t.getMonth() - 3, 1), end: new Date(t.getFullYear(), t.getMonth() + 1, 0) }; } },
+  { label: { en: "Last 6 months", ko: "최근 6개월" }, range: () => { const t = new Date(); return { start: new Date(t.getFullYear(), t.getMonth() - 6, 1), end: new Date(t.getFullYear(), t.getMonth() + 1, 0) }; } },
+  { label: { en: "This year", ko: "올해" }, range: () => { const t = new Date(); return { start: new Date(t.getFullYear(), 0, 1), end: new Date(t.getFullYear(), 11, 31) }; } },
+  { label: { en: "All dates", ko: "전체 기간" }, range: () => ({ start: ALL_TIME_START, end: ALL_TIME_END }) },
 ];
 
-const WEEKDAY_LABELS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+const WEEKDAY_LABELS: Record<AppLanguage, string[]> = {
+  en: ["Su","Mo","Tu","We","Th","Fr","Sa"],
+  ko: ["일","월","화","수","목","금","토"],
+};
 
 function DateMonthCalendar({ year, month, tempStart, tempEnd, onPick, onPrev, onNext, showPrev, showNext }: {
   year: number; month: number; tempStart: Date|null; tempEnd: Date|null;
   onPick: (d: Date) => void; onPrev?: () => void; onNext?: () => void; showPrev: boolean; showNext: boolean;
 }) {
+  const [lang] = useLanguage();
   const cells = buildMonthGrid(year, month);
-  const monthLabel = new Date(year, month, 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  const monthLabel = new Date(year, month, 1).toLocaleDateString(lang === "ko" ? "ko-KR" : "en-US", { month: "short", year: "numeric" });
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"8px", width:"224px" }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", height:"24px" }}>
@@ -1205,7 +1431,7 @@ function DateMonthCalendar({ year, month, tempStart, tempEnd, onPick, onPrev, on
         </button>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", justifyItems:"center" }}>
-        {WEEKDAY_LABELS.map(w => <span key={w} style={{ fontSize:"10px", color:"var(--gray-400)", height:"24px", display:"flex", alignItems:"center" }}>{w}</span>)}
+        {WEEKDAY_LABELS[lang].map(w => <span key={w} style={{ fontSize:"10px", color:"var(--gray-400)", height:"24px", display:"flex", alignItems:"center" }}>{w}</span>)}
       </div>
       {/* Ring instead of a background swap for hover — a background would have to fight (and look
           different depending on) whichever state color is already showing (selected/in-range/
@@ -1237,6 +1463,8 @@ function DateRangePopover({ anchorRef, value, onApply, onClose }: {
   anchorRef: React.RefObject<HTMLElement | null>; value: DateRangeValue;
   onApply: (v: DateRangeValue) => void; onClose: () => void;
 }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const base = value.start ?? new Date();
   const [viewYear, setViewYear] = useState(base.getFullYear());
   const [viewMonth, setViewMonth] = useState(base.getMonth());
@@ -1276,13 +1504,13 @@ function DateRangePopover({ anchorRef, value, onApply, onClose }: {
               added here shows up everywhere at once instead of needing to be repeated per screen. */}
           <style>{`.vca-daterange-preset:hover { background-color:var(--gray-100) !important; }`}</style>
           {QUICK_RANGES.map(q => (
-            <button key={q.label} className="vca-daterange-preset" onClick={() => {
+            <button key={q.label.en} className="vca-daterange-preset" onClick={() => {
               const r = q.range();
               setTempStart(r.start); setTempEnd(r.end);
               if (r.start) { setViewYear(r.start.getFullYear()); setViewMonth(r.start.getMonth()); }
             }} style={{ textAlign:"left", padding:"8px", borderRadius:"8px", border:"none", backgroundColor:"transparent", cursor:"pointer",
               fontSize:"13px", color:"var(--gray-900)", fontWeight:600, transition:"background-color 0.15s" }}>
-              {q.label}
+              {q.label[lang]}
             </button>
           ))}
         </div>
@@ -1295,9 +1523,9 @@ function DateRangePopover({ anchorRef, value, onApply, onClose }: {
           </div>
           <div style={{ display:"flex", justifyContent:"flex-end", gap:"8px" }}>
             <button onClick={onClose} style={{ padding:"8px 16px", borderRadius:"8px", border:BORDER,
-              backgroundColor:"white", color:"var(--gray-900)", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>Cancel</button>
+              backgroundColor:"white", color:"var(--gray-900)", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>{t.cancel}</button>
             <button onClick={() => onApply({ start: tempStart, end: tempEnd })} style={{ padding:"8px 16px", borderRadius:"8px", border:"none",
-              backgroundColor:"var(--primary-400)", color:"white", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>Apply</button>
+              backgroundColor:"var(--primary-400)", color:"white", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>{t.apply}</button>
           </div>
         </div>
       </div>
@@ -1308,6 +1536,8 @@ function DateRangePopover({ anchorRef, value, onApply, onClose }: {
 function DateRangeTrigger({ value, onApply, mode = "merged", size = "md", emptyText, showIcon = true }: {
   value: DateRangeValue; onApply: (v: DateRangeValue) => void; mode?: "split"|"merged"; size?: "md"|"sm"; emptyText?: string; showIcon?: boolean;
 }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const compact = size === "sm";
@@ -1332,8 +1562,8 @@ function DateRangeTrigger({ value, onApply, mode = "merged", size = "md", emptyT
   // muted placeholder gray as an actually-empty field. Dark, same as any other active value.
   const emptyTextStyle: React.CSSProperties = { fontSize: compact ? "12px" : "13px", fontWeight:600, color:"var(--gray-900)" };
 
-  const startLabel = value.start ? fmtDate(value.start) : "Start date";
-  const endLabel = value.end ? fmtDate(value.end) : "End date";
+  const startLabel = value.start ? fmtDate(value.start) : t.startDate;
+  const endLabel = value.end ? fmtDate(value.end) : t.endDate;
   const toggle = () => setOpen(o => !o);
 
   return (
@@ -1344,7 +1574,7 @@ function DateRangeTrigger({ value, onApply, mode = "merged", size = "md", emptyT
         <div onClick={toggle} style={{ ...boxStyle, justifyContent:"space-between" }}>
           <span style={{ display:"flex", alignItems:"center", gap: compact ? "6px" : "8px" }}>
             {showIcon && <CalendarIconSm size={compact ? 12 : 14} />}
-            <span style={emptyTextStyle}>{isAllTime ? "All dates" : emptyText}</span>
+            <span style={emptyTextStyle}>{isAllTime ? t.allDates : emptyText}</span>
           </span>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="var(--gray-600)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </div>
@@ -1370,6 +1600,8 @@ function DateRangeTrigger({ value, onApply, mode = "merged", size = "md", emptyT
 }
 
 function VipQuickSelectRow({ activeVIP, onSelect, compact = false }: { activeVIP:number; onSelect:(i:number)=>void; compact?:boolean }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const avatarSize = compact ? 28 : 24;
   const fontSize = compact ? "11px" : "12px";
   // Search + sort so this stays usable once VIP_QUICK grows well past what fits on screen at
@@ -1427,13 +1659,13 @@ function VipQuickSelectRow({ activeVIP, onSelect, compact = false }: { activeVIP
         <div style={{ flex:1, display:"flex", alignItems:"center", gap:"6px", height:"30px", padding:"0 8px", borderRadius:"6px", border:BORDER, backgroundColor:"white" }}>
           <SearchIconSm />
           <input
-            value={query} onChange={e => setQuery(e.target.value)} placeholder="Search VIPs"
+            value={query} onChange={e => setQuery(e.target.value)} placeholder={t.searchVips}
             style={{ flex:1, border:"none", outline:"none", background:"none", fontSize:"12px", fontWeight:500, color:"var(--gray-900)", minWidth:0 }}
           />
           {/* Picking a VIP doesn't clear this on its own — without a quick way to blank it out,
               searching for someone else means selecting the old query and retyping over it. */}
           {query && (
-            <button onClick={() => setQuery("")} aria-label="Clear search" style={{
+            <button onClick={() => setQuery("")} aria-label={t.clearSearch} style={{
               display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
               width:"16px", height:"16px", borderRadius:"999px", border:"none", backgroundColor:"var(--gray-300)", cursor:"pointer", padding:0,
             }}>
@@ -1444,7 +1676,7 @@ function VipQuickSelectRow({ activeVIP, onSelect, compact = false }: { activeVIP
           )}
         </div>
         <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-100)", borderRadius:"999px", padding:"2px", flexShrink:0 }}>
-          {([["reg","Registered"],["abc","A–Z"]] as const).map(([id, label]) => {
+          {([["reg", t.sortRegistered], ["abc", t.sortAbc]] as const).map(([id, label]) => {
             const active = sortMode === id;
             return (
               <button key={id} onClick={() => setSortMode(id)} style={{
@@ -1606,6 +1838,7 @@ function FilterChip({ children, icon, avatar, onRemove }: { children:React.React
 // "who/what was captured on this specific camera" instead of only attribute/image matching.
 
 function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_DATA)[number]; onClick: () => void; matchReasons?: string[] }) {
+  const [lang] = useLanguage();
   const status = REID_STATUS_STYLE[p.status];
   return (
     <div onClick={onClick} style={{
@@ -1642,9 +1875,9 @@ function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_D
         <div style={{ display:"flex", alignItems:"baseline", gap:"6px" }}>
           {p.plate
             ? <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-900)", fontFamily:"monospace", letterSpacing:"-0.24px" }}>{p.plate}</span>
-            : <span style={{ fontSize:"12px", fontWeight:800, color:status.text, letterSpacing:"-0.24px" }}>{p.status}</span>}
+            : <span style={{ fontSize:"12px", fontWeight:800, color:status.text, letterSpacing:"-0.24px" }}>{attr(p.status, lang)}</span>}
           {matchReasons.length > 0 && (
-            <span title={`Matched on: ${matchReasons.join(", ")}`} style={{ fontSize:"10px", fontWeight:800, color:"var(--success-400)", cursor:"help" }}>
+            <span title={T[lang].matchedOn(matchReasons.map(r => attr(r, lang)).join(", "))} style={{ fontSize:"10px", fontWeight:800, color:"var(--success-400)", cursor:"help" }}>
               ✓{matchReasons.length}
             </span>
           )}
@@ -1664,6 +1897,8 @@ function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_D
 function SmartSearchResults({ state, results, onCardClick, onRefine, onReset, topColors, bottomColors, shoesColors, emotion, ethnicGroup }:
   { state: SearchFilterState; results:(typeof REID_DATA); onCardClick:(id:number)=>void; onRefine:()=>void; onReset:()=>void;
     topColors: string[]; bottomColors: string[]; shoesColors: string[]; emotion: string; ethnicGroup: string }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const { searchType, selectedTarget, selectRecentTarget, activeVIP, selectVIP, threshold, gender, apparel, props, dateRange, licensePlate, camera } = state;
   // Captured once when results first land, not read live on every render — otherwise "as of"
   // would silently keep advancing on any unrelated re-render, making the Refresh button's job
@@ -1689,12 +1924,12 @@ function SmartSearchResults({ state, results, onCardClick, onRefine, onReset, to
     ...(camera ? [camera] : []),
   ];
   const activeChips = target
-    ? [searchType === "PERSON" ? "Person" : "Vehicle", `≥ ${threshold}% similarity`]
+    ? [searchType === "PERSON" ? t.person : t.tabVehicle, t.similarityAtLeast(threshold)]
     : [
-        searchType === "PERSON" ? "Person" : "Vehicle",
+        searchType === "PERSON" ? t.person : t.tabVehicle,
         ...(dateRange.start || dateRange.end
           ? [`${dateRange.start ? fmtDate(dateRange.start) : "…"} ~ ${dateRange.end ? fmtDate(dateRange.end) : "…"}`]
-          : ["Last 7 days"]),
+          : [t.last7days]),
         ...(camera ? [camera] : []),
         ...(searchType === "VEHICLE"
           ? (licensePlate ? [licensePlate] : [])
@@ -1713,13 +1948,13 @@ function SmartSearchResults({ state, results, onCardClick, onRefine, onReset, to
         <div className="vca-hide-scrollbar" style={{ display:"flex", alignItems:"center", gap:"8px", overflowX:"auto" }}>
           {target && (
             <FilterChip avatar={target.face} onRemove={clearTarget}>
-              Similar to {"label" in target ? target.label : target.name}
+              {t.similarTo} {"label" in target ? target.label : target.name}
             </FilterChip>
           )}
           {activeChips.map((c, i) => <FilterChip key={i}>{c}</FilterChip>)}
           <button onClick={onReset} style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", cursor:"pointer",
             fontSize:"13px", fontWeight:600, color:"var(--gray-600)", flexShrink:0, padding:"0 4px" }}>
-            <ResetIconSm /> Reset filters
+            <ResetIconSm /> {t.resetFilters}
           </button>
         </div>
         <button onClick={onRefine} style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", cursor:"pointer",
@@ -1731,7 +1966,7 @@ function SmartSearchResults({ state, results, onCardClick, onRefine, onReset, to
       <div style={{ padding:"16px 24px 0" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"16px", flexWrap:"wrap", gap:"8px" }}>
           <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
-            <span style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)" }}>Search results</span>
+            <span style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)" }}>{t.searchResults}</span>
             <span style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-500)" }}>{results.length} matches</span>
             <div style={{ width:"1px", height:"12px", backgroundColor:"var(--gray-200)" }} />
             <span style={{ fontSize:"13px", color:"var(--gray-400)" }}>
@@ -1739,7 +1974,7 @@ function SmartSearchResults({ state, results, onCardClick, onRefine, onReset, to
             </span>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:"16px" }}>
-            <span style={{ fontSize:"12px", color:"var(--gray-400)" }}>Results updated as of {refreshedAt.toLocaleTimeString("en-US", { hour12:false })}</span>
+            <span style={{ fontSize:"12px", color:"var(--gray-400)" }}>{t.resultsAsOf(refreshedAt.toLocaleTimeString(lang === "ko" ? "ko-KR" : "en-US", { hour12:false }))}</span>
             <button onClick={() => setRefreshedAt(new Date())} style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", cursor:"pointer", fontSize:"12px", fontWeight:700, color:"var(--gray-600)" }}>
               <RefreshIconSm /> Refresh
             </button>
@@ -1747,7 +1982,7 @@ function SmartSearchResults({ state, results, onCardClick, onRefine, onReset, to
         </div>
         {results.length === 0 ? (
           <div style={{ display:"flex", alignItems:"center", justifyContent:"center", padding:"64px 0", color:"var(--gray-400)", fontSize:"13px", fontWeight:600 }}>
-            No matches for the current filters.
+            {t.noMatches}
           </div>
         ) : (
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(133px, 1fr))", gap:"16px", paddingBottom:"24px" }}>
@@ -2324,6 +2559,7 @@ function ImageDropzoneBox({ icon, label, previewSrc, onClick, onClear, aspect }:
   onClear?: () => void;
   aspect?: "square"|"portrait";
 }) {
+  const [lang] = useLanguage();
   // aspect is opt-in (Live Monitoring's Photo tab, where face/body previews sit one above the
   // other and read clearer at their real proportions) — callers that don't pass it keep the
   // original flex-filled box unchanged (e.g. Re-ID Analysis's side-by-side pair).
@@ -2348,7 +2584,7 @@ function ImageDropzoneBox({ icon, label, previewSrc, onClick, onClear, aspect }:
         {onClick && hovered && <span style={{ fontSize:"10px", fontWeight:700, color:"var(--primary-400)" }}>{previewSrc ? "Click to change" : "Click to upload"}</span>}
       </div>
       {onClear && hovered && (
-        <RemoveImageButton label={`Remove ${label.toLowerCase()} image`} onRemove={onClear} />
+        <RemoveImageButton label={T[lang].removeImage(label.toLowerCase())} onRemove={onClear} />
       )}
     </div>
   );
@@ -2436,6 +2672,8 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   camera: string; onCameraChange: (v: string) => void;
   seedCard?: (typeof REID_DATA)[number] | null; onSeedConsumed?: () => void; onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number], label?: string) => void; onGoRedmap?: () => void; onGoAnalyzeFrame?: (location: string) => void;
 }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const [expanded, setExpanded]         = useState(false);
   // Same collapsible tabbed sidebar as Live Monitoring's Photo/Filter/VIP/Car search (see
   // LiveSearchSidebar) — was its own separate SearchPanel layout before, which meant the two
@@ -2637,7 +2875,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
           ? clusters.map(c => <ClusterCard key={c.id} cluster={c} onNavigateTab={onNavigateTab} onMatchClick={setDetailId} />)
           : (
             <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--gray-400)", fontSize:"13px", fontWeight:600 }}>
-              No matches for the current filters.
+              {t.noMatches}
             </div>
           )
         }
@@ -2752,6 +2990,8 @@ function TableIconSm() {
 
 function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   { onConfirm:(c:RedfaceCandidate)=>void; onCancel:()=>void }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   useEscapeKey(onCancel);
   const [searchType, setSearchType]         = useState<"PERSON"|"VEHICLE">("PERSON");
   const [selectedTarget, setSelectedTarget] = useState(-1);
@@ -3001,11 +3241,11 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                         {!uploadedFace && <div style={{ position:"absolute", inset:0, backgroundColor:"rgba(90,61,251,0.15)" }} />}
                         <div className="vca-dropzone-hint" style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
                           backgroundColor:"rgba(14,22,42,0.55)", opacity:0 }}>
-                          <span style={{ fontSize:"11px", fontWeight:700, color:"white" }}>Click to change</span>
+                          <span style={{ fontSize:"11px", fontWeight:700, color:"white" }}>{t.clickToChange}</span>
                         </div>
                         {hoverImageBox === "face" && (
                           <RemoveImageButton
-                            label="Remove face image"
+                            label={t.removeFaceImage}
                             onRemove={uploadedFace ? clearUploadedFace : () => setFaceCleared(true)}
                           />
                         )}
@@ -3031,11 +3271,11 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                         {!uploadedBody && <div style={{ position:"absolute", inset:0, backgroundColor:"rgba(90,61,251,0.15)" }} />}
                         <div className="vca-dropzone-hint" style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
                           backgroundColor:"rgba(14,22,42,0.55)", opacity:0 }}>
-                          <span style={{ fontSize:"11px", fontWeight:700, color:"white" }}>Click to change</span>
+                          <span style={{ fontSize:"11px", fontWeight:700, color:"white" }}>{t.clickToChange}</span>
                         </div>
                         {hoverImageBox === "body" && (
                           <RemoveImageButton
-                            label="Remove body image"
+                            label={t.removeBodyImage}
                             onRemove={uploadedBody ? clearUploadedBody : () => setBodyCleared(true)}
                           />
                         )}
@@ -3159,7 +3399,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                     screen, so naming the action is enough. */}
                 <SearchIconSm />
                 <span style={{ fontSize:"13px", fontWeight:600 }}>
-                  {hasAnyFilter ? "No candidates match the current filters" : "Choose a target or set a filter to see candidates"}
+                  {hasAnyFilter ? t.noCandidatesMatch : t.chooseTargetOrFilter}
                 </span>
               </div>
             ) : (
@@ -3262,6 +3502,7 @@ function xAt(i: number, count: number, step: number) {
 }
 
 function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId }: { primaryTarget:{ name:string; face:string } | null; rows: PyramidRow[]; onNodeClick:(tier:string, node:RedfaceNode)=>void; selectedNodeId:number|null }) {
+  const [lang] = useLanguage();
   const totalWeight = rows.reduce((s, r) => s + r.weight, 0) || 1;
   const positioned = rows.reduce<{ list: Array<PyramidRow & { top:number; bottom:number; center:number }>; acc:number }>((state, r) => {
     const top = (state.acc / totalWeight) * 100;
@@ -3354,7 +3595,7 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId }: { p
         const nodeTopGroup = groupCooccurEvents(nodeEvents)[0];
         const nodeLastSeen = [...nodeEvents].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).pop()!;
         return (
-          <div key={`${r.key}-node-${n.id}`} title={`Last seen ${nodeLastSeen.date} ${nodeLastSeen.time} · ${nodeTopGroup.location}`}
+          <div key={`${r.key}-node-${n.id}`} title={T[lang].lastSeenAt(`${nodeLastSeen.date} ${nodeLastSeen.time}`, nodeTopGroup.location)}
             style={{ position:"absolute", left:`${x}%`, top:`${y}%`, transform:"translate(-50%,-50%)",
             display:"flex", flexDirection:"column", alignItems:"center", gap:"4px", zIndex: r.key === "tier1" ? 4 : r.key === "tier2" ? 3 : 2 }}>
             <div className="redface-avatar-hover" onClick={() => onNodeClick(r.key, n)} style={{ position:"relative", width:r.meta!.nodeSize, height:r.meta!.nodeSize, borderRadius:"10px",
@@ -3408,10 +3649,10 @@ function SwapIconSm() {
 // Strong/Moderate/Weak "correlation" used to sit under the link icon, but it only restated the
 // tier printed directly above it and named a statistic nothing computes. The co-capture count is
 // what the tier is derived FROM, so it says more in the same space.
-const TIER_LINK_META: Record<string, { label:string }> = {
-  tier1: { label:"Tier 1 link" },
-  tier2: { label:"Tier 2 link" },
-  tier3: { label:"Tier 3 link" },
+const TIER_LINK_META: Record<string, { label: Record<AppLanguage, string> }> = {
+  tier1: { label:{ en:"Tier 1 link", ko:"1단계 연결" } },
+  tier2: { label:{ en:"Tier 2 link", ko:"2단계 연결" } },
+  tier3: { label:{ en:"Tier 3 link", ko:"3단계 연결" } },
 };
 
 // Four cameras that ACTUALLY EXIST in Best Frame's CAM_DATA, by both code and location. They used
@@ -3607,6 +3848,7 @@ function PagerArrow({ dir }: { dir: -1 | 1 }) {
 function TimelinePager({ page, pageCount, onPage }: {
   page: number; pageCount: number; onPage: (p: number) => void;
 }) {
+  const [lang] = useLanguage();
   const cell = (active: boolean, disabled: boolean) => ({
     minWidth: "24px", height: "24px", padding: "0 5px",
     display: "flex", alignItems: "center", justifyContent: "center",
@@ -3618,14 +3860,14 @@ function TimelinePager({ page, pageCount, onPage }: {
   });
   return (
     <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"4px", paddingTop:"4px" }}>
-      <button onClick={() => onPage(page - 1)} disabled={page === 1} aria-label="Previous page"
+      <button onClick={() => onPage(page - 1)} disabled={page === 1} aria-label={T[lang].prevPage}
         style={cell(false, page === 1)}><PagerArrow dir={-1} /></button>
       {pageWindow(page, pageCount).map((n, i) =>
         n === "gap"
           ? <span key={`gap${i}`} style={{ ...cell(false, true), border:"none" }}>…</span>
           : <button key={n} onClick={() => onPage(n)} style={cell(n === page, false)}>{n}</button>
       )}
-      <button onClick={() => onPage(page + 1)} disabled={page === pageCount} aria-label="Next page"
+      <button onClick={() => onPage(page + 1)} disabled={page === pageCount} aria-label={T[lang].nextPage}
         style={cell(false, page === pageCount)}><PagerArrow dir={1} /></button>
     </div>
   );
@@ -3642,6 +3884,7 @@ function SharedFrameLightbox({ event, assocLabel, index, total, onStep, onClose,
   onStep: (delta: number) => void; onClose: () => void;
   onAnalyze?: (location: string, at: { date: string; time: string }) => void;
 }) {
+  const [lang] = useLanguage();
   useEscapeKey(onClose);
   const step = (delta: number, label: string) => (
     <button onClick={() => onStep(delta)} aria-label={label} title={label}
@@ -3669,9 +3912,9 @@ function SharedFrameLightbox({ event, assocLabel, index, total, onStep, onClose,
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:"8px", flexShrink:0 }}>
             <span style={{ fontSize:"11px", fontWeight:600, color:"var(--gray-400)", whiteSpace:"nowrap" }}>{index + 1} / {total}</span>
-            {step(-1, "Previous frame")}
-            {step(1, "Next frame")}
-            <button onClick={onClose} aria-label="Close" style={{ width:"32px", height:"32px", padding:0, border:"none",
+            {step(-1, T[lang].prevFrame)}
+            {step(1, T[lang].nextFrame)}
+            <button onClick={onClose} aria-label={T[lang].close} style={{ width:"32px", height:"32px", padding:0, border:"none",
               backgroundColor:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"var(--gray-400)" }}>
               <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
                 <path d="M4 4L14 14M14 4L4 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -3720,6 +3963,8 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
   onClose: () => void;
   onAnalyzeFrame?: (location: string, at: { date: string; time: string }) => void;
 }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const meta = TIER_LINK_META[tier];
   const statusBadge = STATUS_BADGE_META[node.status];
   // Names arrive either bare ("TS700005", "Mina") or with the id in parentheses; take the id when
@@ -3810,9 +4055,9 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
             without a name. The ✕ stays a bare glyph, which is what Best Frame's own close control
             is; the 37px filled square was the outlier. */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
-          <p title="Every frame holding both the primary target and this associate" style={{ margin:0, fontSize:"16px", fontWeight:800,
+          <p title={t.sharedFramesTitle} style={{ margin:0, fontSize:"16px", fontWeight:800,
             color:"var(--gray-900)", letterSpacing:"-0.32px", cursor:"help" }}>Co-capture evidence</p>
-          <button onClick={onClose} aria-label="Close" style={{
+          <button onClick={onClose} aria-label={t.close} style={{
             width:"26px", height:"26px", flexShrink:0, padding:0,
             backgroundColor:"transparent", border:"none", cursor:"pointer",
             display:"flex", alignItems:"center", justifyContent:"center", color:"var(--gray-400)",
@@ -3842,9 +4087,9 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
             {/* Status rides this line now that the analytics block is back to two stat cards —
                 it has nowhere else to sit, and it belongs to the associate, not to the pattern. */}
             <span style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"11px", color:"var(--gray-500)" }}>
-              {meta.label} · {node.count} co-captures
+              {meta.label[lang]} · {t.coCaptures(node.count)}
               <span style={{ fontSize:"9px", fontWeight:800, color:statusBadge.text, backgroundColor:statusBadge.bg,
-                padding:"2px 6px", borderRadius:"4px", letterSpacing:"0.2px" }}>{node.status.toUpperCase()}</span>
+                padding:"2px 6px", borderRadius:"4px", letterSpacing:"0.2px" }}>{lang === "ko" ? attr(node.status, lang) : node.status.toUpperCase()}</span>
             </span>
           </div>
         </div>
@@ -3861,7 +4106,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
         <div style={{ display:"flex", flexDirection:"column", gap:"8px", margin:"2px 0",
           backgroundColor:"var(--gray-50)", borderRadius:"8px", padding:"10px 12px" }}>
           <PanelHeading title="Where and when the shared frames cluster" color="var(--primary-400)"
-            icon={<AnalysisSparkleIcon />}>Relationship analytics</PanelHeading>
+            icon={<AnalysisSparkleIcon />}>{t.relationshipAnalytics}</PanelHeading>
           {/* Border and fill live in the class, not inline: an inline declaration outranks any
               stylesheet selector, so setting them here would silently kill :hover and [data-on]. */}
           <style>{`
@@ -3928,7 +4173,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
           {/* "Event timeline" named the shape of the list, not its contents — every row here is
               one frame with both people in it, which is the whole reason the row exists. */}
           <span style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
-            <PanelHeading title="Frames the two appear in together, newest first">Shared frames</PanelHeading>
+            <PanelHeading title={t.sharedFramesHint}>{t.sharedFrames}</PanelHeading>
             {/* One legend for the whole list. It was burned into every frame, which put twelve
                 identical copies of the same two words on a page — the colour-to-person mapping
                 only needs stating once, and the box colours carry it from there. Out here on white
@@ -3952,7 +4197,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
                 to 66 with no label on it reads as a bug. */}
             {focusLabel && (
               <button onClick={() => { setFocus(null); setPage(1); }}
-                title="Show every shared frame again"
+                title={t.showEveryFrame}
                 style={{ display:"flex", alignItems:"center", gap:"4px", border:"none", cursor:"pointer",
                   fontSize:"9px", fontWeight:800, color:"var(--primary-400)", backgroundColor:"var(--primary-100)",
                   padding:"2px 6px", borderRadius:"999px", textTransform:"capitalize", whiteSpace:"nowrap" }}>
@@ -3982,7 +4227,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
                strongest edges on the page, so any border drawn around them is a second one.
                Scene still is the one Best Frame uses for its camera feeds. */
             <button key={rowIdx} onClick={() => setZoomIdx(rowIdx)}
-              title="Open this frame full size"
+              title={t.openFrameFull}
               style={{ position:"relative", padding:0, border:"none", borderRadius:"6px", overflow:"hidden",
                 backgroundColor:"var(--gray-900)", cursor:"zoom-in", display:"block", width:"100%" }}>
               <img src={e.scene} alt="" style={{ width:"100%", aspectRatio:"1194 / 685", objectFit:"cover", display:"block" }} />
@@ -4057,6 +4302,8 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort }
   sortDir: "desc"|"asc";
   onToggleSort: () => void;
 }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   // Read after mount, not during render: same reason the portal's license countdown does it this
   // way — the clock isn't a pure input, and rendering it during the server pass would mismatch.
   const [nowMs, setNowMs] = useState<number | null>(null);
@@ -4074,12 +4321,12 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort }
     <div style={{ display:"flex", flexDirection:"column", minWidth:"1132px" }}>
       <div style={{ backgroundColor:"var(--gray-50)", borderTop:"1px solid var(--gray-100)", padding:"12px 20px",
         display:"flex", gap:"8px", fontSize:"12px", fontWeight:800, color:"var(--gray-600)" }}>
-        <span style={{ width:"50px", flexShrink:0 }}>Rank</span>
-        <span style={{ flex:1, minWidth:"140px" }}>Associate target</span>
+        <span style={{ width:"50px", flexShrink:0 }}>{t.colRank}</span>
+        <span style={{ flex:1, minWidth:"140px" }}>{t.colAssociate}</span>
         {/* Tier is derived from the co-capture count sitting right next to it, so it doesn't need
             180px and the words "Hierarchy tier & zone" to say it — a coloured number does, and the
             space it gives back pays for the three columns after it. */}
-        <span style={{ width:"44px", flexShrink:0 }}>Tier</span>
+        <span style={{ width:"44px", flexShrink:0 }}>{t.colTier}</span>
         <button onClick={onToggleSort} title={`Sort by co-captures, ${sortDir === "desc" ? "low to high" : "high to low"}`}
           style={{ width:"92px", flexShrink:0, display:"flex", alignItems:"center", gap:"4px", padding:0,
             background:"none", border:"none", cursor:"pointer", font:"inherit", color:"var(--primary-400)", textAlign:"left" }}>
@@ -4090,22 +4337,22 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort }
         </button>
         {/* The associate's own watchlist standing. It decides which row an operator opens first,
             and it was only visible after opening one. */}
-        <span style={{ width:"76px", flexShrink:0 }}>Status</span>
+        <span style={{ width:"76px", flexShrink:0 }}>{t.colStatus}</span>
         {/* How many distinct cameras the pair was ever framed at. The most discriminating fact
             after the count itself: 12 co-captures at one camera is a shared stop or workplace, 12
             spread over six cameras is two people moving around together. Peak location alone
             can't tell those apart. */}
-        <span style={{ width:"76px", flexShrink:0 }}>Locations</span>
+        <span style={{ width:"76px", flexShrink:0 }}>{t.colLocations}</span>
         {/* "Top camera node" borrowed "node" from the pyramid view, where nodes are people, not
             cameras — and "top" didn't say top by what. This is the same number the inspector panel
             calls Peak location, so it uses that name. */}
-        <span style={{ width:"160px", flexShrink:0 }}>Peak location</span>
-        <span style={{ width:"118px", flexShrink:0 }}>Peak time</span>
+        <span style={{ width:"160px", flexShrink:0 }}>{t.colPeakLocation}</span>
+        <span style={{ width:"118px", flexShrink:0 }}>{t.colPeakTime}</span>
         {/* First and Last were two 150px columns of full timestamps to state one range. Dates
             alone carry the span, and what the two dates never said out loud was how long ago the
             last one was — which is the part that decides whether this pairing is live. */}
-        <span style={{ width:"168px", flexShrink:0 }}>Span</span>
-        <span style={{ width:"96px", flexShrink:0, textAlign:"center" }}>Action</span>
+        <span style={{ width:"168px", flexShrink:0 }}>{t.colSpan}</span>
+        <span style={{ width:"96px", flexShrink:0, textAlign:"center" }}>{t.colAction}</span>
       </div>
       {rows.map((r, i) => {
         const badge = TIER_BADGE_META[r.tier];
@@ -4137,7 +4384,7 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort }
             <span style={{ width:"92px", flexShrink:0, fontSize:"13px", fontWeight:700, color:COCAPTURE_COLOR[r.tier] }}>{r.node.count}</span>
             <div style={{ width:"76px", flexShrink:0 }}>
               <span style={{ fontSize:"10px", fontWeight:800, color:statusBadge.text, backgroundColor:statusBadge.bg,
-                padding:"2px 6px", borderRadius:"4px", letterSpacing:"0.2px" }}>{r.node.status.toUpperCase()}</span>
+                padding:"2px 6px", borderRadius:"4px", letterSpacing:"0.2px" }}>{lang === "ko" ? attr(r.node.status, lang) : r.node.status.toUpperCase()}</span>
             </div>
             <span style={{ width:"76px", flexShrink:0, fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{groups.length}</span>
             <span style={{ width:"160px", flexShrink:0, fontSize:"12px", fontWeight:600, color:"var(--gray-900)" }}>{`${topGroup.location} · ${topGroup.events.length}`}</span>
@@ -4159,7 +4406,7 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort }
               <button onClick={() => onInspect(r.tier, r.node)} style={{ padding:"4px 10px", borderRadius:"6px", border:"none",
                 backgroundColor: r.node.id === selectedNodeId ? "var(--primary-400)" : "var(--gray-900)", color:"white", cursor:"pointer",
                 fontSize:"12px", fontWeight:700, whiteSpace:"nowrap" }}>
-                {r.node.id === selectedNodeId ? "Close" : "View frames"}
+                {r.node.id === selectedNodeId ? t.close : t.viewFrames}
               </button>
             </div>
           </div>
@@ -4173,6 +4420,8 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
   primaryTarget:{ name:string; face:string } | null; onSwitchTarget:()=>void;
   onGoAnalyzeFrame?: (location: string, at?: { date: string; time: string }) => void;
 }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const [tier1On, setTier1On] = useState(true);
   const [tier2On, setTier2On] = useState(true);
   const [tier3On, setTier3On] = useState(true);
@@ -4306,9 +4555,9 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
                 fits a full "2026.09.29 – 2026.10.19" — at 172px the text ran past the box and over
                 the reset button beside it. */}
             <div style={{ width:"212px", display:"flex", flexShrink:0 }}>
-              <DateRangeTrigger value={dateRange} onApply={setDateRange} mode="merged" size="sm" emptyText="All dates" />
+              <DateRangeTrigger value={dateRange} onApply={setDateRange} mode="merged" size="sm" emptyText={t.allDates} />
             </div>
-            <button onClick={reset} title="Reset filters" style={{ display:"flex", alignItems:"center", gap:"6px",
+            <button onClick={reset} title={t.resetFilters} style={{ display:"flex", alignItems:"center", gap:"6px",
               height:"30px", padding:"0 10px", borderRadius:"6px", border:BORDER, backgroundColor:"white", cursor:"pointer",
               fontSize:"12px", fontWeight:600, color:"var(--gray-600)", flexShrink:0, whiteSpace:"nowrap" }}>
               <ResetIconSm /> Reset
@@ -4318,11 +4567,11 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
             {(["pyramid","grid"] as const).map(v => {
               const active = view === v;
               return (
-                <button key={v} onClick={() => setView(v)} title={v === "pyramid" ? "See associates laid out by tier" : "See associates as a sortable table"} style={{ display:"flex", alignItems:"center", gap:"6px", padding:"6px 12px",
+                <button key={v} onClick={() => setView(v)} title={v === "pyramid" ? t.viewPyramid : t.viewGrid} style={{ display:"flex", alignItems:"center", gap:"6px", padding:"6px 12px",
                   borderRadius:"6px", border:"none", cursor:"pointer",
                   backgroundColor: active ? "white" : "transparent", color: active ? "var(--gray-900)" : "var(--gray-500)",
                   fontSize:"12px", fontWeight: active ? 700 : 600 }}>
-                  {v === "pyramid" ? <LayersIconSm/> : <TableIconSm/>} {v === "pyramid" ? "Pyramid & zone" : "Data grid"}
+                  {v === "pyramid" ? <LayersIconSm/> : <TableIconSm/>} {v === "pyramid" ? t.pyramidAndZone : t.dataGrid}
                 </button>
               );
             })}
@@ -4478,10 +4727,18 @@ export const TAB_ICONS: Record<DataTab, React.ReactNode> = {
 const DATA_TABS: DataTab[] = ["Live Monitoring", "Re-ID Analysis", "RedFace"];
 // "RedFace" doesn't say what it does on its own — a first-time viewer has no way to guess this
 // is a co-occurrence/associate-finder feature just from the tab label.
-const DATA_TAB_TOOLTIPS: Partial<Record<DataTab, string>> = {
-  "RedFace": "Finds who shares camera frames with a chosen person, across every camera",
+const DATA_TAB_TOOLTIPS: Partial<Record<DataTab, keyof typeof T.en>> = {
+  "RedFace": "redfaceTooltip",
+};
+// The tab ids are route slugs and store values, so only the label changes.
+const DATA_TAB_LABEL: Partial<Record<DataTab, keyof typeof T.en>> = {
+  "Live Monitoring": "tabLiveMonitoring",
+  "Re-ID Analysis": "tabReid",
+  "RedFace": "tabRedface",
 };
 export default function DataPage({ onGoRedmap, onGoAnalyzeFrame }: { onGoRedmap?: () => void; onGoAnalyzeFrame?: (location: string, at?: { date: string; time: string }) => void } = {}) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   // Always lands on Live Monitoring — deliberately not persisted, unlike Best Frame's
   // camera selection. Switching sub-tabs while on this screen is normal component state;
   // leaving Data and coming back should start fresh at Live Monitoring.
@@ -4535,15 +4792,16 @@ export default function DataPage({ onGoRedmap, onGoAnalyzeFrame }: { onGoRedmap?
       <div style={{ backgroundColor:"white", borderBottom:BORDER, display:"flex", alignItems:"center", padding:"0 20px", height:"46px", flexShrink:0 }}>
         {DATA_TABS.map(tab => {
           const active = activeTab===tab;
+          const tipKey = DATA_TAB_TOOLTIPS[tab];
           return (
-            <button key={tab} onClick={() => setActiveTab(tab)} title={DATA_TAB_TOOLTIPS[tab]} style={{ height:"100%", padding:"0 18px", background:"none", border:"none", cursor:"pointer",
+            <button key={tab} onClick={() => setActiveTab(tab)} title={tipKey ? (t[tipKey] as string) : undefined} style={{ height:"100%", padding:"0 18px", background:"none", border:"none", cursor:"pointer",
               display:"flex", alignItems:"center", gap:"6px",
               borderBottom: active?"2px solid var(--gray-900)":"2px solid transparent",
               color: active?"var(--gray-900)":"var(--gray-500)",
               fontWeight: 600,
               fontSize:"13px", letterSpacing:"-0.26px", transition:"color 0.15s" }}>
               {TAB_ICONS[tab]}
-              {tab}
+              {(t[DATA_TAB_LABEL[tab] ?? "tabLiveMonitoring"] as string)}
             </button>
           );
         })}
