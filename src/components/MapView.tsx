@@ -10,6 +10,42 @@ import { getDistricts } from "@/lib/api/dashboard";
 import { isTodaySgt } from "@/lib/time";
 import { MAP_TILE_URL, MAP_TILE_FILTER, tileLayerOptions } from "@/lib/mapTiles";
 
+import { useLanguage, type AppLanguage } from "@/lib/i18n";
+
+// See the per-file pattern note in lib/i18n.ts. Most of this screen's words live inside popup
+// markup built as HTML strings, which is why the builders below take the language as an argument
+// rather than reading a hook: they run outside React, inside Leaflet.
+const T = {
+  en: {
+    live: "LIVE",
+    out: "OUT",
+    offline: "OFFLINE",
+    captured: "Captured",
+    registered: "Registered",
+    capturedFrame: "CAPTURED FRAME",
+    analyzeFrame: "Analyze Frame",
+    outSince: (when: string) => `Out since ${when}`,
+    viewLive: "View Live in Best Frame",
+    lastSeen: "LAST SEEN",
+    fullTrace: "View Full Trace on Redmap",
+    unknownZone: "Unknown",
+  },
+  ko: {
+    live: "정상",
+    out: "중단",
+    offline: "중단",
+    captured: "검출 이미지",
+    registered: "등록 이미지",
+    capturedFrame: "검출된 프레임",
+    analyzeFrame: "프레임 분석",
+    outSince: (when: string) => `${when}부터 중단`,
+    viewLive: "베스트 프레임에서 실시간 보기",
+    lastSeen: "마지막 검출",
+    fullTrace: "레드맵에서 전체 경로 보기",
+    unknownZone: "미확인",
+  },
+} as const;
+
 // Leaflet popups are raw HTML strings, not React — values dropped into an inline onclick="...('...')"
 // attribute need their quotes escaped so a name/label containing one can't break the attribute.
 function escapeAttr(s: string): string {
@@ -55,14 +91,15 @@ function quietCameraDotHtml(): string {
 // and sourced from Camera's own fields (a Camera and a System-panel Device are separate mock
 // pools in this app, not joinable by anything reliable — see the camera-data-pool-consolidation
 // notes elsewhere — so this reads Camera's own status/zone rather than trying to cross-reference).
-function cameraDotTooltipHtml(cam: Camera): string {
+function cameraDotTooltipHtml(cam: Camera, lang: AppLanguage): string {
+  const t = T[lang];
   const isLive = cam.status === "online";
   return `
     <div style="font-family:'SUIT',system-ui,sans-serif;padding:8px 10px;display:flex;flex-direction:column;gap:3px;min-width:120px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.24px;white-space:nowrap">${cam.name}</span>
         <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:999px;flex-shrink:0;color:${isLive ? "var(--success-400)" : "var(--danger-400)"};background:${isLive ? "rgba(22, 163, 74,0.12)" : "rgba(244,63,94,0.12)"}">
-          ${isLive ? "LIVE" : "OFFLINE"}
+          ${isLive ? t.live : t.offline}
         </span>
       </div>
       <span style="font-size:10px;font-weight:600;color:var(--gray-500);white-space:nowrap">${cam.zone || cam.location}</span>
@@ -111,7 +148,8 @@ function districtPillHtml(label: string, count: number, hasOnlineCamera: boolean
     ${labelHtml}${camSvg}</div>`;
 }
 
-function getPopupHTML(event: LiveEvent): string {
+function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
+  const t = T[lang];
   const typeColor = event.type === "VIP" ? "var(--primary-400)" : "var(--type-tracking)";
   const typeBg = event.type === "VIP" ? "var(--primary-50)" : "var(--type-tracking-100)";
   const photoUrl = getFacePhoto(event.id);
@@ -138,7 +176,7 @@ function getPopupHTML(event: LiveEvent): string {
         </div>
         <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;margin-top:1px">
           <div style="width:6px;height:6px;background:var(--success-400);border-radius:50%"></div>
-          <span style="font-size:11px;color:var(--gray-500);letter-spacing:-0.22px">${formatTimeAgo(event.timestamp)}</span>
+          <span style="font-size:11px;color:var(--gray-500);letter-spacing:-0.22px">${formatTimeAgo(event.timestamp, lang)}</span>
         </div>
       </div>
 
@@ -152,7 +190,7 @@ function getPopupHTML(event: LiveEvent): string {
           <div style="width:60px;height:60px;border-radius:8px;background:var(--gray-100);overflow:hidden">
             <img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />
           </div>
-          <span style="font-size:10px;color:var(--gray-400);display:block;margin-top:4px;letter-spacing:-0.2px">Captured</span>
+          <span style="font-size:10px;color:var(--gray-400);display:block;margin-top:4px;letter-spacing:-0.2px">${t.captured}</span>
         </div>
         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-top:20px">
           <div style="width:44px;border-top:1.5px dashed var(--gray-300)"></div>
@@ -163,14 +201,14 @@ function getPopupHTML(event: LiveEvent): string {
           <div style="width:60px;height:60px;border-radius:8px;background:var(--info-200);display:flex;align-items:center;justify-content:center">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="var(--primary-300)" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7" r="4" stroke="var(--primary-300)" stroke-width="2"/></svg>
           </div>
-          <span style="font-size:10px;color:var(--gray-400);display:block;margin-top:4px;letter-spacing:-0.2px">Registered</span>
+          <span style="font-size:10px;color:var(--gray-400);display:block;margin-top:4px;letter-spacing:-0.2px">${t.registered}</span>
         </div>
       </div>
 
       <div style="background:var(--gray-900);border-radius:8px;height:96px;overflow:hidden;position:relative">
         <img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />
         <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(14,22,42,0.8), rgba(14,22,42,0) 55%)"></div>
-        <span style="position:absolute;bottom:8px;left:10px;font-size:9px;color:rgba(255,255,255,0.85);font-weight:700;letter-spacing:0.5px">CAPTURED FRAME</span>
+        <span style="position:absolute;bottom:8px;left:10px;font-size:9px;color:rgba(255,255,255,0.85);font-weight:700;letter-spacing:0.5px">${t.capturedFrame}</span>
       </div>
 
       <button onclick="window.__vcaGoAnalyzeFrame && window.__vcaGoAnalyzeFrame('${escapeAttr(event.location)}')"
@@ -178,7 +216,7 @@ function getPopupHTML(event: LiveEvent): string {
         background:var(--gray-900);color:white;border:none;border-radius:6px;padding:8px 0;
         font-family:'SUIT',system-ui,sans-serif;font-size:11px;font-weight:700;cursor:pointer">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 3.5L8.5 6L4.5 8.5V3.5Z" fill="white"/></svg>
-        Analyze Frame
+        ${t.analyzeFrame}
       </button>
     </div>
   `;
@@ -202,24 +240,25 @@ function getMarkerHTML(type: string, photoUrl: string): string {
   `;
 }
 
-function nearestZoneName(lat: number, lng: number, cameras: { name: string; lat: number; lng: number }[]): string {
+function nearestZoneName(lat: number, lng: number, cameras: { name: string; lat: number; lng: number }[], unknown = "Unknown"): string {
   let best = cameras[0];
   let bestDist = Infinity;
   for (const c of cameras) {
     const d = (c.lat - lat) ** 2 + (c.lng - lng) ** 2;
     if (d < bestDist) { bestDist = d; best = c; }
   }
-  return best?.name ?? "Unknown";
+  return best?.name ?? unknown;
 }
 
-function getDevicePopupHTML(device: Device, zoneName: string): string {
+function getDevicePopupHTML(device: Device, zoneName: string, lang: AppLanguage): string {
+  const t = T[lang];
   const isLive = device.status === "Live";
   return `
     <div style="font-family:'SUIT',system-ui,sans-serif;width:200px;padding:12px 14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-right:18px;gap:8px">
         <span style="font-size:13px;font-weight:800;color:var(--gray-900);letter-spacing:-0.26px">${device.name}</span>
         <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;color:${isLive ? "var(--success-400)" : "var(--danger-400)"};background:${isLive ? "rgba(22, 163, 74,0.12)" : "rgba(244,63,94,0.12)"};flex-shrink:0">
-          ${isLive ? "LIVE" : "OUT"}
+          ${isLive ? t.live : t.out}
         </span>
       </div>
       <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
@@ -229,14 +268,14 @@ function getDevicePopupHTML(device: Device, zoneName: string): string {
       ${!isLive ? `
       <div style="display:flex;align-items:center;gap:5px">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="var(--danger-400)" stroke-linecap="round"/><path d="M6 3v3l2 1.5" stroke="var(--danger-400)" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span style="font-size:11px;font-weight:600;color:var(--danger-400)">Out since ${device.lastSeen}</span>
+        <span style="font-size:11px;font-weight:600;color:var(--danger-400)">${t.outSince(device.lastSeen)}</span>
       </div>` : `
       <button onclick="window.__vcaGoLiveCam && window.__vcaGoLiveCam('${escapeAttr(zoneName)}')"
         style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
         background:var(--gray-900);color:white;border:none;border-radius:6px;padding:7px 0;
         font-family:'SUIT',system-ui,sans-serif;font-size:11px;font-weight:700;cursor:pointer">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 3.5L8.5 6L4.5 8.5V3.5Z" fill="white"/></svg>
-        View Live in Best Frame
+        ${t.viewLive}
       </button>`}
     </div>
   `;
@@ -293,6 +332,10 @@ interface MapViewProps {
 }
 
 export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelect, pinnedDevice, onGoLiveCam, onGoRedmapTrace, onAnalyzeFrame }: MapViewProps) {
+  // Every effect that builds popup or tooltip markup lists `lang` in its deps, so switching the
+  // language redraws what is already on the map instead of leaving the open popup in the old one.
+  const [lang] = useLanguage();
+  const t = T[lang];
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
   const popupRef = useRef<unknown>(null);
@@ -498,7 +541,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           });
           L.marker([cam.lat, cam.lng], { icon })
             .addTo(group)
-            .bindTooltip(cameraDotTooltipHtml(cam), { direction: "top", offset: [0, -14], className: "vca-camera-tooltip", opacity: 1 })
+            .bindTooltip(cameraDotTooltipHtml(cam, lang), { direction: "top", offset: [0, -14], className: "vca-camera-tooltip", opacity: 1 })
             .on("click", () => onCameraSelectRef.current?.(cam.location));
         });
       }
@@ -508,7 +551,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
     });
 
     return () => { cancelled = true; };
-  }, [recentEvents, cameras, zoom, mapReady, alertThreshold, moderateThreshold, districts]);
+  }, [recentEvents, cameras, zoom, mapReady, alertThreshold, moderateThreshold, districts, lang]);
 
   // ── Keep the map's internal canvas in sync with its container ───
   // Leaflet only measures its container once on init, so collapsing/expanding the sidebar
@@ -550,7 +593,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
     import("leaflet").then(({ default: L }) => {
       // ── Tracking: draw the full multi-camera route instead of a single pin ──
       if (hops && hops.length > 0) {
-        const nodes = hops.map(h => ({ ...hopToLatLng(h, camerasRef.current), label: h.location + (h.cameraLabel ? ` ${h.cameraLabel}` : ""), time: formatTimeAgo(h.timestamp) }));
+        const nodes = hops.map(h => ({ ...hopToLatLng(h, camerasRef.current), label: h.location + (h.cameraLabel ? ` ${h.cameraLabel}` : ""), time: formatTimeAgo(h.timestamp, lang) }));
 
         map.flyTo([nodes[nodes.length - 1].lat, nodes[nodes.length - 1].lng], 14, { duration: 0.8, easeLinearity: 0.5 });
 
@@ -597,7 +640,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                  <div style="position:relative;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;border:1.5px solid var(--primary-400)">
                    <div style="background:var(--primary-400);color:white;font-size:11px;font-weight:800;padding:6px 12px;display:flex;align-items:center;gap:4px;white-space:nowrap">
                      <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M6 0.5L1.5 6.5H5L4.5 10.5L9.5 4.5H6L6 0.5Z" fill="white"/></svg>
-                     LAST SEEN
+                     ${t.lastSeen}
                    </div>
                    <div style="background:white;padding:8px 12px 10px;white-space:nowrap">
                      <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${node.label}</div>
@@ -605,7 +648,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                      <div onclick="window.__vcaGoRedmapTrace && window.__vcaGoRedmapTrace('${escapeAttr(selectedEvent.name)}')"
                        style="margin-top:6px;padding-top:6px;border-top:1px solid var(--gray-100);display:flex;align-items:center;gap:4px;
                        font-size:12px;font-weight:700;color:var(--primary-400);cursor:pointer">
-                       View Full Trace on Redmap
+                       ${t.fullTrace}
                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3 2L7 5L3 8" stroke="var(--primary-400)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                      </div>
                    </div>
@@ -649,7 +692,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         maxWidth: 280,
       })
         .setLatLng([lat, lng])
-        .setContent(getPopupHTML(selectedEvent))
+        .setContent(getPopupHTML(selectedEvent, lang))
         .openOn(map);
       popupRef.current = popup;
 
@@ -660,7 +703,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         }
       });
     });
-  }, [selectedEvent, mapReady]);
+  }, [selectedEvent, mapReady, lang, t.lastSeen, t.fullTrace]);
 
   // ── Pinned device (SYSTEM tab) → flyTo + marker ────────────────
   useEffect(() => {
@@ -691,16 +734,16 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
       });
       deviceMarkerRef.current = L.marker([lat, lng], { icon }).addTo(map);
 
-      const zoneName = nearestZoneName(lat, lng, camerasRef.current);
+      const zoneName = nearestZoneName(lat, lng, camerasRef.current, t.unknownZone);
       const popup = L.popup({
         offset: [0, -30], className: "vca-custom-popup", closeButton: true, autoPan: false, maxWidth: 220,
       })
         .setLatLng([lat, lng])
-        .setContent(getDevicePopupHTML(pinnedDevice, zoneName))
+        .setContent(getDevicePopupHTML(pinnedDevice, zoneName, lang))
         .openOn(map);
       devicePopupRef.current = popup;
     });
-  }, [pinnedDevice, mapReady]);
+  }, [pinnedDevice, mapReady, lang, t.unknownZone]);
 
   return (
     <div

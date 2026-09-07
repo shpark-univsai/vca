@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useRef, useState } from "react";
+import { useLanguage } from "@/lib/i18n";
 
 export type ToastVariant = "default" | "success" | "info" | "warning" | "error";
 
@@ -66,6 +67,9 @@ function CloseIcon({ color }: { color: string }) {
 }
 
 function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) => void }) {
+  // The toast's own text comes from whoever raised it, already in the right language. Only this
+  // component's own close label is its to translate, so it stays inline.
+  const [lang] = useLanguage();
   const variant = item.variant ?? "default";
   const colors = VARIANT_STYLES[variant];
   return (
@@ -101,7 +105,7 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
       ) : (
         <button
           onClick={() => onDismiss(item.id)}
-          aria-label="Dismiss"
+          aria-label={lang === "ko" ? "닫기" : "Dismiss"}
           style={{ background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0, display: "flex" }}
         >
           <CloseIcon color={colors.desc} />
