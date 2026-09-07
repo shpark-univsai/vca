@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, Clock, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
+import { ArrowUp, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat, Tooltip } from "./PortalShared";
@@ -154,7 +154,6 @@ function KeyIcon() { return <Key size={16} strokeWidth={1.2} />; }
 function UsersGroupIcon() { return <Users size={16} strokeWidth={1.1} />; }
 function SettingsIcon() { return <Settings size={16} strokeWidth={1.2} />; }
 function ShieldIcon() { return <Shield size={16} strokeWidth={1.2} />; }
-function ClockIcon() { return <Clock size={16} strokeWidth={1.2} />; }
 function PlusIcon() { return <Plus size={14} strokeWidth={1.4} />; }
 function UserPlusIcon() { return <UserPlus size={14} strokeWidth={1.2} />; }
 function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={1.4} />; }
@@ -464,7 +463,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: BORDER, flexWrap: "wrap", gap: "10px", flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--info-100)", color: "var(--info-500)", flexShrink: 0 }}><VideoIcon /></span>
                     <div>
                       <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.cameraStatusTitle}</p>
                       <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.cameraStatusSubtitle}</p>
@@ -534,10 +532,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <div style={{ gridColumn: "3 / span 1", display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px", flexShrink: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--primary-100)", color: "var(--primary-400)", flexShrink: 0 }}><UsersGroupIcon /></span>
-                    <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.recentVipsTitle}</p>
-                  </div>
+                  <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.recentVipsTitle}</p>
                   <button onClick={() => onTabChange("vip")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.registerVipLink}</button>
                 </div>
                 {recentVips.length === 0 ? (
@@ -568,10 +563,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               {showAccessRequests && (
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--warning-100)", color: "var(--warning-500)", flexShrink: 0 }}><ShieldIcon /></span>
-                    <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.accessRequestsTitle}</p>
-                  </div>
+                  <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.accessRequestsTitle}</p>
                   {projectAccessRequests.length > 0 && (
                     <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)", backgroundColor: "var(--warning-200)", padding: "2px 8px", borderRadius: "999px" }}>
                       {projectAccessRequests.length}
@@ -609,10 +601,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               )}
 
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px", flexShrink: 0 }}>
-                  <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)", flexShrink: 0 }}><ClockIcon /></span>
-                  <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.recentAdminActivity}</p>
-                </div>
+                {/* Plain title, no icon chip.
+                    All four panels down here wore a 28px coloured square — video blue, VIP purple,
+                    requests amber, this one grey. Four of them in one row is decoration: the panels
+                    are told apart by what is inside them, the metric cards above already carry
+                    coloured badges, and spending purple on a heading is spending the accent on
+                    something that was never the point of the screen. */}
+                <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "14px", flexShrink: 0 }}>{t.recentAdminActivity}</p>
                 {recentActivity.length === 0 ? (
                   <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noAdminActivity}</p>
                 ) : (
