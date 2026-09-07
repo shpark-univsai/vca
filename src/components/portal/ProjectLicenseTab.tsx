@@ -13,24 +13,59 @@ import { usePortalLanguage } from "@/lib/i18n";
 // (project.licensePlan is one of these same strings) — so they stay in English here. Only the
 // rendered label goes through FEATURE_LABELS/T below; the tier name itself is left untranslated
 // since it's a data value shared with other screens that don't yet localize it.
+/**
+ * The capability catalogue, reconciled against what the product actually has (2026-09-04).
+ *
+ * It had drifted both ways: "Crowd Analysis" was listed as included on every Professional and
+ * Enterprise project and exists nowhere in the codebase, "Attendance / Reports" showed as included
+ * for a Smart School project and likewise does not exist — while four capabilities that are real
+ * were missing from the page entirely (Re-ID Analysis and Intrusion Detection are camera engines
+ * you can assign today, Best Frame and Smart Search are screens you can open). A licence page that
+ * claims what is not there and omits what is is worse than no licence page.
+ *
+ * Every entry below is traceable to something in the app: CameraAiFeature in vcaStore (Re-ID
+ * Analysis, License Plate Recognition, Intrusion Detection), NavTab in Navbar (BEST FRAME,
+ * REDMAP), DataTab in DataPage (Smart Search, RedFace), or the VIP registry.
+ *
+ * These English strings double as identifiers (object keys, .includes() comparisons) and
+ * project.licensePlan is one of the tier names, so they stay in English. Only the rendered label
+ * goes through FEATURE_LABELS.
+ */
 const PLAN_FEATURES: Record<string, string[]> = {
-  Starter: ["Face Recognition", "License Plate Recognition"],
-  Professional: ["Face Recognition", "License Plate Recognition", "Crowd Analysis", "Fire Detection"],
-  Enterprise: ["Face Recognition", "License Plate Recognition", "Crowd Analysis", "Fire Detection", "RedMap City Tracking", "Advanced Crowd Behavior", "Attendance / Reports"],
+  Starter: ["Face Recognition", "Best Frame"],
+  Professional: ["Face Recognition", "Best Frame", "Smart Search", "Intrusion Detection", "License Plate Recognition"],
+  Enterprise: [
+    "Face Recognition", "Best Frame", "Smart Search", "Intrusion Detection", "License Plate Recognition",
+    "Re-ID Analysis", "RedMap City Tracking",
+    // Named by the licence, not built yet — see NOT_BUILT_REASON. They stay in the Enterprise list
+    // because that list is also the display catalogue: a customer should see what is coming.
+    "Fire Detection", "Advanced Crowd Behavior", "Attendance / Reports",
+  ],
 };
 const ALL_FEATURES = PLAN_FEATURES.Enterprise;
-const SCHOOL_ONLY_FEATURE = "Attendance / Reports";
-// Shown locked regardless of plan or project type — not tied to a purchasable tier yet.
-const ALWAYS_LOCKED_FEATURES = ["Advanced Crowd Behavior", "Fire Detection"];
+
+/**
+ * Shown locked whatever the plan says, with the reason. Being in a tier's list is what the contract
+ * covers; being in here is whether the software can do it — and the page has to say the second, or
+ * it sells a capability the customer cannot use.
+ */
+const NOT_BUILT_REASON: Record<string, "comingSoon" | "smartSchoolComingSoon"> = {
+  "Fire Detection": "comingSoon",
+  "Advanced Crowd Behavior": "comingSoon",
+  "Attendance / Reports": "smartSchoolComingSoon",
+};
 
 // Display-only translations for the feature identifiers above — keyed by the same English
 // strings used as PLAN_FEATURES values, so translating here never touches the lookup logic.
 const FEATURE_LABELS: Record<string, { en: string; ko: string }> = {
   "Face Recognition": { en: "Face Recognition", ko: "얼굴 인식" },
+  "Best Frame": { en: "Best Frame", ko: "베스트 프레임" },
+  "Smart Search": { en: "Smart Search", ko: "스마트 검색" },
+  "Intrusion Detection": { en: "Intrusion Detection", ko: "침입 감지" },
   "License Plate Recognition": { en: "License Plate Recognition", ko: "번호판 인식" },
-  "Crowd Analysis": { en: "Crowd Analysis", ko: "혼잡도 분석" },
-  "Fire Detection": { en: "Fire Detection", ko: "화재 감지" },
+  "Re-ID Analysis": { en: "Re-ID Analysis", ko: "재식별 분석" },
   "RedMap City Tracking": { en: "RedMap City Tracking", ko: "RedMap 시티 트래킹" },
+  "Fire Detection": { en: "Fire Detection", ko: "화재 감지" },
   "Advanced Crowd Behavior": { en: "Advanced Crowd Behavior", ko: "고급 군중 행동 분석" },
   "Attendance / Reports": { en: "Attendance / Reports", ko: "출결 / 리포트" },
 };
@@ -49,7 +84,7 @@ const T = {
     includedFeatures: "Included Features",
     channelSubscriptions: "Channel Subscriptions",
     comingSoon: "Coming soon",
-    requiresSmartSchool: "Requires Smart School license",
+    smartSchoolComingSoon: "Smart School · coming soon",
     perChannelPerYear: (price: number) => `$${price}/channel/yr`,
     noLimitSet: "No limit set",
     overLimit: (used: number, limit: number) => `Over licensed limit (${used} / ${limit})`,
@@ -81,7 +116,7 @@ const T = {
     includedFeatures: "포함된 기능",
     channelSubscriptions: "채널 구독",
     comingSoon: "출시 예정",
-    requiresSmartSchool: "Smart School 라이선스 필요",
+    smartSchoolComingSoon: "Smart School · 출시 예정",
     perChannelPerYear: (price: number) => `채널당 연 $${price}`,
     noLimitSet: "한도 미설정",
     overLimit: (used: number, limit: number) => `라이선스 한도 초과 (${used} / ${limit})`,
@@ -341,15 +376,12 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
               out to a comparison), so the shape is ours to choose. */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "10px 20px" }}>
             {ALL_FEATURES.map(f => {
-              const isSchoolOnly = f === SCHOOL_ONLY_FEATURE;
-              const isAlwaysLocked = ALWAYS_LOCKED_FEATURES.includes(f);
-              const typeAllowed = !isSchoolOnly || project.type === "smart_school";
+              const notBuilt = NOT_BUILT_REASON[f];
               const planIncludes = project.licensePlan ? (PLAN_FEATURES[project.licensePlan] ?? []).includes(f) : false;
-              const included = !isAlwaysLocked && typeAllowed && planIncludes;
+              // A tick means "you can use this". The plan covering it is only half of that.
+              const included = !notBuilt && planIncludes;
               const featureLabel = FEATURE_LABELS[f]?.[lang] ?? f;
-              const label = isAlwaysLocked
-                ? `${featureLabel} — ${t.comingSoon}`
-                : isSchoolOnly && !typeAllowed ? `${featureLabel} — ${t.requiresSmartSchool}` : featureLabel;
+              const label = notBuilt ? `${featureLabel} — ${t[notBuilt]}` : featureLabel;
               return (
                 <div key={f} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <span style={{ display: "flex", color: included ? "var(--gray-900)" : "var(--gray-300)" }}>
