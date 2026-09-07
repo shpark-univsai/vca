@@ -953,7 +953,9 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
         // padding under it paints a grey strip between that header and the rows scrolling behind,
         // splitting the one card in two and stranding a sliver of a half-scrolled row below it.
         // Ending flush at the card's bottom edge lets rows pass directly under the header.
-        backgroundColor: "var(--gray-100)", paddingTop: rect.padTop,
+        // Matches the content area behind it: this block's whole job is to hide the rows passing
+        // under it, and a grey cover on a white page would be a grey band across the screen.
+        backgroundColor: "white", paddingTop: rect.padTop,
       } : undefined}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px" }}>
         <div>

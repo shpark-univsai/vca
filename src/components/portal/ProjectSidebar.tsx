@@ -107,7 +107,10 @@ export default function ProjectSidebar({ tab, onTabChange, collapsed, myPageOpen
         width: collapsed ? "60px" : "212px",
         flexShrink: 0,
         display: "flex", flexDirection: "column",
-        backgroundColor: "var(--gray-100)",
+        // gray-50 against a white canvas is a couple of percent of tone, so the hairline is what
+        // actually separates the rail from the content — without it the nav floats in the page.
+        backgroundColor: "var(--gray-50)",
+        borderRight: "1px solid var(--gray-300)",
         padding: collapsed ? "16px 8px" : "16px 12px",
         transition: "width .15s ease",
       }}

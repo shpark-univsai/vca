@@ -6,18 +6,25 @@ import { SUPPORT_CONTACT, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 
-export const BORDER = "1px solid var(--gray-200)";
 /**
- * Cards on the Portal's gray-100 surface carry no outline of their own — white against that ground
- * is the whole separation. Every card used to draw a gray-200 border as well, and with dividers
- * inside them, a bordered table header, bordered rows and bordered controls all stacking up, the
- * page was mostly lines. Removing the outermost of them costs nothing legible and takes a whole
- * layer of ruling out.
+ * Every hairline in Portal — card edges, table rules, row dividers, field borders.
  *
- * Written as a named constant rather than by deleting the property, so a card still declares what
- * its edge is and one edit brings the outline back everywhere if it turns out to be needed.
+ * gray-300, not gray-200. The content area used to be gray-100, and against that tint a gray-200
+ * rule was perfectly legible; on the white canvas it very nearly vanished, which left tables
+ * looking like floating text. One step down the defined ramp is all it takes — gray-400 is a
+ * different kind of line altogether.
  */
-export const CARD_BORDER = "none";
+export const BORDER = "1px solid var(--gray-300)";
+/**
+ * Cards draw their own hairline again.
+ *
+ * They did not for a while: the page was gray-100 and a white card against that ground needed no
+ * outline, so dropping it took a whole layer of ruling off a screen that was mostly lines. The
+ * content area is white now — the rail is the tinted surface instead — and white on white is no
+ * separation at all, so the outline is what a card's edge is made of once more. This is the one
+ * edit that was left as a constant for exactly this.
+ */
+export const CARD_BORDER = BORDER;
 // Every control that can sit on a toolbar row — search input, FilterSelect, pill buttons, the
 // table/grid segmented toggle — is this tall, so a row of them lines up regardless of padding
 // or font size. Set the height, not the vertical padding.
@@ -158,7 +165,7 @@ export const BREADCRUMB_PROJECT_MAX_WIDTH = "min(320px, 22vw)";
  * Also picked up by the small raised pills that use this constant — the active segment of the
  * table/grid toggle and of the language switcher, which is exactly the lift those wanted.
  */
-export const PANEL_SHADOW = "0 1px 2px rgba(14,22,42,0.04), 0 2px 6px rgba(14,22,42,0.05)";
+export const PANEL_SHADOW = "0 1px 2px rgba(14,22,42,0.03), 0 1px 3px rgba(14,22,42,0.03)";
 
 export const TYPE_META: Record<ProjectType, { label: string; bg: string; color: string }> = {
   smart_city: { label: "Smart City", bg: "white", color: "var(--primary-400)" },

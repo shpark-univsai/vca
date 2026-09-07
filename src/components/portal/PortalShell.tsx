@@ -159,7 +159,7 @@ export default function PortalShell() {
 
   return (
     <ToastProvider>
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "var(--gray-100)" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "white" }}>
       <style>{`
         .portal-hamburger-btn{transition:background-color .15s}
         .portal-hamburger-btn:hover{background-color:var(--gray-100)}
@@ -167,7 +167,7 @@ export default function PortalShell() {
 
       {/* Top bar — logo · product name · team · project switcher (Clerk-style breadcrumb) */}
       <div style={{
-        height: "62px", backgroundColor: "white", borderBottom: "1px solid var(--gray-200)",
+        height: "62px", backgroundColor: "white", borderBottom: "1px solid var(--gray-300)",
         display: "flex", alignItems: "center", padding: "0 24px", flexShrink: 0, gap: "10px",
       }}>
         {!showWizard && teamProjects.length > 0 && (
@@ -209,7 +209,7 @@ export default function PortalShell() {
               title={currentOrg?.name}
               style={{
                 display: "block",
-                border: "1px solid var(--gray-200)", borderRadius: "8px", padding: "6px 10px",
+                border: "1px solid var(--gray-300)", borderRadius: "8px", padding: "6px 10px",
                 fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", whiteSpace: "nowrap",
                 maxWidth: BREADCRUMB_TEAM_MAX_WIDTH, overflow: "hidden", textOverflow: "ellipsis",
               }}
@@ -267,7 +267,10 @@ export default function PortalShell() {
               myPageOpen={showAccount}
             />
           )}
-          <div style={{ flex: 1, overflow: "auto", padding: "32px 72px", backgroundColor: "var(--gray-100)" }}>
+          {/* White canvas, tinted rail — the arrangement most consoles have settled on. It used to
+              be the other way round for both, which meant every card had to be white to be a card
+              and the page's own surface was doing the outlining. */}
+          <div style={{ flex: 1, overflow: "auto", padding: "32px 72px", backgroundColor: "white" }}>
             {showAccount
               ? <PortalMyPage />
               : teamProjects.length === 0

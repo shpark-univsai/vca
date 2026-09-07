@@ -94,7 +94,7 @@ export default function TeamSwitcher({ currentTeamId, onSelect }: TeamSwitcherPr
           onMouseLeave={() => setHovered(null)}
           style={{
             display: "flex", alignItems: "center", gap: "6px",
-            border: "1px solid var(--gray-200)", borderRadius: "8px", padding: "6px 10px",
+            border: "1px solid var(--gray-300)", borderRadius: "8px", padding: "6px 10px",
             backgroundColor: hovered === "__trigger" ? "var(--gray-50)" : "white",
             cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", whiteSpace: "nowrap",
           }}
