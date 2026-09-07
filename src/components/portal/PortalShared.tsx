@@ -526,10 +526,10 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
   /** Overrides the (absent) card edge — used to put a red rim on a card that is over its limit. */
   accentBorder?: string;
   /**
-   * Compact form for cards that sit directly above a table (Input Sources). Label, figure AND bar
-   * all share one line, padding drops to 12/14, and there is no second row at all — about a third
-   * of the height of the dashboard form. On a wide monitor the stacked version pushed the table
-   * most of a fold down for a bar 6px tall. Overview stays un-dense: its cards are the page, not a
+   * Compact form for cards that sit directly above a table (Input Sources): the label and the
+   * figure share one line, the bar sits under them, and padding drops to 12/14 — about half the
+   * height of the dashboard form. What keeps these from eating the fold is their width, capped by
+   * the caller, not the number of rows. Overview stays un-dense: its cards are the page, not a
    * header above one.
    */
   dense?: boolean;
@@ -574,21 +574,18 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
             on these cards. */}
         <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap", flexShrink: 0 }}>{label}</p>
         {dense
-          ? <>
-              {value}
-              {/* The bar, on the same line as the figure it belongs to. Given the rest of the row
-                  rather than a width of its own: the two cards sit side by side and their labels
-                  are different lengths, so a fixed bar would leave them ending in different
-                  places. */}
-              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>{children}</div>
-            </>
+          ? value
           : Icon && (
             <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
               <Icon />
             </span>
           )}
       </div>
-      {!dense && children}
+      {/* Dense keeps the bar on its own line under the label and figure. It shared their line for
+          a while, which was one row shorter but left the bar as long as whatever space the figure
+          did not take — and the two cards' figures are different lengths, so the two bars came out
+          different sizes. Under the text each one is the full width of its own card. */}
+      {children}
     </Tag>
   );
 }

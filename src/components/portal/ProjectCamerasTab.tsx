@@ -1032,8 +1032,8 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           are a header for the list, so they take the width they need and leave the rest; the row
           stays left-aligned against the table below rather than centring on nothing. */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 340px))", justifyContent: "start", gap: CARD_GAP, marginBottom: "16px" }}>
-        {/* Dense form: label, figure and bar on one line, no second row — and the online/offline
-            split sits beside the number instead of in a bordered footer. */}
+        {/* Dense form: label and figure share a line, the bar runs the full width under them, and
+            the online/offline split sits beside the number instead of in a bordered footer. */}
         <MetricCard
           label={t.metricChannelUsage}
           dense
@@ -1049,7 +1049,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
               <div style={{ width: "100%", height: "6px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${Math.min(100, (projectCameras.length / limit) * 100)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--info-500)" }} />
               </div>
-            ) : <p style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.noLicenseLimit}</p>}
+            ) : <p style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.noLicenseLimit}</p>}
         </MetricCard>
 
         <MetricCard
