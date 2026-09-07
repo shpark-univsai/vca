@@ -524,10 +524,11 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
   /** Overrides the (absent) card edge — used to put a red rim on a card that is over its limit. */
   accentBorder?: string;
   /**
-   * Compact form for cards that sit directly above a table (Input Sources). The label and the
-   * figure share one line instead of stacking, padding drops to 12/14, and the card keeps only a
-   * thin bottom row — roughly half the height of the dashboard form. Overview stays un-dense: its
-   * cards are the page, not a header above one.
+   * Compact form for cards that sit directly above a table (Input Sources). Label, figure AND bar
+   * all share one line, padding drops to 12/14, and there is no second row at all — about a third
+   * of the height of the dashboard form. On a wide monitor the stacked version pushed the table
+   * most of a fold down for a bar 6px tall. Overview stays un-dense: its cards are the page, not a
+   * header above one.
    */
   dense?: boolean;
   /** Dense only: the figure, placed on the label's line. */
@@ -545,22 +546,29 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
       boxShadow: PANEL_SHADOW, padding: dense ? "12px 14px" : "16px",
       display: "flex", flexDirection: "column", gap: dense ? "8px" : "6px", flex: 1, minWidth: 0,
     }}>
-      <div style={{ display: "flex", alignItems: dense ? "baseline" : "center", justifyContent: "space-between", gap: "10px", marginBottom: dense ? 0 : (Icon ? "6px" : "2px") }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: dense ? 0 : (Icon ? "6px" : "2px") }}>
         {/* Sentence case, not caps. The label carries multi-word names ("Portal Accounts &
             Permissions"), which all-caps at 10px turns into a block to decode rather than read —
             and toUpperCase() did nothing at all to the Korean strings, so the two languages were
             drawing two different headings. Same 12px/600/gray-500 as every other secondary line
             on these cards. */}
-        <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap" }}>{label}</p>
+        <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap", flexShrink: 0 }}>{label}</p>
         {dense
-          ? value
+          ? <>
+              {value}
+              {/* The bar, on the same line as the figure it belongs to. Given the rest of the row
+                  rather than a width of its own: the two cards sit side by side and their labels
+                  are different lengths, so a fixed bar would leave them ending in different
+                  places. */}
+              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>{children}</div>
+            </>
           : Icon && (
             <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
               <Icon />
             </span>
           )}
       </div>
-      {children}
+      {!dense && children}
     </div>
   );
 }

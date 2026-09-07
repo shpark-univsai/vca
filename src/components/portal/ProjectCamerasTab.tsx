@@ -1026,37 +1026,37 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           endpoint yet, so the figure was a permanent 0 (or, after an upload, a number that never
           cleared). The totals are on the video / image tabs below anyway, with each file's own
           state in its row. */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: CARD_GAP, marginBottom: "16px" }}>
-        {/* Dense form: the label and the figure share a line, the bar is the only thing under it,
-            and the online/offline split sits beside the number instead of in a bordered footer.
-            These three cards are a header for the table below — they were spending ~145px of
-            height on what reads in ~70. Overview keeps the tall form. */}
+      {/* Capped, not stretched.
+          Two cards over `1fr 1fr` meant ~650px each on a wide monitor — a 6px bar with half a
+          screen of empty card around it, and the table pushed most of a fold down for it. These
+          are a header for the list, so they take the width they need and leave the rest; the row
+          stays left-aligned against the table below rather than centring on nothing. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 340px))", justifyContent: "start", gap: CARD_GAP, marginBottom: "16px" }}>
+        {/* Dense form: label, figure and bar on one line, no second row — and the online/offline
+            split sits beside the number instead of in a bordered footer. */}
         <MetricCard
           label={t.metricChannelUsage}
           dense
           accentBorder={overLimit ? "1px solid var(--danger-400)" : undefined}
           value={
-            <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+            <span style={{ display: "flex", alignItems: "baseline", gap: "4px", flexShrink: 0, whiteSpace: "nowrap" }}>
               <span style={{ fontSize: "20px", fontWeight: 800, color: overLimit ? "var(--danger-400)" : "var(--gray-900)" }}>{projectCameras.length}</span>
               {limit ? <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{`/ ${limit}`}</span> : null}
             </span>
           }
         >
-          {/* 14px bottom row on every card, so the three end on the same line without a spacer. */}
-          <div style={{ height: "14px", display: "flex", alignItems: "center" }}>
-            {limit ? (
+          {limit ? (
               <div style={{ width: "100%", height: "6px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${Math.min(100, (projectCameras.length / limit) * 100)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--info-500)" }} />
               </div>
-            ) : <p style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.noLicenseLimit}</p>}
-          </div>
+            ) : <p style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.noLicenseLimit}</p>}
         </MetricCard>
 
         <MetricCard
           label={t.metricStreamHealth}
           dense
           value={
-            <span style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+            <span style={{ display: "flex", alignItems: "baseline", gap: "8px", flexShrink: 0, whiteSpace: "nowrap" }}>
               <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
                 <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</span>
                 <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.onlineSuffix}</span>
@@ -1066,11 +1066,9 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             </span>
           }
         >
-          <div style={{ height: "14px", display: "flex", alignItems: "center" }}>
-            <div style={{ width: "100%", height: "6px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
-              <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--success-400)" }} />
-              <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
-            </div>
+          <div style={{ width: "100%", height: "6px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
+            <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--success-400)" }} />
+            <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
           </div>
         </MetricCard>
 
