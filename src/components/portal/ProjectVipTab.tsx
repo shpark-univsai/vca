@@ -6,7 +6,7 @@ import { getFacePhoto } from "@/lib/mockData";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SelectedCheckIcon, SortableHeader, Tooltip, sortRows, useTableSort } from "./PortalShared";
+import { ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SelectedCheckIcon, SortableHeader, Tooltip, sortRows, useTableSort } from "./PortalShared";
 
 type VipSortKey = "name" | "role" | "priority" | "registered";
 
@@ -55,6 +55,7 @@ interface VipDict {
   noteLabel: string;
   notePlaceholder: string;
   editPerson: string;
+  showGroupMembers: (name: string) => string;
   vipUpdatedTitle: string;
   nameLabel: string;
   namePlaceholder: string;
@@ -135,6 +136,7 @@ const T: Record<"en" | "ko", VipDict> = {
     noteLabel: "Note",
     notePlaceholder: "e.g. Corporate Security — Executive Protection",
     editPerson: "Edit",
+    showGroupMembers: (name: string) => `Show the people in ${name}`,
     vipUpdatedTitle: "VIP updated",
     nameLabel: "Name *",
     namePlaceholder: "e.g. Alexander Wright",
@@ -214,6 +216,7 @@ const T: Record<"en" | "ko", VipDict> = {
     noteLabel: "메모",
     notePlaceholder: "예: 기업 보안 — 임원 경호",
     editPerson: "편집",
+    showGroupMembers: (name: string) => `${name} 소속 인원 보기`,
     vipUpdatedTitle: "VIP 정보를 수정했습니다",
     nameLabel: "이름 *",
     namePlaceholder: "예: 홍길동",
@@ -734,6 +737,15 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
    * column. Individuals is the same list minus anyone in a group; Groups is the parties themselves.
    */
   const [vipTab, setVipTab] = useState<"all" | "individuals" | "groups">("all");
+  /**
+   * Narrows the people list to one group. Set by clicking a group's member count, which is the
+   * question that number raises — "who are those three?" — and until now had no answer short of
+   * reading the Group column down the whole list.
+   *
+   * Not a fourth tab: it is a filter over the same list, so it clears when a tab is picked by hand
+   * and shows as a removable chip while it is on.
+   */
+  const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const showGroupColumn = vipTab === "all";
   const [groupModalFor, setGroupModalFor] = useState<{ group: PersonGroup | null } | null>(null);
   const [confirmingGroupRemove, setConfirmingGroupRemove] = useState<PersonGroup | null>(null);
@@ -755,6 +767,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
 
   const matchingPersons = allProjectPersons
     .filter(p => vipTab !== "individuals" || !p.groupId)
+    .filter(p => !groupFilter || p.groupId === groupFilter)
     .filter(p => !q || p.name.toLowerCase().includes(q));
   // Sorting only applies to the table — the grid keeps registration order, because a wall of cards
   // has no column headings to say what it is sorted by.
@@ -874,7 +887,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           const active = vipTab === tab.id;
           return (
             <Tooltip key={tab.id} text={tab.hint}>
-              <button onClick={() => setVipTab(tab.id)}
+              <button onClick={() => { setVipTab(tab.id); setGroupFilter(null); }}
                 style={{
                   display: "flex", alignItems: "center", gap: "6px",
                   background: "none", border: "none", cursor: "pointer",
@@ -909,6 +922,13 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           }}
         />
       </div>
+        {groupFilter && (
+          <ActiveFilterCount
+            count={1}
+            onClear={() => setGroupFilter(null)}
+            label={groupById.get(groupFilter)?.name ?? groupFilter}
+          />
+        )}
         <div style={{ flex: 1 }} />
         {/* Same segmented control the Input Sources tab uses, so the one gesture for "show me this
             differently" looks the same in both places. Not on the Groups tab: a party has no face,
@@ -953,8 +973,23 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                     <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.name}</p>
                     <p style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.registered(group.registeredAt)}</p>
                   </div>
-                  {/* Derived from Person.groupId, so it cannot disagree with the rows it counts. */}
-                  <span style={{ fontSize: "13px", fontWeight: 700, color: members === 0 ? "var(--gray-300)" : "var(--gray-900)" }}>{members}</span>
+                  {/* Derived from Person.groupId, so it cannot disagree with the rows it counts.
+                      Clickable when there is anybody to show: the number's own question is who
+                      they are, and this answers it by narrowing the people list to them. */}
+                  {members === 0 ? (
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-300)" }}>0</span>
+                  ) : (
+                    <button
+                      onClick={() => { setGroupFilter(group.id); setVipTab("all"); }}
+                      title={t.showGroupMembers(group.name)}
+                      style={{
+                        border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
+                        fontSize: "13px", fontWeight: 700, color: "var(--gray-900)",
+                        textDecoration: "underline", textUnderlineOffset: "3px", justifySelf: "start",
+                      }}>
+                      {members}
+                    </button>
+                  )}
                   <span>{group.priorityLabel
                     ? <PriorityTag priority={group.priorityLabel} text={t.priorityText[group.priorityLabel]} />
                     : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
