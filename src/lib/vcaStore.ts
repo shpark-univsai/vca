@@ -308,6 +308,15 @@ interface VcaStoreState {
   updateTeamMail: (teamId: string, updates: Pick<Team, "mailDomain" | "smtp">) => void;
   addPerson: (person: Omit<Person, "id">) => void;
   removePerson: (personId: string) => void;
+  /**
+   * Edit a registered face — name, tag, priority, note, photo.
+   *
+   * There was no way to change any of it. A VIP could be registered and removed and nothing in
+   * between, so a misspelled name or a priority that turned out to be wrong meant deleting the
+   * enrolment and doing it again. `description` was worse than unchangeable: only the bulk CSV
+   * import ever set it, so a note could exist on a row and never be written by hand.
+   */
+  updatePerson: (personId: string, updates: Partial<Omit<Person, "id">>) => void;
   addPersonGroup: (group: Omit<PersonGroup, "id">) => string;
   updatePersonGroup: (groupId: string, updates: Partial<Omit<PersonGroup, "id">>) => void;
   /**
@@ -1284,6 +1293,20 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     })),
   removePerson: (personId) =>
     set(state => ({ persons: state.persons.filter(p => p.id !== personId) })),
+  updatePerson: (personId, updates) =>
+    set(state => {
+      const person = state.persons.find(p => p.id === personId);
+      if (!person) return {};
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: person.projectId,
+        message: `VIP updated: ${updates.name ?? person.name}`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        persons: state.persons.map(p => (p.id === personId ? { ...p, ...updates } : p)),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
   addPersonGroup: (group) => {
     const id = `pgroup-${++personGroupSeq}`;
     set(state => ({

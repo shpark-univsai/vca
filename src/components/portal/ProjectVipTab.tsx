@@ -49,6 +49,12 @@ interface VipDict {
   removeAction: string;
   vipRemovedTitle: string;
   modalTitle: string;
+  editModalTitle: (name: string) => string;
+  saveEdit: string;
+  noteLabel: string;
+  notePlaceholder: string;
+  editPerson: string;
+  vipUpdatedTitle: string;
   nameLabel: string;
   namePlaceholder: string;
   tagLabel: string;
@@ -123,6 +129,12 @@ const T: Record<"en" | "ko", VipDict> = {
     removeAction: "Remove",
     vipRemovedTitle: "VIP removed",
     modalTitle: "Add New Person",
+    editModalTitle: (name: string) => `Edit — ${name}`,
+    saveEdit: "Save",
+    noteLabel: "Note",
+    notePlaceholder: "e.g. Corporate Security — Executive Protection",
+    editPerson: "Edit",
+    vipUpdatedTitle: "VIP updated",
     nameLabel: "Name *",
     namePlaceholder: "e.g. Alexander Wright",
     tagLabel: "Tag",
@@ -196,6 +208,12 @@ const T: Record<"en" | "ko", VipDict> = {
     removeAction: "삭제",
     vipRemovedTitle: "VIP 삭제됨",
     modalTitle: "새 인물 추가",
+    editModalTitle: (name: string) => `${name} 편집`,
+    saveEdit: "저장",
+    noteLabel: "메모",
+    notePlaceholder: "예: 기업 보안 — 임원 경호",
+    editPerson: "편집",
+    vipUpdatedTitle: "VIP 정보를 수정했습니다",
     nameLabel: "이름 *",
     namePlaceholder: "예: 홍길동",
     tagLabel: "태그",
@@ -253,14 +271,32 @@ interface RegisterValues {
   name: string;
   roleLabel: string;
   priorityLabel: NonNullable<Person["priorityLabel"]>;
+  description?: string;
   photoUrl?: string;
 }
 
-function RegisterVipModal({ t, onClose, onSubmit }: { t: VipDict; onClose: () => void; onSubmit: (values: RegisterValues) => void }) {
+/**
+ * Register a face, or edit one already registered — the same five fields either way, so the same
+ * form. Editing did not exist: a VIP could be registered and removed and nothing in between, so a
+ * misspelled name meant deleting the enrolment and redoing it.
+ *
+ * The Note field is new to this form in both modes. It shows on the detail sheet and in the table,
+ * and until now only the bulk CSV import could write it — a note could exist on a row that nobody
+ * was able to type.
+ */
+function RegisterVipModal({ t, person, onClose, onSubmit }: {
+  t: VipDict;
+  /** Absent = registering. Present = editing that person. */
+  person?: Person;
+  onClose: () => void;
+  onSubmit: (values: RegisterValues) => void;
+}) {
   useEscapeKey(onClose);
-  const [name, setName] = useState("");
-  const [roleLabel, setRoleLabel] = useState(ROLE_LABELS[0]);
-  const [priorityLabel, setPriorityLabel] = useState<NonNullable<Person["priorityLabel"]>>("normal");
+  const editing = person !== undefined;
+  const [name, setName] = useState(person?.name ?? "");
+  const [roleLabel, setRoleLabel] = useState(person?.roleLabel ?? ROLE_LABELS[0]);
+  const [priorityLabel, setPriorityLabel] = useState<NonNullable<Person["priorityLabel"]>>(person?.priorityLabel ?? "normal");
+  const [description, setDescription] = useState(person?.description ?? "");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFileName, setPhotoFileName] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -278,7 +314,9 @@ function RegisterVipModal({ t, onClose, onSubmit }: { t: VipDict; onClose: () =>
       style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
         <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.modalTitle}</p>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
+            {editing ? t.editModalTitle(person.name) : t.modalTitle}
+          </p>
           <button onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
@@ -302,6 +340,11 @@ function RegisterVipModal({ t, onClose, onSubmit }: { t: VipDict; onClose: () =>
                 options={PRIORITY_LABELS.map(p => ({ value: p, label: t.priorityText[p] }))}
               />
             </div>
+          </div>
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.noteLabel}</label>
+            <input value={description} onChange={e => setDescription(e.target.value)} placeholder={t.notePlaceholder}
+              style={FIELD_STYLE} />
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.facePhotoLabel}</label>
@@ -331,10 +374,17 @@ function RegisterVipModal({ t, onClose, onSubmit }: { t: VipDict; onClose: () =>
           <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
-          <button onClick={() => valid && onSubmit({ name: name.trim(), roleLabel, priorityLabel, photoUrl: photoPreview ?? undefined })} disabled={!valid}
+          <button
+            onClick={() => valid && onSubmit({
+              name: name.trim(), roleLabel, priorityLabel,
+              description: description.trim() || undefined,
+              photoUrl: photoPreview ?? undefined,
+            })}
+            disabled={!valid}
             style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
-            {t.register}
+            {/* The plus belongs to adding. Saving an edit adds nothing. */}
+            {!editing && <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>}
+            {editing ? t.saveEdit : t.register}
           </button>
         </div>
       </div>
@@ -505,11 +555,12 @@ const SAVE_PILL: React.CSSProperties = {
   fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0,
 };
 
-function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
+function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
   t: VipDict;
   person: Person;
   groups: PersonGroup[];
   onClose: () => void;
+  onEdit: () => void;
   onRemove: () => void;
 }) {
   useEscapeKey(onClose);
@@ -583,6 +634,7 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
               on the sheet that cannot be undone is the one thing that should not be a step away
               from a stray click, and red belongs in the confirmation, not in the furniture. */}
           <RowActionsMenu actions={[
+            { label: t.editPerson, onClick: onEdit },
             { label: t.removeAction, onClick: onRemove, danger: true },
           ]} />
           </div>
@@ -665,6 +717,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const setPersonGroup = useVcaStore(s => s.setPersonGroup);
   const addPerson = useVcaStore(s => s.addPerson);
   const removePerson = useVcaStore(s => s.removePerson);
+  const updatePerson = useVcaStore(s => s.updatePerson);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -687,6 +740,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const [groupModalFor, setGroupModalFor] = useState<{ group: PersonGroup | null } | null>(null);
   const [confirmingGroupRemove, setConfirmingGroupRemove] = useState<PersonGroup | null>(null);
   const [detailFor, setDetailFor] = useState<Person | null>(null);
+  const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const { sort, toggle: toggleSort } = useTableSort<VipSortKey>({ key: "registered", direction: "desc" });
   const [searchFocused, setSearchFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -724,9 +778,25 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       name: values.name, type: "VIP", photoUrl: values.photoUrl ?? getFacePhoto(values.name),
       registeredAt: new Date().toISOString(),
       roleLabel: values.roleLabel, priorityLabel: values.priorityLabel,
+      description: values.description,
       projectId,
     });
     setShowRegister(false);
+  };
+
+  const saveEdit = (values: RegisterValues) => {
+    if (!editingPerson) return;
+    updatePerson(editingPerson.id, {
+      name: values.name,
+      roleLabel: values.roleLabel,
+      priorityLabel: values.priorityLabel,
+      description: values.description,
+      // Only when a new file was picked. Without this, opening the editor and saving without
+      // touching the photo would replace the enrolled face with a generated placeholder.
+      ...(values.photoUrl ? { photoUrl: values.photoUrl } : null),
+    });
+    showToast({ variant: "success", title: t.vipUpdatedTitle, desc: values.name });
+    setEditingPerson(null);
   };
 
   const confirmRemove = () => {
@@ -1022,6 +1092,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       )}
 
       {showRegister && <RegisterVipModal t={t} onClose={() => setShowRegister(false)} onSubmit={register} />}
+      {editingPerson && (
+        <RegisterVipModal t={t} person={editingPerson} onClose={() => setEditingPerson(null)} onSubmit={saveEdit} />
+      )}
       {confirmingRemove && (
         <RemoveVipConfirmModal t={t} person={confirmingRemove} onClose={() => setConfirmingRemove(null)} onConfirm={confirmRemove} />
       )}
@@ -1031,6 +1104,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           person={persons.find(p => p.id === detailFor.id) ?? detailFor}
           groups={personGroups.filter(g => g.projectId === projectId)}
           onClose={() => setDetailFor(null)}
+          onEdit={() => { setEditingPerson(detailFor); setDetailFor(null); }}
           onRemove={() => { setConfirmingRemove(detailFor); setDetailFor(null); }}
         />
       )}
