@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, ChevronRight, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
+import { ArrowUp, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat, Tooltip } from "./PortalShared";
@@ -176,7 +176,6 @@ function PlusIcon() { return <Plus size={14} strokeWidth={1.4} />; }
 function UserPlusIcon() { return <UserPlus size={14} strokeWidth={1.2} />; }
 function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={1.4} />; }
 function ExitIcon() { return <LogOut size={14} strokeWidth={1.2} />; }
-function ChevronRightIcon() { return <ChevronRight size={14} strokeWidth={1.4} />; }
 
 // Shared shell for the four Overview metric cards — header (eyebrow label + icon badge), then
 // whatever body content each card needs (big value, progress bar, footer stats) as children.
@@ -378,39 +377,40 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </div>
           </div>
 
+          {/* One line, not a stack.
+              The list is short by construction — most projects raise one or two of these, and the
+              worst case is six — so a stacked panel spent a card's worth of height on two
+              sentences before the reader reached anything else. On one row it reads as a status
+              strip: the label, then the errands, each its own button. It wraps rather than
+              scrolling or truncating, so a project in real trouble gets a second line instead of
+              a hidden sixth item.
+              The destination tab name is gone with the stack (it doubled each item's width); the
+              hover box says the item is clickable, and the text already says where it goes. */}
           {attentionItems.length > 0 && (
             <div style={{
               backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW,
-              padding: "16px 20px", marginBottom: CARD_GAP,
+              padding: "10px 20px", marginBottom: CARD_GAP,
+              display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap",
             }}>
-              <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "4px" }}>
-                {t.attentionTitle} <span style={{ color: "var(--gray-400)", fontWeight: 600 }}>{attentionItems.length}</span>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0, marginRight: "2px" }}>
+                {t.attentionTitle}
               </p>
-              {/* Each row is the whole button, not a link at the end of a sentence: the row IS the
-                  errand, and the tab it lands on is named on the right so the click is not a
-                  guess. Negative side margins so the hover box reaches the card's own edges. */}
-              <div style={{ display: "flex", flexDirection: "column", margin: "0 -8px" }}>
-                {attentionItems.map(item => (
-                  <button
-                    key={item.key}
-                    className="portal-attention-row"
-                    onClick={() => onTabChange(item.tab)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: "10px", width: "100%",
-                      border: "none", background: "none", borderRadius: "8px",
-                      padding: "8px", cursor: "pointer", textAlign: "left", fontFamily: "inherit",
-                    }}
-                  >
-                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: item.color, flexShrink: 0 }} />
-                    <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-900)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.text}</span>
-                    <span style={{ flex: 1 }} />
-                    <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", flexShrink: 0 }}>
-                      {PROJECT_TABS.find(pt => pt.id === item.tab)?.label[lang]}
-                      <ChevronRightIcon />
-                    </span>
-                  </button>
-                ))}
-              </div>
+              {attentionItems.map(item => (
+                <button
+                  key={item.key}
+                  className="portal-attention-row"
+                  onClick={() => onTabChange(item.tab)}
+                  title={PROJECT_TABS.find(pt => pt.id === item.tab)?.label[lang]}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "6px",
+                    border: "none", background: "none", borderRadius: "8px",
+                    padding: "6px 8px", cursor: "pointer", fontFamily: "inherit", flexShrink: 0,
+                  }}
+                >
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: item.color, flexShrink: 0 }} />
+                  <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-900)", whiteSpace: "nowrap" }}>{item.text}</span>
+                </button>
+              ))}
             </div>
           )}
 

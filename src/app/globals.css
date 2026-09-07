@@ -174,8 +174,8 @@
 .portal-link { transition: color .12s ease; }
 .portal-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
-/* Rows of the Overview's "needs attention" list. The whole row is the button, so the hover box is
-   what tells you that before you aim at it. */
+/* Items of the Overview's "needs attention" strip. Each item is the whole button, so the hover box
+   is what tells you that before you aim at it. */
 .portal-attention-row { transition: background-color .12s ease; }
 .portal-attention-row:hover { background-color: var(--gray-50) !important; }
 
