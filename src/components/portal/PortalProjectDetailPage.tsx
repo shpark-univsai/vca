@@ -41,11 +41,10 @@ const T = {
     vipTargetDb: "VIP / Target DB",
     todayBadge: (n: number) => `${n} today`,
     highPriorityLabel: (n: number) => `High priority: ${n}`,
-    registeredTodayLabel: (n: number) => `Registered today: ${n}`,
     portalAccounts: "Portal Accounts & Permissions",
     accountsSuffix: "accounts",
     noPendingAccessRequests: "No pending access requests.",
-    attentionTitle: "Needs attention",
+    attentionTitle: "Things to do",
     attnOffline: (n: number) => `${n} camera${n === 1 ? " is" : "s are"} offline`,
     attnInvites: (n: number) => `${n} invitation${n === 1 ? "" : "s"} not yet accepted`,
     attnRequests: (n: number) => `${n} access request${n === 1 ? "" : "s"} waiting`,
@@ -108,11 +107,10 @@ const T = {
     vipTargetDb: "VIP / 관심대상 DB",
     todayBadge: (n: number) => `오늘 ${n}건`,
     highPriorityLabel: (n: number) => `우선순위 높음: ${n}`,
-    registeredTodayLabel: (n: number) => `오늘 등록: ${n}`,
     portalAccounts: "포털 계정 및 권한",
     accountsSuffix: "개 계정",
     noPendingAccessRequests: "대기 중인 접근 요청이 없습니다.",
-    attentionTitle: "확인 필요",
+    attentionTitle: "할 일",
     attnOffline: (n: number) => `오프라인 카메라 ${n}대`,
     attnInvites: (n: number) => `수락하지 않은 초대 ${n}건`,
     attnRequests: (n: number) => `대기 중인 접근 요청 ${n}건`,
@@ -293,6 +291,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    * then the trackers.
    *
    * Nothing here is a new fact — every row is a figure already on this page or the tab it links to.
+   * Named "Things to do", which is what the consoles that open this way call it — Remote and
+   * Shopify both use exactly that, Cloudflare "Next steps", Deel "For you today". "Needs
+   * attention" was a phrase from nowhere.
+   *
    * Ordered by how bad it is: what is broken, then what is waiting on someone, then what was never
    * set up. The card renders only when the list is non-empty: a panel whose whole job is to
    * interrupt you says nothing when it has nothing, and "all clear" in a permanent box is the kind
@@ -379,10 +381,16 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               scrolling or truncating, so a project in real trouble gets a second line instead of
               a hidden sixth item.
               The destination tab name is gone with the stack (it doubled each item's width); the
-              hover box says the item is clickable, and the text already says where it goes. */}
+              hover box says the item is clickable, and the text already says where it goes.
+
+              The one tinted card on the page. Everything else here is white on white separated by
+              a hairline, which is right for the panels — they are all the same kind of thing. This
+              strip is not: it is the only card that appears because something is wrong, and it is
+              gone when nothing is. A different ground says that before the words do, and gray-50
+              is quiet enough to say it without becoming a banner. */}
           {attentionItems.length > 0 && (
             <div style={{
-              backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW,
+              backgroundColor: "var(--gray-50)", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW,
               padding: "10px 20px", marginBottom: CARD_GAP,
               display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap",
             }}>
@@ -484,14 +492,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </MetricCard>
 
             <MetricCard label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
-              {/* No bar in this card, and none in the one beside it.
+              {/* One row, no bar and no footer rule.
                   A bar needs a denominator that means something. The two cards to the left have
                   one — cameras installed, channels licensed — and these two do not: nobody manages
-                  "half the watchlist is high priority" or "60% of accounts are active". Both had a
-                  bar for a while, purely so the row of four would look symmetrical, and a
-                  proportion invented to fill a slot is worse than an empty slot. What is actually
-                  worth acting on here is a count, not a share, and the "needs attention" strip at
-                  the top of this page is where counts like that live. */}
+                  "half the watchlist is high priority" or "60% of accounts are active". A
+                  proportion invented to fill a slot is worse than an empty slot, so with the bar
+                  gone the detail that was under the rule moved up beside the figure instead: the
+                  right of this row was empty and the rule was separating a number from its own
+                  description. Counts worth acting on live in the "things to do" strip up top. */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
                 <span style={{ display: "flex", alignItems: "baseline", gap: "8px", flexShrink: 0, whiteSpace: "nowrap" }}>
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectPersons.length}</span>
@@ -501,31 +509,29 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     </span>
                   )}
                 </span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
-                <p style={{ fontSize: "12px", color: "var(--primary-400)", fontWeight: 600 }}>{t.highPriorityLabel(highPriorityVipCount)}</p>
-                <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.registeredTodayLabel(todayVipCount)}</p>
+                {/* "Registered today: 0" is not here any more: the green ↑ beside the figure says
+                    the same thing when there is anything to say, and said nothing the rest of the
+                    time. */}
+                <p style={{ fontSize: "12px", color: "var(--primary-400)", fontWeight: 600, flexShrink: 0 }}>{t.highPriorityLabel(highPriorityVipCount)}</p>
               </div>
             </MetricCard>
 
             <MetricCard label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
-              {/* No bar in this card, and none in the one beside it.
+              {/* One row, no bar and no footer rule.
                   A bar needs a denominator that means something. The two cards to the left have
                   one — cameras installed, channels licensed — and these two do not: nobody manages
-                  "half the watchlist is high priority" or "60% of accounts are active". Both had a
-                  bar for a while, purely so the row of four would look symmetrical, and a
-                  proportion invented to fill a slot is worse than an empty slot. What is actually
-                  worth acting on here is a count, not a share, and the "needs attention" strip at
-                  the top of this page is where counts like that live. */}
+                  "half the watchlist is high priority" or "60% of accounts are active". A
+                  proportion invented to fill a slot is worse than an empty slot, so with the bar
+                  gone the detail that was under the rule moved up beside the figure instead: the
+                  right of this row was empty and the rule was separating a number from its own
+                  description. Counts worth acting on live in the "things to do" strip up top. */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
                 <span style={{ display: "flex", alignItems: "baseline", gap: "4px", flexShrink: 0, whiteSpace: "nowrap" }}>
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectUsers.length}</span>
                   <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.accountsSuffix}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-500)", marginLeft: "4px" }}>{t.accessSplitLabel(portalUserCount, appUserCount)}</span>
                 </span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.accessSplitLabel(portalUserCount, appUserCount)}</p>
-                <button onClick={() => onTabChange("users")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.manage}</button>
+                <button onClick={() => onTabChange("users")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>{t.manage}</button>
               </div>
             </MetricCard>
           </div>

@@ -24,7 +24,16 @@ export const BORDER = "1px solid var(--gray-300)";
  * separation at all, so the outline is what a card's edge is made of once more. This is the one
  * edit that was left as a constant for exactly this.
  */
-export const CARD_BORDER = BORDER;
+/**
+ * One step lighter than BORDER.
+ *
+ * A card's outline runs the full width of whatever it holds, so at gray-300 four cards in a row
+ * read as four boxes before they read as four figures — while the rules INSIDE them (table rows,
+ * footer dividers) are short and need that weight to be seen on white at all. Outer edge quieter
+ * than the ruling inside it is the opposite of the usual hierarchy, and it is the right way round
+ * here: the edge only has to say "this ends", the inner rules have to be legible.
+ */
+export const CARD_BORDER = "1px solid var(--gray-200)";
 // Every control that can sit on a toolbar row — search input, FilterSelect, pill buttons, the
 // table/grid segmented toggle — is this tall, so a row of them lines up regardless of padding
 // or font size. Set the height, not the vertical padding.

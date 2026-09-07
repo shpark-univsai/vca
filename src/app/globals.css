@@ -177,7 +177,7 @@
 /* Items of the Overview's "needs attention" strip. Each item is the whole button, so the hover box
    is what tells you that before you aim at it. */
 .portal-attention-row { transition: background-color .12s ease; }
-.portal-attention-row:hover { background-color: var(--gray-50) !important; }
+.portal-attention-row:hover { background-color: var(--gray-100) !important; }
 
 /* The account trigger at the right end of the top bar. Bare until hovered — it carries a name and
    an avatar, which already read as a control, and a permanent box there would compete with the
