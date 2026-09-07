@@ -130,7 +130,7 @@ const T: Record<"en" | "ko", VipDict> = {
     confirmRemoveBody: "They will be removed from this project's watchlist. Cameras will no longer detect them as a registered VIP.",
     removeAction: "Remove",
     vipRemovedTitle: "VIP removed",
-    modalTitle: "Add New Person",
+    modalTitle: "Add new person",
     editModalTitle: (name: string) => `Edit — ${name}`,
     saveEdit: "Save",
     noteLabel: "Note",
