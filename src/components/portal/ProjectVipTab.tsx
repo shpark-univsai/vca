@@ -62,6 +62,8 @@ interface VipDict {
   tagLabel: string;
   priorityLabel: string;
   facePhotoLabel: string;
+  facePhotoLabelRequired: string;
+  facePhotoRequiredHint: string;
   changePhoto: string;
   uploadPhoto: string;
   cancel: string;
@@ -142,6 +144,8 @@ const T: Record<"en" | "ko", VipDict> = {
     tagLabel: "Tag",
     priorityLabel: "Priority",
     facePhotoLabel: "Face photo",
+    facePhotoLabelRequired: "Face photo *",
+    facePhotoRequiredHint: "A face is what the cameras match against — a person cannot be registered without one.",
     changePhoto: "Change",
     uploadPhoto: "Upload photo",
     cancel: "Cancel",
@@ -221,6 +225,8 @@ const T: Record<"en" | "ko", VipDict> = {
     tagLabel: "태그",
     priorityLabel: "우선순위",
     facePhotoLabel: "얼굴 사진",
+    facePhotoLabelRequired: "얼굴 사진 *",
+    facePhotoRequiredHint: "카메라가 대조하는 대상이 얼굴입니다 — 사진 없이는 등록할 수 없습니다.",
     changePhoto: "변경",
     uploadPhoto: "사진 업로드",
     cancel: "취소",
@@ -323,7 +329,15 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFileName, setPhotoFileName] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const valid = name.trim().length > 0;
+  /**
+   * A photo is required to register and not to edit.
+   *
+   * Registering somebody with no face is registering nothing: the enrolled image is the whole
+   * thing the cameras match against, and a row without one is a name that will never be detected.
+   * Editing is the other case — that person already has an enrolled face, and demanding a fresh
+   * upload to fix a spelling would be asking for the expensive half of the work again.
+   */
+  const valid = name.trim().length > 0 && (editing || photoPreview !== null);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -401,7 +415,9 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
             <TextField value={description} onChange={setDescription} placeholder={t.notePlaceholder} />
           </div>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.facePhotoLabel}</label>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
+              {editing ? t.facePhotoLabel : t.facePhotoLabelRequired}
+            </label>
             <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: "none" }} />
             <button type="button" onClick={() => photoInputRef.current?.click()}
               style={{
@@ -422,6 +438,11 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
                 </>
               )}
             </button>
+            {!editing && !photoPreview && (
+              <p style={{ fontSize: "11px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.6 }}>
+                {t.facePhotoRequiredHint}
+              </p>
+            )}
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
