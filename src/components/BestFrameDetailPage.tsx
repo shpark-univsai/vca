@@ -6,6 +6,73 @@ import type { DetType, Detection, CamData } from "@/types/detection";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { sgtClockTime, sgtDateKey } from "@/lib/time";
 
+import { useLanguage } from "@/lib/i18n";
+
+// See the per-file pattern note in lib/i18n.ts. Attribute tags, the enrolled-database names and
+// camera codes come from the detection data and stay as they are.
+const T = {
+  en: {
+    all: "All",
+    vehicle: "Vehicle",
+    unknown: "Unknown",
+    reelTitle: "Best frame reel",
+    reelSub: "Objects captured in current frame",
+    inspectionDetail: "Inspection detail",
+    close: "Close",
+    liveCapture: "LIVE Capture",
+    liveCaptureHint: "Frame the camera just captured",
+    enrolledDb: "ENROLLED DB",
+    enrolledDbHint: "Reference photo from the enrolled database",
+    registeredAs: "Registered:",
+    cameraName: "Camera name",
+    eventTime: "Event time",
+    analysisResults: "Analysis results",
+    attrBasic: "Basic",
+    attrTop: "Top",
+    attrBottom: "Bottom",
+    attrAddons: "Add-ons",
+    alsoCaptured: "Also captured in this frame",
+    back: "Back",
+    trackOnMap: "Track on Map",
+    bestFrame: "Best frame",
+    jumpTo: "Jump to",
+    pickTime: "Pick hour and minute",
+    hour: "Hour",
+    minute: "Min",
+    weekdays: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+  },
+  ko: {
+    all: "전체",
+    vehicle: "차량",
+    unknown: "미확인",
+    reelTitle: "베스트 프레임 목록",
+    reelSub: "현재 프레임에서 검출된 대상",
+    inspectionDetail: "검출 상세",
+    close: "닫기",
+    liveCapture: "실시간 검출",
+    liveCaptureHint: "카메라가 방금 잡은 프레임입니다",
+    enrolledDb: "등록 DB",
+    enrolledDbHint: "등록 데이터베이스의 기준 사진입니다",
+    registeredAs: "등록 정보:",
+    cameraName: "카메라",
+    eventTime: "검출 시각",
+    analysisResults: "분석 결과",
+    attrBasic: "기본",
+    attrTop: "상의",
+    attrBottom: "하의",
+    attrAddons: "소지품",
+    alsoCaptured: "같은 프레임에서 함께 검출됨",
+    back: "돌아가기",
+    trackOnMap: "지도에서 추적",
+    bestFrame: "베스트 프레임",
+    jumpTo: "시각 이동",
+    pickTime: "시·분 선택",
+    hour: "시",
+    minute: "분",
+    weekdays: ["일", "월", "화", "수", "목", "금", "토"],
+  },
+} as const;
+
 const BORDER = "1px solid var(--gray-200)";
 const STEP_BTN_STYLE: CSSProperties = {
   padding:"6px 12px", borderRadius:"999px", border:"1px solid var(--gray-300)", backgroundColor:"white",
@@ -186,14 +253,16 @@ function ReelFilterIcon({ type, color, active = false }: { type: DetType; color:
   return <TypeIcon type={type} color={color} size={14} active={active} />;
 }
 
-const REEL_FILTER_CFG: { id: ReelFilter; label: string; color?: string }[] = [
-  { id:"All",     label:"All" },
-  { id:"VIP",     label:"VIP",     color: DET_COLOR.VIP },
-  { id:"Vehicle", label:"Vehicle", color: DET_COLOR.Vehicle },
-  { id:"Unknown", label:"Unknown", color: DET_COLOR.Unknown },
-];
-
 function ReelFilterBar({ filter, onChange }: { filter: ReelFilter; onChange: (f: ReelFilter) => void }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
+  // "VIP" is the same word in both languages; the other three get translated.
+  const REEL_FILTER_CFG: { id: ReelFilter; label: string; color?: string }[] = [
+    { id:"All",     label: t.all },
+    { id:"VIP",     label:"VIP",       color: DET_COLOR.VIP },
+    { id:"Vehicle", label: t.vehicle,  color: DET_COLOR.Vehicle },
+    { id:"Unknown", label: t.unknown,  color: DET_COLOR.Unknown },
+  ];
   return (
     <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
       {REEL_FILTER_CFG.map(f => {
@@ -336,13 +405,15 @@ function BestFrameReel({ data, focusedId, onFocus, onSelect, filter, onFilterCha
   filter: ReelFilter;
   onFilterChange: (f: ReelFilter) => void;
 }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const dets = filter === "All" ? data.detections : data.detections.filter(d => d.type === filter);
   return (
     <div style={{ width:"380px", flexShrink:0, backgroundColor:"white", borderLeft:BORDER, display:"flex", flexDirection:"column", overflow:"hidden" }}>
       <div style={{ padding:"16px 16px 12px", flexShrink:0, display:"flex", flexDirection:"column", gap:"12px" }}>
         <div>
-          <p style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.28px" }}>Best frame reel</p>
-          <p style={{ fontSize:"11px", color:"var(--gray-400)", marginTop:"2px" }}>Objects captured in current frame</p>
+          <p style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.28px" }}>{t.reelTitle}</p>
+          <p style={{ fontSize:"11px", color:"var(--gray-400)", marginTop:"2px" }}>{t.reelSub}</p>
         </div>
         <ReelFilterBar filter={filter} onChange={onFilterChange} />
       </div>
@@ -371,6 +442,8 @@ function BestFrameReel({ data, focusedId, onFocus, onSelect, filter, onFilterCha
 
 /* ── AI Inspection Detail panel ───────────────────────────────── */
 function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Detection; data: CamData; onClose: () => void; onGoRedmapTrace?: (name: string) => void }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const attrs = ATTRS[det.type];
   const c = DET_COLOR[det.type];
 
@@ -380,8 +453,8 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
           header's bottom border to its left (both act as one continuous line across the screen,
           not two independently-sized bars that happen to sit side by side) */}
       <div style={{ padding:"12px 16px 10px", borderBottom:BORDER, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-        <p style={{ fontSize:"16px", fontWeight:700, color:"var(--gray-900)", letterSpacing:"-0.32px" }}>Inspection detail</p>
-        <button onClick={onClose} aria-label="Close" style={{ background:"none", border:"none", cursor:"pointer", color:"var(--gray-400)", fontSize:"16px", lineHeight:1, padding:"0 2px" }}>✕</button>
+        <p style={{ fontSize:"16px", fontWeight:700, color:"var(--gray-900)", letterSpacing:"-0.32px" }}>{t.inspectionDetail}</p>
+        <button onClick={onClose} aria-label={t.close} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--gray-400)", fontSize:"16px", lineHeight:1, padding:"0 2px" }}>✕</button>
       </div>
 
       <div style={{ flex:1, overflowY:"auto", padding:"14px" }}>
@@ -389,7 +462,7 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
         <div style={{ display:"flex", alignItems:"flex-end", gap:"8px", marginBottom:"14px" }}>
           <div style={{ flex:"0 0 77px", display:"flex", flexDirection:"column", alignItems:"center", gap:"4px" }}>
             <img src={LIVE_CAPTURE_PHOTO} alt="" style={{ width:"77px", height:"177px", objectFit:"cover", objectPosition:"top", borderRadius:"8px", display:"block" }} />
-            <p title="Frame the camera just captured" style={{ fontSize:"10px", fontWeight:600, color:"var(--primary-400)", letterSpacing:"-0.2px", cursor:"help" }}>LIVE Capture</p>
+            <p title={t.liveCaptureHint} style={{ fontSize:"10px", fontWeight:600, color:"var(--primary-400)", letterSpacing:"-0.2px", cursor:"help" }}>{t.liveCapture}</p>
           </div>
           <div style={{ flex:1, alignSelf:"flex-end", height:"177px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"6px" }}>
             <svg width="22" height="22" viewBox="0 0 16 16" fill="none">
@@ -402,7 +475,7 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
           </div>
           <div style={{ flex:"0 0 176px", display:"flex", flexDirection:"column", alignItems:"center", gap:"4px" }}>
             <img src={DB_PHOTO} alt="" style={{ width:"176px", height:"177px", objectFit:"cover", objectPosition:"top", borderRadius:"10px", display:"block" }} />
-            <p title="Reference photo from the enrolled database" style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)", letterSpacing:"-0.2px", cursor:"help" }}>ENROLLED DB</p>
+            <p title={t.enrolledDbHint} style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)", letterSpacing:"-0.2px", cursor:"help" }}>{t.enrolledDb}</p>
           </div>
         </div>
 
@@ -411,14 +484,14 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
           <TypeIcon type={det.type} color={c} size={15} />
           <span style={{ fontSize:"16px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.32px" }}>{det.name}</span>
         </div>
-        <p style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-500)", marginBottom:"14px" }}>Registered: {REGISTERED[det.type]}</p>
+        <p style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-500)", marginBottom:"14px" }}>{t.registeredAs} {REGISTERED[det.type]}</p>
 
         {/* Divider — info below is separated by rules, not a boxed container */}
         <div style={{ height:"1px", backgroundColor:"var(--gray-200)", marginBottom:"14px" }} />
 
         {/* Meta */}
         <div style={{ marginBottom:"14px" }}>
-          {[["Camera name", data.location], ["Event time", `${sgtDateKey(new Date())} ${det.time}`]].map(([k, v]) => (
+          {[[t.cameraName, data.location], [t.eventTime, `${sgtDateKey(new Date())} ${det.time}`]].map(([k, v]) => (
             <div key={k} style={{ display:"flex", alignItems:"center", padding:"3px 0" }}>
               <span style={{ fontSize:"12px", color:"var(--gray-500)", fontWeight:600, width:"88px", flexShrink:0 }}>{k}</span>
               <span style={{ fontSize:"13px", color:"var(--gray-900)", fontWeight:700 }}>{v}</span>
@@ -434,9 +507,9 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
             <path d="M8.00195 1.33301C8.1574 1.33309 8.30814 1.38798 8.42773 1.4873C8.54731 1.58669 8.62868 1.72508 8.65723 1.87793L9.35742 5.58301C9.40718 5.84636 9.53512 6.08878 9.72461 6.27832C9.9141 6.46781 10.1566 6.5957 10.4199 6.64551L14.126 7.34668C14.2785 7.37528 14.4164 7.45589 14.5156 7.5752C14.615 7.69488 14.6699 7.84638 14.6699 8.00195C14.6698 8.1574 14.6149 8.30814 14.5156 8.42773C14.4163 8.54716 14.2786 8.62864 14.126 8.65723L10.4199 9.35742C10.1566 9.40723 9.91411 9.53511 9.72461 9.72461C9.53511 9.91411 9.40723 10.1566 9.35742 10.4199L8.65723 14.126C8.62864 14.2786 8.54716 14.4163 8.42773 14.5156C8.30814 14.6149 8.1574 14.6698 8.00195 14.6699C7.84638 14.6699 7.69488 14.615 7.5752 14.5156C7.45589 14.4164 7.37528 14.2785 7.34668 14.126L6.64551 10.4199C6.5957 10.1566 6.46781 9.9141 6.27832 9.72461C6.08878 9.53512 5.84636 9.40718 5.58301 9.35742L1.87793 8.65723C1.72508 8.62868 1.58669 8.54731 1.4873 8.42773C1.38798 8.30814 1.33309 8.1574 1.33301 8.00195C1.33301 7.84638 1.38791 7.69488 1.4873 7.5752C1.58668 7.45571 1.72515 7.37522 1.87793 7.34668L5.58301 6.64551C5.8464 6.59573 6.08877 6.46787 6.27832 6.27832C6.46787 6.08877 6.59573 5.8464 6.64551 5.58301L7.34668 1.87793C7.37522 1.72515 7.45571 1.58668 7.5752 1.4873C7.69488 1.38791 7.84638 1.33301 8.00195 1.33301ZM2.66699 12C3.40311 12.0002 3.99982 12.5969 4 13.333C4 14.0693 3.40322 14.6668 2.66699 14.667C1.93061 14.667 1.33301 14.0694 1.33301 13.333C1.33318 12.5968 1.93072 12 2.66699 12ZM13.333 0.833008C13.609 0.833008 13.8328 1.05702 13.833 1.33301V2.16699H14.667C14.943 2.16717 15.167 2.39096 15.167 2.66699C15.1668 2.94288 14.9429 3.16682 14.667 3.16699H13.833V4C13.8328 4.27599 13.609 4.5 13.333 4.5C13.0571 4.49982 12.8332 4.27588 12.833 4V3.16699H12C11.724 3.16699 11.5002 2.94298 11.5 2.66699C11.5 2.39085 11.7239 2.16699 12 2.16699H12.833V1.33301C12.8332 1.05712 13.0571 0.833183 13.333 0.833008Z" fill="var(--gray-900)"/>
           </svg>
-          <p style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)", letterSpacing:"-0.26px" }}>Analysis results</p>
+          <p style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)", letterSpacing:"-0.26px" }}>{t.analysisResults}</p>
         </div>
-        {[["Basic", attrs.basic], ["Top", attrs.top], ["Bottom", attrs.bottom], ["Add-ons", attrs.addons]]
+        {[[t.attrBasic, attrs.basic], [t.attrTop, attrs.top], [t.attrBottom, attrs.bottom], [t.attrAddons, attrs.addons]]
           .filter(([, v]) => (v as string[]).length > 0)
           .map(([label, tags]) => (
             <div key={label as string} style={{ display:"flex", alignItems:"flex-start", gap:"8px", marginBottom:"8px" }}>
@@ -450,7 +523,7 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
         {/* Also captured in this frame */}
         {data.detections.filter(d => d.id !== det.id).length > 0 && (
           <>
-            <p style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)", letterSpacing:"-0.26px", marginTop:"22px", marginBottom:"12px" }}>Also captured in this frame</p>
+            <p style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)", letterSpacing:"-0.26px", marginTop:"22px", marginBottom:"12px" }}>{t.alsoCaptured}</p>
             {/* This row scrolls independently of the panel around it, so the panel's own padding
                 stops giving the last card any clearance once you've scrolled past it — its
                 box-shadow was getting clipped flush against this row's own right/bottom edge.
@@ -467,14 +540,14 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
       {/* Buttons */}
       <div style={{ padding:"10px 14px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px", flexShrink:0 }}>
         <button onClick={onClose} style={{ padding:"9px 0", borderRadius:"8px", border:BORDER, backgroundColor:"white", color:"var(--gray-700)", fontSize:"13px", fontWeight:700, cursor:"pointer" }}>
-          Back
+          {t.back}
         </button>
         <button onClick={() => onGoRedmapTrace?.(det.name)} style={{ padding:"9px 0", borderRadius:"8px", border:"none", backgroundColor:"var(--gray-900)", color:"white", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
             <path d="M16.6667 8.33333C16.6667 13.3333 10 18.3333 10 18.3333C10 18.3333 3.33333 13.3333 3.33333 8.33333C3.33333 6.56522 4.03571 4.86953 5.28596 3.61929C6.5362 2.36905 8.23189 1.66667 10 1.66667C11.7681 1.66667 13.4638 2.36905 14.714 3.61929C15.9643 4.86953 16.6667 6.56522 16.6667 8.33333Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M10 10.8333C11.3807 10.8333 12.5 9.71404 12.5 8.33333C12.5 6.95262 11.3807 5.83333 10 5.83333C8.61929 5.83333 7.5 6.95262 7.5 8.33333C7.5 9.71404 8.61929 10.8333 10 10.8333Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          Track on Map
+          {t.trackOnMap}
         </button>
       </div>
     </div>
@@ -482,7 +555,7 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
 }
 
 /* ── Track date calendar ─────────────────────────────────────── */
-const WEEKDAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
 
 function buildMonthGrid(year: number, month: number) {
   const firstWeekday = new Date(year, month, 1).getDay();
@@ -502,12 +575,14 @@ function dateKey(year: number, month: number, day: number) {
 }
 
 function TrackDateCalendar({ selected, onPick }: { selected: string; onPick: (dateKey: string) => void }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const [selYear, selMonth] = selected.split("-").map(Number);
   const todayKey = sgtDateKey(new Date());
   const [viewYear, setViewYear] = useState(selYear);
   const [viewMonth, setViewMonth] = useState(selMonth - 1);
   const cells = buildMonthGrid(viewYear, viewMonth);
-  const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString(lang === "ko" ? "ko-KR" : "en-US", { month: "short", year: "numeric" });
   const isCurrentMonth = dateKey(viewYear, viewMonth, 1).slice(0, 7) === todayKey.slice(0, 7);
 
   const prevMonth = () => { if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); } else setViewMonth(m => m - 1); };
@@ -525,7 +600,7 @@ function TrackDateCalendar({ selected, onPick }: { selected: string; onPick: (da
         </button>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", justifyItems:"center" }}>
-        {WEEKDAY_LABELS.map(w => <span key={w} style={{ fontSize:"10px", color:"var(--gray-400)", height:"22px", display:"flex", alignItems:"center" }}>{w}</span>)}
+        {t.weekdays.map(w => <span key={w} style={{ fontSize:"10px", color:"var(--gray-400)", height:"22px", display:"flex", alignItems:"center" }}>{w}</span>)}
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", justifyItems:"center", rowGap:"2px" }}>
         {cells.map((day, i) => {
@@ -550,6 +625,8 @@ function TrackDateCalendar({ selected, onPick }: { selected: string; onPick: (da
 
 /* ── Main component ──────────────────────────────────────────── */
 export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedmapTrace, autoOpenDetail, initialDate, initialTime }: DetailProps) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const [selectedPerson, setSelectedPerson] = useState<Detection | null>(autoOpenDetail ? initialDet : null);
   const [focusedDet, setFocusedDet] = useState<Detection>(initialDet);
   const [trackDate, setTrackDate] = useState(() => initialDate ?? sgtDateKey(new Date()));
@@ -672,7 +749,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M10 3L5 8l5 5" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              Best frame
+              {t.bestFrame}
             </button>
             {/* Vertical divider — "Best frame" is the only real navigable step here, so it gets
                 a back button; the location/date pair to its right is read-only context, not
@@ -870,7 +947,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     <circle cx="8" cy="8" r="6" stroke="var(--gray-500)" strokeWidth="1.4"/>
                     <path d="M8 5v3l2 2" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round"/>
                   </svg>
-                  <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-500)" }}>Jump to</span>
+                  <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-500)" }}>{t.jumpTo}</span>
                   {/* key={selectedSec} remounts the field whenever the time moves from anywhere
                       else (the list below, the step buttons, a thumbnail), so an uncontrolled
                       input can't sit there showing a stale time. */}
@@ -897,7 +974,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       nowhere in this app — but typing-only left the control looking like the date
                       dropdown beside it while doing nothing when clicked. This is the same list,
                       drawn here, so it stays in English and the typed path still works. */}
-                  <button onClick={() => setTimeOpen(o => !o)} aria-label="Pick hour and minute"
+                  <button onClick={() => setTimeOpen(o => !o)} aria-label={t.pickTime}
                     style={{ display:"flex", padding:0, border:"none", background:"none", cursor:"pointer" }}>
                     <svg width="9" height="9" viewBox="0 0 8 8" fill="none" style={{ transform: timeOpen ? "rotate(180deg)" : "none", transition:"transform 0.15s" }}>
                       <path d="M2 3L4 5L6 3" stroke="var(--gray-900)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -909,9 +986,9 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     backgroundColor:"white", borderRadius:"8px", border:"1px solid var(--gray-200)",
                     boxShadow:"0 4px 16px rgba(14, 22, 42,0.12)", overflow:"hidden" }}>
                     {([
-                      { label:"Hour", values: Array.from({ length: HOURS_IN_DAY }, (_, h) => h), current: currentHour,
+                      { label: t.hour, values: Array.from({ length: HOURS_IN_DAY }, (_, h) => h), current: currentHour,
                         pick: (h: number) => jumpTo(h * 3600 + currentMinute * 60) },
-                      { label:"Min", values: Array.from({ length: 60 }, (_, m) => m), current: currentMinute,
+                      { label: t.minute, values: Array.from({ length: 60 }, (_, m) => m), current: currentMinute,
                         pick: (m: number) => jumpTo(currentHour * 3600 + m * 60) },
                     ]).map(col => (
                       <div key={col.label} style={{ display:"flex", flexDirection:"column", borderLeft: col.label === "Min" ? "1px solid var(--gray-200)" : "none" }}>
