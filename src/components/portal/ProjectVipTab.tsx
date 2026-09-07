@@ -500,11 +500,16 @@ function GroupModal({ t, group, projectId, onClose, onCreated, zIndex = 300 }: {
       updatePersonGroup(group.id, { name: name.trim(), description: description.trim() || undefined, priorityLabel: priority });
       showToast({ variant: "success", title: t.groupUpdatedTitle, desc: name.trim() });
     } else {
-      addPersonGroup({
+      const id = addPersonGroup({
         name: name.trim(), description: description.trim() || undefined, priorityLabel: priority,
-        projectId, registeredAt: new Date().toISOString(),
+        // A group is created on a day, not at an instant — nothing shows a time for one, and the
+        // rows seeded before this stored a date. (A blanket replace while giving persons a full
+        // instant had caught this line too, so new groups were storing an ISO string that the
+        // group table then printed raw.)
+        projectId, registeredAt: new Date().toISOString().slice(0, 10),
       });
       showToast({ variant: "success", title: t.groupAddedTitle, desc: name.trim() });
+      onCreated?.(id);
     }
     onClose();
   };
@@ -941,7 +946,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 }}>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.name}</p>
-                    <p style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.registered(group.registeredAt)}</p>
+                    <p style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.registered(group.registeredAt.slice(0, 10))}</p>
                   </div>
                   {/* Derived from Person.groupId, so it cannot disagree with the rows it counts.
                       Clickable when there is anybody to show: the number's own question is who
