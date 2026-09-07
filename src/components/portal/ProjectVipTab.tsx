@@ -92,6 +92,7 @@ interface VipDict {
   groupDescLabel: string;
   groupDescPlaceholder: string;
   groupSave: string;
+  createGroupAction: string;
   editGroup: string;
   removeGroup: string;
   groupAddedTitle: string;
@@ -169,6 +170,7 @@ const T: Record<"en" | "ko", VipDict> = {
     groupDescLabel: "Note",
     groupDescPlaceholder: "e.g. Quarterly inspection visit",
     groupSave: "Save",
+    createGroupAction: "Create",
     editGroup: "Edit",
     removeGroup: "Remove group",
     groupAddedTitle: "Group added",
@@ -247,6 +249,7 @@ const T: Record<"en" | "ko", VipDict> = {
     groupDescLabel: "메모",
     groupDescPlaceholder: "예: 분기 정기 시찰",
     groupSave: "저장",
+    createGroupAction: "만들기",
     editGroup: "편집",
     removeGroup: "그룹 삭제",
     groupAddedTitle: "그룹을 추가했습니다",
@@ -300,17 +303,23 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
   const [description, setDescription] = useState(person?.description ?? "");
   const [groupId, setGroupId] = useState(person?.groupId ?? "");
   /**
-   * The group creator, opened from the foot of the group list.
+   * Making a group without leaving this form.
    *
-   * Registering somebody who arrives with a party whose group does not exist yet was a dead end:
-   * you had to abandon the half-filled form, switch to the Groups tab, make it, and come back. The
-   * new group is selected the moment it is made.
+   * It was a dialog on top of this dialog, which is a stack nobody wants to be three deep in — and
+   * it had to disable this form's Escape key to stop one keystroke closing both. Instead the select
+   * gives way to a name field in the same spot: a group needs a name and nothing else to exist, and
+   * its priority and note are set later in the Groups tab where the rest of them live.
    */
-  const [creatingGroup, setCreatingGroup] = useState(false);
-  // Both modals mount their own Escape listener, so without this one standing down, Escape closed
-  // the group creator and the half-filled person form underneath it in the same keystroke. This is
-  // the case useEscapeKey's `enabled` argument exists for.
-  useEscapeKey(onClose, !creatingGroup);
+  const [newGroupName, setNewGroupName] = useState<string | null>(null);
+  const addPersonGroup = useVcaStore(s => s.addPersonGroup);
+  useEscapeKey(onClose);
+
+  const createGroup = () => {
+    const trimmed = (newGroupName ?? "").trim();
+    if (!trimmed) return;
+    setGroupId(addPersonGroup({ name: trimmed, projectId, registeredAt: new Date().toISOString().slice(0, 10) }));
+    setNewGroupName(null);
+  };
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFileName, setPhotoFileName] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -359,12 +368,33 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
               next to an Edit item in the menu, which read as "the group is all you may change". */}
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.colGroup}</label>
-            <FilterSelect
-              value={groupId}
-              onChange={setGroupId}
-              options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
-              footerAction={{ label: t.addGroup, onClick: () => setCreatingGroup(true) }}
-            />
+            {newGroupName === null ? (
+              <FilterSelect
+                value={groupId}
+                onChange={setGroupId}
+                options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
+                footerAction={{ label: t.addGroup, onClick: () => setNewGroupName("") }}
+              />
+            ) : (
+              <div style={{ display: "flex", gap: "8px" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <TextField value={newGroupName} onChange={setNewGroupName} placeholder={t.groupNamePlaceholder} autoFocus />
+                </div>
+                <button className="portal-btn-primary" onClick={createGroup} disabled={!newGroupName.trim()}
+                  style={{
+                    height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "999px", border: "none",
+                    backgroundColor: newGroupName.trim() ? "var(--primary-400)" : "var(--gray-200)",
+                    color: newGroupName.trim() ? "white" : "var(--gray-400)",
+                    fontSize: "12px", fontWeight: 700, cursor: newGroupName.trim() ? "pointer" : "not-allowed", flexShrink: 0,
+                  }}>
+                  {t.createGroupAction}
+                </button>
+                <button className="portal-btn-outline" onClick={() => setNewGroupName(null)}
+                  style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+                  {t.cancel}
+                </button>
+              </div>
+            )}
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.noteLabel}</label>
@@ -413,13 +443,6 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
           </button>
         </div>
       </div>
-      {creatingGroup && (
-        <GroupModal
-          t={t} group={null} projectId={projectId} zIndex={310}
-          onClose={() => setCreatingGroup(false)}
-          onCreated={id => { setGroupId(id); setCreatingGroup(false); }}
-        />
-      )}
     </div>
   );
 }
@@ -479,12 +502,8 @@ function PriorityTag({ priority, text }: { priority: NonNullable<Person["priorit
 }
 
 /** Add or edit a party. Membership is not set here — a person is put in a group from their own row. */
-function GroupModal({ t, group, projectId, onClose, onCreated, zIndex = 300 }: {
+function GroupModal({ t, group, projectId, onClose }: {
   t: VipDict; group: PersonGroup | null; projectId: string; onClose: () => void;
-  /** Called with the new group's id — lets the caller select what was just made. */
-  onCreated?: (groupId: string) => void;
-  /** Raised when this opens on top of another modal. */
-  zIndex?: number;
 }) {
   useEscapeKey(onClose);
   const addPersonGroup = useVcaStore(s => s.addPersonGroup);
@@ -500,7 +519,7 @@ function GroupModal({ t, group, projectId, onClose, onCreated, zIndex = 300 }: {
       updatePersonGroup(group.id, { name: name.trim(), description: description.trim() || undefined, priorityLabel: priority });
       showToast({ variant: "success", title: t.groupUpdatedTitle, desc: name.trim() });
     } else {
-      const id = addPersonGroup({
+      addPersonGroup({
         name: name.trim(), description: description.trim() || undefined, priorityLabel: priority,
         // A group is created on a day, not at an instant — nothing shows a time for one, and the
         // rows seeded before this stored a date. (A blanket replace while giving persons a full
@@ -509,7 +528,6 @@ function GroupModal({ t, group, projectId, onClose, onCreated, zIndex = 300 }: {
         projectId, registeredAt: new Date().toISOString().slice(0, 10),
       });
       showToast({ variant: "success", title: t.groupAddedTitle, desc: name.trim() });
-      onCreated?.(id);
     }
     onClose();
   };
@@ -520,7 +538,7 @@ function GroupModal({ t, group, projectId, onClose, onCreated, zIndex = 300 }: {
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "420px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
