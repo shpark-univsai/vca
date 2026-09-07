@@ -30,10 +30,10 @@ const EMPTY_FORM: ServerFormValues = { name: "", ip: "", type: SERVER_TYPES[0], 
 
 const MODAL_T = {
   en: {
-    serverName: "Server Name *", serverNamePlaceholder: "e.g. FR 2",
-    serverIp: "Server IP *", serverIpPlaceholder: "e.g. 192.168.0.36",
+    serverName: "Server Name *", serverNamePlaceholder: "FR 2",
+    serverIp: "Server IP *", serverIpPlaceholder: "192.168.0.36",
     serverType: "Server Type", status: "Status",
-    specification: "Specification", specificationPlaceholder: "e.g. 8 vCPU · 32GB RAM",
+    specification: "Specification", specificationPlaceholder: "8 vCPU · 32GB RAM",
     cancel: "Cancel", save: "Save",
   },
   ko: {

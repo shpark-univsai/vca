@@ -21,7 +21,7 @@ const T = {
       smart_school: { title: "Smart School", description: "Face recognition attendance & campus blind spots" },
     },
     step2: "2. Project Name",
-    namePlaceholder: "e.g. Guri City Smart School - Phase 3",
+    namePlaceholder: "Guri City Smart School - Phase 3",
     step3: "3. Video Channel Stream (RTSP)",
     rtspPlaceholder: "Enter your rtsp:// address",
     rtspTag: "RTSP 1CH",

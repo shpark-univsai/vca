@@ -17,7 +17,7 @@ const T = {
     // New team modal
     modalTitle: "New team",
     nameLabel: "Team name",
-    namePlaceholder: "e.g. Northgate Education Trust",
+    namePlaceholder: "Northgate Education Trust",
     cancel: "Cancel",
     create: "Create team",
   },

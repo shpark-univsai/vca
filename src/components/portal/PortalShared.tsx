@@ -31,6 +31,21 @@ export const CONTROL_HEIGHT = "36px";
 export const TABLE_COLUMN_GAP = "12px";
 
 /**
+ * PLACEHOLDERS carry the example and not the words "e.g.".
+ *
+ * Grey text in an empty field already reads as an example, so the prefix restates the thing the
+ * styling is already saying, costs four characters of a narrow field, and does get typed in by
+ * people who take it for part of the value. Plain-language guidance (GOV.UK's is the blunt one)
+ * also tells you not to use Latin abbreviations in interface text, which matters more than usual
+ * here: this ships to a Singapore site in English and Korean, so most readers of the English are
+ * not reading their first language.
+ *
+ * PortalSignupWizard reached this on its own and wrote it down; the other sixteen were brought in
+ * line 2026-09-04. The Korean keeps "예:" — two characters, not a Latin abbreviation, and it reads
+ * naturally where an English prefix does not.
+ */
+
+/**
  * SPACING — 2 · 4 · 6 · 8 · 10 · 12 · 14 · 16 · 20 · 24, then 8s (32 · 40 · 48 …) for page gutters.
  *
  * Not tokens, because there are none: globals.css defines colour and nothing else. This is the set

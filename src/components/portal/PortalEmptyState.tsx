@@ -16,7 +16,7 @@ const T = {
     noTeamTitle: "No teams yet",
     noTeamSubtitle: "A team holds this installation's projects, users and mail settings. Create one to get started.",
     teamNameLabel: "Team name",
-    teamNamePlaceholder: "e.g. Northgate Education Trust",
+    teamNamePlaceholder: "Northgate Education Trust",
     createTeam: "Create team",
     gallery: {
       vip: "VIP / watchlist detection",
