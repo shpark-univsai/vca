@@ -68,7 +68,16 @@ export default function PortalMyPage() {
   const myTeam = me ? teams.find(tm => tm.id === me.teamId) : undefined;
 
   return (
-    <div style={{ maxWidth: "720px" }}>
+    /**
+     * Capped and centred, the way the licence page is: both are a short column of label-and-value
+     * rows rather than a table, and stretched across a monitor a value ends up a hand's width from
+     * its label. `margin-inline: auto` splits the spare width evenly and lets the two margins
+     * shrink together to nothing as the window narrows — no media query.
+     *
+     * Narrower than the licence page's 900px because there is less in each row here; it is the same
+     * rule, not the same number.
+     */
+    <div style={{ maxWidth: "720px", marginInline: "auto" }}>
       <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
       <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px", marginBottom: "20px" }}>{t.subtitle}</p>
 
