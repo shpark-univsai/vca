@@ -390,7 +390,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               is quiet enough to say it without becoming a banner. */}
           {attentionItems.length > 0 && (
             <div style={{
-              backgroundColor: "var(--gray-50)", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW,
+              // No outline: the tint is the edge. This is the same rule the white cards followed
+              // back when the page itself was grey — a fill that differs from its ground does not
+              // need a line around it as well, and the line was drawing a box around the one thing
+              // on the page that should read as a strip.
+              backgroundColor: "var(--gray-50)", border: "none", borderRadius: "16px", boxShadow: "none",
               padding: "10px 20px", marginBottom: CARD_GAP,
               display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap",
             }}>

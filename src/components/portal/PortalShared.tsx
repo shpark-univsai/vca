@@ -16,24 +16,19 @@ import { usePortalLanguage } from "@/lib/i18n";
  */
 export const BORDER = "1px solid var(--gray-300)";
 /**
- * Cards draw their own hairline again.
+ * Cards carry no outline.
  *
- * They did not for a while: the page was gray-100 and a white card against that ground needed no
- * outline, so dropping it took a whole layer of ruling off a screen that was mostly lines. The
- * content area is white now — the rail is the tinted surface instead — and white on white is no
- * separation at all, so the outline is what a card's edge is made of once more. This is the one
- * edit that was left as a constant for exactly this.
- */
-/**
- * One step lighter than BORDER.
+ * They briefly did, when the content area turned white and "white card on grey page" stopped being
+ * separation. The outline came back for a day and read as a grid of boxes: four metric cards, three
+ * panels and every modal each drawing a full-width rectangle around content that also has dividers
+ * inside it, a bordered table header and bordered controls. What separates a card now is its own
+ * padding and the space around it, and the hairlines are spent where they carry something — the
+ * rules INSIDE a card, which is why BORDER stayed a step darker than this ever was.
  *
- * A card's outline runs the full width of whatever it holds, so at gray-300 four cards in a row
- * read as four boxes before they read as four figures — while the rules INSIDE them (table rows,
- * footer dividers) are short and need that weight to be seen on white at all. Outer edge quieter
- * than the ruling inside it is the opposite of the usual hierarchy, and it is the right way round
- * here: the edge only has to say "this ends", the inner rules have to be legible.
+ * Kept as a named constant rather than deleted from the call sites, so one edit brings the edge
+ * back everywhere if it turns out to be needed. It has been needed twice.
  */
-export const CARD_BORDER = "1px solid var(--gray-200)";
+export const CARD_BORDER = "none";
 // Every control that can sit on a toolbar row — search input, FilterSelect, pill buttons, the
 // table/grid segmented toggle — is this tall, so a row of them lines up regardless of padding
 // or font size. Set the height, not the vertical padding.
