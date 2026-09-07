@@ -199,6 +199,22 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
     && available <= Math.max(5, Math.ceil(limit * 0.1));
   const pct = (n: number) => (limit ? Math.min(100, (n / limit) * 100) : 0);
 
+  /**
+   * Included first, locked after.
+   *
+   * The catalogue order interleaved them — a tick, a tick, a padlock, two more ticks — so what the
+   * project actually has took reading the whole list to work out. What it has is the answer; what
+   * it does not is the footnote. Sorted stably, so the catalogue order survives inside each half.
+   */
+  const featureRows = ALL_FEATURES.map(f => {
+    const notBuilt = NOT_BUILT_REASON[f];
+    const planIncludes = project.licensePlan ? (PLAN_FEATURES[project.licensePlan] ?? []).includes(f) : false;
+    // A tick means "you can use this". The plan covering it is only half of that.
+    const included = !notBuilt && planIncludes;
+    const featureLabel = FEATURE_LABELS[f]?.[lang] ?? f;
+    return { key: f, included, label: notBuilt ? `${featureLabel} — ${t[notBuilt]}` : featureLabel };
+  }).sort((a, b) => Number(b.included) - Number(a.included));
+
   /** Icon + label on the left, value on the right — the shape the reference's rows use. */
   const detailRow = (icon: React.ReactNode, label: string, value: React.ReactNode) => (
     <div style={{ display: "flex", alignItems: "center", gap: "12px", minHeight: "40px", padding: "0 20px", borderTop: BORDER }}>
@@ -338,22 +354,14 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
               pages worth referencing lists features at all (Rows gives a sentence, GitHub links
               out to a comparison), so the shape is ours to choose. */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "10px 20px" }}>
-            {ALL_FEATURES.map(f => {
-              const notBuilt = NOT_BUILT_REASON[f];
-              const planIncludes = project.licensePlan ? (PLAN_FEATURES[project.licensePlan] ?? []).includes(f) : false;
-              // A tick means "you can use this". The plan covering it is only half of that.
-              const included = !notBuilt && planIncludes;
-              const featureLabel = FEATURE_LABELS[f]?.[lang] ?? f;
-              const label = notBuilt ? `${featureLabel} — ${t[notBuilt]}` : featureLabel;
-              return (
-                <div key={f} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ display: "flex", color: included ? "var(--gray-900)" : "var(--gray-300)" }}>
-                    {included ? <CheckIcon /> : <LockIcon />}
-                  </span>
-                  <span style={{ fontSize: "12px", fontWeight: included ? 700 : 600, color: included ? "var(--gray-900)" : "var(--gray-400)" }}>{label}</span>
-                </div>
-              );
-            })}
+            {featureRows.map(({ key, included, label }) => (
+              <div key={key} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ display: "flex", color: included ? "var(--gray-900)" : "var(--gray-300)" }}>
+                  {included ? <CheckIcon /> : <LockIcon />}
+                </span>
+                <span style={{ fontSize: "12px", fontWeight: included ? 700 : 600, color: included ? "var(--gray-900)" : "var(--gray-400)" }}>{label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
