@@ -93,8 +93,8 @@ const T = {
     unlimited: "Unlimited",
     yrRemaining: (n: number) => `${n}yr remaining`,
     includedFeatures: "Included Features",
-    comingSoon: "Coming soon",
-    smartSchoolComingSoon: "Smart School · coming soon",
+    pendingHeading: "Coming soon",
+    smartSchoolOnly: "Smart School only",
     analysisComingSoon: "assignable to cameras · analysis screen coming soon",
     perChannelPerYear: (price: number) => `$${price}/channel/yr`,
     noLimitSet: "No limit set",
@@ -125,8 +125,8 @@ const T = {
     unlimited: "무제한",
     yrRemaining: (n: number) => `잔여 ${n}년`,
     includedFeatures: "포함된 기능",
-    comingSoon: "출시 예정",
-    smartSchoolComingSoon: "Smart School · 출시 예정",
+    pendingHeading: "출시 예정",
+    smartSchoolOnly: "Smart School 전용",
     analysisComingSoon: "카메라 지정 가능 · 분석 화면 준비 중",
     perChannelPerYear: (price: number) => `채널당 연 $${price}`,
     noLimitSet: "한도 미설정",
@@ -212,8 +212,21 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
     // A tick means "you can use this". The plan covering it is only half of that.
     const included = !notBuilt && planIncludes;
     const featureLabel = FEATURE_LABELS[f]?.[lang] ?? f;
-    return { key: f, included, label: notBuilt ? `${featureLabel} — ${t[notBuilt]}` : featureLabel };
-  }).sort((a, b) => Number(b.included) - Number(a.included));
+    /**
+     * The suffix only says what the group heading does not.
+     *
+     * Under a "Coming soon" heading, "Fire Detection — coming soon" says it twice. The two that
+     * qualify it further keep a suffix: one is gated on a project type as well, and one has an
+     * engine you can assign today with no screen to read the result on — which the heading
+     * actively contradicts, so it has to be spelled out.
+     */
+    const suffix = notBuilt === "smartSchoolComingSoon" ? t.smartSchoolOnly
+      : notBuilt === "analysisComingSoon" ? t.analysisComingSoon
+      : null;
+    return { key: f, included, label: suffix ? `${featureLabel} — ${suffix}` : featureLabel };
+  });
+  const includedRows = featureRows.filter(r => r.included);
+  const pendingRows = featureRows.filter(r => !r.included);
 
   /** Icon + label on the left, value on the right — the shape the reference's rows use. */
   const detailRow = (icon: React.ReactNode, label: string, value: React.ReactNode) => (
@@ -369,15 +382,36 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
                 single-line item beside it, so nothing in the row started on the same line. The
                 icon takes a 3px nudge to sit on the middle of that first line — (18px line box −
                 12px glyph) / 2 — rather than on the top of it. */}
-            {featureRows.map(({ key, included, label }) => (
+            {includedRows.map(({ key, label }) => (
               <div key={key} style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
-                <span style={{ display: "flex", marginTop: "3px", flexShrink: 0, color: included ? "var(--gray-900)" : "var(--gray-300)" }}>
-                  {included ? <CheckIcon /> : <LockIcon />}
-                </span>
-                <span style={{ fontSize: "12px", lineHeight: 1.5, fontWeight: included ? 700 : 600, color: included ? "var(--gray-900)" : "var(--gray-400)" }}>{label}</span>
+                <span style={{ display: "flex", marginTop: "3px", flexShrink: 0, color: "var(--gray-900)" }}><CheckIcon /></span>
+                <span style={{ fontSize: "12px", lineHeight: 1.5, fontWeight: 700, color: "var(--gray-900)" }}>{label}</span>
               </div>
             ))}
           </div>
+
+          {/* The unavailable ones, under their own heading rather than mixed in.
+              Sorting them below was not enough: a padlock in the same list still reads as part of
+              the answer to "what does this project have", and the answer is the block above. The
+              heading also lets each item stop repeating "coming soon" after its own name. */}
+          {pendingRows.length > 0 && (
+            <>
+              <p style={{
+                fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px",
+                textTransform: "uppercase", marginTop: "18px", marginBottom: "10px",
+              }}>
+                {t.pendingHeading}
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "10px 20px" }}>
+                {pendingRows.map(({ key, label }) => (
+                  <div key={key} style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
+                    <span style={{ display: "flex", marginTop: "3px", flexShrink: 0, color: "var(--gray-300)" }}><LockIcon /></span>
+                    <span style={{ fontSize: "12px", lineHeight: 1.5, fontWeight: 600, color: "var(--gray-400)" }}>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
