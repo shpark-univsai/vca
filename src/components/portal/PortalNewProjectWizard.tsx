@@ -26,6 +26,7 @@ const T = {
     rtspPlaceholder: "Enter your rtsp:// address",
     rtspTag: "RTSP 1CH",
     deploy: "Deploy & Start Monitoring",
+    cancel: "Cancel",
     footer: "You'll be redirected to the monitoring dashboard automatically after deployment",
   },
   ko: {
@@ -43,6 +44,7 @@ const T = {
     rtspPlaceholder: "rtsp:// 주소를 입력하세요",
     rtspTag: "RTSP 1CH",
     deploy: "배포 및 모니터링 시작",
+    cancel: "취소",
     footer: "배포가 완료되면 자동으로 모니터링 대시보드로 이동합니다",
   },
 } as const;
@@ -50,10 +52,15 @@ const T = {
 interface PortalNewProjectWizardProps {
   teamId: string;
   onDeployed: (projectId: string) => void;
+  /**
+   * Leaves the wizard without creating anything. Omitted when there is nowhere to go back to —
+   * a team with no projects has nothing behind this screen — and then no cancel is offered.
+   */
+  onCancel?: () => void;
   defaultType?: ProjectType;
 }
 
-export default function PortalNewProjectWizard({ teamId, onDeployed, defaultType = "smart_city" }: PortalNewProjectWizardProps) {
+export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, defaultType = "smart_city" }: PortalNewProjectWizardProps) {
   const addProject = useVcaStore(s => s.addProject);
   const [selectedType, setSelectedType] = useState<ProjectType>(defaultType);
   const [name, setName] = useState("");
@@ -180,6 +187,26 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, defaultType
         >
           {t.deploy}
         </button>
+
+        {/* Directly under the primary, inside the same card.
+            Cancel used to be a pill in the global top bar, which is chrome — it held the product
+            name and the breadcrumb, and an answer to a question this form is asking does not live
+            up there. Both answers to "am I creating this project?" now sit in one place, with the
+            recoverable one quieter: no border, no fill, so it never competes with the action it
+            undoes. */}
+        {onCancel && (
+          <button
+            className="portal-link"
+            onClick={onCancel}
+            style={{
+              width: "100%", marginTop: "10px", border: "none", background: "none",
+              padding: "10px 0", cursor: "pointer",
+              fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", fontFamily: "inherit",
+            }}
+          >
+            {t.cancel}
+          </button>
+        )}
       </div>
 
       <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "24px", textAlign: "center" }}>

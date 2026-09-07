@@ -17,8 +17,8 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 
 const T = {
-  en: { noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar", exit: "Exit to App", newProject: "New project", cancel: "Cancel" },
-  ko: { noTeam: "팀 없음", expand: "사이드바 펼치기", collapse: "사이드바 접기", exit: "앱으로 나가기", newProject: "새 프로젝트", cancel: "취소" },
+  en: { noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar", newProject: "New project" },
+  ko: { noTeam: "팀 없음", expand: "사이드바 펼치기", collapse: "사이드바 접기", newProject: "새 프로젝트" },
 } as const;
 
 function BreadcrumbChevron() {
@@ -161,8 +161,6 @@ export default function PortalShell() {
     <ToastProvider>
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "var(--gray-100)" }}>
       <style>{`
-        .portal-exit-btn{transition:background-color .15s}
-        .portal-exit-btn:hover{background-color:var(--gray-100)}
         .portal-hamburger-btn{transition:background-color .15s}
         .portal-hamburger-btn:hover{background-color:var(--gray-100)}
       `}</style>
@@ -235,22 +233,6 @@ export default function PortalShell() {
         )}
 
         <div style={{ flex: 1 }} />
-        {/* The way out. The wizard had none: its own hamburger is hidden, the breadcrumb no longer
-            navigates, and "Exit to App" leaves Portal altogether — so a person who opened this by
-            accident had to leave the console to get out of it. Hidden when the team has no projects
-            yet, because then there is nothing behind this screen to cancel back to. */}
-        {showWizard && teamProjects.length > 0 && (
-          <button
-            className="portal-exit-btn"
-            onClick={() => setShowWizard(false)}
-            style={{
-              border: "1px solid var(--gray-200)", borderRadius: "8px", backgroundColor: "white",
-              padding: "8px 14px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
-            }}
-          >
-            {t.cancel}
-          </button>
-        )}
         {/*
           The right end of the bar is who you are. Everything that belongs to the account rather
           than to the open project is in its menu — the way back to the app, My page, support —
@@ -269,7 +251,12 @@ export default function PortalShell() {
       </div>
 
       {showWizard ? (
-        <PortalNewProjectWizard teamId={currentOrgId} onDeployed={deployedFromWizard} defaultType={defaultWizardType} />
+        <PortalNewProjectWizard
+          teamId={currentOrgId}
+          onDeployed={deployedFromWizard}
+          onCancel={teamProjects.length > 0 ? () => setShowWizard(false) : undefined}
+          defaultType={defaultWizardType}
+        />
       ) : (
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           {sidebarVisible && (
