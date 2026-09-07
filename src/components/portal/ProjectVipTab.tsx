@@ -10,9 +10,10 @@ import { FIELD_STYLE, FIELD_FOCUS, BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_C
 
 type VipSortKey = "name" | "role" | "priority" | "registered";
 
-const VIP_GRID = "40px 1.2fr 0.7fr 0.7fr 0.8fr 1.4fr 32px";
+// 36px for the actions column, the width RowActionsMenu gets in every other table.
+const VIP_GRID = "40px 1.2fr 0.7fr 0.7fr 0.8fr 1.4fr 36px";
 /** The All tab adds a Group column; the Individuals tab would print "Individual" on every row. */
-const VIP_GRID_WITH_GROUP = "40px 1.1fr 0.9fr 0.65fr 0.7fr 0.75fr 1.1fr 32px";
+const VIP_GRID_WITH_GROUP = "40px 1.1fr 0.9fr 0.65fr 0.7fr 0.75fr 1.1fr 36px";
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const ROLE_LABELS = ["Regular", "Lead", "Captain", "Health", "Special"];
@@ -1005,7 +1006,16 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
               }}>
                 <img src={person.photoUrl} alt="" style={{ width: "32px", height: "32px", borderRadius: "8px", objectFit: "cover" }} />
-                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.name}</p>
+                {/* The name is the way in, as it is in most tables — a narrow target that does not
+                    fight the group select two cells over for the same click. */}
+                <button onClick={() => setDetailFor(person)} title={person.name}
+                  style={{
+                    border: "none", background: "none", padding: 0, cursor: "pointer", textAlign: "left",
+                    fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                  {person.name}
+                </button>
                 {/* Membership is set from the person, not from the group. Putting a member list in
                     the group editor would mean two places that have to agree about who is in it;
                     one select on the person's own row is the single place that decides. */}
@@ -1025,11 +1035,15 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 <span>{person.priorityLabel ? <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
                 <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{person.registeredAt.slice(0, 10)}</span>
                 <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.description || "—"}</span>
-                <button onClick={() => setConfirmingRemove(person)} title={t.removeVip} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", justifySelf: "end" }}>
-                  <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-                    <path d="M2.91663 4.08333H11.0833M5.83329 6.41667V9.33333M8.16663 6.41667V9.33333M3.49996 4.08333L4.08329 10.9167C4.08329 11.2261 4.20621 11.5228 4.42501 11.7416C4.6438 11.9604 4.9405 12.0833 5.24996 12.0833H8.74996C9.05942 12.0833 9.35612 11.9604 9.57491 11.7416C9.79371 11.5228 9.91663 11.2261 9.91663 10.9167L10.5 4.08333M5.24996 4.08333V2.33333C5.24996 2.17862 5.31142 2.03025 5.42082 1.92085C5.53022 1.81146 5.67858 1.75 5.83329 1.75H8.16663C8.32134 1.75 8.4697 1.81146 8.5791 1.92085C8.68849 2.03025 8.74996 2.17862 8.74996 2.33333V4.08333" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
+                {/* The same overflow menu the roster, users and camera tables use. A lone trash
+                    icon was the only row action this table had, which is also why there was no way
+                    to edit a VIP from the table at all. */}
+                <div style={{ justifySelf: "end" }}>
+                  <RowActionsMenu actions={[
+                    { label: t.editPerson, onClick: () => setEditingPerson(person) },
+                    { label: t.removeAction, onClick: () => setConfirmingRemove(person), danger: true },
+                  ]} />
+                </div>
               </div>
             );
           })}
