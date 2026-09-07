@@ -37,10 +37,10 @@ const MODAL_T = {
     cancel: "Cancel", save: "Save",
   },
   ko: {
-    serverName: "서버 이름 *", serverNamePlaceholder: "예: FR 2",
-    serverIp: "서버 IP *", serverIpPlaceholder: "예: 192.168.0.36",
+    serverName: "서버 이름 *", serverNamePlaceholder: "FR 2",
+    serverIp: "서버 IP *", serverIpPlaceholder: "192.168.0.36",
     serverType: "서버 유형", status: "상태",
-    specification: "사양", specificationPlaceholder: "예: 8 vCPU · 32GB RAM",
+    specification: "사양", specificationPlaceholder: "8 vCPU · 32GB RAM",
     cancel: "취소", save: "저장",
   },
 } as const;
@@ -316,7 +316,7 @@ const MAIL_T = {
   en: {
     usingDefault: (name: string) => `Using ${name}'s default mail server`,
     theTeam: "the team",
-    bannerDesc: "Set up a dedicated SMTP server if this project needs its own — e.g. an on-prem site with no internet access.",
+    bannerDesc: "Set up a dedicated SMTP server if this project needs its own, like an on-prem site with no internet access.",
     setUpSmtp: "Set up SMTP",
     inEffect: "In effect for this project",
     domain: "Domain", smtpHost: "SMTP host", sentFrom: "Sent from", source: "Source",
@@ -343,7 +343,7 @@ const MAIL_T = {
   ko: {
     usingDefault: (name: string) => `${name}의 기본 메일 서버 사용 중`,
     theTeam: "팀",
-    bannerDesc: "이 프로젝트에 전용 메일 서버가 필요하다면 별도로 설정하세요 — 예: 인터넷이 연결되지 않은 온프레미스 사이트.",
+    bannerDesc: "이 프로젝트에 전용 메일 서버가 필요하다면 별도로 설정하세요. 인터넷이 연결되지 않은 온프레미스 사이트가 그런 경우입니다.",
     setUpSmtp: "SMTP 설정",
     inEffect: "이 프로젝트에 적용 중인 설정",
     domain: "도메인", smtpHost: "SMTP 호스트", sentFrom: "발신 주소", source: "출처",

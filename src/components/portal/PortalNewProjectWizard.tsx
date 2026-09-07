@@ -38,7 +38,7 @@ const T = {
       smart_school: { title: "스마트스쿨", description: "얼굴 인식 출결 관리 및 캠퍼스 사각지대 감시" },
     },
     step2: "2. 프로젝트 이름",
-    namePlaceholder: "예: 구리시 스마트스쿨 - 3단계",
+    namePlaceholder: "구리시 스마트스쿨 - 3단계",
     step3: "3. 영상 채널 스트림 (RTSP)",
     rtspPlaceholder: "rtsp:// 주소를 입력하세요",
     rtspTag: "RTSP 1CH",

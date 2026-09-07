@@ -35,7 +35,7 @@ const T = {
     noTeamTitle: "아직 팀이 없습니다",
     noTeamSubtitle: "팀은 이 설치본의 프로젝트, 사용자, 메일 설정을 담습니다. 하나 만들어 시작하세요.",
     teamNameLabel: "팀 이름",
-    teamNamePlaceholder: "예: Northgate Education Trust",
+    teamNamePlaceholder: "Northgate Education Trust",
     createTeam: "팀 만들기",
     gallery: {
       vip: "VIP / 관심인물 탐지",

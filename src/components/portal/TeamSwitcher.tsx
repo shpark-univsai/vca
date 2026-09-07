@@ -31,7 +31,7 @@ const T = {
     // New team modal
     modalTitle: "새 팀",
     nameLabel: "팀 이름",
-    namePlaceholder: "예: Northgate Education Trust",
+    namePlaceholder: "Northgate Education Trust",
     cancel: "취소",
     create: "팀 만들기",
   },
