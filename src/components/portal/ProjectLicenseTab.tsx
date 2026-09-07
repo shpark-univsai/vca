@@ -88,7 +88,9 @@ const T = {
     notSet: "Not set",
     valid: "Valid",
     expired: "Expired",
-    licensePeriod: "LICENSE PERIOD",
+    // Not "LICENSE PERIOD": a period is a range, and Project carries licenseExpiresAt and no
+    // start date, so this column has one date to show. It is the day the licence stops.
+    licenseExpiry: "EXPIRES",
     unlimited: "Unlimited",
     yrRemaining: (n: number) => `${n}yr remaining`,
     includedFeatures: "Included Features",
@@ -121,7 +123,7 @@ const T = {
     notSet: "미설정",
     valid: "유효",
     expired: "만료됨",
-    licensePeriod: "라이선스 기간",
+    licenseExpiry: "만료일",
     unlimited: "무제한",
     yrRemaining: (n: number) => `잔여 ${n}년`,
     includedFeatures: "포함된 기능",
@@ -313,7 +315,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           </div>
         </div>
         <div>
-          <p style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.5)", letterSpacing: "0.6px", whiteSpace: "nowrap" }}>{t.licensePeriod}</p>
+          <p style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.5)", letterSpacing: "0.6px", whiteSpace: "nowrap" }}>{t.licenseExpiry}</p>
           <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "8px" }}>
             <p style={{ fontSize: "18px", fontWeight: 800, color: "white", fontFamily: "monospace" }}>
               {isUnlimitedExpiry ? t.unlimited : (project.licenseExpiresAt ?? "—")}
