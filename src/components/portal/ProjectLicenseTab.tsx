@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarClock, Check, Lock, UserRound, Video } from "lucide-react";
+import { CalendarClock, Check, UserRound, Video } from "lucide-react";
 import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -95,7 +95,7 @@ const T = {
     includedFeatures: "Included Features",
     pendingHeading: "Coming soon",
     smartSchoolOnly: "Smart School only",
-    analysisComingSoon: "assignable to cameras · analysis screen coming soon",
+    analysisComingSoon: "assignable to cameras",
     perChannelPerYear: (price: number) => `$${price}/channel/yr`,
     noLimitSet: "No limit set",
     overLimit: (used: number, limit: number) => `Over licensed limit (${used} / ${limit})`,
@@ -127,7 +127,7 @@ const T = {
     includedFeatures: "포함된 기능",
     pendingHeading: "출시 예정",
     smartSchoolOnly: "Smart School 전용",
-    analysisComingSoon: "카메라 지정 가능 · 분석 화면 준비 중",
+    analysisComingSoon: "카메라 지정 가능",
     perChannelPerYear: (price: number) => `채널당 연 $${price}`,
     noLimitSet: "한도 미설정",
     overLimit: (used: number, limit: number) => `라이선스 한도 초과 (${used} / ${limit})`,
@@ -148,7 +148,6 @@ const T = {
 } as const;
 
 // Lucide, at the sizes and weights these were drawn at — see PortalProjectDetailPage's note.
-function LockIcon() { return <Lock size={12} strokeWidth={1.1} />; }
 function CheckIcon() { return <Check size={12} strokeWidth={1.6} />; }
 
 /**
@@ -227,6 +226,35 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
   });
   const includedRows = featureRows.filter(r => r.included);
   const pendingRows = featureRows.filter(r => !r.included);
+
+  const groupHeading = (text: string, first: boolean) => (
+    <p style={{
+      fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px",
+      textTransform: "uppercase", marginTop: first ? 0 : "24px", marginBottom: "10px",
+    }}>{text}</p>
+  );
+
+  const featureGrid = (rows: { key: string; label: string }[], included: boolean) => (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "10px 20px" }}>
+      {rows.map(({ key, label }) => (
+        <div key={key} style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
+          {/* A fixed 12px slot so a tick and a dash leave their labels on the same left edge.
+              A dash, not a padlock: a padlock says "pay to unlock", and what these mostly say is
+              "not built yet" — a different fact, and one an upgrade cannot buy. None of the plan
+              pages worth copying uses a padlock either; Slite prints a dash, Lyssna a hollow dot,
+              Front an "Add-on" chip. */}
+          <span style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            width: "12px", marginTop: "3px", flexShrink: 0, lineHeight: 1,
+            color: included ? "var(--gray-900)" : "var(--gray-300)",
+          }}>
+            {included ? <CheckIcon /> : "–"}
+          </span>
+          <span style={{ fontSize: "12px", lineHeight: 1.5, fontWeight: included ? 700 : 400, color: included ? "var(--gray-900)" : "var(--gray-500)" }}>{label}</span>
+        </div>
+      ))}
+    </div>
+  );
 
   /** Icon + label on the left, value on the right — the shape the reference's rows use. */
   const detailRow = (icon: React.ReactNode, label: string, value: React.ReactNode) => (
@@ -350,6 +378,23 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
             : <span style={{ color: "var(--gray-300)" }}>—</span>,
         )}
 
+        {/* Features as a section of the same card, not a card of their own.
+            One contract is one card, and a second card holding ten short lines beside it was the
+            odd object on the page. No plan page worth copying wraps a single plan's feature list
+            in its own box either — Framer just lists them inside the plan card, and the comparison
+            tables (Slite, Lyssna, Front, Homerun) are borderless rows under small-caps section
+            headings, which is the shape used here. */}
+        <div style={{ padding: "18px 20px", borderTop: BORDER }}>
+          {groupHeading(t.includedFeatures, true)}
+          {featureGrid(includedRows, true)}
+          {pendingRows.length > 0 && (
+            <>
+              {groupHeading(t.pendingHeading, false)}
+              {featureGrid(pendingRows, false)}
+            </>
+          )}
+        </div>
+
         {/* The money, below the rule — it is fixed for the length of the contract, so it is the
             thing on this card nobody opens the page to check. */}
         <div style={{ display: "flex", gap: "20px", padding: "14px 20px", borderTop: BORDER, backgroundColor: "var(--gray-50)", flexWrap: "wrap" }}>
@@ -365,55 +410,6 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           ) : null}
           <span style={{ flex: 1 }} />
           <p style={{ fontSize: "11px", color: "var(--gray-500)", maxWidth: "280px", lineHeight: 1.6, alignSelf: "center" }}>{t.contractNote}</p>
-        </div>
-      </div>
-
-      <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>{t.includedFeatures}</p>
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px 20px", marginBottom: "20px" }}>
-        <div>
-          {/* Two columns. Seven single-line rows made a tall card with an empty right half — and
-              unlike the layout above, this one is not copied from anywhere: none of the billing
-              pages worth referencing lists features at all (Rows gives a sentence, GitHub links
-              out to a comparison), so the shape is ours to choose. */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "10px 20px" }}>
-            {/* Top-aligned, not centred.
-                Some labels carry a reason and wrap to two lines ("번호판 인식 — 카메라 지정 가능 ·
-                분석 화면 준비 중"). Centred, a two-line item pushed its first line ABOVE the
-                single-line item beside it, so nothing in the row started on the same line. The
-                icon takes a 3px nudge to sit on the middle of that first line — (18px line box −
-                12px glyph) / 2 — rather than on the top of it. */}
-            {includedRows.map(({ key, label }) => (
-              <div key={key} style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
-                <span style={{ display: "flex", marginTop: "3px", flexShrink: 0, color: "var(--gray-900)" }}><CheckIcon /></span>
-                <span style={{ fontSize: "12px", lineHeight: 1.5, fontWeight: 700, color: "var(--gray-900)" }}>{label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* The unavailable ones, under their own heading rather than mixed in.
-              Sorting them below was not enough: a padlock in the same list still reads as part of
-              the answer to "what does this project have", and the answer is the block above. The
-              heading also lets each item stop repeating "coming soon" after its own name. */}
-          {pendingRows.length > 0 && (
-            <>
-              <p style={{
-                fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px",
-                // 24, on the spacing scale — 18 was neither on it nor enough of a break for a
-                // heading that has to separate two groups inside one card.
-                textTransform: "uppercase", marginTop: "24px", marginBottom: "10px",
-              }}>
-                {t.pendingHeading}
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "10px 20px" }}>
-                {pendingRows.map(({ key, label }) => (
-                  <div key={key} style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
-                    <span style={{ display: "flex", marginTop: "3px", flexShrink: 0, color: "var(--gray-300)" }}><LockIcon /></span>
-                    <span style={{ fontSize: "12px", lineHeight: 1.5, fontWeight: 600, color: "var(--gray-400)" }}>{label}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
         </div>
       </div>
     </div>
