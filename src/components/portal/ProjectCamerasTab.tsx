@@ -43,10 +43,6 @@ const T = {
     sourceImage: "Image",
     colAddress: "Address / Resolution",
     uploadsSuffix: (n: number) => `${n} uploaded`,
-    metricUploads: "Upload analysis",
-    analysedSuffix: (total: number) => `/ ${total} analysed`,
-    pendingUploadsLabel: (n: number) => `${n} waiting`,
-    noUploads: "No uploaded footage",
     statusPending: "Queued",
     statusAnalyzing: "Analysing",
     statusDone: "Analysed",
@@ -185,10 +181,6 @@ const T = {
     sourceImage: "이미지",
     colAddress: "주소 / 해상도",
     uploadsSuffix: (n: number) => `업로드 ${n}건`,
-    metricUploads: "업로드 분석",
-    analysedSuffix: (total: number) => `/ ${total} 분석 완료`,
-    pendingUploadsLabel: (n: number) => `대기 ${n}`,
-    noUploads: "업로드한 영상 없음",
     statusPending: "대기",
     statusAnalyzing: "분석 중",
     statusDone: "분석 완료",
@@ -852,8 +844,6 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
   const offlineCount = projectCameras.length - onlineCount;
   // Anything not yet analysed — queued or mid-run. Both are "not done", and an administrator does
   // the same thing about either: wait, or find out why.
-  const pendingUploads = projectUploads.filter(u => u.status === "pending" || u.status === "analyzing").length;
-  const analysedUploads = projectUploads.filter(u => u.status === "done").length;
 
   const limit = project ? projectChannelLimit(project) : undefined;
   const overLimit = !!limit && projectCameras.length > limit;
@@ -1024,10 +1014,17 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
         </div>
       </div>
 
-      {/* Metrics — the same MetricCard the Overview uses, three of them in a row, rather than the
-          one bordered box with internal rules this used to be. Same job one screen over should not
-          be a different component. */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: CARD_GAP, marginBottom: "16px" }}>
+      {/* Metrics — the same MetricCard the Overview uses, rather than the one bordered box with
+          internal rules this used to be. Same job one screen over should not be a different
+          component.
+
+          Two, not three. The third counted uploaded files — how many analysed, how many queued —
+          and neither figure earned a third of this header. The queue is a dead end today: nothing
+          in the app moves an upload past "pending", because analysis is the core's work and has no
+          endpoint yet, so the figure was a permanent 0 (or, after an upload, a number that never
+          cleared). The totals are on the video / image tabs below anyway, with each file's own
+          state in its row. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: CARD_GAP, marginBottom: "16px" }}>
         {/* Dense form: the label and the figure share a line, the bar is the only thing under it,
             and the online/offline split sits beside the number instead of in a bordered footer.
             These three cards are a header for the table below — they were spending ~145px of
@@ -1075,44 +1072,6 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           </div>
         </MetricCard>
 
-        {/*
-          Counted apart from the channel figure beside it: a file consumes no licensed channel, so
-          it must never join the number measured against the licence.
-
-          It used to lead with the queue — the number that asks for something — and print the totals
-          as a sentence underneath. But the queue is empty nearly always, so a third of this header
-          was a grey 0 and a line of text next to two cards carrying bars. Now it reads the way they
-          do: how much of what was uploaded has been analysed, with a bar for it, and the queue
-          beside the figure in amber the same way the card to its left puts offline beside online.
-          Nothing an administrator can act on got quieter — a non-zero queue is the only amber on
-          this row.
-        */}
-        <MetricCard
-          label={t.metricUploads}
-          dense
-          value={
-            <span style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-              <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{analysedUploads}</span>
-                <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.analysedSuffix(projectUploads.length)}</span>
-              </span>
-              {pendingUploads > 0 && <SubStat color="var(--warning-500)" label={t.pendingUploadsLabel(pendingUploads)} />}
-            </span>
-          }
-        >
-          <div style={{ height: "14px", display: "flex", alignItems: "center" }}>
-            {projectUploads.length > 0 ? (
-              <div style={{ width: "100%", height: "6px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
-                <div style={{ height: "100%", width: `${(analysedUploads / projectUploads.length) * 100}%`, backgroundColor: "var(--success-400)" }} />
-                <div style={{ height: "100%", width: `${(pendingUploads / projectUploads.length) * 100}%`, backgroundColor: "var(--warning-500)" }} />
-              </div>
-            ) : (
-              // An empty track would read as a bar stuck at zero. Nothing was uploaded, which is a
-              // different fact, and the same slot says so in the licence card when there is no limit.
-              <p style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.noUploads}</p>
-            )}
-          </div>
-        </MetricCard>
       </div>
 
       {/* Top-level cut of the list, with counts on the tabs. An underlined tab row rather than a
