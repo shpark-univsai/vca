@@ -16,19 +16,17 @@ import { usePortalLanguage } from "@/lib/i18n";
  */
 export const BORDER = "1px solid var(--gray-300)";
 /**
- * Cards carry no outline.
+ * A card's edge, at the same weight as the rules inside it.
  *
- * They briefly did, when the content area turned white and "white card on grey page" stopped being
- * separation. The outline came back for a day and read as a grid of boxes: four metric cards, three
- * panels and every modal each drawing a full-width rectangle around content that also has dividers
- * inside it, a bordered table header and bordered controls. What separates a card now is its own
- * padding and the space around it, and the hairlines are spent where they carry something — the
- * rules INSIDE a card, which is why BORDER stayed a step darker than this ever was.
+ * The content area is white, so "white card on a grey page" is no longer separation and the outline
+ * is what a card's edge is made of. gray-300 rather than gray-200: on white, a gray-200 hairline
+ * running the full width of a card is faint enough that four cards in a row read as text floating
+ * in space. One value shared with BORDER, so a card's edge and its dividers are the same line.
  *
- * Kept as a named constant rather than deleted from the call sites, so one edit brings the edge
- * back everywhere if it turns out to be needed. It has been needed twice.
+ * The exception is the "things to do" strip on the Overview, which has a gray-50 fill instead — a
+ * ground that differs from the page needs no line around it as well.
  */
-export const CARD_BORDER = "none";
+export const CARD_BORDER = BORDER;
 // Every control that can sit on a toolbar row — search input, FilterSelect, pill buttons, the
 // table/grid segmented toggle — is this tall, so a row of them lines up regardless of padding
 // or font size. Set the height, not the vertical padding.
