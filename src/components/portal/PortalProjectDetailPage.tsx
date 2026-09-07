@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowUp, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
@@ -27,17 +27,9 @@ const T = {
     connectedSuffix: (n: number) => `/ ${n} connected`,
     online: "Online",
     offline: "Offline",
-    onlineCount: (n: number) => `Online ${n}`,
-    offlineCount: (n: number) => `Offline ${n}`,
     licenseSubscription: "License Subscription",
     channelsUsedSuffix: (limit: number | string) => `/ ${limit} channels used`,
-    planNotSet: "Plan not set",
     manage: "Manage →",
-    unlimited: "Unlimited",
-    expired: "Expired",
-    notSet: "Not set",
-    // Same phrasing the License page uses, so the two screens agree about the same licence.
-    yrRemaining: (n: number) => `${n}yr left`,
     vipTargetDb: "VIP / Target DB",
     todayBadge: (n: number) => `${n} today`,
     highPriorityLabel: (n: number) => `High priority: ${n}`,
@@ -94,16 +86,9 @@ const T = {
     connectedSuffix: (n: number) => `/ ${n}대 연결됨`,
     online: "온라인",
     offline: "오프라인",
-    onlineCount: (n: number) => `온라인 ${n}`,
-    offlineCount: (n: number) => `오프라인 ${n}`,
     licenseSubscription: "라이선스 구독",
     channelsUsedSuffix: (limit: number | string) => `/ ${limit}채널 사용`,
-    planNotSet: "요금제 미설정",
     manage: "관리 →",
-    unlimited: "무제한",
-    expired: "만료됨",
-    notSet: "미설정",
-    yrRemaining: (n: number) => `${n}년 남음`,
     vipTargetDb: "VIP / 관심대상 DB",
     todayBadge: (n: number) => `오늘 ${n}건`,
     highPriorityLabel: (n: number) => `우선순위 높음: ${n}`,
@@ -240,16 +225,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     : null;
   const licenseExpired = daysUntilExpiry !== null && daysUntilExpiry < 0;
   const licenseExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry >= 0 && daysUntilExpiry <= 30;
-  /**
-   * Days while days matter, years after that.
-   *
-   * The badge printed daysUntilExpiry raw, so a three-year licence read "D-1004" — a number nobody
-   * can hold, and one the License page states as "3yr left" for the same licence. Inside the
-   * expiring-soon window a day count is the useful unit; past it, a year count is.
-   */
-  const yearsUntilExpiry = daysUntilExpiry !== null && daysUntilExpiry > 30
-    ? Math.max(1, Math.round(daysUntilExpiry / 365))
-    : null;
   const overChannelLimit = !!channelLimit && projectCameras.length > channelLimit;
   const projectAccessRequests = accessRequests.filter(r => r.projectId === projectId);
   // Whether this Overview says anything about access requests at all. Off for on-premise (see
@@ -448,14 +423,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
                 </div>
               </div>
-              {/* No rule above this line. The two cards to the right lost theirs when their detail
-                  moved up beside the figure, which left these two as the only cards ruled inside —
-                  and the rule was separating a figure from the words that describe it. The gap
-                  does that on its own. */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "8px", marginTop: "4px" }}>
-                <SubStat color="var(--success-400)" label={t.onlineCount(onlineCount)} />
-                <SubStat color="var(--danger-400)" label={t.offlineCount(offlineCount)} />
-              </div>
+              {/* The online/offline legend that used to sit under a rule here is gone: "51 / 59
+                  connected" already gives both numbers, the bar's red segment shows the share, and
+                  a non-zero offline count is a line in the "things to do" strip above. */}
             </MetricCard>
 
             <MetricCard label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
@@ -475,32 +445,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--info-500)" }} />
                 </div>
               </div>
-              {/* No rule above this line. The two cards to the right lost theirs when their detail
-                  moved up beside the figure, which left these two as the only cards ruled inside —
-                  and the rule was separating a figure from the words that describe it. The gap
-                  does that on its own. */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "8px", marginTop: "4px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{project.licensePlan ?? t.planNotSet}</p>
-                  <button onClick={() => onTabChange("license")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
-                    {t.manage}
-                  </button>
-                </div>
-                <span style={{
-                  fontSize: "10px", fontWeight: 700, padding: "2px 8px", borderRadius: "4px",
-                  // Grey until it is actually news. A licence three years out was wearing the same
-                  // blue chip as everything else on the row; red and amber now only appear when
-                  // the date has passed or is close enough to act on.
-                  backgroundColor: licenseExpired ? "var(--danger-100)" : licenseExpiringSoon ? "var(--warning-200)" : "var(--gray-100)",
-                  color: licenseExpired ? "var(--danger-500)" : licenseExpiringSoon ? "var(--warning-500)" : "var(--gray-600)",
-                }}>
-                  {isUnlimitedExpiry ? t.unlimited
-                    : licenseExpired ? t.expired
-                    : yearsUntilExpiry !== null ? t.yrRemaining(yearsUntilExpiry)
-                    : daysUntilExpiry !== null ? `D-${daysUntilExpiry}`
-                    : t.notSet}
-                </span>
-              </div>
+              {/* Plan name, "Manage" and the expiry chip are gone from here. This card answers one
+                  question — how much of the licence is in use — and the rest of the contract is a
+                  whole tab away, one click down the rail. An expiry that is actually close raises a
+                  line in the "things to do" strip instead of wearing a chip on a card all year. */}
             </MetricCard>
 
             <MetricCard label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
