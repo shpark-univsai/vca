@@ -125,7 +125,16 @@ export interface Project {
 // Matches existing app-wide terminology ("Re-ID Analysis" tab in DataPage, "License plate" search
 // in RedmapPage/DataPage) rather than abbreviations like "LPR" that don't appear anywhere else in
 // this codebase's UI copy.
-export type CameraAiFeature = "Re-ID Analysis" | "License Plate Recognition" | "Intrusion Detection";
+/**
+ * The AI engines a camera can be assigned.
+ *
+ * Intrusion Detection was a third member until 2026-09-04 and is gone. It was a label with
+ * nothing behind it: the form offered it, CameraStreamModal gave it a colour, and that was the
+ * whole feature — EventType is "VIP" | "Tracking", so no intrusion event exists in the system, no
+ * screen shows one, and no code read the tag. A checkbox that changes nothing is worse than a
+ * missing one, because somebody ticks it and believes the site is watched for intruders.
+ */
+export type CameraAiFeature = "Re-ID Analysis" | "License Plate Recognition";
 
 export interface Camera {
   id: string;

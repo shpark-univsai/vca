@@ -148,7 +148,6 @@ const T = {
     aiFeatureLabels: {
       "Re-ID Analysis": "Re-ID Analysis",
       "License Plate Recognition": "License Plate Recognition",
-      "Intrusion Detection": "Intrusion Detection",
     } as Record<CameraAiFeature, string>,
   },
   ko: {
@@ -289,7 +288,6 @@ const T = {
     aiFeatureLabels: {
       "Re-ID Analysis": "Re-ID 분석",
       "License Plate Recognition": "번호판 인식",
-      "Intrusion Detection": "침입 감지",
     } as Record<CameraAiFeature, string>,
   },
 } as const;
@@ -396,7 +394,7 @@ type SourceRow =
   | { kind: "camera"; id: string; name: string; camera: Camera }
   | { kind: "video" | "image"; id: string; name: string; upload: UploadedMedia };
 
-const AI_FEATURES: CameraAiFeature[] = ["Re-ID Analysis", "License Plate Recognition", "Intrusion Detection"];
+const AI_FEATURES: CameraAiFeature[] = ["Re-ID Analysis", "License Plate Recognition"];
 const MAKERS = ["Hanwha", "Hikvision", "Dahua"];
 const RESOLUTIONS = ["FHD (1920×1080)", "4K (3840×2160)"];
 const INPUT_KINDS = ["CCTV", "AI Camera"] as const;

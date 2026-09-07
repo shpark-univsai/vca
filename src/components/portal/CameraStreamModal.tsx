@@ -9,7 +9,6 @@ import { usePortalLanguage } from "@/lib/i18n";
 const AI_OVERLAY_COLORS: Record<string, string> = {
   "Re-ID Analysis": "var(--success-400)",
   "License Plate Recognition": "var(--primary-400)",
-  "Intrusion Detection": "var(--warning-500)",
 };
 
 const T = {
