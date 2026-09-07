@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useVcaStore, type Person, type PersonGroup } from "@/lib/vcaStore";
 import { getFacePhoto } from "@/lib/mockData";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SelectedCheckIcon, SortableHeader, Tooltip, sortRows, useTableSort } from "./PortalShared";
+import { ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, Tooltip, sortRows, useTableSort } from "./PortalShared";
 
 type VipSortKey = "name" | "role" | "priority" | "registered";
 
@@ -104,8 +104,6 @@ interface VipDict {
   groupRemovedWithMembersTitle: (members: number) => string;
   close: string;
   detailNoNote: string;
-  groupChangedTitle: string;
-  savedLabel: string;
 }
 
 const T: Record<"en" | "ko", VipDict> = {
@@ -185,8 +183,6 @@ const T: Record<"en" | "ko", VipDict> = {
     groupRemovedWithMembersTitle: (members: number) => `Group and ${members} member(s) removed`,
     close: "Close",
     detailNoNote: "No note",
-    groupChangedTitle: "Group changed",
-    savedLabel: "Saved",
     bulkEmptyDesc: "Expected CSV rows as \"name,description\".",
   },
   ko: {
@@ -265,8 +261,6 @@ const T: Record<"en" | "ko", VipDict> = {
     groupRemovedWithMembersTitle: (members: number) => `그룹과 ${members}명을 삭제했습니다`,
     close: "닫기",
     detailNoNote: "메모 없음",
-    groupChangedTitle: "그룹을 변경했습니다",
-    savedLabel: "저장됨",
     bulkEmptyDesc: "CSV 행은 \"이름,설명\" 형식이어야 합니다.",
   },
 };
@@ -276,6 +270,8 @@ interface RegisterValues {
   roleLabel: string;
   priorityLabel: NonNullable<Person["priorityLabel"]>;
   description?: string;
+  /** Undefined = an individual, i.e. in no group. */
+  groupId?: string;
   photoUrl?: string;
 }
 
@@ -288,10 +284,11 @@ interface RegisterValues {
  * and until now only the bulk CSV import could write it — a note could exist on a row that nobody
  * was able to type.
  */
-function RegisterVipModal({ t, person, onClose, onSubmit }: {
+function RegisterVipModal({ t, person, groups, onClose, onSubmit }: {
   t: VipDict;
   /** Absent = registering. Present = editing that person. */
   person?: Person;
+  groups: PersonGroup[];
   onClose: () => void;
   onSubmit: (values: RegisterValues) => void;
 }) {
@@ -301,6 +298,7 @@ function RegisterVipModal({ t, person, onClose, onSubmit }: {
   const [roleLabel, setRoleLabel] = useState(person?.roleLabel ?? ROLE_LABELS[0]);
   const [priorityLabel, setPriorityLabel] = useState<NonNullable<Person["priorityLabel"]>>(person?.priorityLabel ?? "normal");
   const [description, setDescription] = useState(person?.description ?? "");
+  const [groupId, setGroupId] = useState(person?.groupId ?? "");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFileName, setPhotoFileName] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -344,6 +342,17 @@ function RegisterVipModal({ t, person, onClose, onSubmit }: {
               />
             </div>
           </div>
+          {/* Group is set here, with everything else. It used to be a select on the detail sheet
+              instead — the one editable thing on a sheet whose other four values were read-only,
+              next to an Edit item in the menu, which read as "the group is all you may change". */}
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.colGroup}</label>
+            <FilterSelect
+              value={groupId}
+              onChange={setGroupId}
+              options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
+            />
+          </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.noteLabel}</label>
             <TextField value={description} onChange={setDescription} placeholder={t.notePlaceholder} />
@@ -380,6 +389,7 @@ function RegisterVipModal({ t, person, onClose, onSubmit }: {
             onClick={() => valid && onSubmit({
               name: name.trim(), roleLabel, priorityLabel,
               description: description.trim() || undefined,
+              groupId: groupId || undefined,
               photoUrl: photoPreview ?? undefined,
             })}
             disabled={!valid}
@@ -549,16 +559,6 @@ function registeredLong(value: string): string {
   return `${day} ${at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`;
 }
 
-/** One footprint for Save and Saved, so the row does not move when the state changes. */
-const SAVE_PILL: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", justifyContent: "center",
-  // CONTROL_HEIGHT, like the select it stands next to. It was 30px, so the two sat side by side at
-  // different heights — and together they were a couple of pixels wider than the sheet, which is
-  // what pushed the button onto its own line.
-  minWidth: "72px", height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "999px",
-  fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0,
-};
-
 function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
   t: VipDict;
   person: Person;
@@ -568,29 +568,7 @@ function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
   onRemove: () => void;
 }) {
   useEscapeKey(onClose);
-  const setPersonGroup = useVcaStore(s => s.setPersonGroup);
-  const { showToast } = useToast();
-  /**
-   * The picked group, held until it is saved.
-   *
-   * The table's own group select writes straight through, which is right there — it is the row's
-   * control, and every other select in a Portal table behaves that way. Here it is not: this field
-   * sits in a column of read-only values (role, registered, note), so a change that took effect the
-   * instant the list closed would be the one thing on the sheet that quietly did something. The
-   * Save button appears only once the pick differs from what is stored, so it is also the sheet
-   * saying there is something unsaved.
-   */
-  const [draftGroupId, setDraftGroupId] = useState(person.groupId ?? "");
-  const dirty = draftGroupId !== (person.groupId ?? "");
-  /**
-   * Saved a moment ago. The button used to just vanish once the pick matched what was stored, which
-   * is what "it saved" looks like from the code's side and looks like nothing from the reader's —
-   * the control they clicked disappeared and the value beside it had not moved. A tick in the same
-   * spot answers the question the click asked, then gets out of the way.
-   */
-  const [justSaved, setJustSaved] = useState(false);
-  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (savedTimer.current) clearTimeout(savedTimer.current); }, []);
+  const group = groups.find(g => g.id === person.groupId);
 
   /**
    * The gap between rows was already even (8px), but the Group row holds a 30px control and the
@@ -643,49 +621,9 @@ function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
           ]} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: BORDER, paddingTop: "12px" }}>
-            {row(t.colGroup, (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", flexWrap: "nowrap" }}>
-                {/* Fixed box, not fitContent. Sized to its own label, the control changed width
-                    every time the group did — "Individual" and "City Hall delegation" are not the
-                    same number of characters — so the row twitched and the Save button beside it
-                    moved with it. A field keeps its shape while its value changes. */}
-                <span style={{ width: "148px", flexShrink: 0 }}>
-                  <FilterSelect
-                    value={draftGroupId}
-                    onChange={setDraftGroupId}
-                    options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
-                  />
-                </span>
-                {/* The pill keeps its footprint through both states — Save, then Saved with a
-                    tick — so confirming a change does not shove the row sideways, which is the
-                    same reason the select beside it stopped sizing to its label. The saved state
-                    is a tinted pill rather than a second filled colour: it reports, it does not
-                    ask. */}
-                {(dirty || justSaved) && (
-                  dirty ? (
-                    <button
-                      onClick={() => {
-                        setPersonGroup(person.id, draftGroupId || undefined);
-                        showToast({
-                          variant: "success", title: t.groupChangedTitle,
-                          desc: `${person.name} — ${groups.find(g => g.id === draftGroupId)?.name ?? t.groupNone}`,
-                        });
-                        setJustSaved(true);
-                        if (savedTimer.current) clearTimeout(savedTimer.current);
-                        savedTimer.current = setTimeout(() => setJustSaved(false), 2200);
-                      }}
-                      style={{ ...SAVE_PILL, border: "none", backgroundColor: "var(--primary-400)", color: "white", cursor: "pointer" }}>
-                      {t.groupSave}
-                    </button>
-                  ) : (
-                    <span style={{ ...SAVE_PILL, backgroundColor: "var(--success-100)", color: "var(--success-400)", gap: "4px" }}>
-                      <SelectedCheckIcon size={13} />
-                      {t.savedLabel}
-                    </span>
-                  )
-                )}
-              </span>
-            ))}
+            {row(t.colGroup, group
+              ? group.name
+              : <span style={{ color: "var(--gray-400)" }}>{t.groupNone}</span>)}
             {/* Group first, then what qualifies the person, then the note, then when they were
                 enrolled — last because it is the one value nobody comes here to read and the only
                 one that never changes. The time is shown as well: this is the detail view, and on
@@ -764,6 +702,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
     .filter(g => g.projectId === projectId)
     .filter(g => !q || g.name.toLowerCase().includes(q));
   const groupById = new Map(personGroups.map(g => [g.id, g]));
+  // Unfiltered by the search box: a picker offers every group, not the ones whose names happen to
+  // match what is typed in the list's search.
+  const projectGroupsAll = personGroups.filter(g => g.projectId === projectId);
   // Derived, never stored — a stored member count is a number that goes wrong the first time
   // somebody removes a person. See PersonGroup in the store.
   const memberCountOf = (groupId: string) => allProjectPersons.filter(p => p.groupId === groupId).length;
@@ -793,6 +734,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       registeredAt: new Date().toISOString(),
       roleLabel: values.roleLabel, priorityLabel: values.priorityLabel,
       description: values.description,
+      groupId: values.groupId,
       projectId,
     });
     setShowRegister(false);
@@ -805,6 +747,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       roleLabel: values.roleLabel,
       priorityLabel: values.priorityLabel,
       description: values.description,
+      groupId: values.groupId,
       // Only when a new file was picked. Without this, opening the editor and saving without
       // touching the photo would replace the enrolled face with a generated placeholder.
       ...(values.photoUrl ? { photoUrl: values.photoUrl } : null),
@@ -1148,9 +1091,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      {showRegister && <RegisterVipModal t={t} onClose={() => setShowRegister(false)} onSubmit={register} />}
+      {showRegister && <RegisterVipModal t={t} groups={projectGroupsAll} onClose={() => setShowRegister(false)} onSubmit={register} />}
       {editingPerson && (
-        <RegisterVipModal t={t} person={editingPerson} onClose={() => setEditingPerson(null)} onSubmit={saveEdit} />
+        <RegisterVipModal t={t} person={editingPerson} groups={projectGroupsAll} onClose={() => setEditingPerson(null)} onSubmit={saveEdit} />
       )}
       {confirmingRemove && (
         <RemoveVipConfirmModal t={t} person={confirmingRemove} onClose={() => setConfirmingRemove(null)} onConfirm={confirmRemove} />
