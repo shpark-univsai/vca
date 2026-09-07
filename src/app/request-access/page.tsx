@@ -5,7 +5,62 @@ import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import { PersonFieldIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { isMailDeliverable, resolveMailConfig, useVcaStore } from "@/lib/vcaStore";
+import { useLanguage } from "@/lib/i18n";
 
+
+// See the per-file pattern note in lib/i18n.ts.
+const T = {
+  en: {
+    errName: "Enter your name.",
+    errEmail: "Enter a valid email address.",
+    errAlreadyHasAccess: "This email already has access to this project — log in instead.",
+    errAlreadyRequested: "A request from this email is already waiting for approval.",
+    errDomain: (domain: string) => `Use your @${domain} address — invitations can only be sent to that domain.`,
+    sentTitle: "Request sent",
+    sentReview: "Your administrator will review it.",
+    sentInvite: "If it is approved you will get an invitation at",
+    backToLogin: "Back to log in",
+    title: "Request access",
+    subtitle: "You do not have permission for this project yet",
+    project: "Project",
+    noProject: "Not specified — open the link you were given again",
+    name: "Name",
+    email: "Email",
+    inviteHereDomain: (domain: string) => `Your invitation will be sent here — use your @${domain} address.`,
+    inviteHere: "Your invitation will be sent here.",
+    reason: "Reason",
+    optional: "(optional)",
+    reasonPlaceholder: "What do you need access for?",
+    send: "Send request",
+    haveAccess: "Already have access?",
+    logIn: "Log in",
+  },
+  ko: {
+    errName: "이름을 입력해주세요.",
+    errEmail: "올바른 이메일 주소를 입력해주세요.",
+    errAlreadyHasAccess: "이 이메일은 이미 이 프로젝트에 접근할 수 있습니다. 로그인해주세요.",
+    errAlreadyRequested: "이 이메일로 접수된 요청이 이미 승인을 기다리고 있습니다.",
+    errDomain: (domain: string) => `@${domain} 주소를 사용해주세요. 초대는 이 도메인으로만 보낼 수 있습니다.`,
+    sentTitle: "요청을 보냈습니다",
+    sentReview: "관리자가 검토합니다.",
+    sentInvite: "승인되면 다음 주소로 초대가 발송됩니다:",
+    backToLogin: "로그인으로 돌아가기",
+    title: "접근 요청",
+    subtitle: "이 프로젝트에 대한 권한이 아직 없습니다",
+    project: "프로젝트",
+    noProject: "지정되지 않았습니다 — 받으신 링크를 다시 열어주세요",
+    name: "이름",
+    email: "이메일",
+    inviteHereDomain: (domain: string) => `이 주소로 초대가 발송됩니다. @${domain} 주소를 사용해주세요.`,
+    inviteHere: "이 주소로 초대가 발송됩니다.",
+    reason: "사유",
+    optional: "(선택)",
+    reasonPlaceholder: "어떤 용도로 접근이 필요하신가요?",
+    send: "요청 보내기",
+    haveAccess: "이미 접근 권한이 있으신가요?",
+    logIn: "로그인",
+  },
+} as const;
 const FIELD_BORDER = "1px solid var(--gray-300)";
 
 /**
@@ -33,6 +88,8 @@ function isEmailFormatValid(v: string) {
 
 function RequestAccessForm() {
   const router = useRouter();
+  const [lang] = useLanguage();
+  const t = T[lang];
   // Which project was being opened when the guard turned this person away. Read-only here — they
   // are asking for the thing the link pointed at, not shopping for a project, and letting them
   // choose would mean the master has to second-guess the answer on every approval.
@@ -67,12 +124,12 @@ function RequestAccessForm() {
   const { mailDomain } = resolveMailConfig(projectId, projects, teams);
   const undeliverable = emailValid && !isMailDeliverable(email, mailDomain);
 
-  const nameError = touched.name && !nameValid ? "Enter your name." : "";
+  const nameError = touched.name && !nameValid ? t.errName : "";
   const emailError = !touched.email ? ""
-    : !emailValid ? "Enter a valid email address."
-    : alreadyHasAccess ? "This email already has access to this project — log in instead."
-    : alreadyRequested ? "A request from this email is already waiting for approval."
-    : undeliverable ? `Use your @${mailDomain} address — invitations can only be sent to that domain.`
+    : !emailValid ? t.errEmail
+    : alreadyHasAccess ? t.errAlreadyHasAccess
+    : alreadyRequested ? t.errAlreadyRequested
+    : undeliverable && mailDomain ? t.errDomain(mailDomain)
     : "";
 
   const canSubmit = nameValid && emailValid && !alreadyHasAccess && !alreadyRequested && !undeliverable && !!projectId;
@@ -105,10 +162,10 @@ function RequestAccessForm() {
                arrives on — otherwise the requester has no idea whether to keep the tab open. */
             <>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
-                <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>Request sent</h1>
+                <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>{t.sentTitle}</h1>
                 <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.6 }}>
-                  Your administrator will review it.<br />
-                  If it is approved you will get an invitation at <strong style={{ color: "var(--gray-800)" }}>{email.trim()}</strong>.
+                  {t.sentReview}<br />
+                  {t.sentInvite} <strong style={{ color: "var(--gray-800)" }}>{email.trim()}</strong>
                 </p>
               </div>
               <button
@@ -119,15 +176,15 @@ function RequestAccessForm() {
                   fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px", cursor: "pointer",
                 }}
               >
-                Back to log in
+                {t.backToLogin}
               </button>
             </>
           ) : (
             <>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
-                <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>Request access</h1>
+                <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>{t.title}</h1>
                 <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center" }}>
-                  You do not have permission for this project yet
+                  {t.subtitle}
                 </p>
               </div>
 
@@ -141,16 +198,16 @@ function RequestAccessForm() {
                   padding: "12px 14px", borderRadius: "8px",
                   backgroundColor: project ? "var(--gray-50)" : "var(--warning-100)",
                 }}>
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>Project</span>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{t.project}</span>
                   <span style={{ fontSize: "13px", fontWeight: 700, color: project ? "var(--gray-900)" : "var(--warning-500)", letterSpacing: "-0.26px", textAlign: "right" }}>
-                    {project ? project.name : "Not specified — open the link you were given again"}
+                    {project ? project.name : t.noProject}
                   </span>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
                   {/* Name */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
-                    <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>Name</label>
+                    <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.name}</label>
                     <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px",
                       border: nameError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: "8px" }}>
                       <PersonFieldIcon />
@@ -168,7 +225,7 @@ function RequestAccessForm() {
                   {/* Email — this is also where the invitation will be sent, so it is worth saying
                       so under the field rather than letting someone use a throwaway address. */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
-                    <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>Email</label>
+                    <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.email}</label>
                     <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px",
                       border: emailError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: "8px" }}>
                       <PersonFieldIcon />
@@ -185,9 +242,7 @@ function RequestAccessForm() {
                       : <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.24px" }}>
                           {/* Says the constraint before it is broken. Finding out only on submit
                               means retyping an address you had no way to know was wrong. */}
-                          {mailDomain
-                            ? `Your invitation will be sent here — use your @${mailDomain} address.`
-                            : "Your invitation will be sent here."}
+                          {mailDomain ? t.inviteHereDomain(mailDomain) : t.inviteHere}
                         </p>}
                   </div>
 
@@ -195,13 +250,13 @@ function RequestAccessForm() {
                       are and which project, and a required essay field only delays the request. */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                     <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>
-                      Reason <span style={{ fontWeight: 600, color: "var(--gray-400)" }}>(optional)</span>
+                      {t.reason} <span style={{ fontWeight: 600, color: "var(--gray-400)" }}>{t.optional}</span>
                     </label>
                     <textarea
                       value={reason}
                       onChange={e => setReason(e.target.value)}
                       rows={3}
-                      placeholder="What do you need access for?"
+                      placeholder={t.reasonPlaceholder}
                       style={{
                         width: "100%", boxSizing: "border-box", padding: "12px", border: FIELD_BORDER, borderRadius: "8px",
                         outline: "none", resize: "none", fontSize: "14px", color: "var(--gray-900)",
@@ -224,15 +279,15 @@ function RequestAccessForm() {
                       transition: "background-color 0.15s, color 0.15s",
                     }}
                   >
-                    Send request
+                    {t.send}
                   </button>
                   <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                    Already have access?{" "}
+                    {t.haveAccess}{" "}
                     <button
                       onClick={() => router.push("/login")}
                       style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
                     >
-                      Log in
+                      {t.logIn}
                     </button>
                   </p>
                 </div>

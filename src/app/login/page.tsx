@@ -7,6 +7,50 @@ import { getAuthConfig } from "@/lib/authConfig";
 import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { LOGIN_NOTICES, parseLoginNotice, type LoginFailure } from "@/lib/authErrors";
 import { canEnterPortal, useVcaStore } from "@/lib/vcaStore";
+import { useLanguage } from "@/lib/i18n";
+
+// See the per-file pattern note in lib/i18n.ts. The failure notices are not in here — they live in
+// lib/authErrors.ts beside the contract they belong to.
+const T = {
+  en: {
+    title: "Log in",
+    welcome: "Welcome to VCA",
+    activateWithCode: "Activate with a registration code",
+    securityTeam: "Your security operations team",
+    identifierWithId: "Employee number or email",
+    identifierEmailOnly: "Email",
+    password: "Password",
+    rememberId: "Remember my employee number",
+    rememberEmail: "Remember my email",
+    forgot: "Forgot password?",
+    haveCode: "Have a registration code?",
+    activateAccount: "Activate your account",
+    useProjectLink: "Open the project link you were sent to request access.",
+    askForInvite: "Ask your administrator to send you an invitation.",
+    restrictedNetwork: "This system runs on a restricted internal network.",
+    contactNamed: (who: string) => <>For an account or access, contact <strong style={{ color: "var(--gray-500)" }}>{who}</strong>.</>,
+    contactGeneric: "For an account or access, contact your security operations team.",
+  },
+  ko: {
+    title: "로그인",
+    welcome: "VCA에 오신 것을 환영합니다",
+    activateWithCode: "등록 코드로 활성화하기",
+    securityTeam: "보안 관제 담당자",
+    identifierWithId: "사번 또는 이메일",
+    identifierEmailOnly: "이메일",
+    password: "비밀번호",
+    rememberId: "사번 기억하기",
+    rememberEmail: "이메일 기억하기",
+    forgot: "비밀번호를 잊으셨나요?",
+    haveCode: "등록 코드가 있으신가요?",
+    activateAccount: "계정 활성화하기",
+    useProjectLink: "받으신 프로젝트 링크를 열어 접근을 요청해주세요.",
+    askForInvite: "관리자에게 초대를 요청해주세요.",
+    restrictedNetwork: "이 시스템은 외부와 분리된 내부 전용 네트워크에서 운영됩니다.",
+    contactNamed: (who: string) => <>계정이나 접근 권한은 <strong style={{ color: "var(--gray-500)" }}>{who}</strong>에게 문의해주세요.</>,
+    contactGeneric: "계정이나 접근 권한은 보안 관제 담당자에게 문의해주세요.",
+  },
+} as const;
 
 const FIELD_BORDER = "1px solid var(--gray-300)";
 /** Only ever holds the identifier. Never the password, never a session token. */
@@ -39,6 +83,8 @@ export default function LoginPage() {
 
 function LoginForm() {
   const router = useRouter();
+  const [lang] = useLanguage();
+  const t = T[lang];
   const demo = useSearchParams().get("demo");
   const [notice, setNotice] = useState<LoginFailure | null>(() => parseLoginNotice(demo));
   const [identifier, setIdentifier] = useState("");
@@ -165,8 +211,8 @@ function LoginForm() {
             height={196}
           />
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
-            <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>Log in</h1>
-            <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>Welcome to VCA</p>
+            <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>{t.title}</h1>
+            <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.welcome}</p>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
@@ -189,10 +235,10 @@ function LoginForm() {
                   </span>
                   <div>
                     <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-800)", letterSpacing: "-0.26px" }}>
-                      {LOGIN_NOTICES[notice].title}
+                      {LOGIN_NOTICES[notice].title[lang]}
                     </p>
                     <p style={{ margin: "3px 0 0", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px", lineHeight: 1.6 }}>
-                      {LOGIN_NOTICES[notice].detail}
+                      {LOGIN_NOTICES[notice].detail[lang]}
                     </p>
                     {/* A dead end otherwise: this person has a code and nowhere on the screen tells
                         them where to use it. */}
@@ -201,12 +247,12 @@ function LoginForm() {
                         onClick={() => router.push("/register")}
                         style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 0 0", fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
                       >
-                        Activate with a registration code
+                        {t.activateWithCode}
                       </button>
                     )}
                     {(notice === "locked" || notice === "suspended") && (
                       <p style={{ margin: "6px 0 0", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                        {authConfig.supportContact ?? "Your security operations team"}
+                        {authConfig.supportContact ?? t.securityTeam}
                       </p>
                     )}
                   </div>
@@ -216,7 +262,7 @@ function LoginForm() {
               {/* Identifier — email, or an employee number where that is enabled */}
               <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                 <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>
-                  {authConfig.employeeIdLogin ? "Employee number or email" : "Email"}
+                  {authConfig.employeeIdLogin ? t.identifierWithId : t.identifierEmailOnly}
                 </label>
                 <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px", border: FIELD_BORDER, borderRadius: "8px" }}>
                   <PersonFieldIcon />
@@ -231,7 +277,7 @@ function LoginForm() {
               </div>
               {/* Password */}
               <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
-                <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>Password</label>
+                <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.password}</label>
                 <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px", border: FIELD_BORDER, borderRadius: "8px" }}>
                   <LockFieldIcon />
                   <input
@@ -258,7 +304,7 @@ function LoginForm() {
                     style={{ width: "20px", height: "20px", accentColor: "var(--primary-400)", cursor: "pointer" }}
                   />
                   <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                    {authConfig.employeeIdLogin ? "Remember my employee number" : "Remember my email"}
+                    {authConfig.employeeIdLogin ? t.rememberId : t.rememberEmail}
                   </span>
                 </label>
                 {/* /password-setup went straight to the set-a-new-password form, with no proof
@@ -268,7 +314,7 @@ function LoginForm() {
                   onClick={() => router.push("/forgot-password")}
                   style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}
                 >
-                  Forgot password?
+                  {t.forgot}
                 </button>
               </div>
 
@@ -284,7 +330,7 @@ function LoginForm() {
                   transition: "background-color 0.15s, color 0.15s",
                 }}
               >
-                Log in
+                {t.title}
               </button>
               {/* Which way in to name depends on what this deployment has switched on — see
                   lib/authConfig.ts. Deliberately not called "Sign up": /register does nothing
@@ -293,17 +339,17 @@ function LoginForm() {
               <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", lineHeight: 1.6 }}>
                 {authConfig.registrationCode ? (
                   <>
-                    Have a registration code?{" "}
+                    {t.haveCode}{" "}
                     <button
                       onClick={() => router.push("/register")}
                       style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
                     >
-                      Activate your account
+                      {t.activateAccount}
                     </button>
                   </>
                 ) : authConfig.accessRequest
-                  ? "Open the project link you were sent to request access."
-                  : "Ask your administrator to send you an invitation."}
+                  ? t.useProjectLink
+                  : t.askForInvite}
               </p>
 
               {/* Standing notice, not an error. An operator should be able to tell at a glance that
@@ -312,10 +358,10 @@ function LoginForm() {
                   is the entire account-recovery path. */}
               <div style={{ borderTop: "1px solid var(--gray-200)", paddingTop: "16px", marginTop: "4px" }}>
                 <p style={{ margin: 0, textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.24px", lineHeight: 1.7 }}>
-                  This system runs on a restricted internal network.<br />
+                  {t.restrictedNetwork}<br />
                   {authConfig.supportContact
-                    ? <>For an account or access, contact <strong style={{ color: "var(--gray-500)" }}>{authConfig.supportContact}</strong>.</>
-                    : "For an account or access, contact your security operations team."}
+                    ? t.contactNamed(authConfig.supportContact)
+                    : t.contactGeneric}
                 </p>
               </div>
             </div>

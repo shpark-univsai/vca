@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef } from "react";
+import { useLanguage } from "@/lib/i18n";
 
 interface Props {
   /** One string per box. Length of this array is the length of the code. */
@@ -33,6 +34,9 @@ interface Props {
 export default function VerificationCodeInput({
   value, onChange, error, onSubmit, focusSignal, autoFocus, charset = "digits", groupAfter,
 }: Props) {
+  // Only a screen reader ever hears this component's own words, so the label is inline rather
+  // than in a file dictionary.
+  const [lang] = useLanguage();
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
   const length = value.length;
 
@@ -100,7 +104,7 @@ export default function VerificationCodeInput({
           inputMode={charset === "digits" ? "numeric" : "text"}
           autoComplete="one-time-code"
           spellCheck={false}
-          aria-label={`Digit ${i + 1} of ${length}`}
+          aria-label={lang === "ko" ? `${length}자리 중 ${i + 1}번째` : `Digit ${i + 1} of ${length}`}
           autoFocus={autoFocus && i === 0}
           style={{
             width: charset === "alnum" ? "40px" : "44px", height: "52px", textAlign: "center",

@@ -7,6 +7,101 @@ import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } 
 import VerificationCodeInput from "@/components/VerificationCodeInput";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT, RESET_CODE_LENGTH, RESET_CODE_TTL_MIN } from "@/lib/password";
 import { getAuthConfig } from "@/lib/authConfig";
+import { useLanguage, type AppLanguage } from "@/lib/i18n";
+
+// See the per-file pattern note in lib/i18n.ts.
+const T = {
+  en: {
+    errIdentifier: "Enter an employee number or email address.",
+    errEmail: "Enter a valid email address.",
+    adminTitle: "Contact your administrator",
+    adminSub: "This system can’t send reset emails",
+    whoToContact: "WHO TO CONTACT",
+    securityTeam: "Your security operations team",
+    adminRemedies: "They’ll give you a temporary password or a setup code.",
+    backToLogin: "Back to log in",
+    haveCode: "Already have a code?",
+    activateAccount: "Activate your account",
+    emailTitle: "Forgot your password?",
+    emailSub: "We’ll send a verification code to your registered email",
+    identifierWithId: "Employee number or email",
+    identifierEmailOnly: "Email",
+    noAddressNote: "No email address on your account? Only an administrator can reset it —",
+    noAddressFallback: "contact your security operations team",
+    sendCode: "Send code",
+    rememberedIt: "Remembered it?",
+    logIn: "Log in",
+    throttledTitle: "Too many attempts",
+    throttledSub: "Code entry is locked for now",
+    throttledBody: "Try again in a few minutes, or contact your administrator.",
+    codeTitle: "Enter your verification code",
+    codeSentTo: (address: string) => `Code sent to ${address}`,
+    codeSentToAccount: "Code sent to the email on this account",
+    expiresIn: (min: number) => `Expires in ${min} minutes`,
+    sendNewCode: "Send a new code",
+    noCode: "Didn’t get the code?",
+    resendIn: (sec: number) => `Resend in ${sec}s`,
+    resend: "Resend",
+    next: "Next",
+    wrongOne: "Wrong one?",
+    wrongAddress: "Wrong address?",
+    startOver: "Start over",
+    useDifferentEmail: "Use a different email",
+    passwordTitle: "Set a new password",
+    passwordSub: "Choose one you haven’t used before",
+    newPassword: "New password",
+    confirmPassword: "Confirm password",
+    mismatch: "Passwords don’t match",
+    changePassword: "Change password",
+    doneTitle: "Password changed",
+    doneSub: "Log in with your new password",
+  },
+  ko: {
+    errIdentifier: "사번 또는 이메일 주소를 입력해주세요.",
+    errEmail: "올바른 이메일 주소를 입력해주세요.",
+    adminTitle: "관리자에게 문의해주세요",
+    adminSub: "이 시스템은 재설정 메일을 보낼 수 없습니다",
+    whoToContact: "문의할 곳",
+    securityTeam: "보안 관제 담당자",
+    adminRemedies: "임시 비밀번호나 설정 코드를 받게 됩니다.",
+    backToLogin: "로그인으로 돌아가기",
+    haveCode: "이미 코드를 받으셨나요?",
+    activateAccount: "계정 활성화하기",
+    emailTitle: "비밀번호를 잊으셨나요?",
+    emailSub: "등록된 이메일로 인증 코드를 보내드립니다",
+    identifierWithId: "사번 또는 이메일",
+    identifierEmailOnly: "이메일",
+    noAddressNote: "계정에 이메일 주소가 없나요? 관리자만 재설정할 수 있습니다 —",
+    noAddressFallback: "보안 관제 담당자에게 문의해주세요",
+    sendCode: "코드 보내기",
+    rememberedIt: "기억나셨나요?",
+    logIn: "로그인",
+    throttledTitle: "시도 횟수를 초과했습니다",
+    throttledSub: "코드 입력이 잠시 차단되었습니다",
+    throttledBody: "몇 분 뒤에 다시 시도하시거나 관리자에게 문의해주세요.",
+    codeTitle: "인증 코드를 입력해주세요",
+    codeSentTo: (address: string) => `${address}으로 코드를 보냈습니다`,
+    codeSentToAccount: "계정에 등록된 이메일로 코드를 보냈습니다",
+    expiresIn: (min: number) => `${min}분 후 만료됩니다`,
+    sendNewCode: "새 코드 보내기",
+    noCode: "코드를 받지 못하셨나요?",
+    resendIn: (sec: number) => `${sec}초 후 재발송`,
+    resend: "재발송",
+    next: "다음",
+    wrongOne: "잘못 입력하셨나요?",
+    wrongAddress: "주소가 잘못되었나요?",
+    startOver: "처음부터 다시",
+    useDifferentEmail: "다른 이메일 사용하기",
+    passwordTitle: "새 비밀번호를 설정해주세요",
+    passwordSub: "이전에 쓰지 않은 비밀번호로 정해주세요",
+    newPassword: "새 비밀번호",
+    confirmPassword: "비밀번호 확인",
+    mismatch: "비밀번호가 일치하지 않습니다",
+    changePassword: "비밀번호 변경",
+    doneTitle: "비밀번호가 변경되었습니다",
+    doneSub: "새 비밀번호로 로그인해주세요",
+  },
+} as const;
 
 const FIELD_BORDER = "1px solid var(--gray-300)";
 /** Seconds before "Resend" becomes available again — stops a stuck user from mailing themselves ten
@@ -37,12 +132,21 @@ type Step = "email" | "code" | "password" | "done";
  */
 type CodeFailure = "wrong" | "expired" | "throttled" | "resendLimit";
 
-const CODE_FAILURE_TEXT: Record<Exclude<CodeFailure, "throttled">, string> = {
-  wrong: "Incorrect code. Check and try again.",
+const CODE_FAILURE_TEXT: Record<Exclude<CodeFailure, "throttled">, Record<AppLanguage, string>> = {
+  wrong: {
+    en: "Incorrect code. Check and try again.",
+    ko: "코드가 맞지 않습니다. 확인 후 다시 시도해주세요.",
+  },
   // The screen states this up front too (see the code step), so the two must not drift — both read
   // RESET_CODE_TTL_MIN. HANDOFF NOTE: the backend has to enforce the same number.
-  expired: "Code expired. Request a new one.",
-  resendLimit: "Too many codes requested. Try again later.",
+  expired: {
+    en: "Code expired. Request a new one.",
+    ko: "만료된 코드입니다. 새 코드를 요청해주세요.",
+  },
+  resendLimit: {
+    en: "Too many codes requested. Try again later.",
+    ko: "코드를 너무 많이 요청했습니다. 잠시 후 다시 시도해주세요.",
+  },
 };
 
 function fieldBorder(active: boolean) {
@@ -92,6 +196,8 @@ export default function ForgotPasswordPage() {
 
 function ForgotPasswordFlow() {
   const router = useRouter();
+  const [lang] = useLanguage();
+  const t = T[lang];
   const demo = useSearchParams().get("demo");
   const authConfig = getAuthConfig();
   const [step, setStep] = useState<Step>(() => {
@@ -113,9 +219,7 @@ function ForgotPasswordFlow() {
   const looksLikeId = identifier.trim().length >= 3 && !identifier.includes("@");
   const identifierValid = authConfig.employeeIdLogin ? (typedEmail || looksLikeId) : typedEmail;
   const identifierError = identifierTouched && !identifierValid
-    ? (authConfig.employeeIdLogin
-        ? "Enter an employee number or email address."
-        : "Enter a valid email address.")
+    ? (authConfig.employeeIdLogin ? t.errIdentifier : t.errEmail)
     : "";
 
   // ── step 2: code ───────────────────────────────────────────────────────────
@@ -263,16 +367,14 @@ function ForgotPasswordFlow() {
               arrive. Say plainly that recovery goes through a person, and name that person. */}
           {(demo === "adminOnly" || authConfig.passwordRecovery === "adminOnly") ? (
             <>
-              {heading("Contact your administrator", [
-                "This system can’t send reset emails",
-              ])}
+              {heading(t.adminTitle, [t.adminSub])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
                 <div style={{
                   display: "flex", flexDirection: "column", gap: "10px",
                   padding: "20px", borderRadius: "12px", backgroundColor: "var(--gray-50)",
                 }}>
-                  <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>WHO TO CONTACT</p>
+                  <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{t.whoToContact}</p>
                   <p style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>
                     {authConfig.supportContact ?? "Your security operations team"}
                   </p>
@@ -281,19 +383,19 @@ function ForgotPasswordFlow() {
                       only the registration code while Portal's own notice named only the temporary
                       password, so the two halves of one conversation described different remedies. */}
                   <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.26px", lineHeight: 1.7 }}>
-                    They’ll give you a temporary password or a setup code.
+                    {t.adminRemedies}
                   </p>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
-                  {primaryButton("Back to log in", true, () => router.push("/login"))}
+                  {primaryButton(t.backToLogin, true, () => router.push("/login"))}
                   <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                    Already have a code?{" "}
+                    {t.haveCode}{" "}
                     <button
                       onClick={() => router.push("/register")}
                       style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
                     >
-                      Activate your account
+                      {t.activateAccount}
                     </button>
                   </p>
                 </div>
@@ -305,14 +407,12 @@ function ForgotPasswordFlow() {
             <>
               {/* One line, not three. The field below already says what to type into it, and the
                   step after this one says a code was sent — the subtitle only has to promise it. */}
-              {heading("Forgot your password?", [
-                "We’ll send a verification code to your registered email",
-              ])}
+              {heading(t.emailTitle, [t.emailSub])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                   <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>
-                    {authConfig.employeeIdLogin ? "Employee number or email" : "Email"}
+                    {authConfig.employeeIdLogin ? t.identifierWithId : t.identifierEmailOnly}
                   </label>
                   <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px",
                     border: identifierError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: "8px" }}>
@@ -337,16 +437,16 @@ function ForgotPasswordFlow() {
                     // be given, because the next screen cannot admit that nothing was sent without
                     // also telling a stranger whether the account exists.
                     <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", lineHeight: 1.6 }}>
-                      No email address on your account? Only an administrator can reset it —{" "}
-                      {authConfig.supportContact ?? "contact your security operations team"}.
+                      {t.noAddressNote}{" "}
+                      {authConfig.supportContact ?? t.noAddressFallback}.
                     </p>
                   ) : null}
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
-                  {primaryButton("Send code", identifierValid, sendCode)}
+                  {primaryButton(t.sendCode, identifierValid, sendCode)}
                   <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                    Remembered it? {textButton("Log in", () => router.push("/login"), "primary")}
+                    {t.rememberedIt} {textButton(t.logIn, () => router.push("/login"), "primary")}
                   </p>
                 </div>
               </div>
@@ -358,9 +458,7 @@ function ForgotPasswordFlow() {
               requesting a fresh code still works from here. */}
           {step === "code" && codeFailure === "throttled" && (
             <>
-              {heading("Too many attempts", [
-                "Code entry is locked for now",
-              ])}
+              {heading(t.throttledTitle, [t.throttledSub])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
                 <div style={{
@@ -371,7 +469,7 @@ function ForgotPasswordFlow() {
                     {/* OPEN QUESTION for the backend: how long is the lockout, and does the response
                         say? A countdown is kinder than "try again later", but it also tells a
                         guesser exactly when to come back. */}
-                    Try again in a few minutes, or contact your administrator.
+                    {t.throttledBody}
                   </p>
                   <div style={{ height: "1px", backgroundColor: "var(--danger-200)", margin: "2px 0" }} />
                   <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
@@ -379,7 +477,7 @@ function ForgotPasswordFlow() {
                   </p>
                 </div>
 
-                {primaryButton("Back to log in", true, () => router.push("/login"))}
+                {primaryButton(t.backToLogin, true, () => router.push("/login"))}
               </div>
             </>
           )}
@@ -388,14 +486,14 @@ function ForgotPasswordFlow() {
             <>
               {/* The deadline replaces "Type it in below", which the boxes already say. Someone who
                   walks to another machine to read the mail needs to know they are on a clock. */}
-              {heading("Enter your verification code", [
+              {heading(t.codeTitle, [
                 // Echoes the address only when they typed one — they already know it, so there is
                 // nothing to leak. An employee number resolves to an address the screen has no
                 // business printing, so it says where it went without saying where that is.
                 typedEmail
-                  ? `Code sent to ${identifier.trim()}`
-                  : "Code sent to the email on this account",
-                `Expires in ${RESET_CODE_TTL_MIN} minutes`,
+                  ? t.codeSentTo(identifier.trim())
+                  : t.codeSentToAccount,
+                t.expiresIn(RESET_CODE_TTL_MIN),
               ])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
@@ -412,7 +510,7 @@ function ForgotPasswordFlow() {
                   {codeFailure ? (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
                       <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.24px", textAlign: "center" }}>
-                        <ErrorCircleIcon /> {CODE_FAILURE_TEXT[codeFailure]}
+                        <ErrorCircleIcon /> {CODE_FAILURE_TEXT[codeFailure][lang]}
                       </p>
                       {/* An expired code cannot be retyped into working, so the way out is offered
                           right here instead of leaving them to find the resend link. */}
@@ -421,7 +519,7 @@ function ForgotPasswordFlow() {
                           onClick={resend}
                           style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
                         >
-                          Send a new code
+                          {t.sendNewCode}
                         </button>
                       )}
                     </div>
@@ -429,9 +527,9 @@ function ForgotPasswordFlow() {
                     <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
                       {/* The cooldown is spelled out rather than just greying the link, so waiting
                           reads as waiting and not as a dead button. */}
-                      Didn&apos;t get the code?{" "}
+                      {t.noCode}{" "}
                       {cooldown > 0
-                        ? <span style={{ color: "var(--gray-400)" }}>Resend in {cooldown}s</span>
+                        ? <span style={{ color: "var(--gray-400)" }}>{t.resendIn(cooldown)}</span>
                         : (
                           /* Not routed through textButton(): the lint rule cannot see that the
                              helper only stores the callback, so handing it a function that focuses
@@ -440,7 +538,7 @@ function ForgotPasswordFlow() {
                             onClick={resend}
                             style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
                           >
-                            Resend
+                            {t.resend}
                           </button>
                         )}
                     </p>
@@ -448,11 +546,11 @@ function ForgotPasswordFlow() {
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
-                  {primaryButton("Next", codeComplete, verifyCode)}
+                  {primaryButton(t.next, codeComplete, verifyCode)}
                   <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                    {authConfig.employeeIdLogin ? "Wrong one?" : "Wrong address?"}{" "}
+                    {authConfig.employeeIdLogin ? t.wrongOne : t.wrongAddress}{" "}
                     {textButton(
-                      authConfig.employeeIdLogin ? "Start over" : "Use a different email",
+                      authConfig.employeeIdLogin ? t.startOver : t.useDifferentEmail,
                       () => { resetCodeEntry(); setStep("email"); },
                       "primary",
                     )}
@@ -464,12 +562,12 @@ function ForgotPasswordFlow() {
 
           {step === "password" && (
             <>
-              {heading("Set a new password", ["Choose one you haven’t used before"])}
+              {heading(t.passwordTitle, [t.passwordSub])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "24px", width: "100%" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
-                    <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>New password</label>
+                    <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.newPassword}</label>
                     <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
                       <LockFieldIcon />
                       <input
@@ -488,7 +586,7 @@ function ForgotPasswordFlow() {
                     </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
-                    <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>Confirm password</label>
+                    <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.confirmPassword}</label>
                     <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
                       <LockFieldIcon />
                       <input
@@ -510,27 +608,27 @@ function ForgotPasswordFlow() {
 
                 <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: formatBroken ? "var(--danger-400)" : "var(--gray-600)", letterSpacing: "-0.24px" }}>
                   {formatBroken && <ErrorCircleIcon />}
-                  {PASSWORD_RULE_TEXT}
+                  {PASSWORD_RULE_TEXT[lang]}
                 </p>
 
                 {mismatch && (
                   <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                     <ErrorCircleIcon />
                     <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.26px" }}>
-                      Passwords don’t match
+                      {t.mismatch}
                     </span>
                   </div>
                 )}
 
-                {primaryButton("Change password", canSetPassword, savePassword)}
+                {primaryButton(t.changePassword, canSetPassword, savePassword)}
               </div>
             </>
           )}
 
           {step === "done" && (
             <>
-              {heading("Password changed", ["Log in with your new password"])}
-              {primaryButton("Log in", true, () => router.push("/login"))}
+              {heading(t.doneTitle, [t.doneSub])}
+              {primaryButton(t.logIn, true, () => router.push("/login"))}
             </>
           )}
           </>

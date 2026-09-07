@@ -19,9 +19,12 @@ export function isPasswordFormatValid(password: string): boolean {
 
 /** Shown under the field, so the rule is readable before it is broken rather than after. Wording
  *  matches what /password-setup already shipped with — one rule stated two ways reads as two
- *  rules. */
-export const PASSWORD_RULE_TEXT =
-  "8+ characters with a letter, number, and symbol";
+ *  rules. Both languages live here for the same reason: four screens print this line, and a rule
+ *  translated four times is a rule that ends up worded four ways. */
+export const PASSWORD_RULE_TEXT = {
+  en: "8+ characters with a letter, number, and symbol",
+  ko: "영문, 숫자, 특수문자를 포함한 8자 이상",
+} as const;
 
 /** Length of the emailed verification code, per the design. Digits only: the code gets read off one
  *  screen and typed into another, so letters would raise case and O/0 questions for no gain. */

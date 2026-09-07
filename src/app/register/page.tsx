@@ -11,8 +11,77 @@ import {
   REGISTRATION_CODE_LENGTH, SETUP_CODE_TTL_DAYS, isCodeExpired, normalizeCode, resolveRegistrationCode,
 } from "@/lib/staffRoster";
 import { canEnterPortal, useVcaStore } from "@/lib/vcaStore";
+import { useLanguage, type AppLanguage } from "@/lib/i18n";
 
 type Step = "code" | "confirm" | "password" | "done";
+
+// See the per-file pattern note in lib/i18n.ts.
+const T = {
+  en: {
+    throttledTitle: "Too many attempts",
+    throttledSub: "Code entry is locked for now",
+    throttledBody: "Wait a few minutes and try again, or ask your administrator to issue a new code for you.",
+    securityTeam: "Your security operations team",
+    backToLogin: "Back to log in",
+    codeTitle: "Enter your registration code",
+    codeSub: (n: number) => `The ${n}-character code your administrator gave you`,
+    continue: "Continue",
+    haveAccount: "Already have an account?",
+    logIn: "Log in",
+    confirmTitle: "Is this you?",
+    confirmSub: "Check your details before continuing",
+    employeeId: "Employee ID",
+    department: "Department",
+    project: "Project",
+    scope: "Scope",
+    allTeams: "All teams and projects",
+    permission: "Permission",
+    permAdmin: "Administrator — Portal + App",
+    permOperator: "App only",
+    yesContinue: "Yes, continue",
+    notMe: "This isn't me — enter a different code",
+    passwordTitle: "Set your password",
+    passwordSub: (name: string) => `You are setting up the account for ${name}`,
+    password: "Password",
+    confirmPassword: "Confirm password",
+    mismatch: "Passwords don’t match",
+    createAccount: "Create account",
+    doneTitle: "Account created",
+    doneSub: (name: string) => `You can now log in as ${name}`,
+  },
+  ko: {
+    throttledTitle: "시도 횟수를 초과했습니다",
+    throttledSub: "코드 입력이 잠시 차단되었습니다",
+    throttledBody: "몇 분 뒤에 다시 시도하시거나, 관리자에게 새 코드를 요청해주세요.",
+    securityTeam: "보안 관제 담당자",
+    backToLogin: "로그인으로 돌아가기",
+    codeTitle: "등록 코드를 입력해주세요",
+    codeSub: (n: number) => `관리자에게 받은 ${n}자리 코드입니다`,
+    continue: "다음",
+    haveAccount: "이미 계정이 있으신가요?",
+    logIn: "로그인",
+    confirmTitle: "본인이 맞으신가요?",
+    confirmSub: "계속하기 전에 정보를 확인해주세요",
+    employeeId: "사번",
+    department: "부서",
+    project: "프로젝트",
+    scope: "범위",
+    allTeams: "모든 팀과 프로젝트",
+    permission: "권한",
+    permAdmin: "관리자 — 포털 + 앱",
+    permOperator: "앱만",
+    yesContinue: "네, 계속하기",
+    notMe: "제가 아닙니다 — 다른 코드 입력하기",
+    passwordTitle: "비밀번호를 설정해주세요",
+    passwordSub: (name: string) => `${name} 님의 계정을 설정하고 있습니다`,
+    password: "비밀번호",
+    confirmPassword: "비밀번호 확인",
+    mismatch: "비밀번호가 일치하지 않습니다",
+    createAccount: "계정 만들기",
+    doneTitle: "계정이 만들어졌습니다",
+    doneSub: (name: string) => `이제 ${name} 님으로 로그인할 수 있습니다`,
+  },
+} as const;
 
 /**
  * What a code turned out to belong to. Two pools issue codes and both land here:
@@ -43,10 +112,19 @@ interface Activation {
  * is close to nothing, while the person who has genuinely already registered (or handed their slip
  * to a colleague) learns the one thing that explains what they are seeing.
  */
-const CODE_ERRORS: Record<"unknown" | "used" | "expired", string> = {
-  unknown: "Code not recognised. Check the sheet you were given.",
-  used: "Code already used. Ask your administrator for a new one.",
-  expired: "Code expired. Ask your administrator for a new one.",
+const CODE_ERRORS: Record<"unknown" | "used" | "expired", Record<AppLanguage, string>> = {
+  unknown: {
+    en: "Code not recognised. Check the sheet you were given.",
+    ko: "확인되지 않는 코드입니다. 받으신 용지를 다시 확인해주세요.",
+  },
+  used: {
+    en: "Code already used. Ask your administrator for a new one.",
+    ko: "이미 사용된 코드입니다. 관리자에게 새 코드를 요청해주세요.",
+  },
+  expired: {
+    en: "Code expired. Ask your administrator for a new one.",
+    ko: "만료된 코드입니다. 관리자에게 새 코드를 요청해주세요.",
+  },
 };
 
 /**
@@ -95,6 +173,8 @@ export default function RegisterPage() {
 
 function RegisterFlow() {
   const router = useRouter();
+  const [lang] = useLanguage();
+  const t = T[lang];
   const demo = useSearchParams().get("demo");
   const authConfig = getAuthConfig();
   const staffRoster = useVcaStore(s => s.staffRoster);
@@ -142,7 +222,7 @@ function RegisterFlow() {
       setThrottled(true);
       return;
     }
-    setCodeError(CODE_ERRORS[reason]);
+    setCodeError(CODE_ERRORS[reason][lang]);
   };
 
   // HANDOFF NOTE: resolves against mock data in the store. The real call is one request to the
@@ -285,31 +365,28 @@ function RegisterFlow() {
               the attempt limit is the security control rather than an annoyance to soften. */}
           {step === "code" && throttled && (
             <>
-              {heading("Too many attempts", ["Code entry is locked for now"])}
+              {heading(t.throttledTitle, [t.throttledSub])}
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
                 <div style={{
                   display: "flex", flexDirection: "column", gap: "10px",
                   padding: "20px", borderRadius: "12px", backgroundColor: "var(--danger-100)",
                 }}>
                   <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-700)", letterSpacing: "-0.26px", lineHeight: 1.7 }}>
-                    Wait a few minutes and try again, or ask your administrator to issue a new code
-                    for you.
+                    {t.throttledBody}
                   </p>
                   <div style={{ height: "1px", backgroundColor: "var(--danger-200)", margin: "2px 0" }} />
                   <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                    {authConfig.supportContact ?? "Your security operations team"}
+                    {authConfig.supportContact ?? t.securityTeam}
                   </p>
                 </div>
-                {primaryButton("Back to log in", true, () => router.push("/login"))}
+                {primaryButton(t.backToLogin, true, () => router.push("/login"))}
               </div>
             </>
           )}
 
           {step === "code" && !throttled && (
             <>
-              {heading("Enter your registration code", [
-                `The ${REGISTRATION_CODE_LENGTH}-character code your administrator gave you`,
-              ])}
+              {heading(t.codeTitle, [t.codeSub(REGISTRATION_CODE_LENGTH)])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", alignItems: "center" }}>
@@ -330,14 +407,14 @@ function RegisterFlow() {
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
-                  {primaryButton("Continue", codeComplete, submitCode)}
+                  {primaryButton(t.continue, codeComplete, submitCode)}
                   <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                    Already have an account?{" "}
+                    {t.haveAccount}{" "}
                     <button
                       onClick={() => router.push("/login")}
                       style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
                     >
-                      Log in
+                      {t.logIn}
                     </button>
                   </p>
                 </div>
@@ -347,7 +424,7 @@ function RegisterFlow() {
 
           {step === "confirm" && entry && (
             <>
-              {heading("Is this you?", ["Check your details before continuing"])}
+              {heading(t.confirmTitle, [t.confirmSub])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
                 {/* Showing what the code resolved to, before a password exists. Someone handed the
@@ -359,21 +436,21 @@ function RegisterFlow() {
                 }}>
                   <p style={{ margin: 0, fontSize: "18px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.36px" }}>{entry.name}</p>
                   <div style={{ height: "1px", backgroundColor: "var(--gray-200)" }} />
-                  {entry.employeeId && detailRow("Employee ID", entry.employeeId)}
-                  {entry.department && detailRow("Department", entry.department)}
+                  {entry.employeeId && detailRow(t.employeeId, entry.employeeId)}
+                  {entry.department && detailRow(t.department, entry.department)}
                   {entry.projectId
-                    ? detailRow("Project", projects.find(p => p.id === entry.projectId)?.name ?? entry.projectId)
-                    : detailRow("Scope", "All teams and projects")}
-                  {detailRow("Permission", entry.permission === "admin" ? "Administrator — Portal + App" : "App only")}
+                    ? detailRow(t.project, projects.find(p => p.id === entry.projectId)?.name ?? entry.projectId)
+                    : detailRow(t.scope, t.allTeams)}
+                  {detailRow(t.permission, entry.permission === "admin" ? t.permAdmin : t.permOperator)}
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
-                  {primaryButton("Yes, continue", true, () => setStep("password"))}
+                  {primaryButton(t.yesContinue, true, () => setStep("password"))}
                   <button
                     onClick={restart}
                     style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}
                   >
-                    This isn&apos;t me — enter a different code
+                    {t.notMe}
                   </button>
                 </div>
               </div>
@@ -382,37 +459,37 @@ function RegisterFlow() {
 
           {step === "password" && entry && (
             <>
-              {heading("Set your password", [`You are setting up the account for ${entry.name}`])}
+              {heading(t.passwordTitle, [t.passwordSub(entry.name)])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "24px", width: "100%" }}>
-                  {passwordField("Password", "password", password, setPassword, showPassword, () => setShowPassword(s => !s))}
-                  {passwordField("Confirm password", "confirm", confirmPassword, setConfirmPassword, showConfirm, () => setShowConfirm(s => !s), savePassword)}
+                  {passwordField(t.password, "password", password, setPassword, showPassword, () => setShowPassword(s => !s))}
+                  {passwordField(t.confirmPassword, "confirm", confirmPassword, setConfirmPassword, showConfirm, () => setShowConfirm(s => !s), savePassword)}
                 </div>
 
                 <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: formatBroken ? "var(--danger-400)" : "var(--gray-600)", letterSpacing: "-0.24px" }}>
                   {formatBroken && <ErrorCircleIcon />}
-                  {PASSWORD_RULE_TEXT}
+                  {PASSWORD_RULE_TEXT[lang]}
                 </p>
 
                 {mismatch && (
                   <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                     <ErrorCircleIcon />
                     <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.26px" }}>
-                      Passwords don’t match
+                      {t.mismatch}
                     </span>
                   </div>
                 )}
 
-                {primaryButton("Create account", canSetPassword, savePassword)}
+                {primaryButton(t.createAccount, canSetPassword, savePassword)}
               </div>
             </>
           )}
 
           {step === "done" && entry && (
             <>
-              {heading("Account created", [`You can now log in as ${entry.name}`])}
-              {primaryButton("Log in", true, () => router.push("/login"))}
+              {heading(t.doneTitle, [t.doneSub(entry.name)])}
+              {primaryButton(t.logIn, true, () => router.push("/login"))}
             </>
           )}
         </div>

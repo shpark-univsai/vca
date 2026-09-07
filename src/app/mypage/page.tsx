@@ -11,6 +11,106 @@ import { SIGNED_IN_USER } from "@/lib/vcaStore";
 import { LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
+import { useLanguage } from "@/lib/i18n";
+
+// See the per-file pattern note in lib/i18n.ts. SIGNED_IN_USER's role and team are not in here on
+// purpose — those are the customer's own words for their org chart, and translating them would put
+// a job title on screen that appears nowhere in their records.
+const T = {
+  en: {
+    comingSoon: "Coming soon",
+    close: "Close",
+    passwordChanged: "Password changed",
+    passwordChangedBody: "Your password has been updated.",
+    done: "Done",
+    changePassword: "Change password",
+    currentPassword: "Current password",
+    verify: "Verify",
+    newPassword: "New password",
+    confirmPassword: "Confirm password",
+    mismatch: "Passwords do not match. Please try again.",
+    updatePassword: "Update Password",
+    thresholdsTitle: "Map alert thresholds",
+    thresholdsBody: "Today's VIP-hit count a district needs before its map badge turns red (alert) or navy (moderate).",
+    alertRed: "Alert (red)",
+    moderateNavy: "Moderate (navy)",
+    saveChanges: "Save Changes",
+    saved: "Saved",
+    settings: "Settings",
+    myPage: "My page",
+    pageDesc: "Centrally manage your admin profile, security settings, and monitoring preferences.",
+    profile: "Profile information",
+    fullName: "Full name",
+    emailAddress: "Email address",
+    departmentTeam: "Department / team",
+    security: "Security & access control",
+    passwordSettings: "Password settings",
+    passwordChange: "Password change",
+    changedJustNow: "Last changed just now",
+    changedDaysAgo: (n: number) => `Last changed ${n} days ago`,
+    change: "Change",
+    sessions: "Active login sessions",
+    sessionsEnded: (n: number) => `${n} session${n === 1 ? "" : "s"} ended`,
+    signOutOthers: "Sign out other sessions",
+    onlyThisDevice: "Only this device",
+    activeNow: "Active now",
+    systemPreferences: "System preferences",
+    interfaceLanguage: "Interface language",
+    thresholdLevels: "Alert levels",
+    thresholdSummary: (alert: number, moderate: number) => `Alert ${alert} · Moderate ${moderate}`,
+  },
+  ko: {
+    comingSoon: "준비 중",
+    close: "닫기",
+    passwordChanged: "비밀번호가 변경되었습니다",
+    passwordChangedBody: "새 비밀번호로 바뀌었습니다.",
+    done: "확인",
+    changePassword: "비밀번호 변경",
+    currentPassword: "현재 비밀번호",
+    verify: "확인",
+    newPassword: "새 비밀번호",
+    confirmPassword: "비밀번호 확인",
+    mismatch: "비밀번호가 일치하지 않습니다. 다시 입력해주세요.",
+    updatePassword: "비밀번호 변경",
+    thresholdsTitle: "지도 경보 기준",
+    thresholdsBody: "지도의 구역 배지가 빨강(경보) 또는 남색(주의)으로 바뀌는 데 필요한 당일 VIP 검출 수입니다.",
+    alertRed: "경보 (빨강)",
+    moderateNavy: "주의 (남색)",
+    saveChanges: "변경 사항 저장",
+    saved: "저장됨",
+    settings: "설정",
+    myPage: "마이 페이지",
+    pageDesc: "관리자 프로필, 보안 설정, 관제 환경설정을 한곳에서 관리합니다.",
+    profile: "프로필 정보",
+    fullName: "이름",
+    emailAddress: "이메일 주소",
+    departmentTeam: "부서 / 팀",
+    security: "보안 및 접근 권한",
+    passwordSettings: "비밀번호 설정",
+    passwordChange: "비밀번호 변경",
+    changedJustNow: "방금 변경했습니다",
+    changedDaysAgo: (n: number) => `${n}일 전에 변경했습니다`,
+    change: "변경",
+    sessions: "접속 중인 기기",
+    sessionsEnded: (n: number) => `${n}개 세션을 종료했습니다`,
+    signOutOthers: "다른 기기 로그아웃",
+    onlyThisDevice: "이 기기뿐입니다",
+    activeNow: "지금 접속 중",
+    systemPreferences: "시스템 환경설정",
+    interfaceLanguage: "화면 언어",
+    thresholdLevels: "경보 단계",
+    thresholdSummary: (alert: number, moderate: number) => `경보 ${alert} · 주의 ${moderate}`,
+  },
+} as const;
+
+/** Listed in its own script, the way every language picker lists a language. */
+const LANGUAGE_OPTIONS = [
+  { value: "en" as const, label: "English" },
+  { value: "ko" as const, label: "한국어" },
+];
+
+/** How long ago the mock says the password was last set. Seeded, like LOGIN_SESSIONS. */
+const PASSWORD_AGE_DAYS = 45;
 
 const CARD_BORDER = "1px solid var(--gray-200)";
 
@@ -108,10 +208,12 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
  * then nothing happens — while dropping them loses the signal that the work is planned. A greyed,
  * unclickable row with "Coming soon" beside it says both things at once.
  */
-function DropdownBtn({ value, options, onSelect, disabledOptions = [] }: {
-  value: string; options: string[]; onSelect: (v: string) => void; disabledOptions?: string[];
+function DropdownBtn<V extends string>({ value, options, onSelect, disabledValues = [] }: {
+  value: V; options: readonly { value: V; label: string }[]; onSelect: (v: V) => void; disabledValues?: readonly V[];
 }) {
   const [open, setOpen] = useState(false);
+  const [lang] = useLanguage();
+  const t = T[lang];
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -128,23 +230,26 @@ function DropdownBtn({ value, options, onSelect, disabledOptions = [] }: {
         onClick={() => setOpen(o => !o)}
         style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: "6px", padding: "6px 10px", cursor: "pointer" }}
       >
-        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", letterSpacing: "-0.24px" }}>{value}</span>
+        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", letterSpacing: "-0.24px" }}>
+          {options.find(o => o.value === value)?.label ?? value}
+        </span>
         <ChevronDownIcon />
       </button>
       {open && (
         <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 20, backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: "8px", boxShadow: "0 4px 12px rgba(14, 22, 42,0.08)", minWidth: "150px", overflow: "hidden" }}>
           {options.map(opt => {
-            const unavailable = disabledOptions.includes(opt);
+            const unavailable = disabledValues.includes(opt.value);
+            const selected = opt.value === value;
             return (
               <button
-                key={opt}
+                key={opt.value}
                 disabled={unavailable}
-                onClick={() => { onSelect(opt); setOpen(false); }}
-                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", width: "100%", textAlign: "left", padding: "8px 12px", border: "none", backgroundColor: opt === value ? "var(--gray-50)" : "white", cursor: unavailable ? "default" : "pointer", fontSize: "12px", fontWeight: opt === value ? 700 : 500, color: unavailable ? "var(--gray-400)" : "var(--gray-700)" }}
+                onClick={() => { onSelect(opt.value); setOpen(false); }}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", width: "100%", textAlign: "left", padding: "8px 12px", border: "none", backgroundColor: selected ? "var(--gray-50)" : "white", cursor: unavailable ? "default" : "pointer", fontSize: "12px", fontWeight: selected ? 700 : 500, color: unavailable ? "var(--gray-400)" : "var(--gray-700)" }}
               >
-                {opt}
+                {opt.label}
                 {unavailable && (
-                  <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", whiteSpace: "nowrap" }}>Coming soon</span>
+                  <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.comingSoon}</span>
                 )}
               </button>
             );
@@ -191,6 +296,8 @@ function fieldBorder(active: boolean) {
 // different case: first-time setup, not an already-logged-in user changing theirs) instead of
 // navigating to a full standalone route.
 function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const [step, setStep] = useState<"current" | "new" | "done">("current");
   const [currentPassword, setCurrentPassword] = useState("");
   const [showCurrent, setShowCurrent] = useState(false);
@@ -246,21 +353,21 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
               </svg>
             </div>
             <div style={{ textAlign: "center" }}>
-              <p style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--gray-900)" }}>Password changed</p>
-              <p style={{ margin: "4px 0 0", fontSize: "13px", fontWeight: 600, color: "var(--gray-500)" }}>Your password has been updated.</p>
+              <p style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--gray-900)" }}>{t.passwordChanged}</p>
+              <p style={{ margin: "4px 0 0", fontSize: "13px", fontWeight: 600, color: "var(--gray-500)" }}>{t.passwordChangedBody}</p>
             </div>
             <button
               onClick={onClose}
               style={{ height: "40px", padding: "0 24px", border: "none", borderRadius: "8px", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
             >
-              Done
+              {t.done}
             </button>
           </div>
         ) : (
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.34px" }}>Change password</h2>
-              <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}>
+              <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.34px" }}>{t.changePassword}</h2>
+              <button onClick={onClose} aria-label={t.close} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}>
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                   <path d="M4 4L14 14M14 4L4 14" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
@@ -270,7 +377,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
             {step === "current" ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>Current password</label>
+                  <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.currentPassword}</label>
                   <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "44px", padding: "8px", border: fieldBorder(focusedField === "current"), borderRadius: "8px" }}>
                     <LockFieldIcon />
                     <input
@@ -302,13 +409,13 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                     transition: "background-color 0.15s, color 0.15s",
                   }}
                 >
-                  Verify
+                  {t.verify}
                 </button>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>New password</label>
+                  <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.newPassword}</label>
                   <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "44px", padding: "8px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
                     <LockFieldIcon />
                     <input
@@ -328,7 +435,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>Confirm password</label>
+                  <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.confirmPassword}</label>
                   <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "44px", padding: "8px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
                     <LockFieldIcon />
                     <input
@@ -349,14 +456,14 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                 {/* Doubles as the format error, so a disabled button always has its reason on screen. */}
                 <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "10px", fontWeight: 600, color: formatBroken ? "var(--danger-400)" : "var(--gray-600)", letterSpacing: "-0.22px" }}>
                   {formatBroken && <ErrorCircleIcon />}
-                  {PASSWORD_RULE_TEXT}
+                  {PASSWORD_RULE_TEXT[lang]}
                 </p>
 
                 {mismatch && (
                   <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                     <ErrorCircleIcon />
                     <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.24px" }}>
-                      Passwords do not match. Please try again.
+                      {t.mismatch}
                     </span>
                   </div>
                 )}
@@ -373,7 +480,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                     transition: "background-color 0.15s, color 0.15s",
                   }}
                 >
-                  Update Password
+                  {t.updatePassword}
                 </button>
               </div>
             )}
@@ -389,6 +496,8 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
 // (matching Password Change's own row) opens this instead. Owns its own draft state so closing
 // without saving (X, outside click, Escape) discards any in-progress edits.
 function ThresholdModal({ initialAlert, initialModerate, onSave, onClose }: { initialAlert: number; initialModerate: number; onSave: (alert: number, moderate: number) => void; onClose: () => void }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const [draftAlert, setDraftAlert] = useState(initialAlert);
   const [draftModerate, setDraftModerate] = useState(initialModerate);
   const [saved, setSaved] = useState(false);
@@ -414,8 +523,8 @@ function ThresholdModal({ initialAlert, initialModerate, onSave, onClose }: { in
         display: "flex", flexDirection: "column", gap: "20px",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.34px" }}>Map alert thresholds</h2>
-          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}>
+          <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.34px" }}>{t.thresholdsTitle}</h2>
+          <button onClick={onClose} aria-label={t.close} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M4 4L14 14M14 4L4 14" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
@@ -423,12 +532,12 @@ function ThresholdModal({ initialAlert, initialModerate, onSave, onClose }: { in
         </div>
 
         <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", lineHeight: 1.5 }}>
-          Today&apos;s VIP-hit count a district needs before its map badge turns red (alert) or navy (moderate).
+          {t.thresholdsBody}
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <ThresholdField label="Alert (red)" value={draftAlert} min={draftModerate + 1} max={300} onChange={setDraftAlert} />
-          <ThresholdField label="Moderate (navy)" value={draftModerate} min={1} max={draftAlert - 1} onChange={setDraftModerate} />
+          <ThresholdField label={t.alertRed} value={draftAlert} min={draftModerate + 1} max={300} onChange={setDraftAlert} />
+          <ThresholdField label={t.moderateNavy} value={draftModerate} min={1} max={draftAlert - 1} onChange={setDraftModerate} />
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <button
               onClick={handleSave}
@@ -442,9 +551,9 @@ function ThresholdModal({ initialAlert, initialModerate, onSave, onClose }: { in
                 transition: "background-color 0.15s, color 0.15s",
               }}
             >
-              Save Changes
+              {t.saveChanges}
             </button>
-            {saved && <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--success-400)" }}>Saved</span>}
+            {saved && <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--success-400)" }}>{t.saved}</span>}
           </div>
         </div>
       </div>
@@ -459,7 +568,12 @@ export default function MyPage() {
   const [showThresholdModal, setShowThresholdModal] = useState(false);
   const [sessionsTerminated, setSessionsTerminated] = useState(false);
   const otherSessions = LOGIN_SESSIONS.filter(sn => !sn.current);
-  const [language, setLanguage] = useState("English");
+  // The real setting, not a local one. This dropdown held its own useState and 한국어 was listed
+  // as "coming soon" — meanwhile Portal had a working switcher pinned to its top bar. The switcher
+  // was a build-time convenience in a place meant for per-screen controls; language is an account
+  // preference, so it belongs here, and here it now writes the store the whole interface reads.
+  const [lang, setLang] = useLanguage();
+  const t = T[lang];
   // Only one session is ever listed here (this mock has no other-device data to actually
   // terminate) — the confirmation is honest about that rather than pretending to have revoked
   // something. Auto-clears the same way BestFramePage's highlightCamId does.
@@ -495,13 +609,13 @@ export default function MyPage() {
           {/* Header card */}
           <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", padding: "24px" }}>
             <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "8px" }}>
-              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>Settings</span>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{t.settings}</span>
               <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{">"}</span>
-              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary-400)", letterSpacing: "-0.24px" }}>My page</span>
+              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary-400)", letterSpacing: "-0.24px" }}>{t.myPage}</span>
             </div>
-            <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-900)" }}>My page</h1>
+            <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-900)" }}>{t.myPage}</h1>
             <p style={{ margin: "8px 0 0", fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.26px" }}>
-              Centrally manage your admin profile, security settings, and monitoring preferences.
+              {t.pageDesc}
             </p>
           </div>
 
@@ -510,7 +624,7 @@ export default function MyPage() {
             {/* Profile Information */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <Card>
-                <CardHeader icon={<UserCheckIcon />} title="Profile information" />
+                <CardHeader icon={<UserCheckIcon />} title={t.profile} />
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "100%" }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
                     <span style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>{SIGNED_IN_USER.name}</span>
@@ -522,9 +636,9 @@ export default function MyPage() {
                 </div>
                 <div style={{ height: "1px", backgroundColor: "var(--gray-200)", width: "100%" }} />
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
-                  <ReadOnlyField label="Full name" value={SIGNED_IN_USER.name} />
-                  <ReadOnlyField label="Email address" value={SIGNED_IN_USER.email} />
-                  <ReadOnlyField label="Department / team" value={SIGNED_IN_USER.team} />
+                  <ReadOnlyField label={t.fullName} value={SIGNED_IN_USER.name} />
+                  <ReadOnlyField label={t.emailAddress} value={SIGNED_IN_USER.email} />
+                  <ReadOnlyField label={t.departmentTeam} value={SIGNED_IN_USER.team} />
                 </div>
               </Card>
             </div>
@@ -532,28 +646,28 @@ export default function MyPage() {
             {/* Security & Access Control */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <Card>
-                <CardHeader icon={<ShieldIcon />} title="Security & access control" />
+                <CardHeader icon={<ShieldIcon />} title={t.security} />
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "0.006px" }}>Password settings</span>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "0.006px" }}>{t.passwordSettings}</span>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "var(--gray-50)", borderRadius: "10px", padding: "12px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.28px" }}>Password change</span>
+                      <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.28px" }}>{t.passwordChange}</span>
                       <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.2px" }}>
-                        {passwordJustChanged ? "Last changed just now" : "Last changed 45 days ago"}
+                        {passwordJustChanged ? t.changedJustNow : t.changedDaysAgo(PASSWORD_AGE_DAYS)}
                       </span>
                     </div>
                     <button
                       onClick={() => setShowPasswordModal(true)}
                       style={{ backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: "6px", padding: "6px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)", letterSpacing: "-0.24px" }}
                     >
-                      Change
+                      {t.change}
                     </button>
                   </div>
                 </div>
                 <div style={{ height: "1px", backgroundColor: "var(--gray-200)", width: "100%" }} />
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <CardHeader icon={<MonitorIcon />} title="Active login sessions" />
+                    <CardHeader icon={<MonitorIcon />} title={t.sessions} />
                     {/* The control only appears when there is something for it to end. A standing
                         "Terminate All Others" over a list of one asks the operator whether something
                         else is signed in and then answers nothing — and revoking a session needs the
@@ -563,18 +677,18 @@ export default function MyPage() {
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         {sessionsTerminated && (
                           <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--success-400)" }}>
-                            {otherSessions.length} session{otherSessions.length === 1 ? "" : "s"} ended
+                            {t.sessionsEnded(otherSessions.length)}
                           </span>
                         )}
                         <button
                           onClick={() => setSessionsTerminated(true)}
                           style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "11px", color: "var(--danger-400)", textDecoration: "underline", fontWeight: 600 }}
                         >
-                          Sign out other sessions
+                          {t.signOutOthers}
                         </button>
                       </div>
                     ) : (
-                      <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-400)" }}>Only this device</span>
+                      <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-400)" }}>{t.onlyThisDevice}</span>
                     )}
                   </div>
                   {LOGIN_SESSIONS.map(session => (
@@ -586,7 +700,7 @@ export default function MyPage() {
                         </div>
                       </div>
                       <span style={{ fontSize: "12px", fontWeight: 700, color: session.current ? "var(--success-400)" : "var(--gray-500)", backgroundColor: session.current ? "var(--success-100)" : "var(--gray-100)", borderRadius: "4px", padding: "3px 8px" }}>
-                        {session.current ? "Active now" : session.lastActive}
+                        {session.current ? t.activeNow : session.lastActive}
                       </span>
                     </div>
                   ))}
@@ -597,30 +711,29 @@ export default function MyPage() {
             {/* System Preferences */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <Card>
-                <CardHeader icon={<SlidersIcon />} title="System preferences" />
+                <CardHeader icon={<SlidersIcon />} title={t.systemPreferences} />
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "0.006px" }}>Interface language</span>
-                    {/* 한국어 stays in its own script — that is how every language picker lists a
-                        language — but it is not translated yet, so it is listed and disabled rather
-                        than selectable. The note beside it is in English because the interface is. */}
-                    <DropdownBtn value={language} options={["English", "한국어"]}
-                      disabledOptions={["한국어"]} onSelect={setLanguage} />
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "0.006px" }}>{t.interfaceLanguage}</span>
+                    {/* Each language is named in its own script — that is how every language picker
+                        lists one, and it is the one label a person who cannot read the current
+                        interface still recognises. */}
+                    <DropdownBtn value={lang} options={LANGUAGE_OPTIONS} onSelect={setLang} />
                   </div>
                 </div>
                 <div style={{ height: "1px", backgroundColor: "var(--gray-200)", width: "100%" }} />
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
-                  <CardHeader icon={<AlertBellIcon />} title="Map alert thresholds" />
+                  <CardHeader icon={<AlertBellIcon />} title={t.thresholdsTitle} />
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "var(--gray-50)", borderRadius: "10px", padding: "12px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.28px" }}>Alert levels</span>
-                      <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.2px" }}>Alert {alertThreshold} · Moderate {moderateThreshold}</span>
+                      <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.28px" }}>{t.thresholdLevels}</span>
+                      <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.2px" }}>{t.thresholdSummary(alertThreshold, moderateThreshold)}</span>
                     </div>
                     <button
                       onClick={() => setShowThresholdModal(true)}
                       style={{ backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: "6px", padding: "6px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)", letterSpacing: "-0.24px" }}
                     >
-                      Change
+                      {t.change}
                     </button>
                   </div>
                 </div>
