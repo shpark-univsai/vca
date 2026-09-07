@@ -287,7 +287,7 @@ function RegisterVipModal({ t, onClose, onSubmit }: { t: VipDict; onClose: () =>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder={t.namePlaceholder}
-              style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }} />
+              style={FIELD_STYLE} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
@@ -423,10 +423,7 @@ function GroupModal({ t, group, projectId, onClose }: {
     onClose();
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px",
-    border: BORDER, fontSize: "13px", fontFamily: "inherit",
-  };
+  const inputStyle = FIELD_STYLE;
   const label = (text: string) => (
     <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{text}</label>
   );

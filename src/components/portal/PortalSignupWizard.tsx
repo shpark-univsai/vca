@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useVcaStore, type ProjectType } from "@/lib/vcaStore";
+import { useVcaStore } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, FilterSelect } from "./PortalShared";
+import { FIELD_STYLE, BORDER } from "./PortalShared";
 
 type SignupStep = "account" | "team" | "done";
 
@@ -225,11 +225,9 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   return <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>{children}</p>;
 }
 
-const inputStyle: React.CSSProperties = {
-  width: "100%", boxSizing: "border-box", height: "40px", padding: "0 13px",
-  borderRadius: "10px", border: BORDER, backgroundColor: "white",
-  fontSize: "12px", fontWeight: 600, fontFamily: "inherit", color: "var(--gray-900)",
-};
+// Was 40px tall with 13px side padding and a 12px/600 face of its own — every other field in
+// Portal is 36px, 12px padding and 13px/400. One shape.
+const inputStyle: React.CSSProperties = { ...FIELD_STYLE, color: "var(--gray-900)" };
 
 export default function PortalSignupWizard() {
   const router = useRouter();

@@ -6,7 +6,7 @@ import { useVcaStore } from "@/lib/vcaStore";
 import { REGISTRATION_CODE_TTL_DAYS, formatCode, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
-import { BORDER } from "./PortalShared";
+import { FIELD_STYLE, BORDER } from "./PortalShared";
 
 const T = {
   en: {
@@ -306,10 +306,7 @@ function RosterEntryModal({ entry, projectId, onClose, t }: {
       {hint && <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-400)" }}>{hint}</span>}
     </label>
   );
-  const inputStyle: React.CSSProperties = {
-    width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px",
-    border: BORDER, fontSize: "13px", fontFamily: "inherit",
-  };
+  const inputStyle = FIELD_STYLE;
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
