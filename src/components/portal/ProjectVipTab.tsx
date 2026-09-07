@@ -986,7 +986,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 <img src={person.photoUrl} alt="" style={{ width: "32px", height: "32px", borderRadius: "8px", objectFit: "cover" }} />
                 {/* The name is the way in, as it is in most tables — a narrow target that does not
                     fight the group select two cells over for the same click. */}
-                <button onClick={() => setDetailFor(person)} title={person.name}
+                <button className="portal-link" onClick={() => setDetailFor(person)} title={person.name}
                   style={{
                     border: "none", background: "none", padding: 0, cursor: "pointer", textAlign: "left",
                     fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit",
@@ -1032,6 +1032,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             const elevated = person.priorityLabel === "high" || person.priorityLabel === "very_high";
             return (
             <div key={person.id}
+              className="portal-card-clickable"
               onClick={() => setDetailFor(person)}
               role="button" tabIndex={0}
               onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDetailFor(person); } }}

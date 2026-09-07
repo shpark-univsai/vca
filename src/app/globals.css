@@ -156,6 +156,24 @@
 .portal-btn-danger { transition: background-color .12s ease; }
 .portal-btn-danger:hover:not(:disabled) { background-color: var(--danger-500) !important; }
 
+/* A card that opens something when clicked.
+   cursor:pointer alone is only discoverable once the pointer is already on it and moving on, so a
+   wall of VIP cards gave no sign that any of them led anywhere.
+
+   A hairline that appears on hover, not a shadow and not a permanent border: this app strips both
+   from its cards on purpose (PANEL_SHADOW and CARD_BORDER are both "none" — see PortalShared), and
+   a lift effect here would reintroduce the layer that decision removed. Additive on hover only
+   adds nothing to the resting page.
+
+   gray-300, a step lighter than the gray-900 the focus ring uses, so hovering and being focused
+   stay tellable apart on the same card. */
+.portal-card-clickable { transition: outline-color .12s ease; outline: 1px solid transparent; }
+.portal-card-clickable:hover { outline-color: var(--gray-300); }
+
+/* The same action reached from a table row, where the name is the target rather than a surface. */
+.portal-link { transition: color .12s ease; }
+.portal-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
 /* Icon-only buttons — a close X, a row's trash. The box appears on hover rather than sitting there
    permanently, so a row of them does not read as a row of boxes. */
 .portal-icon-btn { border-radius: 8px; transition: background-color .12s ease, color .12s ease; }
