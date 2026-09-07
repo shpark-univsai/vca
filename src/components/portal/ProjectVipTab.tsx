@@ -552,7 +552,10 @@ function registeredLong(value: string): string {
 /** One footprint for Save and Saved, so the row does not move when the state changes. */
 const SAVE_PILL: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center",
-  minWidth: "78px", height: "30px", padding: "0 12px", borderRadius: "999px",
+  // CONTROL_HEIGHT, like the select it stands next to. It was 30px, so the two sat side by side at
+  // different heights — and together they were a couple of pixels wider than the sheet, which is
+  // what pushed the button onto its own line.
+  minWidth: "72px", height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "999px",
   fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0,
 };
 
@@ -597,7 +600,7 @@ function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
    * either.
    */
   const row = (label: string, value: React.ReactNode) => (
-    <div style={{ display: "flex", gap: "12px", alignItems: "center", minHeight: "30px" }}>
+    <div style={{ display: "flex", gap: "12px", alignItems: "center", minHeight: CONTROL_HEIGHT }}>
       <span style={{ fontSize: "12px", color: "var(--gray-500)", minWidth: "72px", flexShrink: 0 }}>{label}</span>
       <span style={{ fontSize: "13px", color: "var(--gray-900)", minWidth: 0 }}>{value}</span>
     </div>
@@ -641,12 +644,12 @@ function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: BORDER, paddingTop: "12px" }}>
             {row(t.colGroup, (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", flexWrap: "nowrap" }}>
                 {/* Fixed box, not fitContent. Sized to its own label, the control changed width
                     every time the group did — "Individual" and "City Hall delegation" are not the
                     same number of characters — so the row twitched and the Save button beside it
                     moved with it. A field keeps its shape while its value changes. */}
-                <span style={{ width: "170px", flexShrink: 0 }}>
+                <span style={{ width: "148px", flexShrink: 0 }}>
                   <FilterSelect
                     value={draftGroupId}
                     onChange={setDraftGroupId}
