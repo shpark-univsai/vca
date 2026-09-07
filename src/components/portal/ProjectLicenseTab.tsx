@@ -254,15 +254,19 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
       */}
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, overflow: "hidden", marginBottom: "20px" }}>
         <div style={{
-          // The full step, not the tint. Everything on the hero inverts with it — text to white,
-          // the bar's track and segments to white at two opacities. Over the limit takes the same
-          // treatment one ramp over, so the state is legible from across a room rather than being
-          // a red hairline somebody has to look for.
-          backgroundColor: overLimit ? "var(--danger-400)" : "var(--primary-400)",
+          // gray-900, not the primary step. Purple at full strength across the widest block on the
+          // page spent the accent on a background; the palette guidance keeps it to a tenth of a
+          // screen, and here the only purple left is the Smart City chip's own text. Over the limit
+          // still swaps the whole ground, because that state should be legible from across a room.
+          backgroundColor: overLimit ? "var(--danger-400)" : "var(--gray-900)",
           padding: "20px",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-            <p style={{ fontSize: "10px", fontWeight: 700, color: "rgba(255,255,255,0.75)", letterSpacing: "0.6px", textTransform: "uppercase" }}>
+          {/* The plan is the title. It was set as a 10px eyebrow over a 32px channel count, which
+              made the figure the name of the card — but the figure changes as cameras are added and
+              the plan is what the customer signed. The count is still the thing the page is opened
+              for, so it keeps the emphasis on the line below rather than the size above it. */}
+          <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap" }}>
+            <p style={{ fontSize: "26px", fontWeight: 800, color: "white", lineHeight: 1.15 }}>
               {project.licensePlan ?? t.notSet}
             </p>
             <span style={{ fontSize: "10px", fontWeight: 700, color: meta.color, backgroundColor: "white", padding: "2px 8px", borderRadius: "999px" }}>
@@ -278,13 +282,18 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
               </span>
             )}
           </div>
-          <p style={{ fontSize: "32px", fontWeight: 800, color: "white", marginTop: "8px", lineHeight: 1.1 }}>
-            {limit ? `${used} / ${limit}` : String(used)}
-          </p>
-          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.8)", marginTop: "4px" }}>
-            {limit
-              ? `${t.channelsInUse} · ${t.canAddN(available ?? 0)}`
-              : t.channelsUnlimited}
+          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.65)", marginTop: "10px" }}>
+            {limit ? (
+              <>
+                <span style={{ fontSize: "17px", fontWeight: 800, color: "white" }}>{used} / {limit}</span>
+                {"  "}{t.channelsInUse} · {t.canAddN(available ?? 0)}
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: "17px", fontWeight: 800, color: "white" }}>{used}</span>
+                {"  "}{t.channelsUnlimited}
+              </>
+            )}
           </p>
           {/* The breakdown stays a single segmented bar: AI cameras and plain CCTV share one
               denominator, so three bars would hide the relationship the number is about. On a
