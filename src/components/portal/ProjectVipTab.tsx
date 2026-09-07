@@ -6,7 +6,7 @@ import { getFacePhoto } from "@/lib/mockData";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SelectedCheckIcon, SortableHeader, Tooltip, sortRows, useTableSort } from "./PortalShared";
+import { FIELD_STYLE, FIELD_FOCUS, BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SelectedCheckIcon, SortableHeader, Tooltip, sortRows, useTableSort } from "./PortalShared";
 
 type VipSortKey = "name" | "role" | "priority" | "registered";
 
@@ -518,10 +518,6 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
   useEscapeKey(onClose);
   const setPersonGroup = useVcaStore(s => s.setPersonGroup);
   const { showToast } = useToast();
-  // Read off the person passed in, which the caller re-reads from the store each render — a group
-  // handed down as its own prop would be the value from the moment the sheet opened, so changing
-  // the group here would leave the tag above saying the old one.
-  const group = groups.find(g => g.id === person.groupId);
   /**
    * The picked group, held until it is saved.
    *
@@ -831,7 +827,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
       <div style={{ position: "relative", flex: 1, maxWidth: "320px" }}>
-        <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
+        <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
         </span>
         <input
@@ -841,10 +837,10 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setSearchFocused(false)}
           style={{
-            width: "100%", boxSizing: "border-box", height: CONTROL_HEIGHT, padding: "0 10px 0 30px", borderRadius: "10px",
-            border: searchFocused ? "1px solid var(--gray-900)" : BORDER, outline: "none",
-            boxShadow: searchFocused ? "0 0 0 3px var(--gray-100)" : "none",
-            fontSize: "12px", fontFamily: "inherit", backgroundColor: "white",
+            // The shared control shape, with room on the left for the icon that sits at 12px:
+            // 12 + 14 (icon) + 6 = 32, which keeps that gap on the spacing scale too.
+            ...FIELD_STYLE, padding: "0 12px 0 32px",
+            ...(searchFocused ? FIELD_FOCUS : null),
           }}
         />
       </div>

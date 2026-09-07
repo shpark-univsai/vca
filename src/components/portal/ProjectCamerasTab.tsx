@@ -6,7 +6,7 @@ import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ActiveFilterCount, CARD_GAP, MetricCard, SubStat } from "./PortalShared";
+import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, sortRows, useTableSort, ActiveFilterCount, CARD_GAP, MetricCard, SubStat } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -465,14 +465,15 @@ function CameraFormModal({
   ) => (
     <div>
       <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{label}</label>
-      <input
+      {/* TextField, not a bare input: it carries the shared height and the shared focus ring, so a
+          field and the select next to it in this same form stop being two different controls. */}
+      <TextField
         value={form[key]}
-        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+        onChange={v => setForm(f => ({ ...f, [key]: v }))}
         placeholder={placeholder}
         type={opts?.type}
         inputMode={opts?.inputMode}
         autoComplete={key === "password" ? "new-password" : undefined}
-        style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "13px", fontFamily: "inherit" }}
       />
     </div>
   );
@@ -1101,7 +1102,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           third of a line above the Delete button beside it. */}
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
         <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
-          <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
+          <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
           </span>
           <input
@@ -1111,10 +1112,9 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             style={{
-              width: "100%", boxSizing: "border-box", height: CONTROL_HEIGHT, padding: "0 10px 0 30px", borderRadius: "10px",
-              border: searchFocused ? "1px solid var(--gray-900)" : BORDER, outline: "none",
-              boxShadow: searchFocused ? "0 0 0 3px var(--gray-100)" : "none",
-              fontSize: "12px", fontFamily: "inherit", backgroundColor: "white",
+              // 12 + 14 (icon) + 6 = 32, so the icon's gap is on the spacing scale too.
+              ...FIELD_STYLE, padding: "0 12px 0 32px",
+              ...(searchFocused ? FIELD_FOCUS : null),
             }}
           />
         </div>

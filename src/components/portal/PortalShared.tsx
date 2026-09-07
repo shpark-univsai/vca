@@ -29,6 +29,32 @@ export const CONTROL_HEIGHT = "36px";
  * tables stay the same table.
  */
 export const TABLE_COLUMN_GAP = "12px";
+
+/**
+ * One shape for every control you can type in or pick from — text fields, selects, the search
+ * boxes. They had three different answers: the search inputs set CONTROL_HEIGHT and drew their own
+ * focus ring, the form inputs set no height at all (padding decided it, so ~38px) and fell through
+ * to globals.css's 2px outline, and FilterSelect is a <button>, which a mouse click does not make
+ * :focus-visible — so it showed nothing at all when open. Side by side in one form, a 36px select
+ * with no active state next to a 38px input with a dark outline reads as two components from two
+ * products.
+ *
+ * The search inputs already had the right treatment, so this is theirs, lifted.
+ */
+export const FIELD_STYLE: React.CSSProperties = {
+  width: "100%", boxSizing: "border-box",
+  height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "10px",
+  border: BORDER, backgroundColor: "white",
+  fontSize: "13px", fontFamily: "inherit",
+  // The browser ring is replaced, not layered on top of, the border treatment below.
+  outline: "none",
+};
+
+/** Merged over FIELD_STYLE while the control is focused or open. */
+export const FIELD_FOCUS: React.CSSProperties = {
+  border: "1px solid var(--gray-900)",
+  boxShadow: "0 0 0 3px var(--gray-100)",
+};
 /**
  * How wide each breadcrumb name may get before it is ellipsised. They were 260px and 220px, which
  * cut perfectly ordinary names ("City of Singapore — Smart Infrastructure Office", "Marina Bay &
@@ -174,12 +200,14 @@ export function FilterSelect({ value, onChange, options, fitContent }: {
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px",
           ...(fitContent ? {} : { width: "100%" }), boxSizing: "border-box",
-          height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "10px",
-          border: hovered ? "1px solid var(--gray-400)" : BORDER,
-          backgroundColor: "white", cursor: "pointer", whiteSpace: "nowrap",
+          height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "10px",
+          backgroundColor: "white", cursor: "pointer", whiteSpace: "nowrap", outline: "none",
+          // Open is this control's focused state, and it now looks like one — the same ring a text
+          // field gets. Hover keeps its lighter cue underneath.
+          ...(open ? FIELD_FOCUS : { border: hovered ? "1px solid var(--gray-400)" : BORDER }),
         }}
       >
-        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)" }}>{selected?.label ?? "Select"}</span>
+        <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-900)" }}>{selected?.label ?? "Select"}</span>
         <span style={{ display: "flex", color: "var(--gray-600)", flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </span>
@@ -708,5 +736,49 @@ export function Tooltip({ text, children, placement = "bottom" }: {
         </span>
       )}
     </span>
+  );
+}
+
+
+/**
+ * A text field with the shared shape and the shared focus ring.
+ *
+ * A component rather than an exported style object because the ring needs focus state, and every
+ * form in Portal was otherwise going to keep its own useState for it — which is how three
+ * different treatments got here in the first place.
+ */
+export function TextField({ value, onChange, placeholder, type, inputMode, autoComplete, disabled, readOnly, style }: {
+  value: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  type?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  autoComplete?: string;
+  disabled?: boolean;
+  readOnly?: boolean;
+  /** Merged last — for the odd field that needs a monospace face or a fixed width. */
+  style?: React.CSSProperties;
+}) {
+  const [focused, setFocused] = useState(false);
+  const inert = disabled || readOnly;
+  return (
+    <input
+      value={value}
+      onChange={e => onChange?.(e.target.value)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      placeholder={placeholder}
+      type={type}
+      inputMode={inputMode}
+      autoComplete={autoComplete}
+      disabled={disabled}
+      readOnly={readOnly}
+      style={{
+        ...FIELD_STYLE,
+        ...(focused && !inert ? FIELD_FOCUS : null),
+        ...(disabled ? { backgroundColor: "var(--gray-50)", color: "var(--gray-400)", cursor: "not-allowed" } : null),
+        ...style,
+      }}
+    />
   );
 }
