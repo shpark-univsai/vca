@@ -1083,7 +1083,15 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                     {elevated && <PriorityTag priority={person.priorityLabel!} text={t.priorityText[person.priorityLabel!]} />}
                   </div>
                 )}
-                {person.description && <p style={{ fontSize: "10px", color: "var(--gray-500)", marginTop: "5px" }}>{person.description}</p>}
+                {/* The note is not on the card.
+                    It is free text with no length anybody controls, so on a card it either grew
+                    the card or had to be clamped — and a watchlist grid is read at a hundred faces
+                    at a time, where a line per card is a screenful. Four of six comparable grids
+                    (Qatalog, Cosmos, Rive, and most of Wellfound's) leave it off the card for the
+                    same reason; the ones that keep it (Kit) are grids where the prose IS the
+                    content. Here the face and the name are.
+                    Nothing is lost: it is stated in full on the detail sheet behind this card, and
+                    it has its own column in the table view. */}
                 {/* The date alone. On a card there is only one date it could be, and "Registered"
                     in front of it was a word repeated on every card to say what the screen it sits
                     on already says. The detail sheet and the table both keep the label, where a
