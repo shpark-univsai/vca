@@ -268,20 +268,20 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
 
   return (
     /**
-     * Narrower than the page, and left-aligned.
+     * Narrower than the page, and centred.
      *
      * Every other Portal tab is a table or a grid, which wants all the width a monitor has. This
      * one is a single card of label-and-value rows — stretched across a wide screen its values end
      * up a hand's width from their labels, and the eye has to travel for a figure that would read
      * at half the distance. So it is capped.
      *
-     * It was centred for a day, which made switching to this tab move where the content starts:
-     * every other tab begins at the shell's left gutter and this one began somewhere inside it, so
-     * it read as a different page rather than another tab of the same one. Capped and left-aligned
-     * is also what the products this borrows from actually do — Remote, Loom and Vimeo all leave
-     * the spare width on the right rather than splitting it.
+     * `margin-inline: auto` is what makes the side margins responsive without a media query: the
+     * spare width above 900px is split evenly, and as the window narrows the two margins shrink
+     * together until they are zero and the card is simply the width of the page. Below that the
+     * only gutter left is the shell's own 32/72 padding, which every tab shares — so this tab stops
+     * looking special exactly when there is no room to be special.
      */
-    <div style={{ maxWidth: "900px" }}>
+    <div style={{ maxWidth: "900px", marginInline: "auto" }}>
       <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
       <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px", marginBottom: "20px" }}>{t.subtitle}</p>
 
