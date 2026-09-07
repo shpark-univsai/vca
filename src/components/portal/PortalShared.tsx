@@ -142,7 +142,23 @@ export const OVERVIEW_PANEL_MAX_HEIGHT = "380px";
 
 export const BREADCRUMB_TEAM_MAX_WIDTH = "min(360px, 26vw)";
 export const BREADCRUMB_PROJECT_MAX_WIDTH = "min(320px, 22vw)";
-export const PANEL_SHADOW = "none";
+/**
+ * The lift a resting card gets on the gray-100 ground.
+ *
+ * It was "none", and with CARD_BORDER also "none" a card had nothing but its own whiteness to
+ * separate it from the page — which read as flat rather than calm. The reason those two were
+ * removed was that the page had become mostly LINES (see CARD_BORDER's note), and a shadow is not
+ * a line: it gives the card an edge without adding another rule to a page that already has table
+ * header bands, row dividers and bordered controls.
+ *
+ * Deliberately far lighter than the modal (0 20px 60px / .18) and the dropdown (0 8px 20px / .12).
+ * Those float above the page; a card sits on it. Two very shallow layers rather than one blurry
+ * one, so the near edge stays crisp and the card does not look like it is hovering.
+ *
+ * Also picked up by the small raised pills that use this constant — the active segment of the
+ * table/grid toggle and of the language switcher, which is exactly the lift those wanted.
+ */
+export const PANEL_SHADOW = "0 1px 2px rgba(14,22,42,0.04), 0 2px 6px rgba(14,22,42,0.05)";
 
 export const TYPE_META: Record<ProjectType, { label: string; bg: string; color: string }> = {
   smart_city: { label: "Smart City", bg: "white", color: "var(--primary-400)" },
