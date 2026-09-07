@@ -3,6 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { DISTRICTS } from "@/lib/mockData";
 import { MAP_TILE_URL, MAP_TILE_FILTER, tileLayerOptions } from "@/lib/mapTiles";
+import { useLanguage } from "@/lib/i18n";
+
+// The one word this map draws itself, on the card marking the most recent sighting. Inline rather
+// than in a file dictionary: the markup is built as an HTML string for Leaflet, so there is no
+// component here to hold a `t`.
+const LAST_SEEN = { en: "LAST SEEN", ko: "마지막 검출" } as const;
 
 export interface TrackingHit {
   lat: number;
@@ -138,6 +144,7 @@ export default function RedmapMap({
   onMarkerClick,
   visibleGroupIds = null,
 }: RedmapMapProps) {
+  const [lang] = useLanguage();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
   const overlayLayersRef = useRef<unknown[]>([]);
@@ -339,7 +346,7 @@ export default function RedmapMap({
                  <div style="position:relative;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;border:1.5px solid ${color}">
                    <div style="background:${color};color:white;font-size:11px;font-weight:800;padding:6px 12px;display:flex;align-items:center;gap:4px;white-space:nowrap">
                      <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M6 0.5L1.5 6.5H5L4.5 10.5L9.5 4.5H6L6 0.5Z" fill="white"/></svg>
-                     LAST SEEN
+                     ${LAST_SEEN[lang]}
                    </div>
                    <div style="background:white;padding:8px 12px 10px;white-space:nowrap">
                      <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${node.label}</div>
@@ -374,7 +381,7 @@ export default function RedmapMap({
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trackingActive, showStatus, activeNode, hits, zoom, mapReady, visibleGroupIds]);
+  }, [trackingActive, showStatus, activeNode, hits, zoom, mapReady, visibleGroupIds, lang]);
 
   return (
     <>
