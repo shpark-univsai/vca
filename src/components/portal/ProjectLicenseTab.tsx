@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarClock, Check, UserRound, Video } from "lucide-react";
+import { CalendarClock, Check, Lock, UserRound, Video } from "lucide-react";
 import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -149,6 +149,7 @@ const T = {
 
 // Lucide, at the sizes and weights these were drawn at — see PortalProjectDetailPage's note.
 function CheckIcon() { return <Check size={12} strokeWidth={1.6} />; }
+function LockIcon() { return <Lock size={11} strokeWidth={1.6} />; }
 
 /**
  * What the licensed channels are being spent on, in Vimeo's Billing-seats shape: the total, then a
@@ -238,17 +239,16 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "10px 20px" }}>
       {rows.map(({ key, label }) => (
         <div key={key} style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
-          {/* A fixed 12px slot so a tick and a dash leave their labels on the same left edge.
-              A dash, not a padlock: a padlock says "pay to unlock", and what these mostly say is
-              "not built yet" — a different fact, and one an upgrade cannot buy. None of the plan
-              pages worth copying uses a padlock either; Slite prints a dash, Lyssna a hollow dot,
-              Front an "Add-on" chip. */}
+          {/* A fixed 12px slot so a tick and a padlock leave their labels on the same left edge.
+              The padlock reads as "not yours yet" rather than strictly "pay to unlock", which is
+              what this group is: some of it is a higher plan, some is not built. The heading above
+              it says which, and a padlock is the one glyph nobody has to be taught. */}
           <span style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: "12px", marginTop: "3px", flexShrink: 0, lineHeight: 1,
             color: included ? "var(--gray-900)" : "var(--gray-300)",
           }}>
-            {included ? <CheckIcon /> : "–"}
+            {included ? <CheckIcon /> : <LockIcon />}
           </span>
           <span style={{ fontSize: "12px", lineHeight: 1.5, fontWeight: included ? 700 : 400, color: included ? "var(--gray-900)" : "var(--gray-500)" }}>{label}</span>
         </div>

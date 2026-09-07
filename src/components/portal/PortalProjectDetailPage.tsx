@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowUp, Clock, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat, Tooltip } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
@@ -44,10 +44,9 @@ const T = {
     registeredTodayLabel: (n: number) => `Registered today: ${n}`,
     portalAccounts: "Portal Accounts & Permissions",
     accountsSuffix: "accounts",
-    pendingAccessRequest: (n: number) => `${n} pending access request${n === 1 ? "" : "s"}`,
     noPendingAccessRequests: "No pending access requests.",
-    pendingInvites: (n: number) => `${n} invitation${n === 1 ? "" : "s"} not yet accepted`,
-    allAccountsActive: "All accounts active",
+    accountStates: (active: number, invited: number, suspended: number) =>
+      `Active ${active} · Invited ${invited} · Suspended ${suspended}`,
     accessSplitLabel: (portal: number, app: number) => `Portal: ${portal} | App: ${app}`,
     cameraStatusTitle: "Camera Status",
     // This card is the page's answer to "is this deployment working". Deliberately not joined by a
@@ -105,10 +104,9 @@ const T = {
     registeredTodayLabel: (n: number) => `오늘 등록: ${n}`,
     portalAccounts: "포털 계정 및 권한",
     accountsSuffix: "개 계정",
-    pendingAccessRequest: (n: number) => `대기 중인 접근 요청 ${n}건`,
     noPendingAccessRequests: "대기 중인 접근 요청이 없습니다.",
-    pendingInvites: (n: number) => `수락하지 않은 초대 ${n}건`,
-    allAccountsActive: "모든 계정 활성",
+    accountStates: (active: number, invited: number, suspended: number) =>
+      `활성 ${active} · 초대 대기 ${invited} · 정지 ${suspended}`,
     accessSplitLabel: (portal: number, app: number) => `포털: ${portal} | 앱: ${app}`,
     cameraStatusTitle: "카메라 상태",
     cameraStatusSubtitle: "이 프로젝트에 연결된 카메라의 스트리밍 상태",
@@ -248,6 +246,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // requests exist, so flipping the flag off later cannot bury someone who already asked.
   const showAccessRequests = getAuthConfig().accessRequest || projectAccessRequests.length > 0;
   const pendingInviteCount = projectUsers.filter(u => u.status === "invited").length;
+  const activeUserCount = projectUsers.filter(u => u.status === "active").length;
+  const suspendedUserCount = projectUsers.filter(u => u.status === "suspended").length;
 
   const recentActivity = auditLog
     .filter(a => a.projectId === projectId)
@@ -398,13 +398,17 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   </span>
                 )}
               </div>
-              {/* Empty on purpose, and still 18px tall.
-                  The other three cards put something real in this slot — two progress bars and an
-                  account-state line — and it is what keeps all four footer dividers on one line.
-                  This card had a sentence describing what the card is ("Registered watchlist
-                  individuals for this project"), which the label above it already says. There is no
-                  second figure here worth the room, so the slot holds the space and nothing else. */}
-              <div style={{ height: "18px" }} />
+              {/* The share of the registry that is high priority — the same figure the footer names
+                  in words, in the slot the other three cards use for a bar. It held a sentence
+                  describing what the card is, then nothing at all, and a row of four cards where
+                  two have a bar and two do not reads as two unfinished cards.
+                  primary-400 because the footer's "High priority" label is already that colour:
+                  the bar and its legend have to be the same thing. */}
+              <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
+                <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${projectPersons.length ? (highPriorityVipCount / projectPersons.length) * 100 : 0}%`, backgroundColor: "var(--primary-400)" }} />
+                </div>
+              </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
                 <p style={{ fontSize: "12px", color: "var(--primary-400)", fontWeight: 600 }}>{t.highPriorityLabel(highPriorityVipCount)}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.registeredTodayLabel(todayVipCount)}</p>
@@ -416,28 +420,29 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectUsers.length}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.accountsSuffix}</p>
               </div>
-              {/* This card stays — it counts accounts, which has nothing to do with access requests.
-                  Only its middle line changes: with requests switched off, "No pending access
-                  requests" would be a permanent non-answer, so the slot reports the one account
-                  state an administrator here can actually act on instead. The 18px is load-bearing
-                  (it keeps all four cards' footer dividers on the same line), so the slot is
-                  refilled, never emptied. */}
+              {/* Account states as one bar, the way the camera card draws online against offline.
+                  This slot used to hold a sentence — "1 invitation not yet accepted", or a pending
+                  access-request count — and a sentence is what made this the second card in the row
+                  without a graph. The states it named are now the segments, in the same colours the
+                  Users table badges them with, so a project with an unaccepted invitation still
+                  shows amber here.
+                  Nothing actionable is lost: the access-request panel further down this page is the
+                  place those are answered, and "Manage" below goes to the accounts themselves. */}
               <div style={{ height: "18px", display: "flex", alignItems: "center" }}>
-                {projectAccessRequests.length > 0 ? (
-                  <button onClick={() => onTabChange("users")} style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%", overflow: "hidden", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", color: "var(--warning-500)" }}>
-                    <ShieldIcon />
-                    <span style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.pendingAccessRequest(projectAccessRequests.length)}</span>
-                  </button>
-                ) : showAccessRequests ? (
-                  <p style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.noPendingAccessRequests}</p>
-                ) : pendingInviteCount > 0 ? (
-                  <button onClick={() => onTabChange("users")} style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%", overflow: "hidden", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", color: "var(--warning-500)" }}>
-                    <ShieldIcon />
-                    <span style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.pendingInvites(pendingInviteCount)}</span>
-                  </button>
-                ) : (
-                  <p style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.allAccountsActive}</p>
-                )}
+                {/* The footer line under this bar counts doors (portal / app), not states, so the
+                    segments have no legend of their own — the counts are on hover rather than
+                    spending a fourth row on three numbers that are usually 0. */}
+                <Tooltip text={t.accountStates(activeUserCount, pendingInviteCount, suspendedUserCount)}>
+                  <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
+                    {([
+                      [activeUserCount, "var(--success-400)"],
+                      [pendingInviteCount, "var(--warning-500)"],
+                      [suspendedUserCount, "var(--danger-400)"],
+                    ] as const).map(([count, color]) => (
+                      <div key={color} style={{ height: "100%", width: `${projectUsers.length ? (count / projectUsers.length) * 100 : 0}%`, backgroundColor: color }} />
+                    ))}
+                  </div>
+                </Tooltip>
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: BORDER, paddingTop: "10px", marginTop: "6px" }}>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.accessSplitLabel(portalUserCount, appUserCount)}</p>
