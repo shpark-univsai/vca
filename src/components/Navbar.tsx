@@ -7,16 +7,58 @@ import { SIGNED_IN_USER, projectsVisibleInApp, useVcaStore, vcaEventsToLiveEvent
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useApiData } from "@/hooks/useApiData";
 import { getDashboardStats } from "@/lib/api/dashboard";
+import { useLanguage } from "@/lib/i18n";
 
 const BORDER = "1px solid var(--gray-200)";
 export type NavTab = "DASHBOARD" | "BEST FRAME" | "DATA" | "REDMAP";
 
-export const TABS: { id: NavTab; label: string; icon: string }[] = [
-  { id: "DASHBOARD",  label: "DASHBOARD",  icon: "/icons/nav-dashboard.svg" },
-  { id: "BEST FRAME", label: "BEST FRAME", icon: "/icons/nav-bestframe.svg" },
-  { id: "DATA",       label: "DATA",       icon: "/icons/nav-data.svg" },
-  { id: "REDMAP",     label: "REDMAP",     icon: "/icons/nav-redmap.svg" },
+// The ids stay English — they are route keys (?tab=) and a store value, and translating them would
+// break every link. Only the labels change. Best Frame and Redmap are feature names rather than
+// descriptions, so Korean transliterates them the way the market names any product feature.
+export const TABS: { id: NavTab; label: { en: string; ko: string }; icon: string }[] = [
+  { id: "DASHBOARD",  label: { en: "DASHBOARD",  ko: "대시보드" },     icon: "/icons/nav-dashboard.svg" },
+  { id: "BEST FRAME", label: { en: "BEST FRAME", ko: "베스트 프레임" }, icon: "/icons/nav-bestframe.svg" },
+  { id: "DATA",       label: { en: "DATA",       ko: "데이터" },        icon: "/icons/nav-data.svg" },
+  { id: "REDMAP",     label: { en: "REDMAP",     ko: "레드맵" },        icon: "/icons/nav-redmap.svg" },
 ];
+
+// See the per-file pattern note in lib/i18n.ts.
+const T = {
+  en: {
+    goToDashboard: "Go to Dashboard",
+    running: (n: number | string) => `${n} running`,
+    stopped: (n: number | string) => `${n} stopped`,
+    vipDetections: "VIP detections",
+    noneInWindow: "No VIP detections in the last hour",
+    notifWindow: "last hour",
+    showingOf: (shown: number, total: number, window: string) => `Showing ${shown} of ${total} · ${window}`,
+    allOf: (total: number, window: string) => `All ${total} · ${window}`,
+    settings: "Settings",
+    portal: "Portal",
+    myPage: "My page",
+    sidebar: "Sidebar",
+    left: "Left",
+    right: "Right",
+    logOut: "Log out",
+  },
+  ko: {
+    goToDashboard: "대시보드로 이동",
+    running: (n: number | string) => `분석 중 ${n}대`,
+    stopped: (n: number | string) => `중지 ${n}대`,
+    vipDetections: "VIP 검출",
+    noneInWindow: "최근 1시간 동안 VIP 검출이 없습니다",
+    notifWindow: "최근 1시간",
+    showingOf: (shown: number, total: number, window: string) => `${total}건 중 ${shown}건 표시 · ${window}`,
+    allOf: (total: number, window: string) => `전체 ${total}건 · ${window}`,
+    settings: "설정",
+    portal: "포털",
+    myPage: "마이페이지",
+    sidebar: "사이드바",
+    left: "왼쪽",
+    right: "오른쪽",
+    logOut: "로그아웃",
+  },
+} as const;
 
 interface NavbarProps {
   /** If null, none of the 4 tabs is active (e.g. screens outside the tabs, like My Page) */
@@ -30,6 +72,8 @@ interface NavbarProps {
 
 export default function Navbar({ activeTab: externalTab, onTabChange, onNotificationSelect, sidebarPosition, onSidebarPositionChange }: NavbarProps) {
   const router = useRouter();
+  const [lang] = useLanguage();
+  const t = T[lang];
   const [internalTab, setInternalTab] = useState<NavTab>("DASHBOARD");
   const activeTab = externalTab === undefined ? internalTab : externalTab;
   const setActiveTab = (tab: NavTab) => {
@@ -85,7 +129,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
   // 13 seeded hits and climbs by one every 15-30s from the simulator, resetting on reload. A
   // denominator nobody can interpret is worse than none. Riding sgNow, the header clock that
   // already ticks every second, so the window moves with it rather than freezing at mount.
-  const NOTIF_WINDOW_LABEL = "last hour";
+  const NOTIF_WINDOW_LABEL = t.notifWindow;
   // null until the clock's first tick — no Date.now() fallback, since reading the clock during
   // render is exactly the impurity sgNow exists to avoid. Unfiltered for that one frame.
   const notifWindowStart = sgNow ? sgNow.getTime() - 3600_000 : null;
@@ -166,7 +210,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
         <button
           className="navbar-logo-btn"
           onClick={() => setActiveTab("DASHBOARD")}
-          aria-label="Go to Dashboard"
+          aria-label={t.goToDashboard}
           style={{
             display: "flex", alignItems: "center", gap: "8px",
             background: "none", border: "none", padding: 0, cursor: "pointer",
@@ -252,7 +296,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
           </svg>
           {/* Number only: the icon beside it already says which, and the words were costing the
               header the width the project name now needs. The word survives as a tooltip. */}
-          <span title={`${aiRunning} running`} style={{ fontWeight: 800, fontSize: "13px", color: "var(--gray-800)", letterSpacing: "-0.26px", lineHeight: "16px" }}>
+          <span title={t.running(aiRunning)} style={{ fontWeight: 800, fontSize: "13px", color: "var(--gray-800)", letterSpacing: "-0.26px", lineHeight: "16px" }}>
             {aiRunning}
           </span>
           </div>
@@ -275,7 +319,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
               </clipPath>
             </defs>
           </svg>
-          <span title={`${aiStopped} stopped`} style={{ fontWeight: 800, fontSize: "13px", color: "var(--danger-400)", letterSpacing: "-0.26px", lineHeight: "16px" }}>
+          <span title={t.stopped(aiStopped)} style={{ fontWeight: 800, fontSize: "13px", color: "var(--danger-400)", letterSpacing: "-0.26px", lineHeight: "16px" }}>
             {aiStopped}
           </span>
           </div>
@@ -319,7 +363,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
               <span className="navbar-tab-label" style={{
                 fontSize: "13px", fontWeight: 700,
                 letterSpacing: "-0.26px", whiteSpace: "nowrap",
-              }}>{tab.label}</span>
+              }}>{tab.label[lang]}</span>
             </button>
           );
         })}
@@ -367,7 +411,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
           <div ref={notifRef} style={{ position: "relative" }}>
             <button
               className="navbar-icon-btn"
-              aria-label="VIP detections"
+              aria-label={t.vipDetections}
               onClick={() => {
                 setNotifOpen(o => {
                   const next = !o;
@@ -410,7 +454,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                     are added later the right shape is this title back as the container with tabs
                     beneath it (All / VIP / Cameras), the way Air and Qatalog do it. */}
                 <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--gray-200)" }}>
-                  <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>VIP detections</span>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.vipDetections}</span>
                 </div>
                 {notifications.length === 0 ? (
                   <div style={{
@@ -422,7 +466,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                       <path d="M10 6.66602V9.99935" stroke="var(--gray-300)" strokeWidth="1.4" strokeLinecap="round"/>
                       <path d="M10 13.334H10.0083" stroke="var(--gray-300)" strokeWidth="1.4" strokeLinecap="round"/>
                     </svg>
-                    <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-400)" }}>No VIP detections in the last hour</span>
+                    <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-400)" }}>{t.noneInWindow}</span>
                   </div>
                 ) : (
                   <>
@@ -446,7 +490,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                             <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.name}</span>
                             <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--primary-400)", flexShrink: 0 }}>{ev.confidence}%</span>
                           </span>
-                          <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", flexShrink: 0 }}>{formatTimeAgo(ev.timestamp)}</span>
+                          <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", flexShrink: 0 }}>{formatTimeAgo(ev.timestamp, lang)}</span>
                         </div>
                         <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}>
                           {ev.location}{ev.cameraLabel ? ` · ${ev.cameraLabel}` : ""}
@@ -461,8 +505,8 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                   <div style={{ padding: "9px 16px", borderTop: "1px solid var(--gray-200)", backgroundColor: "var(--gray-50)" }}>
                     <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-500)" }}>
                       {vipEvents.length > NOTIF_LIMIT
-                        ? `Showing ${NOTIF_LIMIT} of ${vipEvents.length} · ${NOTIF_WINDOW_LABEL}`
-                        : `All ${vipEvents.length} · ${NOTIF_WINDOW_LABEL}`}
+                        ? t.showingOf(NOTIF_LIMIT, vipEvents.length, NOTIF_WINDOW_LABEL)
+                        : t.allOf(vipEvents.length, NOTIF_WINDOW_LABEL)}
                     </span>
                   </div>
                   </>
@@ -474,7 +518,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
           <div ref={settingsRef} style={{ position: "relative" }}>
             <button
               className="navbar-icon-btn"
-              aria-label="Settings"
+              aria-label={t.settings}
               onClick={() => { setSettingsOpen(o => !o); setNotifOpen(false); }}
               style={{ border: "none", cursor: "pointer", display: "flex", padding: "8px" }}
             >
@@ -510,7 +554,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                     <path d="M1.16667 7H12.8333" stroke="currentColor" strokeWidth="1.2"/>
                     <path d="M7 1.16667C8.45964 2.76353 9.28481 4.83629 9.33333 7C9.28481 9.16371 8.45964 11.2365 7 12.8333C5.54036 11.2365 4.71519 9.16371 4.66667 7C4.71519 4.83629 5.54036 2.76353 7 1.16667Z" stroke="currentColor" strokeWidth="1.2"/>
                   </svg>
-                  <span style={{ fontSize: "13px", fontWeight: 600 }}>Portal</span>
+                  <span style={{ fontSize: "13px", fontWeight: 600 }}>{t.portal}</span>
                 </button>
                 <button
                   className="navbar-dropdown-item"
@@ -524,13 +568,13 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                     <path d="M12.25 12.25V11.0833C12.25 10.4645 12.0042 9.871 11.5666 9.43342C11.129 8.99583 10.5355 8.75 9.91667 8.75H4.08333C3.46449 8.75 2.871 8.99583 2.43342 9.43342C1.99583 9.871 1.75 10.4645 1.75 11.0833V12.25" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                     <path d="M7 6.41667C8.28866 6.41667 9.33333 5.37199 9.33333 4.08333C9.33333 2.79467 8.28866 1.75 7 1.75C5.71133 1.75 4.66666 2.79467 4.66666 4.08333C4.66666 5.37199 5.71133 6.41667 7 6.41667Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                   </svg>
-                  <span style={{ fontSize: "13px", fontWeight: 600 }}>My page</span>
+                  <span style={{ fontSize: "13px", fontWeight: 600 }}>{t.myPage}</span>
                 </button>
                 {onSidebarPositionChange && (
                   <>
                     <div style={{ height: "1px", backgroundColor: "var(--gray-200)", margin: "6px 4px" }} />
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 8px" }}>
-                      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)" }}>Sidebar</span>
+                      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)" }}>{t.sidebar}</span>
                       <div style={{ display: "flex", backgroundColor: "var(--gray-100)", borderRadius: "7px", padding: "2px", gap: "2px" }}>
                         {(["left", "right"] as const).map((pos) => {
                           const active = sidebarPosition === pos;
@@ -544,10 +588,10 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                                 boxShadow: active ? "0 1px 2px rgba(14,22,42,0.1)" : "none",
                                 color: active ? "var(--gray-600)" : "var(--gray-400)",
                                 fontSize: "10px", fontWeight: 600, letterSpacing: "-0.1px",
-                                textTransform: "capitalize", transition: "background-color 0.15s",
+                                transition: "background-color 0.15s",
                               }}
                             >
-                              {pos}
+                              {pos === "left" ? t.left : t.right}
                             </button>
                           );
                         })}
@@ -569,7 +613,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                     <path d="M9.33334 9.91667L12.25 7L9.33334 4.08333" stroke="var(--danger-400)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M12.25 7H5.25" stroke="var(--danger-400)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--danger-400)" }}>Log out</span>
+                  <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--danger-400)" }}>{t.logOut}</span>
                 </button>
               </div>
             )}

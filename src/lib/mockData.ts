@@ -112,12 +112,16 @@ export interface LiveEvent {
 
 /** Renders an ISO timestamp as a relative "Xm ago" string for anything under an hour old,
  * computed at render time. Past an hour, a coarse "1h ago"/"2h ago" label stops being useful for
- * "when exactly did this happen" — so it switches to the actual captured clock time instead. */
-export function formatTimeAgo(timestamp: string): string {
+ * "when exactly did this happen" — so it switches to the actual captured clock time instead.
+ *
+ * Takes the language rather than reading it: this is called from map popups built as HTML strings
+ * and from render paths that are not components, so there is no hook to read it with. The clock
+ * time it falls back to needs no translating — digits are digits. */
+export function formatTimeAgo(timestamp: string, lang: "en" | "ko" = "en"): string {
   const diffMs = Date.now() - new Date(timestamp).getTime();
   const mins = Math.max(0, Math.round(diffMs / 60000));
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return lang === "ko" ? "방금" : "just now";
+  if (mins < 60) return lang === "ko" ? `${mins}분 전` : `${mins}m ago`;
   return sgtClockTime(new Date(timestamp));
 }
 
