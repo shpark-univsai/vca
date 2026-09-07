@@ -49,10 +49,17 @@ const ALL_FEATURES = PLAN_FEATURES.Enterprise;
  * covers; being in here is whether the software can do it — and the page has to say the second, or
  * it sells a capability the customer cannot use.
  */
-const NOT_BUILT_REASON: Record<string, "comingSoon" | "smartSchoolComingSoon"> = {
+const NOT_BUILT_REASON: Record<string, "comingSoon" | "smartSchoolComingSoon" | "analysisComingSoon"> = {
   "Fire Detection": "comingSoon",
   "Advanced Crowd Behavior": "comingSoon",
   "Attendance / Reports": "smartSchoolComingSoon",
+  /**
+   * Half-built, and the label says which half. The engine is a real CameraAiFeature — it can be
+   * assigned to a camera today and the Input Sources tab shows it — but RedMap's vehicle mode has
+   * the inputs and not the results, so somebody who reads "included" and goes looking for plate
+   * readings finds none. Neither a tick nor a plain "coming soon" is true here.
+   */
+  "License Plate Recognition": "analysisComingSoon",
 };
 
 // Display-only translations for the feature identifiers above — keyed by the same English
@@ -85,6 +92,7 @@ const T = {
     channelSubscriptions: "Channel Subscriptions",
     comingSoon: "Coming soon",
     smartSchoolComingSoon: "Smart School · coming soon",
+    analysisComingSoon: "assignable to cameras · analysis screen coming soon",
     perChannelPerYear: (price: number) => `$${price}/channel/yr`,
     noLimitSet: "No limit set",
     overLimit: (used: number, limit: number) => `Over licensed limit (${used} / ${limit})`,
@@ -117,6 +125,7 @@ const T = {
     channelSubscriptions: "채널 구독",
     comingSoon: "출시 예정",
     smartSchoolComingSoon: "Smart School · 출시 예정",
+    analysisComingSoon: "카메라 지정 가능 · 분석 화면 준비 중",
     perChannelPerYear: (price: number) => `채널당 연 $${price}`,
     noLimitSet: "한도 미설정",
     overLimit: (used: number, limit: number) => `라이선스 한도 초과 (${used} / ${limit})`,
