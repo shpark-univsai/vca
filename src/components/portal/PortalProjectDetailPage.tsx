@@ -2,14 +2,14 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
+import { ArrowUp, ChevronRight, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat, Tooltip } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
-import type { DetailTab } from "./ProjectSidebar";
+import { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
 import ProjectCamerasTab from "./ProjectCamerasTab";
 import ProjectVipTab from "./ProjectVipTab";
 import ProjectLicenseTab from "./ProjectLicenseTab";
@@ -45,6 +45,15 @@ const T = {
     portalAccounts: "Portal Accounts & Permissions",
     accountsSuffix: "accounts",
     noPendingAccessRequests: "No pending access requests.",
+    attentionTitle: "Needs attention",
+    attnOffline: (n: number) => `${n} camera${n === 1 ? " is" : "s are"} offline`,
+    attnInvites: (n: number) => `${n} invitation${n === 1 ? "" : "s"} not yet accepted`,
+    attnRequests: (n: number) => `${n} access request${n === 1 ? "" : "s"} waiting`,
+    attnOverLimit: (used: number, limit: number) => `Over the licensed channels — ${used} of ${limit}`,
+    attnExpiringSoon: (d: number) => `License expires in ${d} day${d === 1 ? "" : "s"}`,
+    attnExpired: "License has expired",
+    attnNoCameras: "No source connected yet",
+    attnNoVips: "No one registered in the watchlist yet",
     accountStates: (active: number, invited: number, suspended: number) =>
       `Active ${active} · Invited ${invited} · Suspended ${suspended}`,
     accessSplitLabel: (portal: number, app: number) => `Portal: ${portal} | App: ${app}`,
@@ -105,6 +114,15 @@ const T = {
     portalAccounts: "포털 계정 및 권한",
     accountsSuffix: "개 계정",
     noPendingAccessRequests: "대기 중인 접근 요청이 없습니다.",
+    attentionTitle: "확인 필요",
+    attnOffline: (n: number) => `오프라인 카메라 ${n}대`,
+    attnInvites: (n: number) => `수락하지 않은 초대 ${n}건`,
+    attnRequests: (n: number) => `대기 중인 접근 요청 ${n}건`,
+    attnOverLimit: (used: number, limit: number) => `라이선스 채널 초과 — ${limit}개 중 ${used}개`,
+    attnExpiringSoon: (d: number) => `라이선스 ${d}일 후 만료`,
+    attnExpired: "라이선스가 만료되었습니다",
+    attnNoCameras: "연결된 소스가 없습니다",
+    attnNoVips: "등록된 관심대상이 없습니다",
     accountStates: (active: number, invited: number, suspended: number) =>
       `활성 ${active} · 초대 대기 ${invited} · 정지 ${suspended}`,
     accessSplitLabel: (portal: number, app: number) => `포털: ${portal} | 앱: ${app}`,
@@ -158,6 +176,7 @@ function PlusIcon() { return <Plus size={14} strokeWidth={1.4} />; }
 function UserPlusIcon() { return <UserPlus size={14} strokeWidth={1.2} />; }
 function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={1.4} />; }
 function ExitIcon() { return <LogOut size={14} strokeWidth={1.2} />; }
+function ChevronRightIcon() { return <ChevronRight size={14} strokeWidth={1.4} />; }
 
 // Shared shell for the four Overview metric cards — header (eyebrow label + icon badge), then
 // whatever body content each card needs (big value, progress bar, footer stats) as children.
@@ -271,6 +290,32 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const visibleCameraRows = filteredCameraRows.slice(0, 5);
 
 
+  /**
+   * What this project needs a person to do, ahead of everything that merely reports.
+   *
+   * The four cards below answer "how are things" — but three of their four numbers only ever move
+   * because an administrator moved them, and the one signal worth acting on (cameras that dropped)
+   * was a small sub-line inside the first card, weighed the same as an account count. This is the
+   * arrangement Remote, Shopify, Deel and Zendesk all open their console with: what needs you,
+   * then the trackers.
+   *
+   * Nothing here is a new fact — every row is a figure already on this page or the tab it links to.
+   * Ordered by how bad it is: what is broken, then what is waiting on someone, then what was never
+   * set up. The card renders only when the list is non-empty: a panel whose whole job is to
+   * interrupt you says nothing when it has nothing, and "all clear" in a permanent box is the kind
+   * of line this screen has been shedding.
+   */
+  const attentionItems: { key: string; text: string; color: string; tab: DetailTab }[] = [
+    ...(offlineCount > 0 ? [{ key: "offline", text: t.attnOffline(offlineCount), color: "var(--danger-400)", tab: "cameras" as DetailTab }] : []),
+    ...(licenseExpired ? [{ key: "expired", text: t.attnExpired, color: "var(--danger-400)", tab: "license" as DetailTab }] : []),
+    ...(overChannelLimit && channelLimit ? [{ key: "overlimit", text: t.attnOverLimit(projectCameras.length, channelLimit), color: "var(--danger-400)", tab: "license" as DetailTab }] : []),
+    ...(licenseExpiringSoon && daysUntilExpiry !== null ? [{ key: "expiring", text: t.attnExpiringSoon(daysUntilExpiry), color: "var(--warning-500)", tab: "license" as DetailTab }] : []),
+    ...(showAccessRequests && projectAccessRequests.length > 0 ? [{ key: "requests", text: t.attnRequests(projectAccessRequests.length), color: "var(--warning-500)", tab: "users" as DetailTab }] : []),
+    ...(pendingInviteCount > 0 ? [{ key: "invites", text: t.attnInvites(pendingInviteCount), color: "var(--warning-500)", tab: "users" as DetailTab }] : []),
+    ...(projectCameras.length === 0 ? [{ key: "nocams", text: t.attnNoCameras, color: "var(--gray-400)", tab: "cameras" as DetailTab }] : []),
+    ...(projectPersons.length === 0 ? [{ key: "novips", text: t.attnNoVips, color: "var(--gray-400)", tab: "vip" as DetailTab }] : []),
+  ];
+
   const approveRequest = (id: string, name: string) => {
     approveAccessRequests([id]);
     showToast({ variant: "success", title: t.toastApprovedTitle, desc: name });
@@ -332,6 +377,42 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               )}
             </div>
           </div>
+
+          {attentionItems.length > 0 && (
+            <div style={{
+              backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW,
+              padding: "16px 20px", marginBottom: CARD_GAP,
+            }}>
+              <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "4px" }}>
+                {t.attentionTitle} <span style={{ color: "var(--gray-400)", fontWeight: 600 }}>{attentionItems.length}</span>
+              </p>
+              {/* Each row is the whole button, not a link at the end of a sentence: the row IS the
+                  errand, and the tab it lands on is named on the right so the click is not a
+                  guess. Negative side margins so the hover box reaches the card's own edges. */}
+              <div style={{ display: "flex", flexDirection: "column", margin: "0 -8px" }}>
+                {attentionItems.map(item => (
+                  <button
+                    key={item.key}
+                    className="portal-attention-row"
+                    onClick={() => onTabChange(item.tab)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "10px", width: "100%",
+                      border: "none", background: "none", borderRadius: "8px",
+                      padding: "8px", cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+                    }}
+                  >
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: item.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-900)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.text}</span>
+                    <span style={{ flex: 1 }} />
+                    <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", flexShrink: 0 }}>
+                      {PROJECT_TABS.find(pt => pt.id === item.tab)?.label[lang]}
+                      <ChevronRightIcon />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Metric cards — camera connectivity / license usage / VIP DB / accounts & permissions,
               each grounded in real store data (no fabricated failure-reason breakdowns the data
