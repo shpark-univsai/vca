@@ -425,7 +425,7 @@ export default function PortalSignupWizard() {
               </div>
             </div>
 
-            <button
+            <button className="portal-btn-primary"
               onClick={handleContinueStep1}
               style={{
                 width: "100%", height: "48px", marginTop: "24px", borderRadius: "999px", border: "none",
@@ -515,7 +515,7 @@ export default function PortalSignupWizard() {
               <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{t.step2.marketingLabel}</span>
             </label>
 
-            <button
+            <button className="portal-btn-primary"
               onClick={handleCompleteSignup}
               style={{
                 width: "100%", height: "48px", marginTop: "24px", borderRadius: "999px", border: "none",
@@ -544,7 +544,7 @@ export default function PortalSignupWizard() {
               <div style={{ width: "100%", backgroundColor: "var(--primary-100)", borderRadius: "10px", padding: "12px 0", marginTop: "24px" }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary-400)", textAlign: "center" }}>{t.done.redirecting}</p>
               </div>
-              <button
+              <button className="portal-btn-primary"
                 onClick={goToFirstProject}
                 style={{
                   width: "100%", height: "48px", marginTop: "20px", borderRadius: "999px", border: "none",

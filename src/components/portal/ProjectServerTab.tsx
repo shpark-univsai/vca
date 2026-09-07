@@ -66,7 +66,7 @@ function ServerFormModal({
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
         <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{title}</p>
-          <button onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
+          <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
@@ -97,10 +97,10 @@ function ServerFormModal({
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
-          <button onClick={() => valid && onSubmit(form)} disabled={!valid}
+          <button className="portal-btn-primary" onClick={() => valid && onSubmit(form)} disabled={!valid}
             style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>
             {t.save}
           </button>
@@ -437,7 +437,7 @@ function MailSettings({ projectId }: { projectId: string }) {
               </p>
             </div>
           </div>
-          <button onClick={() => setOverride(true)}
+          <button className="portal-btn-primary" onClick={() => setOverride(true)}
             style={{ padding: "8px 14px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>
             {t.setUpSmtp}
           </button>
@@ -740,12 +740,12 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
             {/* The only control on this row without a mark of its own — the select had its chevron
                 and Add Server its plus, so Reset read as a word somebody had left there. lucide
                 rather than a hand-drawn path, at the 1.3 stroke the other 14px icons use. */}
-            <button onClick={resetFilters}
+            <button className="portal-btn-outline" onClick={resetFilters}
               style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
               <RotateCcw size={14} strokeWidth={1.3} />
               {t.reset}
             </button>
-            <button onClick={() => setShowAdd(true)}
+            <button className="portal-btn-primary" onClick={() => setShowAdd(true)}
               style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
               {t.addServer}

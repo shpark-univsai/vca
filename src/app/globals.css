@@ -124,6 +124,41 @@
    different treatment from the one Portal's own fields drew, so a form that mixed a TextField with
    a plain input showed two kinds of focus. Anything that has not been moved to TextField yet still
    lands here and matches. */
+/* ── Portal button hover ──────────────────────────────────────
+   Classes rather than per-button useState. Portal has something like a hundred buttons written as
+   inline styles, and hover was on almost none of them — the exceptions kept their own hovered flag
+   (FilterSelect, ActiveFilterCount, the shell's exit button), which is not a thing to repeat a
+   hundred times.
+
+   Every colour here is a defined token. One is missing and it shows: primary-400 is the darkest
+   step of the primary ramp, so a filled primary button has nothing to darken TO. It dims slightly
+   instead. A primary-500 belongs in the palette; until it exists this is the honest substitute. */
+.portal-btn-primary { transition: opacity .12s ease; }
+.portal-btn-primary:hover:not(:disabled) { opacity: .9; }
+
+.portal-btn-outline { transition: background-color .12s ease, border-color .12s ease; }
+.portal-btn-outline:hover:not(:disabled) {
+  background-color: var(--gray-50);
+  border-color: var(--gray-400);
+}
+
+.portal-btn-danger { transition: background-color .12s ease; }
+.portal-btn-danger:hover:not(:disabled) { background-color: var(--danger-500); }
+
+/* Icon-only buttons — a close X, a row's trash. The box appears on hover rather than sitting there
+   permanently, so a row of them does not read as a row of boxes. */
+.portal-icon-btn { border-radius: 8px; transition: background-color .12s ease, color .12s ease; }
+.portal-icon-btn:hover:not(:disabled) {
+  background-color: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.portal-icon-btn-danger { border-radius: 8px; transition: background-color .12s ease, color .12s ease; }
+.portal-icon-btn-danger:hover:not(:disabled) {
+  background-color: var(--danger-100);
+  color: var(--danger-400);
+}
+
 :where(input, textarea, select, button, [contenteditable], [tabindex]):focus-visible {
   outline: 1px solid var(--gray-900);
   outline-offset: 0;

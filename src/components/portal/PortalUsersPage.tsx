@@ -551,7 +551,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", margin: "auto", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
         <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.modalTitle}</p>
-          <button onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
+          <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
@@ -622,10 +622,10 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
-          <button onClick={submit} disabled={!name.trim() || !email.trim()}
+          <button className="portal-btn-primary" onClick={submit} disabled={!name.trim() || !email.trim()}
             style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: (name.trim() && email.trim()) ? "pointer" : "not-allowed", opacity: (name.trim() && email.trim()) ? 1 : 0.5 }}>
             {t.sendInvite}
           </button>
@@ -778,7 +778,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
             {password ? c.resultTitle : c.modalTitle}
           </p>
-          <button onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
+          <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
@@ -853,10 +853,10 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
               </div>
             )}
             <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-              <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+              <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.cancel}
               </button>
-              <button onClick={generate}
+              <button className="portal-btn-primary" onClick={generate}
                 style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {c.generate}
               </button>
@@ -891,7 +891,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
               </div>
             </div>
             <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
-              <button onClick={onClose}
+              <button className="portal-btn-primary" onClick={onClose}
                 style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.tempDone}
               </button>
@@ -1188,7 +1188,7 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
               </p>
             </div>
             <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-              <button onClick={() => dismissAccessRequest(r.id)}
+              <button className="portal-btn-outline" onClick={() => dismissAccessRequest(r.id)}
                 style={{ padding: "8px 12px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                 {t.dismiss}
               </button>
@@ -1319,7 +1319,7 @@ function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko
         </div>
 
         <div style={{ padding: "20px", display: "flex", justifyContent: "flex-end" }}>
-          <button onClick={onClose}
+          <button className="portal-btn-primary" onClick={onClose}
             style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.guideClose}
           </button>

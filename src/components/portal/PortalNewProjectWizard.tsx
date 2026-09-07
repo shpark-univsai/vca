@@ -169,7 +169,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, defaultType
           </span>
         </div>
 
-        <button
+        <button className="portal-btn-primary"
           onClick={deploy}
           disabled={!name.trim()}
           style={{

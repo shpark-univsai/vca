@@ -280,7 +280,7 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
 
             {/* Footer */}
             <div style={{ padding: "12px 20px", display: "flex", justifyContent: "flex-end" }}>
-              <button
+              <button className="portal-btn-outline"
                 onClick={() => setOpen(false)}
                 style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
               >

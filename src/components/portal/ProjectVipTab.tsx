@@ -319,7 +319,7 @@ function RegisterVipModal({ t, person, groups, onClose, onSubmit }: {
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
             {editing ? t.editModalTitle(person.name) : t.modalTitle}
           </p>
-          <button onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
+          <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
@@ -382,10 +382,10 @@ function RegisterVipModal({ t, person, groups, onClose, onSubmit }: {
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
-          <button
+          <button className="portal-btn-primary"
             onClick={() => valid && onSubmit({
               name: name.trim(), roleLabel, priorityLabel,
               description: description.trim() || undefined,
@@ -417,10 +417,10 @@ function RemoveVipConfirmModal({ t, person, onClose, onConfirm }: { t: VipDict; 
           <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px" }}>{t.confirmRemoveBody}</p>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
-          <button onClick={onConfirm}
+          <button className="portal-btn-danger" onClick={onConfirm}
             style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.removeAction}
           </button>
@@ -515,7 +515,7 @@ function GroupModal({ t, group, projectId, onClose }: {
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button onClick={save} disabled={!name.trim()}
@@ -642,7 +642,7 @@ function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
             action anybody came for. The only filled button here is Save, and only while there is
             something to save. */}
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
-          <button onClick={onClose}
+          <button className="portal-btn-outline" onClick={onClose}
             style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.close}
           </button>
@@ -803,18 +803,18 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           {/* Tools follow the tab: registering a face and creating a party are different jobs, and
               a bulk face upload has nothing to do with the list of parties. */}
           {vipTab === "groups" ? (
-            <button onClick={() => setGroupModalFor({ group: null })}
+            <button className="portal-btn-primary" onClick={() => setGroupModalFor({ group: null })}
               style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
               {t.addGroup}
             </button>
           ) : (<>
-          <button onClick={() => fileInputRef.current?.click()}
+          <button className="portal-btn-outline" onClick={() => fileInputRef.current?.click()}
             style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 9.33V1.75M7 1.75 4.08 4.67M7 1.75 9.92 4.67M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             {t.bulkUpload}
           </button>
-          <button onClick={() => setShowRegister(true)}
+          <button className="portal-btn-primary" onClick={() => setShowRegister(true)}
             style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
             {t.registerVip}
@@ -1080,7 +1080,11 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "4px" }}>{person.registeredAt.slice(0, 10)}</p>
               </div>
               {/* stopPropagation, or removing somebody also opens their detail behind the dialog. */}
-              <button onClick={e => { e.stopPropagation(); setConfirmingRemove(person); }} title={t.removeVip} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", flexShrink: 0 }}>
+              {/* Grey until hovered, then a danger-100 box with a danger-400 glyph — the colour
+                  says what the click does before it is clicked, which on a delete is the point. */}
+              <button className="portal-icon-btn-danger"
+                onClick={e => { e.stopPropagation(); setConfirmingRemove(person); }} title={t.removeVip}
+                style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "6px", flexShrink: 0 }}>
                 <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
                   <path d="M2.91663 4.08333H11.0833M5.83329 6.41667V9.33333M8.16663 6.41667V9.33333M3.49996 4.08333L4.08329 10.9167C4.08329 11.2261 4.20621 11.5228 4.42501 11.7416C4.6438 11.9604 4.9405 12.0833 5.24996 12.0833H8.74996C9.05942 12.0833 9.35612 11.9604 9.57491 11.7416C9.79371 11.5228 9.91663 11.2261 9.91663 10.9167L10.5 4.08333M5.24996 4.08333V2.33333C5.24996 2.17862 5.31142 2.03025 5.42082 1.92085C5.53022 1.81146 5.67858 1.75 5.83329 1.75H8.16663C8.32134 1.75 8.4697 1.81146 8.5791 1.92085C8.68849 2.03025 8.74996 2.17862 8.74996 2.33333V4.08333" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>

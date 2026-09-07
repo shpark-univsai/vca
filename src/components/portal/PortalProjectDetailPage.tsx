@@ -544,7 +544,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                             style={{ flex: 1, padding: "6px 10px", borderRadius: "6px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                             {t.approve}
                           </button>
-                          <button onClick={() => dismissRequest(r.id, r.name)}
+                          <button className="portal-btn-outline" onClick={() => dismissRequest(r.id, r.name)}
                             style={{ flex: 1, padding: "6px 10px", borderRadius: "6px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                             {t.dismiss}
                           </button>

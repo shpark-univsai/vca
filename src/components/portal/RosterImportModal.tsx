@@ -289,12 +289,12 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
             </div>
             <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
               {result.skipped.length > 0 && (
-                <button onClick={downloadSkipped}
+                <button className="portal-btn-outline" onClick={downloadSkipped}
                   style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                   {t.downloadErrors}
                 </button>
               )}
-              <button onClick={onClose}
+              <button className="portal-btn-primary" onClick={onClose}
                 style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.close}
               </button>
@@ -343,12 +343,12 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
               })}
             </div>
             <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", gap: "8px", flexShrink: 0 }}>
-              <button onClick={() => { setParsed(null); setFileError(null); }}
+              <button className="portal-btn-outline" onClick={() => { setParsed(null); setFileError(null); }}
                 style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.chooseAnother}
               </button>
               <div style={{ display: "flex", gap: "8px" }}>
-                <button onClick={onClose}
+                <button className="portal-btn-outline" onClick={onClose}
                   style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                   {t.cancel}
                 </button>
@@ -399,7 +399,7 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
               </button>
             </div>
             <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
-              <button onClick={onClose}
+              <button className="portal-btn-outline" onClick={onClose}
                 style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.cancel}
               </button>

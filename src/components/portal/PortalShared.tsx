@@ -680,7 +680,7 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, a
             outlined pills, so a rule directly above them is a line sitting on a row of lines, and
             a scroll region's edge is already told by its scrollbar and by content being cut off. */}
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {cancelLabel}
           </button>
           {altAction && (

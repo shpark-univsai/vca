@@ -142,7 +142,7 @@ export default function PortalEmptyState({ onNewProject, noTeam = false, onCreat
             />
           </div>
 
-          <button
+          <button className="portal-btn-primary"
             onClick={submit}
             disabled={!canSubmit}
             style={{
@@ -168,7 +168,7 @@ export default function PortalEmptyState({ onNewProject, noTeam = false, onCreat
         <p style={{ fontSize: "14px", color: "var(--gray-500)", marginTop: "12px", lineHeight: "22px" }}>
           {t.subtitle}
         </p>
-        <button onClick={onNewProject}
+        <button className="portal-btn-primary" onClick={onNewProject}
           style={{
             display: "flex", alignItems: "center", gap: "6px", marginTop: "24px",
             padding: "12px 20px", borderRadius: "999px", border: "none",
