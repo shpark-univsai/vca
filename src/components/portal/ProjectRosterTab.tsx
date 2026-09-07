@@ -197,7 +197,7 @@ function getStatusMeta(t: Translations): Record<RosterCodeStatus, { label: strin
 function StatusBadge({ status, meta }: { status: RosterCodeStatus; meta: Record<RosterCodeStatus, { label: string; bg: string; color: string }> }) {
   const m = meta[status];
   return (
-    <span style={{ fontSize: "12px", fontWeight: 600, padding: "3px 8px", borderRadius: "999px", backgroundColor: m.bg, color: m.color }}>
+    <span style={{ fontSize: "12px", fontWeight: 600, padding: "4px 8px", borderRadius: "999px", backgroundColor: m.bg, color: m.color }}>
       {m.label}
     </span>
   );
@@ -352,7 +352,7 @@ function RosterEntryModal({ entry, projectId, onClose, t }: {
                 return (
                   <button key={p} onClick={() => setPermission(p)}
                     style={{
-                      flex: 1, padding: "9px 12px", borderRadius: "10px", cursor: "pointer", textAlign: "left",
+                      flex: 1, padding: "10px 12px", borderRadius: "10px", cursor: "pointer", textAlign: "left",
                       border: active ? "1px solid var(--gray-900)" : BORDER,
                       backgroundColor: active ? "var(--gray-100)" : "white",
                       color: active ? "var(--gray-900)" : "var(--gray-600)",
@@ -371,12 +371,12 @@ function RosterEntryModal({ entry, projectId, onClose, t }: {
         </div>
 
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button onClick={submit} disabled={!canSubmit}
             style={{
-              padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white",
+              padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white",
               fontSize: "13px", fontWeight: 700, cursor: canSubmit ? "pointer" : "not-allowed", opacity: canSubmit ? 1 : 0.5,
             }}>
             {t.save}
@@ -415,11 +415,11 @@ function IssueConfirmModal({
           </p>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button onClick={onConfirm}
-            style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {hasCode ? t.reissueConfirm : t.issueConfirm}
           </button>
         </div>
@@ -448,11 +448,11 @@ function RemoveConfirmModal({
           </p>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button onClick={onConfirm}
-            style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.remove}
           </button>
         </div>
@@ -488,17 +488,17 @@ function PrintSheet({ entries, projectName, onClose, t }: { entries: RosterEntry
           <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{t.handoutSlipCount(entries.length)}</p>
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.close}
           </button>
-          <button onClick={() => window.print()} style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={() => window.print()} style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.print}
           </button>
         </div>
       </div>
       <div id="roster-print-sheet" style={{ padding: "24px", display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "14px" }}>
         {entries.map(entry => (
-          <div key={entry.employeeId} className="roster-print-slip" style={{ border: "1px dashed var(--gray-300)", borderRadius: "10px", padding: "18px" }}>
+          <div key={entry.employeeId} className="roster-print-slip" style={{ border: "1px dashed var(--gray-300)", borderRadius: "10px", padding: "20px" }}>
             <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{projectName}</p>
             <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)", marginTop: "4px" }}>{entry.name}</p>
             <p style={{ fontSize: "20px", fontWeight: 800, fontFamily: "monospace", color: "var(--gray-900)", marginTop: "10px", letterSpacing: "1px" }}>

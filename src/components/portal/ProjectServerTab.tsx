@@ -100,11 +100,11 @@ function ServerFormModal({
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button onClick={() => valid && onSubmit(form)} disabled={!valid}
-            style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>
+            style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>
             {t.save}
           </button>
         </div>
@@ -139,7 +139,7 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
         {API_ENDPOINTS.map(ep => (
           <div key={ep.path} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", backgroundColor: "var(--gray-50)" }}>
             <span style={{
-              fontSize: "10px", fontWeight: 600, padding: "2px 7px", borderRadius: "6px", flexShrink: 0,
+              fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "6px", flexShrink: 0,
               backgroundColor: ep.method === "GET" ? "var(--gray-200)" : "var(--success-100)",
               color: ep.method === "GET" ? "var(--gray-900)" : "var(--success-400)",
             }}>
@@ -260,7 +260,7 @@ function NetworkStatus({ projectId }: { projectId: string }) {
           </div>
         </div>
         <span style={{
-          fontSize: "10px", fontWeight: 700, padding: "3px 9px", borderRadius: "999px", textTransform: "uppercase", flexShrink: 0,
+          fontSize: "10px", fontWeight: 700, padding: "4px 10px", borderRadius: "999px", textTransform: "uppercase", flexShrink: 0,
           backgroundColor: effective ? "var(--gray-200)" : "var(--success-100)",
           color: effective ? "var(--gray-700)" : "var(--success-400)",
         }}>
@@ -523,7 +523,7 @@ function MailSettings({ projectId }: { projectId: string }) {
           <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
             <button onClick={save} disabled={!canSave}
               style={{
-                padding: "9px 16px", borderRadius: "8px", border: "none",
+                padding: "10px 16px", borderRadius: "8px", border: "none",
                 backgroundColor: canSave ? "var(--gray-900)" : "var(--gray-200)",
                 color: canSave ? "white" : "var(--gray-400)",
                 fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "default",

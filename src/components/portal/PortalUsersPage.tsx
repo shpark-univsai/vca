@@ -624,11 +624,11 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button onClick={submit} disabled={!name.trim() || !email.trim()}
-            style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: (name.trim() && email.trim()) ? "pointer" : "not-allowed", opacity: (name.trim() && email.trim()) ? 1 : 0.5 }}>
+            style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: (name.trim() && email.trim()) ? "pointer" : "not-allowed", opacity: (name.trim() && email.trim()) ? 1 : 0.5 }}>
             {t.sendInvite}
           </button>
         </div>
@@ -761,7 +761,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
      of thing. An asterisk is the mark those already carry in print. A wrapped line stays hanging
      off it instead of sliding under it. */
   const bullet = (text: string) => (
-    <li key={text} style={{ display: "flex", gap: "5px", alignItems: "flex-start", listStyle: "none" }}>
+    <li key={text} style={{ display: "flex", gap: "6px", alignItems: "flex-start", listStyle: "none" }}>
       <Asterisk
         size={14}
         strokeWidth={2}
@@ -849,17 +849,17 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
                 above can scroll; what the choice commits you to cannot. */}
             {c.consequences.length > 0 && (
               <div style={{ padding: "14px 20px", borderTop: BORDER, backgroundColor: "var(--gray-50)" }}>
-                <ul style={{ display: "flex", flexDirection: "column", gap: "5px", margin: 0, padding: 0, listStyle: "none" }}>
+                <ul style={{ display: "flex", flexDirection: "column", gap: "6px", margin: 0, padding: 0, listStyle: "none" }}>
                   {c.consequences.map(line => bullet(line))}
                 </ul>
               </div>
             )}
             <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-              <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+              <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.cancel}
               </button>
               <button onClick={generate}
-                style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {c.generate}
               </button>
             </div>
@@ -877,7 +877,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
                   {password}
                 </code>
                 <button onClick={copy}
-                  style={{ flexShrink: 0, padding: "7px 12px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: copied ? "var(--success-400)" : "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                  style={{ flexShrink: 0, padding: "8px 12px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: copied ? "var(--success-400)" : "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                   {copied ? t.tempCopied : t.tempCopy}
                 </button>
               </div>
@@ -894,7 +894,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
             </div>
             <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
               <button onClick={onClose}
-                style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.tempDone}
               </button>
             </div>
@@ -1015,7 +1015,7 @@ function StatusBadge({ status }: { status: PortalUserStatus }) {
   const label = status === "active" ? t.statusActive : status === "invited" ? t.statusInvited : t.statusSuspended;
   return (
     <span style={{
-      fontSize: "12px", fontWeight: 600, padding: "3px 8px", borderRadius: "999px", textTransform: "capitalize",
+      fontSize: "12px", fontWeight: 600, padding: "4px 8px", borderRadius: "999px", textTransform: "capitalize",
       backgroundColor: bg, color,
     }}>
       {label}
@@ -1169,7 +1169,7 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
         </div>
         {selected.length > 0 && (
           <button onClick={() => approve(selected)}
-            style={{ padding: "7px 14px", borderRadius: "999px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "8px 14px", borderRadius: "999px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
             {t.approveSelected(selected.length)}
           </button>
         )}
@@ -1191,11 +1191,11 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
             </div>
             <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
               <button onClick={() => dismissAccessRequest(r.id)}
-                style={{ padding: "7px 12px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "8px 12px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                 {t.dismiss}
               </button>
               <button onClick={() => approve([r.id])}
-                style={{ padding: "7px 12px", borderRadius: "999px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "8px 12px", borderRadius: "999px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                 {t.approve}
               </button>
             </div>
@@ -1303,7 +1303,7 @@ function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko
               ))}
             </div>
             {rows.map((row, i) => (
-              <div key={row.label} style={{ display: "grid", gridTemplateColumns: GUIDE_GRID, gap: "8px", padding: "9px 12px", borderBottom: i === rows.length - 1 ? "none" : BORDER, alignItems: "baseline" }}>
+              <div key={row.label} style={{ display: "grid", gridTemplateColumns: GUIDE_GRID, gap: "8px", padding: "10px 12px", borderBottom: i === rows.length - 1 ? "none" : BORDER, alignItems: "baseline" }}>
                 <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.4 }}>{row.label}</span>
                 {roles.map(r => {
                   const c = row.of(r);
@@ -1322,7 +1322,7 @@ function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko
 
         <div style={{ padding: "20px", display: "flex", justifyContent: "flex-end" }}>
           <button onClick={onClose}
-            style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.guideClose}
           </button>
         </div>
@@ -1341,7 +1341,7 @@ function StageBadge({ stage, t }: { stage: Stage; t: { stageRosterListed: string
   const m = meta[stage as "rosterListed" | "codeIssued" | "codeExpired"];
   if (!m) return null;
   return (
-    <span style={{ fontSize: "10px", fontWeight: 700, padding: "3px 8px", borderRadius: "999px", backgroundColor: m.bg, color: m.color, whiteSpace: "nowrap" }}>
+    <span style={{ fontSize: "10px", fontWeight: 700, padding: "4px 8px", borderRadius: "999px", backgroundColor: m.bg, color: m.color, whiteSpace: "nowrap" }}>
       {m.label}
     </span>
   );

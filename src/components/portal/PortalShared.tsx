@@ -31,6 +31,23 @@ export const CONTROL_HEIGHT = "36px";
 export const TABLE_COLUMN_GAP = "12px";
 
 /**
+ * SPACING — 2 · 4 · 6 · 8 · 10 · 12 · 14 · 16 · 20 · 24, then 8s (32 · 40 · 48 …) for page gutters.
+ *
+ * Not tokens, because there are none: globals.css defines colour and nothing else. This is the set
+ * the gaps in Portal had already settled on, and padding had not — it also carried 3, 5, 7, 9, 11,
+ * 13, 18, 22, 26, 27, 28, 30, 31, 34 and 60, most of them once or twice and 9px fifty times, none
+ * of them for a reason anybody could point at. Normalised 2026-09-04.
+ *
+ * Written as a comment rather than an exported object because `SPACE[5]` at the call site reads
+ * worse than "10px" and hides the number the layout is actually built on. Use the numbers; keep
+ * them on this list.
+ *
+ * One value is deliberately off it: RosterImportModal's 70px left padding, which is not a spacing
+ * choice at all but 20 (row padding) + 40 (line-number column) + 10 (columnGap), so a reason line
+ * lines up under the name above it. All three of those are on the list.
+ */
+
+/**
  * One shape for every control you can type in or pick from — text fields, selects, the search
  * boxes. They had three different answers: the search inputs set CONTROL_HEIGHT and drew their own
  * focus ring, the form inputs set no height at all (padding decided it, so ~38px) and fell through
@@ -114,11 +131,11 @@ export const TYPE_META: Record<ProjectType, { label: string; bg: string; color: 
 export function LanguageSwitcher() {
   const [lang, setLang] = usePortalLanguage();
   return (
-    <div style={{ display: "flex", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "999px", padding: "3px", flexShrink: 0 }}>
+    <div style={{ display: "flex", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "999px", padding: "4px", flexShrink: 0 }}>
       {(["en", "ko"] as const).map(l => (
         <button key={l} onClick={() => setLang(l)}
           style={{
-            padding: "5px 11px", borderRadius: "999px", border: "none", cursor: "pointer",
+            padding: "6px 12px", borderRadius: "999px", border: "none", cursor: "pointer",
             backgroundColor: lang === l ? "white" : "transparent", boxShadow: lang === l ? PANEL_SHADOW : "none",
             fontSize: "12px", fontWeight: 700, color: lang === l ? "var(--gray-900)" : "var(--gray-400)",
           }}>
@@ -580,7 +597,7 @@ export function SortableHeader<K extends string>({ label, sortKey, sort, onToggl
       onMouseLeave={() => setHovered(false)}
       style={{
         ...headingStyle,
-        display: "flex", alignItems: "center", justifyContent: justify, gap: "3px", padding: 0, border: "none", background: "none",
+        display: "flex", alignItems: "center", justifyContent: justify, gap: "4px", padding: 0, border: "none", background: "none",
         cursor: "pointer", textAlign: align === "right" ? "right" : "left", fontFamily: "inherit",
         color: active || hovered ? "var(--gray-900)" : TABLE_HEADER_COLOR,
       }}
@@ -647,13 +664,13 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, a
             outlined pills, so a rule directly above them is a line sitting on a row of lines, and
             a scroll region's edge is already told by its scrollbar and by content being cut off. */}
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {cancelLabel}
           </button>
           {altAction && (
             <button onClick={altAction.onClick}
               style={{
-                padding: "9px 16px", borderRadius: "999px",
+                padding: "10px 16px", borderRadius: "999px",
                 border: altAction.danger ? "none" : BORDER,
                 backgroundColor: altAction.danger ? "var(--danger-400)" : "white",
                 color: altAction.danger ? "white" : "var(--gray-600)",
@@ -666,7 +683,7 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, a
               administrative act, and primary-400 here would spend the page's accent on a dialog
               nobody is meant to linger in. */}
           <button onClick={onConfirm}
-            style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: danger ? "var(--danger-400)" : "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: danger ? "var(--danger-400)" : "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {confirmLabel}
           </button>
         </div>

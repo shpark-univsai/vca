@@ -146,7 +146,7 @@ export default function PortalEmptyState({ onNewProject, noTeam = false, onCreat
             onClick={submit}
             disabled={!canSubmit}
             style={{
-              width: "100%", marginTop: "16px", padding: "13px 20px", borderRadius: "999px", border: "none",
+              width: "100%", marginTop: "16px", padding: "12px 20px", borderRadius: "999px", border: "none",
               backgroundColor: "var(--primary-400)", color: "white", fontSize: "14px", fontWeight: 700,
               cursor: canSubmit ? "pointer" : "not-allowed", opacity: canSubmit ? 1 : 0.5,
             }}

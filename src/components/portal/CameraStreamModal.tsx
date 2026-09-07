@@ -101,7 +101,7 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
               <div key={feature} style={{
                 position: "absolute", left: `${12 + i * 10}%`, top: `${60 - i * 14}%`,
                 border: `2px solid ${AI_OVERLAY_COLORS[feature]}`, backgroundColor: `${AI_OVERLAY_COLORS[feature]}22`,
-                padding: "3px 8px", borderRadius: "6px", fontSize: "10px", fontWeight: 600, color: "white",
+                padding: "4px 8px", borderRadius: "6px", fontSize: "10px", fontWeight: 600, color: "white",
               }}>
                 {feature}
               </div>
@@ -161,10 +161,10 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
         </div>
 
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.close}
           </button>
-          <button onClick={reconnect} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={reconnect} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M12.25 7A5.25 5.25 0 1 1 10.5 3.15M12.25 1.75V4.67h-2.92" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             {t.reconnect}
           </button>

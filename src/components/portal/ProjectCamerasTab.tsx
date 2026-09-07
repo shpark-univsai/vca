@@ -578,11 +578,11 @@ function CameraFormModal({
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button onClick={() => valid && onSubmit(form)} disabled={!valid}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
             {isEdit ? t.saveChanges : t.addDevice}
           </button>
@@ -616,12 +616,12 @@ function ConfirmStatusModal({
           </p>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button onClick={onConfirm}
             style={{
-              padding: "9px 16px", borderRadius: "999px", border: "none",
+              padding: "10px 16px", borderRadius: "999px", border: "none",
               backgroundColor: goingOffline ? "var(--danger-400)" : "var(--gray-900)", color: "white",
               fontSize: "13px", fontWeight: 700, cursor: "pointer",
             }}>
@@ -1010,7 +1010,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           dense
           accentBorder={overLimit ? "1px solid var(--danger-400)" : undefined}
           value={
-            <span style={{ display: "flex", alignItems: "baseline", gap: "3px" }}>
+            <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
               <span style={{ fontSize: "20px", fontWeight: 800, color: overLimit ? "var(--danger-400)" : "var(--gray-900)" }}>{projectCameras.length}</span>
               {limit ? <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{`/ ${limit}`}</span> : null}
             </span>
@@ -1031,7 +1031,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           dense
           value={
             <span style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-              <span style={{ display: "flex", alignItems: "baseline", gap: "3px" }}>
+              <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
                 <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</span>
                 <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.onlineSuffix}</span>
               </span>
@@ -1167,7 +1167,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             offered on the tabs where both views can show the same rows — and `effectiveView` below
             makes sure a Grid choice made earlier does not silently hide the files. */}
         {showCameraColumns && (
-        <div style={{ display: "flex", alignItems: "center", height: CONTROL_HEIGHT, boxSizing: "border-box", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px" }}>
+        <div style={{ display: "flex", alignItems: "center", height: CONTROL_HEIGHT, boxSizing: "border-box", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "4px" }}>
           {(["table", "grid"] as const).map(v => (
             <button key={v} onClick={() => setView(v)}
               style={{
@@ -1263,7 +1263,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
                       {[formatDuration(u.durationSec), formatBytes(u.sizeBytes)].filter(Boolean).join(" · ") || "—"}
                     </p>
                   </div>
-                  <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "var(--gray-600)" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--gray-600)" }}>
                     {u.kind === "image" ? <ImageIcon size={13} strokeWidth={1.4} /> : <FilmIcon size={13} strokeWidth={1.4} />}
                     {u.kind === "image" ? t.sourceImage : t.sourceVideo}
                   </span>
@@ -1298,7 +1298,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
                   <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.name}</p>
                   <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{cam.code}</p>
                 </div>
-                <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "var(--gray-600)" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--gray-600)" }}>
                   <VideoIcon size={13} strokeWidth={1.4} />
                   {isAiCamera ? t.sourceAiCamera : t.sourceCamera}
                 </span>
@@ -1337,7 +1337,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
                 <button onClick={() => setInspectingCameraId(cam.id)} style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", border: "none", padding: 0, cursor: "pointer", display: "block", backgroundColor: "var(--gray-900)" }}>
                   <img src={cam.thumbnail || DEFAULT_THUMBNAIL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: online ? 1 : 0.4 }} />
                   <span style={{
-                    position: "absolute", top: "8px", left: "8px", fontSize: "10px", fontWeight: 600, padding: "3px 7px", borderRadius: "999px",
+                    position: "absolute", top: "8px", left: "8px", fontSize: "10px", fontWeight: 600, padding: "4px 8px", borderRadius: "999px",
                     backgroundColor: online ? "rgba(22,163,74,0.9)" : "rgba(148,163,184,0.9)", color: "white",
                   }}>
                     {online ? t.online.toUpperCase() : t.offline.toUpperCase()}
@@ -1402,7 +1402,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
                   <span style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6 }}>{t.uploadHint}</span>
                 </div>
                 <button onClick={() => uploadInputRef.current?.click()}
-                  style={{ padding: "9px 16px", borderRadius: "999px", border: "none", cursor: "pointer", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700 }}>
+                  style={{ padding: "10px 16px", borderRadius: "999px", border: "none", cursor: "pointer", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700 }}>
                   {t.uploadChoose}
                 </button>
                 <input ref={uploadInputRef} type="file" multiple accept="video/*,image/*"
@@ -1467,11 +1467,11 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7, marginTop: "8px" }}>{t.bulkDeleteBody}</p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "20px" }}>
               <button onClick={() => setConfirmingBulkDelete(false)}
-                style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.cancel}
               </button>
               <button onClick={bulkDelete}
-                style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--danger-500)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--danger-500)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 {t.bulkDelete}
               </button>
             </div>

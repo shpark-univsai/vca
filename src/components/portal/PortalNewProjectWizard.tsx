@@ -88,7 +88,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, defaultType
 
       <div style={{
         backgroundColor: "white", border: BORDER, borderRadius: "20px",
-        width: "640px", maxWidth: "100%", boxSizing: "border-box", padding: "27px 32px 32px",
+        width: "640px", maxWidth: "100%", boxSizing: "border-box", padding: "24px 32px 32px",
         marginTop: "28px",
       }}>
         <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "12px" }}>{t.step1}</p>
@@ -104,7 +104,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, defaultType
                   position: "relative", flex: 1, textAlign: "left", cursor: "pointer",
                   border: selected ? "1px solid var(--primary-400)" : BORDER,
                   backgroundColor: selected ? "var(--primary-50)" : "white",
-                  borderRadius: "14px", padding: "10px 15px 14px", minHeight: "110px",
+                  borderRadius: "14px", padding: "10px 16px 14px", minHeight: "110px",
                 }}
               >
                 {/* Inside the card's padding box, on the same top line as the icon — not hung off
@@ -142,7 +142,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, defaultType
           onChange={e => setName(e.target.value)}
           placeholder={t.namePlaceholder}
           style={{
-            width: "100%", boxSizing: "border-box", height: "44px", padding: "0 13px",
+            width: "100%", boxSizing: "border-box", height: "44px", padding: "0 12px",
             borderRadius: "10px", border: BORDER, backgroundColor: "white",
             fontSize: "13px", fontWeight: 600, fontFamily: "inherit", marginBottom: "16px",
           }}
@@ -155,7 +155,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, defaultType
             onChange={e => setRtspUrl(e.target.value)}
             placeholder={t.rtspPlaceholder}
             style={{
-              flex: 1, boxSizing: "border-box", height: "44px", padding: "0 13px",
+              flex: 1, boxSizing: "border-box", height: "44px", padding: "0 12px",
               borderRadius: "10px", border: BORDER, backgroundColor: "white",
               fontSize: "13px", fontWeight: 600, fontFamily: "inherit",
             }}

@@ -161,7 +161,7 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
             boxShadow: "0 20px 60px rgba(14,22,42,0.18)", overflow: "hidden",
           }}>
             {/* Header */}
-            <div style={{ padding: "18px 20px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: BORDER }}>
+            <div style={{ padding: "20px 20px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: BORDER }}>
               <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.selectResource}</p>
               <button
                 onClick={() => { setOpen(false); onNewProject(); }}
@@ -199,7 +199,7 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
                   onBlur={() => setSearchFocused(false)}
                   placeholder={t.searchPlaceholder}
                   style={{
-                    width: "100%", boxSizing: "border-box", padding: "10px 12px 10px 34px", borderRadius: "10px",
+                    width: "100%", boxSizing: "border-box", padding: "10px 12px 10px 32px", borderRadius: "10px",
                     border: searchFocused ? "1px solid var(--gray-900)" : BORDER, outline: "none",
                     fontSize: "13px", fontFamily: "inherit",
                   }}
@@ -282,7 +282,7 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
             <div style={{ padding: "12px 20px", display: "flex", justifyContent: "flex-end" }}>
               <button
                 onClick={() => setOpen(false)}
-                style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
+                style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
               >
                 {t.cancel}
               </button>

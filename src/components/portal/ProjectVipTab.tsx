@@ -328,11 +328,11 @@ function RegisterVipModal({ t, onClose, onSubmit }: { t: VipDict; onClose: () =>
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button onClick={() => valid && onSubmit({ name: name.trim(), roleLabel, priorityLabel, photoUrl: photoPreview ?? undefined })} disabled={!valid}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
             {t.register}
           </button>
@@ -355,11 +355,11 @@ function RemoveVipConfirmModal({ t, person, onClose, onConfirm }: { t: VipDict; 
           <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px" }}>{t.confirmRemoveBody}</p>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button onClick={onConfirm}
-            style={{ padding: "9px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.removeAction}
           </button>
         </div>
@@ -379,7 +379,7 @@ function Tag({ label, bg, color }: { label: string; bg: string; color: string })
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", height: "18px",
-      fontSize: "10px", fontWeight: 600, padding: "0 7px", borderRadius: "999px",
+      fontSize: "10px", fontWeight: 600, padding: "0 8px", borderRadius: "999px",
       backgroundColor: bg, color, textTransform: "uppercase", whiteSpace: "nowrap", flexShrink: 0,
     }}>
       {label}
@@ -454,12 +454,12 @@ function GroupModal({ t, group, projectId, onClose }: {
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onClose} style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button onClick={save} disabled={!name.trim()}
             style={{
-              padding: "9px 16px", borderRadius: "999px", border: "none",
+              padding: "10px 16px", borderRadius: "999px", border: "none",
               backgroundColor: name.trim() ? "var(--primary-400)" : "var(--gray-200)",
               color: name.trim() ? "white" : "var(--gray-400)",
               fontSize: "13px", fontWeight: 700, cursor: name.trim() ? "pointer" : "not-allowed",
@@ -565,7 +565,7 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
             taller than a short window on account of the photo alone. */}
         <img src={person.photoUrl} alt=""
           style={{ width: "100%", aspectRatio: "1 / 1", maxHeight: "320px", objectFit: "cover", display: "block", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", backgroundColor: "var(--gray-100)" }} />
-        <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+        <div style={{ padding: "20px 20px", display: "flex", flexDirection: "column", gap: "12px" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
           <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>{person.name}</p>
@@ -649,7 +649,7 @@ function PersonDetailModal({ t, person, groups, onClose, onRemove }: {
             something to save. */}
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
           <button onClick={onClose}
-            style={{ padding: "9px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.close}
           </button>
         </div>
@@ -846,7 +846,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             differently" looks the same in both places. Not on the Groups tab: a party has no face,
             so a wall of cards would be a wall of empty squares. */}
         {vipTab !== "groups" && (
-        <div style={{ display: "flex", alignItems: "center", height: CONTROL_HEIGHT, boxSizing: "border-box", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", height: CONTROL_HEIGHT, boxSizing: "border-box", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "4px", flexShrink: 0 }}>
           {(["grid", "table"] as const).map(v => (
             <button key={v} onClick={() => setView(v)}
               style={{

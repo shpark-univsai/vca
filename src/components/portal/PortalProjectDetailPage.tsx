@@ -272,7 +272,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{project.name}</p>
-                <span style={{ fontSize: "10px", fontWeight: 600, color: meta.color, backgroundColor: meta.bg, padding: "3px 8px", borderRadius: "999px" }}>{meta.label}</span>
+                <span style={{ fontSize: "10px", fontWeight: 600, color: meta.color, backgroundColor: meta.bg, padding: "4px 8px", borderRadius: "999px" }}>{meta.label}</span>
                 <span style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{project.id}</span>
               </div>
               <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{orgName}</p>
@@ -291,7 +291,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                   <ShieldIcon /> {t.approveAccessRequests}
                   {projectAccessRequests.length > 0 && (
-                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)", backgroundColor: "var(--warning-200)", padding: "2px 7px", borderRadius: "999px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)", backgroundColor: "var(--warning-200)", padding: "2px 8px", borderRadius: "999px" }}>
                       {projectAccessRequests.length}
                     </span>
                   )}
@@ -342,7 +342,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   </button>
                 </div>
                 <span style={{
-                  fontSize: "10px", fontWeight: 700, padding: "2px 7px", borderRadius: "4px",
+                  fontSize: "10px", fontWeight: 700, padding: "2px 8px", borderRadius: "4px",
                   backgroundColor: licenseExpired ? "var(--danger-100)" : licenseExpiringSoon ? "var(--warning-200)" : "var(--info-100)",
                   color: licenseExpired ? "var(--danger-500)" : licenseExpiringSoon ? "var(--warning-500)" : "var(--info-500)",
                 }}>
@@ -461,7 +461,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                           <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{c.zone}</span>
                           <span style={{ fontSize: "12px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.rtspUrl}</span>
                           <span style={{
-                            fontSize: "12px", fontWeight: 600, padding: "3px 8px", borderRadius: "6px", width: "fit-content",
+                            fontSize: "12px", fontWeight: 600, padding: "4px 8px", borderRadius: "6px", width: "fit-content",
                             backgroundColor: online ? "var(--success-100)" : "var(--danger-100)", color: online ? "var(--success-400)" : "var(--danger-400)",
                           }}>
                             {online ? t.online : t.offline}
@@ -485,7 +485,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             {/* Same width as the VIP / Target DB metric card above it (grid column 3 only, not
                 spanning) — sits directly underneath rather than sharing a row with Camera Status. */}
             <div style={{ gridColumn: "3 / span 1", display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
-              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px", flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--primary-100)", color: "var(--primary-400)", flexShrink: 0 }}><UsersGroupIcon /></span>
@@ -519,7 +519,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 so turning the flag off later cannot strand someone who already asked. */}
             <div style={{ gridColumn: "4 / span 1", display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
               {showAccessRequests && (
-              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px" }}>
+              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--warning-100)", color: "var(--warning-500)", flexShrink: 0 }}><ShieldIcon /></span>
@@ -561,7 +561,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
               )}
 
-              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px", flexShrink: 0 }}>
                   <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)", flexShrink: 0 }}><ClockIcon /></span>
                   <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.recentAdminActivity}</p>

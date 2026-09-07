@@ -213,7 +213,7 @@ function ChannelBreakdown({ aiCount, normalCount, limit, yearlyCost, overLimit, 
         {figures.map(f => (
           <div key={f.label}>
             <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{f.value}</p>
-            <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
+            <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
               <span style={{ width: "7px", height: "7px", borderRadius: "2px", backgroundColor: f.dot, flexShrink: 0 }} />
               {f.label}
             </p>
@@ -282,7 +282,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           cards elsewhere, so this stays flat and restrained rather than decorative. */}
       <div style={{
         backgroundColor: "var(--gray-900)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px",
-        boxShadow: PANEL_SHADOW, marginBottom: "20px", padding: "22px 26px",
+        boxShadow: PANEL_SHADOW, marginBottom: "20px", padding: "20px 24px",
         // Equal columns, no divider. Vimeo, Loom, GitHub and Rows all lay a licence summary out as
         // a row of three or four label-over-value columns; clustering the figures at the left with
         // a rule between them was the minority form and left the right half of a wide banner
@@ -295,7 +295,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "8px" }}>
             <p style={{ fontSize: "24px", fontWeight: 800, color: "white" }}>{project.licensePlan ?? t.notSet}</p>
             <span style={{
-              fontSize: "10px", fontWeight: 700, padding: "3px 9px", borderRadius: "999px", letterSpacing: "0.3px", textTransform: "uppercase",
+              fontSize: "10px", fontWeight: 700, padding: "4px 10px", borderRadius: "999px", letterSpacing: "0.3px", textTransform: "uppercase",
               backgroundColor: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.16)", color: "rgba(255,255,255,0.8)",
             }}>
               {meta.label}
@@ -303,7 +303,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
             {project.licenseExpiresAt && nowMs !== null && (
               <span style={{
                 display: "inline-flex", alignItems: "center", gap: "4px",
-                fontSize: "10px", fontWeight: 600, padding: "3px 9px", borderRadius: "999px", textTransform: "uppercase",
+                fontSize: "10px", fontWeight: 600, padding: "4px 10px", borderRadius: "999px", textTransform: "uppercase",
                 backgroundColor: isExpired ? "var(--danger-100)" : "var(--success-100)",
                 color: isExpired ? "var(--danger-500)" : "var(--success-400)",
               }}>
@@ -380,7 +380,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
       </div>
 
       <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px" }}>{t.includedFeatures}</p>
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "18px 20px", marginBottom: "20px" }}>
+      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px 20px", marginBottom: "20px" }}>
         <div>
           {/* Two columns. Seven single-line rows made a tall card with an empty right half — and
               unlike the layout above, this one is not copied from anywhere: none of the billing

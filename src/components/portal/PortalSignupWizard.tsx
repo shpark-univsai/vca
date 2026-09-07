@@ -198,7 +198,7 @@ function ProgressPills({ current }: { current: SignupStep }) {
         const active = key === current;
         return (
           <span key={key} style={{
-            fontSize: "10px", fontWeight: 600, padding: "7px 14px", borderRadius: "14px",
+            fontSize: "10px", fontWeight: 600, padding: "8px 14px", borderRadius: "14px",
             backgroundColor: active ? "var(--primary-400)" : "var(--gray-100)",
             color: active ? "white" : "var(--gray-500)", whiteSpace: "nowrap",
           }}>
@@ -214,7 +214,7 @@ function StepCard({ children, width = 520 }: { children: React.ReactNode; width?
   return (
     <div style={{
       backgroundColor: "white", border: BORDER, borderRadius: "20px",
-      width: `${width}px`, maxWidth: "100%", boxSizing: "border-box", padding: "27px 31px 31px",
+      width: `${width}px`, maxWidth: "100%", boxSizing: "border-box", padding: "24px 32px 32px",
     }}>
       {children}
     </div>
@@ -344,7 +344,7 @@ export default function PortalSignupWizard() {
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "var(--gray-50)", display: "flex", flexDirection: "column" }}>
       <ProgressPills current={step} />
-      <div style={{ flex: 1, display: "flex", justifyContent: "center", padding: "20px 24px 60px" }}>
+      <div style={{ flex: 1, display: "flex", justifyContent: "center", padding: "20px 24px 64px" }}>
 
         {step === "account" && (
           <StepCard>
@@ -355,7 +355,7 @@ export default function PortalSignupWizard() {
               <div style={{ height: "4px", width: "50%", backgroundColor: "var(--primary-400)", borderRadius: "2px" }} />
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               <div>
                 <FieldLabel>{t.step1.emailLabel}</FieldLabel>
                 <div style={{ display: "flex", gap: "8px" }}>
@@ -541,7 +541,7 @@ export default function PortalSignupWizard() {
               <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", marginTop: "12px", lineHeight: "18px" }}>
                 {t.done.body1}<br />{t.done.body2}
               </p>
-              <div style={{ width: "100%", backgroundColor: "var(--primary-100)", borderRadius: "10px", padding: "11px 0", marginTop: "24px" }}>
+              <div style={{ width: "100%", backgroundColor: "var(--primary-100)", borderRadius: "10px", padding: "12px 0", marginTop: "24px" }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary-400)", textAlign: "center" }}>{t.done.redirecting}</p>
               </div>
               <button
