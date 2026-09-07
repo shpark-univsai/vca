@@ -337,7 +337,11 @@ function useStickyHeader<T extends HTMLElement>() {
       // scrolled-content happens to align there once scrolled deep enough to clear it (bleed-
       // through). padTop is applied as inline padding below instead, so the header's own content
       // still visually lands at the same y it occupied in normal flow — no jump when it engages.
-      setRect({ left: spRect.left + padLeft, top: spRect.top, width: spRect.width - padLeft - padRight, padTop });
+      // clientWidth, not the bounding rect's width: the rect includes the scrollbar gutter, so the
+      // moment this tab's content grew long enough to scroll — which is the moment the header
+      // engages — the fixed box became a scrollbar-width wider than the cards below it and its
+      // left and right edges stopped lining up with them.
+      setRect({ left: spRect.left + padLeft, top: spRect.top, width: sp.clientWidth - padLeft - padRight, padTop });
     };
     update();
     sp.addEventListener("scroll", update);
