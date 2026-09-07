@@ -19,13 +19,18 @@ import { usePortalLanguage } from "@/lib/i18n";
  * It had drifted both ways: "Crowd Analysis" was listed as included on every Professional and
  * Enterprise project and exists nowhere in the codebase, "Attendance / Reports" showed as included
  * for a Smart School project and likewise does not exist — while four capabilities that are real
- * were missing from the page entirely (Re-ID Analysis and Intrusion Detection are camera engines
- * you can assign today, Best Frame and Smart Search are screens you can open). A licence page that
+ * were missing from the page entirely (Re-ID Analysis is both a camera engine and a Data tab,
+ * Best Frame is a screen you can open). A licence page that
  * claims what is not there and omits what is is worse than no licence page.
  *
  * Every entry below is traceable to something in the app: CameraAiFeature in vcaStore (Re-ID
  * Analysis, License Plate Recognition, Intrusion Detection), NavTab in Navbar (BEST FRAME,
- * REDMAP), DataTab in DataPage (Smart Search, RedFace), or the VIP registry.
+ * REDMAP), DataTab in DataPage (Re-ID Analysis, RedFace), or the VIP registry.
+ *
+ * "Smart Search" was listed here briefly and taken back out: it is implemented, but DATA_TABS is
+ * ["Live Monitoring", "Re-ID Analysis", "RedFace"] — the search lives inside Live Monitoring as a
+ * collapsible panel, not a destination of its own, so it is how that screen searches rather than
+ * something anybody is sold separately.
  *
  * These English strings double as identifiers (object keys, .includes() comparisons) and
  * project.licensePlan is one of the tier names, so they stay in English. Only the rendered label
@@ -33,9 +38,9 @@ import { usePortalLanguage } from "@/lib/i18n";
  */
 const PLAN_FEATURES: Record<string, string[]> = {
   Starter: ["Face Recognition", "Best Frame"],
-  Professional: ["Face Recognition", "Best Frame", "Smart Search", "Intrusion Detection", "License Plate Recognition"],
+  Professional: ["Face Recognition", "Best Frame", "Intrusion Detection", "License Plate Recognition"],
   Enterprise: [
-    "Face Recognition", "Best Frame", "Smart Search", "Intrusion Detection", "License Plate Recognition",
+    "Face Recognition", "Best Frame", "Intrusion Detection", "License Plate Recognition",
     "Re-ID Analysis", "RedMap City Tracking",
     // Named by the licence, not built yet — see NOT_BUILT_REASON. They stay in the Enterprise list
     // because that list is also the display catalogue: a customer should see what is coming.
@@ -60,6 +65,13 @@ const NOT_BUILT_REASON: Record<string, "comingSoon" | "smartSchoolComingSoon" | 
    * readings finds none. Neither a tick nor a plain "coming soon" is true here.
    */
   "License Plate Recognition": "analysisComingSoon",
+  /**
+   * A label and nothing behind it. It is a CameraAiFeature so a camera can be tagged with it, and
+   * CameraStreamModal gives it a colour — but EventType is "VIP" | "Tracking", so there is no
+   * intrusion event in the system, no results screen, and nothing that reads the tag. Being
+   * assignable is all that is true of it, and that is what the label claims.
+   */
+  "Intrusion Detection": "analysisComingSoon",
 };
 
 // Display-only translations for the feature identifiers above — keyed by the same English
@@ -67,7 +79,6 @@ const NOT_BUILT_REASON: Record<string, "comingSoon" | "smartSchoolComingSoon" | 
 const FEATURE_LABELS: Record<string, { en: string; ko: string }> = {
   "Face Recognition": { en: "Face Recognition", ko: "얼굴 인식" },
   "Best Frame": { en: "Best Frame", ko: "베스트 프레임" },
-  "Smart Search": { en: "Smart Search", ko: "스마트 검색" },
   "Intrusion Detection": { en: "Intrusion Detection", ko: "침입 감지" },
   "License Plate Recognition": { en: "License Plate Recognition", ko: "번호판 인식" },
   "Re-ID Analysis": { en: "Re-ID Analysis", ko: "재식별 분석" },
