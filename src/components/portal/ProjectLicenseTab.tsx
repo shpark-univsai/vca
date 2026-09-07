@@ -398,7 +398,9 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
             <>
               <p style={{
                 fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px",
-                textTransform: "uppercase", marginTop: "18px", marginBottom: "10px",
+                // 24, on the spacing scale — 18 was neither on it nor enough of a break for a
+                // heading that has to separate two groups inside one card.
+                textTransform: "uppercase", marginTop: "24px", marginBottom: "10px",
               }}>
                 {t.pendingHeading}
               </p>
