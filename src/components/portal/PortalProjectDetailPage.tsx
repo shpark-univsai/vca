@@ -416,9 +416,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
           {/* Metric cards — camera connectivity / license usage / VIP DB / accounts & permissions,
               each grounded in real store data (no fabricated failure-reason breakdowns the data
-              model doesn't have). */}
+              model doesn't have).
+
+              All four icon badges are the same grey. They were green, blue, purple and amber, which
+              is four colours carrying nothing: the icon already says which card this is, and the
+              hues were the same ones the bars below use to mean online, over-limit, high-priority
+              and invited. Spending them on decoration is what made the state colours stop reading
+              as state. Colour on this screen now means something or is grey. */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: CARD_GAP, marginBottom: CARD_GAP }}>
-            <MetricCard label={t.cameraConnectivity} icon={VideoIcon} iconBg="var(--success-100)" iconColor="var(--success-400)">
+            <MetricCard label={t.cameraConnectivity} icon={VideoIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
               <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.connectedSuffix(projectCameras.length)}</p>
@@ -438,7 +444,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
             </MetricCard>
 
-            <MetricCard label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--info-100)" iconColor="var(--info-500)">
+            <MetricCard label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
               <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectCameras.length}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.channelsUsedSuffix(channelLimit ?? "∞")}</p>
@@ -457,8 +463,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 </div>
                 <span style={{
                   fontSize: "10px", fontWeight: 700, padding: "2px 8px", borderRadius: "4px",
-                  backgroundColor: licenseExpired ? "var(--danger-100)" : licenseExpiringSoon ? "var(--warning-200)" : "var(--info-100)",
-                  color: licenseExpired ? "var(--danger-500)" : licenseExpiringSoon ? "var(--warning-500)" : "var(--info-500)",
+                  // Grey until it is actually news. A licence three years out was wearing the same
+                  // blue chip as everything else on the row; red and amber now only appear when
+                  // the date has passed or is close enough to act on.
+                  backgroundColor: licenseExpired ? "var(--danger-100)" : licenseExpiringSoon ? "var(--warning-200)" : "var(--gray-100)",
+                  color: licenseExpired ? "var(--danger-500)" : licenseExpiringSoon ? "var(--warning-500)" : "var(--gray-600)",
                 }}>
                   {isUnlimitedExpiry ? t.unlimited
                     : licenseExpired ? t.expired
@@ -469,7 +478,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
             </MetricCard>
 
-            <MetricCard label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--primary-100)" iconColor="var(--primary-400)">
+            <MetricCard label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
               <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectPersons.length}</p>
                 {todayVipCount > 0 && (
@@ -495,7 +504,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
             </MetricCard>
 
-            <MetricCard label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--warning-100)" iconColor="var(--warning-500)">
+            <MetricCard label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
               <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectUsers.length}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.accountsSuffix}</p>
@@ -696,7 +705,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     {recentActivity.map((a, i) => (
                       <div key={a.id} style={{ display: "flex", gap: "10px" }}>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "8px", flexShrink: 0 }}>
-                          <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--primary-400)", flexShrink: 0 }} />
+                          {/* Grey, not primary: every entry gets the same dot, so the colour was
+                              never distinguishing one from another — it was a purple column down
+                              the side of an audit log. */}
+                          <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--gray-300)", flexShrink: 0 }} />
                           {i < recentActivity.length - 1 && <span style={{ width: "1px", flex: 1, backgroundColor: "var(--gray-200)", marginTop: "2px" }} />}
                         </div>
                         <div style={{ paddingBottom: "14px", minWidth: 0 }}>
