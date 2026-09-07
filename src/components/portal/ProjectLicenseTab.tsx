@@ -268,15 +268,20 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
 
   return (
     /**
-     * Narrower than the page, and centred.
+     * Narrower than the page, and left-aligned.
      *
      * Every other Portal tab is a table or a grid, which wants all the width a monitor has. This
      * one is a single card of label-and-value rows — stretched across a wide screen its values end
      * up a hand's width from their labels, and the eye has to travel for a figure that would read
-     * at half the distance. Capped and centred rather than left-aligned so the whitespace is even
-     * on both sides instead of pooling on the right.
+     * at half the distance. So it is capped.
+     *
+     * It was centred for a day, which made switching to this tab move where the content starts:
+     * every other tab begins at the shell's left gutter and this one began somewhere inside it, so
+     * it read as a different page rather than another tab of the same one. Capped and left-aligned
+     * is also what the products this borrows from actually do — Remote, Loom and Vimeo all leave
+     * the spare width on the right rather than splitting it.
      */
-    <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+    <div style={{ maxWidth: "900px" }}>
       <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
       <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px", marginBottom: "20px" }}>{t.subtitle}</p>
 
