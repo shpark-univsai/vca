@@ -354,12 +354,18 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
               pages worth referencing lists features at all (Rows gives a sentence, GitHub links
               out to a comparison), so the shape is ours to choose. */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "10px 20px" }}>
+            {/* Top-aligned, not centred.
+                Some labels carry a reason and wrap to two lines ("번호판 인식 — 카메라 지정 가능 ·
+                분석 화면 준비 중"). Centred, a two-line item pushed its first line ABOVE the
+                single-line item beside it, so nothing in the row started on the same line. The
+                icon takes a 3px nudge to sit on the middle of that first line — (18px line box −
+                12px glyph) / 2 — rather than on the top of it. */}
             {featureRows.map(({ key, included, label }) => (
-              <div key={key} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ display: "flex", color: included ? "var(--gray-900)" : "var(--gray-300)" }}>
+              <div key={key} style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
+                <span style={{ display: "flex", marginTop: "3px", flexShrink: 0, color: included ? "var(--gray-900)" : "var(--gray-300)" }}>
                   {included ? <CheckIcon /> : <LockIcon />}
                 </span>
-                <span style={{ fontSize: "12px", fontWeight: included ? 700 : 600, color: included ? "var(--gray-900)" : "var(--gray-400)" }}>{label}</span>
+                <span style={{ fontSize: "12px", lineHeight: 1.5, fontWeight: included ? 700 : 600, color: included ? "var(--gray-900)" : "var(--gray-400)" }}>{label}</span>
               </div>
             ))}
           </div>
