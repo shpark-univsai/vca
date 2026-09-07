@@ -29,7 +29,6 @@ const T = {
     offline: "Offline",
     licenseSubscription: "License Subscription",
     channelsUsedSuffix: (limit: number | string) => `/ ${limit} channels used`,
-    manage: "Manage →",
     vipTargetDb: "VIP / Target DB",
     todayBadge: (n: number) => `${n} today`,
     highPriorityLabel: (n: number) => `High priority: ${n}`,
@@ -88,7 +87,6 @@ const T = {
     offline: "오프라인",
     licenseSubscription: "라이선스 구독",
     channelsUsedSuffix: (limit: number | string) => `/ ${limit}채널 사용`,
-    manage: "관리 →",
     vipTargetDb: "VIP / 관심대상 DB",
     todayBadge: (n: number) => `오늘 ${n}건`,
     highPriorityLabel: (n: number) => `우선순위 높음: ${n}`,
@@ -405,7 +403,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               and invited. Spending them on decoration is what made the state colours stop reading
               as state. Colour on this screen now means something or is grey. */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: CARD_GAP, marginBottom: CARD_GAP }}>
-            <MetricCard label={t.cameraConnectivity} icon={VideoIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
+            <MetricCard label={t.cameraConnectivity} icon={VideoIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)" onClick={() => onTabChange("cameras")}>
               {/* Figure left, bar right, one line.
                   Stacked, the bar cost the card a whole row for something 8px tall, and the right
                   half of the card sat empty on a wide monitor.
@@ -428,7 +426,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   a non-zero offline count is a line in the "things to do" strip above. */}
             </MetricCard>
 
-            <MetricCard label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
+            <MetricCard label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)" onClick={() => onTabChange("license")}>
               {/* Figure left, bar right, one line.
                   Stacked, the bar cost the card a whole row for something 8px tall, and the right
                   half of the card sat empty on a wide monitor.
@@ -451,7 +449,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   line in the "things to do" strip instead of wearing a chip on a card all year. */}
             </MetricCard>
 
-            <MetricCard label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
+            <MetricCard label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)" onClick={() => onTabChange("vip")}>
               {/* One row, no bar and no footer rule.
                   A bar needs a denominator that means something. The two cards to the left have
                   one — cameras installed, channels licensed — and these two do not: nobody manages
@@ -476,7 +474,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
             </MetricCard>
 
-            <MetricCard label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)">
+            <MetricCard label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)" onClick={() => onTabChange("users")}>
               {/* One row, no bar and no footer rule.
                   A bar needs a denominator that means something. The two cards to the left have
                   one — cameras installed, channels licensed — and these two do not: nobody manages
@@ -489,9 +487,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <span style={{ display: "flex", alignItems: "baseline", gap: "4px", flexShrink: 0, whiteSpace: "nowrap" }}>
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectUsers.length}</span>
                   <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.accountsSuffix}</span>
-                  <span style={{ fontSize: "12px", color: "var(--gray-500)", marginLeft: "4px" }}>{t.accessSplitLabel(portalUserCount, appUserCount)}</span>
                 </span>
-                <button onClick={() => onTabChange("users")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>{t.manage}</button>
+                {/* Was a "Manage" link in the corner. The card navigates now, so a second target
+                    inside it pointing at the same tab is just a smaller version of the card. */}
+                <span style={{ fontSize: "12px", color: "var(--gray-500)", flexShrink: 0 }}>{t.accessSplitLabel(portalUserCount, appUserCount)}</span>
               </div>
             </MetricCard>
           </div>

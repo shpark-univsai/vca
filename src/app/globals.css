@@ -165,10 +165,11 @@
    a lift effect here would reintroduce the layer that decision removed. Additive on hover only
    adds nothing to the resting page.
 
-   gray-300, a step lighter than the gray-900 the focus ring uses, so hovering and being focused
-   stay tellable apart on the same card. */
+   gray-400: the cards themselves carry a gray-300 hairline now, so an outline of the same value
+   was a doubled line nobody could see change. Still well clear of the gray-900 the focus ring
+   uses, so hovering and being focused stay tellable apart on the same card. */
 .portal-card-clickable { transition: outline-color .12s ease; outline: 1px solid transparent; }
-.portal-card-clickable:hover { outline-color: var(--gray-300); }
+.portal-card-clickable:hover { outline-color: var(--gray-400); }
 
 /* The same action reached from a table row, where the name is the target rather than a surface. */
 .portal-link { transition: color .12s ease; }

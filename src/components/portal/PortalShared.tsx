@@ -515,7 +515,7 @@ export function SelectedCheckIcon({ size = 14 }: { size?: number }) {
  * two — the Input Sources strip was a single bordered box with three columns divided by rules,
  * which read as a different component doing the same job one screen over.
  */
-export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense, value, children }: {
+export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense, value, onClick, children }: {
   label: string;
   /** Optional. Input Sources drops the badge: its cards sit directly above a long table, so the
    *  32px badge was spending a sixth of the card's height on decoration that the value and the
@@ -535,19 +535,37 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
   dense?: boolean;
   /** Dense only: the figure, placed on the label's line. */
   value?: React.ReactNode;
+  /**
+   * Makes the whole card the target.
+   *
+   * Each Overview card is a summary of exactly one tab, and it used to carry a small "Manage" link
+   * in its corner to get there — a 40px target inside a 300px card that is entirely about that one
+   * destination. With the card itself clickable the link is redundant, and the cards that never had
+   * one become reachable too. Omitted by the Input Sources cards, which summarise the table
+   * directly beneath them: there is nowhere to go.
+   */
+  onClick?: () => void;
   children: React.ReactNode;
 }) {
   const Icon = icon;
+  const Tag = onClick ? "button" : "div";
   return (
     // The card's own gap is the space between the big value and the bar under it — 6, because the
     // number and the bar are one statement and 12 read as two. The eyebrow above and the footer
     // below each add 6 back, so those gaps stay where they were. Doing it here rather than per card
     // is what keeps every card on both pages identical.
-    <div style={{
-      backgroundColor: "white", border: accentBorder ?? CARD_BORDER, borderRadius: dense ? "12px" : "16px",
-      boxShadow: PANEL_SHADOW, padding: dense ? "12px 14px" : "16px",
-      display: "flex", flexDirection: "column", gap: dense ? "8px" : "6px", flex: 1, minWidth: 0,
-    }}>
+    <Tag
+      onClick={onClick}
+      className={onClick ? "portal-card-clickable" : undefined}
+      style={{
+        backgroundColor: "white", border: accentBorder ?? CARD_BORDER, borderRadius: dense ? "12px" : "16px",
+        boxShadow: PANEL_SHADOW, padding: dense ? "12px 14px" : "16px",
+        display: "flex", flexDirection: "column", gap: dense ? "8px" : "6px", flex: 1, minWidth: 0,
+        // A <button> brings its own centring, font and cursor; undo them so the clickable card is
+        // pixel-identical to the static one.
+        ...(onClick ? { textAlign: "left" as const, font: "inherit", cursor: "pointer", width: "100%" } : null),
+      }}
+    >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: dense ? 0 : (Icon ? "6px" : "2px") }}>
         {/* Sentence case, not caps. The label carries multi-word names ("Portal Accounts &
             Permissions"), which all-caps at 10px turns into a block to decode rather than read —
@@ -571,7 +589,7 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
           )}
       </div>
       {!dense && children}
-    </div>
+    </Tag>
   );
 }
 
