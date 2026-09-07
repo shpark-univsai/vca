@@ -6,7 +6,7 @@ import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type Se
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
-import { FIELD_STYLE, TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch } from "./PortalShared";
+import { TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch } from "./PortalShared";
 
 const SERVER_TYPES: ServerType[] = ["AI Camera", "Normal Camera", "Face Recognition", "Image Store", "Database"];
 
@@ -73,13 +73,11 @@ function ServerFormModal({
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverName}</label>
-            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t.serverNamePlaceholder}
-              style={FIELD_STYLE} />
+            <TextField value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder={t.serverNamePlaceholder} />
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverIp}</label>
-            <input value={form.ip} onChange={e => setForm(f => ({ ...f, ip: e.target.value }))} placeholder={t.serverIpPlaceholder}
-              style={FIELD_STYLE} />
+            <TextField value={form.ip} onChange={v => setForm(f => ({ ...f, ip: v }))} placeholder={t.serverIpPlaceholder} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
@@ -95,8 +93,7 @@ function ServerFormModal({
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.specification}</label>
-            <input value={form.specification} onChange={e => setForm(f => ({ ...f, specification: e.target.value }))} placeholder={t.specificationPlaceholder}
-              style={FIELD_STYLE} />
+            <TextField value={form.specification} onChange={v => setForm(f => ({ ...f, specification: v }))} placeholder={t.specificationPlaceholder} />
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>

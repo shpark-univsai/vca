@@ -63,14 +63,22 @@ export const FIELD_STYLE: React.CSSProperties = {
   height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "10px",
   border: BORDER, backgroundColor: "white",
   fontSize: "13px", fontFamily: "inherit",
-  // The browser ring is replaced, not layered on top of, the border treatment below.
-  outline: "none",
 };
 
-/** Merged over FIELD_STYLE while the control is focused or open. */
+/**
+ * Merged over FIELD_STYLE while the control is focused or open.
+ *
+ * `outline: none` belongs HERE, not in FIELD_STYLE. An outline only renders while focused, so
+ * putting it on the base style bought nothing except a trap: a bare <input> that took FIELD_STYLE
+ * and no focus style killed globals.css's outline and kept its box-shadow, so it drew a faint halo
+ * around an unchanged grey border — a third focus look, and the one nobody designed. With the
+ * opt-out on this object instead, a field either draws this ring or falls through to the global one,
+ * and those two are the same picture.
+ */
 export const FIELD_FOCUS: React.CSSProperties = {
   border: "1px solid var(--gray-900)",
   boxShadow: "0 0 0 3px var(--gray-100)",
+  outline: "none",
 };
 /**
  * How wide each breadcrumb name may get before it is ellipsised. They were 260px and 220px, which
@@ -764,13 +772,14 @@ export function Tooltip({ text, children, placement = "bottom" }: {
  * form in Portal was otherwise going to keep its own useState for it — which is how three
  * different treatments got here in the first place.
  */
-export function TextField({ value, onChange, placeholder, type, inputMode, autoComplete, disabled, readOnly, style }: {
+export function TextField({ value, onChange, placeholder, type, inputMode, autoComplete, autoFocus, disabled, readOnly, style }: {
   value: string;
   onChange?: (value: string) => void;
   placeholder?: string;
   type?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   autoComplete?: string;
+  autoFocus?: boolean;
   disabled?: boolean;
   readOnly?: boolean;
   /** Merged last — for the odd field that needs a monospace face or a fixed width. */
@@ -788,6 +797,7 @@ export function TextField({ value, onChange, placeholder, type, inputMode, autoC
       type={type}
       inputMode={inputMode}
       autoComplete={autoComplete}
+      autoFocus={autoFocus}
       disabled={disabled}
       readOnly={readOnly}
       style={{

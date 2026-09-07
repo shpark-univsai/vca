@@ -6,7 +6,7 @@ import { getFacePhoto } from "@/lib/mockData";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { FIELD_STYLE, FIELD_FOCUS, BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SelectedCheckIcon, SortableHeader, Tooltip, sortRows, useTableSort } from "./PortalShared";
+import { TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SelectedCheckIcon, SortableHeader, Tooltip, sortRows, useTableSort } from "./PortalShared";
 
 type VipSortKey = "name" | "role" | "priority" | "registered";
 
@@ -325,8 +325,7 @@ function RegisterVipModal({ t, person, onClose, onSubmit }: {
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder={t.namePlaceholder}
-              style={FIELD_STYLE} />
+            <TextField value={name} onChange={setName} placeholder={t.namePlaceholder} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
@@ -344,8 +343,7 @@ function RegisterVipModal({ t, person, onClose, onSubmit }: {
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.noteLabel}</label>
-            <input value={description} onChange={e => setDescription(e.target.value)} placeholder={t.notePlaceholder}
-              style={FIELD_STYLE} />
+            <TextField value={description} onChange={setDescription} placeholder={t.notePlaceholder} />
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.facePhotoLabel}</label>
@@ -474,7 +472,6 @@ function GroupModal({ t, group, projectId, onClose }: {
     onClose();
   };
 
-  const inputStyle = FIELD_STYLE;
   const label = (text: string) => (
     <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{text}</label>
   );
@@ -489,11 +486,11 @@ function GroupModal({ t, group, projectId, onClose }: {
           </p>
           <div>
             {label(t.groupNameLabel)}
-            <input value={name} onChange={e => setName(e.target.value)} placeholder={t.groupNamePlaceholder} style={inputStyle} />
+            <TextField value={name} onChange={setName} placeholder={t.groupNamePlaceholder} />
           </div>
           <div>
             {label(t.groupDescLabel)}
-            <input value={description} onChange={e => setDescription(e.target.value)} placeholder={t.groupDescPlaceholder} style={inputStyle} />
+            <TextField value={description} onChange={setDescription} placeholder={t.groupDescPlaceholder} />
           </div>
           <div>
             {label(t.priorityLabel)}

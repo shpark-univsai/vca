@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip } from "./PortalShared";
+import { TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import RosterImportModal from "./RosterImportModal";
@@ -558,13 +558,11 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
         <div style={MODAL_BODY_WITH_SELECT}>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder={t.namePlaceholder}
-              style={FIELD_STYLE} />
+            <TextField value={name} onChange={setName} placeholder={t.namePlaceholder} />
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.emailLabel}</label>
-            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="name@univs.ai" type="email"
-              style={FIELD_STYLE} />
+            <TextField value={email} onChange={setEmail} placeholder="name@univs.ai" type="email" />
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.teamLabel}</label>

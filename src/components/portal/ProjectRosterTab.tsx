@@ -6,7 +6,7 @@ import { useVcaStore } from "@/lib/vcaStore";
 import { REGISTRATION_CODE_TTL_DAYS, formatCode, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
-import { FIELD_STYLE, BORDER } from "./PortalShared";
+import { TextField, FIELD_STYLE, BORDER } from "./PortalShared";
 
 const T = {
   en: {
@@ -319,7 +319,7 @@ function RosterEntryModal({ entry, projectId, onClose, t }: {
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", maxHeight: "60vh", overflowY: "auto" }}>
           <div>
             {label(t.fieldName)}
-            <input value={name} onChange={e => setName(e.target.value)} placeholder={t.fieldNamePlaceholder} autoFocus style={inputStyle} />
+            <TextField value={name} onChange={setName} placeholder={t.fieldNamePlaceholder} autoFocus />
           </div>
           <div>
             {label(t.fieldEmployeeId)}
@@ -335,11 +335,11 @@ function RosterEntryModal({ entry, projectId, onClose, t }: {
           </div>
           <div>
             {label(t.fieldDepartment, t.fieldEmailOptional)}
-            <input value={department} onChange={e => setDepartment(e.target.value)} placeholder={t.fieldDepartmentPlaceholder} style={inputStyle} />
+            <TextField value={department} onChange={setDepartment} placeholder={t.fieldDepartmentPlaceholder} />
           </div>
           <div>
             {label(t.fieldEmail, t.fieldEmailOptional)}
-            <input value={email} onChange={e => setEmail(e.target.value)} placeholder={t.fieldEmailPlaceholder} style={inputStyle} />
+            <TextField value={email} onChange={setEmail} placeholder={t.fieldEmailPlaceholder} />
           </div>
           <div>
             {label(t.fieldPermission)}
