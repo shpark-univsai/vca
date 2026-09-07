@@ -13,6 +13,9 @@ import { useLanguage } from "@/lib/i18n";
 const T = {
   en: {
     all: "All",
+    noDetections: "No detections",
+    multiTrackHistory: "Multi-track event history",
+    multiTrackHint: "Events from this camera across every track it has detected",
     vehicle: "Vehicle",
     unknown: "Unknown",
     reelTitle: "Best frame reel",
@@ -43,6 +46,9 @@ const T = {
   },
   ko: {
     all: "전체",
+    noDetections: "검출 없음",
+    multiTrackHistory: "다중 트랙 이벤트 기록",
+    multiTrackHint: "이 카메라가 검출한 모든 트랙의 이벤트입니다",
     vehicle: "차량",
     unknown: "미확인",
     reelTitle: "베스트 프레임 목록",
@@ -430,7 +436,7 @@ function BestFrameReel({ data, focusedId, onFocus, onSelect, filter, onFilterCha
           least 8px clearance now. */}
       <div style={{ flex:1, overflowY:"auto", padding:"16px", display:"grid", gridTemplateColumns:"repeat(4, 1fr)", columnGap:"14px", rowGap:"16px", alignItems:"start" }}>
         {dets.length === 0 && (
-          <div style={{ gridColumn:"1 / -1", padding:"24px 0", textAlign:"center", color:"var(--gray-400)", fontSize:"12px" }}>No detections</div>
+          <div style={{ gridColumn:"1 / -1", padding:"24px 0", textAlign:"center", color:"var(--gray-400)", fontSize:"12px" }}>{t.noDetections}</div>
         )}
         {dets.map((det, i) => (
           <ReelCard key={det.id} det={det} index={i} isFocused={det.id === focusedId} onClick={() => { onFocus(det); onSelect(det); }} />
@@ -895,7 +901,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
               flex, so the step controls stay truly centered regardless of how wide the title or
               the date/jump-to group are). */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr auto 1fr", alignItems:"center", padding:"12px 16px 16px", columnGap:"12px" }}>
-            <span title="Events from this camera across every track it has detected" style={{ fontSize:"14px", fontWeight:700, color:"var(--gray-900)", letterSpacing:"-0.26px", cursor:"help" }}>Multi-track event history</span>
+            <span title={t.multiTrackHint} style={{ fontSize:"14px", fontWeight:700, color:"var(--gray-900)", letterSpacing:"-0.26px", cursor:"help" }}>{t.multiTrackHistory}</span>
             {/* Step controls — precise ±1s/±10s seeking for when dragging the axis by hand is too
                 coarse. Arrow keys do the same (see the keydown effect above); Shift+arrow mirrors
                 the ±10s buttons. */}

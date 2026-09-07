@@ -10,7 +10,7 @@ import { canSearchInApp, useVcaStore } from "@/lib/vcaStore";
 import RemoveImageButton from "./RemoveImageButton";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 
-import { useLanguage } from "@/lib/i18n";
+import { useLanguage, type AppLanguage } from "@/lib/i18n";
 
 // See the per-file pattern note in lib/i18n.ts. Site names, camera codes, plate numbers and the
 // seeded match labels are data and stay as they are.
@@ -19,6 +19,13 @@ const T = {
     noPermissionTitle: "Person search permission required",
     noPermissionBody: "Redmap only shows results from a search, so with no search permission there is nothing to show. An administrator can grant it in the Portal, under Users & Permissions.",
     close: "Close",
+    prevMonth: "Previous month",
+    nextMonth: "Next month",
+    dragAndDrop: "Drag and drop an image here",
+    searchTargets: "Search targets",
+    searchResults: "Search results",
+    excluded: "Excluded",
+    restore: "Restore",
     modePerson: "PERSON",
     modeVehicle: "VEHICLE",
     licensePlate: "License plate",
@@ -66,6 +73,13 @@ const T = {
     noPermissionTitle: "인물 검색 권한이 필요합니다",
     noPermissionBody: "Redmap은 검색으로만 결과를 보여주는 화면이라, 검색 권한 없이는 보여줄 것이 없습니다. 관리자에게 요청하면 포털의 사용자 및 권한에서 열어 줄 수 있습니다.",
     close: "닫기",
+    prevMonth: "지난달",
+    nextMonth: "다음달",
+    dragAndDrop: "이미지를 여기로 끌어다 놓으세요",
+    searchTargets: "검색 대상",
+    searchResults: "검색 결과",
+    excluded: "제외됨",
+    restore: "복원",
     modePerson: "사람",
     modeVehicle: "차량",
     licensePlate: "차량 번호",
@@ -484,11 +498,20 @@ function PinIconSm({ color = "var(--gray-600)" }: { color?: string }) {
 }
 
 /* ── DateRangePicker ──────────────────────────────────────── */
-const MONTHS_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+// Korean names its months by number, so the "full" and "short" forms are the same string.
+const MONTHS_FULL: Record<AppLanguage, string[]> = {
+  en: ["January","February","March","April","May","June","July","August","September","October","November","December"],
+  ko: ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"],
+};
+const MONTHS_SHORT: Record<AppLanguage, string[]> = {
+  en: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+  ko: MONTHS_FULL.ko,
+};
 const DAY_HEADS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 
 function DateRangePicker({ value, onChange }: { value: DateRange; onChange: (v: DateRange) => void }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"start"|"end">("start");
   // Opens on the month being edited, not a hardcoded one. This was pinned to June 2026 back when
@@ -523,7 +546,9 @@ function DateRangePicker({ value, onChange }: { value: DateRange; onChange: (v: 
   const formatDisplay = (d: string | null) => {
     if (!d) return null;
     const [y, m, day] = d.split("-");
-    return `${MONTHS_SHORT[parseInt(m)-1]} ${parseInt(day)}, ${y}`;
+    return lang === "ko"
+      ? `${y}. ${MONTHS_SHORT.ko[parseInt(m)-1]} ${parseInt(day)}일`
+      : `${MONTHS_SHORT.en[parseInt(m)-1]} ${parseInt(day)}, ${y}`;
   };
 
   const handleDayClick = (day: number) => {
@@ -608,7 +633,7 @@ function DateRangePicker({ value, onChange }: { value: DateRange; onChange: (v: 
                     cursor: "pointer",
                   }}
                 >
-                  {MONTHS_SHORT[month]} {year}
+                  {MONTHS_SHORT[lang][month]} {year}
                 </div>
               );
             })}
@@ -632,9 +657,9 @@ function DateRangePicker({ value, onChange }: { value: DateRange; onChange: (v: 
 
             {/* Month nav */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-              <button onClick={prevMonth} aria-label="Previous month" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px", color: "var(--gray-900)", padding: "2px 6px", lineHeight: 1 }}>‹</button>
-              <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{MONTHS_FULL[viewMonth]} {viewYear}</span>
-              <button onClick={nextMonth} aria-label="Next month" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px", color: "var(--gray-900)", padding: "2px 6px", lineHeight: 1 }}>›</button>
+              <button onClick={prevMonth} aria-label={t.prevMonth} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px", color: "var(--gray-900)", padding: "2px 6px", lineHeight: 1 }}>‹</button>
+              <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{lang === "ko" ? `${viewYear}년 ${MONTHS_FULL.ko[viewMonth]}` : `${MONTHS_FULL.en[viewMonth]} ${viewYear}`}</span>
+              <button onClick={nextMonth} aria-label={t.nextMonth} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px", color: "var(--gray-900)", padding: "2px 6px", lineHeight: 1 }}>›</button>
             </div>
 
             {/* Day headers */}
@@ -1065,7 +1090,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                 <FocusIcon />
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", textAlign: "center" }}>
-                <span style={{ fontSize: "16px", fontWeight: 700, color: "var(--primary-400)" }}>Drag and drop an image here</span>
+                <span style={{ fontSize: "16px", fontWeight: 700, color: "var(--primary-400)" }}>{t.dragAndDrop}</span>
                 <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>
                   File types supported: JPG, PNG, GIF, TIFF, HEIC, WebP. Max size 50MB
                 </span>
@@ -1335,7 +1360,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
             {hasSearchTargets && (
               <>
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <h3 style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>Search targets</h3>
+                  <h3 style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>{t.searchTargets}</h3>
                   <div style={{ display: "flex", gap: "24px" }}>
                     {([
                       { key: "face" as const, image: faceImage, height: "100px" },
@@ -1398,7 +1423,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
             {hasSearched && (<>
             {/* ── Search Results header ── */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <h3 style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>Search results</h3>
+              <h3 style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>{t.searchResults}</h3>
               <span style={{
                 width: "18px", height: "18px", borderRadius: "999px", backgroundColor: "var(--gray-100)",
                 color: "var(--gray-700)", fontSize: "10px", fontWeight: 600,
@@ -1540,8 +1565,8 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                         onClick={e => { e.stopPropagation(); setExcludedHitIds(prev => { const next = new Set(prev); next.delete(hit.id); return next; }); }}
                         style={{ display: "flex", alignItems: "center", gap: "4px", border: "none", background: "none", padding: 0, cursor: "pointer", width: "fit-content" }}
                       >
-                        <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--danger-400)" }}>Excluded</span>
-                        <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--primary-400)", textDecoration: "underline" }}>Restore</span>
+                        <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--danger-400)" }}>{t.excluded}</span>
+                        <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--primary-400)", textDecoration: "underline" }}>{t.restore}</span>
                       </button>
                     ) : showPersonChips && (
                       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>

@@ -93,6 +93,22 @@ const T = {
     colPeakTime: "Peak time",
     colSpan: "Span",
     colAction: "Action",
+    fullBody: "Full-body",
+    selectPrimaryTarget: "Select primary target",
+    selectPrimarySub: "Search and select a new target to rebuild RedFace relationship graph",
+    searchByImage: "Search by image",
+    clickToUpload: "Click to upload",
+    labelApparel: "Apparel",
+    labelProps: "Props",
+    topColor: "Top color",
+    bottomColor: "Bottom color",
+    shoesColor: "Shoes color",
+    coCaptureEvidence: "Co-capture evidence",
+    whereWhenCluster: "Where and when the shared frames cluster",
+    first: "First",
+    last: "Last",
+    primaryTarget: "PRIMARY TARGET",
+    primaryTargetHint: "The person everything here is measured against — associates are whoever shares frames with them",
     prevFrame: "Previous frame",
     nextFrame: "Next frame",
     coCaptures: (n: number) => `${n} co-captures`,
@@ -182,6 +198,22 @@ const T = {
     colPeakTime: "최다 검출 시간",
     colSpan: "검출 기간",
     colAction: "동작",
+    fullBody: "전신",
+    selectPrimaryTarget: "기준 대상 선택",
+    selectPrimarySub: "새 대상을 검색해 선택하면 RedFace 관계도를 다시 만듭니다",
+    searchByImage: "이미지로 검색",
+    clickToUpload: "눌러서 업로드",
+    labelApparel: "옷차림",
+    labelProps: "소지품",
+    topColor: "상의 색상",
+    bottomColor: "하의 색상",
+    shoesColor: "신발 색상",
+    coCaptureEvidence: "함께 잡힌 근거",
+    whereWhenCluster: "함께 잡힌 프레임이 몰린 곳과 시간",
+    first: "처음",
+    last: "마지막",
+    primaryTarget: "기준 대상",
+    primaryTargetHint: "여기의 모든 수치가 이 사람을 기준으로 계산됩니다. 동행자는 이 사람과 같은 프레임에 잡힌 사람입니다",
     prevFrame: "이전 프레임",
     nextFrame: "다음 프레임",
     coCaptures: (n: number) => `함께 잡힘 ${n}회`,
@@ -327,7 +359,7 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
             </div>
             <div style={{ border:BORDER, borderRadius:"12px", padding:"10px", backgroundColor:"var(--gray-50)", display:"flex", flexDirection:"column", alignItems:"center", gap:"8px" }}>
               <img src={item.body} alt="" style={{ width:"124px", height:"186px", objectFit:"cover", borderRadius:"12px", border:"2px solid var(--primary-400)" }} />
-              <p style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", letterSpacing:"0.5px" }}>Full-body</p>
+              <p style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", letterSpacing:"0.5px" }}>{T[lang].fullBody}</p>
             </div>
           </div>
 
@@ -3137,8 +3169,8 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
             <UserCogIconSm />
           </div>
           <div>
-            <p style={{ fontSize:"16px", fontWeight:800, color:"var(--gray-800)", margin:0, letterSpacing:"-0.32px" }}>Select primary target</p>
-            <p style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-500)", margin:0 }}>Search and select a new target to rebuild RedFace relationship graph</p>
+            <p style={{ fontSize:"16px", fontWeight:800, color:"var(--gray-800)", margin:0, letterSpacing:"-0.32px" }}>{t.selectPrimaryTarget}</p>
+            <p style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-500)", margin:0 }}>{t.selectPrimarySub}</p>
           </div>
         </div>
         <button onClick={onCancel} style={{ background:"none", border:"none", padding:0, cursor:"pointer", display:"flex", flexShrink:0 }}>
@@ -3187,7 +3219,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
               <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:"4px", color:"var(--gray-700)" }}>
                   <HistoryIconSm />
-                  <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>Recent targets</span>
+                  <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.recentTargets}</span>
                 </div>
                 {/* One scrolling row, same as VIP quick select right below it — the picker used to
                     show the first two of the list and silently drop the rest, so a target used an
@@ -3226,7 +3258,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
               <div style={{ height:"1px", backgroundColor:"var(--gray-200)" }} />
 
               <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-                <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>Search by image</span>
+                <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.searchByImage}</span>
                 <ImageDropzoneHoverStyleTag />
                 <div style={{ display:"flex", gap:"10px" }}>
                   <div onClick={() => faceInputRef.current?.click()} className="vca-image-dropzone-clickable"
@@ -3254,7 +3286,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                       <>
                         <DefaultFaceIconSm />
                         <span className="vca-dropzone-label" style={{ fontSize:"10px", color:"var(--gray-400)" }}>Face</span>
-                        <span className="vca-dropzone-hint" style={{ fontSize:"10px", fontWeight:700, color:"var(--primary-400)", opacity:0 }}>Click to upload</span>
+                        <span className="vca-dropzone-hint" style={{ fontSize:"10px", fontWeight:700, color:"var(--primary-400)", opacity:0 }}>{t.clickToUpload}</span>
                       </>
                     )}
                     <input ref={faceInputRef} type="file" accept="image/*" onChange={handleFaceUpload} style={{ display:"none" }} />
@@ -3284,7 +3316,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                       <>
                         <FullBodyIconSm />
                         <span className="vca-dropzone-label" style={{ fontSize:"10px", color:"var(--gray-400)" }}>Body</span>
-                        <span className="vca-dropzone-hint" style={{ fontSize:"10px", fontWeight:700, color:"var(--primary-400)", opacity:0 }}>Click to upload</span>
+                        <span className="vca-dropzone-hint" style={{ fontSize:"10px", fontWeight:700, color:"var(--primary-400)", opacity:0 }}>{t.clickToUpload}</span>
                       </>
                     )}
                     <input ref={bodyInputRef} type="file" accept="image/*" onChange={handleBodyUpload} style={{ display:"none" }} />
@@ -3295,13 +3327,13 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
           )}
 
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-            <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>Date range</span>
+            <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.dateRange}</span>
             <DateRangeTrigger value={dateRange} onApply={setDateRange} mode="split" size="sm" emptyText="Last 7 days" />
           </div>
 
           {isVehicle && (
             <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-              <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>License plate</span>
+              <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.licensePlate}</span>
               <div style={{ display:"flex", alignItems:"center", gap:"6px", height:"34px", padding:"0 10px",
                 borderRadius:"8px", border:BORDER, backgroundColor:"white" }}>
                 <LicensePlateIconSm />
@@ -3317,7 +3349,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
           )}
 
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-            <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>Similarity</span>
+            <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.similarity}</span>
             <SimilarityControl value={threshold} onChange={setThreshold} height={34} />
           </div>
 
@@ -3325,7 +3357,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
             <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
               <button onClick={() => setAttrOpen(o => !o)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
                 width:"100%", background:"none", border:"none", padding:"0 8px 0 0", cursor:"pointer" }}>
-                <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>Filter</span>
+                <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.tabFilter}</span>
                 <span style={{ display:"flex", color:"var(--gray-400)", transform: attrOpen ? "rotate(180deg)" : "none" }}>
                   <ChevronDownIconSm />
                 </span>
@@ -3333,37 +3365,37 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
               {attrOpen && (
                 <>
                   <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
-                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)" }}>Gender</span>
+                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)" }}>{t.labelGender}</span>
                     <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
                       {GENDER_CHIPS.map(g => <AttrChip key={g} label={g} active={gender===g} onClick={() => setGender(gender===g ? "" : g)} size="sm" />)}
                     </div>
                   </div>
                   <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
-                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)" }}>Apparel</span>
+                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)" }}>{t.labelApparel}</span>
                     <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
                       {APPAREL_CHIPS.map(a => <AttrChip key={a} label={a} active={apparel.includes(a)} onClick={() => toggleApparel(a)} size="sm" />)}
                     </div>
                   </div>
                   <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
-                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)" }}>Props</span>
+                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)" }}>{t.labelProps}</span>
                     <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
                       {PROPS_CHIPS.map(p => <AttrChip key={p} label={p} active={props.includes(p)} onClick={() => toggleProps(p)} size="sm" />)}
                     </div>
                   </div>
                   <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
-                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)" }}>Top color</span>
+                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)" }}>{t.topColor}</span>
                     <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
                       {APPAREL_COLORS.map(c => <ColorSwatch key={c.id} hex={c.hex} active={topColors.includes(c.id)} onClick={() => toggleTopColor(c.id)} size={18} />)}
                     </div>
                   </div>
                   <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
-                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)" }}>Bottom color</span>
+                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)" }}>{t.bottomColor}</span>
                     <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
                       {APPAREL_COLORS.map(c => <ColorSwatch key={c.id} hex={c.hex} active={bottomColors.includes(c.id)} onClick={() => toggleBottomColor(c.id)} size={18} />)}
                     </div>
                   </div>
                   <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
-                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)" }}>Shoes color</span>
+                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)" }}>{t.shoesColor}</span>
                     <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
                       {SHOE_COLORS.map(c => <ColorSwatch key={c.id} hex={c.hex} active={shoesColors.includes(c.id)} onClick={() => toggleShoesColor(c.id)} size={18} />)}
                     </div>
@@ -3378,7 +3410,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
         <div style={{ flex:1, padding:"20px", display:"flex", flexDirection:"column", gap:"16px", overflow:"hidden" }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-              <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-800)" }}>Search results</span>
+              <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-800)" }}>{t.searchResults}</span>
               <span style={{ fontSize:"10px", fontWeight:800, color:"var(--primary-400)", backgroundColor:"var(--primary-100)", padding:"2px 6px", borderRadius:"4px" }}>{candidates.length}</span>
             </div>
             {/* A muted, easy-to-miss line read as an afterthought — once candidates actually
@@ -3418,7 +3450,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
           <ResetIconSm /> Reset filters
         </button>
         <div style={{ display:"flex", gap:"8px" }}>
-          <button onClick={onCancel} style={{ padding:"8px 12px", borderRadius:"8px", border:"1px solid var(--gray-300)", backgroundColor:"white", fontSize:"13px", fontWeight:700, color:"var(--gray-600)", cursor:"pointer" }}>Cancel</button>
+          <button onClick={onCancel} style={{ padding:"8px 12px", borderRadius:"8px", border:"1px solid var(--gray-300)", backgroundColor:"white", fontSize:"13px", fontWeight:700, color:"var(--gray-600)", cursor:"pointer" }}>{t.cancel}</button>
           <button disabled={!selectedObj} onClick={() => selectedObj && onConfirm(selectedObj)} style={{ padding:"8px 12px", borderRadius:"8px", border:"none",
             backgroundColor: selectedObj ? "var(--primary-400)" : "var(--primary-200)", color:"white", fontSize:"13px", fontWeight:700,
             cursor: selectedObj ? "pointer" : "default" }}>
@@ -4056,7 +4088,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
             is; the 37px filled square was the outlier. */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
           <p title={t.sharedFramesTitle} style={{ margin:0, fontSize:"16px", fontWeight:800,
-            color:"var(--gray-900)", letterSpacing:"-0.32px", cursor:"help" }}>Co-capture evidence</p>
+            color:"var(--gray-900)", letterSpacing:"-0.32px", cursor:"help" }}>{t.coCaptureEvidence}</p>
           <button onClick={onClose} aria-label={t.close} style={{
             width:"26px", height:"26px", flexShrink:0, padding:0,
             backgroundColor:"transparent", border:"none", cursor:"pointer",
@@ -4105,7 +4137,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
             of air the block had when the rules were doing the separating. */}
         <div style={{ display:"flex", flexDirection:"column", gap:"8px", margin:"2px 0",
           backgroundColor:"var(--gray-50)", borderRadius:"8px", padding:"10px 12px" }}>
-          <PanelHeading title="Where and when the shared frames cluster" color="var(--primary-400)"
+          <PanelHeading title={t.whereWhenCluster} color="var(--primary-400)"
             icon={<AnalysisSparkleIcon />}>{t.relationshipAnalytics}</PanelHeading>
           {/* Border and fill live in the class, not inline: an inline declaration outranks any
               stylesheet selector, so setting them here would silently kill :hover and [data-on]. */}
@@ -4120,7 +4152,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
               onClick={() => toggleFocus("location")}
               title={`${topGroup.events.length} of ${events.length} shared frames were captured here — click to show only those`}
               style={{ flex:1, minWidth:0, borderRadius:"8px", padding:"6px 10px", textAlign:"left", cursor:"pointer" }}>
-              <p className="vca-peak-label" style={{ margin:0, fontSize:"10px", color:"var(--gray-400)" }}>Peak location</p>
+              <p className="vca-peak-label" style={{ margin:0, fontSize:"10px", color:"var(--gray-400)" }}>{t.colPeakLocation}</p>
               {/* The glyph belongs on the value, not the label — a pin next to the words "Peak
                   location" only restates them, next to "Novena" it marks what kind of thing that is. */}
               <p style={{ margin:"3px 0 0", fontSize:"12px", fontWeight:700, color:"var(--gray-900)", display:"flex", alignItems:"center", gap:"4px" }}>
@@ -4134,7 +4166,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
               onClick={() => toggleFocus("time")}
               title={`${bucketCount} of ${events.length} shared frames (${pct}%) were captured in the ${bucket} — click to show only those`}
               style={{ flex:1, minWidth:0, borderRadius:"8px", padding:"6px 10px", textAlign:"left", cursor:"pointer" }}>
-              <p className="vca-peak-label" style={{ margin:0, fontSize:"10px", color:"var(--gray-400)" }}>Peak time</p>
+              <p className="vca-peak-label" style={{ margin:0, fontSize:"10px", color:"var(--gray-400)" }}>{t.colPeakTime}</p>
               {/* Sun or moon by the bucket itself — a sun beside "night" would be worse than no
                   glyph at all. */}
               <p style={{ margin:"3px 0 0", fontSize:"12px", fontWeight:700, color:"var(--gray-900)", textTransform:"capitalize", display:"flex", alignItems:"center", gap:"4px" }}>
@@ -4154,7 +4186,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
               two full timestamps and the badge left nothing between them. The exact second of the
               first sighting isn't a summary-level fact anyway; the frame rows below carry it. */}
           <div style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"11px" }}>
-            <span style={{ color:"var(--gray-400)", whiteSpace:"nowrap" }}>First <strong style={{ color:"var(--gray-900)", fontWeight:700 }}>{firstSeen.date} {firstSeen.time.slice(0, 5)}</strong></span>
+            <span style={{ color:"var(--gray-400)", whiteSpace:"nowrap" }}>{t.first} <strong style={{ color:"var(--gray-900)", fontWeight:700 }}>{firstSeen.date} {firstSeen.time.slice(0, 5)}</strong></span>
             <span style={{ flex:1, minWidth:"12px", height:0, borderTop:"1px dashed var(--gray-300)" }} />
             {/* gray-700, not the link colour. This is a plain count of what falls between the two
                 dates — nothing to click — and purple here competed with the heading and the two
@@ -4165,7 +4197,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
               {events.length} FRAMES
             </span>
             <span style={{ flex:1, minWidth:"12px", height:0, borderTop:"1px dashed var(--gray-300)" }} />
-            <span style={{ color:"var(--gray-400)", whiteSpace:"nowrap" }}>Last <strong style={{ color:"var(--gray-900)", fontWeight:700 }}>{lastSeen.date} {lastSeen.time.slice(0, 5)}</strong></span>
+            <span style={{ color:"var(--gray-400)", whiteSpace:"nowrap" }}>{t.last} <strong style={{ color:"var(--gray-900)", fontWeight:700 }}>{lastSeen.date} {lastSeen.time.slice(0, 5)}</strong></span>
           </div>
         </div>
 
@@ -4523,7 +4555,7 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
               <>
                 <img src={primaryTarget.face} alt="" style={{ width:"44px", height:"44px", borderRadius:"6px", objectFit:"cover", border:"2px solid var(--primary-400)" }} />
                 <div>
-                  <span title="The person everything here is measured against — associates are whoever shares frames with them" style={{ display:"inline-flex", fontSize:"10px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"2px 6px", borderRadius:"4px", letterSpacing:"-0.2px", cursor:"help" }}>PRIMARY TARGET</span>
+                  <span title={t.primaryTargetHint} style={{ display:"inline-flex", fontSize:"10px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"2px 6px", borderRadius:"4px", letterSpacing:"-0.2px", cursor:"help" }}>{t.primaryTarget}</span>
                   <p style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)", margin:"4px 0 0", letterSpacing:"-0.28px" }}>{primaryTarget.name}</p>
                 </div>
                 <button onClick={onSwitchTarget} style={{ display:"flex", alignItems:"center", gap:"6px", padding:"8px 12px",

@@ -25,6 +25,7 @@ const T = {
     project: "Project",
     noProject: "Not specified — open the link you were given again",
     name: "Name",
+    namePlaceholder: "Alexander Wright",
     email: "Email",
     inviteHereDomain: (domain: string) => `Your invitation will be sent here — use your @${domain} address.`,
     inviteHere: "Your invitation will be sent here.",
@@ -50,6 +51,7 @@ const T = {
     project: "프로젝트",
     noProject: "지정되지 않았습니다 — 받으신 링크를 다시 열어주세요",
     name: "이름",
+    namePlaceholder: "홍길동",
     email: "이메일",
     inviteHereDomain: (domain: string) => `이 주소로 초대가 발송됩니다. @${domain} 주소를 사용해주세요.`,
     inviteHere: "이 주소로 초대가 발송됩니다.",
@@ -215,7 +217,7 @@ function RequestAccessForm() {
                         value={name}
                         onChange={e => setName(e.target.value)}
                         onBlur={() => setTouched(t => ({ ...t, name: true }))}
-                        placeholder="Alexander Wright"
+                        placeholder={t.namePlaceholder}
                         style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                       />
                     </div>
