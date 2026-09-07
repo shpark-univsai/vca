@@ -216,7 +216,10 @@ export function FilterSelect({ value, onChange, options, fitContent }: {
   const selected = options.find(o => o.value === value);
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    // inline-flex when the trigger sizes to its own label, so this wrapper hugs it and the
+    // dropdown's 100% below means the trigger's width and not the whole cell's. Block otherwise,
+    // where the trigger already fills the row and 100% is the same number either way.
+    <div ref={ref} style={{ position: "relative", display: fitContent ? "inline-flex" : "block" }}>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -243,7 +246,12 @@ export function FilterSelect({ value, onChange, options, fitContent }: {
           // Same radius and shadow as RowActionsMenu's dropdown — Portal has two menus and they
           // should not be two designs.
           backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "0 8px 20px rgba(14,22,42,0.12)",
-          minWidth: "160px", maxHeight: "220px", overflowY: "auto",
+          // Matches the trigger. It was a flat 160px floor plus whatever the widest option needed,
+          // so a full-width field in a form got a list narrower than itself and a narrow filter in
+          // a toolbar got one wider — every select in Portal drew a different relationship between
+          // the two. minWidth (not width) so a long option can still push past a narrow trigger
+          // rather than being clipped: matching is the floor, legibility wins above it.
+          minWidth: "100%", maxHeight: "220px", overflowY: "auto",
         }}>
           {options.map(o => {
             const active = o.value === value;
