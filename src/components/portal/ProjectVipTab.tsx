@@ -63,7 +63,6 @@ interface VipDict {
   priorityLabel: string;
   facePhotoLabel: string;
   facePhotoLabelRequired: string;
-  facePhotoRequiredHint: string;
   changePhoto: string;
   uploadPhoto: string;
   cancel: string;
@@ -145,7 +144,6 @@ const T: Record<"en" | "ko", VipDict> = {
     priorityLabel: "Priority",
     facePhotoLabel: "Face photo",
     facePhotoLabelRequired: "Face photo *",
-    facePhotoRequiredHint: "A face is what the cameras match against — a person cannot be registered without one.",
     changePhoto: "Change",
     uploadPhoto: "Upload photo",
     cancel: "Cancel",
@@ -226,7 +224,6 @@ const T: Record<"en" | "ko", VipDict> = {
     priorityLabel: "우선순위",
     facePhotoLabel: "얼굴 사진",
     facePhotoLabelRequired: "얼굴 사진 *",
-    facePhotoRequiredHint: "카메라가 대조하는 대상이 얼굴입니다 — 사진 없이는 등록할 수 없습니다.",
     changePhoto: "변경",
     uploadPhoto: "사진 업로드",
     cancel: "취소",
@@ -438,11 +435,6 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
                 </>
               )}
             </button>
-            {!editing && !photoPreview && (
-              <p style={{ fontSize: "11px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.6 }}>
-                {t.facePhotoRequiredHint}
-              </p>
-            )}
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
