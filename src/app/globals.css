@@ -130,33 +130,44 @@
    (FilterSelect, ActiveFilterCount, the shell's exit button), which is not a thing to repeat a
    hundred times.
 
+   !important on every declaration a button also sets inline, which is all of the colours: an
+   inline style beats a stylesheet rule no matter how specific, so without it these rules parse,
+   load, and do nothing at all. The alternative is moving a hundred buttons' colours out of their
+   style props, which is a bigger change than the hover it would serve.
+
    Every colour here is a defined token. One is missing and it shows: primary-400 is the darkest
-   step of the primary ramp, so a filled primary button has nothing to darken TO. It dims slightly
-   instead. A primary-500 belongs in the palette; until it exists this is the honest substitute. */
-.portal-btn-primary { transition: opacity .12s ease; }
-.portal-btn-primary:hover:not(:disabled) { opacity: .9; }
+   step of the primary ramp, so a filled primary button has nothing to darken TO — hence the
+   brightness filter below. A primary-500 belongs in the palette. */
+.portal-btn-primary { transition: filter .12s ease; }
+/* brightness, not opacity. Nine of these buttons already set opacity inline to grey themselves out
+   while their form is incomplete, and two of them (the signup wizard's) deliberately stay ENABLED
+   while invalid so that clicking reveals the validation messages — a disabled button cannot tell
+   you why it is disabled. An opacity hover would have had to fight those inline values with
+   !important and would then have brightened a half-faded button back up. filter is untouched by
+   every button in Portal, so it needs no flag and cannot lie about a button's state. */
+.portal-btn-primary:hover:not(:disabled) { filter: brightness(.92); }
 
 .portal-btn-outline { transition: background-color .12s ease, border-color .12s ease; }
 .portal-btn-outline:hover:not(:disabled) {
-  background-color: var(--gray-50);
-  border-color: var(--gray-400);
+  background-color: var(--gray-50) !important;
+  border-color: var(--gray-400) !important;
 }
 
 .portal-btn-danger { transition: background-color .12s ease; }
-.portal-btn-danger:hover:not(:disabled) { background-color: var(--danger-500); }
+.portal-btn-danger:hover:not(:disabled) { background-color: var(--danger-500) !important; }
 
 /* Icon-only buttons — a close X, a row's trash. The box appears on hover rather than sitting there
    permanently, so a row of them does not read as a row of boxes. */
 .portal-icon-btn { border-radius: 8px; transition: background-color .12s ease, color .12s ease; }
 .portal-icon-btn:hover:not(:disabled) {
-  background-color: var(--gray-100);
-  color: var(--gray-600);
+  background: var(--gray-100) !important;
+  color: var(--gray-600) !important;
 }
 
 .portal-icon-btn-danger { border-radius: 8px; transition: background-color .12s ease, color .12s ease; }
 .portal-icon-btn-danger:hover:not(:disabled) {
-  background-color: var(--danger-100);
-  color: var(--danger-400);
+  background: var(--danger-100) !important;
+  color: var(--danger-400) !important;
 }
 
 :where(input, textarea, select, button, [contenteditable], [tabindex]):focus-visible {
