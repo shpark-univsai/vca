@@ -34,6 +34,8 @@ const T = {
     unlimited: "Unlimited",
     expired: "Expired",
     notSet: "Not set",
+    // Same phrasing the License page uses, so the two screens agree about the same licence.
+    yrRemaining: (n: number) => `${n}yr left`,
     vipTargetDb: "VIP / Target DB",
     todayBadge: (n: number) => `${n} today`,
     vipDbSubtitle: "Registered watchlist individuals for this project.",
@@ -94,6 +96,7 @@ const T = {
     unlimited: "무제한",
     expired: "만료됨",
     notSet: "미설정",
+    yrRemaining: (n: number) => `${n}년 남음`,
     vipTargetDb: "VIP / 관심대상 DB",
     todayBadge: (n: number) => `오늘 ${n}건`,
     vipDbSubtitle: "이 프로젝트에 등록된 관심대상(워치리스트) 인원입니다.",
@@ -221,6 +224,16 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     : null;
   const licenseExpired = daysUntilExpiry !== null && daysUntilExpiry < 0;
   const licenseExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry >= 0 && daysUntilExpiry <= 30;
+  /**
+   * Days while days matter, years after that.
+   *
+   * The badge printed daysUntilExpiry raw, so a three-year licence read "D-1004" — a number nobody
+   * can hold, and one the License page states as "3yr left" for the same licence. Inside the
+   * expiring-soon window a day count is the useful unit; past it, a year count is.
+   */
+  const yearsUntilExpiry = daysUntilExpiry !== null && daysUntilExpiry > 30
+    ? Math.max(1, Math.round(daysUntilExpiry / 365))
+    : null;
   const overChannelLimit = !!channelLimit && projectCameras.length > channelLimit;
   const projectAccessRequests = accessRequests.filter(r => r.projectId === projectId);
   // Whether this Overview says anything about access requests at all. Off for on-premise (see
@@ -346,7 +359,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   backgroundColor: licenseExpired ? "var(--danger-100)" : licenseExpiringSoon ? "var(--warning-200)" : "var(--info-100)",
                   color: licenseExpired ? "var(--danger-500)" : licenseExpiringSoon ? "var(--warning-500)" : "var(--info-500)",
                 }}>
-                  {isUnlimitedExpiry ? t.unlimited : licenseExpired ? t.expired : daysUntilExpiry !== null ? `D-${daysUntilExpiry}` : t.notSet}
+                  {isUnlimitedExpiry ? t.unlimited
+                    : licenseExpired ? t.expired
+                    : yearsUntilExpiry !== null ? t.yrRemaining(yearsUntilExpiry)
+                    : daysUntilExpiry !== null ? `D-${daysUntilExpiry}`
+                    : t.notSet}
                 </span>
               </div>
             </MetricCard>
