@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { ArrowUp, Clock, Key, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
-import { canEnterPortal, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
+import { useRouter } from "next/navigation";
+import { ArrowUp, Clock, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
+import { canEnterApp, canEnterPortal, currentPortalUser, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat } from "./PortalShared";
 import { useToast } from "../Toast";
@@ -20,6 +21,7 @@ const T = {
     projectNotFound: "Project not found.",
     addCamera: "Add Camera",
     registerVip: "Register VIP",
+    goToApp: "Go to app",
     approveAccessRequests: "Approve Access Requests",
     cameraConnectivity: "Camera Connectivity",
     connectedSuffix: (n: number) => `/ ${n} connected`,
@@ -82,6 +84,7 @@ const T = {
     projectNotFound: "프로젝트를 찾을 수 없습니다.",
     addCamera: "카메라 추가",
     registerVip: "VIP 등록",
+    goToApp: "앱으로 이동",
     approveAccessRequests: "접근 요청 승인",
     cameraConnectivity: "카메라 연결 상태",
     connectedSuffix: (n: number) => `/ ${n}대 연결됨`,
@@ -159,6 +162,7 @@ function ClockIcon() { return <Clock size={16} strokeWidth={1.2} />; }
 function PlusIcon() { return <Plus size={14} strokeWidth={1.4} />; }
 function UserPlusIcon() { return <UserPlus size={14} strokeWidth={1.2} />; }
 function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={1.4} />; }
+function ExitIcon() { return <LogOut size={14} strokeWidth={1.2} />; }
 
 // Shared shell for the four Overview metric cards — header (eyebrow label + icon badge), then
 // whatever body content each card needs (big value, progress bar, footer stats) as children.
@@ -179,6 +183,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const approveAccessRequests = useVcaStore(s => s.approveAccessRequests);
   const dismissAccessRequest = useVcaStore(s => s.dismissAccessRequest);
   const { showToast } = useToast();
+  const router = useRouter();
+  // Same rule the sidebar's account menu uses: no app, no door to it. Undefined identity is the
+  // demo default and fails open, or the console would hide its own way out of itself.
+  const meUser = currentPortalUser(portalUsers);
+  const appAccess = !meUser || canEnterApp(meUser);
   const [lang] = usePortalLanguage();
   const t = T[lang];
 
@@ -299,6 +308,20 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
                 <UserPlusIcon /> {t.registerVip}
               </button>
+              {/*
+                The visible way out, next to the other things you might do from this screen.
+                The header pill is gone (the door lives in the sidebar's account menu now, matching
+                how the app puts Portal in its own account menu) — but a door only reachable by
+                clicking your own name is a door a first-time admin does not find. This is the same
+                outlined tier as its neighbours: leaving is not the primary action here.
+                Hidden for a Portal-only account, which would land on a screen it cannot use.
+              */}
+              {appAccess && (
+                <button onClick={() => router.push("/")}
+                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                  <ExitIcon /> {t.goToApp}
+                </button>
+              )}
               {showAccessRequests && (
                 <button onClick={() => onTabChange("users")}
                   style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
@@ -558,11 +581,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                         {r.reason && <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>&quot;{r.reason}&quot;</p>}
                         <div style={{ display: "flex", gap: "8px" }}>
                           <button onClick={() => approveRequest(r.id, r.name)}
-                            style={{ flex: 1, padding: "6px 10px", borderRadius: "6px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                            style={{ flex: 1, padding: "6px 10px", borderRadius: "8px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                             {t.approve}
                           </button>
                           <button className="portal-btn-outline" onClick={() => dismissRequest(r.id, r.name)}
-                            style={{ flex: 1, padding: "6px 10px", borderRadius: "6px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                            style={{ flex: 1, padding: "6px 10px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                             {t.dismiss}
                           </button>
                         </div>

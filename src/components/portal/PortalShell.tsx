@@ -9,10 +9,11 @@ import ProjectSwitcher from "./ProjectSwitcher";
 import PortalNewProjectWizard from "./PortalNewProjectWizard";
 import TeamSwitcher from "./TeamSwitcher";
 import ProjectSidebar, { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
+import PortalMyPage from "./PortalMyPage";
 import { ToastProvider } from "../Toast";
 import { useVcaStore, canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { LanguageSwitcher, SupportContactButton, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
+import { SupportContactButton, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 
 const T = {
   en: { noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar", exit: "Exit to App", newProject: "New project", cancel: "Cancel" },
@@ -141,6 +142,14 @@ export default function PortalShell() {
     setShowWizard(true);
   };
 
+  // The rail is the project navigation, so it only exists once there is a project and we are not
+  // inside the wizard. The header reads this to decide whether it still has to carry the way out.
+  const sidebarVisible = !showWizard && teamProjects.length > 0;
+  // Portal's account screen. A content mode rather than a route, because /portal is one route
+  // whose screen is chosen by state already (the wizard works the same way) — and because it keeps
+  // the rail on screen, which is how you get back out of it.
+  const [showAccount, setShowAccount] = useState(false);
+
   const switchTeam = (teamId: string) => {
     setShowWizard(false);
     setTab("overview");
@@ -168,7 +177,7 @@ export default function PortalShell() {
             onClick={() => setSidebarCollapsed(v => !v)}
             style={{
               display: "flex", alignItems: "center", justifyContent: "center",
-              width: "32px", height: "32px", borderRadius: "999px", border: "none",
+              width: "32px", height: "32px", borderRadius: "8px", border: "none",
               backgroundColor: "transparent", cursor: "pointer", flexShrink: 0, marginRight: "2px",
             }}
             title={sidebarCollapsed ? t.expand : t.collapse}
@@ -234,27 +243,32 @@ export default function PortalShell() {
             className="portal-exit-btn"
             onClick={() => setShowWizard(false)}
             style={{
-              border: "1px solid var(--gray-200)", borderRadius: "999px", backgroundColor: "white",
+              border: "1px solid var(--gray-200)", borderRadius: "8px", backgroundColor: "white",
               padding: "8px 14px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
             }}
           >
             {t.cancel}
           </button>
         )}
-        {/* Left of the language switcher and the way out — the utilities end of the bar, and the
-            one place it is reachable from every screen rather than only the one that needed it. */}
+        {/* The utilities end of the bar. Support is the one thing here now: it is reachable from
+            every screen rather than only the one that needed it.
+
+            What left: the language switcher (a setting, not a per-screen control — it lives in My
+            page) and the "Exit to App" pill. That pill sat here permanently for something taken
+            once a session, and the app puts the same door inside ITS account menu, so the two
+            directions were built differently. It moved to the sidebar's account menu, with a
+            visible button on the Overview banner. */}
         <SupportContactButton />
-        <LanguageSwitcher />
-        {/* Only for someone who has the app. A Portal-only account (the customer's security officer
-            reading the audit trail, say) would land on a screen it cannot use, and the button would
-            be the console advertising a door that is locked. */}
-        {(!me || canEnterApp(me)) && (
+        {/* …except where there is no sidebar to hold it: an empty team and the project wizard both
+            render without the rail, and removing the pill unconditionally would strand a person on
+            a screen with no way back to the app at all. */}
+        {!sidebarVisible && (!me || canEnterApp(me)) && (
         <button
           className="portal-exit-btn"
           onClick={() => router.push("/")}
           style={{
             display: "flex", alignItems: "center", gap: "6px",
-            border: "1px solid var(--gray-200)", borderRadius: "999px", backgroundColor: "white",
+            border: "1px solid var(--gray-200)", borderRadius: "8px", backgroundColor: "white",
             padding: "8px 14px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
           }}
         >
@@ -272,11 +286,21 @@ export default function PortalShell() {
         <PortalNewProjectWizard teamId={currentOrgId} onDeployed={deployedFromWizard} defaultType={defaultWizardType} />
       ) : (
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          {teamProjects.length > 0 && (
-            <ProjectSidebar tab={tab} onTabChange={setTab} collapsed={sidebarCollapsed} admin={me ?? { name: SIGNED_IN_USER.name, email: SIGNED_IN_USER.email }} />
+          {sidebarVisible && (
+            <ProjectSidebar
+              tab={tab}
+              onTabChange={next => { setShowAccount(false); setTab(next); }}
+              collapsed={sidebarCollapsed}
+              admin={me ?? { name: SIGNED_IN_USER.name, email: SIGNED_IN_USER.email }}
+              appAccess={!me || canEnterApp(me)}
+              onMyPage={() => setShowAccount(true)}
+              myPageOpen={showAccount}
+            />
           )}
           <div style={{ flex: 1, overflow: "auto", padding: "32px 72px", backgroundColor: "var(--gray-100)" }}>
-            {teamProjects.length === 0
+            {showAccount
+              ? <PortalMyPage />
+              : teamProjects.length === 0
               ? <PortalEmptyState
                   onNewProject={() => setShowWizard(true)}
                   noTeam={teams.length === 0}

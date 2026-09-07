@@ -165,26 +165,6 @@ export const TYPE_META: Record<ProjectType, { label: string; bg: string; color: 
   smart_school: { label: "Smart School", bg: "white", color: "var(--success-400)" },
 };
 
-// One global switcher lives in PortalShell's top bar — every Portal screen reads the same
-// usePortalLanguage() subscription, so switching here takes effect everywhere without a reload.
-export function LanguageSwitcher() {
-  const [lang, setLang] = usePortalLanguage();
-  return (
-    <div style={{ display: "flex", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "999px", padding: "4px", flexShrink: 0 }}>
-      {(["en", "ko"] as const).map(l => (
-        <button key={l} onClick={() => setLang(l)}
-          style={{
-            padding: "6px 12px", borderRadius: "999px", border: "none", cursor: "pointer",
-            backgroundColor: lang === l ? "white" : "transparent", boxShadow: lang === l ? PANEL_SHADOW : "none",
-            fontSize: "12px", fontWeight: 700, color: lang === l ? "var(--gray-900)" : "var(--gray-400)",
-          }}>
-          {l === "en" ? "EN" : "한국어"}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 interface RowAction {
   label: string;
   onClick: () => void;
@@ -456,7 +436,7 @@ export function ActiveFilterCount({ count, onClear, label }: { count: number; on
       title={label}
       style={{
         display: "flex", alignItems: "center", gap: "6px", flexShrink: 0,
-        height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "999px", cursor: "pointer",
+        height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", cursor: "pointer",
         border: "none", backgroundColor: hovered ? "var(--gray-200)" : "var(--gray-100)",
         fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit",
       }}
@@ -491,7 +471,7 @@ export function Switch({ checked, onChange, label, disabled }: {
       disabled={disabled}
       onClick={() => onChange(!checked)}
       style={{
-        position: "relative", flexShrink: 0, width: "38px", height: "22px", borderRadius: "999px",
+        position: "relative", flexShrink: 0, width: "38px", height: "22px", borderRadius: "8px",
         border: "none", padding: 0, cursor: disabled ? "not-allowed" : "pointer",
         backgroundColor: checked ? "var(--gray-900)" : "var(--gray-200)",
         opacity: disabled ? 0.5 : 1,
@@ -734,13 +714,13 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, a
             outlined pills, so a rule directly above them is a line sitting on a row of lines, and
             a scroll region's edge is already told by its scrollbar and by content being cut off. */}
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "999px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {cancelLabel}
           </button>
           {altAction && (
             <button onClick={altAction.onClick}
               style={{
-                padding: "10px 16px", borderRadius: "999px",
+                padding: "10px 16px", borderRadius: "8px",
                 border: altAction.danger ? "none" : BORDER,
                 backgroundColor: altAction.danger ? "var(--danger-400)" : "white",
                 color: altAction.danger ? "white" : "var(--gray-600)",
@@ -753,7 +733,7 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, a
               administrative act, and primary-400 here would spend the page's accent on a dialog
               nobody is meant to linger in. */}
           <button onClick={onConfirm}
-            style={{ padding: "10px 16px", borderRadius: "999px", border: "none", backgroundColor: danger ? "var(--danger-400)" : "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: danger ? "var(--danger-400)" : "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {confirmLabel}
           </button>
         </div>
