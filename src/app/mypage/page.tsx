@@ -280,7 +280,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                       onFocus={() => setFocusedField("current")}
                       onBlur={() => setFocusedField(null)}
                       onKeyDown={e => { if (e.key === "Enter") handleVerifyCurrent(); }}
-                      placeholder="Enter your current password"
+                      placeholder="••••••••"
                       autoFocus
                       style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
                     />

@@ -158,7 +158,7 @@ function RequestAccessForm() {
                         value={name}
                         onChange={e => setName(e.target.value)}
                         onBlur={() => setTouched(t => ({ ...t, name: true }))}
-                        placeholder="Your full name"
+                        placeholder="Alexander Wright"
                         style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                       />
                     </div>

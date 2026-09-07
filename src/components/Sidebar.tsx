@@ -971,7 +971,7 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
       {/* Search */}
       <div style={{ padding:"20px 20px 12px", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:"8px", border:BORDER, borderRadius:"8px", padding:"9px 18px", backgroundColor:"white" }}>
-          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Enter device name"
+          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search devices"
             style={{ flex:1, border:"none", background:"none", outline:"none", fontSize:"12px", fontWeight:600, color:"var(--gray-700)" }} />
           <Search size={18} color="var(--gray-600)" />
         </div>

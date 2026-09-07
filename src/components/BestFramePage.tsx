@@ -1181,7 +1181,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
                 ref={camSearchInputRef}
                 value={camSearch}
                 onChange={e => setCamSearch(e.target.value)}
-                placeholder="Enter source"
+                placeholder="Search cameras"
                 style={{ flex:1, border:"none", background:"none", outline:"none", fontSize:"13px", color:"var(--gray-900)" }}
               />
               <Search size={14} color="var(--gray-600)" />
