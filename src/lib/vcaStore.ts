@@ -440,7 +440,10 @@ const PROJECTS: Project[] = [
   },
   {
     id: "proj-northgate-junior", teamId: "team-northgate", name: "Northgate Junior College", type: "smart_school",
-    licensePlan: "Standard", licenseChannelLimit: 12, licenseExpiresAt: "2027-12-31",
+    // "Standard" until 2026-09-04, which is not a tier the licence page knows — PLAN_FEATURES has
+    // Starter / Professional / Enterprise, so this project rendered with every feature locked and
+    // nothing included. The tiers are the catalogue; the seed was the drift.
+    licensePlan: "Starter", licenseChannelLimit: 12, licenseExpiresAt: "2027-12-31",
     computeInstance: "vca.small", gpuCount: 1, modelVersion: "model_v2_prod", lastMigration: "v2_alert_schema",
     lastBackupAt: auditAt(52 * 60),
     regionName: "Singapore", networkIsolatedDetected: false, regionFlag: "🇸🇬", regionCenterCount: 1, regionSubcenterCount: 0,
