@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Play } from "lucide-react";
+import { Activity, Clock, Crosshair, Link2, Map as MapIcon, MapPin, Network, Play, Scan } from "lucide-react";
 import { useVcaStore, type Camera } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { BORDER } from "./PortalShared";
@@ -178,77 +178,63 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
           </div>
 
           {/*
-            Facts as rows, not as a grid of boxes.
+            Pairs, not ruled rows — and not boxes either.
 
-            This was four tinted boxes with a label above a value, then a fifth for the stream URL,
-            then five more for the activity list — eleven bordered rectangles inside one bordered
-            modal, each drawing a frame around two words. It is the look of a screen assembled from
-            components rather than laid out: every field shouting that it is a field.
+            This has been through both: eleven tinted boxes (a frame around every two words), then
+            label-left / value-right rows divided by hairlines. The rules were doing real work in
+            that version, because the label and its value sat at opposite ends of a 600px sheet and
+            nothing else tied them together.
 
-            A detail sheet is a list of label-and-value pairs, so it is drawn as one — label left in
-            grey, value right, a hairline between rows, nothing else. Same grammar the licence page
-            uses for the contract it shows, which is the other place in Portal that reads like this.
+            Put the label directly above its value and the pairing needs no line at all: proximity
+            groups them, and the sheet loses seven rules. Two columns for the short facts, full
+            width for the two that are long, and the small grey label reads as the caption it is.
           */}
-          <div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
+            {/* An icon in front of each caption. Six captions in two columns is a block of grey
+                text where every line looks like every other one; the marks give each pair a
+                different shape to find it by, and they are the same 12px/2.8 the summary strips
+                use so a label reads the same wherever it appears. */}
             {([
-              [t.zone, camera.zone || "—"],
-              [t.location, camera.location || "—"],
-              [t.protocol, camera.protocol ?? "TCP"],
-              [t.coordinates, camera.lat !== undefined && camera.lng !== undefined ? `${camera.lat}, ${camera.lng}` : "—"],
-            ] as [string, string][]).map(([label, value], i) => (
-              <div key={label} style={{
-                display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px",
-                padding: "9px 0", borderTop: i === 0 ? "none" : BORDER,
-              }}>
-                <span style={{ fontSize: "12px", color: "var(--gray-500)", flexShrink: 0 }}>{label}</span>
-                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", textAlign: "right", minWidth: 0, wordBreak: "break-word" }}>{value}</span>
+              [t.zone, camera.zone || "—", <MapIcon key="z" size={12} strokeWidth={2.8} />],
+              [t.location, camera.location || "—", <MapPin key="l" size={12} strokeWidth={2.8} />],
+              [t.protocol, camera.protocol ?? "TCP", <Network key="p" size={12} strokeWidth={2.8} />],
+              [t.coordinates, camera.lat !== undefined && camera.lng !== undefined ? `${camera.lat}, ${camera.lng}` : "—", <Crosshair key="c" size={12} strokeWidth={2.8} />],
+              [t.lastDetection, lastDetection ? `${sgtDateKey(lastDetection).slice(5)} ${sgtClockMinutes(lastDetection)}` : t.noRecentDetections, <Clock key="t" size={12} strokeWidth={2.8} />],
+              [t.detectionCount, t.detectionCountValue(cameraEvents.length), <Activity key="a" size={12} strokeWidth={2.8} />],
+            ] as [string, string, React.ReactNode][]).map(([label, value, icon]) => (
+              <div key={label} style={{ minWidth: 0 }}>
+                <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)" }}>
+                  <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}>{icon}</span>
+                  {label}
+                </p>
+                <p style={{ fontSize: "13px", fontWeight: 600, color: value === "—" || value === t.noRecentDetections ? "var(--gray-400)" : "var(--gray-900)", marginTop: "2px", wordBreak: "break-word" }}>{value}</p>
               </div>
             ))}
-            {/* The URL keeps monospace — it is a string somebody may have to compare character by
-                character — but it is a row like the others, not a panel of its own. */}
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px", padding: "9px 0", borderTop: BORDER }}>
-              <span style={{ fontSize: "12px", color: "var(--gray-500)", flexShrink: 0 }}>{t.rtspUrl}</span>
-              <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-900)", fontFamily: "monospace", textAlign: "right", minWidth: 0, wordBreak: "break-all" }}>{camera.rtspUrl}</span>
+            {/* Full width, and monospace: a stream URL is a string somebody may have to compare
+                character by character, and it does not fit half a sheet. */}
+            <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
+              <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)" }}>
+                <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Link2 size={12} strokeWidth={2.8} /></span>
+                {t.rtspUrl}
+              </p>
+              <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", fontFamily: "monospace", marginTop: "2px", wordBreak: "break-all" }}>{camera.rtspUrl}</p>
             </div>
-            {/*
-              Two rows where a list used to be.
-
-              This modal answers "is this camera set up correctly" — zone, location, protocol,
-              coordinates, URL, engines. Five names with timestamps under that is a different kind
-              of thing, and browsing detections is the monitoring app's job, not the console's.
-
-              But dropping it entirely would leave nothing here answering "is this camera actually
-              working", which is the same question the summary strip's "no AI engine" cell exists
-              for. So the list becomes what it was being read for: when it last saw somebody, and
-              how much it has seen. A camera with engines mapped and no detections at all is the
-              interesting case, and it takes one line to show.
-            */}
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px", padding: "9px 0", borderTop: BORDER }}>
-              <span style={{ fontSize: "12px", color: "var(--gray-500)", flexShrink: 0 }}>{t.lastDetection}</span>
-              <span style={{ fontSize: "12px", fontWeight: 600, color: lastDetection ? "var(--gray-900)" : "var(--gray-400)", textAlign: "right" }}>
-                {lastDetection
-                  ? `${sgtDateKey(lastDetection).slice(5)} ${sgtClockMinutes(lastDetection)}`
-                  : t.noRecentDetections}
-              </span>
-            </div>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px", padding: "9px 0", borderTop: BORDER }}>
-              <span style={{ fontSize: "12px", color: "var(--gray-500)", flexShrink: 0 }}>{t.detectionCount}</span>
-              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", textAlign: "right" }}>{t.detectionCountValue(cameraEvents.length)}</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px", padding: "9px 0", borderTop: BORDER }}>
-              <span style={{ fontSize: "12px", color: "var(--gray-500)", flexShrink: 0 }}>{t.mappedAiEngines}</span>
+            <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
+              <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)", marginBottom: "5px" }}>
+                <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Scan size={12} strokeWidth={2.8} /></span>
+                {t.mappedAiEngines}
+              </p>
               {aiFeatures.length === 0 ? (
-                <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noAiEngines}</span>
+                <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-400)" }}>{t.noAiEngines}</p>
               ) : (
-                <span style={{ display: "flex", flexWrap: "wrap", gap: "6px", justifyContent: "flex-end" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                   {aiFeatures.map(f => (
                     <span key={f} style={{ fontSize: "10px", fontWeight: 600, color: "var(--primary-400)", backgroundColor: "var(--primary-100)", padding: "3px 8px", borderRadius: "999px" }}>{f}</span>
                   ))}
-                </span>
+                </div>
               )}
             </div>
           </div>
-
         </div>
 
         {/* Close, and nothing else.
