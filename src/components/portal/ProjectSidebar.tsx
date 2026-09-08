@@ -157,7 +157,12 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
   return (
     <div
       style={{
-        width: collapsed ? "60px" : "212px",
+        /* 248, not 212. At the old width a nav row had ~100px left for its label once the icon,
+           the gaps and a count badge were paid for — "Users & Permissions" and the team's full
+           name both ellipsised, and a rail whose labels you cannot read is a rail you have to
+           learn by position. The content column pays 36px it can afford; its own cap decides how
+           wide the page gets anyway. */
+        width: collapsed ? "60px" : "248px",
         flexShrink: 0,
         display: "flex", flexDirection: "column",
         /*
@@ -265,7 +270,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
                     display: "flex", alignItems: "center", gap: "12px",
                     justifyContent: collapsed ? "center" : "flex-start",
                     border: "none", cursor: "pointer", borderRadius: "10px",
-                    padding: collapsed ? "12px 0" : "11px 14px",
+                    padding: collapsed ? "12px 0" : "11px 12px",
                     position: "relative",
                     /*
                      * The current row: a gray-800 fill, and the label and icon in primary-400.

@@ -8,7 +8,7 @@ import { NewTeamModal } from "./TeamSwitcher";
 import ProjectSwitcher from "./ProjectSwitcher";
 import PortalNewProjectWizard from "./PortalNewProjectWizard";
 import TeamSwitcher from "./TeamSwitcher";
-import ProjectSidebar, { NAV_GROUPS, PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
+import ProjectSidebar, { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
 import PortalMyPage from "./PortalMyPage";
 import PortalAccountMenu from "./PortalAccountMenu";
 import { ToastProvider } from "../Toast";
@@ -259,12 +259,17 @@ export default function PortalShell() {
           </>
         ) : sidebarVisible ? (
           <>
-            {/* Group name, then page — the same trail the reference header shows. Both are read
-                off the rail's own tab table, so a tab moved between groups cannot leave the two
-                disagreeing. Plain text: the rail is the way to another page, and a crumb that is
-                also a menu was two of them. */}
-            <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap" }}>
-              {NAV_GROUPS.find(g => g.id === (PROJECT_TABS.find(pt => pt.id === tab)?.group ?? "workspace"))?.label[lang]}
+            {/* Project, then page. It named the nav group first — WORKSPACE, MANAGE — which is a
+                heading in the rail, not a place: the first crumb of a trail should be somewhere you
+                could be, and you are in a project. The page half is read off the rail's own tab
+                table so the two cannot disagree.
+                Plain text, not a switcher: the rail already has one, and a crumb that is also a
+                menu makes two ways to do the same thing a few hundred pixels apart. */}
+            <span
+              title={projects.find(p => p.id === currentProjectId)?.name}
+              style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: BREADCRUMB_TEAM_MAX_WIDTH }}
+            >
+              {projects.find(p => p.id === currentProjectId)?.name}
             </span>
             <BreadcrumbChevron />
             <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap" }}>
