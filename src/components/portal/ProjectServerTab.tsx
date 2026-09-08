@@ -737,7 +737,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                 and Add Server its plus, so Reset read as a word somebody had left there. lucide
                 rather than a hand-drawn path, at the 1.4 stroke every Portal icon now uses. */}
             <button className="portal-btn-outline" onClick={resetFilters}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "10px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
               <RotateCcw size={14} strokeWidth={2.4} />
               {t.reset}
             </button>

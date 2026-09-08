@@ -1091,7 +1091,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               style={{
                 height: "100%", padding: "0 10px", borderRadius: "8px", border: "none", cursor: "pointer",
                 backgroundColor: view === v ? "white" : "transparent", boxShadow: view === v ? PANEL_SHADOW : "none",
-                fontSize: "12px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
+                fontSize: "11px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
               }}>
               {v === "table" ? t.viewTable : t.viewGrid}
             </button>
