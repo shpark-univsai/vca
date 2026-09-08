@@ -92,9 +92,7 @@ const T = {
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · Vehicle ${vehicle} · Unknown ${unknown.toLocaleString("en-US")}`,
     unstableTitle: "Stream drops · last 7 days",
-    dropsLegendNone: "no drop",
-    dropsLegendOnce: "once",
-    dropsLegendMore: "twice or more",
+    dropCount: (n: number) => `${n} drop${n === 1 ? "" : "s"}`,
     noDrops: "Every camera held its stream all week.",
     viewAllCameras: (n: number) => `View all ${n} cameras`,
     recentVipsTitle: "Recently Registered VIPs",
@@ -179,9 +177,7 @@ const T = {
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · 차량 ${vehicle} · 미확인 ${unknown.toLocaleString("en-US")}`,
     unstableTitle: "스트림 끊김 · 지난 7일",
-    dropsLegendNone: "끊김 없음",
-    dropsLegendOnce: "1회",
-    dropsLegendMore: "2회 이상",
+    dropCount: (n: number) => `${n}회`,
     noDrops: "이번 주 내내 모든 카메라가 스트림을 유지했습니다.",
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
     recentVipsTitle: "최근 등록된 VIP",
@@ -1159,65 +1155,38 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   {/* 15px, the size every other panel titles itself at. At 12 it read as a
                       label on a block rather than as one of the page's cards. */}
                   <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{t.unstableTitle}</p>
-                  {/* A legend, because seven shaded squares are not self-explanatory: they were
-                      read as a progress bar, a rating, anything but a week. Three states, named. */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "6px", marginBottom: "10px", flexWrap: "wrap" }}>
-                    {([
-                      { color: "var(--gray-100)", label: t.dropsLegendNone },
-                      { color: "var(--primary-200)", label: t.dropsLegendOnce },
-                      { color: "var(--primary-400)", label: t.dropsLegendMore },
-                    ]).map(item => (
-                      <span key={item.label} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", color: "var(--gray-500)" }}>
-                        <span style={{ width: "9px", height: "9px", borderRadius: "2px", backgroundColor: item.color }} />
-                        {item.label}
-                      </span>
-                    ))}
-                  </div>
-                  {/* The days, over the columns they label — the grid was seven squares with no
-                      axis, so nothing said they were days at all, let alone which end was today.
-                      Same shape as a row below it (name, cells, count) with the name and count
-                      slots empty, so the letters land exactly on their cells. */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 6px", marginBottom: "4px" }}>
-                    <span style={{ flex: 1, minWidth: 0 }} />
-                    <span style={{ display: "flex", gap: "3px", flexShrink: 0 }}>
-                      {detectionDays.map(d => {
-                        const at = nowMs !== null ? new Date(nowMs - d.daysAgo * 86400000) : null;
-                        return (
-                          <span key={d.daysAgo} style={{ width: "12px", fontSize: "9px", color: "var(--gray-400)", textAlign: "center" }}>
-                            {at === null ? "" : new Intl.DateTimeFormat(lang === "ko" ? "ko-KR" : "en-GB", { timeZone: "Asia/Singapore", weekday: "narrow" }).format(at)}
-                          </span>
-                        );
-                      })}
-                    </span>
-                    <span style={{ width: "14px", flexShrink: 0 }} />
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    {unstable.map(({ camera, drops, dropsByDay }) => (
+                  {/*
+                    A bar per camera, read in one look.
+
+                    This was a seven-day heat grid — more information (which days it dropped on)
+                    and too much work for it: seven shaded squares needed a legend, an axis and a
+                    sentence, and it still had to be decoded rather than seen. A diagram that has
+                    to be studied is not a diagram, it is a table with the labels taken off.
+
+                    The longest bar is the worst camera and the number says by how much. When
+                    somebody needs to know which days, that is a question for the camera itself,
+                    one click away.
+                  */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "10px" }}>
+                    {unstable.map(({ camera, drops }) => (
                       <button
                         key={camera.id}
                         onClick={() => { setInspectCameraId(camera.id); onTabChange("cameras"); }}
                         className="portal-attention-row"
-                        style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", border: "none", background: "none", padding: "4px 6px", margin: "0 -6px", borderRadius: "6px", cursor: "pointer", fontFamily: "inherit" }}
+                        style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", border: "none", background: "none", padding: "6px", margin: "0 -6px", borderRadius: "6px", cursor: "pointer", fontFamily: "inherit" }}
                       >
-                        <span style={{ display: "flex", alignItems: "baseline", gap: "6px", minWidth: 0, flex: 1, textAlign: "left" }}>
-                          <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
-                          <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap", flexShrink: 0 }}>{camera.zone}</span>
+                        <span style={{ display: "flex", flexDirection: "column", gap: "5px", minWidth: 0, flex: 1, textAlign: "left" }}>
+                          <span style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px", minWidth: 0 }}>
+                            <span style={{ display: "flex", alignItems: "baseline", gap: "6px", minWidth: 0 }}>
+                              <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
+                              <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap", flexShrink: 0 }}>{camera.zone}</span>
+                            </span>
+                            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>{t.dropCount(drops)}</span>
+                          </span>
+                          <span style={{ display: "block", height: "4px", borderRadius: "999px", backgroundColor: "var(--gray-100)", overflow: "hidden" }}>
+                            <span style={{ display: "block", height: "100%", width: `${(drops / unstable[0].drops) * 100}%`, backgroundColor: "var(--primary-300)" }} />
+                          </span>
                         </span>
-                        {/* Three steps, not a gradient: nobody reads a shade off a scale, but
-                            "empty / once / more than once" is a distinction you can see. */}
-                        <span style={{ display: "flex", gap: "3px", flexShrink: 0 }}>
-                          {dropsByDay.map((n, day) => (
-                            <span
-                              key={day}
-                              title={nowMs !== null ? `${sgtDateKey(new Date(nowMs - (6 - day) * 86400000))} · ${n}` : undefined}
-                              style={{
-                                width: "12px", height: "12px", borderRadius: "3px",
-                                backgroundColor: n === 0 ? "var(--gray-100)" : n === 1 ? "var(--primary-200)" : "var(--primary-400)",
-                              }}
-                            />
-                          ))}
-                        </span>
-                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0, width: "14px", textAlign: "right" }}>{drops}</span>
                       </button>
                     ))}
                   </div>
