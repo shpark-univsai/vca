@@ -174,7 +174,7 @@ export default function PortalShell() {
         where in this project you are — the rail beside it already said which project.
     */}
     <div style={{
-      display: "flex", height: "100vh", overflow: "hidden", backgroundColor: "white",
+      display: "flex", height: "100vh", overflow: "hidden",
       /*
        * Tabular figures for the whole console.
        *
@@ -212,8 +212,13 @@ export default function PortalShell() {
         />
       )}
 
-      {/* Everything to the right of the rail: the bar, then the page under it. */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* Everything to the right of the rail: the bar, then the page under it.
+
+          primary-50 across both, not white. The canvas was white and so are the cards, which left
+          the cards to be told apart by their own hairline alone; the faintest step of the primary
+          ramp gives them a ground to sit on again without turning the page grey. Set here rather
+          than on the two children so the bar and the page cannot drift apart. */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", backgroundColor: "var(--primary-50)" }}>
 
       {/*
         Top bar — the product, where you are, and who you are.
@@ -228,7 +233,7 @@ export default function PortalShell() {
         and that you are creating rather than browsing) has nowhere else to go and stays here.
       */}
       <div style={{
-        height: "62px", backgroundColor: "white", borderBottom: "1px solid var(--gray-300)",
+        height: "62px", borderBottom: "1px solid var(--gray-300)",
         display: "flex", alignItems: "center", padding: "0 24px", flexShrink: 0, gap: "10px",
       }}>
         {!showWizard && teamProjects.length > 0 && (
@@ -331,7 +336,7 @@ export default function PortalShell() {
         // White canvas, dark rail — the arrangement most consoles have settled on. It used to be
         // the other way round for both, which meant every card had to be white to be a card and
         // the page's own surface was doing the outlining.
-        <div style={{ flex: 1, overflow: "auto", padding: "32px 72px", backgroundColor: "white" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: "32px 72px" }}>
             {showAccount
               ? <PortalMyPage />
               : teamProjects.length === 0
