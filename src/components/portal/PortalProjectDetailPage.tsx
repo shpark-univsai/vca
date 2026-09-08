@@ -975,36 +975,38 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
               The panel's subtitle is gone with it — the two column labels say what it said.
             */}
-            {/* The figure under the title, not out on its line's right end.
-                It sat opposite the title across the card's whole width, which put the week's
-                total as far from the words naming it as the layout allowed — you read "Detections
-                · last 7 days" and then travelled 600px to find the number it is talking about.
-                Under the title it is the next thing you read, which is what it is. */}
-            <div style={{ marginBottom: "12px" }}>
-              <SectionHead title={t.trendTitle} />
-              <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", marginTop: "4px" }}>
-                <span title={t.weekTotalHint(today.total.toLocaleString("en-US"))} style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>
-                  {weekTotal.toLocaleString("en-US")}
-                </span>
+            {/*
+              Numbers on the left, the week beside them.
+
+              The chart sat under the figure, which made the card two bands tall and put the total
+              and the shape of the week on separate lines of reading. Side by side they are one
+              statement: this is how much, and this is how it got there. It is also the arrangement
+              the four cards above use — label, figure, then the graphic to its side — so the row
+              of cards and this card are read the same way.
+            */}
+            <div style={{ display: "flex", alignItems: "center", gap: CARD_GAP, flexWrap: "wrap" }}>
+              <div style={{ minWidth: "170px", flexShrink: 0 }}>
+                <SectionHead title={t.trendTitle} />
+                <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", marginTop: "4px" }}>
+                  <span title={t.weekTotalHint(today.total.toLocaleString("en-US"))} style={{ fontSize: "22px", fontWeight: 800, color: "var(--gray-900)" }}>
+                    {weekTotal.toLocaleString("en-US")}
+                  </span>
+                </div>
                 {/* Grey, not green or red. A busier week than the last is neither good news nor
                     bad, and colouring it would send the reader looking for a fault nobody is
-                    reporting. */}
-                <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", color: "var(--gray-500)" }}>
+                    reporting. On its own line here because the column is narrow. */}
+                <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", color: "var(--gray-500)", marginTop: "2px" }}>
                   {detectionDelta >= 0 ? <ArrowUp size={11} strokeWidth={2.6} /> : <ArrowDown size={11} strokeWidth={2.6} />}
                   {t.vsYesterday(detectionDelta)}
                 </span>
               </div>
-            </div>
 
-            {/* One subject, one card. The camera-drops list used to sit on the right of this one,
-                joined to it by nothing but the seven days they shared — a period is not a subject.
-                What the cameras saw and whether the cameras worked are two questions, and the
-                second belongs with the cameras: it is under the Camera status panel now. */}
-            {/* The plot keeps a margin of its own. The line ran to the card's inner edge, so the
-                first and last dots sat half-off it and the fill met the border with a hard corner
-                — the chart read as a picture that had been cropped rather than one that fits.
-                Padding here, on the chart and the axis together, so the labels move with it. */}
-            <div style={{ minWidth: 0, padding: "0 8px" }}>
+              {/* The plot keeps a margin of its own. The line ran to the card's inner edge, so the
+                  first and last dots sat half-off it and the fill met the border with a hard
+                  corner — the chart read as a picture that had been cropped rather than one that
+                  fits. Padding here, on the chart and the axis together, so the labels move with
+                  it. */}
+              <div style={{ flex: 1, minWidth: "280px", padding: "0 8px" }}>
               {/*
                 A line for the week, with today drawn as unfinished.
 
@@ -1155,6 +1157,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   );
                 })}
               </div>
+              </div>
             </div>
           </div>
 
@@ -1212,17 +1215,17 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     {/* Only the rows scroll. The column headings above and the "view all" below are
                         the two things you need while scrolling, so they stay put.
 
-                        Cut at eleven rows — the eight offline cameras plus Novena, Geylang NC1 and
-                        Orchard MRT, which is where this was asked to stop. 476px is that count in
-                        pixels: a row is 10px of padding either side of a 22px status chip, and ten
-                        1px rules between the eleven. The panel's own viewport-relative cap still
-                        applies on top of this, so a short window cuts the list earlier rather than
-                        running it off the screen. */}
-                    <div style={{ flex: 1, minHeight: 0, maxHeight: "476px", overflowY: "auto" }}>
+                        No row cap of its own any more. It was cut at eleven rows back when the
+                        panel shared its column with a stability card and the metric cards above
+                        were taller; both are gone, and a fixed pixel cut left the panel short of
+                        its own box on a tall screen — white space under a list somebody asked to
+                        see more of. The panel's height is the cap now, and it is measured off the
+                        window. */}
+                    <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
                     {visibleCameraRows.map((c, i) => {
                       const online = c.status === "online";
                       return (
-                        <div key={c.id} style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr 1.2fr 0.8fr 1.2fr 44px", padding: "10px 20px", alignItems: "center", gap: "8px", borderTop: i > 0 ? BORDER : "none" }}>
+                        <div key={c.id} style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr 1.2fr 0.8fr 1.2fr 44px", padding: "8px 20px", alignItems: "center", gap: "8px", borderTop: i > 0 ? BORDER : "none" }}>
                           {/* No dot before the name. The row already ends in a Online / Offline
                               chip, and a coloured dot at the other end of the same row said the
                               same thing a second time — with eight offline rows on top, the list

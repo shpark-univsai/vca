@@ -159,13 +159,13 @@ export const TABLE_HEADER_COLOR = "var(--gray-500)";
  * page ends where the screen ends". A fixed 680px did fill nicely on a tall monitor and ran the
  * camera list off the bottom of a shorter one, which is the one thing the cap exists to prevent.
  *
- * 440px is the chrome above and below the row on the Overview: the 52px top bar, the content's
- * 12px top padding, the greeting block, the attention strip, the metric cards and their gap, and
- * the 32px the page keeps under its last card. Whatever the window leaves after that is the
+ * 500px is the chrome above and below the row on the Overview: the 52px top bar, the content's
+ * 12px top padding, the greeting block, the attention strip, the metric cards, the weekly
+ * detections card, their gaps, and the 32px the page keeps under its last card. Whatever the window leaves after that is the
  * panels' height, and the lists inside them scroll to fit it. The 360px floor is there so a very
  * short window gets a usable panel instead of a sliver.
  */
-export const OVERVIEW_PANEL_MAX_HEIGHT = "max(360px, calc(100vh - 440px))";
+export const OVERVIEW_PANEL_MAX_HEIGHT = "max(360px, calc(100vh - 500px))";
 
 export const BREADCRUMB_TEAM_MAX_WIDTH = "min(360px, 26vw)";
 export const BREADCRUMB_PROJECT_MAX_WIDTH = "min(320px, 22vw)";
