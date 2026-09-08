@@ -780,8 +780,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                       ))}
                     </div>
                     {/* Only the rows scroll. The column headings above and the "view all" below are
-                        the two things you need while scrolling, so they stay put. */}
-                    <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+                        the two things you need while scrolling, so they stay put.
+
+                        Cut at eleven rows — the eight offline cameras plus Novena, Geylang NC1 and
+                        Orchard MRT, which is where this was asked to stop. 476px is that count in
+                        pixels: a row is 10px of padding either side of a 22px status chip, and ten
+                        1px rules between the eleven. The panel's own viewport-relative cap still
+                        applies on top of this, so a short window cuts the list earlier rather than
+                        running it off the screen. */}
+                    <div style={{ flex: 1, minHeight: 0, maxHeight: "476px", overflowY: "auto" }}>
                     {visibleCameraRows.map((c, i) => {
                       const online = c.status === "online";
                       return (
