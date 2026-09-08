@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
-import { formatElapsed, sgtClockMinutes } from "@/lib/time";
+import { formatElapsed, sgtClockMinutes, sgtDateKey } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -86,7 +86,7 @@ const T = {
     trendTitle: "Detections · last 7 days",
     todaySuffix: "today",
     vsYesterday: (pct: number) => `${pct > 0 ? "+" : ""}${pct}% vs yesterday`,
-    todaySoFar: "Today so far",
+    todaySoFar: "Today",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · Vehicle ${vehicle} · Unknown ${unknown.toLocaleString("en-US")}`,
     unstableTitle: "Most drops",
@@ -169,7 +169,7 @@ const T = {
     trendTitle: "탐지 · 지난 7일",
     todaySuffix: "건 오늘",
     vsYesterday: (pct: number) => `어제 대비 ${pct > 0 ? "+" : ""}${pct}%`,
-    todaySoFar: "오늘 (진행 중)",
+    todaySoFar: "오늘",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · 차량 ${vehicle} · 미확인 ${unknown.toLocaleString("en-US")}`,
     unstableTitle: "끊김 많은 순",
@@ -911,7 +911,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </div>
             {/* stretch, not start: the two halves are separated by a rule down the middle, and a
                 rule only reads as one if it runs the height of what it divides. */}
-            <div style={{ display: "grid", gridTemplateColumns: "1.75fr 1fr", gap: CARD_GAP, alignItems: "stretch" }}>
+            {/* 2.4fr against 1fr, not 1.75. The right block is four short rows and a label; at a
+                third of the panel it had more room than it had to say, and the chart — the thing
+                the panel is named after — was the narrower half of a card it should own. */}
+            <div style={{ display: "grid", gridTemplateColumns: "2.4fr 1fr", gap: CARD_GAP, alignItems: "stretch" }}>
               <div style={{ minWidth: 0 }}>
                 {/* No "Detections" label here — it is in the panel's own title now, which was
                     carrying only the period ("Last 7 days") while this line carried only the
@@ -956,16 +959,22 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     chart that depends on what day it is, and a guessed one would be corrected a
                     frame later. The row keeps its height either way so nothing jumps. */}
                 <div style={{ display: "flex", gap: "8px", marginTop: "6px", minHeight: "14px" }}>
-                  {detectionDays.map(d => (
-                    <span key={d.daysAgo} style={{ flex: 1, fontSize: "10px", color: "var(--gray-400)", textAlign: "center" }}>
-                      {nowMs !== null
-                        ? (d.daysAgo === 0
+                  {detectionDays.map(d => {
+                    const at = nowMs !== null ? new Date(nowMs - d.daysAgo * 86400000) : null;
+                    return (
+                      /* Weekday and date on one line. A weekday alone is only readable while you
+                         still know what today is — a week later, in a screenshot or a report,
+                         "Mon" names nothing — and stacked they made the axis two rows deep under a
+                         64px chart. The date comes off the Singapore calendar key rather than a
+                         locale format, so both languages read the same digits and the server and
+                         the browser cannot disagree about which day it is. */
+                      <span key={d.daysAgo} style={{ flex: 1, fontSize: "10px", color: "var(--gray-400)", textAlign: "center", whiteSpace: "nowrap" }}>
+                        {at === null ? "" : `${d.daysAgo === 0
                           ? t.todaySoFar
-                          : new Intl.DateTimeFormat(lang === "ko" ? "ko-KR" : "en-GB", { timeZone: "Asia/Singapore", weekday: "short" })
-                            .format(new Date(nowMs - d.daysAgo * 86400000)))
-                        : ""}
-                    </span>
-                  ))}
+                          : new Intl.DateTimeFormat(lang === "ko" ? "ko-KR" : "en-GB", { timeZone: "Asia/Singapore", weekday: "short" }).format(at)} ${sgtDateKey(at).slice(5).replace("-", ".")}`}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -976,35 +985,51 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   listed with a zero. A camera that drops four times a week and is online when you look is
                   invisible everywhere else in Portal, and it is exactly the one worth sending
                   somebody to. */}
-              {/* Its own side of a rule. Without it the list read as a third column of the chart —
-                  two label lines at the same size, the same distance apart, on one flat surface.
-                  A hairline is enough to say "different question"; a second card inside this card
-                  would be a box inside a box. */}
-              <div style={{ minWidth: 0, borderLeft: BORDER, paddingLeft: "20px" }}>
+              {/*
+                A tinted block, not a hairline neighbour.
+
+                A rule was enough to say "different question" but not enough to say "this is the
+                detail behind the chart" — on one flat white surface the list still read as a
+                third column of it. A gray-50 ground with its own padding makes it a panel within
+                the panel, which is what it is: the chart is the week, this is what is behind the
+                week's worst days.
+              */}
+              <div style={{ minWidth: 0, backgroundColor: "var(--gray-50)", borderRadius: "12px", padding: "14px" }}>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.unstableTitle}</p>
                 {unstable.length === 0 ? (
                   <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "10px" }}>{t.noDrops}</p>
                 ) : (
-                  {/* 4px between rows on top of each row's own 6px padding: with the rows flush
-                      the four names read as one block of text rather than four things you can
-                      click, and the hover fill of one row touched the next. */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "8px" }}>
-                    {unstable.map(({ camera, drops }) => (
+                    {/* 4px between rows on top of each row's own 6px padding: with the rows flush
+                        the four names read as one block of text rather than four things you can
+                        click, and the hover fill of one row touched the next. */}
+                    {unstable.map(({ camera, drops }, i) => (
                       <button
                         key={camera.id}
                         onClick={() => { setInspectCameraId(camera.id); onTabChange("cameras"); }}
                         className="portal-attention-row"
                         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", width: "100%", border: "none", background: "none", padding: "6px", margin: "0 -6px", borderRadius: "6px", cursor: "pointer", fontFamily: "inherit" }}
                       >
-                        {/* Name and zone on one line — a camera name alone ("Angmokio 3") does not
-                            say where to send anybody, and stacked they made every row two lines
-                            tall for four rows. The zone does not shrink and the name does: if
-                            something has to go it is the half you already know from the name. */}
-                        <span style={{ display: "flex", alignItems: "baseline", gap: "6px", minWidth: 0, textAlign: "left" }}>
-                          <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
-                          <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap", flexShrink: 0 }}>{camera.zone}</span>
+
+                        {/* A bar per camera rather than a rank numeral.
+                            "Most drops" claims an order, and four numbered rows only assert it —
+                            a bar shows it, and shows the thing a rank hides: whether the worst
+                            camera is twice as bad as the next one or the same. Widths are a share
+                            of the worst row, the same rule the week's bars use.
+                            Name and zone stay on one line; the zone does not shrink and the name
+                            does, because if a half has to go it is the one you already know. */}
+                        <span style={{ display: "flex", flexDirection: "column", gap: "5px", minWidth: 0, flex: 1, textAlign: "left" }}>
+                          <span style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px", minWidth: 0 }}>
+                            <span style={{ display: "flex", alignItems: "baseline", gap: "6px", minWidth: 0 }}>
+                              <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
+                              <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap", flexShrink: 0 }}>{camera.zone}</span>
+                            </span>
+                            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>{drops}</span>
+                          </span>
+                          <span style={{ display: "block", height: "4px", borderRadius: "999px", backgroundColor: "var(--gray-200)", overflow: "hidden" }}>
+                            <span style={{ display: "block", height: "100%", width: `${(drops / unstable[0].drops) * 100}%`, backgroundColor: "var(--primary-300)" }} />
+                          </span>
                         </span>
-                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>{drops}</span>
                       </button>
                     ))}
                   </div>
