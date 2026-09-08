@@ -37,6 +37,7 @@ const T = {
     connectedSuffix: (n: number) => `/ ${n} connected`,
     online: "Online",
     offline: "Offline",
+    statusError: "Error",
     licenseSubscription: "License subscription",
     channelsUsedSuffix: (limit: number | string) => `/ ${limit} channels used`,
     vipTargetDb: "VIP / target database",
@@ -52,6 +53,7 @@ const T = {
     attentionTitle: "Attention needed",
     dismissBanner: "Dismiss",
     attnOffline: (n: number) => `${n} camera${n === 1 ? " is" : "s are"} offline`,
+    attnCameraError: (n: number) => `${n} camera${n === 1 ? "" : "s"} refusing the connection`,
     attnInvites: (n: number) => `${n} invitation${n === 1 ? "" : "s"} not yet accepted`,
     attnRequests: (n: number) => `${n} access request${n === 1 ? "" : "s"} waiting`,
     attnOverLimit: (used: number, limit: number) => `Over the licensed channels — ${used} of ${limit}`,
@@ -124,6 +126,7 @@ const T = {
     connectedSuffix: (n: number) => `/ ${n}대 연결됨`,
     online: "온라인",
     offline: "오프라인",
+    statusError: "오류",
     licenseSubscription: "라이선스 구독",
     channelsUsedSuffix: (limit: number | string) => `/ ${limit}채널 사용`,
     vipTargetDb: "VIP / 관심대상 DB",
@@ -139,6 +142,7 @@ const T = {
     attentionTitle: "확인 필요",
     dismissBanner: "닫기",
     attnOffline: (n: number) => `오프라인 카메라 ${n}대`,
+    attnCameraError: (n: number) => `연결이 거부된 카메라 ${n}대`,
     attnInvites: (n: number) => `수락하지 않은 초대 ${n}건`,
     attnRequests: (n: number) => `대기 중인 접근 요청 ${n}건`,
     attnOverLimit: (used: number, limit: number) => `라이선스 채널 초과 — ${limit}개 중 ${used}개`,
@@ -493,7 +497,16 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   }
 
   const onlineCount = projectCameras.filter(c => c.status === "online").length;
-  const offlineCount = projectCameras.length - onlineCount;
+  /**
+   * Counted apart, because "not online" is now two errands.
+   *
+   * A camera that stopped answering is a visit; one the server was refused by is usually a typed
+   * credential or a wrong stream path, fixable from this console. The card's figure still reads
+   * "51 / 59 connected" (either way it is not sending video), but the strip names them separately
+   * so the fixable one is not filed under the other.
+   */
+  const offlineCount = projectCameras.filter(c => c.status === "offline").length;
+  const errorCount = projectCameras.filter(c => c.status === "error").length;
   const projectUsers = portalUsers.filter(u => u.projectIds.includes(projectId));
   // Counted by door, not by role. "Admin: n | Operator: n" filed owners and read-only admins under
   // "operator" simply because they were not the literal string "admin", so the second figure was
@@ -601,6 +614,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    */
   const attentionItems: { key: string; text: string; color: string; tab: DetailTab }[] = [
     ...(offlineCount > 0 ? [{ key: "offline", text: t.attnOffline(offlineCount), color: "var(--danger-400)", tab: "cameras" as DetailTab }] : []),
+    ...(errorCount > 0 ? [{ key: "cameraError", text: t.attnCameraError(errorCount), color: "var(--danger-400)", tab: "cameras" as DetailTab }] : []),
     ...(licenseExpired ? [{ key: "expired", text: t.attnExpired, color: "var(--danger-400)", tab: "license" as DetailTab }] : []),
     ...(overChannelLimit && channelLimit ? [{ key: "overlimit", text: t.attnOverLimit(projectCameras.length, channelLimit), color: "var(--danger-400)", tab: "license" as DetailTab }] : []),
     ...(licenseExpiringSoon && daysUntilExpiry !== null ? [{ key: "expiring", text: t.attnExpiringSoon(daysUntilExpiry), color: "var(--warning-500)", tab: "license" as DetailTab }] : []),

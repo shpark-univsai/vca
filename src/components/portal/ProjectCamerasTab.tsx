@@ -15,6 +15,7 @@ const T = {
     addCamera: "Add camera",
     online: "Online",
     offline: "Offline",
+    statusError: "Error",
     offlineSuffix: (n: number) => `${n} offline`,
     onlineCountLabel: (n: number) => `${n} online`,
     searchPlaceholder: "Search by camera name, code, RTSP URL, or IP address",
@@ -143,6 +144,7 @@ const T = {
     addCamera: "카메라 추가",
     online: "온라인",
     offline: "오프라인",
+    statusError: "오류",
     offlineSuffix: (n: number) => `${n} 오프라인`,
     onlineCountLabel: (n: number) => `온라인 ${n}`,
     searchPlaceholder: "카메라 이름, 코드, RTSP URL, IP 주소로 검색",
@@ -368,12 +370,15 @@ type CameraSortKey = "name" | "maker" | "resolution" | "zone" | "status";
  * analysis); this only settles which row comes first when they share a list.
  */
 const STATUS_RANK: Record<CameraStatus | UploadStatus, number> = {
-  offline: 0,
-  online: 1,
-  failed: 2,
-  pending: 3,
-  analyzing: 4,
-  done: 5,
+  // An error outranks silence: a camera that refuses a connection is a camera somebody can fix
+  // from this screen, and one that has simply stopped answering usually is not.
+  error: 0,
+  offline: 1,
+  online: 2,
+  failed: 3,
+  pending: 4,
+  analyzing: 5,
+  done: 6,
 };
 
 type SourceKind = "camera" | "video" | "image";
@@ -715,7 +720,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [zoneFilter, setZoneFilter] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "online" | "offline">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "online" | "offline" | "error">("ALL");
   const [aiFilter, setAiFilter] = useState<"ALL" | CameraAiFeature>("ALL");
   // Which kind of source the table is showing. A tab row, not another select in the filter strip:
   // it is the top-level cut of the list, and the counts belong on it.
@@ -846,7 +851,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   };
 
   const onlineCount = projectCameras.filter(c => c.status === "online").length;
-  const offlineCount = projectCameras.length - onlineCount;
+  // Counted, not derived from the total: with a third state, "everything that is not online" is
+  // two different errands and one number would hide the smaller one.
+  const offlineCount = projectCameras.filter(c => c.status === "offline").length;
+  const errorCount = projectCameras.filter(c => c.status === "error").length;
   // Anything not yet analysed — queued or mid-run. Both are "not done", and an administrator does
   // the same thing about either: wait, or find out why.
 
@@ -1061,6 +1069,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             { value: "ALL", label: t.filterAllStatus },
             { value: "online", label: `${t.online} (${onlineCount})` },
             { value: "offline", label: `${t.offline} (${offlineCount})` },
+            // Only when there is one to filter to. An option reading "Error (0)" invites a click
+            // that returns an empty table.
+            ...(errorCount > 0 ? [{ value: "error", label: `${t.statusError} (${errorCount})` }] : []),
           ]}
         />
         <FilterSelect
@@ -1296,7 +1307,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             }
 
             const cam = row.camera;
-            const online = cam.status === "online";
             const isAiCamera = (cam.aiFeatures ?? []).length > 0;
             return (
               <div key={row.id} style={rowStyle}>
@@ -1323,8 +1333,17 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                 </div>
                 {showCameraColumns && <AiFeatureBadges features={cam.aiFeatures} t={t} />}
                 <button onClick={() => setConfirmingStatusCam(cam)} style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: online ? "var(--success-400)" : "var(--gray-400)", flexShrink: 0 }} />
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: online ? "var(--success-400)" : "var(--gray-400)" }}>{online ? t.online : t.offline}</span>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0, backgroundColor: cam.status === "online" ? "var(--success-400)" : cam.status === "error" ? "var(--danger-400)" : "var(--gray-400)" }} />
+                  {/* Three states, three words. Error is the only one in danger red: offline is a
+                      camera that stopped talking, which is common and often expected, while an
+                      error is the server being refused — something typed wrong that somebody can
+                      fix from this screen. */}
+                  <span style={{
+                    fontSize: "12px", fontWeight: 700,
+                    color: cam.status === "online" ? "var(--success-400)" : cam.status === "error" ? "var(--danger-400)" : "var(--gray-400)",
+                  }}>
+                    {cam.status === "online" ? t.online : cam.status === "error" ? t.statusError : t.offline}
+                  </span>
                 </button>
                 {/* Preview first: it is the item somebody reaches for most and the only one that
                     answers "is this camera actually seeing anything". The thumbnail opens the same
@@ -1356,9 +1375,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   <img src={cam.thumbnail || DEFAULT_THUMBNAIL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: online ? 1 : 0.4 }} />
                   <span style={{
                     position: "absolute", top: "8px", left: "8px", fontSize: "10px", fontWeight: 600, padding: "4px 8px", borderRadius: "999px",
-                    backgroundColor: online ? "rgba(22,163,74,0.9)" : "rgba(148,163,184,0.9)", color: "white",
+                    backgroundColor: cam.status === "online" ? "rgba(22,163,74,0.9)" : cam.status === "error" ? "rgba(244,63,94,0.9)" : "rgba(148,163,184,0.9)", color: "white",
                   }}>
-                    {online ? t.online.toUpperCase() : t.offline.toUpperCase()}
+                    {(cam.status === "online" ? t.online : cam.status === "error" ? t.statusError : t.offline).toUpperCase()}
                   </span>
                 </button>
                 {/* No footer strip. It carried the AI-engine badges — which for a camera with no

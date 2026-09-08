@@ -25,7 +25,16 @@ export const UNLIMITED_EXPIRY = "Unlimited";
 // contract breakdown — one constant so the two never drift apart.
 export const PRICE_PER_CHANNEL_PER_YEAR = 100;
 
-export type CameraStatus = "online" | "offline";
+/**
+ * "error" is not a worse "offline".
+ *
+ * Offline is silence — the stream stopped and the camera says nothing. Error is an answer: the
+ * device is reachable and refused, which in practice means credentials, a codec the server cannot
+ * open, or a URL pointing at the wrong stream. The errands are different (go and look at it vs fix
+ * what we typed), so the state is different, and the app treats anything that is not "online" as
+ * not live, which is correct for both.
+ */
+export type CameraStatus = "online" | "offline" | "error";
 
 /**
  * How VCA reaches a user's mailbox. VCA does not host mail — it is an SMTP *sender*, handing the
@@ -907,6 +916,15 @@ const CAMERA_SEEDS: Camera[] = [
     status: "online", location: "Queenstown, Singapore", zone: "Queenstown",
     thumbnail: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80",
     lat: 1.2942, lng: 103.8060, maker: "Hanwha", resolution: "4K (3840×2160)",
+  },
+  // Reachable and refusing — see the CameraStatus note. Seeded because the state has to be visible
+  // somewhere for the table, the filter and the attention strip to be worth building.
+  {
+    id: "cam-phone-test", projectId: "proj-sg", code: "CAM-TMP-901", name: "Phone test",
+    ip: "192.168.0.36", mac: "00:1B:44:11:3A:C1", rtspUrl: "rtsp://192.168.0.36:554/stream1",
+    status: "error", location: "Control Room, Singapore", zone: "Marina Bay",
+    thumbnail: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80",
+    lat: 1.2830, lng: 103.8600, maker: "Hanwha", resolution: "FHD (1920×1080)",
   },
   {
     id: "cam-jurong-east", projectId: "proj-sg", code: "CAM-JRE-001", name: "Jurong East",
