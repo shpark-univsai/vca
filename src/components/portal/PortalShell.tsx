@@ -333,7 +333,19 @@ export default function PortalShell() {
         // White canvas, dark rail — the arrangement most consoles have settled on. It used to be
         // the other way round for both, which meant every card had to be white to be a card and
         // the page's own surface was doing the outlining.
-        <div style={{ flex: 1, overflow: "auto", padding: "32px 72px" }}>
+        /*
+         * Capped at 1200px of content (1344 with the gutters) and centred.
+         *
+         * Uncapped, a 1920px monitor gave the page ~1560px: the four metric cards stretched until
+         * each was mostly empty, and the camera table's five columns drifted so far apart that a
+         * row stopped reading as one row. A cap is what makes the whole screen a glance rather
+         * than a scan.
+         *
+         * The cap is on the scrolling element itself rather than on an inner wrapper, because
+         * Input Sources' sticky header measures this container to position its fixed copy — an
+         * inner box would leave the header wider than the content it covers.
+         */
+        <div style={{ flex: 1, overflow: "auto", padding: "32px 72px", width: "100%", maxWidth: "1344px", marginInline: "auto" }}>
             {showAccount
               ? <PortalMyPage />
               : teamProjects.length === 0
