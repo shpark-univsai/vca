@@ -1112,17 +1112,34 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   );
                 })}
               </div>
-              {/* Weekday and date, only once the clock is known — they are the one part of this
-                  chart that depends on what day it is, and a guessed one would be corrected a
-                  frame later. The row keeps its height either way so nothing jumps. A weekday on
-                  its own is only readable while you still know what today is; a week later, in a
-                  screenshot, "Mon" names nothing. The date comes off the Singapore calendar key
-                  rather than a locale format, so both languages read the same digits. */}
-              <div style={{ display: "flex", gap: "8px", marginTop: "8px", minHeight: "14px" }}>
-                {detectionDays.map(d => {
+              {/*
+                The labels sit at the points, not in seven equal boxes.
+
+                They were a flex row of equal cells, so each label centred inside its own cell —
+                but the line's points run from 0% to 100% of the chart's width, and a cell's centre
+                is half a cell in from that. Every label was off by half a column, worst at the two
+                ends. Positioned the same way the dots are, off the same expression, they cannot
+                drift apart; the first and last hug their edges so they stay inside the card.
+
+                Only once the clock is known — the labels are the one part of this chart that
+                depends on what day it is, and a guessed one would be corrected a frame later. The
+                row keeps its height either way so nothing jumps. A weekday on its own is only
+                readable while you still know what today is; the date comes off the Singapore
+                calendar key rather than a locale format, so both languages read the same digits.
+              */}
+              <div style={{ position: "relative", height: "14px", marginTop: "8px" }}>
+                {detectionDays.map((d, i) => {
                   const at = nowMs !== null ? new Date(nowMs - d.daysAgo * 86400000) : null;
                   return (
-                    <span key={d.daysAgo} style={{ flex: 1, fontSize: "10px", color: "var(--gray-400)", textAlign: "center", whiteSpace: "nowrap" }}>
+                    <span
+                      key={d.daysAgo}
+                      style={{
+                        position: "absolute", top: 0,
+                        left: `${(i / (detectionDays.length - 1)) * 100}%`,
+                        transform: `translateX(${i === 0 ? "0" : i === detectionDays.length - 1 ? "-100%" : "-50%"})`,
+                        fontSize: "10px", color: "var(--gray-400)", whiteSpace: "nowrap",
+                      }}
+                    >
                       {at === null ? "" : `${d.daysAgo === 0
                         ? t.todaySoFar
                         : new Intl.DateTimeFormat(lang === "ko" ? "ko-KR" : "en-GB", { timeZone: "Asia/Singapore", weekday: "short" }).format(at)} ${sgtDateKey(at).slice(5).replace("-", ".")}`}
