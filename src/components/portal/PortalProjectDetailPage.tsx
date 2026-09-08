@@ -495,9 +495,18 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 outlined tier as its neighbours: leaving is not the primary action here.
                 Hidden for a Portal-only account, which would land on a screen it cannot use.
               */}
+              {/* The one filled button on the screen.
+                  Three outlined buttons in a row said none of them mattered more than the others,
+                  and a header like this one wants a recommendation. This is it: Portal is where a
+                  project is set up, and the app is where the watching actually happens — after
+                  reading the pulse of the network, going to look at it is the likely next move.
+                  Rightmost, because that is where the committing button sits in every dialog and
+                  toolbar in this console. */}
               {appAccess && (
-                <button onClick={() => router.push("/")}
-                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                <button
+                  className="portal-btn-primary"
+                  onClick={() => router.push("/")}
+                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                   <ExitIcon /> {t.goToApp}
                 </button>
               )}
