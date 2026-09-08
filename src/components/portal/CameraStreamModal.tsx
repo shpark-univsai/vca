@@ -226,7 +226,10 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
                 <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Link2 size={11} strokeWidth={2.2} /></span>
                 {t.rtspUrl}
               </p>
-              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "monospace", marginTop: "2px", wordBreak: "break-all" }}>{camera.rtspUrl}</p>
+              {/* 13px like every other value on the sheet. It was 12 because monospace runs wider
+                  than the body face, but a value that is a step smaller than its neighbours reads
+                  as a footnote — and this is the field somebody opens this sheet to check. */}
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "monospace", marginTop: "2px", wordBreak: "break-all" }}>{camera.rtspUrl}</p>
             </div>
             <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
               <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)", marginBottom: "5px" }}>
