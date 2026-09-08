@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Film as FilmIcon, Image as ImageIcon, RotateCcw, Video as VideoIcon } from "lucide-react";
-import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type UploadedMedia, type UploadStatus, projectChannelLimit, SIGNED_IN_USER } from "@/lib/vcaStore";
+import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, sortRows, useTableSort, ActiveFilterCount, MetricCard, SubStat } from "./PortalShared";
+import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, sortRows, useTableSort, ActiveFilterCount } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -16,15 +16,10 @@ const T = {
     reconnectAll: "Reconnect All",
     exportCsv: "Export CSV",
     addCamera: "Add camera",
-    metricChannelUsage: "Channel Usage",
-    noLicenseLimit: "No license limit set",
-    metricStreamHealth: "Stream Health",
     online: "Online",
     offline: "Offline",
-    onlineSuffix: "online",
     offlineSuffix: (n: number) => `${n} offline`,
     onlineCountLabel: (n: number) => `${n} online`,
-    offlineCountLabel: (n: number) => `${n} offline`,
     searchPlaceholder: "Search by camera name, code, RTSP URL, or IP address",
     filterAllZones: "All zones",
     filterAllStatus: "All status",
@@ -132,8 +127,10 @@ const T = {
     toastReconnectedTitle: "Reconnected",
     toastDisconnectedTitle: "Disconnected",
     toastCameraRemovedTitle: "Camera removed",
-    toastBatchReconnectTitle: "Batch reconnect complete",
-    toastBatchReconnectDesc: (n: number) => `${n} camera(s) reconnected.`,
+    toastReconnectRequestedTitle: "Reconnect requested",
+    toastReconnectRequestedDesc: (n: number) =>
+      `Asked ${n} offline camera${n === 1 ? "" : "s"} to reconnect. Their status updates when they answer.`,
+    toastNoOfflineTitle: "Every camera is online",
     toastExportTitle: "Export complete",
     toastExportDesc: (n: number) => `${n} camera(s) exported to CSV.`,
     csvHeaderName: "Name",
@@ -154,15 +151,10 @@ const T = {
     reconnectAll: "전체 재연결",
     exportCsv: "CSV 내보내기",
     addCamera: "카메라 추가",
-    metricChannelUsage: "채널 사용량",
-    noLicenseLimit: "라이선스 제한 없음",
-    metricStreamHealth: "스트림 상태",
     online: "온라인",
     offline: "오프라인",
-    onlineSuffix: "온라인",
     offlineSuffix: (n: number) => `${n} 오프라인`,
     onlineCountLabel: (n: number) => `온라인 ${n}`,
-    offlineCountLabel: (n: number) => `오프라인 ${n}`,
     searchPlaceholder: "카메라 이름, 코드, RTSP URL, IP 주소로 검색",
     filterAllZones: "전체 구역",
     filterAllStatus: "전체 상태",
@@ -270,8 +262,10 @@ const T = {
     toastReconnectedTitle: "재연결됨",
     toastDisconnectedTitle: "연결 해제됨",
     toastCameraRemovedTitle: "카메라 삭제됨",
-    toastBatchReconnectTitle: "일괄 재연결 완료",
-    toastBatchReconnectDesc: (n: number) => `카메라 ${n}대가 재연결되었습니다.`,
+    toastReconnectRequestedTitle: "재연결 요청됨",
+    toastReconnectRequestedDesc: (n: number) =>
+      `오프라인 카메라 ${n}대에 재연결을 요청했습니다. 상태는 카메라가 응답하면 갱신됩니다.`,
+    toastNoOfflineTitle: "모든 카메라가 온라인입니다",
     toastExportTitle: "내보내기 완료",
     toastExportDesc: (n: number) => `카메라 ${n}대가 CSV로 내보내졌습니다.`,
     csvHeaderName: "이름",
@@ -845,8 +839,6 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
   // Anything not yet analysed — queued or mid-run. Both are "not done", and an administrator does
   // the same thing about either: wait, or find out why.
 
-  const limit = project ? projectChannelLimit(project) : undefined;
-  const overLimit = !!limit && projectCameras.length > limit;
 
   // `password` is read off the form and dropped here on purpose — see CameraFormValues. Everything
   // else the form collects is stored.
@@ -888,10 +880,25 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
     showToast({ variant: "warning", title: t.toastCameraRemovedTitle, desc: cam.name });
   };
 
+  /**
+   * Asks for a reconnect. Does not claim one happened.
+   *
+   * This used to write `online` onto every offline camera and say "8 cameras reconnected" — with no
+   * RTSP attempt, no server call and nothing checking the result. The screen went 51 → 59 online,
+   * the Overview's "things to do" line about offline cameras disappeared, and all eight were still
+   * down. A button that reports a success it did not verify is worse than no button.
+   *
+   * So it reports the request and leaves the status alone. Whether a camera came back is the
+   * camera's answer, and the backend that polls it is confirmed as planned — when it lands, this
+   * gets a call and the copy already tells the truth.
+   */
   const batchReconnect = () => {
     const offline = projectCameras.filter(c => c.status === "offline");
-    offline.forEach(c => setCameraStatus(c.id, "online"));
-    showToast({ variant: "success", title: t.toastBatchReconnectTitle, desc: t.toastBatchReconnectDesc(offline.length) });
+    if (offline.length === 0) {
+      showToast({ variant: "info", title: t.toastNoOfflineTitle });
+      return;
+    }
+    showToast({ variant: "info", title: t.toastReconnectRequestedTitle, desc: t.toastReconnectRequestedDesc(offline.length) });
   };
 
   // Reads only what the browser can tell us without decoding the file: its name, size and whether
@@ -1030,58 +1037,13 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           endpoint yet, so the figure was a permanent 0 (or, after an upload, a number that never
           cleared). The totals are on the video / image tabs below anyway, with each file's own
           state in its row. */}
-      {/* No cards. Two figures on the page, capped at 340px each and left-aligned with the table.
-          They were white boxes on a white canvas, which bought two rectangles and nothing else —
-          and they are not objects in their own right, they are the headline for the list below.
-          `1fr 1fr` came first and gave them ~650px each on a wide monitor: a 6px bar with half a
-          screen of empty card around it, and the table pushed most of a fold down for it. */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 340px))", justifyContent: "start", gap: "32px", marginBottom: "20px" }}>
-        {/* Dense form: label and figure share a line, the bar runs the full width under them, and
-            the online/offline split sits beside the number instead of in a bordered footer.
-            With the card gone, the gap between the two has to do the separating a border used to —
-            hence 32 rather than the card grid's 12. */}
-        <MetricCard
-          label={t.metricChannelUsage}
-          dense
-          bare
-          accentBorder={overLimit ? "1px solid var(--danger-400)" : undefined}
-          value={
-            <span style={{ display: "flex", alignItems: "baseline", gap: "4px", flexShrink: 0, whiteSpace: "nowrap" }}>
-              <span style={{ fontSize: "20px", fontWeight: 800, color: overLimit ? "var(--danger-400)" : "var(--gray-900)" }}>{projectCameras.length}</span>
-              {limit ? <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{`/ ${limit}`}</span> : null}
-            </span>
-          }
-        >
-          {limit ? (
-              <div style={{ width: "100%", height: "6px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${Math.min(100, (projectCameras.length / limit) * 100)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--info-500)" }} />
-              </div>
-            ) : <p style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.noLicenseLimit}</p>}
-        </MetricCard>
-
-        <MetricCard
-          label={t.metricStreamHealth}
-          dense
-          bare
-          value={
-            <span style={{ display: "flex", alignItems: "baseline", gap: "8px", flexShrink: 0, whiteSpace: "nowrap" }}>
-              <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</span>
-                <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.onlineSuffix}</span>
-              </span>
-              {/* Beside the number, not under the card: the two counts are one reading. */}
-              <SubStat color="var(--danger-400)" label={t.offlineCountLabel(offlineCount)} />
-            </span>
-          }
-        >
-          <div style={{ width: "100%", height: "6px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
-            <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--success-400)" }} />
-            <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
-          </div>
-        </MetricCard>
-
-      </div>
-
+      {/* No metric strip here.
+          It carried channel usage and the online/offline split — both of which are cards on the
+          Overview, one click up the rail, and neither of which is what this screen is for. The
+          tabs below already count what the list holds, the status filter is where an offline count
+          is acted on rather than read, and a non-zero offline count raises a line in the Overview's
+          "things to do". Two figures repeated from the previous screen were pushing the table they
+          describe half a fold down. */}
       {/* Top-level cut of the list, with counts on the tabs. An underlined tab row rather than a
           fourth select in the filter strip below: which kind of source you are looking at is a
           different question from how you are narrowing that kind, and the counts belong where the
@@ -1144,7 +1106,13 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
         <FilterSelect
           value={statusFilter}
           onChange={v => setStatusFilter(v as typeof statusFilter)}
-          options={[{ value: "ALL", label: t.filterAllStatus }, { value: "online", label: t.online }, { value: "offline", label: t.offline }]}
+          /* Counts on the options, the way the VIP registry's filters carry theirs. This is where
+             the offline figure earns its place — next to the control that acts on it. */
+          options={[
+            { value: "ALL", label: t.filterAllStatus },
+            { value: "online", label: `${t.online} (${onlineCount})` },
+            { value: "offline", label: `${t.offline} (${offlineCount})` },
+          ]}
         />
         <FilterSelect
           value={aiFilter}
