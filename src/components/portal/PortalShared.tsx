@@ -573,7 +573,7 @@ export function SelectedCheckIcon({ size = 14 }: { size?: number }) {
  * two — the Input Sources strip was a single bordered box with three columns divided by rules,
  * which read as a different component doing the same job one screen over.
  */
-export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense, bare, value, onClick, children }: {
+export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense, bare, value, chip, onClick, children }: {
   label: string;
   /** Optional. Input Sources drops the badge: its cards sit directly above a long table, so the
    *  32px badge was spending a sixth of the card's height on decoration that the value and the
@@ -613,6 +613,14 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
    * directly beneath them: there is nowhere to go.
    */
   onClick?: () => void;
+  /**
+   * A word for the state, beside the icon — "Healthy", "+12 this month", "2 portal · 4 app".
+   *
+   * The un-dense card leads with a number, and a number alone makes the reader do the judging:
+   * 51 of 59 is good, 5 of 5 accounts is neither. The chip says which, in the place the eye lands
+   * first. Only where there is something true to say; a card without one just has an icon there.
+   */
+  chip?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const Icon = icon;
@@ -639,21 +647,27 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
         ...(onClick ? { textAlign: "left" as const, font: "inherit", cursor: "pointer", width: "100%" } : null),
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: dense ? 0 : (Icon ? "6px" : "2px") }}>
+      {/* Dense keeps label and figure on one line. Un-dense leads with the icon and its chip, then
+          the label under them and the figure under that — the reference card's order, which puts
+          the chip where the eye starts rather than after the number it qualifies. */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: dense ? "space-between" : "flex-start", marginBottom: dense ? 0 : (Icon || chip ? "10px" : "2px") }}>
+        {!dense && Icon && (
+          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
+            <Icon />
+          </span>
+        )}
+        {!dense && chip}
         {/* Sentence case, not caps. The label carries multi-word names ("Portal Accounts &
             Permissions"), which all-caps at 10px turns into a block to decode rather than read —
             and toUpperCase() did nothing at all to the Korean strings, so the two languages were
             drawing two different headings. Same 12px/600/gray-500 as every other secondary line
             on these cards. */}
-        <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap", flexShrink: 0 }}>{label}</p>
-        {dense
-          ? value
-          : Icon && (
-            <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
-              <Icon />
-            </span>
-          )}
+        {dense && <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap", flexShrink: 0 }}>{label}</p>}
+        {dense ? value : null}
       </div>
+      {!dense && (
+        <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", marginBottom: "2px" }}>{label}</p>
+      )}
       {/* Dense keeps the bar on its own line under the label and figure. It shared their line for
           a while, which was one row shorter but left the bar as long as whatever space the figure
           did not take — and the two cards' figures are different lengths, so the two bars came out

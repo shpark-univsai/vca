@@ -27,6 +27,14 @@ const T = {
     greetEvening: (name: string) => `Good evening, ${name}`,
     greetSub: (project: string) => `Here's the current pulse of your ${project} network.`,
     liveMonitoring: "LIVE MONITORING",
+    chipHealthy: "HEALTHY",
+    chipAttention: (n: number) => `${n} OFFLINE`,
+    chipNewThisMonth: (n: number) => `+${n} THIS MONTH`,
+    chipAccessSplit: (portal: number, app: number) => `${portal} PORTAL · ${app} APP`,
+    statUtilised: (pct: number) => `${pct}% utilised`,
+    statAvailable: (n: number) => `${n} available`,
+    statOnlineShare: (pct: number) => `${pct}% online`,
+    statOffline: (n: number) => `${n} offline`,
     noCamerasOnline: "NO CAMERA ONLINE",
     approveAccessRequests: "Approve Access Requests",
     cameraConnectivity: "Camera Connectivity",
@@ -93,6 +101,14 @@ const T = {
     greetEvening: (name: string) => `좋은 저녁이에요, ${name}님`,
     greetSub: (project: string) => `${project} 네트워크의 현재 상태입니다.`,
     liveMonitoring: "실시간 모니터링",
+    chipHealthy: "정상",
+    chipAttention: (n: number) => `오프라인 ${n}`,
+    chipNewThisMonth: (n: number) => `이번 달 +${n}`,
+    chipAccessSplit: (portal: number, app: number) => `포털 ${portal} · 앱 ${app}`,
+    statUtilised: (pct: number) => `${pct}% 사용`,
+    statAvailable: (n: number) => `${n} 여유`,
+    statOnlineShare: (pct: number) => `온라인 ${pct}%`,
+    statOffline: (n: number) => `오프라인 ${n}`,
     noCamerasOnline: "온라인 카메라 없음",
     approveAccessRequests: "접근 요청 승인",
     cameraConnectivity: "카메라 연결 상태",
@@ -168,6 +184,32 @@ function ShieldIcon() { return <Shield size={16} strokeWidth={2.1} />; }
 function PlusIcon() { return <Plus size={14} strokeWidth={2.4} />; }
 function UserPlusIcon() { return <UserPlus size={14} strokeWidth={2.4} />; }
 function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={3.36} />; }
+function StateChip({ text, tone = "neutral" }: { text: string; tone?: "neutral" | "good" | "bad" }) {
+  const c = tone === "good"
+    ? { bg: "var(--success-100)", fg: "var(--success-400)" }
+    : tone === "bad"
+      ? { bg: "var(--danger-100)", fg: "var(--danger-400)" }
+      : { bg: "var(--gray-100)", fg: "var(--gray-600)" };
+  return (
+    <span style={{
+      fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px",
+      padding: "3px 8px", borderRadius: "999px", whiteSpace: "nowrap",
+      backgroundColor: c.bg, color: c.fg,
+    }}>{text}</span>
+  );
+}
+
+/** The pair of small figures under a card's bar — "86% utilised" on the left, "14 available" on
+ *  the right. Only cards with a bar have one: it is the bar's legend, not a footer. */
+function BarStats({ left, right }: { left: string; right: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginTop: "8px" }}>
+      <span style={{ fontSize: "11px", color: "var(--gray-500)" }}>{left}</span>
+      <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{right}</span>
+    </div>
+  );
+}
+
 function ExitIcon() { return <LogOut size={14} strokeWidth={2.4} />; }
 
 /**
@@ -284,6 +326,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // startsWith, not equality: registeredAt is a date on the seeded rows and a full ISO instant on
   // anything registered through Portal now, and "===" quietly counted none of the new ones.
   const todayVipCount = todayStr ? projectPersons.filter(p => p.registeredAt.startsWith(todayStr)).length : 0;
+  // Registered since the first of this month — the chip's "+12 this month". Same startsWith rule
+  // the today figure uses: registeredAt is a date on seeded rows and an instant on new ones.
+  const monthStr = nowMs !== null ? new Date(nowMs).toISOString().slice(0, 7) : null;
+  const newVipsThisMonth = monthStr ? projectPersons.filter(p => p.registeredAt.startsWith(monthStr)).length : 0;
+  const onlineShare = projectCameras.length ? Math.round((onlineCount / projectCameras.length) * 100) : 0;
+  const channelShare = channelLimit ? Math.round((projectCameras.length / channelLimit) * 100) : 0;
   const highPriorityVipCount = projectPersons.filter(p => p.priorityLabel === "high" || p.priorityLabel === "very_high").length;
 
   const filteredCameraRows = (cameraStatusFilter === "offline" ? projectCameras.filter(c => c.status === "offline") : projectCameras)
@@ -464,7 +512,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               and invited. Spending them on decoration is what made the state colours stop reading
               as state. Colour on this screen now means something or is grey. */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: CARD_GAP, marginBottom: CARD_GAP }}>
-            <MetricCard label={t.cameraConnectivity} icon={VideoIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)" onClick={() => onTabChange("cameras")}>
+            <MetricCard
+              label={t.cameraConnectivity} icon={VideoIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)"
+              chip={offlineCount === 0
+                ? <StateChip text={t.chipHealthy} tone="good" />
+                : <StateChip text={t.chipAttention(offlineCount)} tone="bad" />}
+              onClick={() => onTabChange("cameras")}
+            >
               {/* Figure left, bar right, one line.
                   Stacked, the bar cost the card a whole row for something 8px tall, and the right
                   half of the card sat empty on a wide monitor.
@@ -482,6 +536,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
                 </div>
               </div>
+              <BarStats left={t.statOnlineShare(onlineShare)} right={t.statOffline(offlineCount)} />
               {/* The online/offline legend that used to sit under a rule here is gone: "51 / 59
                   connected" already gives both numbers, the bar's red segment shows the share, and
                   a non-zero offline count is a line in the "things to do" strip above. */}
@@ -504,13 +559,18 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--info-500)" }} />
                 </div>
               </div>
+              {channelLimit ? <BarStats left={t.statUtilised(channelShare)} right={t.statAvailable(Math.max(0, channelLimit - projectCameras.length))} /> : null}
               {/* Plan name, "Manage" and the expiry chip are gone from here. This card answers one
                   question — how much of the licence is in use — and the rest of the contract is a
                   whole tab away, one click down the rail. An expiry that is actually close raises a
                   line in the "things to do" strip instead of wearing a chip on a card all year. */}
             </MetricCard>
 
-            <MetricCard label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)" onClick={() => onTabChange("vip")}>
+            <MetricCard
+              label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)"
+              chip={newVipsThisMonth > 0 ? <StateChip text={t.chipNewThisMonth(newVipsThisMonth)} /> : undefined}
+              onClick={() => onTabChange("vip")}
+            >
               {/* One row, no bar and no footer rule.
                   A bar needs a denominator that means something. The two cards to the left have
                   one — cameras installed, channels licensed — and these two do not: nobody manages
@@ -535,7 +595,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
             </MetricCard>
 
-            <MetricCard label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)" onClick={() => onTabChange("users")}>
+            <MetricCard
+              label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)"
+              chip={<StateChip text={t.chipAccessSplit(portalUserCount, appUserCount)} />}
+              onClick={() => onTabChange("users")}
+            >
               {/* One row, no bar and no footer rule.
                   A bar needs a denominator that means something. The two cards to the left have
                   one — cameras installed, channels licensed — and these two do not: nobody manages

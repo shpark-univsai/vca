@@ -236,22 +236,21 @@ export default function ProjectSidebar({ brand, team, project, tab, onTabChange,
                     padding: collapsed ? "12px 0" : "11px 14px",
                     position: "relative",
                     /*
-                     * The current row: a quiet gray-800 fill with a bar down its left edge, which
-                     * is the shape the reference rail uses. A solid primary-400 pill was the first
-                     * attempt and it shouted — a sixth of the rail in full accent, next to nothing
-                     * else coloured. The bar carries the accent in about a tenth of the area and
-                     * says the same thing, and the fill alone would be too close to hover.
+                     * The current row: a gray-800 fill, and the label and icon in primary-400.
+                     *
+                     * The accent moved from the furniture to the text. A solid primary pill was
+                     * the first attempt (it shouted, a sixth of the rail in full accent) and a bar
+                     * down the left edge was the second — but a bar is a mark beside the row,
+                     * while the colour of the words is the row. Between the fill and the coloured
+                     * label there is no reading in which the current item is unclear.
                      */
                     backgroundColor: active ? "var(--gray-800)" : undefined,
-                    color: active ? "white" : "var(--gray-300)",
+                    color: active ? "var(--primary-400)" : "var(--gray-300)",
                     fontSize: "13px", fontWeight: active ? 600 : 500,
                     whiteSpace: "nowrap", width: "100%",
                   }}
                 >
-                  {active && !collapsed && (
-                    <span style={{ position: "absolute", left: 0, top: "8px", bottom: "8px", width: "3px", borderRadius: "0 3px 3px 0", backgroundColor: "var(--primary-400)" }} />
-                  )}
-                  <span style={{ display: "flex", flexShrink: 0 }}><Icon color={active ? "white" : "var(--gray-300)"} /></span>
+                  <span style={{ display: "flex", flexShrink: 0 }}><Icon color={active ? "var(--primary-400)" : "var(--gray-300)"} /></span>
                   {!collapsed && (
                     <>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{t.label[lang]}</span>
