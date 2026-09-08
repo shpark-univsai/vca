@@ -975,25 +975,27 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
               The panel's subtitle is gone with it — the two column labels say what it said.
             */}
-            {/* The figure rides on the title's line. It had a block of its own above the chart —
-                title, then figure, then chart — which made this card the tallest thing on a page
-                whose point is the four cards and the camera list. On one line the panel says what
-                it is and how today is going in the same 22px. */}
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBottom: "12px" }}>
+            {/* The figure under the title, not out on its line's right end.
+                It sat opposite the title across the card's whole width, which put the week's
+                total as far from the words naming it as the layout allowed — you read "Detections
+                · last 7 days" and then travelled 600px to find the number it is talking about.
+                Under the title it is the next thing you read, which is what it is. */}
+            <div style={{ marginBottom: "12px" }}>
               <SectionHead title={t.trendTitle} />
-              <span style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", marginTop: "4px" }}>
                 <span title={t.weekTotalHint(today.total.toLocaleString("en-US"))} style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>
                   {weekTotal.toLocaleString("en-US")}
                 </span>
-                {/* Grey, not green or red. A busier day than yesterday is neither good news nor
+                {/* Grey, not green or red. A busier week than the last is neither good news nor
                     bad, and colouring it would send the reader looking for a fault nobody is
                     reporting. */}
                 <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", color: "var(--gray-500)" }}>
                   {detectionDelta >= 0 ? <ArrowUp size={11} strokeWidth={2.6} /> : <ArrowDown size={11} strokeWidth={2.6} />}
                   {t.vsYesterday(detectionDelta)}
                 </span>
-              </span>
+              </div>
             </div>
+
             {/* One subject, one card. The camera-drops list used to sit on the right of this one,
                 joined to it by nothing but the seven days they shared — a period is not a subject.
                 What the cameras saw and whether the cameras worked are two questions, and the
