@@ -265,10 +265,34 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
   const selected = options.find(o => o.value === value);
 
   return (
-    // inline-flex when the trigger sizes to its own label, so this wrapper hugs it and the
-    // dropdown's 100% below means the trigger's width and not the whole cell's. Block otherwise,
-    // where the trigger already fills the row and 100% is the same number either way.
-    <div ref={ref} style={{ position: "relative", display: fitContent ? "inline-flex" : "block" }}>
+    /*
+     * inline-GRID when the trigger sizes to itself, so it can be as wide as the list it opens.
+     *
+     * It used to hug the selected label, which meant "All groups" was narrow and the open list —
+     * sized to its longest option — was wider, so the thing jumped sideways on every click. The
+     * fix is the oldest one in the book: a hidden copy of every option stacked in the same grid
+     * cell as the trigger. The cell is as wide as the widest of them, the trigger fills the cell,
+     * and neither the label nor the list decides the width alone.
+     *
+     * Block otherwise, where the trigger already fills its row and 100% is the same number either
+     * way.
+     */
+    <div ref={ref} style={{
+      position: "relative",
+      ...(fitContent
+        ? { display: "inline-grid", maxWidth: "min(340px, 90vw)" }
+        : { display: "block" }),
+    }}>
+      {fitContent && (
+        <div aria-hidden style={{ gridArea: "1 / 1", visibility: "hidden", height: 0, overflow: "hidden", pointerEvents: "none" }}>
+          {options.map(o => (
+            /* The trigger's own type, plus its box: 12 left padding, then 12 right padding + 8 gap
+               + 12 chevron on the other side. Same numbers as the button below — if those change,
+               these do. */
+            <div key={o.value} style={{ fontSize: "13px", fontWeight: 600, whiteSpace: "nowrap", padding: "0 32px 0 12px" }}>{o.label}</div>
+          ))}
+        </div>
+      )}
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -276,7 +300,7 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
         onMouseLeave={() => setHovered(false)}
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px",
-          ...(fitContent ? {} : { width: "100%" }), boxSizing: "border-box",
+          ...(fitContent ? { gridArea: "1 / 1", width: "100%" } : { width: "100%" }), boxSizing: "border-box",
           height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "10px",
           backgroundColor: "white", cursor: "pointer", whiteSpace: "nowrap", outline: "none",
           // Open is this control's focused state, and it now looks like one — the same ring a text
@@ -284,7 +308,7 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
           ...(open ? FIELD_FOCUS : { border: hovered ? "1px solid var(--gray-400)" : BORDER }),
         }}
       >
-        <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-900)" }}>{selected?.label ?? "Select"}</span>
+        <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis" }}>{selected?.label ?? "Select"}</span>
         <span style={{ display: "flex", color: "var(--gray-600)", flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.87" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </span>
