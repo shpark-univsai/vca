@@ -1020,6 +1020,58 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               that gives the table its five columns and still leaves a readable panel. */}
           <div style={{ display: "grid", gridTemplateColumns: "1.75fr 1fr", gap: CARD_GAP, alignItems: "stretch", maxHeight: OVERVIEW_PANEL_MAX_HEIGHT, marginBottom: CARD_GAP }}>
             <div style={{ display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
+              {/*
+                Stream drops, as a grid rather than a list.
+
+                A list of "Angmokio 3 — 4" answers who but not when, and those are different
+                errands: four drops in one afternoon is a power cut, one drop a day for four days
+                is a camera on its way out. Seven cells per camera, oldest on the left, shaded by
+                how many times it dropped that day — a heat grid is the smallest diagram that
+                carries both, and at 14px a row it costs less height than the list it replaces.
+
+                Above the camera table, not under it. Same subject — that table is the fleet now,
+                this is the fleet this week — but the table is five hundred pixels of scrolling
+                list, and a short block of four rows placed after it is a block nobody reaches. The
+                thing that says "these four need looking at" comes before the list you browse.
+              */}
+              {unstable.length > 0 && (
+                <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "16px", flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "10px", marginBottom: "10px" }}>
+                    <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.unstableTitle}</p>
+                    <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{t.dropsAxisHint}</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {unstable.map(({ camera, drops, dropsByDay }) => (
+                      <button
+                        key={camera.id}
+                        onClick={() => { setInspectCameraId(camera.id); onTabChange("cameras"); }}
+                        className="portal-attention-row"
+                        style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", border: "none", background: "none", padding: "4px 6px", margin: "0 -6px", borderRadius: "6px", cursor: "pointer", fontFamily: "inherit" }}
+                      >
+                        <span style={{ display: "flex", alignItems: "baseline", gap: "6px", minWidth: 0, flex: 1, textAlign: "left" }}>
+                          <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
+                          <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap", flexShrink: 0 }}>{camera.zone}</span>
+                        </span>
+                        {/* Three steps, not a gradient: nobody reads a shade off a scale, but
+                            "empty / once / more than once" is a distinction you can see. */}
+                        <span style={{ display: "flex", gap: "3px", flexShrink: 0 }}>
+                          {dropsByDay.map((n, day) => (
+                            <span
+                              key={day}
+                              title={nowMs !== null ? `${sgtDateKey(new Date(nowMs - (6 - day) * 86400000))} · ${n}` : undefined}
+                              style={{
+                                width: "12px", height: "12px", borderRadius: "3px",
+                                backgroundColor: n === 0 ? "var(--gray-100)" : n === 1 ? "var(--primary-200)" : "var(--primary-400)",
+                              }}
+                            />
+                          ))}
+                        </span>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0, width: "14px", textAlign: "right" }}>{drops}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ padding: "16px 20px", flexShrink: 0 }}>
                   {/* No "View inventory" action up here. The footer of this same panel is already
@@ -1149,57 +1201,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 )}
               </div>
 
-              {/*
-                Stream drops, as a grid rather than a list.
-
-                A list of "Angmokio 3 — 4" answers who but not when, and those are different
-                errands: four drops in one afternoon is a power cut, one drop a day for four days
-                is a camera on its way out. Seven cells per camera, oldest on the left, shaded by
-                how many times it dropped that day — a heat grid is the smallest diagram that
-                carries both, and at 14px a row it costs less height than the list it replaces.
-
-                Under the camera table because it is the same subject as the camera table: that
-                one is the fleet now, this is the fleet this week. It used to sit beside the
-                detections chart, joined to it by nothing but a shared seven days.
-              */}
-              {unstable.length > 0 && (
-                <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "16px", flexShrink: 0 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "10px", marginBottom: "10px" }}>
-                    <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.unstableTitle}</p>
-                    <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{t.dropsAxisHint}</span>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    {unstable.map(({ camera, drops, dropsByDay }) => (
-                      <button
-                        key={camera.id}
-                        onClick={() => { setInspectCameraId(camera.id); onTabChange("cameras"); }}
-                        className="portal-attention-row"
-                        style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", border: "none", background: "none", padding: "4px 6px", margin: "0 -6px", borderRadius: "6px", cursor: "pointer", fontFamily: "inherit" }}
-                      >
-                        <span style={{ display: "flex", alignItems: "baseline", gap: "6px", minWidth: 0, flex: 1, textAlign: "left" }}>
-                          <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
-                          <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap", flexShrink: 0 }}>{camera.zone}</span>
-                        </span>
-                        {/* Three steps, not a gradient: nobody reads a shade off a scale, but
-                            "empty / once / more than once" is a distinction you can see. */}
-                        <span style={{ display: "flex", gap: "3px", flexShrink: 0 }}>
-                          {dropsByDay.map((n, day) => (
-                            <span
-                              key={day}
-                              title={nowMs !== null ? `${sgtDateKey(new Date(nowMs - (6 - day) * 86400000))} · ${n}` : undefined}
-                              style={{
-                                width: "12px", height: "12px", borderRadius: "3px",
-                                backgroundColor: n === 0 ? "var(--gray-100)" : n === 1 ? "var(--primary-200)" : "var(--primary-400)",
-                              }}
-                            />
-                          ))}
-                        </span>
-                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0, width: "14px", textAlign: "right" }}>{drops}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* The right column: who was added, then what changed. Both are read at a glance and
