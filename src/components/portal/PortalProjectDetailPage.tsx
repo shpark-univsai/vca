@@ -828,8 +828,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     ))}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <SubStat color="var(--gray-900)" label={t.legendOnline(onlineCount)} />
-                    <SubStat color="var(--gray-400)" label={t.legendOffline(offlineCount)} />
+                    <SubStat color="var(--gray-300)" label={t.legendOnline(onlineCount)} />
+                    <SubStat color="var(--danger-400)" label={t.legendOffline(offlineCount)} />
                   </div>
                 </div>
                 {visibleCameraRows.length === 0 ? (
@@ -877,17 +877,22 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                               ? `${formatElapsed(nowMs - new Date(c.lastSeenAt).getTime())}${t.agoSuffix}`
                               : "—"}
                           </span>
-                          <span style={{
-                            fontSize: "12px", fontWeight: 600, padding: "4px 8px", borderRadius: "6px", width: "fit-content",
-                            // Neither green nor red. This column repeats itself eleven times, and
-                            // a green pill on every healthy row spends the strongest signal on the
-                            // ordinary case — while eight red ones made the panel read as an
-                            // incident report. Online is the plain text colour, offline is grey:
-                            // one is present, the other is not, and the count that matters is
-                            // stated once in the legend above and in the strip at the top of the
-                            // page.
-                            backgroundColor: "var(--gray-100)", color: online ? "var(--gray-900)" : "var(--gray-400)",
-                          }}>
+                          {/*
+                            A dot and a word, no pill.
+
+                            Filled pills are for a column whose values vary — Rox's account table
+                            is the closest reference here and it does exactly this: a small dot
+                            carries the state and the label stays plain text. Eleven rows of the
+                            same two words made pills into texture rather than information.
+
+                            The greys were also the wrong way round. Offline is the exception and
+                            it was the fainter of the two, so the rows worth reading were the
+                            hardest to read. Now the ordinary case is quiet (grey dot, grey word)
+                            and the exception is dark, with the only colour in the column a 5px
+                            red dot — enough to find down a scrolling list, too small to shout.
+                          */}
+                          <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 600, color: online ? "var(--gray-500)" : "var(--gray-900)" }}>
+                            <span style={{ width: "5px", height: "5px", borderRadius: "50%", flexShrink: 0, backgroundColor: online ? "var(--gray-300)" : "var(--danger-400)" }} />
                             {online ? t.online : t.offline}
                           </span>
                           {/* gray-500 at 600, not gray-900 at 700. It repeats on every row, and
