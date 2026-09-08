@@ -8,7 +8,7 @@ import { NewTeamModal } from "./TeamSwitcher";
 import ProjectSwitcher from "./ProjectSwitcher";
 import PortalNewProjectWizard from "./PortalNewProjectWizard";
 import TeamSwitcher from "./TeamSwitcher";
-import ProjectSidebar, { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
+import ProjectSidebar, { NAV_GROUPS, PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
 import PortalMyPage from "./PortalMyPage";
 import PortalAccountMenu from "./PortalAccountMenu";
 import { ToastProvider } from "../Toast";
@@ -17,8 +17,8 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 
 const T = {
-  en: { noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar", newProject: "New project" },
-  ko: { noTeam: "팀 없음", expand: "사이드바 펼치기", collapse: "사이드바 접기", newProject: "새 프로젝트" },
+  en: { noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar", newProject: "New project", myPageCrumb: "My page" },
+  ko: { noTeam: "팀 없음", expand: "사이드바 펼치기", collapse: "사이드바 접기", newProject: "새 프로젝트", myPageCrumb: "마이페이지" },
 } as const;
 
 function BreadcrumbChevron() {
@@ -183,7 +183,18 @@ export default function PortalShell() {
         .portal-hamburger-btn:hover{background-color:var(--gray-100)}
       `}</style>
 
-      {/* Top bar — logo · product name · team · project switcher (Clerk-style breadcrumb) */}
+      {/*
+        Top bar — where you are, and who you are. Nothing else.
+
+        It used to carry the wordmark, the team switcher and the project switcher; those are the
+        workspace's identity, so they moved into the rail with the navigation they belong to (the
+        reference dashboard puts them there too). What is left on the left is the crumb that names
+        the screen — the rail says which project, this says which page of it — and on the right the
+        account menu.
+
+        The wizard is the exception: it renders without a rail, so the trail it needs (which team,
+        and that you are creating rather than browsing) has nowhere else to go and stays here.
+      */}
       <div style={{
         height: "62px", backgroundColor: "white", borderBottom: "1px solid var(--gray-300)",
         display: "flex", alignItems: "center", padding: "0 24px", flexShrink: 0, gap: "10px",
@@ -202,10 +213,6 @@ export default function PortalShell() {
             <SidebarToggleIcon />
           </button>
         )}
-        <span style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", flexShrink: 0 }}>VCA Portal</span>
-
-        <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-300)", margin: "0 2px" }}>/</span>
-
         {/* The breadcrumb says where you are, and during creation you are not inside any project —
             so the last crumb becomes the act of creating one. It used to keep naming whichever
             project happened to be selected, which was false (nothing has been created yet) and
@@ -239,11 +246,22 @@ export default function PortalShell() {
               {t.newProject}
             </span>
           </>
+        ) : sidebarVisible ? (
+          <>
+            {/* Group name, then page — the same trail the reference header shows. Both are read
+                off the rail's own tab table, so a tab moved between groups cannot leave the two
+                disagreeing. Plain text: the rail is the way to another page, and a crumb that is
+                also a menu was two of them. */}
+            <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap" }}>
+              {NAV_GROUPS.find(g => g.id === (PROJECT_TABS.find(pt => pt.id === tab)?.group ?? "workspace"))?.label[lang]}
+            </span>
+            <BreadcrumbChevron />
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap" }}>
+              {showAccount ? t.myPageCrumb : PROJECT_TABS.find(pt => pt.id === tab)?.label[lang]}
+            </span>
+          </>
         ) : (
           <>
-            {/* Reads the current team, not teams[0]. Portal can hold several (the signup wizard
-                calls addTeam, and the switcher's own "New team" does), so pinning the header to the
-                first one made it name a different team than the page was actually showing. */}
             <TeamSwitcher currentTeamId={currentOrgId} onSelect={switchTeam} />
             <BreadcrumbChevron />
             <ProjectSwitcher teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />
@@ -279,6 +297,9 @@ export default function PortalShell() {
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           {sidebarVisible && (
             <ProjectSidebar
+              brand="VCA Portal"
+              team={<TeamSwitcher dark currentTeamId={currentOrgId} onSelect={switchTeam} />}
+              project={<ProjectSwitcher dark teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />}
               /* Counts for the rail's badges. Only the three tabs that hold a list of things: a
                  licence is not a count, the server tab lists servers but is read as one setting,
                  and Overview counts nothing of its own. */

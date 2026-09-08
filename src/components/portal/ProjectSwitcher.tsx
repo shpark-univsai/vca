@@ -7,6 +7,12 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH, TABLE_HEADER_COLOR, SelectedCheckIcon } from "./PortalShared";
 
 interface ProjectSwitcherProps {
+  /**
+   * Rendered on the sidebar's gray-900 rail rather than a white bar: the trigger inverts, the
+   * open list does not. A floating panel belongs to the page it covers, not to the surface its
+   * button sits on — every console with a dark rail drops a light menu out of it.
+   */
+  dark?: boolean;
   /** The team whose projects this picker lists. Projects belong to exactly one team, and the
    *  breadcrumb to the left of this control already says which team you are in — listing every
    *  team's projects here would contradict it. */
@@ -93,7 +99,7 @@ function StarIcon({ filled }: { filled: boolean }) {
   );
 }
 
-export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, onNewProject }: ProjectSwitcherProps) {
+export default function ProjectSwitcher({ dark, teamId, currentProjectId, onSelect, onNewProject }: ProjectSwitcherProps) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const TAB_LABELS: Record<Tab, string> = { recent: t.tabRecent, starred: t.tabStarred, all: t.tabAll };
@@ -138,16 +144,20 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
         style={{
           display: "flex", alignItems: "center", gap: "6px",
           border: "none", background: "none", cursor: "pointer",
-          padding: "6px 8px", borderRadius: "8px", color: "var(--gray-900)",
+          padding: "6px 8px", borderRadius: "8px",
+          color: dark ? "white" : "var(--gray-900)",
+          // Fills the rail's width there; hugs its label in the header.
+          ...(dark ? { width: "100%", padding: "8px 10px" } : null),
         }}
       >
         <span
           title={current?.name}
-          style={{ fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", maxWidth: BREADCRUMB_PROJECT_MAX_WIDTH, overflow: "hidden", textOverflow: "ellipsis" }}
+          style={{ fontSize: "13px", fontWeight: 700, whiteSpace: "nowrap", maxWidth: dark ? "100%" : BREADCRUMB_PROJECT_MAX_WIDTH, overflow: "hidden", textOverflow: "ellipsis" }}
         >
           {current?.name ?? t.selectProject}
         </span>
-        <span style={{ color: "var(--gray-600)", display: "flex" }}><ChevronDown size={14} /></span>
+        {dark && <span style={{ flex: 1 }} />}
+        <span style={{ color: dark ? "var(--gray-400)" : "var(--gray-600)", display: "flex" }}><ChevronDown size={14} /></span>
       </button>
 
       {open && (

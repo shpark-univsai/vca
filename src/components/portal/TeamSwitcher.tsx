@@ -46,6 +46,12 @@ function ChevronDown({ size = 12 }: { size?: number }) {
 }
 
 interface TeamSwitcherProps {
+  /**
+   * Rendered on the sidebar's gray-900 rail rather than a white bar: the trigger inverts, the
+   * open list does not. A floating panel belongs to the page it covers, not to the surface its
+   * button sits on — every console with a dark rail drops a light menu out of it.
+   */
+  dark?: boolean;
   currentTeamId: string;
   /** Called with the team to move to. The shell owns what switching means (it lives in the URL). */
   onSelect: (teamId: string) => void;
@@ -62,7 +68,7 @@ interface TeamSwitcherProps {
  * a short list a person knows by heart, projects are a searchable table. Overusing the big modal
  * for two rows would make switching feel heavier than it is.
  */
-export default function TeamSwitcher({ currentTeamId, onSelect }: TeamSwitcherProps) {
+export default function TeamSwitcher({ dark, currentTeamId, onSelect }: TeamSwitcherProps) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const teams = useVcaStore(s => s.teams);
@@ -94,9 +100,13 @@ export default function TeamSwitcher({ currentTeamId, onSelect }: TeamSwitcherPr
           onMouseLeave={() => setHovered(null)}
           style={{
             display: "flex", alignItems: "center", gap: "6px",
-            border: "1px solid var(--gray-300)", borderRadius: "8px", padding: "6px 10px",
-            backgroundColor: hovered === "__trigger" ? "var(--gray-50)" : "white",
-            cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", whiteSpace: "nowrap",
+            borderRadius: "8px", padding: "6px 10px",
+            border: dark ? "1px solid var(--gray-800)" : "1px solid var(--gray-300)",
+            backgroundColor: dark
+              ? (hovered === "__trigger" ? "var(--gray-800)" : "transparent")
+              : (hovered === "__trigger" ? "var(--gray-50)" : "white"),
+            cursor: "pointer", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap",
+            color: dark ? "var(--gray-300)" : "var(--gray-600)",
           }}
         >
           {/* Its own title, so hovering the name reveals the name in full while hovering the rest

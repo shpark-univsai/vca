@@ -107,6 +107,12 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
 ];
 
 interface ProjectSidebarProps {
+  /** Product wordmark, at the head of the rail. */
+  brand?: string;
+  /** The team switcher, passed in rather than built here — the shell owns what switching means. */
+  team?: React.ReactNode;
+  /** The project switcher, same. */
+  project?: React.ReactNode;
   tab: DetailTab;
   /**
    * How many things each tab holds, by tab id. Rendered as a badge on the right of the row —
@@ -124,7 +130,7 @@ interface ProjectSidebarProps {
   myPageOpen: boolean;
 }
 
-export default function ProjectSidebar({ tab, onTabChange, collapsed, myPageOpen, counts }: ProjectSidebarProps) {
+export default function ProjectSidebar({ brand, team, project, tab, onTabChange, collapsed, myPageOpen, counts }: ProjectSidebarProps) {
   const [lang] = usePortalLanguage();
   return (
     <div
@@ -152,6 +158,30 @@ export default function ProjectSidebar({ tab, onTabChange, collapsed, myPageOpen
         .portal-navmenu-item{transition:background-color .12s}
         .portal-navmenu-item:hover{background-color:var(--gray-100)}
       `}</style>
+      {/*
+        Which workspace, above which page of it.
+
+        The wordmark and the two switchers were in the top bar. They are the identity of the thing
+        the rail navigates, so they belong to the rail — which is also where the reference dashboard
+        keeps them, and it leaves the top bar free to say only where in the project you are.
+
+        Hidden when collapsed: a 60px column cannot hold a team name, and a switcher you cannot read
+        is a button that opens a surprise.
+      */}
+      {!collapsed && (brand || team || project) && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "22px", padding: "0 2px" }}>
+          {brand && (
+            <p style={{ fontSize: "15px", fontWeight: 800, color: "white", letterSpacing: "-0.2px", padding: "0 10px" }}>{brand}</p>
+          )}
+          {(team || project) && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {team}
+              {project}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* The nav list is the scroller, not the rail: it is the only part that could ever be long
           enough to need one, and an `overflow: auto` on the rail itself would clip anything a
           child wanted to float outside it. */}
