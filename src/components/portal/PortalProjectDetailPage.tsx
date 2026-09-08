@@ -90,7 +90,7 @@ const T = {
     todaySoFar: "Today so far",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · Vehicle ${vehicle} · Unknown ${unknown.toLocaleString("en-US")}`,
-    unstableTitle: "Stream drops this week",
+    unstableTitle: "Most drops this week",
     noDrops: "Every camera held its stream all week.",
     viewAllCameras: (n: number) => `View all ${n} cameras`,
     recentVipsTitle: "Recently Registered VIPs",
@@ -174,7 +174,7 @@ const T = {
     todaySoFar: "오늘 (진행 중)",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · 차량 ${vehicle} · 미확인 ${unknown.toLocaleString("en-US")}`,
-    unstableTitle: "이번 주 스트림 끊김",
+    unstableTitle: "이번 주 끊김 많은 순",
     noDrops: "이번 주 내내 모든 카메라가 스트림을 유지했습니다.",
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
     recentVipsTitle: "최근 등록된 VIP",
@@ -964,7 +964,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
 
               {/* Which cameras were unreliable, not which are down now — the card above already
-                  says that. A camera that drops four times a week and is online when you look is
+                  says that. The label names the sort, because "Stream drops this week" left the
+                  reader asking whether the list was ordered at all: it is the cameras that dropped
+                  most often, worst first, and a camera that held all week is absent rather than
+                  listed with a zero. A camera that drops four times a week and is online when you look is
                   invisible everywhere else in Portal, and it is exactly the one worth sending
                   somebody to. */}
               {/* Its own side of a rule. Without it the list read as a third column of the chart —
