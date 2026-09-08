@@ -512,6 +512,100 @@ export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
  * Clicking it clears every filter, because the count is exactly the thing you want undone once you
  * have noticed it.
  */
+/**
+ * A row of figures above a list — the shape Portal uses for a page's own summary.
+ *
+ * One cell per figure: the number and its unit, the label under it, and the mark that says which
+ * figure it is at the cell's right edge. Cells share the width equally and are divided by
+ * hairlines, so the row reads as one measured surface rather than as a set of small cards; the
+ * whole thing is about 44px tall, which is the most a summary can cost on a page whose job is the
+ * list beneath it.
+ *
+ * A cell with an onClick is a filter: pressing it narrows the list to the rows it counted and
+ * pressing it again clears that, with the active cell tinted. A cell without one is a statement —
+ * no hover, no pointer, and that difference is the only thing marking it, because a greyed-out
+ * cell in a row of live ones reads as disabled rather than as "not a filter".
+ *
+ * Cells whose figure is zero are dropped by the caller, not here: whether "0 of them" is worth a
+ * column is a question about the number, and only the page knows. (The VIP registry hides them —
+ * a filter that returns an empty table is not worth a click.)
+ *
+ * First used by the VIP registry's registry-health row; Input Sources and Server & API are meant
+ * to take the same shape when they get summaries, which is why this lives here.
+ */
+export interface SummaryCell {
+  key: string;
+  /** 14px lucide icon at stroke 2.4 — the 1.4px Portal draws everywhere. */
+  icon: React.ReactNode;
+  figure: React.ReactNode;
+  /** The small word after the figure: "people", "of 104", "cameras". */
+  unit?: string;
+  label: string;
+  /** warning (amber) for a defect somebody has to fix, neutral (primary) for a fact. */
+  tone?: "warning" | "neutral";
+  onClick?: () => void;
+  active?: boolean;
+  /** Tooltip — say what pressing it does, since the cell itself is a number. */
+  title?: string;
+}
+
+export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
+  if (cells.length === 0) return null;
+  return (
+    <div style={{
+      display: "flex", alignItems: "stretch", flexWrap: "wrap",
+      backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px",
+      marginBottom: "12px", overflow: "hidden",
+    }}>
+      {cells.map((cell, i) => {
+        // A defect is amber; anything else is the product's own colour rather than grey. A grey
+        // figure in a row of amber ones reads as switched off, and these cells are all live —
+        // the difference between them is what the number means, not whether it counts.
+        const accent = cell.tone === "warning" ? "var(--warning-500)" : "var(--primary-400)";
+        const body = (
+          <>
+            <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
+              <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                <span style={{ fontSize: "20px", fontWeight: 800, color: accent, lineHeight: "22px" }}>{cell.figure}</span>
+                {cell.unit && <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{cell.unit}</span>}
+              </span>
+              <span style={{ fontSize: "11px", lineHeight: "14px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap" }}>{cell.label}</span>
+            </span>
+            {/* marginTop 4 puts the mark's centre on the figure's line rather than at the top of
+                the cell's padding. */}
+            <span style={{ display: "flex", color: accent, flexShrink: 0, marginTop: "4px" }}>{cell.icon}</span>
+          </>
+        );
+        const shared: React.CSSProperties = {
+          flex: 1, minWidth: "128px",
+          display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px",
+          padding: "10px 18px",
+          borderLeft: i === 0 ? "none" : BORDER,
+        };
+        return cell.onClick ? (
+          <button
+            key={cell.key}
+            onClick={cell.onClick}
+            title={cell.title}
+            className="portal-attention-row"
+            style={{
+              ...shared, border: "none", borderLeft: shared.borderLeft, cursor: "pointer",
+              fontFamily: "inherit", textAlign: "left",
+              // The selected cell is tinted rather than outlined: on a panel, "this filter is on"
+              // is a state of the cell, not an annotation on its label.
+              backgroundColor: cell.active ? "var(--warning-100)" : "transparent",
+            }}
+          >
+            {body}
+          </button>
+        ) : (
+          <span key={cell.key} style={shared}>{body}</span>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ActiveFilterCount({ count, onClear, label }: { count: number; onClear: () => void; label: string }) {
   const [hovered, setHovered] = useState(false);
   if (count === 0) return null;

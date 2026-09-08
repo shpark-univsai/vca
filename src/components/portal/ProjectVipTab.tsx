@@ -7,7 +7,7 @@ import { registryHealth, useVcaStore, type Person, type PersonGroup } from "@/li
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, Tooltip, sortRows, useTableSort } from "./PortalShared";
+import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, Tooltip, sortRows, useTableSort } from "./PortalShared";
 
 type VipSortKey = "name" | "priority" | "registered";
 
@@ -1007,77 +1007,46 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         The reach figure on the right is not a defect and is not clickable. It is the question
         nobody else on the page asks — whether this list catches anyone at all.
       */}
-      {(health.missingPhoto.length > 0 || health.embeddingFailed.length > 0 || health.duplicates.length > 0) && (
-        <div style={{
-          display: "flex", alignItems: "stretch", flexWrap: "wrap",
-          backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px",
-          marginBottom: "12px", overflow: "hidden",
-        }}>
-          {([
-            /* An icon per cell, because three numbers in three boxes read as one measurement taken
-               three times. The marks say which failure each is: nothing was uploaded, something was
-               uploaded and could not be read, and the same face twice. 2.4 at 14px is the 1.4px
-               stroke every icon in Portal draws (see ICON_STROKE_PX). */
-            { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, icon: <ImageOff size={14} strokeWidth={2.4} /> },
-            { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed, icon: <AlertTriangle size={14} strokeWidth={2.4} /> },
-            { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates, icon: <Users size={14} strokeWidth={2.4} /> },
-          ]).filter(item => item.count > 0).map((item, i) => {
-            const active = healthFilter === item.key;
-            return (
-              <button
-                key={item.key}
-                onClick={() => setHealthFilter(active ? null : item.key)}
-                title={active ? t.healthClear : t.healthShowOnly}
-                className="portal-attention-row"
-                style={{
-                  flex: 1, minWidth: "128px",
-                  display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px",
-                  padding: "10px 18px", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
-                  borderLeft: i === 0 ? "none" : BORDER,
-                  // The selected figure sits on the warning tint rather than being underlined: on a
-                  // panel this is a filter that is on, and "on" is a state of the cell, not an
-                  // annotation on its label.
-                  backgroundColor: active ? "var(--warning-100)" : "transparent",
-                }}
-              >
-                {/* Figures and words on the left, the mark on the cell's right edge.
-                    It has been beside the number (competed with it) and in front of the label
-                    (fine, but it pushed every label 17px right and the labels stopped sharing a
-                    left edge with the numbers above them). At the far edge it does neither: the
-                    reading column is one clean stack, and the four marks line up down the right
-                    of the strip where a metric card usually puts its icon. */}
-                <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
-                  <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                    <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--warning-500)", lineHeight: "22px" }}>{item.count}</span>
-                    <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthPeopleUnit}</span>
-                  </span>
-                  <span style={{ fontSize: "11px", lineHeight: "14px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap" }}>{item.label}</span>
-                </span>
-                {/* marginTop 4 puts the mark's centre on the figure's line rather than at the top
-                    of the cell's padding. */}
-                <span style={{ display: "flex", color: "var(--warning-500)", flexShrink: 0, marginTop: "4px" }}>{item.icon}</span>
-              </button>
-            );
-          })}
-          {/* The reach figure closes the strip, on the tinted end and not clickable — it is the one
-              number here that is not a defect and cannot be filtered to. */}
-          {/* One share of the row like the others, and the same white ground.
-              It was tinted grey to say "this one is not a filter", which is not what a grey cell at
-              the end of a row says — it reads as disabled, or as a stripe nobody meant. The three
-              on the left light up on hover and take a pointer; this one does neither, and that is
-              the whole difference a reader needs. */}
-          <span style={{ flex: 1, minWidth: "128px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", padding: "10px 18px", borderLeft: BORDER }}>
-            <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
-              <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "22px" }}>{detectedCount}</span>
-                <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthOfTotal(allProjectPersons.length)}</span>
-              </span>
-              <span style={{ fontSize: "11px", lineHeight: "14px", fontWeight: 600, color: "var(--gray-600)" }}>{t.healthReachLabel}</span>
-            </span>
-            <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "4px" }}><Eye size={14} strokeWidth={2.4} /></span>
-          </span>
-        </div>
-      )}
+      {/*
+        Registry health: three defects and the list's reach, in the shared summary strip.
+
+        The three are the same failure from three causes — a person on the list that no camera can
+        match: a photo that was never uploaded, one the model could not read, and a face registered
+        twice (which matches, then alerts twice). Each cell narrows the list to its own rows, which
+        is why these figures live here and not on the Overview.
+
+        The reach figure is not a defect and takes no click. It is the question nothing else on the
+        page asks: whether this list catches anyone at all.
+
+        Zero-count defects are dropped rather than shown as "0" — a filter that returns an empty
+        table is not worth a column. The photo one is normally zero, because the form requires a
+        photo; it appears after a CSV import, which is the only path that can enrol a name without
+        a face.
+      */}
+      <SummaryStrip cells={[
+        ...([
+          { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, icon: <ImageOff size={14} strokeWidth={2.4} /> },
+          { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed, icon: <AlertTriangle size={14} strokeWidth={2.4} /> },
+          { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates, icon: <Users size={14} strokeWidth={2.4} /> },
+        ].filter(item => item.count > 0).map(item => ({
+          key: item.key,
+          icon: item.icon,
+          figure: item.count,
+          unit: t.healthPeopleUnit,
+          label: item.label,
+          tone: "warning" as const,
+          active: healthFilter === item.key,
+          title: healthFilter === item.key ? t.healthClear : t.healthShowOnly,
+          onClick: () => setHealthFilter(healthFilter === item.key ? null : item.key),
+        }))),
+        {
+          key: "reach",
+          icon: <Eye size={14} strokeWidth={2.4} />,
+          figure: detectedCount,
+          unit: t.healthOfTotal(allProjectPersons.length),
+          label: t.healthReachLabel,
+        },
+      ]} />
 
       {/* All / Individuals / Groups. Same underlined row as Input Sources and Users & Permissions. */}
       <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
