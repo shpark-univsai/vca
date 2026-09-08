@@ -1018,9 +1018,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                three times. The marks say which failure each is: nothing was uploaded, something was
                uploaded and could not be read, and the same face twice. 2.4 at 14px is the 1.4px
                stroke every icon in Portal draws (see ICON_STROKE_PX). */
-            { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, icon: <ImageOff size={14} strokeWidth={2.4} /> },
-            { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed, icon: <AlertTriangle size={14} strokeWidth={2.4} /> },
-            { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates, icon: <Users size={14} strokeWidth={2.4} /> },
+            { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, icon: <ImageOff size={12} strokeWidth={2.8} /> },
+            { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed, icon: <AlertTriangle size={12} strokeWidth={2.8} /> },
+            { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates, icon: <Users size={12} strokeWidth={2.8} /> },
           ]).filter(item => item.count > 0).map((item, i) => {
             const active = healthFilter === item.key;
             return (
@@ -1047,7 +1047,11 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                   <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--warning-500)", lineHeight: "22px" }}>{item.count}</span>
                   <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthPeopleUnit}</span>
                 </span>
-                <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap" }}>
+                {/* 12px icons against 11px text, both in a 14px line box. At 14 the glyph filled
+                    the whole box while the letters only reach their cap height, so the mark read
+                    as taller than the words it belongs to; 12 puts the two at the same optical
+                    height. Stroke goes to 2.8 to keep the rendered 1.4px (stroke × size / 24). */}
+                <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap" }}>
                   <span style={{ display: "flex", color: "var(--warning-500)", flexShrink: 0 }}>{item.icon}</span>
                   {item.label}
                 </span>
@@ -1066,8 +1070,8 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "22px" }}>{detectedCount}</span>
               <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthOfTotal(allProjectPersons.length)}</span>
             </span>
-            <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 600, color: "var(--gray-600)" }}>
-              <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Eye size={14} strokeWidth={2.4} /></span>
+            <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", fontWeight: 600, color: "var(--gray-600)" }}>
+              <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Eye size={12} strokeWidth={2.8} /></span>
               {t.healthReachLabel}
             </span>
           </span>
