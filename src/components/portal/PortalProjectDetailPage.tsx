@@ -37,17 +37,17 @@ const T = {
     statOffline: (n: number) => `${n} offline`,
     noCamerasOnline: "NO CAMERA ONLINE",
     approveAccessRequests: "Approve Access Requests",
-    cameraConnectivity: "Camera Connectivity",
+    cameraConnectivity: "Camera connectivity",
     connectedSuffix: (n: number) => `/ ${n} connected`,
     online: "Online",
     offline: "Offline",
-    licenseSubscription: "License Subscription",
+    licenseSubscription: "License subscription",
     channelsUsedSuffix: (limit: number | string) => `/ ${limit} channels used`,
-    vipTargetDb: "VIP / Target DB",
+    vipTargetDb: "VIP / target database",
     todayBadge: (n: number) => `${n} today`,
-    highPriorityLabel: (n: number) => `High priority: ${n}`,
-    portalAccounts: "Portal Accounts & Permissions",
-    accountsSuffix: "accounts",
+    portalAccounts: "Portal accounts",
+    accountsSuffix: "active admins",
+    recordsSuffix: "records",
     noPendingAccessRequests: "No pending access requests.",
     attentionTitle: "Attention needed",
     reviewIssues: "Review issues",
@@ -131,9 +131,9 @@ const T = {
     channelsUsedSuffix: (limit: number | string) => `/ ${limit}채널 사용`,
     vipTargetDb: "VIP / 관심대상 DB",
     todayBadge: (n: number) => `오늘 ${n}건`,
-    highPriorityLabel: (n: number) => `우선순위 높음: ${n}`,
-    portalAccounts: "포털 계정 및 권한",
-    accountsSuffix: "개 계정",
+    portalAccounts: "포털 계정",
+    accountsSuffix: "명",
+    recordsSuffix: "건",
     noPendingAccessRequests: "대기 중인 접근 요청이 없습니다.",
     attentionTitle: "확인 필요",
     reviewIssues: "문제 확인",
@@ -394,7 +394,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const newVipsThisMonth = monthStr ? projectPersons.filter(p => p.registeredAt.startsWith(monthStr)).length : 0;
   const onlineShare = projectCameras.length ? Math.round((onlineCount / projectCameras.length) * 100) : 0;
   const channelShare = channelLimit ? Math.round((projectCameras.length / channelLimit) * 100) : 0;
-  const highPriorityVipCount = projectPersons.filter(p => p.priorityLabel === "high" || p.priorityLabel === "very_high").length;
 
   const filteredCameraRows = (cameraStatusFilter === "offline" ? projectCameras.filter(c => c.status === "offline") : projectCameras)
     .slice()
@@ -568,14 +567,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               each grounded in real store data (no fabricated failure-reason breakdowns the data
               model doesn't have).
 
-              All four icon badges are the same grey. They were green, blue, purple and amber, which
-              is four colours carrying nothing: the icon already says which card this is, and the
-              hues were the same ones the bars below use to mean online, over-limit, high-priority
-              and invited. Spending them on decoration is what made the state colours stop reading
-              as state. Colour on this screen now means something or is grey. */}
+              The icon badges are tinted, one hue per card, as in the reference. They were grey for
+              a while and half the reason still holds — the same hues mean something in the bars
+              below — but the badge is the card's own mark rather than a reading of its figure, and
+              four grey squares made the row look like one card repeated. What the figure is doing
+              is said by the chip beside it, in a word. */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: CARD_GAP, marginBottom: CARD_GAP }}>
             <MetricCard
-              label={t.cameraConnectivity} icon={VideoIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)"
+              label={t.cameraConnectivity} icon={VideoIcon} iconBg="var(--success-100)" iconColor="var(--success-400)"
               chip={offlineCount === 0
                 ? <StateChip text={t.chipHealthy} tone="good" />
                 : <StateChip text={t.chipAttention(offlineCount)} tone="bad" />}
@@ -604,7 +603,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   a non-zero offline count is a line in the "things to do" strip above. */}
             </MetricCard>
 
-            <MetricCard label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)" onClick={() => onTabChange("license")}>
+            <MetricCard label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--info-100)" iconColor="var(--info-500)" onClick={() => onTabChange("license")}>
               {/* Figure left, bar right, one line.
                   Stacked, the bar cost the card a whole row for something 8px tall, and the right
                   half of the card sat empty on a wide monitor.
@@ -629,7 +628,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </MetricCard>
 
             <MetricCard
-              label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)"
+              label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--primary-100)" iconColor="var(--primary-400)"
               chip={newVipsThisMonth > 0 ? <StateChip text={t.chipNewThisMonth(newVipsThisMonth)} /> : undefined}
               onClick={() => onTabChange("vip")}
             >
@@ -644,21 +643,20 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
                 <span style={{ display: "flex", alignItems: "baseline", gap: "8px", flexShrink: 0, whiteSpace: "nowrap" }}>
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectPersons.length}</span>
+                  {/* A suffix, not a second figure — the card states the size of the registry and
+                      the tab behind it breaks priorities down. */}
+                  <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.recordsSuffix}</span>
                   {todayVipCount > 0 && (
                     <span style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "12px", fontWeight: 600, color: "var(--success-400)" }}>
                       <ArrowUpIcon /> {t.todayBadge(todayVipCount)}
                     </span>
                   )}
                 </span>
-                {/* "Registered today: 0" is not here any more: the green ↑ beside the figure says
-                    the same thing when there is anything to say, and said nothing the rest of the
-                    time. */}
-                <p style={{ fontSize: "12px", color: "var(--primary-400)", fontWeight: 600, flexShrink: 0 }}>{t.highPriorityLabel(highPriorityVipCount)}</p>
               </div>
             </MetricCard>
 
             <MetricCard
-              label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)"
+              label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--warning-200)" iconColor="var(--warning-500)"
               chip={<StateChip text={t.chipAccessSplit(portalUserCount, appUserCount)} />}
               onClick={() => onTabChange("users")}
             >
@@ -675,9 +673,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectUsers.length}</span>
                   <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.accountsSuffix}</span>
                 </span>
-                {/* Was a "Manage" link in the corner. The card navigates now, so a second target
-                    inside it pointing at the same tab is just a smaller version of the card. */}
-                <span style={{ fontSize: "12px", color: "var(--gray-500)", flexShrink: 0 }}>{t.accessSplitLabel(portalUserCount, appUserCount)}</span>
               </div>
             </MetricCard>
           </div>
