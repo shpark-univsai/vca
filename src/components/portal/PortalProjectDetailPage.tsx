@@ -83,14 +83,13 @@ const T = {
     noOfflineCameras: "No offline cameras — everything is connected.",
     noCamerasYet: "No cameras connected to this project yet.",
     openCamera: "Open this camera",
-    trendTitle: "Last 7 days",
-    detectionsLabel: "Detections",
+    trendTitle: "Detections · last 7 days",
     todaySuffix: "today",
     vsYesterday: (pct: number) => `${pct > 0 ? "+" : ""}${pct}% vs yesterday`,
     todaySoFar: "Today so far",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · Vehicle ${vehicle} · Unknown ${unknown.toLocaleString("en-US")}`,
-    unstableTitle: "Most drops this week",
+    unstableTitle: "Most drops",
     noDrops: "Every camera held its stream all week.",
     viewAllCameras: (n: number) => `View all ${n} cameras`,
     recentVipsTitle: "Recently Registered VIPs",
@@ -167,14 +166,13 @@ const T = {
     noOfflineCameras: "오프라인 카메라가 없습니다 — 모두 연결되어 있습니다.",
     noCamerasYet: "이 프로젝트에 연결된 카메라가 아직 없습니다.",
     openCamera: "이 카메라 열기",
-    trendTitle: "지난 7일",
-    detectionsLabel: "탐지",
+    trendTitle: "탐지 · 지난 7일",
     todaySuffix: "건 오늘",
     vsYesterday: (pct: number) => `어제 대비 ${pct > 0 ? "+" : ""}${pct}%`,
     todaySoFar: "오늘 (진행 중)",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · 차량 ${vehicle} · 미확인 ${unknown.toLocaleString("en-US")}`,
-    unstableTitle: "이번 주 끊김 많은 순",
+    unstableTitle: "끊김 많은 순",
     noDrops: "이번 주 내내 모든 카메라가 스트림을 유지했습니다.",
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
     recentVipsTitle: "최근 등록된 VIP",
@@ -915,7 +913,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 rule only reads as one if it runs the height of what it divides. */}
             <div style={{ display: "grid", gridTemplateColumns: "1.75fr 1fr", gap: CARD_GAP, alignItems: "stretch" }}>
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.detectionsLabel}</p>
+                {/* No "Detections" label here — it is in the panel's own title now, which was
+                    carrying only the period ("Last 7 days") while this line carried only the
+                    subject. Two heading-ish lines, one fact between them. */}
                 {/* The change sits beside the figure, not under it: it qualifies that number and a
                     line of its own read as a third fact. Baseline-aligned so the small text sits
                     on the big text's line rather than floating in the middle of it.
