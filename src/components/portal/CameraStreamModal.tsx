@@ -192,15 +192,20 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
             {/* An icon in front of each caption. Six captions in two columns is a block of grey
                 text where every line looks like every other one; the marks give each pair a
-                different shape to find it by, and they are the same 12px/2.8 the summary strips
-                use so a label reads the same wherever it appears. */}
+                different shape to find it by.
+
+                11px at stroke 2.2, which renders a 1.0px line — thinner than the 1.4px Portal
+                draws everywhere else, and deliberately so. That standard is set against 13-16px
+                icons sitting beside 12-13px text; here the mark sits beside an 11px caption, where
+                a 12px glyph at 1.4px was both taller than the letters and heavier than their
+                stems. Matching the caption means matching its height and its weight. */}
             {([
-              [t.zone, camera.zone || "—", <MapIcon key="z" size={12} strokeWidth={2.8} />],
-              [t.location, camera.location || "—", <MapPin key="l" size={12} strokeWidth={2.8} />],
-              [t.protocol, camera.protocol ?? "TCP", <Network key="p" size={12} strokeWidth={2.8} />],
-              [t.coordinates, camera.lat !== undefined && camera.lng !== undefined ? `${camera.lat}, ${camera.lng}` : "—", <Crosshair key="c" size={12} strokeWidth={2.8} />],
-              [t.lastDetection, lastDetection ? `${sgtDateKey(lastDetection).slice(5)} ${sgtClockMinutes(lastDetection)}` : t.noRecentDetections, <Clock key="t" size={12} strokeWidth={2.8} />],
-              [t.detectionCount, t.detectionCountValue(cameraEvents.length), <Activity key="a" size={12} strokeWidth={2.8} />],
+              [t.zone, camera.zone || "—", <MapIcon key="z" size={11} strokeWidth={2.2} />],
+              [t.location, camera.location || "—", <MapPin key="l" size={11} strokeWidth={2.2} />],
+              [t.protocol, camera.protocol ?? "TCP", <Network key="p" size={11} strokeWidth={2.2} />],
+              [t.coordinates, camera.lat !== undefined && camera.lng !== undefined ? `${camera.lat}, ${camera.lng}` : "—", <Crosshair key="c" size={11} strokeWidth={2.2} />],
+              [t.lastDetection, lastDetection ? `${sgtDateKey(lastDetection).slice(5)} ${sgtClockMinutes(lastDetection)}` : t.noRecentDetections, <Clock key="t" size={11} strokeWidth={2.2} />],
+              [t.detectionCount, t.detectionCountValue(cameraEvents.length), <Activity key="a" size={11} strokeWidth={2.2} />],
             ] as [string, string, React.ReactNode][]).map(([label, value, icon]) => (
               <div key={label} style={{ minWidth: 0 }}>
                 <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)" }}>
@@ -214,14 +219,14 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
                 character by character, and it does not fit half a sheet. */}
             <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
               <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)" }}>
-                <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Link2 size={12} strokeWidth={2.8} /></span>
+                <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Link2 size={11} strokeWidth={2.2} /></span>
                 {t.rtspUrl}
               </p>
               <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", fontFamily: "monospace", marginTop: "2px", wordBreak: "break-all" }}>{camera.rtspUrl}</p>
             </div>
             <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
               <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)", marginBottom: "5px" }}>
-                <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Scan size={12} strokeWidth={2.8} /></span>
+                <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Scan size={11} strokeWidth={2.2} /></span>
                 {t.mappedAiEngines}
               </p>
               {aiFeatures.length === 0 ? (
