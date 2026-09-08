@@ -607,12 +607,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
               <div style={{ marginTop: "auto", paddingTop: "14px" }}>
                 <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
-                  {/* gray-900 for the healthy share, danger only for the part that is not.
+                  {/* gray-500 for the healthy share, danger only for the part that is not.
                       It was success-400 against danger-400 — two saturated hues meeting in the
-                      middle of a white card, which reads as a chart from another product. The
-                      quantity is not a state; only the red slice is, and it is the thing worth
-                      seeing. Same reasoning as the licence bar beside it. */}
-                  <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--gray-900)" }} />
+                      middle of a white card, which read as a chart from another product — and then
+                      gray-900, which fixed the loudness by making the bar the heaviest thing on
+                      the card. A mid grey is what a quantity looks like: present, not shouting.
+                      Only the red slice is a state, and it stays the one thing that catches. */}
+                  <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--gray-500)" }} />
                   <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
                 </div>
                 <BarStats left={t.statOnlineShare(onlineShare)} right={t.statOffline(offlineCount)} />
@@ -645,7 +646,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
               <div style={{ marginTop: "auto", paddingTop: "14px" }}>
                 <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--gray-900)" }} />
+                  <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--gray-500)" }} />
                 </div>
                 {channelLimit ? <BarStats left={t.statUtilised(channelShare)} right={t.statAvailable(Math.max(0, channelLimit - projectCameras.length))} /> : null}
               </div>
