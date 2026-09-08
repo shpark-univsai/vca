@@ -475,13 +475,16 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </p>
               <p style={{ fontSize: "13px", color: "var(--gray-500)" }}>{t.greetSub(project.name)}</p>
             </div>
+            {/* 12px, not 13. They sit beside a 26px greeting, and at 13 they were the loudest
+                thing in a header whose point is the sentence. 12 is what every other toolbar
+                button in Portal is already set at, so it is not a new size either. */}
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               <button onClick={() => onTabChange("cameras")}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                 <PlusIcon /> {t.addCamera}
               </button>
               <button onClick={() => onTabChange("vip")}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                 <UserPlusIcon /> {t.registerVip}
               </button>
               {/*
@@ -494,13 +497,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               */}
               {appAccess && (
                 <button onClick={() => router.push("/")}
-                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                   <ExitIcon /> {t.goToApp}
                 </button>
               )}
               {showAccessRequests && (
                 <button onClick={() => onTabChange("users")}
-                  style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                  style={{ display: "flex", alignItems: "center", gap: "8px", padding: "9px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                   <ShieldIcon /> {t.approveAccessRequests}
                   {projectAccessRequests.length > 0 && (
                     <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)", backgroundColor: "var(--warning-200)", padding: "2px 8px", borderRadius: "999px" }}>
