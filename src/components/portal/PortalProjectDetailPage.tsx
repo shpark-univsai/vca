@@ -476,8 +476,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     {longDate(nowMs, lang)}
                   </span>
                 )}
-                <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px", color: onlineCount > 0 ? "var(--success-400)" : "var(--gray-400)" }}>
-                  <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: onlineCount > 0 ? "var(--success-400)" : "var(--gray-300)" }} />
+                {/* primary-400, not the success green. "Live monitoring" is not a good outcome,
+                    it is what this console is doing right now — the same thing the product's own
+                    colour marks everywhere else on the page. Green is left for a state something
+                    passed, and there is no test here to pass. Nothing online stays grey. */}
+                <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px", color: onlineCount > 0 ? "var(--primary-400)" : "var(--gray-400)" }}>
+                  <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: onlineCount > 0 ? "var(--primary-400)" : "var(--gray-300)" }} />
                   {onlineCount > 0 ? t.liveMonitoring : t.noCamerasOnline}
                 </span>
               </div>
