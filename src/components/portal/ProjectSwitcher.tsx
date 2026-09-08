@@ -5,7 +5,7 @@ import { useVcaStore, type Project } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH, TABLE_HEADER_COLOR, TYPE_META, SelectedCheckIcon } from "./PortalShared";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, MapPin } from "lucide-react";
 
 interface ProjectSwitcherProps {
   /**
@@ -176,7 +176,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
             // Height pinned, padding horizontal only: the collapsed rail reserves exactly this
             // 60px for its icon-only stand-in, so the nav starts at the same y in both states.
             width: "100%", minHeight: "60px", boxSizing: "border-box" as const,
-            padding: "10px 12px", borderRadius: "12px", gap: "10px",
+            padding: "10px 12px", borderRadius: "12px", gap: "8px", alignItems: "flex-start",
             backgroundColor: "var(--gray-800)", border: "1px solid var(--gray-700)",
           } : null),
           ...(compact ? { width: "44px", height: "44px", padding: 0, justifyContent: "center" } : null),
@@ -186,6 +186,15 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
             "this is a project" to a reader looking at a card in a rail that navigates one
             project — and it took 44px of a 224px column away from the two proper nouns that
             actually need the room. The team row above never had one and did not miss it. */}
+        {/* A pin, not a building — the team above wears the building now, and this card names a
+            place: the card's own second line reads "Singapore · Smart City". Bare and 15px rather
+            than in a filled tile: the tile it used to have cost 44px of a 208px column, and the
+            project's name is the one thing in this rail that must not be cut. */}
+        {dark && !compact && (
+          <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "1px" }}>
+            <MapPin size={15} strokeWidth={1.7} />
+          </span>
+        )}
         {compact ? null : dark ? (
           <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0, flex: 1, textAlign: "left" }}>
             {/* Two lines before it gives up. A project name is a place — "Marina Bay & CBD
@@ -213,7 +222,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
           </span>
         )}
         {!compact && (
-          <span style={{ color: dark ? "var(--gray-400)" : "var(--gray-600)", display: "flex", flexShrink: 0 }}>
+          <span style={{ color: dark ? "var(--gray-400)" : "var(--gray-600)", display: "flex", flexShrink: 0, marginTop: dark ? "1px" : 0 }}>
             {dark ? <ChevronRight size={16} strokeWidth={1.8} /> : <ChevronDown size={14} />}
           </span>
         )}
