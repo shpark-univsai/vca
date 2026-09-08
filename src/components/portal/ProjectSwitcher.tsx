@@ -198,8 +198,13 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
             1.8 at 16px, which is 1.2px of rendered stroke — the weight every icon in this rail
             draws at (see the note above the nav icons). At 15/1.7 it came out at 1.06 and read
             thinner than the menu under it. */}
-        {dark && !compact && (
-          <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "1px" }}>
+        {/* Also when collapsed, where it is the only thing in the box.
+            Moving the building mark up to the team left this card's compact state with nothing in
+            it — a 44px empty square in the rail, which reads as a control that failed to load
+            rather than as the project. The pin is what names the project now, so it is what the
+            collapsed rail shows. */}
+        {dark && (
+          <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: compact ? 0 : "1px" }}>
             <MapPin size={16} strokeWidth={1.8} color="var(--primary-300)" />
           </span>
         )}
