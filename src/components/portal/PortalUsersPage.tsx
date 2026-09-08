@@ -1341,23 +1341,46 @@ function UserCountStrip({ users, rosterWaiting }: { users: PortalUser[]; rosterW
   const [lang] = usePortalLanguage();
   const t = T[lang];
 
-  const counts = [
-    { label: t.countOwners, value: users.filter(u => u.permission === "owner").length },
-    { label: t.countAdmins, value: users.filter(u => u.permission === "admin").length },
-    { label: t.countAuditors, value: users.filter(u => u.permission === "auditor").length },
-    { label: t.countAppOnly, value: users.filter(u => accessModeOf(u) === "appOnly").length },
-    { label: t.countPortalOnly, value: users.filter(u => accessModeOf(u) === "portalOnly").length },
-    { label: t.countInvited, value: users.filter(u => u.status === "invited").length, hint: t.invitedHint, actionable: true },
-    { label: t.countSuspended, value: users.filter(u => u.status === "suspended").length, hint: t.suspendedHint, actionable: true },
-    { label: t.countRosterWaiting, value: rosterWaiting, hint: t.rosterWaitingHint, actionable: true },
-    { label: t.countTotal, value: users.length + rosterWaiting },
+  /**
+   * Three groups, not nine figures.
+   *
+   * The first five answer "who is in, and what may they do" — they count people with an account
+   * today. The next three answer "who is on the way in, or stopped on the way" — an invitation
+   * nobody accepted, an account somebody suspended, a name waiting for a code. Reading them as one
+   * run made the two questions look like one list, so the second group's numbers looked like more
+   * roles. Total closes the row on its own.
+   */
+  const counts: { label: string; value: number; hint?: string; actionable?: boolean; group: "role" | "pipeline" | "total" }[] = [
+    { group: "role", label: t.countOwners, value: users.filter(u => u.permission === "owner").length },
+    { group: "role", label: t.countAdmins, value: users.filter(u => u.permission === "admin").length },
+    { group: "role", label: t.countAuditors, value: users.filter(u => u.permission === "auditor").length },
+    { group: "role", label: t.countAppOnly, value: users.filter(u => accessModeOf(u) === "appOnly").length },
+    { group: "role", label: t.countPortalOnly, value: users.filter(u => accessModeOf(u) === "portalOnly").length },
+    { group: "pipeline", label: t.countInvited, value: users.filter(u => u.status === "invited").length, hint: t.invitedHint, actionable: true },
+    { group: "pipeline", label: t.countSuspended, value: users.filter(u => u.status === "suspended").length, hint: t.suspendedHint, actionable: true },
+    { group: "pipeline", label: t.countRosterWaiting, value: rosterWaiting, hint: t.rosterWaitingHint, actionable: true },
+    { group: "total", label: t.countTotal, value: users.length + rosterWaiting },
   ];
 
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "32px", marginBottom: "16px" }}>
-      {counts.map(c => {
+    /* Ruled, not just spaced. Nine figures in a row with nothing between them read as one long
+       number sequence — "1 0 1 3 1 1 1 8 13" — and the eye had to use the labels underneath to
+       work out where one stat ended and the next began. A hairline between them does that job at
+       a glance. The rule is on each item's left edge rather than a separate element so it wraps
+       correctly on a narrow window, and the 20px each side of it replaces the old 32px gap. */
+    <div style={{ display: "flex", flexWrap: "wrap", rowGap: "12px", marginBottom: "16px" }}>
+      {counts.map((c, i) => {
+        // Inside a group, a --line hairline with 20px either side. At a group boundary, the same
+        // rule in gray-300 with twice the air — one step darker and one step wider is enough to
+        // say "different question" without a heading over each group.
+        const startsGroup = i > 0 && counts[i - 1].group !== c.group;
         const figure = (
-          <div>
+          <div style={{
+            paddingRight: "20px",
+            paddingLeft: i === 0 ? 0 : startsGroup ? "40px" : "20px",
+            borderLeft: i === 0 ? undefined : startsGroup ? "1px solid var(--gray-300)" : BORDER,
+            marginLeft: startsGroup ? "20px" : undefined,
+          }}>
             <p style={{
               fontSize: "20px", fontWeight: 800,
               // A zero here is good news (nobody stuck, nobody blocked), so it is not worth the same
