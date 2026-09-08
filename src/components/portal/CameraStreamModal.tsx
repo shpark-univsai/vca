@@ -91,7 +91,7 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
         {/* No rule under the title. The sheet below it is already a stack of ruled rows, and a
             heavier line above them made the header a section of its own — the name of the camera
             does not need to be fenced off from the camera's own facts. The gap does the work. */}
-        <div style={{ padding: "16px 20px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: online ? "var(--success-400)" : "var(--gray-400)", flexShrink: 0 }} />
             <div>
@@ -104,7 +104,11 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
           </button>
         </div>
 
-        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+        {/* The rule that used to divide these two blocks was carrying the space between them; with
+            it gone the header's 20px and the body's 20px stacked into a gap the size of a missing
+            element. 8 above and 12 below reads as one block with a title on it, which is what it
+            is. */}
+        <div style={{ padding: "12px 20px 20px", display: "flex", flexDirection: "column", gap: "16px" }}>
           {/* Preview */}
           <div style={{ position: "relative", borderRadius: "12px", overflow: "hidden", aspectRatio: "16 / 9", backgroundColor: "var(--gray-900)" }}>
             <img src={camera.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: online ? 1 : 0.4 }} />
