@@ -122,7 +122,7 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
             // Fills the rail there, hugs its label in the header. The height is pinned rather than
             // left to the padding: the collapsed rail has to reserve exactly this much for its
             // stand-in, and a row whose height depends on a font's metrics cannot be matched.
-            ...(dark ? { width: "100%", minHeight: "34px", padding: "6px 12px", borderRadius: 0, boxSizing: "border-box" as const, alignItems: "flex-start" } : null),
+            ...(dark ? { width: "100%", minHeight: "34px", padding: "6px 12px", borderRadius: 0, boxSizing: "border-box" as const, alignItems: "center" } : null),
             ...(compact ? {
               width: "34px", height: "34px", padding: 0, borderRadius: "8px", justifyContent: "center",
               backgroundColor: hovered === "__trigger" ? "var(--gray-700)" : "var(--gray-800)",
@@ -134,8 +134,22 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
               of that organisation. Bare, not in a filled square — this is the quiet row of the
               two, and a 34px tile on it would outweigh the card under it. */}
           {dark && !compact && (
-            <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "1px" }}>
-              <Building2 size={14} strokeWidth={1.8} />
+            /*
+              The mark grows with the name.
+
+              A team called "City of Singapore — Smart Infrastructure Office" wraps to two lines,
+              and a 14px glyph pinned to the first of them left the row looking top-heavy — a
+              bullet beside a paragraph. Stretching the wrapper to the flex line and letting the
+              SVG fill it makes the icon as tall as whatever the name turned out to be: one line
+              and it is 14px, two and it is about 30.
+
+              height:100% with width:auto rather than a size prop — an SVG with a square viewBox
+              takes its width from its height, so the glyph stays round instead of being letter-
+              boxed inside a taller box. The stroke is 1.4 because it scales with the box: at 1.8
+              a two-line icon drew heavier than the wordmark above it.
+            */
+            <span style={{ display: "flex", alignItems: "center", alignSelf: "stretch", color: "var(--gray-400)", flexShrink: 0 }}>
+              <Building2 strokeWidth={1.4} style={{ width: "auto", height: "100%", minHeight: "14px", maxHeight: "30px" }} />
             </span>
           )}
           {/* Collapsed, the name has nowhere to go, so the initial stands for it and the button's
@@ -169,7 +183,7 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
           >
             {current?.name ?? t.noTeam}
           </span>
-          <span style={{ display: "flex", color: "var(--gray-400)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", marginTop: "3px", flexShrink: 0 }}>
+          <span style={{ display: "flex", color: "var(--gray-400)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }}>
             <ChevronDown />
           </span>
           </>)}
