@@ -167,8 +167,10 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
              In the rail it is a drawn box, not a bare label: the reference puts the site you are
              looking at in a bordered card with room to breathe, which is what makes it read as the
              thing the navigation below it belongs to rather than as the first row of that
-             navigation. In the header it stays a bare crumb — there it sits between other crumbs
-             and a box around one of them would be a button among plain text.
+             navigation. Nothing sits above it now but the wordmark — the team moved to the rail's
+             foot, because a bare line of text on top of a bordered box read as clutter over the
+             one thing the box is for. In the header it stays a bare crumb: there it sits between
+             other crumbs and a box around one of them would be a button among plain text.
           */
           ...(dark ? {
             // Height pinned, padding horizontal only: the collapsed rail reserves exactly this

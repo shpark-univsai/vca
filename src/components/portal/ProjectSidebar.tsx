@@ -239,22 +239,6 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
               )}
             </div>
           )}
-          {/* The team is a quiet row; the project is a card.
-              They were one bordered box with two rows, which gave equal weight to "which company"
-              and "which of its sites" — but the rail navigates the project, and the team is the
-              thing you switch between rarely. The card carries the box now, and the team sits
-              above it like the account name above a switcher.
-              Grid, not flex: it stretches the switcher to the rail's width when open and centres
-              its square when collapsed, without either state needing its own wrapper. The column
-              is minmax(0, 1fr), not auto — an auto track takes its minimum from the item's
-              min-content width, and a nowrap team name has no min-content narrower than itself, so
-              the track grew past the rail and the name ran out over the page instead of
-              ellipsising. */}
-          {team && (
-            <div style={{ minHeight: "34px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", alignItems: "center", justifyItems: collapsed ? "center" : "stretch" }}>
-              {team}
-            </div>
-          )}
           {/* minHeight, not height: the project's name is allowed a second line (see the clamp in
               ProjectSwitcher), and a fixed 60 would have cut it. Collapsed still reserves exactly
               60, so the nav below lines up in both states for any name that fits one line — a
@@ -359,6 +343,26 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
         ))}
       </div>
 
+      {/*
+        The team, at the foot of the rail.
+
+        It used to sit between the wordmark and the project card, which put a bare line of text
+        on top of a bordered box — the box read as the start of something and there was something
+        above it. It also pushed the nav down by however many lines the organisation's name took.
+
+        Down here it is where an account block usually is, and the reading order at the top is the
+        one that matters: the console, the project, its pages. Which organisation you are in is
+        answered once a session, not once a click, and switching it is still one click from here.
+      */}
+      {team && (
+        <div style={{
+          marginTop: "12px", paddingTop: "10px", borderTop: "1px solid var(--gray-800)",
+          minHeight: "34px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)",
+          alignItems: "center", justifyItems: collapsed ? "center" : "stretch", flexShrink: 0,
+        }}>
+          {team}
+        </div>
+      )}
     </div>
   );
 }
