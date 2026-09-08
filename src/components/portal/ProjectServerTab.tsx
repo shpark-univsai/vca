@@ -6,7 +6,7 @@ import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type Se
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
-import { TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch } from "./PortalShared";
+import { CARD_BORDER, TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch } from "./PortalShared";
 
 const SERVER_TYPES: ServerType[] = ["AI Camera", "Normal Camera", "Face Recognition", "Image Store", "Database"];
 
@@ -126,7 +126,7 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
   const [lang] = usePortalLanguage();
   const t = API_DOC_T[lang];
   return (
-    <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
       <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.baseUrl}</p>
       <p style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", marginTop: "6px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "8px", padding: "8px 10px" }}>
         https://api.univs.ai/portal/{projectId}
@@ -245,7 +245,7 @@ function NetworkStatus({ projectId }: { projectId: string }) {
   };
 
   return (
-    <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
           <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><NetworkIcon /></span>
@@ -450,7 +450,7 @@ function MailSettings({ projectId }: { projectId: string }) {
           project with nothing configured anywhere is still a real problem worth surfacing regardless
           of override state, so that case bypasses the override check. */}
       {(override || !inherited.mailDomain) && (
-        <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+        <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
           <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.inEffect}</p>
           {inherited.mailDomain ? (
             <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -469,7 +469,7 @@ function MailSettings({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
         <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
           <input type="checkbox" checked={override} onChange={e => setOverride(e.target.checked)}
             style={{ marginTop: "3px", accentColor: "var(--gray-900)", cursor: "pointer" }} />
@@ -533,7 +533,7 @@ function MailSettings({ projectId }: { projectId: string }) {
 
       {/* Named so nobody has to guess what a mail change affects. The two events are the whole list
           on purpose — see the note on this component. */}
-      <div style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
         <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.whatVcaSends}</p>
         <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
           <SettingRow label={t.accountInvitation} value={t.accountInvitationValue} />
