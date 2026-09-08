@@ -801,7 +801,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   of, and these two have no denominator anyone manages by. So they carry another
                   dimension instead: how the registry is organised, and who is on the priority
                   list. Same 11px caption line the bars use, so all four cards end alike. */}
-              <p style={{ fontSize: "11px", color: "var(--gray-500)", paddingTop: "2px" }}>
+              {/* 13px = the 2px above the neighbouring bars + their 8px height + the 3px under
+                  them. It reserves the space a bar would take, so this line's baseline is the same
+                  baseline as "Enterprise · 41 available" one card over. Aligning it to the top of
+                  the bar instead only looked aligned in the box model: an 11px glyph starts about
+                  3px below its line box, while a bar is ink from its first pixel — and it left the
+                  four cards ending on two different lines. */}
+              <p style={{ fontSize: "11px", color: "var(--gray-500)", paddingTop: "13px" }}>
                 {t.cardVipBreakdown(projectGroupCount, highPriorityVipCount)}
               </p>
             </MetricCard>
@@ -828,7 +834,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               {/* Who is not all the way in. The chip above splits the accounts by which door they
                   hold; this says how many are still waiting at one or have been shut out of both.
                   With neither, it says so rather than printing two zeroes. */}
-              <p style={{ fontSize: "11px", color: "var(--gray-500)", paddingTop: "2px" }}>
+              {/* 13px = the 2px above the neighbouring bars + their 8px height + the 3px under
+                  them. It reserves the space a bar would take, so this line's baseline is the same
+                  baseline as "Enterprise · 41 available" one card over. Aligning it to the top of
+                  the bar instead only looked aligned in the box model: an 11px glyph starts about
+                  3px below its line box, while a bar is ink from its first pixel — and it left the
+                  four cards ending on two different lines. */}
+              <p style={{ fontSize: "11px", color: "var(--gray-500)", paddingTop: "13px" }}>
                 {pendingInviteCount + suspendedCount > 0
                   ? t.cardAccountsBreakdown(pendingInviteCount, suspendedCount)
                   : t.cardAccountsAllIn}
