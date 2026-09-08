@@ -184,7 +184,11 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                primary-300 so the colour starts at the mark and not at the border. */
             backgroundColor: "rgba(140, 133, 255, 0.16)", border: "1px solid rgba(140, 133, 255, 0.34)",
           } : null),
-          ...(compact ? { width: "44px", height: "44px", padding: 0, justifyContent: "center" } : null),
+          /* minHeight and alignItems have to be undone here, not just overridden with height and
+             gap: the dark branch above sets minHeight 60 and flex-start so the expanded card can
+             grow with a two-line name, and a 44px square inheriting those came out 60px tall with
+             its pin pinned to the top edge. */
+          ...(compact ? { width: "44px", height: "44px", minHeight: "44px", padding: 0, justifyContent: "center", alignItems: "center" } : null),
         }}
       >
         {/* No icon square in the rail's project card. It was a 34px building glyph that said
