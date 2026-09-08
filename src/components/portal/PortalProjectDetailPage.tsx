@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, ArrowUpRight, ChevronRight, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
+import { ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed, sgtClockMinutes } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat } from "./PortalShared";
@@ -187,7 +187,15 @@ const T = {
  * the whole point.
  */
 function VideoIcon() { return <Video size={16} strokeWidth={2.1} />; }
-function KeyIcon() { return <Key size={16} strokeWidth={2.1} />; }
+/**
+ * A licence is a document, not a key.
+ *
+ * This was lucide's Key, which in every console means credentials — an API key, an access token,
+ * a password. The card is about the contract: how many channels were bought and how many are in
+ * use. The rail's own License tab already draws a sheet with two lines on it, and the same
+ * destination should carry the same mark in both places.
+ */
+function LicenseDocIcon() { return <FileText size={16} strokeWidth={2.1} />; }
 function UsersGroupIcon() { return <Users size={16} strokeWidth={2.1} />; }
 function SettingsIcon() { return <Settings size={16} strokeWidth={2.1} />; }
 function ShieldIcon() { return <Shield size={16} strokeWidth={2.1} />; }
@@ -631,7 +639,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <MetricCard
               label={t.cameraConnectivity} icon={VideoIcon}
               iconBg={offlineCount > 0 ? "var(--danger-100)" : "var(--gray-100)"}
-              iconColor={offlineCount > 0 ? "var(--danger-400)" : "var(--gray-500)"}
+              iconColor={offlineCount > 0 ? "var(--danger-400)" : "var(--gray-700)"}
               chip={offlineCount === 0
                 ? <StateChip text={t.chipHealthy} color="var(--gray-500)" />
                 : <StateChip text={t.chipAttention(offlineCount)} color="var(--danger-400)" />}
@@ -677,7 +685,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </MetricCard>
 
             <MetricCard
-              label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)"
+              label={t.licenseSubscription} icon={LicenseDocIcon} iconBg="var(--gray-100)" iconColor="var(--gray-700)"
               /* No chip. The plan was here as ENTERPRISE beside the icon and it is now the left
                  half of the bar's caption, which is where it belongs: the caption is read with the
                  figure it qualifies, and the same word twice on one card is once too many. This
@@ -725,7 +733,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                  product's colour because the bar beside them is that colour too; these two are
                  plain counts, so they are plain. Their chips follow the icon, as every chip on
                  this row does. */
-              label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)"
+              label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--gray-100)" iconColor="var(--gray-700)"
               chip={newVipsThisMonth > 0 ? <StateChip text={t.chipNewThisMonth(newVipsThisMonth)} color="var(--gray-500)" /> : undefined}
               onClick={() => onTabChange("vip")}
             >
@@ -753,7 +761,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </MetricCard>
 
             <MetricCard
-              label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)"
+              label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--gray-100)" iconColor="var(--gray-700)"
               chip={<StateChip text={t.chipAccessSplit(portalUserCount, appUserCount)} color="var(--gray-500)" />}
               onClick={() => onTabChange("users")}
             >
