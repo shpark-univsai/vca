@@ -580,7 +580,10 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
           flex: 1, minWidth: "128px",
           display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px",
           padding: "10px 18px",
-          borderLeft: i === 0 ? "none" : BORDER,
+          // gray-200, not the --line hairline every card edge uses: this rule sits inside a white
+          // panel with nothing else to separate the cells, and at #e7e7f1 on white the middle
+          // divider was there in the markup and invisible on the screen.
+          borderLeft: i === 0 ? "none" : "1px solid var(--gray-200)",
         };
         return cell.onClick ? (
           <button
