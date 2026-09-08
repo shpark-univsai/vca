@@ -576,10 +576,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               four grey squares made the row look like one card repeated. What the figure is doing
               is said by the chip beside it, in a word. */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: CARD_GAP, marginBottom: CARD_GAP }}>
+            {/* All four icons are primary-100 on primary-400 — the icon square says which card
+                this is, not how it is doing. Green / red / blue / amber squares turned the row
+                into four different colour systems, and the camera one changed colour on a state
+                the card states twice already: the chip beside it and the red slice in its bar.
+                State keeps its colour in the chip; the icon keeps the product's. */}
             <MetricCard
               label={t.cameraConnectivity} icon={VideoIcon}
-              iconBg={offlineCount === 0 ? "var(--success-100)" : "var(--danger-100)"}
-              iconColor={offlineCount === 0 ? "var(--success-400)" : "var(--danger-400)"}
+              iconBg="var(--primary-100)" iconColor="var(--primary-400)"
               chip={offlineCount === 0
                 ? <StateChip text={t.chipHealthy} color="var(--success-400)" />
                 : <StateChip text={t.chipAttention(offlineCount)} color="var(--danger-400)" />}
@@ -625,7 +629,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </MetricCard>
 
             <MetricCard
-              label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--info-100)" iconColor="var(--info-500)"
+              label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--primary-100)" iconColor="var(--primary-400)"
               /* No chip. The plan was here as ENTERPRISE beside the icon and it is now the left
                  half of the bar's caption, which is where it belongs: the caption is read with the
                  figure it qualifies, and the same word twice on one card is once too many. This
@@ -696,8 +700,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </MetricCard>
 
             <MetricCard
-              label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--warning-200)" iconColor="var(--warning-500)"
-              chip={<StateChip text={t.chipAccessSplit(portalUserCount, appUserCount)} color="var(--warning-500)" />}
+              label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--primary-100)" iconColor="var(--primary-400)"
+              chip={<StateChip text={t.chipAccessSplit(portalUserCount, appUserCount)} color="var(--primary-400)" />}
               onClick={() => onTabChange("users")}
             >
               {/* One row, no bar and no footer rule.
