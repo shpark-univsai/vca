@@ -648,10 +648,12 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
         ...(onClick ? { textAlign: "left" as const, font: "inherit", cursor: "pointer", width: "100%" } : null),
       }}
     >
-      {/* Dense keeps label and figure on one line. Un-dense leads with the icon and its chip, then
-          the label under them and the figure under that — the reference card's order, which puts
-          the chip where the eye starts rather than after the number it qualifies. */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: dense ? "space-between" : "flex-start", marginBottom: dense ? 0 : (Icon || chip ? "8px" : "2px") }}>
+      {/* Dense keeps label and figure on one line. Un-dense opens with the icon at the left edge
+          and the chip at the right one — the card's two ends. The chip used to sit against the
+          icon, which read as a caption on it; at the far edge the four cards' chips line up in a
+          column of their own, so "how is each of these doing" is one downward glance instead of
+          four separate reads. */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "space-between", marginBottom: dense ? 0 : (Icon || chip ? "8px" : "2px") }}>
         {!dense && Icon && (
           <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
             <Icon />
