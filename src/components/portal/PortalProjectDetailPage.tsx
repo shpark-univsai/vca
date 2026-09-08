@@ -992,10 +992,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <div style={{ marginBottom: "10px" }}>
               <SectionHead title={t.trendTitle} />
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: CARD_GAP, flexWrap: "wrap" }}>
-              <div style={{ minWidth: "170px", flexShrink: 0 }}>
+            {/* flex-start, and the figure nudged up by its own half-leading: the column was
+                centred against a 78px chart, so the number floated a line below the chart's top
+                edge. A 22px glyph starts about 3px under its line box, so -3px puts the ink of
+                "6,342" on the same horizontal as the first pixel of the plot. */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: CARD_GAP, flexWrap: "wrap" }}>
+              <div style={{ minWidth: "170px", flexShrink: 0, marginTop: "-3px" }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
-                  <span title={t.weekTotalHint(today.total.toLocaleString("en-US"))} style={{ fontSize: "22px", fontWeight: 800, color: "var(--gray-900)" }}>
+                  <span title={t.weekTotalHint(today.total.toLocaleString("en-US"))} style={{ fontSize: "22px", lineHeight: "22px", fontWeight: 800, color: "var(--gray-900)" }}>
                     {weekTotal.toLocaleString("en-US")}
                   </span>
                 </div>
