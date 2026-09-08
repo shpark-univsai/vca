@@ -182,7 +182,17 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
          * near-black rail. Same value the metric figures and the licence hero already use, so this
          * is the palette's existing dark, not a new one.
          */
+        /*
+          gray-900, with the product's colour bled into the top of it.
+          A flat near-black rail beside a primary-50 page read as two unrelated applications
+          bolted together — nothing in the furniture said whose furniture it was. The gradient is
+          primary-400 at 14% fading out over the first 260px, so it sits behind the wordmark and
+          the project card and is gone by the time the menu starts: a tint you notice only if you
+          look for it, and no new colour in the palette — the same trick the detections chart uses
+          for the area under its line.
+        */
         backgroundColor: "var(--gray-900)",
+        backgroundImage: "linear-gradient(180deg, rgba(90, 61, 251, 0.14) 0%, rgba(90, 61, 251, 0) 260px)",
         /* 6px of top padding, not 16: the wordmark's row is 40px tall, so its centre lands at
            6 + 20 = 26px — exactly the middle of the 52px top bar beside it. The two are the same
            kind of thing (the console's name, the trail into it) and were sitting on different
@@ -294,7 +304,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
                     padding: collapsed ? "12px 0" : "11px 12px",
                     position: "relative",
                     /*
-                     * The current row: a gray-600 fill, and the label and icon in white.
+                     * The current row: a primary wash, and the label and icon in white.
                      *
                      * A lighter step of the rail's own colour with white text, which is what
                      * every dark rail worth copying does —
@@ -311,7 +321,18 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
                      * bar down the left edge (a mark beside the row, not the row), primary-300
                      * text (better, but a coloured label on a nearly invisible fill).
                      */
-                    backgroundColor: active ? "var(--gray-600)" : undefined,
+                    /*
+                     * The current row is a primary wash, not a grey one.
+                     *
+                     * gray-600 was legible but it was the rail telling you where you are in a
+                     * colour that means nothing — every console worth copying marks the current
+                     * row in its own colour once the fill is dark enough to carry it. 26% of
+                     * primary-400 over gray-900 is about as light as gray-600 was and it is
+                     * unmistakably the product's violet. White text and a white icon still, for
+                     * the same reason as before: a coloured label on a coloured fill is two
+                     * things competing.
+                     */
+                    backgroundColor: active ? "rgba(90, 61, 251, 0.26)" : undefined,
                     color: active ? "white" : "var(--gray-300)",
                     fontSize: "13px", fontWeight: active ? 600 : 500,
                     whiteSpace: "nowrap", width: "100%",
@@ -329,7 +350,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
                         <>
                           <span style={{
                             fontSize: "10px", fontWeight: 600, color: "var(--gray-400)",
-                            backgroundColor: active ? "var(--gray-700)" : "var(--gray-800)",
+                            backgroundColor: active ? "rgba(255, 255, 255, 0.14)" : "var(--gray-800)",
                             padding: "2px 6px", borderRadius: "6px", flexShrink: 0,
                           }}>{counts[t.id]}</span>
                         </>
