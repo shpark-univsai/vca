@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Globe, Mail, RotateCcw } from "lucide-react";
+import { Globe, Mail, RotateCcw, ServerCrash, Unplug, Video} from "lucide-react";
 import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
-import { CARD_BORDER, TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch } from "./PortalShared";
+import { SummaryStrip, CARD_BORDER, TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch } from "./PortalShared";
 
 const SERVER_TYPES: ServerType[] = ["AI Camera", "Normal Camera", "Face Recognition", "Image Store", "Database"];
 
@@ -580,6 +580,13 @@ function MailField({ label, value, onChange, placeholder, hint, error }: {
 const MAIN_T = {
   en: {
     subTabInfra: "Infrastructure", subTabMail: "Mail & Network", subTabApi: "API Documentation",
+    gapError: "connection failing",
+    gapNoCameras: "no cameras assigned",
+    gapServerUnit: "servers",
+    gapPerServers: (n: number) => `across ${n} servers`,
+    gapLoadLabel: "cameras to process",
+    gapShowOnly: "Show only these",
+    gapClear: "Show everything again",
     searchPlaceholder: "Search by server name or IP address",
     allTypes: "All types", reset: "Reset", addServer: "Add server",
     emptyNoServers: "No servers configured for this project yet.",
@@ -593,6 +600,13 @@ const MAIN_T = {
   },
   ko: {
     subTabInfra: "인프라", subTabMail: "메일 및 네트워크", subTabApi: "API 문서",
+    gapError: "연결 실패",
+    gapNoCameras: "카메라 미할당",
+    gapServerUnit: "대",
+    gapPerServers: (n: number) => `/ 서버 ${n}대`,
+    gapLoadLabel: "처리할 카메라",
+    gapShowOnly: "이 항목만 보기",
+    gapClear: "전체 다시 보기",
     searchPlaceholder: "서버 이름 또는 IP 주소로 검색",
     allTypes: "전체 유형", reset: "초기화", addServer: "서버 추가",
     emptyNoServers: "이 프로젝트에 아직 설정된 서버가 없습니다.",
@@ -610,6 +624,7 @@ type ServerSortKey = "status" | "name" | "ip" | "type";
 
 export default function ProjectServerTab({ projectId }: { projectId: string }) {
   const servers = useVcaStore(s => s.servers);
+  const cameras = useVcaStore(s => s.cameras);
   const addServer = useVcaStore(s => s.addServer);
   const updateServer = useVcaStore(s => s.updateServer);
   const removeServer = useVcaStore(s => s.removeServer);
@@ -623,11 +638,33 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   const [editingServer, setEditingServer] = useState<Server | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"ALL" | ServerType>("ALL");
+  /** Which summary cell the list is narrowed to, if any. */
+  const [gapFilter, setGapFilter] = useState<"error" | "noCameras" | null>(null);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const { sort, toggle: toggleSort } = useTableSort<ServerSortKey>({ key: "status", direction: "asc" });
 
   const projectServers = servers.filter(s => s.projectId === projectId);
+  /**
+   * The two things worth stating above a list of servers, and the ratio that gives them context.
+   *
+   * A failed connection is on every row already, but there is no status filter beside the search
+   * box — with twenty servers you find the broken one by reading. And a server nothing points at
+   * is hardware that was bought, racked and left idle: the exact mirror of the "no server
+   * assigned" figure on Input Sources, and invisible from either side until both are stated.
+   *
+   * Both are read off fields these screens already hold (a server's own status; which serverId the
+   * cameras carry), so a figure can never disagree with the rows behind it.
+   */
+  const projectCameras = cameras.filter(c => c.projectId === projectId);
+  const assignedServerIds = new Set(projectCameras.map(c => c.serverId).filter(Boolean));
+  const erroredServers = projectServers.filter(sv => sv.status === "error");
+  const unusedServers = projectServers.filter(sv => !assignedServerIds.has(sv.id));
+  const gapServers = {
+    error: new Set(erroredServers.map(sv => sv.id)),
+    noCameras: new Set(unusedServers.map(sv => sv.id)),
+  } as const;
+
   const q = search.trim().toLowerCase();
   // Errors first by default — "error" sorts before "success" — because a server list is read when
   // something is wrong, not to admire the healthy ones.
@@ -635,7 +672,8 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
     projectServers.filter(s => {
       const matchesSearch = !q || s.name.toLowerCase().includes(q) || s.ip.includes(q);
       const matchesType = typeFilter === "ALL" || s.type === typeFilter;
-      return matchesSearch && matchesType;
+      const matchesGap = !gapFilter || gapServers[gapFilter].has(s.id);
+      return matchesSearch && matchesType && matchesGap;
     }),
     sort,
     (server, key) => {
@@ -655,7 +693,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   // Compared during render rather than reset from an effect: an effect paints the stale page once
   // before correcting it, and react-hooks flags the synchronous setState as cascading renders.
   // Same idiom DataPage.tsx uses for its own nav/seed resets.
-  const filterKey = `${search}|${typeFilter}|${rowsPerPage}`;
+  const filterKey = `${search}|${typeFilter}|${gapFilter ?? ""}|${rowsPerPage}`;
   const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
   if (filterKey !== prevFilterKey) {
     setPrevFilterKey(filterKey);
@@ -671,6 +709,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   const resetFilters = () => {
     setSearch("");
     setTypeFilter("ALL");
+    setGapFilter(null);
   };
 
   const createServer = (values: ServerFormValues) => {
@@ -719,6 +758,37 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
       {subTab === "api" ? <ApiDocumentation projectId={projectId} />
         : subTab === "mail" ? <MailSettings projectId={projectId} /> : (
         <>
+          {/*
+            The two gaps and the ratio between the fleet and the servers running it, in the shared
+            summary strip — the same shape the VIP registry and Input Sources use.
+
+            The ratio is not a defect and takes no click: it is the figure an increase in cameras
+            is argued from, and nothing else on this page states it.
+          */}
+          <SummaryStrip cells={[
+            ...([
+              { key: "error" as const, servers: erroredServers, label: t.gapError, icon: <ServerCrash size={14} strokeWidth={2.4} /> },
+              { key: "noCameras" as const, servers: unusedServers, label: t.gapNoCameras, icon: <Unplug size={14} strokeWidth={2.4} /> },
+            ].filter(item => item.servers.length > 0).map(item => ({
+              key: item.key,
+              icon: item.icon,
+              figure: item.servers.length,
+              unit: t.gapServerUnit,
+              label: item.label,
+              tone: "warning" as const,
+              active: gapFilter === item.key,
+              title: gapFilter === item.key ? t.gapClear : t.gapShowOnly,
+              onClick: () => setGapFilter(gapFilter === item.key ? null : item.key),
+            }))),
+            {
+              key: "load",
+              icon: <Video size={14} strokeWidth={2.4} />,
+              figure: projectCameras.length,
+              unit: t.gapPerServers(projectServers.length),
+              label: t.gapLoadLabel,
+            },
+          ]} />
+
           {/* Centred for the same reason as the Input Sources toolbar: the controls carry their own
               height, so anything unstyled dropped in here would draw itself against the top edge. */}
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
