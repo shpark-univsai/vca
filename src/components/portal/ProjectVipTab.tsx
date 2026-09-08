@@ -13,9 +13,9 @@ import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FO
 type VipSortKey = "name" | "priority" | "registered";
 
 // 36px for the actions column, the width RowActionsMenu gets in every other table.
-const VIP_GRID = "40px 1.5fr 0.7fr 0.8fr 1.6fr 36px";
+const VIP_GRID = "48px 1.5fr 0.7fr 0.8fr 1.6fr 36px";
 /** The All tab adds a Group column; the Individuals tab would print "Individual" on every row. */
-const VIP_GRID_WITH_GROUP = "40px 1.3fr 0.9fr 0.7fr 0.75fr 1.3fr 36px";
+const VIP_GRID_WITH_GROUP = "48px 1.3fr 0.9fr 0.7fr 0.75fr 1.3fr 36px";
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -1054,7 +1054,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           </div>
         ) : (
           <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW }}>
-            <div style={{ display: "grid", gridTemplateColumns: GROUP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "16px", borderTopRightRadius: "16px" }}>
+            <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: GROUP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "16px", borderTopRightRadius: "16px" }}>
               {[t.colGroup, t.colMembers, t.colPriority, t.colNote, ""].map((h, i) => (
                 <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
               ))}
@@ -1111,7 +1111,11 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         </div>
       ) : view === "table" ? (
         <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW }}>
-          <div style={{ display: "grid", gridTemplateColumns: showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "16px", borderTopRightRadius: "16px" }}>
+          {/* The column headings stay while the rows go under them. position:sticky against the
+              shell's scroller, at top:0 — no measuring, no fixed positioning, and it works because
+              nothing between here and that scroller clips its overflow. zIndex 2 so rows pass
+              beneath rather than over, and the gray-50 fill is what makes "beneath" invisible. */}
+          <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "16px", borderTopRightRadius: "16px" }}>
             {/* The photo and the note carry no sortKey — a face has no order, and a free-text note
                 sorted alphabetically answers nothing. */}
             <span />
@@ -1134,7 +1138,11 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 borderBottom: isLast ? "none" : BORDER,
                 borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
               }}>
-                <img src={person.photoUrl} alt="" style={{ width: "32px", height: "32px", borderRadius: "8px", objectFit: "cover" }} />
+                {/* 48px, up from 32. A face at 32 in a table is a thumbnail of a thumbnail, and
+                    this column exists so the reader can tell one Michael from another. The row's
+                    own padding is untouched — the first grid track grew with the picture, so the
+                    row is taller by exactly what the picture needed and by nothing else. */}
+                <img src={person.photoUrl} alt="" style={{ width: "48px", height: "48px", borderRadius: "8px", objectFit: "cover" }} />
                 {/* The name is the way in, as it is in most tables — a narrow target that does not
                     fight the group select two cells over for the same click. */}
                 <button className="portal-link" onClick={() => setDetailFor(person)} title={person.name}

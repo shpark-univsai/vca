@@ -759,7 +759,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
             // opens past the bottom edge (the last row's menu becomes invisible, not just cut
             // off). Header/last-row corners are radiused directly instead.
             <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
-              <div style={{ display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+              <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
                 {([
                   { label: t.colStatus, key: "status" },
                   { label: t.colName, key: "name" },

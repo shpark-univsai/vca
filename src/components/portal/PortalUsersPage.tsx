@@ -1710,7 +1710,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             cell with a hand's width of nothing to its right. Narrowing those three moves Status
             right, up against the actions menu where it belongs, and gives the names their room
             back. */}
-        <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+        <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
           {/* Projects and MFA carry no sortKey: a user belongs to several projects, so there is no
               single value to order by, and MFA is display-only mock data it would be misleading to
               let anyone rank people with. */}
