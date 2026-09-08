@@ -189,10 +189,13 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
         {/* A pin, not a building — the team above wears the building now, and this card names a
             place: the card's own second line reads "Singapore · Smart City". Bare and 15px rather
             than in a filled tile: the tile it used to have cost 44px of a 208px column, and the
-            project's name is the one thing in this rail that must not be cut. */}
+            project's name is the one thing in this rail that must not be cut.
+            1.8 at 16px, which is 1.2px of rendered stroke — the weight every icon in this rail
+            draws at (see the note above the nav icons). At 15/1.7 it came out at 1.06 and read
+            thinner than the menu under it. */}
         {dark && !compact && (
           <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "1px" }}>
-            <MapPin size={15} strokeWidth={1.7} />
+            <MapPin size={16} strokeWidth={1.8} />
           </span>
         )}
         {compact ? null : dark ? (

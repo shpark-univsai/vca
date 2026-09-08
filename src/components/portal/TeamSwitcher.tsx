@@ -135,21 +135,16 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
               two, and a 34px tile on it would outweigh the card under it. */}
           {dark && !compact && (
             /*
-              The mark grows with the name.
+              Fixed at 16px and centred on the name, however many lines it takes.
 
-              A team called "City of Singapore — Smart Infrastructure Office" wraps to two lines,
-              and a 14px glyph pinned to the first of them left the row looking top-heavy — a
-              bullet beside a paragraph. Stretching the wrapper to the flex line and letting the
-              SVG fill it makes the icon as tall as whatever the name turned out to be: one line
-              and it is 14px, two and it is about 30.
-
-              height:100% with width:auto rather than a size prop — an SVG with a square viewBox
-              takes its width from its height, so the glyph stays round instead of being letter-
-              boxed inside a taller box. The stroke is 1.4 because it scales with the box: at 1.8
-              a two-line icon drew heavier than the wordmark above it.
+              It grew with the name for a while — the wrapper stretched and the SVG filled it — and
+              that fixed the top-heavy look, but a scaled SVG scales its strokes with it: the same
+              glyph drew a 0.8px line at one line of text and 1.75px at two, against the 1.2px
+              every other icon in this rail draws. One weight beats one height. 1.8 at 16px is that
+              1.2px (stroke × size / 24), and centring handles the two-line case.
             */
             <span style={{ display: "flex", alignItems: "center", alignSelf: "stretch", color: "var(--gray-400)", flexShrink: 0 }}>
-              <Building2 strokeWidth={1.4} style={{ width: "auto", height: "100%", minHeight: "14px", maxHeight: "30px" }} />
+              <Building2 size={16} strokeWidth={1.8} />
             </span>
           )}
           {/* Collapsed, the name has nowhere to go, so the initial stands for it and the button's
