@@ -84,7 +84,8 @@ const T = {
     colStatus: "Status",
     noCamerasYet: "No cameras connected to this project yet.",
     openCamera: "Open this camera",
-    trendTitle: "Detections · last 7 days",
+    trendTitle: "Detections",
+    trendPeriod: "last 7 days",
     todaySuffix: "today",
     vsYesterday: (pct: number) => `${pct > 0 ? "+" : ""}${pct}% vs previous 7 days`,
     weekTotalHint: (todayTotal: string) => `Includes today so far: ${todayTotal}`,
@@ -168,7 +169,8 @@ const T = {
     colStatus: "상태",
     noCamerasYet: "이 프로젝트에 연결된 카메라가 아직 없습니다.",
     openCamera: "이 카메라 열기",
-    trendTitle: "탐지 · 지난 7일",
+    trendTitle: "탐지",
+    trendPeriod: "지난 7일",
     todaySuffix: "건 오늘",
     vsYesterday: (pct: number) => `직전 7일 대비 ${pct > 0 ? "+" : ""}${pct}%`,
     weekTotalHint: (todayTotal: string) => `진행 중인 오늘 ${todayTotal}건 포함`,
@@ -339,7 +341,7 @@ function BarStats({ left, right }: { left: string; right: string }) {
  * drift apart.
  */
 function SectionHead({ title, subtitle }: {
-  title: string;
+  title: React.ReactNode;
   subtitle?: string;
 }) {
   return (
@@ -992,7 +994,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 first. A card's name sits above its contents; the figure and the shape it came
                 from are the contents, and they line up with each other. */}
             <div style={{ marginBottom: "16px" }}>
-              <SectionHead title={t.trendTitle} />
+              {/* The subject at the panel-title size, the period a step under it. They were one
+                  14px string, which gave "last 7 days" the same weight as the thing being counted
+                  — but the period qualifies the subject, it is not half of it. */}
+              <SectionHead title={
+                <>
+                  {t.trendTitle}
+                  <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--gray-500)" }}>{` · ${t.trendPeriod}`}</span>
+                </>
+              } />
             </div>
             {/* flex-start, and the figure nudged up by its own half-leading: the column was
                 centred against a 78px chart, so the number floated a line below the chart's top
