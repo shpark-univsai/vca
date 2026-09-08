@@ -233,14 +233,18 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
               thing you switch between rarely. The card carries the box now, and the team sits
               above it like the account name above a switcher.
               Grid, not flex: it stretches the switcher to the rail's width when open and centres
-              its square when collapsed, without either state needing its own wrapper. */}
+              its square when collapsed, without either state needing its own wrapper. The column
+              is minmax(0, 1fr), not auto — an auto track takes its minimum from the item's
+              min-content width, and a nowrap team name has no min-content narrower than itself, so
+              the track grew past the rail and the name ran out over the page instead of
+              ellipsising. */}
           {team && (
-            <div style={{ height: "34px", display: "grid", alignItems: "center", justifyItems: collapsed ? "center" : "stretch" }}>
+            <div style={{ height: "34px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", alignItems: "center", justifyItems: collapsed ? "center" : "stretch" }}>
               {team}
             </div>
           )}
           {project && (
-            <div style={{ height: "60px", display: "grid", alignItems: "center", justifyItems: collapsed ? "center" : "stretch" }}>
+            <div style={{ height: "60px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", alignItems: "center", justifyItems: collapsed ? "center" : "stretch" }}>
               {project}
             </div>
           )}
