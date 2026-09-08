@@ -547,6 +547,13 @@ export interface SummaryCell {
   active?: boolean;
   /** Tooltip — say what pressing it does, since the cell itself is a number. */
   title?: string;
+  /**
+   * Marks the label as carrying an explanation, with the dotted underline Portal uses for that
+   * everywhere else. For cells whose label names a state rather than a thing — "invited",
+   * "suspended", "on the roster" — where the word is the whole question and the tooltip is the
+   * answer. A tooltip nobody knows is there is a tooltip nobody reads.
+   */
+  explain?: boolean;
 }
 
 export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
@@ -571,7 +578,10 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
                 <span style={{ fontSize: "20px", fontWeight: 800, color: accent, lineHeight: "22px" }}>{cell.figure}</span>
                 {cell.unit && <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{cell.unit}</span>}
               </span>
-              <span style={{ fontSize: "11px", lineHeight: "14px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap" }}>{cell.label}</span>
+              <span style={{
+                fontSize: "11px", lineHeight: "14px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap",
+                ...(cell.explain ? { borderBottom: "1px dotted var(--gray-400)", cursor: "help" } : null),
+              }}>{cell.label}</span>
             </span>
             {/* marginTop 4 puts the mark's centre on the figure's line rather than at the top of
                 the cell's padding. */}

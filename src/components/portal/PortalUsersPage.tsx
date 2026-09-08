@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Asterisk, ClipboardList, MailQuestion, Users2, UserX} from "lucide-react";
+import { Asterisk, ClipboardList, MailQuestion, Users2, UserX, ClipboardPlus, Download, KeyRound, Printer, Upload} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -1401,8 +1401,10 @@ function UserCountStrip({
           tone: "warning" as const,
           active: statusFilter === item.key,
           // The tooltip explains the state, which is the whole point of these three labels — an
-          // invitation nobody accepted and a suspended account are not self-explanatory words.
+          // invitation nobody accepted and a suspended account are not self-explanatory words —
+          // and the dotted underline is what tells the reader the explanation is there.
           title: item.hint,
+          explain: true,
           onClick: () => onFilter(statusFilter === item.key ? null : item.key),
         }))),
       ]} />
@@ -1646,15 +1648,33 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           {t.inviteUser}
         </button>
         )}
+        {/* Icons on the secondary tools too. Only the invite button had one, so on a page whose
+            neighbours put a mark on every action these five read as unfinished — and a row of five
+            identical grey pills is a row you have to read word by word. 14px at stroke 2.4 is the
+            1.4px Portal draws (see ICON_STROKE_PX). */}
+        {/* Filled on the roster tab, outlined on the combined one. Every page in Portal has one
+            coloured action, and on this tab the invite button — the coloured one — is hidden,
+            which left five grey pills and no answer to "what is the thing to do here". Adding a
+            name to the roster is that thing. */}
         {peopleTab !== "accounts" && (
-        <button onClick={() => setRosterEditorFor({ entry: null })}
-          style={SECONDARY_BTN}>{t.addToRoster}</button>
+        <button
+          onClick={() => setRosterEditorFor({ entry: null })}
+          style={peopleTab === "roster"
+            ? { ...SECONDARY_BTN, backgroundColor: "var(--primary-400)", border: "none", color: "white" }
+            : SECONDARY_BTN}
+        >
+          <ClipboardPlus size={14} strokeWidth={2.4} />
+          {t.addToRoster}
+        </button>
         )}
         {peopleTab === "roster" && (<>
-        <button onClick={() => setShowRosterImport(true)}
-          style={SECONDARY_BTN}>{t.importRoster}</button>
+        <button onClick={() => setShowRosterImport(true)} style={SECONDARY_BTN}>
+          <Upload size={14} strokeWidth={2.4} />
+          {t.importRoster}
+        </button>
         <button onClick={bulkIssueCodes} disabled={notIssuedIds.length === 0}
           style={{ ...SECONDARY_BTN, color: notIssuedIds.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: notIssuedIds.length === 0 ? "not-allowed" : "pointer" }}>
+          <KeyRound size={14} strokeWidth={2.4} />
           {t.bulkIssue(notIssuedIds.length)}
         </button>
         <button onClick={() => {
@@ -1663,10 +1683,12 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           }}
           disabled={projectRosterAll.length === 0}
           style={{ ...SECONDARY_BTN, color: projectRosterAll.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: projectRosterAll.length === 0 ? "not-allowed" : "pointer" }}>
+          <Download size={14} strokeWidth={2.4} />
           {t.exportRoster}
         </button>
         <button onClick={() => setShowPrintSheet(true)} disabled={printableEntries.length === 0}
           style={{ ...SECONDARY_BTN, color: printableEntries.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: printableEntries.length === 0 ? "not-allowed" : "pointer" }}>
+          <Printer size={14} strokeWidth={2.4} />
           {t.printHandout}
         </button>
         </>)}
