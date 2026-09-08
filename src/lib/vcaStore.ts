@@ -1282,7 +1282,7 @@ export function dailyDetections(projectId: string, days = 7): DailyDetections[] 
  *
  *   GET /projects/:id/camera-stability?days=7 → [{ cameraId, dropsByDay: number[7] }]
  */
-export function unstableCameras(projectId: string, cameras: Camera[]): { camera: Camera; drops: number; dropsByDay: number[] }[] {
+export function unstableCameras(projectId: string, cameras: Camera[], limit = 4): { camera: Camera; drops: number; dropsByDay: number[] }[] {
   return cameras
     .filter(c => c.projectId === projectId)
     .map((c, i) => {
@@ -1293,9 +1293,10 @@ export function unstableCameras(projectId: string, cameras: Camera[]): { camera:
     })
     .filter(r => r.drops > 0)
     .sort((a, b) => b.drops - a.drops)
-    // Four rows. This is a pointer at the worst offenders, not an inventory of them — past that
-    // it stops being a glance and starts being the maintenance screen it should link to.
-    .slice(0, 4);
+    // Four by default — a pointer at the worst offenders, not an inventory of them. Callers that
+    // want the whole fleet's counts (the Overview annotates its camera rows with them) pass a
+    // bigger limit rather than recomputing the seed themselves.
+    .slice(0, limit);
 }
 
 const AUDIT_LOG: AuditEvent[] = [

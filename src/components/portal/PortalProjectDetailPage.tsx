@@ -91,9 +91,7 @@ const T = {
     todaySoFar: "Today",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · Vehicle ${vehicle} · Unknown ${unknown.toLocaleString("en-US")}`,
-    unstableTitle: "Stream drops · last 7 days",
-    dropCount: (n: number) => `${n} drop${n === 1 ? "" : "s"}`,
-    noDrops: "Every camera held its stream all week.",
+    dropNote: (n: number) => `${n} drop${n === 1 ? "" : "s"} in 7 days`,
     viewAllCameras: (n: number) => `View all ${n} cameras`,
     recentVipsTitle: "Recently Registered VIPs",
     registerVipLink: "Register VIP →",
@@ -176,9 +174,7 @@ const T = {
     todaySoFar: "오늘",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · 차량 ${vehicle} · 미확인 ${unknown.toLocaleString("en-US")}`,
-    unstableTitle: "스트림 끊김 · 지난 7일",
-    dropCount: (n: number) => `${n}회`,
-    noDrops: "이번 주 내내 모든 카메라가 스트림을 유지했습니다.",
+    dropNote: (n: number) => `7일간 ${n}회 끊김`,
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
     recentVipsTitle: "최근 등록된 VIP",
     registerVipLink: "VIP 등록 →",
@@ -455,7 +451,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // title.
   const detectionFortnight = useMemo(() => dailyDetections(projectId, 14), [projectId]);
   const detectionDays = useMemo(() => detectionFortnight.slice(7), [detectionFortnight]);
-  const unstable = useMemo(() => unstableCameras(projectId, cameras), [projectId, cameras]);
+  // Drops per camera for the whole project, keyed by id: the camera rows below carry their own
+  // count as a note, so there is no separate card to look them up in.
+  const dropsByCamera = useMemo(
+    () => new Map(unstableCameras(projectId, cameras, Number.MAX_SAFE_INTEGER).map(r => [r.camera.id, r.drops])),
+    [projectId, cameras]
+  );
   const project = projects.find(p => p.id === projectId);
   if (!project) {
     return <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>{t.projectNotFound}</p>;
@@ -1136,62 +1137,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               that gives the table its five columns and still leaves a readable panel. */}
           <div style={{ display: "grid", gridTemplateColumns: "1.75fr 1fr", gap: CARD_GAP, alignItems: "stretch", maxHeight: OVERVIEW_PANEL_MAX_HEIGHT, marginBottom: CARD_GAP }}>
             <div style={{ display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
-              {/*
-                Stream drops, as a grid rather than a list.
-
-                A list of "Angmokio 3 — 4" answers who but not when, and those are different
-                errands: four drops in one afternoon is a power cut, one drop a day for four days
-                is a camera on its way out. Seven cells per camera, oldest on the left, shaded by
-                how many times it dropped that day — a heat grid is the smallest diagram that
-                carries both, and at 14px a row it costs less height than the list it replaces.
-
-                Above the camera table, not under it. Same subject — that table is the fleet now,
-                this is the fleet this week — but the table is five hundred pixels of scrolling
-                list, and a short block of four rows placed after it is a block nobody reaches. The
-                thing that says "these four need looking at" comes before the list you browse.
-              */}
-              {unstable.length > 0 && (
-                <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "16px", flexShrink: 0 }}>
-                  {/* 15px, the size every other panel titles itself at. At 12 it read as a
-                      label on a block rather than as one of the page's cards. */}
-                  <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{t.unstableTitle}</p>
-                  {/*
-                    A bar per camera, read in one look.
-
-                    This was a seven-day heat grid — more information (which days it dropped on)
-                    and too much work for it: seven shaded squares needed a legend, an axis and a
-                    sentence, and it still had to be decoded rather than seen. A diagram that has
-                    to be studied is not a diagram, it is a table with the labels taken off.
-
-                    The longest bar is the worst camera and the number says by how much. When
-                    somebody needs to know which days, that is a question for the camera itself,
-                    one click away.
-                  */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "10px" }}>
-                    {unstable.map(({ camera, drops }) => (
-                      <button
-                        key={camera.id}
-                        onClick={() => { setInspectCameraId(camera.id); onTabChange("cameras"); }}
-                        className="portal-attention-row"
-                        style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", border: "none", background: "none", padding: "6px", margin: "0 -6px", borderRadius: "6px", cursor: "pointer", fontFamily: "inherit" }}
-                      >
-                        <span style={{ display: "flex", flexDirection: "column", gap: "5px", minWidth: 0, flex: 1, textAlign: "left" }}>
-                          <span style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px", minWidth: 0 }}>
-                            <span style={{ display: "flex", alignItems: "baseline", gap: "6px", minWidth: 0 }}>
-                              <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
-                              <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap", flexShrink: 0 }}>{camera.zone}</span>
-                            </span>
-                            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>{t.dropCount(drops)}</span>
-                          </span>
-                          <span style={{ display: "block", height: "4px", borderRadius: "999px", backgroundColor: "var(--gray-100)", overflow: "hidden" }}>
-                            <span style={{ display: "block", height: "100%", width: `${(drops / unstable[0].drops) * 100}%`, backgroundColor: "var(--primary-300)" }} />
-                          </span>
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 {/* No All / Offline toggle. The panel is the fleet, ordered by longest silence, so
                     the cameras an offline filter would have selected are already the rows at the
@@ -1243,8 +1188,21 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                           {/* No dot before the name. The row already ends in a Online / Offline
                               chip, and a coloured dot at the other end of the same row said the
                               same thing a second time — with eight offline rows on top, the list
-                              read as a column of red bullets before it read as a list of cameras. */}
-                          <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{c.name}</p>
+                              read as a column of red bullets before it read as a list of cameras.
+
+                              Under the name, in small text, how many times this camera dropped in
+                              the last seven days — and only on the cameras that did. This was a
+                              card of its own above the table: a diagram, a legend and four rows
+                              repeating names that are already here. A camera that keeps dropping
+                              is a fact about that camera, so it belongs on that camera's line. */}
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</p>
+                            {(dropsByCamera.get(c.id) ?? 0) > 0 && (
+                              <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "1px", whiteSpace: "nowrap" }}>
+                                {t.dropNote(dropsByCamera.get(c.id) as number)}
+                              </p>
+                            )}
+                          </div>
                           <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{c.zone}</span>
                           <span style={{ fontSize: "12px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.rtspUrl}</span>
                           {/* Only once the clock is known — before mount there is no "ago" to
