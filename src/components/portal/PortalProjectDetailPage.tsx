@@ -91,7 +91,6 @@ const T = {
     todaySoFar: "Today",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · Vehicle ${vehicle} · Unknown ${unknown.toLocaleString("en-US")}`,
-    dropNote: (n: number) => `${n} drops this week`,
     dropNth: (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th"} time this week`,
     dropNoteFull: (n: number) => `Dropped its stream ${n} times in the last 7 days`,
     viewAllCameras: (n: number) => `View all ${n} cameras`,
@@ -176,7 +175,6 @@ const T = {
     todaySoFar: "오늘",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · 차량 ${vehicle} · 미확인 ${unknown.toLocaleString("en-US")}`,
-    dropNote: (n: number) => `이번 주 ${n}회 끊김`,
     dropNth: (n: number) => `이번 주 ${n}번째`,
     dropNoteFull: (n: number) => `지난 7일 동안 ${n}회 끊겼습니다`,
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
@@ -1240,19 +1238,20 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                               The count sat next to the camera's name, where it was a fact about
                               the camera; next to the word "Offline" it is a fact about the outage
                               you are reading — this is the fourth time this week, not a one-off.
-                              A camera that is up but dropped three times still says so, because
-                              that is the camera nothing else on the page would flag. */}
+                              Only on the offline rows. "Online · 3 drops this week" put a count of
+                              failures next to the word for working, and the two cancelled out —
+                              the reader had to stop and work out which of them was the state. The
+                              flaky-but-currently-up camera loses its flag here; that belongs on
+                              the Input Sources page, where the fleet's health is the subject. */}
                           <span style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0, fontSize: "12px", fontWeight: 600, color: online ? "var(--gray-500)" : "var(--gray-900)" }}>
                             <span style={{ width: "5px", height: "5px", borderRadius: "50%", flexShrink: 0, backgroundColor: online ? "var(--gray-300)" : "var(--danger-400)" }} />
                             <span style={{ flexShrink: 0 }}>{online ? t.online : t.offline}</span>
-                            {(dropsByCamera.get(c.id) ?? 0) > 0 && (
+                            {!online && (dropsByCamera.get(c.id) ?? 0) > 0 && (
                               <span
                                 title={t.dropNoteFull(dropsByCamera.get(c.id) as number)}
                                 style={{ fontSize: "10px", fontWeight: 500, color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                               >
-                                {online
-                                  ? t.dropNote(dropsByCamera.get(c.id) as number)
-                                  : t.dropNth(dropsByCamera.get(c.id) as number)}
+                                {t.dropNth(dropsByCamera.get(c.id) as number)}
                               </span>
                             )}
                           </span>
