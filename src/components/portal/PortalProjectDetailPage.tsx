@@ -84,14 +84,13 @@ const T = {
     noCamerasYet: "No cameras connected to this project yet.",
     openCamera: "Open this camera",
     trendTitle: "Last 7 days",
-    trendSubtitle: "What the cameras saw, and which of them dropped out.",
-    detectionsToday: "detections today",
+    detectionsLabel: "Detections",
+    todaySuffix: "today",
     vsYesterday: (pct: number) => `${pct > 0 ? "+" : ""}${pct}% vs yesterday`,
     todaySoFar: "Today so far",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · Vehicle ${vehicle} · Unknown ${unknown.toLocaleString("en-US")}`,
-    unstableTitle: "Dropped out this week",
-    dropCount: (n: number) => `${n} drop${n === 1 ? "" : "s"}`,
+    unstableTitle: "Stream drops this week",
     noDrops: "Every camera held its stream all week.",
     viewAllCameras: (n: number) => `View all ${n} cameras`,
     recentVipsTitle: "Recently Registered VIPs",
@@ -169,14 +168,13 @@ const T = {
     noCamerasYet: "이 프로젝트에 연결된 카메라가 아직 없습니다.",
     openCamera: "이 카메라 열기",
     trendTitle: "지난 7일",
-    trendSubtitle: "카메라가 무엇을 봤고, 어느 카메라가 끊겼는지.",
-    detectionsToday: "건 오늘 탐지",
+    detectionsLabel: "탐지",
+    todaySuffix: "건 오늘",
     vsYesterday: (pct: number) => `어제 대비 ${pct > 0 ? "+" : ""}${pct}%`,
     todaySoFar: "오늘 (진행 중)",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · 차량 ${vehicle} · 미확인 ${unknown.toLocaleString("en-US")}`,
-    unstableTitle: "이번 주에 끊긴 카메라",
-    dropCount: (n: number) => `${n}회 끊김`,
+    unstableTitle: "이번 주 스트림 끊김",
     noDrops: "이번 주 내내 모든 카메라가 스트림을 유지했습니다.",
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
     recentVipsTitle: "최근 등록된 VIP",
@@ -898,29 +896,46 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             developer can look at is a clearer specification than a sentence in a meeting.
           */}
           <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", marginBottom: CARD_GAP }}>
-            <div style={{ marginBottom: "14px" }}>
-              <SectionHead title={t.trendTitle} subtitle={t.trendSubtitle} />
+            {/*
+              Laid out the way the references lay this out.
+
+              Revolut Business's analytics panels stack their left half — a small label, the figure
+              under it, a quiet "vs last period" line under that, then the chart full width beneath
+              — so size alone tells you the reading order. My first attempt put the label and the
+              figure on one line at nearly the same size, which is the arrangement that had no
+              hierarchy to read. Vercel's Leaderboards and Ferndesk's "Most viewed articles" are
+              the right half: a titled list whose rows are a name and one right-aligned number.
+
+              The panel's subtitle is gone with it — the two column labels say what it said.
+            */}
+            <div style={{ marginBottom: "16px" }}>
+              <SectionHead title={t.trendTitle} />
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1.75fr 1fr", gap: CARD_GAP, alignItems: "start" }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{today.total.toLocaleString("en-US")}</span>
-                  <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.detectionsToday}</span>
-                  {/* Grey, not green or red. More detections than yesterday is not good news or
-                      bad news — it is a busier day, and colouring it would make the reader look
-                      for a fault that is not being reported. */}
-                  <span style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}>
-                    {detectionDelta >= 0 ? <ArrowUp size={12} strokeWidth={2.6} /> : <ArrowDown size={12} strokeWidth={2.6} />}
-                    {t.vsYesterday(detectionDelta)}
-                  </span>
-                </div>
-                {/* The bars. Heights are a share of the tallest day rather than of a round number:
-                    nobody knows what "a thousand detections" looks like, but everyone can see
-                    which day was the busy one. Today's bar is the lighter step because the day is
-                    not over — a partial count drawn at full strength reads as a quiet day. */}
-                <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "72px", marginTop: "14px" }}>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.detectionsLabel}</p>
+                <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)", marginTop: "2px" }}>
+                  {today.total.toLocaleString("en-US")}
+                </p>
+                {/* Grey, not green or red. A busier day than yesterday is neither good news nor
+                    bad, and colouring it would send the reader looking for a fault nobody is
+                    reporting. */}
+                <p style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", color: "var(--gray-500)", marginTop: "2px" }}>
+                  {detectionDelta >= 0 ? <ArrowUp size={11} strokeWidth={2.6} /> : <ArrowDown size={11} strokeWidth={2.6} />}
+                  {t.vsYesterday(detectionDelta)}
+                </p>
+                {/* Heights are a share of the tallest day, not of a round number: nobody knows what
+                    a thousand detections looks like, but everyone can see which day was the busy
+                    one. Today is the lighter step because the day is not over — a partial count at
+                    full strength reads as a quiet day. The breakdown that used to sit under this
+                    chart as a fourth line of text is the bars' tooltip now. */}
+                <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "64px", marginTop: "16px" }}>
                   {detectionDays.map(d => (
-                    <div key={d.daysAgo} title={`${d.total.toLocaleString("en-US")}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
+                    <div
+                      key={d.daysAgo}
+                      title={`${d.total.toLocaleString("en-US")} — ${t.detectionSplit(d.vip, d.vehicle, d.unknown)}`}
+                      style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}
+                    >
                       <div style={{
                         height: `${Math.max(4, (d.total / detectionPeak) * 100)}%`,
                         borderRadius: "4px",
@@ -929,9 +944,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     </div>
                   ))}
                 </div>
-                {/* Weekday letters, only once the clock is known — the labels are the only part of
-                    this chart that depends on what day it is, and a guessed one would be corrected
-                    a frame later. The row keeps its height either way so nothing jumps. */}
+                {/* Weekday letters, only once the clock is known — they are the one part of this
+                    chart that depends on what day it is, and a guessed one would be corrected a
+                    frame later. The row keeps its height either way so nothing jumps. */}
                 <div style={{ display: "flex", gap: "8px", marginTop: "6px", minHeight: "14px" }}>
                   {detectionDays.map(d => (
                     <span key={d.daysAgo} style={{ flex: 1, fontSize: "10px", color: "var(--gray-400)", textAlign: "center" }}>
@@ -944,9 +959,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     </span>
                   ))}
                 </div>
-                <p style={{ fontSize: "11px", color: "var(--gray-500)", marginTop: "10px" }}>
-                  {t.detectionSplit(today.vip, today.vehicle, today.unknown)}
-                </p>
               </div>
 
               {/* Which cameras were unreliable, not which are down now — the card above already
@@ -954,20 +966,20 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   invisible everywhere else in Portal, and it is exactly the one worth sending
                   somebody to. */}
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "10px" }}>{t.unstableTitle}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.unstableTitle}</p>
                 {unstable.length === 0 ? (
-                  <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noDrops}</p>
+                  <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "10px" }}>{t.noDrops}</p>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", marginTop: "6px" }}>
                     {unstable.map(({ camera, drops }) => (
                       <button
                         key={camera.id}
                         onClick={() => { setInspectCameraId(camera.id); onTabChange("cameras"); }}
                         className="portal-attention-row"
-                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", width: "100%", border: "none", background: "none", padding: "4px 6px", margin: "0 -6px", borderRadius: "6px", cursor: "pointer", fontFamily: "inherit" }}
+                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", width: "100%", border: "none", background: "none", padding: "6px", margin: "0 -6px", borderRadius: "6px", cursor: "pointer", fontFamily: "inherit" }}
                       >
-                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
-                        <span style={{ fontSize: "11px", color: "var(--gray-500)", flexShrink: 0 }}>{t.dropCount(drops)}</span>
+                        <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>{drops}</span>
                       </button>
                     ))}
                   </div>
