@@ -9,6 +9,18 @@
 
 const SGT_TIME_ZONE = "Asia/Singapore";
 
+/**
+ * The zone every date and hour in this product is computed in, exported so screens can hand it to
+ * Intl directly instead of re-typing the string.
+ *
+ * One constant because the deployment is one country. It is named for the project rather than for
+ * Singapore on purpose: a timezone belongs to a project (a site has a location; an account does
+ * not), and the plan is to store it per project and look it up here — confirmed 2026-09-08. When
+ * that lands, this becomes a function of a project id and the call sites already read as if it
+ * were one.
+ */
+export const PROJECT_TIME_ZONE = SGT_TIME_ZONE;
+
 const sgtDateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: SGT_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit",
 });

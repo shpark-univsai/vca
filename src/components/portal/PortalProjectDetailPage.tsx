@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
-import { formatElapsed, sgtClockMinutes, sgtDateKey } from "@/lib/time";
+import { PROJECT_TIME_ZONE, formatElapsed, sgtClockMinutes, sgtDateKey, sgtHour } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -391,19 +391,38 @@ function ExitIcon() { return <LogOut size={14} strokeWidth={2.4} />; }
  * a greeting that is wrong by an hour costs nothing. Takes the timestamp rather than reading the
  * clock itself, so the caller decides when it is safe to know the time — see nowMs.
  */
+/**
+ * Morning / afternoon / evening, on the project's clock rather than the reader's.
+ *
+ * It used to call getHours(), which is the browser's timezone: opened from Seoul at 00:30 SGT it
+ * said "Good morning" while it was still last night at the site, and the date under it was a day
+ * ahead. Everything else in this app that buckets by time goes through lib/time.ts for exactly
+ * this reason; the greeting was the one thing that did not.
+ *
+ * Singapore because that is where this deployment is, and lib/time.ts holds that as one constant —
+ * see the note there. Per-project timezones are the next step (a project in another country needs
+ * its own), and this call site becomes a project lookup on the day that lands.
+ */
 function greeting(ms: number, name: string, t: { greetMorning: (n: string) => string; greetAfternoon: (n: string) => string; greetEvening: (n: string) => string }) {
-  const h = new Date(ms).getHours();
+  const h = sgtHour(new Date(ms));
   if (h < 12) return t.greetMorning(name);
   if (h < 18) return t.greetAfternoon(name);
   return t.greetEvening(name);
 }
 
-/** "Tuesday · 08 Sep 2026" / "2026년 9월 8일 화요일" — the viewer's locale does the work. */
+/**
+ * "TUESDAY · 08 SEP 2026" / "2026년 9월 8일 화요일" — the reader's language, the project's day.
+ *
+ * The locale picks the wording and the order; the timeZone picks which day it is. Without the
+ * second half this printed the browser's date, which is the wrong day for anyone reading from
+ * another country for the hours either side of midnight — and the greeting above it would have
+ * disagreed with it.
+ */
 function longDate(ms: number, lang: "en" | "ko") {
   const d = new Date(ms);
   return lang === "ko"
-    ? d.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" })
-    : d.toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+    ? d.toLocaleDateString("ko-KR", { timeZone: PROJECT_TIME_ZONE, year: "numeric", month: "long", day: "numeric", weekday: "long" })
+    : d.toLocaleDateString("en-GB", { timeZone: PROJECT_TIME_ZONE, weekday: "long", day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
 }
 
 // Shared shell for the four Overview metric cards — header (eyebrow label + icon badge), then
