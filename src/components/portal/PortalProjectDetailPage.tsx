@@ -45,6 +45,10 @@ const T = {
     portalAccounts: "Portal accounts",
     accountsSuffix: "active admins",
     recordsSuffix: "records",
+    cardVipBreakdown: (groups: number, high: number) => `${groups} groups · ${high} high priority`,
+    cardAccountsBreakdown: (invited: number, suspended: number) =>
+      [invited > 0 ? `${invited} invited` : null, suspended > 0 ? `${suspended} suspended` : null].filter(Boolean).join(" · "),
+    cardAccountsAllIn: "Everyone active",
     noPendingAccessRequests: "No pending access requests.",
     attentionTitle: "Attention needed",
     dismissBanner: "Dismiss",
@@ -121,6 +125,10 @@ const T = {
     portalAccounts: "포털 계정",
     accountsSuffix: "명",
     recordsSuffix: "건",
+    cardVipBreakdown: (groups: number, high: number) => `그룹 ${groups}개 · 높음 이상 ${high}명`,
+    cardAccountsBreakdown: (invited: number, suspended: number) =>
+      [invited > 0 ? `초대 대기 ${invited}` : null, suspended > 0 ? `정지 ${suspended}` : null].filter(Boolean).join(" · "),
+    cardAccountsAllIn: "모두 활성",
     noPendingAccessRequests: "대기 중인 접근 요청이 없습니다.",
     attentionTitle: "확인 필요",
     dismissBanner: "닫기",
@@ -300,6 +308,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const cameras = useVcaStore(s => s.cameras);
   const portalUsers = useVcaStore(s => s.portalUsers);
   const persons = useVcaStore(s => s.persons);
+  const personGroups = useVcaStore(s => s.personGroups);
   const auditLog = useVcaStore(s => s.auditLog);
   const accessRequests = useVcaStore(s => s.accessRequests);
   const approveAccessRequests = useVcaStore(s => s.approveAccessRequests);
@@ -382,6 +391,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // requests exist, so flipping the flag off later cannot bury someone who already asked.
   const showAccessRequests = getAuthConfig().accessRequest || projectAccessRequests.length > 0;
   const pendingInviteCount = projectUsers.filter(u => u.status === "invited").length;
+  const suspendedCount = projectUsers.filter(u => u.status === "suspended").length;
+  /**
+   * The second fact on each of the two cards that are otherwise a bare number.
+   *
+   * A card reading "104 records" says what the rail's own badge already says. The two cards beside
+   * it earn their space by carrying a figure and what it is a share of; these two have no
+   * denominator to show, so they carry a second dimension instead — how the registry is organised,
+   * and who among the accounts is not yet in.
+   */
 
   const recentActivity = auditLog
     .filter(a => a.projectId === projectId)
@@ -389,6 +407,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     .slice(0, 5);
 
   const projectPersons = persons.filter(p => p.projectId === projectId);
+  const projectGroupCount = personGroups.filter(g => g.projectId === projectId).length;
+  const highPriorityVipCount = projectPersons.filter(p => p.priorityLabel === "high" || p.priorityLabel === "very_high").length;
   const recentVips = [...projectPersons].sort((a, b) => b.registeredAt.localeCompare(a.registeredAt)).slice(0, 3);
   // nowMs-derived, not new Date() directly, so this stays in sync with the same not-yet-mounted ->
   // mounted correction every other clock-reading value on this page already follows.
@@ -776,6 +796,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   )}
                 </span>
               </div>
+              {/* The second fact. A bare "104 records" is the rail badge again, one row lower —
+                  the two cards to the left earn their space with a figure and what it is a share
+                  of, and these two have no denominator anyone manages by. So they carry another
+                  dimension instead: how the registry is organised, and who is on the priority
+                  list. Same 11px caption line the bars use, so all four cards end alike. */}
+              <p style={{ fontSize: "11px", color: "var(--gray-500)", paddingTop: "6px" }}>
+                {t.cardVipBreakdown(projectGroupCount, highPriorityVipCount)}
+              </p>
             </MetricCard>
 
             <MetricCard
@@ -797,6 +825,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.accountsSuffix}</span>
                 </span>
               </div>
+              {/* Who is not all the way in. The chip above splits the accounts by which door they
+                  hold; this says how many are still waiting at one or have been shut out of both.
+                  With neither, it says so rather than printing two zeroes. */}
+              <p style={{ fontSize: "11px", color: "var(--gray-500)", paddingTop: "6px" }}>
+                {pendingInviteCount + suspendedCount > 0
+                  ? t.cardAccountsBreakdown(pendingInviteCount, suspendedCount)
+                  : t.cardAccountsAllIn}
+              </p>
             </MetricCard>
           </div>
 
@@ -935,10 +971,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     <button onClick={() => onTabChange("cameras")}
                       className="portal-attention-row"
                       style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", border: "none", borderTop: BORDER, background: "none", padding: "12px 20px", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.viewAllCameras(filteredCameraRows.length)}</span>
-                      <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "var(--gray-400)" }}>
-                        {t.totalCameras(projectCameras.length)} <ArrowUpRight size={12} strokeWidth={2.8} />
-                      </span>
+                      {/* "View all 8 cameras" is gone. With the panel opening on the offline cut
+                          it counted the cut, not the fleet — a door labelled with the number of
+                          things it is not showing you. What is behind it is all fifty-nine, so
+                          that is what the label says, and the arrow is the rest. */}
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.totalCameras(projectCameras.length)}</span>
+                      <ArrowUpRight size={13} strokeWidth={2.6} color="var(--gray-500)" />
                     </button>
                   </>
                 )}
