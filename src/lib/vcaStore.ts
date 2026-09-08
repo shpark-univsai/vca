@@ -1062,8 +1062,95 @@ export const PERSONS: Person[] = (() => {
     { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28", projectId: "proj-sg", roleLabel: "Special", priorityLabel: "very_high", groupId: "pgroup-2" },
     { id: "person-portal-4", name: "Rachel Wong", type: "VIP", photoUrl: getFacePhoto("person-portal-4"), registeredAt: "2026-08-25", projectId: "proj-sg", roleLabel: "Regular", priorityLabel: "normal" },
   );
+  persons.push(...bulkSampleVips());
   return persons;
 })();
+
+/**
+ * A hundred more registrations for proj-sg, so the registry is the size a real one is.
+ *
+ * Four hand-written rows told you the screen worked; they told you nothing about what it is like to
+ * find one person among a hundred, which is the actual job — the search box, the group filter, the
+ * sort and the grid/table switch all only start to matter past a screenful.
+ *
+ * Generated rather than typed out, and generated DETERMINISTICALLY: no Math.random anywhere, or the
+ * server and the client would render different names on first paint and React would tear the tree
+ * down. Every field is a function of the index, so the hundredth row is the same row on every
+ * machine and in every reload.
+ *
+ * Names are grouped in ethnically coherent blocks (a Malay given name does not get a Chinese
+ * surname) because Singapore's registry would read that way and a list of implausible names is the
+ * kind of detail that makes a demo feel fake.
+ */
+function bulkSampleVips(): Person[] {
+  /**
+   * Blocks of 25. Three pair a given name with a surname by index; the Malay block is written out
+   * in full, because "bin" and "binte" are the father's-name markers for a son and a daughter and
+   * pairing them by modulo produced "Nur Aisyah bin Hassan" — a name no registry would hold.
+   */
+  const blocks: { given: string[]; family: string[] }[] = [
+    {
+      given: ["Wei Ming", "Jia Hui", "Zhi Hao", "Xin Yi", "Kai Jie", "Mei Ling", "Jun Kai", "Hui Ying", "Cheng En", "Shu Fen",
+              "Yong Sheng", "Li Wen", "Ze Yang", "Pei Shan", "Guo Wei", "Yan Ting", "Wen Jie", "Si Ying", "Hao Ran", "Xiu Mei",
+              "Jing Yi", "Tian Hui", "Bo Wen", "Yu Xuan", "Qi Feng"],
+      family: ["Tan", "Lim", "Ng", "Goh", "Chua"],
+    },
+    {
+      given: ["Nur Aisyah binte Omar", "Muhammad Rizal bin Hassan", "Siti Nadia binte Salleh", "Ahmad Faiz bin Ismail", "Nurul Huda binte Yusof",
+              "Hafiz bin Rahman", "Zulaikha binte Karim", "Iskandar bin Mahmud", "Farhana binte Osman", "Ridzuan bin Latif",
+              "Syafiqah binte Aziz", "Aidil bin Sulaiman", "Khairul bin Anuar", "Nabilah binte Jamal", "Shahrul bin Bakar",
+              "Anisah binte Halim", "Fandi bin Yaacob", "Rohana binte Zainal", "Azman bin Roslan", "Suriani binte Kadir",
+              "Danial bin Firdaus", "Maslinda binte Noor", "Hakim bin Zulkifli", "Julia binte Rahim", "Rusdi bin Samad"],
+      family: [""],
+    },
+    {
+      given: ["Priya", "Arjun", "Deepa", "Ravi", "Kavitha", "Suresh", "Meena", "Vikram", "Lakshmi", "Ganesh",
+              "Anitha", "Prakash", "Shanti", "Mohan", "Divya", "Rajesh", "Sunita", "Karthik", "Vasanthi", "Naveen",
+              "Malini", "Dinesh", "Padma", "Sanjay", "Revathi"],
+      family: ["Raman", "Nair", "Pillai", "Menon", "Krishnan"],
+    },
+    {
+      given: ["James", "Emma", "Daniel", "Sophie", "Marcus", "Claire", "Andrew", "Hannah", "Peter", "Laura",
+              "Nathan", "Grace", "Oliver", "Chloe", "Simon", "Elise", "Thomas", "Naomi", "Julian", "Beatrice",
+              "Adrian", "Fiona", "Lucas", "Miriam", "Victor"],
+      family: ["Carter", "Whitfield", "Novak", "Rossi", "Andersen"],
+    },
+  ];
+  const roles = ["Regular", "Lead", "Special", "Escort", "Delegate"];
+  // Mostly normal. A watchlist where a third of the entries are the top level has no top level.
+  const priorities: Person["priorityLabel"][] = [
+    "normal", "normal", "normal", "normal", "normal", "normal", "high", "normal", "normal", "very_high",
+  ];
+  // Two thirds unattached: the People tab is individuals only, so it needs the larger share, and a
+  // group of forty is not a party anybody escorts.
+  const groups = [undefined, undefined, undefined, undefined, "pgroup-1", undefined, "pgroup-2", undefined, "pgroup-3", "pgroup-4"];
+  // One line at most, and only on some — a note on every card would make the grid a wall of text.
+  const notes = [undefined, undefined, undefined, "Escorted at all times.", undefined, undefined, "Media-facing; avoid public alerts.", undefined];
+
+  const out: Person[] = [];
+  for (let i = 0; i < 100; i++) {
+    const block = blocks[Math.floor(i / 25)];
+    const given = block.given[i % 25];
+    const family = block.family[i % block.family.length];
+    const id = `person-seed-${i + 1}`;
+    // Spread back from 2026-08-24, a couple of registrations most days — which is what makes the
+    // "registered today" figure and the date sort mean anything.
+    const day = new Date(Date.UTC(2026, 7, 24) - Math.floor(i / 2) * 86_400_000);
+    out.push({
+      id,
+      name: family ? `${given} ${family}` : given,
+      type: "VIP",
+      photoUrl: getFacePhoto(id),
+      registeredAt: day.toISOString().slice(0, 10),
+      projectId: "proj-sg",
+      roleLabel: roles[i % roles.length],
+      priorityLabel: priorities[i % priorities.length],
+      groupId: groups[i % groups.length],
+      description: notes[i % notes.length],
+    });
+  }
+  return out;
+}
 
 let cameraSeq = CAMERAS.length;
 let uploadSeq = UPLOADS.length;
@@ -1074,6 +1161,10 @@ let projectSeq = PROJECTS.length;
 const PERSON_GROUPS: PersonGroup[] = [
   { id: "pgroup-1", name: "City Hall delegation", description: "Quarterly inspection visit", priorityLabel: "high", projectId: "proj-sg", registeredAt: "2026-08-30" },
   { id: "pgroup-2", name: "Executive detail", description: "Standing protection list", priorityLabel: "very_high", projectId: "proj-sg", registeredAt: "2026-08-21" },
+  // Two more so the Groups tab has enough rows for its own sort and counts to be worth reading —
+  // the bulk registrations below distribute across all four.
+  { id: "pgroup-3", name: "Contractor access", description: "Site works, gate 3", priorityLabel: "normal", projectId: "proj-sg", registeredAt: "2026-08-12" },
+  { id: "pgroup-4", name: "Press pool", description: "Accredited for the summit week", priorityLabel: "normal", projectId: "proj-sg", registeredAt: "2026-08-05" },
 ];
 
 let personSeq = PERSONS.length;
