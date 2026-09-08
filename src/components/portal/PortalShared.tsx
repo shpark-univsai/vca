@@ -592,8 +592,16 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
             title={cell.title}
             className="portal-attention-row"
             style={{
-              ...shared, border: "none", borderLeft: shared.borderLeft, cursor: "pointer",
-              fontFamily: "inherit", textAlign: "left",
+              ...shared,
+              // Three sides, not `border: "none"`. A button carries a UA border and has to lose it,
+              // but writing the shorthand here resets the left edge too — and it resets it *after*
+              // the spread has set it, because re-assigning a key in an object literal keeps the
+              // key's original position: borderLeft came from `shared` and `border` came later, so
+              // the divider between two clickable cells was being erased at the last moment. That
+              // is why the strip lost the line between its first two cells and kept the one before
+              // the cell that is a span.
+              borderTop: "none", borderRight: "none", borderBottom: "none",
+              cursor: "pointer", fontFamily: "inherit", textAlign: "left",
               // The selected cell is tinted rather than outlined: on a panel, "this filter is on"
               // is a state of the cell, not an annotation on its label.
               backgroundColor: cell.active ? "var(--warning-100)" : "transparent",

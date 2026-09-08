@@ -112,9 +112,34 @@ export default function PortalShell() {
   const projectCameras = cameras.filter(c => c.projectId === currentProjectId);
   const fleetOnline = projectCameras.filter(c => c.status === "online").length;
   const fleetOffline = projectCameras.length - fleetOnline;
-  const [tab, setTab] = useState<DetailTab>(
+  const [tab, setTabState] = useState<DetailTab>(
     () => (PROJECT_TABS.some(t => t.id === tabParam) ? (tabParam as DetailTab) : "overview"),
   );
+  /**
+   * Which screen you are on lives in the address bar as well as in state, so a refresh comes back
+   * to the screen you refreshed.
+   *
+   * It was state only: the tab was read from ?tab= once at mount and never written back, so F5 on
+   * Users & Permissions returned to the Overview — and a link to a screen could not be sent to
+   * anybody. history.replaceState rather than router.replace: this is the same page with a
+   * different view of it, so it should not add an entry to the back stack or ask Next to
+   * re-render the route. The reader still gets the back button for team switches, which are real
+   * navigations.
+   */
+  const syncUrl = (nextTab: DetailTab, nextAccount: boolean) => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    // Overview is the default, so it stays out of the URL — a bare /portal should not become
+    // /portal?tab=overview just by being looked at.
+    if (nextTab === "overview") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", nextTab);
+    if (nextAccount) url.searchParams.set("view", "account");
+    else url.searchParams.delete("view");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  };
+  const setTab = (next: DetailTab) => { setTabState(next); syncUrl(next, false); };
+  const setShowAccount = (next: boolean) => { setShowAccountState(next); syncUrl(tab, next); };
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -156,7 +181,7 @@ export default function PortalShell() {
   // Portal's account screen. A content mode rather than a route, because /portal is one route
   // whose screen is chosen by state already (the wizard works the same way) — and because it keeps
   // the rail on screen, which is how you get back out of it.
-  const [showAccount, setShowAccount] = useState(false);
+  const [showAccount, setShowAccountState] = useState(() => searchParams.get("view") === "account");
 
   const switchTeam = (teamId: string) => {
     setShowWizard(false);
