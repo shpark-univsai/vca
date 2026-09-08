@@ -344,7 +344,9 @@ function SectionHead({ title, subtitle }: {
 }) {
   return (
     <div style={{ minWidth: 0 }}>
-      <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{title}</p>
+      {/* 14px. At 15 the panel titles sat one step under the greeting and one above everything
+          else, which made three sizes in a column of cards that hold the same kind of thing. */}
+      <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{title}</p>
       {subtitle && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{subtitle}</p>}
     </div>
   );

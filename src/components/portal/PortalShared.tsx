@@ -145,7 +145,7 @@ export const CARD_GAP = "12px";
  * labels for the columns rather than as a watermark, and they stay clearly quieter than the
  * gray-900 data under them. Named so the six tables that draw a heading row cannot drift apart.
  */
-export const TABLE_HEADER_COLOR = "var(--gray-600)";
+export const TABLE_HEADER_COLOR = "var(--gray-700)";
 
 /**
  * Ceiling for the Overview's three list panels — Camera Status, Recently Registered VIPs, Recent
