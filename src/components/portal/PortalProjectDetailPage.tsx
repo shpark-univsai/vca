@@ -760,15 +760,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                           padding: "6px 10px", borderRadius: "6px", border: "none", cursor: "pointer", fontSize: "12px", fontWeight: 600,
                           backgroundColor: cameraStatusFilter === f ? "white" : "transparent",
                           boxShadow: cameraStatusFilter === f ? PANEL_SHADOW : "none",
-                          color: cameraStatusFilter === f ? "var(--gray-900)" : f === "offline" ? "var(--danger-400)" : "var(--gray-500)",
+                          color: cameraStatusFilter === f ? "var(--gray-900)" : "var(--gray-500)",
                         }}>
                         {f === "all" ? t.filterAll(projectCameras.length) : t.filterOffline(offlineCount)}
                       </button>
                     ))}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <SubStat color="var(--success-400)" label={t.legendOnline(onlineCount)} />
-                    <SubStat color="var(--danger-400)" label={t.legendOffline(offlineCount)} />
+                    <SubStat color="var(--gray-900)" label={t.legendOnline(onlineCount)} />
+                    <SubStat color="var(--gray-400)" label={t.legendOffline(offlineCount)} />
                   </div>
                 </div>
                 {visibleCameraRows.length === 0 ? (
@@ -812,7 +812,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                           </span>
                           <span style={{
                             fontSize: "12px", fontWeight: 600, padding: "4px 8px", borderRadius: "6px", width: "fit-content",
-                            backgroundColor: online ? "var(--success-100)" : "var(--danger-100)", color: online ? "var(--success-400)" : "var(--danger-400)",
+                            // Neither green nor red. This column repeats itself eleven times, and
+                            // a green pill on every healthy row spends the strongest signal on the
+                            // ordinary case — while eight red ones made the panel read as an
+                            // incident report. Online is the plain text colour, offline is grey:
+                            // one is present, the other is not, and the count that matters is
+                            // stated once in the legend above and in the strip at the top of the
+                            // page.
+                            backgroundColor: "var(--gray-100)", color: online ? "var(--gray-900)" : "var(--gray-400)",
                           }}>
                             {online ? t.online : t.offline}
                           </span>
