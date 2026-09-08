@@ -521,20 +521,23 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             sentence in it says the second thing, and the sentence is the same content the chips
             carried, joined: every clause is a figure that already exists on this page.
 
-            warning-100 with a warning-200 edge: the palette's quietest amber. Dismiss hides it for
-            this visit only — nothing is stored, and a reload brings it back, because none of these
-            errands go away by being closed.
+            primary-100 with a primary-200 edge. It was amber, which reads as a warning — but this
+            band is a to-do list, not an alarm: the things on it are errands (a camera to reconnect,
+            an invitation to chase), and the one genuinely bad state, an offline count, already has
+            red on the card below. The product's own colour marks it as the page speaking rather
+            than the system alerting. Dismiss hides it for this visit only — nothing is stored, and
+            a reload brings it back, because none of these errands go away by being closed.
           */}
           {attentionItems.length > 0 && !attentionDismissed && (
             <div style={{
               display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
-              backgroundColor: "var(--warning-100)", border: "1px solid var(--warning-200)",
+              backgroundColor: "var(--primary-100)", border: "1px solid var(--primary-200)",
               borderRadius: "12px", padding: "14px 16px", marginBottom: CARD_GAP,
             }}>
               <span style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
                 width: "28px", height: "28px", borderRadius: "8px", flexShrink: 0,
-                backgroundColor: "var(--warning-200)", color: "var(--warning-500)",
+                backgroundColor: "var(--primary-200)", color: "var(--primary-400)",
               }}>
                 <Zap size={14} strokeWidth={2.4} />
               </span>
@@ -623,12 +626,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
             <MetricCard
               label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--info-100)" iconColor="var(--info-500)"
-              /* The plan goes in the chip, not beside "59% utilised". The chip row is where each
-                 card says in a word what its figure is about, and this was the only card with that
-                 slot empty; the line under the bar is the bar's legend — how much is filled, how
-                 much is left — and a plan name there would be a third kind of fact in a row of
-                 two. Uppercased to sit with the other chips. */
-              chip={project.licensePlan ? <StateChip text={project.licensePlan.toUpperCase()} color="var(--info-500)" /> : undefined}
+              /* No chip. The plan was here as ENTERPRISE beside the icon and it is now the left
+                 half of the bar's caption, which is where it belongs: the caption is read with the
+                 figure it qualifies, and the same word twice on one card is once too many. This
+                 card simply has an icon in that row, like the VIP one when nothing new arrived. */
               onClick={() => onTabChange("license")}
             >
               {/* The figure on its own line, the bar full width at the foot of the card.
