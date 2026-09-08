@@ -876,7 +876,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                           }}>
                             {online ? t.online : t.offline}
                           </span>
-                          <button onClick={() => onTabChange("cameras")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.view}</button>
+                          {/* gray-500 at 600, not gray-900 at 700. It repeats on every row, and
+                              at full strength eleven copies of the same word were the darkest
+                              column in the panel — heavier than the camera names beside them. */}
+                          <button className="portal-link" onClick={() => onTabChange("cameras")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", fontFamily: "inherit" }}>{t.view}</button>
                         </div>
                       );
                     })}
@@ -933,14 +936,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     is the right place: the list above answers "who is in", this answers "and one
                     more". */}
                 <button onClick={() => onTabChange("vip")}
-                  className="portal-link"
+                  className="portal-attention-row"
                   /* The rule runs to the card's edges, like the camera panel's footer beside it.
                      This panel carries its 20px padding on the card itself, so a footer inside it
                      drew a rule 20px short at each end while the panel next to it drew one edge to
                      edge — two cards in one row disagreeing about where a card ends. Negative
-                     margins put the button back on the card's own width and its padding puts the
-                     text back where the rest of the panel's text starts. */
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "calc(100% + 40px)", border: "none", borderTop: BORDER, background: "none", padding: "12px 20px 0", margin: "12px -20px 0", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+                     margins on the sides and the bottom put the button on the card's own width and
+                     down to its bottom edge, so a hover fills the whole footer rather than a band
+                     floating above 20px of white. */
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "calc(100% + 40px)", border: "none", borderTop: BORDER, background: "none", padding: "12px 20px", margin: "12px -20px -20px", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.registerVipLink}</span>
                   <Plus size={14} strokeWidth={2.4} color="var(--gray-500)" />
                 </button>
@@ -1028,12 +1032,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     ))}
                   </div>
                 )}
-                {/* Full-bleed like the VIP panel's footer: this card carries its 20px padding
-                    itself, so the button is pulled back out to the card's own width and pads its
-                    text back in. */}
+                {/* Full-bleed on all three sides it touches. The card carries its own 20px
+                    padding, so the button is pulled out by that much left, right AND bottom —
+                    with only the sides pulled out, the hover fill stopped at the text and left a
+                    white strip of the card's bottom padding under a grey band, which read as the
+                    row being misaligned with the card. The card clips (overflow hidden), so the
+                    fill takes the bottom corners' radius. */}
                 <button onClick={() => onTabChange("users")}
                   className="portal-attention-row"
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "calc(100% + 40px)", border: "none", borderTop: BORDER, background: "none", padding: "12px 20px 0", margin: "12px -20px 0", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "calc(100% + 40px)", border: "none", borderTop: BORDER, background: "none", padding: "12px 20px", margin: "12px -20px -20px", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.seeAll}</span>
                   <ArrowUpRight size={13} strokeWidth={2.6} color="var(--gray-500)" />
                 </button>
