@@ -608,13 +608,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   the same rows above them, and the grid stretches the cards themselves. */}
               <div style={{ paddingTop: "2px" }}>
                 <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
-                  {/* gray-500 for the healthy share, danger only for the part that is not.
+                  {/* primary-300 for the healthy share, danger only for the part that is not.
                       It was success-400 against danger-400 — two saturated hues meeting in the
-                      middle of a white card, which read as a chart from another product — and then
-                      gray-900, which fixed the loudness by making the bar the heaviest thing on
-                      the card. A mid grey is what a quantity looks like: present, not shouting.
-                      Only the red slice is a state, and it stays the one thing that catches. */}
-                  <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--gray-500)" }} />
+                      middle of a white card, which read as a chart from another product — then
+                      gray-900 (the bar became the heaviest thing on the card), then gray-500. The
+                      light primary step is the product's own colour at a strength a quantity can
+                      carry, and two 8px bars are well inside the tenth of a screen the palette
+                      guidance allows purple. Only the red slice is a state, and it stays the one
+                      thing that catches. */}
+                  <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--primary-300)" }} />
                   <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
                 </div>
                 <BarStats left={t.statOnlineShare(onlineShare)} right={t.statOffline(offlineCount)} />
@@ -647,7 +649,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
               <div style={{ paddingTop: "2px" }}>
                 <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--gray-500)" }} />
+                  <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--primary-300)" }} />
                 </div>
                 {channelLimit ? <BarStats left={t.statUtilised(channelShare)} right={t.statAvailable(Math.max(0, channelLimit - projectCameras.length))} /> : null}
               </div>
