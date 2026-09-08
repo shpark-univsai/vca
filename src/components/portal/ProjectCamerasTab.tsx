@@ -969,7 +969,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           the page title gone it was the first thing in the column and lined up hard with the
           crumb above, which made the two read as one row of controls in the chrome. A few px of
           air puts the buttons back on the page. */}
-      <div style={{ display: "flex", marginTop: "10px", alignItems: "center", justifyContent: "flex-end", marginBottom: "16px" }}>
+      <div style={{ display: "flex", marginTop: "4px", alignItems: "center", justifyContent: "flex-end", marginBottom: "16px" }}>
         <div style={{ display: "flex", gap: "8px" }}>
           <button onClick={batchReconnect}
             onMouseEnter={() => setHoveredAction("reconnect")} onMouseLeave={() => setHoveredAction(null)}

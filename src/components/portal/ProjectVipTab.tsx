@@ -901,7 +901,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           the page title gone it was the first thing in the column and lined up hard with the
           crumb above, which made the two read as one row of controls in the chrome. A few px of
           air puts the buttons back on the page. */}
-      <div style={{ display: "flex", marginTop: "10px", alignItems: "center", justifyContent: "flex-end", marginBottom: "20px" }}>
+      <div style={{ display: "flex", marginTop: "4px", alignItems: "center", justifyContent: "flex-end", marginBottom: "20px" }}>
         <div style={{ display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={handleBulkUpload} style={{ display: "none" }} />
           {/* Tools follow the tab: registering a face and creating a party are different jobs, and
