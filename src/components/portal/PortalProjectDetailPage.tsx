@@ -984,10 +984,17 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               the four cards above use — label, figure, then the graphic to its side — so the row
               of cards and this card are read the same way.
             */}
+            {/* The title has the card's top line to itself, and the chart starts under it.
+                With the chart vertically centred against the whole left column it rose up beside
+                the title, so a heading and a graphic shared one band and neither was clearly
+                first. A card's name sits above its contents; the figure and the shape it came
+                from are the contents, and they line up with each other. */}
+            <div style={{ marginBottom: "10px" }}>
+              <SectionHead title={t.trendTitle} />
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: CARD_GAP, flexWrap: "wrap" }}>
               <div style={{ minWidth: "170px", flexShrink: 0 }}>
-                <SectionHead title={t.trendTitle} />
-                <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", marginTop: "4px" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
                   <span title={t.weekTotalHint(today.total.toLocaleString("en-US"))} style={{ fontSize: "22px", fontWeight: 800, color: "var(--gray-900)" }}>
                     {weekTotal.toLocaleString("en-US")}
                   </span>
