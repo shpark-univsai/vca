@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Film as FilmIcon, Image as ImageIcon, Video as VideoIcon } from "lucide-react";
+import { Film as FilmIcon, Image as ImageIcon, RotateCcw, Video as VideoIcon } from "lucide-react";
 import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type UploadedMedia, type UploadStatus, projectChannelLimit, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -966,7 +966,11 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           <button onClick={batchReconnect}
             onMouseEnter={() => setHoveredAction("reconnect")} onMouseLeave={() => setHoveredAction(null)}
             style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "reconnect" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M12.25 7A5.25 5.25 0 1 1 10.5 3.15M12.25 1.75V4.67h-2.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            {/* The same lucide rotate-ccw the Server tab's Reset carries. This was a hand-drawn
+                arc turning the other way, so Portal had two "try that again" glyphs pointing in
+                opposite directions. 2.1, not 1.4: lucide draws in a 24-unit box and this renders
+                at 16px — see ICON_STROKE_PX. */}
+            <RotateCcw size={16} strokeWidth={2.1} />
             {t.reconnectAll}
           </button>
           <button onClick={exportCsv}
