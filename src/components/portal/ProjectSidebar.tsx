@@ -108,6 +108,13 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
 
 interface ProjectSidebarProps {
   tab: DetailTab;
+  /**
+   * How many things each tab holds, by tab id. Rendered as a badge on the right of the row —
+   * the reference rail does this and it is worth copying: "VIP registry 104" answers, from the
+   * nav, the question the tab is usually opened to ask. Omit a tab to leave its row bare, which
+   * is right for Overview (it counts nothing) and for tabs whose figure is not a count.
+   */
+  counts?: Partial<Record<DetailTab, number>>;
   onTabChange: (tab: DetailTab) => void;
   collapsed: boolean;
   /**
@@ -117,7 +124,7 @@ interface ProjectSidebarProps {
   myPageOpen: boolean;
 }
 
-export default function ProjectSidebar({ tab, onTabChange, collapsed, myPageOpen }: ProjectSidebarProps) {
+export default function ProjectSidebar({ tab, onTabChange, collapsed, myPageOpen, counts }: ProjectSidebarProps) {
   const [lang] = usePortalLanguage();
   return (
     <div
@@ -179,20 +186,44 @@ export default function ProjectSidebar({ tab, onTabChange, collapsed, myPageOpen
                   style={{
                     display: "flex", alignItems: "center", gap: "12px",
                     justifyContent: collapsed ? "center" : "flex-start",
-                    border: "none", cursor: "pointer", borderRadius: "12px",
+                    border: "none", cursor: "pointer", borderRadius: "10px",
                     padding: collapsed ? "12px 0" : "11px 14px",
-                    // primary-400 for the one item you are on. It is the only colour in the rail and
-                    // about a sixth of it — which is what the accent is for, and the reference puts
-                    // its own accent in exactly this place. Everything else is grey on grey-900:
-                    // gray-300 reads on this ground where gray-600 did on the old light rail.
-                    backgroundColor: active ? "var(--primary-400)" : undefined,
+                    position: "relative",
+                    /*
+                     * The current row: a quiet gray-800 fill with a bar down its left edge, which
+                     * is the shape the reference rail uses. A solid primary-400 pill was the first
+                     * attempt and it shouted — a sixth of the rail in full accent, next to nothing
+                     * else coloured. The bar carries the accent in about a tenth of the area and
+                     * says the same thing, and the fill alone would be too close to hover.
+                     */
+                    backgroundColor: active ? "var(--gray-800)" : undefined,
                     color: active ? "white" : "var(--gray-300)",
                     fontSize: "13px", fontWeight: active ? 700 : 600,
                     whiteSpace: "nowrap", width: "100%",
                   }}
                 >
+                  {active && !collapsed && (
+                    <span style={{ position: "absolute", left: 0, top: "8px", bottom: "8px", width: "3px", borderRadius: "0 3px 3px 0", backgroundColor: "var(--primary-400)" }} />
+                  )}
                   <span style={{ display: "flex", flexShrink: 0 }}><Icon color={active ? "white" : "var(--gray-300)"} /></span>
-                  {!collapsed && t.label[lang]}
+                  {!collapsed && (
+                    <>
+                      {t.label[lang]}
+                      {/* The count, right-aligned. gray-800 on the resting row and gray-700 on the
+                          current one, so the badge stays a step lighter than whatever is under it
+                          instead of disappearing into the active fill. */}
+                      {counts?.[t.id] !== undefined && (
+                        <>
+                          <span style={{ flex: 1 }} />
+                          <span style={{
+                            fontSize: "10px", fontWeight: 600, color: "var(--gray-400)",
+                            backgroundColor: active ? "var(--gray-700)" : "var(--gray-800)",
+                            padding: "2px 6px", borderRadius: "6px", flexShrink: 0,
+                          }}>{counts[t.id]}</span>
+                        </>
+                      )}
+                    </>
+                  )}
                 </button>
               );
             })}

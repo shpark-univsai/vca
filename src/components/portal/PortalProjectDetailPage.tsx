@@ -3,9 +3,9 @@
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUp, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
-import { canEnterApp, canEnterPortal, currentPortalUser, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
+import { canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
@@ -22,6 +22,12 @@ const T = {
     addCamera: "Add Camera",
     registerVip: "Register VIP",
     goToApp: "Go to app",
+    greetMorning: (name: string) => `Good morning, ${name}`,
+    greetAfternoon: (name: string) => `Good afternoon, ${name}`,
+    greetEvening: (name: string) => `Good evening, ${name}`,
+    greetSub: (project: string) => `Here's the current pulse of your ${project} network.`,
+    liveMonitoring: "LIVE MONITORING",
+    noCamerasOnline: "NO CAMERA ONLINE",
     approveAccessRequests: "Approve Access Requests",
     cameraConnectivity: "Camera Connectivity",
     connectedSuffix: (n: number) => `/ ${n} connected`,
@@ -80,6 +86,12 @@ const T = {
     addCamera: "카메라 추가",
     registerVip: "VIP 등록",
     goToApp: "앱으로 이동",
+    greetMorning: (name: string) => `좋은 아침이에요, ${name}님`,
+    greetAfternoon: (name: string) => `안녕하세요, ${name}님`,
+    greetEvening: (name: string) => `좋은 저녁이에요, ${name}님`,
+    greetSub: (project: string) => `${project} 네트워크의 현재 상태입니다.`,
+    liveMonitoring: "실시간 모니터링",
+    noCamerasOnline: "온라인 카메라 없음",
     approveAccessRequests: "접근 요청 승인",
     cameraConnectivity: "카메라 연결 상태",
     connectedSuffix: (n: number) => `/ ${n}대 연결됨`,
@@ -154,6 +166,28 @@ function UserPlusIcon() { return <UserPlus size={14} strokeWidth={2.4} />; }
 function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={3.36} />; }
 function ExitIcon() { return <LogOut size={14} strokeWidth={2.4} />; }
 
+/**
+ * "Good morning" until noon, "Good afternoon" until six, "Good evening" after.
+ *
+ * The boundaries are the ones every product that does this uses; there is no cleverer answer, and
+ * a greeting that is wrong by an hour costs nothing. Takes the timestamp rather than reading the
+ * clock itself, so the caller decides when it is safe to know the time — see nowMs.
+ */
+function greeting(ms: number, name: string, t: { greetMorning: (n: string) => string; greetAfternoon: (n: string) => string; greetEvening: (n: string) => string }) {
+  const h = new Date(ms).getHours();
+  if (h < 12) return t.greetMorning(name);
+  if (h < 18) return t.greetAfternoon(name);
+  return t.greetEvening(name);
+}
+
+/** "Tuesday · 08 Sep 2026" / "2026년 9월 8일 화요일" — the viewer's locale does the work. */
+function longDate(ms: number, lang: "en" | "ko") {
+  const d = new Date(ms);
+  return lang === "ko"
+    ? d.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" })
+    : d.toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+}
+
 // Shared shell for the four Overview metric cards — header (eyebrow label + icon badge), then
 // whatever body content each card needs (big value, progress bar, footer stats) as children.
 interface PortalProjectDetailPageProps {
@@ -163,7 +197,6 @@ interface PortalProjectDetailPageProps {
 }
 
 export default function PortalProjectDetailPage({ projectId, tab, onTabChange }: PortalProjectDetailPageProps) {
-  const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const cameras = useVcaStore(s => s.cameras);
   const portalUsers = useVcaStore(s => s.portalUsers);
@@ -177,6 +210,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // Same rule the sidebar's account menu uses: no app, no door to it. Undefined identity is the
   // demo default and fails open, or the console would hide its own way out of itself.
   const meUser = currentPortalUser(portalUsers);
+  // Same fallback the account menu uses: the demo identity is in no account list, and a screen
+  // that greets you by name cannot greet you by nobody.
+  const admin = meUser ?? SIGNED_IN_USER;
   const appAccess = !meUser || canEnterApp(meUser);
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -205,8 +241,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     return <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>{t.projectNotFound}</p>;
   }
 
-  const meta = TYPE_META[project.type];
-  const orgName = teams.find(o => o.id === project.teamId)?.name ?? project.teamId;
   const onlineCount = projectCameras.filter(c => c.status === "online").length;
   const offlineCount = projectCameras.length - onlineCount;
   const projectUsers = portalUsers.filter(u => u.projectIds.includes(projectId));
@@ -297,17 +331,34 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     <div>
       {tab === "overview" && (
         <>
-          {/* Welcome banner — plain page background, not a card (no single button here is "the"
-              primary action, so all three stay in the same bordered/white tier rather than
-              competing for primary-400). */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", marginBottom: "16px" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px", minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{project.name}</p>
-                <span style={{ fontSize: "10px", fontWeight: 600, color: meta.color, backgroundColor: meta.bg, padding: "4px 8px", borderRadius: "999px" }}>{meta.label}</span>
-                <span style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{project.id}</span>
+          {/*
+            The page opens by greeting whoever is reading it, the way the reference dashboard does.
+            Three lines: today's date with a live dot, the greeting, then one sentence naming the
+            project. It used to open with the project name, a type chip and the raw project id —
+            three labels about the record rather than a word to the person, and the id is on the
+            Server tab where somebody copying it actually needs it.
+
+            The greeting reads the clock, so it can only be drawn after mount — before that the
+            date line and the greeting are absent rather than guessed, the same nowMs gate this
+            page already uses for the licence countdown and the audit log's relative times.
+          */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", marginBottom: "20px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", minHeight: "14px" }}>
+                {nowMs !== null && (
+                  <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px", color: "var(--gray-500)" }}>
+                    {longDate(nowMs, lang)}
+                  </span>
+                )}
+                <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px", color: onlineCount > 0 ? "var(--success-400)" : "var(--gray-400)" }}>
+                  <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: onlineCount > 0 ? "var(--success-400)" : "var(--gray-300)" }} />
+                  {onlineCount > 0 ? t.liveMonitoring : t.noCamerasOnline}
+                </span>
               </div>
-              <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{orgName}</p>
+              <p style={{ fontSize: "26px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.4px", minHeight: "34px" }}>
+                {nowMs !== null ? greeting(nowMs, admin.name, t) : ""}
+              </p>
+              <p style={{ fontSize: "13px", color: "var(--gray-500)" }}>{t.greetSub(project.name)}</p>
             </div>
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               <button onClick={() => onTabChange("cameras")}

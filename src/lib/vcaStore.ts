@@ -145,6 +145,13 @@ export interface Camera {
   mac: string;
   rtspUrl: string;
   status: CameraStatus;
+  /**
+   * When this camera last reported in. Seeded here, owned by the backend once camera polling lands
+   * (confirmed as planned) — it is the figure the Overview's camera table reads as "8 min ago",
+   * and the one that tells an operator whether an offline camera just dropped or has been dark
+   * since yesterday. Optional: a camera added through Portal has not reported yet.
+   */
+  lastSeenAt?: string;
   location: string;
   zone: string;
   thumbnail: string;
@@ -851,7 +858,7 @@ const SERVERS: Server[] = [
   { id: "srv-8", projectId: "proj-riverside", name: "campus-db-1", ip: "192.168.1.21", type: "Database", status: "success" },
 ];
 
-const CAMERAS: Camera[] = [
+const CAMERA_SEEDS: Camera[] = [
   {
     id: "cam-novena", projectId: "proj-sg", code: "CAM-NOV-001", name: "Novena",
     ip: "10.20.4.11", mac: "00:1B:44:11:3A:B7", rtspUrl: "rtsp://10.20.4.11:554/stream1",
@@ -950,6 +957,23 @@ const CAMERAS: Camera[] = [
     });
   }),
 ];
+
+/**
+ * Last-signal times, seeded onto the cameras above rather than typed into all 59 of them.
+ *
+ * Online cameras reported within the last few minutes; offline ones stopped somewhere between a
+ * quarter of an hour and half a day ago, which is what makes the column worth reading — a camera
+ * dark for eleven hours is a different errand from one that dropped during this shift.
+ *
+ * Deterministic per camera (the index, not a random), and expressed through auditAt like every
+ * other relative timestamp in this file: the value is fixed at module load, so a screen must only
+ * render it after mount — which is what the Overview's nowMs gate already does for the audit log.
+ */
+const CAMERAS: Camera[] = CAMERA_SEEDS.map((c, i) => ({
+  ...c,
+  lastSeenAt: auditAt(c.status === "online" ? 1 + (i % 5) : 14 + (i * 37) % 700),
+}));
+
 /**
  * The project's camera codes, in roster order. Mock datasets that need to name a camera draw from
  * here rather than inventing their own labels: Re-ID's grid used to carry "NC-1".."NC-4", which

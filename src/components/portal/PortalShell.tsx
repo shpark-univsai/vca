@@ -64,6 +64,10 @@ export default function PortalShell() {
   const [showNewTeam, setShowNewTeam] = useState(false);
   const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
+  // Read here only to count them for the rail's badges — see the `counts` prop below.
+  const cameras = useVcaStore(s => s.cameras);
+  const persons = useVcaStore(s => s.persons);
+  const portalUsers = useVcaStore(s => s.portalUsers);
   const addTeam = useVcaStore(s => s.addTeam);
   /**
    * The account viewing Portal, where there is one. Two things hang off it: whether "Exit to App"
@@ -275,6 +279,14 @@ export default function PortalShell() {
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           {sidebarVisible && (
             <ProjectSidebar
+              /* Counts for the rail's badges. Only the three tabs that hold a list of things: a
+                 licence is not a count, the server tab lists servers but is read as one setting,
+                 and Overview counts nothing of its own. */
+              counts={{
+                cameras: cameras.filter(c => c.projectId === currentProjectId).length,
+                vip: persons.filter(p => p.projectId === currentProjectId).length,
+                users: portalUsers.filter(u => u.projectIds.includes(currentProjectId)).length,
+              }}
               tab={tab}
               onTabChange={next => { setShowAccount(false); setTab(next); }}
               collapsed={sidebarCollapsed}
