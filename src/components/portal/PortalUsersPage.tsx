@@ -1344,13 +1344,20 @@ function UserCountStrip({ users, rosterWaiting }: { users: PortalUser[]; rosterW
   /**
    * Three groups, not nine figures.
    *
-   * The first five answer "who is in, and what may they do" — they count people with an account
-   * today. The next three answer "who is on the way in, or stopped on the way" — an invitation
-   * nobody accepted, an account somebody suspended, a name waiting for a code. Reading them as one
-   * run made the two questions look like one list, so the second group's numbers looked like more
-   * roles. Total closes the row on its own.
+   * Total first, on its own: it counts everyone this page knows about, which is neither of the
+   * questions the other two groups answer.
+   *
+   * Then five that answer "who is in, and what may they do" — people with an account today. Then
+   * three that answer "who is on the way in, or stopped on the way" — an invitation nobody
+   * accepted, an account somebody suspended, a name waiting for a code. Read as one run, the two
+   * questions looked like one list and the second group's numbers looked like more roles.
    */
-  const counts: { label: string; value: number; hint?: string; actionable?: boolean; group: "role" | "pipeline" | "total" }[] = [
+  const counts: { label: string; value: number; hint?: string; actionable?: boolean; group: "total" | "role" | "pipeline" }[] = [
+    // Total leads the row. At the end it sat against the pipeline group and read as that group's
+    // sum, which it is not — it is accounts plus the roster, and the two figures beside it
+    // (Invited, Suspended) are states of accounts already counted, not addends. First, with the
+    // rule behind it, it belongs to the whole row.
+    { group: "total", label: t.countTotal, value: users.length + rosterWaiting },
     { group: "role", label: t.countOwners, value: users.filter(u => u.permission === "owner").length },
     { group: "role", label: t.countAdmins, value: users.filter(u => u.permission === "admin").length },
     { group: "role", label: t.countAuditors, value: users.filter(u => u.permission === "auditor").length },
@@ -1359,7 +1366,6 @@ function UserCountStrip({ users, rosterWaiting }: { users: PortalUser[]; rosterW
     { group: "pipeline", label: t.countInvited, value: users.filter(u => u.status === "invited").length, hint: t.invitedHint, actionable: true },
     { group: "pipeline", label: t.countSuspended, value: users.filter(u => u.status === "suspended").length, hint: t.suspendedHint, actionable: true },
     { group: "pipeline", label: t.countRosterWaiting, value: rosterWaiting, hint: t.rosterWaitingHint, actionable: true },
-    { group: "total", label: t.countTotal, value: users.length + rosterWaiting },
   ];
 
   return (
