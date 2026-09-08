@@ -894,39 +894,6 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      {/* No page title here: the top bar's crumb already names this page, and printing the same
-          word again 20px lower was the page introducing itself twice. What stays is the row of
-          things you can do on it. */}
-      {/* The action row sits a little below the top of the page rather than flush against it: with
-          the page title gone it was the first thing in the column and lined up hard with the
-          crumb above, which made the two read as one row of controls in the chrome. A few px of
-          air puts the buttons back on the page. */}
-      <div style={{ display: "flex", marginTop: "4px", alignItems: "center", justifyContent: "flex-end", marginBottom: "20px" }}>
-        <div style={{ display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={handleBulkUpload} style={{ display: "none" }} />
-          {/* Tools follow the tab: registering a face and creating a party are different jobs, and
-              a bulk face upload has nothing to do with the list of parties. */}
-          {vipTab === "groups" ? (
-            <button className="portal-btn-primary" onClick={() => setGroupModalFor({ group: null })}
-              style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
-              {t.addGroup}
-            </button>
-          ) : (<>
-          <button className="portal-btn-outline" onClick={() => fileInputRef.current?.click()}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 9.33V1.75M7 1.75 4.08 4.67M7 1.75 9.92 4.67M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            {t.bulkUpload}
-          </button>
-          <button className="portal-btn-primary" onClick={() => setShowRegister(true)}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
-            {t.registerVip}
-          </button>
-          </>)}
-        </div>
-      </div>
-
       {/* All / Individuals / Groups. Same underlined row as Input Sources and Users & Permissions. */}
       <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
         {([
@@ -1043,6 +1010,33 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           ))}
         </div>
         )}
+        {/* The tools, at the right end of the toolbar — same place Input Sources keeps its own.
+            Left of this row is how you narrow and view the list; right of it is what you do to it.
+            They were a row of their own above the tabs, which is where they ended up when the page
+            title was deleted, and buttons with nothing to their left read as floating chrome. */}
+        <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+          <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={handleBulkUpload} style={{ display: "none" }} />
+          {/* Tools follow the tab: registering a face and creating a party are different jobs, and
+              a bulk face upload has nothing to do with the list of parties. */}
+          {vipTab === "groups" ? (
+            <button className="portal-btn-primary" onClick={() => setGroupModalFor({ group: null })}
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
+              {t.addGroup}
+            </button>
+          ) : (<>
+          <button className="portal-btn-outline" onClick={() => fileInputRef.current?.click()}
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 9.33V1.75M7 1.75 4.08 4.67M7 1.75 9.92 4.67M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            {t.bulkUpload}
+          </button>
+          <button className="portal-btn-primary" onClick={() => setShowRegister(true)}
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
+            {t.registerVip}
+          </button>
+          </>)}
+        </div>
       </div>
 
       {vipTab === "groups" ? (

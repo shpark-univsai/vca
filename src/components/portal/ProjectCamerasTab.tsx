@@ -962,74 +962,6 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
         // appeared to grow a paler band across the top the moment it scrolled.
         backgroundColor: "var(--primary-50)", paddingTop: rect.padTop,
       } : undefined}>
-      {/* No page title here: the top bar's crumb already names this page, and printing the same
-          word again 20px lower was the page introducing itself twice. What stays is the row of
-          things you can do on it. */}
-      {/* The action row sits a little below the top of the page rather than flush against it: with
-          the page title gone it was the first thing in the column and lined up hard with the
-          crumb above, which made the two read as one row of controls in the chrome. A few px of
-          air puts the buttons back on the page. */}
-      <div style={{ display: "flex", marginTop: "4px", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "16px" }}>
-        {/* Adding a source and reconnecting the ones already here both change the fleet, so they
-            lead the row; exporting takes a copy of the table away and changes nothing, so it sits
-            at the far end on its own. */}
-        <div style={{ display: "flex", gap: "8px" }}>
-          {/* One primary action for both kinds, because "add a source" is one intention with two
-              answers — a menu is what keeps the header from growing a second primary button that
-              competes with this one. */}
-          <div ref={addMenuRef} style={{ position: "relative", flexShrink: 0 }}>
-            <button className="portal-btn-primary" onClick={() => setAddMenuOpen(o => !o)}
-              onMouseEnter={() => setHoveredAction("add")} onMouseLeave={() => setHoveredAction(null)}
-              style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", filter: hoveredAction === "add" ? "brightness(0.92)" : "none" }}>
-              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
-              {t.addSource}
-            </button>
-            {addMenuOpen && (
-              <div style={{
-                position: "absolute", top: "100%", left: 0, marginTop: "4px", zIndex: 60,
-                backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "0 8px 20px rgba(14,22,42,0.12)",
-                minWidth: "200px", padding: "4px",
-              }}>
-                {[
-                  { label: t.addCameraOption, onClick: () => setShowAdd(true) },
-                  { label: t.uploadFileOption, onClick: () => setShowUpload(true) },
-                ].map(item => (
-                  <button
-                    key={item.label}
-                    onClick={() => { setAddMenuOpen(false); item.onClick(); }}
-                    onMouseEnter={() => setHoveredAddItem(item.label)}
-                    onMouseLeave={() => setHoveredAddItem(null)}
-                    style={{
-                      display: "block", width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: "6px",
-                      border: "none", cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit",
-                      backgroundColor: hoveredAddItem === item.label ? "var(--gray-100)" : "transparent",
-                      fontSize: "12px", fontWeight: 600, color: "var(--gray-900)",
-                    }}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <button onClick={batchReconnect}
-            onMouseEnter={() => setHoveredAction("reconnect")} onMouseLeave={() => setHoveredAction(null)}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "reconnect" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-            {/* The same lucide rotate-ccw the Server tab's Reset carries. This was a hand-drawn
-                arc turning the other way, so Portal had two "try that again" glyphs pointing in
-                opposite directions. 2.1, not 1.4: lucide draws in a 24-unit box and this renders
-                at 16px — see ICON_STROKE_PX. */}
-            <RotateCcw size={16} strokeWidth={2.1} />
-            {t.reconnectAll}
-          </button>
-        </div>
-        <button onClick={exportCsv}
-          onMouseEnter={() => setHoveredAction("export")} onMouseLeave={() => setHoveredAction(null)}
-          style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "export" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1.75V9.33M7 9.33 4.08 6.42M7 9.33 9.92 6.42M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            {t.exportCsv}
-          </button>
-      </div>
 
       {/* Metrics — the same MetricCard the Overview uses, rather than the one bordered box with
           internal rules this used to be. Same job one screen over should not be a different
@@ -1124,34 +1056,6 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           options={[{ value: "ALL", label: t.filterAllAiEngines }, ...AI_FEATURES.map(f => ({ value: f, label: t.aiFeatureLabels[f] }))]}
         />
         <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
-        {/* Bulk actions live in the toolbar rather than in a floating bar over the table: the
-            toolbar is where every other thing that acts on the whole list already is, and a
-            floating bar covers the rows you are deciding about. Only appears with a selection. */}
-        {visibleSelectedIds.length > 0 && (
-          <>
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>
-              {t.selectedCount(visibleSelectedIds.length)}
-            </span>
-            <FilterSelect
-              fitContent
-              value=""
-              onChange={zone => { if (zone) bulkMoveToZone(zone); }}
-              options={[{ value: "", label: t.bulkMoveToZone }, ...zones.map(z => ({ value: z, label: z }))]}
-            />
-            <button
-              onClick={() => setConfirmingBulkDelete(true)}
-              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--danger-500)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
-            >
-              {t.bulkDelete}
-            </button>
-            <button
-              onClick={clearSelection}
-              style={{ border: "none", background: "none", padding: "0 4px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", flexShrink: 0 }}
-            >
-              {t.bulkClearSelection}
-            </button>
-          </>
-        )}
         {/* Grid is a wall of camera thumbnails, and an unanalysed file has no frame to put in one.
             Rather than let file rows vanish the moment someone picks Grid, the toggle is only
             offered on the tabs where both views can show the same rows — and `effectiveView` below
@@ -1170,7 +1074,120 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           ))}
         </div>
         )}
+        {/*
+          The tools, at the right end of the toolbar.
+
+          They were a row of their own above the tabs, which is where they ended up when the page
+          title was deleted — and a strip of buttons with nothing to its left reads as chrome that
+          happens to be floating there. The toolbar is the anchor: left of it is how you narrow and
+          view the list, right of it is what you do to it, which is the arrangement the reference
+          uses (search and filters left, Import / Add right) and the one this row already had in
+          miniature with its bulk actions.
+        */}
+        <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+          <button onClick={batchReconnect}
+            onMouseEnter={() => setHoveredAction("reconnect")} onMouseLeave={() => setHoveredAction(null)}
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "reconnect" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            {/* The same lucide rotate-ccw the Server tab's Reset carries. This was a hand-drawn
+                arc turning the other way, so Portal had two "try that again" glyphs pointing in
+                opposite directions. 2.1, not 1.4: lucide draws in a 24-unit box and this renders
+                at 16px — see ICON_STROKE_PX. */}
+            <RotateCcw size={16} strokeWidth={2.1} />
+            {t.reconnectAll}
+          </button>
+          <button onClick={exportCsv}
+            onMouseEnter={() => setHoveredAction("export")} onMouseLeave={() => setHoveredAction(null)}
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "export" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1.75V9.33M7 9.33 4.08 6.42M7 9.33 9.92 6.42M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              {t.exportCsv}
+            </button>
+          {/* One primary action for both kinds, because "add a source" is one intention with two
+              answers — a menu is what keeps the header from growing a second primary button that
+              competes with this one. */}
+          <div ref={addMenuRef} style={{ position: "relative", flexShrink: 0 }}>
+            <button className="portal-btn-primary" onClick={() => setAddMenuOpen(o => !o)}
+              onMouseEnter={() => setHoveredAction("add")} onMouseLeave={() => setHoveredAction(null)}
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", filter: hoveredAction === "add" ? "brightness(0.92)" : "none" }}>
+              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
+              {t.addSource}
+            </button>
+            {addMenuOpen && (
+              <div style={{
+                position: "absolute", top: "100%", right: 0, marginTop: "4px", zIndex: 60,
+                backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "0 8px 20px rgba(14,22,42,0.12)",
+                minWidth: "200px", padding: "4px",
+              }}>
+                {[
+                  { label: t.addCameraOption, onClick: () => setShowAdd(true) },
+                  { label: t.uploadFileOption, onClick: () => setShowUpload(true) },
+                ].map(item => (
+                  <button
+                    key={item.label}
+                    onClick={() => { setAddMenuOpen(false); item.onClick(); }}
+                    onMouseEnter={() => setHoveredAddItem(item.label)}
+                    onMouseLeave={() => setHoveredAddItem(null)}
+                    style={{
+                      display: "block", width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: "6px",
+                      border: "none", cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit",
+                      backgroundColor: hoveredAddItem === item.label ? "var(--gray-100)" : "transparent",
+                      fontSize: "12px", fontWeight: 600, color: "var(--gray-900)",
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/*
+        What you can do with a selection: a bar that appears at the foot of the window.
+
+        These four controls used to be appended to the toolbar, which meant the row reflowed the
+        moment you ticked a box — the filters you had just set jumped left, and on a narrow window
+        the whole strip wrapped to two lines. Selection is a mode, and a mode gets its own surface:
+        the counts on the left say what you are acting on, the actions sit on the right, and
+        nothing above moves. Same pattern as the reference's bottom bar.
+
+        A centred pill rather than a full-width band: `position: fixed` is relative to the window,
+        and a band across it would run under the rail, which belongs to no page.
+      */}
+      {visibleSelectedIds.length > 0 && (
+        <div style={{ position: "fixed", left: 0, right: 0, bottom: "24px", zIndex: 40, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+          <div style={{
+            pointerEvents: "auto", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
+            backgroundColor: "var(--gray-900)", borderRadius: "12px", padding: "10px 12px 10px 18px",
+            boxShadow: "0 12px 32px rgba(14,22,42,0.28)", maxWidth: "calc(100% - 48px)",
+          }}>
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "white", flexShrink: 0 }}>
+              {t.selectedCount(visibleSelectedIds.length)}
+            </span>
+            <span style={{ width: "1px", alignSelf: "stretch", backgroundColor: "var(--gray-700)" }} />
+            <FilterSelect
+              fitContent
+              value=""
+              onChange={zone => { if (zone) bulkMoveToZone(zone); }}
+              options={[{ value: "", label: t.bulkMoveToZone }, ...zones.map(z => ({ value: z, label: z }))]}
+            />
+            <button
+              onClick={() => setConfirmingBulkDelete(true)}
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
+            >
+              {t.bulkDelete}
+            </button>
+            {/* The way out of the mode, and the reason the bar can be this assertive: nothing here
+                is reachable by accident, and one click puts the page back. */}
+            <button
+              onClick={clearSelection}
+              style={{ border: "none", background: "none", padding: "0 8px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", fontFamily: "inherit", flexShrink: 0 }}
+            >
+              {t.bulkClearSelection}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Table's own column header stays fixed with everything above it — only the data rows
           scroll underneath. Rendered here (still inside the fixed/sticky block) as the top half of
