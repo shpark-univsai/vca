@@ -232,7 +232,15 @@ export interface Person {
   id: string;
   name: string;
   type: EventType;
-  photoUrl: string;
+  /**
+   * The enrolled face, or absent.
+   *
+   * Optional because one path produces people without one: a CSV import carries names, not faces.
+   * Those rows are on the watchlist and cannot be matched by anything, which is a state the
+   * registry has to be able to represent — the import used to paper over it by handing every row
+   * a stock portrait, and a screen cannot warn about a problem the data denies having.
+   */
+  photoUrl?: string;
   /**
    * When this face was enrolled.
    *
@@ -1296,7 +1304,8 @@ export function dailyDetections(projectId: string, days = 7): DailyDetections[] 
  * question an administrator actually has, which is whether the list they built will catch anybody:
  *
  *   GET /projects/:id/registry-health → {
- *     missingPhoto: id[],      // registered with no face image at all — never matchable
+ *     missingPhoto: id[],      // registered with no face image at all — never matchable.
+ *                              //   (the front end already knows these: photoUrl is absent)
  *     embeddingFailed: id[],   // has an image the model could not turn into features
  *     duplicates: [id, id][],  // the same face registered twice; alerts fire twice
  *     detectedLast7d: id[],    // seen by any camera in the window
@@ -1322,9 +1331,12 @@ export function registryHealth(projectId: string, persons: Person[]): RegistryHe
   const embeddingFailed: string[] = [];
   const detectedLast7d: string[] = [];
   rows.forEach((p, i) => {
+    // Not seeded: a person with no photoUrl has no enrolled face, full stop. The CSV import is
+    // where they come from, and this reads the same field the table draws from — so the figure and
+    // the rows behind it can never disagree.
+    if (!p.photoUrl) { missingPhoto.push(p.id); return; }
     const roll = seededRandom(i * 4.77 + p.id.length);
-    if (roll > 0.9) missingPhoto.push(p.id);
-    else if (roll > 0.86) embeddingFailed.push(p.id);
+    if (roll > 0.88) embeddingFailed.push(p.id);
     // Only rows with a usable face can have been seen. Letting an unmatchable person appear in
     // the detected list would make the two figures on the page contradict each other.
     else if (seededRandom(i * 6.31 + 1.5) > 0.9) detectedLast7d.push(p.id);

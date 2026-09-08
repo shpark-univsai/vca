@@ -223,10 +223,13 @@ function AvatarStack() {
   );
 }
 
-function PersonThumb({ isSelected, photoUrl }: { isSelected:boolean; photoUrl:string }) {
+// photoUrl is optional now: a person imported from a CSV has no enrolled face (see Person in
+// vcaStore). Nothing in this app can show a face it does not have, so the tile stays empty rather
+// than drawing a broken image.
+function PersonThumb({ isSelected, photoUrl }: { isSelected:boolean; photoUrl?:string }) {
   return (
     <div style={{ width:54, height:54, borderRadius:8, flexShrink:0, overflow:"hidden", outline: isSelected ? "2px solid var(--primary-400)" : "none", outlineOffset:2 }}>
-      <img src={photoUrl} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} alt="" />
+      {photoUrl && <img src={photoUrl} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} alt="" />}
     </div>
   );
 }

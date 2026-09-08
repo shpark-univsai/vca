@@ -57,7 +57,9 @@ interface VipDict {
   healthDuplicates: string;
   healthShowOnly: string;
   healthClear: string;
-  healthReach: (detected: number, total: number) => string;
+  healthPeopleUnit: string;
+  healthOfTotal: (total: number) => string;
+  healthReachLabel: string;
   colRegistered: string;
   colNote: string;
   confirmRemoveTitle: string;
@@ -144,7 +146,9 @@ const T: Record<"en" | "ko", VipDict> = {
     healthDuplicates: "possible duplicates",
     healthShowOnly: "Show only these",
     healthClear: "Show everyone again",
-    healthReach: (detected: number, total: number) => `${detected} of ${total} seen in the last 7 days`,
+    healthPeopleUnit: "people",
+    healthOfTotal: (total: number) => `of ${total}`,
+    healthReachLabel: "seen in the last 7 days",
     colRegistered: "Registered",
     colNote: "Note",
     confirmRemoveTitle: "Remove this VIP?",
@@ -230,7 +234,9 @@ const T: Record<"en" | "ko", VipDict> = {
     healthDuplicates: "중복 의심",
     healthShowOnly: "이 항목만 보기",
     healthClear: "전체 다시 보기",
-    healthReach: (detected: number, total: number) => `지난 7일 ${total}명 중 ${detected}명 탐지`,
+    healthPeopleUnit: "명",
+    healthOfTotal: (total: number) => `/ ${total}명`,
+    healthReachLabel: "지난 7일 탐지",
     colRegistered: "등록일",
     colNote: "메모",
     confirmRemoveTitle: "정말 삭제하시겠습니까?",
@@ -916,7 +922,10 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
 
   const register = (values: RegisterValues) => {
     addPerson({
-      name: values.name, type: "VIP", photoUrl: values.photoUrl ?? getFacePhoto(values.name),
+      // The form requires a photo, so values.photoUrl is set here — but it is passed straight
+      // through rather than falling back to a stock face, so the one path that can produce a
+      // photoless person (the CSV import above) stays the only one.
+      name: values.name, type: "VIP", ...(values.photoUrl ? { photoUrl: values.photoUrl } : null),
       registeredAt: new Date().toISOString(),
       priorityLabel: values.priorityLabel,
       description: values.description,
@@ -961,7 +970,12 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         const [name, description] = row.split(",").map(v => v?.trim());
         if (!name) return;
         addPerson({
-          name, type: "VIP", photoUrl: getFacePhoto(name),
+          // No photoUrl. A CSV of names contains no faces, and the import used to hand each row a
+          // stock portrait from the mock pool — which made every bulk-imported person look
+          // registered and matchable when in fact nothing had been enrolled. Those rows are what
+          // the "no photo" figure above the list counts, and the count is only true if the rows
+          // are.
+          name, type: "VIP",
           registeredAt: new Date().toISOString(),
           description: description || undefined,
           projectId,
@@ -995,35 +1009,49 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         nobody else on the page asks — whether this list catches anyone at all.
       */}
       {(health.missingPhoto.length > 0 || health.embeddingFailed.length > 0 || health.duplicates.length > 0) && (
-        <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", marginBottom: "12px" }}>
+        <div style={{
+          display: "flex", alignItems: "stretch", flexWrap: "wrap",
+          backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px",
+          marginBottom: "12px", overflow: "hidden",
+        }}>
           {([
             { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto },
             { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed },
             { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates },
-          ]).filter(item => item.count > 0).map(item => {
+          ]).filter(item => item.count > 0).map((item, i) => {
             const active = healthFilter === item.key;
             return (
               <button
                 key={item.key}
                 onClick={() => setHealthFilter(active ? null : item.key)}
                 title={active ? t.healthClear : t.healthShowOnly}
+                className="portal-attention-row"
                 style={{
-                  display: "flex", alignItems: "baseline", gap: "5px",
-                  border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
-                  // The active one is underlined rather than filled: a filled pill in a 28px strip
-                  // is a button, and these are figures that happen to be clickable.
-                  textDecoration: active ? "underline" : "none", textUnderlineOffset: "4px",
-                  textDecorationColor: "var(--warning-500)",
+                  display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px",
+                  padding: "10px 18px", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                  borderLeft: i === 0 ? "none" : BORDER,
+                  // The selected figure sits on the warning tint rather than being underlined: on a
+                  // panel this is a filter that is on, and "on" is a state of the cell, not an
+                  // annotation on its label.
+                  backgroundColor: active ? "var(--warning-100)" : "transparent",
                 }}
               >
-                <span style={{ fontSize: "13px", fontWeight: 800, color: "var(--warning-500)" }}>{item.count}</span>
-                <span style={{ fontSize: "11px", color: active ? "var(--gray-900)" : "var(--gray-500)" }}>{item.label}</span>
+                <span style={{ display: "flex", alignItems: "baseline", gap: "5px" }}>
+                  <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--warning-500)", lineHeight: "22px" }}>{item.count}</span>
+                  <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthPeopleUnit}</span>
+                </span>
+                <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap" }}>{item.label}</span>
               </button>
             );
           })}
-          <span style={{ flex: 1 }} />
-          <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>
-            {t.healthReach(detectedCount, allProjectPersons.length)}
+          {/* The reach figure closes the strip, on the tinted end and not clickable — it is the one
+              number here that is not a defect and cannot be filtered to. */}
+          <span style={{ flex: 1, minWidth: "160px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "2px", padding: "10px 18px", borderLeft: BORDER, backgroundColor: "var(--gray-50)" }}>
+            <span style={{ display: "flex", alignItems: "baseline", gap: "5px" }}>
+              <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "22px" }}>{detectedCount}</span>
+              <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthOfTotal(allProjectPersons.length)}</span>
+            </span>
+            <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-600)" }}>{t.healthReachLabel}</span>
           </span>
         </div>
       )}
