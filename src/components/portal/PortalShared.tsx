@@ -9,26 +9,14 @@ import { usePortalLanguage } from "@/lib/i18n";
 /**
  * Every hairline in Portal — card edges, table rules, row dividers, field borders.
  *
- * gray-300, not gray-200. The content area used to be gray-100, and against that tint a gray-200
- * rule was perfectly legible; on the white canvas it very nearly vanished, which left tables
- * looking like floating text. One step down the defined ramp is all it takes — gray-400 is a
- * different kind of line altogether.
+ * --line, a grey with a little primary in it, rather than a step of either ramp. It has been
+ * gray-200 (invisible once the canvas went white), then gray-300 (legible, but a neutral rule laid
+ * over a tinted page). A line belongs to the surface it is drawn on, and this surface is
+ * primary-50 with white cards on it.
  */
-export const BORDER = "1px solid var(--gray-300)";
-/**
- * A card's edge — primary-100, from the same family as the page it sits on.
- *
- * The canvas is primary-50 and the cards are white, so the edge only has to say where one stops.
- * A gray-300 hairline did that by contrast and read as a drawn box; the palest step of the primary
- * ramp is the same tint the page is already made of, so the edge belongs to the surface rather
- * than being ruled onto it.
- *
- * Deliberately not BORDER: the rules INSIDE a card — table rows, header underlines — still need to
- * be legible as separators, and those stay gray-300. Outer edge quieter than the ruling inside it
- * is the opposite of the usual hierarchy and the right way round here: the edge only says "this
- * ends", the inner rules have to be read.
- */
-export const CARD_BORDER = "1px solid var(--primary-100)";
+export const BORDER = "1px solid var(--line)";
+/** A card's edge is the same hairline as everything else. One line colour, one weight. */
+export const CARD_BORDER = BORDER;
 // Every control that can sit on a toolbar row — search input, FilterSelect, pill buttons, the
 // table/grid segmented toggle — is this tall, so a row of them lines up regardless of padding
 // or font size. Set the height, not the vertical padding.

@@ -232,7 +232,7 @@ export default function PortalShell() {
         and that you are creating rather than browsing) has nowhere else to go and stays here.
       */}
       <div style={{
-        height: "62px", borderBottom: "1px solid var(--gray-300)",
+        height: "62px", borderBottom: "1px solid var(--line)",
         display: "flex", alignItems: "center", padding: "0 24px", flexShrink: 0, gap: "10px",
       }}>
         {!showWizard && teamProjects.length > 0 && (
@@ -270,7 +270,7 @@ export default function PortalShell() {
               title={currentOrg?.name}
               style={{
                 display: "block",
-                border: "1px solid var(--gray-300)", borderRadius: "8px", padding: "6px 10px",
+                border: "1px solid var(--line)", borderRadius: "8px", padding: "6px 10px",
                 fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", whiteSpace: "nowrap",
                 maxWidth: BREADCRUMB_TEAM_MAX_WIDTH, overflow: "hidden", textOverflow: "ellipsis",
               }}

@@ -813,7 +813,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
                         display: "flex", gap: "10px", alignItems: "flex-start",
                         cursor: opt.unavailable ? "default" : "pointer",
                         padding: "12px 14px", borderRadius: "10px",
-                        border: on ? "1px solid var(--primary-300)" : "1px solid var(--gray-300)",
+                        border: on ? "1px solid var(--primary-300)" : "1px solid var(--line)",
                         backgroundColor: on ? "var(--primary-50)" : opt.unavailable ? "var(--gray-50)" : "white",
                       }}
                     >
@@ -870,7 +870,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
               {/* Monospace and letter-spaced because this string gets read aloud a character at a
                   time. user-select stays on: the copy button is a convenience, not the only way
                   to get it out of the box. */}
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "14px", borderRadius: "10px", border: "1px solid var(--gray-300)", backgroundColor: "var(--gray-50)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "14px", borderRadius: "10px", border: "1px solid var(--line)", backgroundColor: "var(--gray-50)" }}>
                 <code style={{ flex: 1, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "18px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "1px", wordBreak: "break-all" }}>
                   {password}
                 </code>

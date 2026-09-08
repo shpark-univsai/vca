@@ -103,7 +103,7 @@ export default function TeamSwitcher({ dark, currentTeamId, onSelect }: TeamSwit
             borderRadius: "8px", padding: "6px 10px",
             // No edge of its own in the rail: it is one row of a bordered box that holds both
             // switchers, and a border inside a border is two boxes for one thing.
-            border: dark ? "none" : "1px solid var(--gray-300)",
+            border: dark ? "none" : "1px solid var(--line)",
             backgroundColor: dark
               ? (hovered === "__trigger" ? "var(--gray-800)" : "transparent")
               : (hovered === "__trigger" ? "var(--gray-50)" : "white"),

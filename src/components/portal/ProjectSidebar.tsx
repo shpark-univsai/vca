@@ -182,15 +182,13 @@ export default function ProjectSidebar({ brand, team, project, tab, onTabChange,
           {brand && (
             <p style={{ fontSize: "15px", fontWeight: 800, color: "white", letterSpacing: "-0.2px", padding: "2px 10px 10px" }}>{brand}</p>
           )}
-          {/* One box around both. They are a pair — which organisation, and which of its projects
-              — and two separate outlines made them read as two unrelated controls stacked by
-              accident. gray-700 for the line: a step lighter than the gray-800 used for fills on
-              this ground, so the box is visible as an edge rather than as another panel. */}
-          <div style={{ border: "1px solid var(--gray-700)", borderRadius: "10px", overflow: "hidden" }}>
-            {team}
-            <div style={{ height: "1px", backgroundColor: "var(--gray-800)" }} />
-            {project}
-          </div>
+          {/* The team is a quiet row; the project is a card.
+              They were one bordered box with two rows, which gave equal weight to "which company"
+              and "which of its sites" — but the rail navigates the project, and the team is the
+              thing you switch between rarely. The card carries the box now, and the team sits
+              above it like the account name above a switcher. */}
+          {team}
+          {project}
         </div>
       )}
 
@@ -241,16 +239,19 @@ export default function ProjectSidebar({ brand, team, project, tab, onTabChange,
                      * The accent moved from the furniture to the text. A solid primary pill was
                      * the first attempt (it shouted, a sixth of the rail in full accent) and a bar
                      * down the left edge was the second — but a bar is a mark beside the row,
-                     * while the colour of the words is the row. Between the fill and the coloured
-                     * label there is no reading in which the current item is unclear.
+                     * while the colour of the words is the row.
+                     *
+                     * primary-300, not primary-400: the accent proper is a deep violet and on a
+                     * gray-800 fill it was dark on dark. The lighter step is the same hue with
+                     * enough of a jump off this ground to be read as the selected row.
                      */
                     backgroundColor: active ? "var(--gray-800)" : undefined,
-                    color: active ? "var(--primary-400)" : "var(--gray-300)",
+                    color: active ? "var(--primary-300)" : "var(--gray-300)",
                     fontSize: "13px", fontWeight: active ? 600 : 500,
                     whiteSpace: "nowrap", width: "100%",
                   }}
                 >
-                  <span style={{ display: "flex", flexShrink: 0 }}><Icon color={active ? "var(--primary-400)" : "var(--gray-300)"} /></span>
+                  <span style={{ display: "flex", flexShrink: 0 }}><Icon color={active ? "var(--primary-300)" : "var(--gray-300)"} /></span>
                   {!collapsed && (
                     <>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{t.label[lang]}</span>

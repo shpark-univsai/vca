@@ -60,6 +60,13 @@
   --gray-800: #1d293b;
   --gray-900: #0e162a;
 
+  /* Hairlines — table rules, card edges, field borders, dividers.
+     Not a step of the grey ramp and not one of the primary ramp: a grey carrying a little of the
+     primary so a line reads as part of this product's surface rather than as a neutral rule laid
+     over it. One value for every line in the console; the ramps stay for fills and text.
+     HANDOFF: add this to the Figma variables next to the two ramps it sits between. */
+  --line: #e7e7f1;
+
   /* Primary */
   --primary-50: #fafaff;
   --primary-100: #f0f0ff;

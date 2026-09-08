@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useVcaStore, type Project } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH, TABLE_HEADER_COLOR, SelectedCheckIcon } from "./PortalShared";
+import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH, TABLE_HEADER_COLOR, TYPE_META, SelectedCheckIcon } from "./PortalShared";
+import { Building2, ChevronRight } from "lucide-react";
 
 interface ProjectSwitcherProps {
   /**
@@ -112,6 +113,15 @@ export default function ProjectSwitcher({ dark, teamId, currentProjectId, onSele
   const [starred, setStarred] = useState<Set<string>>(new Set());
 
   const current = projects.find(p => p.id === currentProjectId);
+  /**
+   * The card's second line: where the project is and what kind it is — "Singapore · Smart City".
+   * Both are real fields (the team's region, the project's type) and both are things the tabs
+   * below cannot say. A missing half is dropped rather than printing a separator with nothing on
+   * one side of it.
+   */
+  const subtitle = [teams.find(tm => tm.id === current?.teamId)?.region, current ? TYPE_META[current.type].label : undefined]
+    .filter(Boolean)
+    .join(" · ");
   const team = teams.find(o => o.id === teamId) ?? teams[0];
   useEscapeKey(() => setOpen(false), open);
 
@@ -153,18 +163,43 @@ export default function ProjectSwitcher({ dark, teamId, currentProjectId, onSele
              navigation. In the header it stays a bare crumb — there it sits between other crumbs
              and a box around one of them would be a button among plain text.
           */
-          // Same: one row of the box drawn around the pair, not a box of its own.
-          ...(dark ? { width: "100%", padding: "10px 12px", borderRadius: 0 } : null),
+          ...(dark ? {
+            width: "100%", padding: "12px", borderRadius: "12px", gap: "10px",
+            backgroundColor: "var(--gray-800)", border: "1px solid var(--gray-700)",
+          } : null),
         }}
       >
-        <span
-          title={current?.name}
-          style={{ fontSize: "13px", fontWeight: 700, whiteSpace: "nowrap", maxWidth: dark ? "100%" : BREADCRUMB_PROJECT_MAX_WIDTH, overflow: "hidden", textOverflow: "ellipsis" }}
-        >
-          {current?.name ?? t.selectProject}
+        {dark && (
+          <span style={{
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            width: "34px", height: "34px", borderRadius: "10px",
+            backgroundColor: "var(--gray-700)", color: "var(--gray-300)",
+          }}>
+            <Building2 size={16} strokeWidth={1.8} />
+          </span>
+        )}
+        {dark ? (
+          <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0, flex: 1, textAlign: "left" }}>
+            <span title={current?.name} style={{ fontSize: "13px", fontWeight: 700, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {current?.name ?? t.selectProject}
+            </span>
+            {subtitle && (
+              <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {subtitle}
+              </span>
+            )}
+          </span>
+        ) : (
+          <span
+            title={current?.name}
+            style={{ fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", maxWidth: BREADCRUMB_PROJECT_MAX_WIDTH, overflow: "hidden", textOverflow: "ellipsis" }}
+          >
+            {current?.name ?? t.selectProject}
+          </span>
+        )}
+        <span style={{ color: dark ? "var(--gray-400)" : "var(--gray-600)", display: "flex", flexShrink: 0 }}>
+          {dark ? <ChevronRight size={16} strokeWidth={1.8} /> : <ChevronDown size={14} />}
         </span>
-        {dark && <span style={{ flex: 1 }} />}
-        <span style={{ color: dark ? "var(--gray-400)" : "var(--gray-600)", display: "flex" }}><ChevronDown size={14} /></span>
       </button>
 
       {open && (
