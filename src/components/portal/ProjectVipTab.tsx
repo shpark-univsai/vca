@@ -745,7 +745,15 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   // Grid by default: a watchlist is looked at face-first, and the photo is the thing an operator
   // recognises. Table is for the other job — comparing role, priority and when someone was added
   // across the whole list, which a wall of cards cannot do.
-  const [view, setView] = useState<"grid" | "table">("grid");
+  /**
+   * Table first, grid on request.
+   *
+   * The grid opened by default because a watchlist is faces and faces are what you recognise — but
+   * a hundred of them is a wall, and the job you come to this page with is usually "find this
+   * person" or "check who is on the list", which a table answers in one line per person. The grid
+   * is the right view for browsing and the wrong one for arriving.
+   */
+  const [view, setView] = useState<"grid" | "table">("table");
   /**
    * All / Individuals / Groups. Same underlined tab row Input Sources and Users & Permissions use.
    *
