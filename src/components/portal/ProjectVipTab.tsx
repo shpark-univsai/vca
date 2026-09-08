@@ -73,6 +73,7 @@ interface VipDict {
   facePhotoLabelRequired: string;
   changePhoto: string;
   uploadPhoto: string;
+  currentPhoto: string;
   cancel: string;
   register: string;
   priorityText: Record<NonNullable<Person["priorityLabel"]>, string>;
@@ -153,6 +154,7 @@ const T: Record<"en" | "ko", VipDict> = {
     facePhotoLabelRequired: "Face photo *",
     changePhoto: "Change",
     uploadPhoto: "Upload photo",
+    currentPhoto: "Current photo",
     cancel: "Cancel",
     register: "Register",
     priorityText: { normal: "Normal", high: "High", very_high: "Very High" } as Record<NonNullable<Person["priorityLabel"]>, string>,
@@ -232,6 +234,7 @@ const T: Record<"en" | "ko", VipDict> = {
     facePhotoLabelRequired: "얼굴 사진 *",
     changePhoto: "변경",
     uploadPhoto: "사진 업로드",
+    currentPhoto: "현재 사진",
     cancel: "취소",
     register: "등록",
     priorityText: { normal: "일반", high: "높음", very_high: "매우 높음" } as Record<NonNullable<Person["priorityLabel"]>, string>,
@@ -326,7 +329,14 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
     setGroupId(addPersonGroup({ name: trimmed, projectId, registeredAt: new Date().toISOString().slice(0, 10) }));
     setNewGroupName(null);
   };
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  /**
+   * The photo shown in the form. On edit it starts as the one the person already has — the field
+   * used to open as an empty dropzone reading "Upload photo", which says the registry has no
+   * picture of somebody whose picture is on the row behind the modal.
+   */
+  const [photoPreview, setPhotoPreview] = useState<string | null>(person?.photoUrl ?? null);
+  /** True while the pointer is over the photo, so the control can offer to replace it. */
+  const [photoHovered, setPhotoHovered] = useState(false);
   const [photoFileName, setPhotoFileName] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   /**
@@ -416,17 +426,45 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
               {editing ? t.facePhotoLabel : t.facePhotoLabelRequired}
             </label>
             <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: "none" }} />
-            <button type="button" onClick={() => photoInputRef.current?.click()}
+            {/*
+              With a photo: the photo, and "Change photo" over it on hover. Without: the dropzone.
+
+              The whole control is the button either way, so the picture is the target — clicking a
+              face to replace it is what every avatar field does, and a separate "Change" link
+              beside a thumbnail is a second thing to aim at. The overlay only appears on hover
+              because a caption printed permanently across somebody's face is a caption you stop
+              reading and a face you cannot see.
+            */}
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              onMouseEnter={() => setPhotoHovered(true)}
+              onMouseLeave={() => setPhotoHovered(false)}
               style={{
-                width: "100%", boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
-                padding: photoPreview ? "10px" : "24px", borderRadius: "10px", border: "1px dashed var(--gray-300)",
-                backgroundColor: "var(--gray-50)", cursor: "pointer",
+                width: "100%", boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: photoPreview ? "flex-start" : "center", gap: "12px",
+                padding: photoPreview ? "10px" : "24px", borderRadius: "10px",
+                border: photoPreview ? BORDER : "1px dashed var(--gray-300)",
+                backgroundColor: "var(--gray-50)", cursor: "pointer", textAlign: "left",
               }}>
               {photoPreview ? (
                 <>
-                  <img src={photoPreview} alt="" style={{ width: "40px", height: "40px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{photoFileName}</span>
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", flexShrink: 0 }}>{t.changePhoto}</span>
+                  <span style={{ position: "relative", display: "flex", flexShrink: 0, borderRadius: "8px", overflow: "hidden" }}>
+                    <img src={photoPreview} alt="" style={{ width: "64px", height: "64px", objectFit: "cover", display: "block" }} />
+                    {photoHovered && (
+                      <span style={{
+                        position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                        backgroundColor: "rgba(24, 17, 39, 0.62)", color: "white", fontSize: "10px", fontWeight: 700,
+                        textAlign: "center", lineHeight: 1.3, padding: "4px",
+                      }}>
+                        {t.changePhoto}
+                      </span>
+                    )}
+                  </span>
+                  {/* The file name once a new one has been chosen; before that there is no file,
+                      only the picture the server already holds. */}
+                  <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {photoFileName ?? t.currentPhoto}
+                  </span>
                 </>
               ) : (
                 <>
@@ -1064,7 +1102,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               const members = memberCountOf(group.id);
               return (
                 <div key={group.id} style={{
-                  display: "grid", gridTemplateColumns: GROUP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
+                  display: "grid", gridTemplateColumns: GROUP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
                   borderBottom: isLast ? "none" : BORDER,
                 }}>
                   <div style={{ minWidth: 0 }}>
@@ -1211,7 +1249,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 // 12 top and bottom against 16 at the sides. The card holds three short lines and
                 // a 60px thumbnail, and at 16 all round the space above the name read as more
                 // than the space between the lines it separates.
-                padding: "12px 16px",
+                padding: "10px 16px",
                 display: "flex", gap: "12px", alignItems: "flex-start", cursor: "pointer",
               }}>
               {/* 60, not 44. At 44 the thumbnail told you which card was whose and nothing more —

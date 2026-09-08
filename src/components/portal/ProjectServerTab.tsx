@@ -776,7 +776,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                 const isLast = i === pageServers.length - 1;
                 return (
                   <div key={server.id} style={{
-                    display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
+                    display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
                     borderBottom: isLast ? "none" : BORDER,
                     borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
                   }}>

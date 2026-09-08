@@ -1751,7 +1751,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           const lastAdmin = isLastActiveAdmin(portalUsers, u.id);
           return (
           <div key={u.id} style={{
-            display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
+            display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
             borderBottom: isLast ? "none" : BORDER,
             borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
           }}>
@@ -1962,7 +1962,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           const stage = stageOfRosterEntry(entry.status);
           return (
             <div key={entry.employeeId} style={{
-              display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "12px 16px", alignItems: "center",
+              display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
               borderBottom: isLast ? "none" : BORDER,
               borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
             }}>
