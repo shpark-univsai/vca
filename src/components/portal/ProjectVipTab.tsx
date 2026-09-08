@@ -502,13 +502,29 @@ function RemoveVipConfirmModal({ t, person, onClose, onConfirm }: { t: VipDict; 
  * it broke across two lines, turning a pill into a lozenge twice the height of the one beside it.
  * A tag is a label, not a paragraph — it keeps its line and the row wraps around it instead.
  */
-function Tag({ label, bg, color }: { label: string; bg: string; color: string }) {
+/**
+ * `flexible` lets the tag give up width and end in an ellipsis instead of being cut off.
+ *
+ * Tags never shrank, and the card's tag row clips what does not fit — so a long group name was
+ * sliced through the middle of a letter, which reads as a rendering fault rather than as a name
+ * that is longer than the space. Only the group tag needs this: a priority is two words at most
+ * and is the one of the two that must stay whole.
+ */
+function Tag({ label, bg, color, flexible }: { label: string; bg: string; color: string; flexible?: boolean }) {
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", height: "18px",
-      fontSize: "10px", fontWeight: 600, padding: "0 8px", borderRadius: "999px",
-      backgroundColor: bg, color, textTransform: "uppercase", whiteSpace: "nowrap", flexShrink: 0,
-    }}>
+    <span
+      title={flexible ? label : undefined}
+      style={{
+        alignItems: "center", height: "18px",
+        fontSize: "10px", fontWeight: 600, padding: "0 8px", borderRadius: "999px",
+        backgroundColor: bg, color, textTransform: "uppercase", whiteSpace: "nowrap",
+        // `block`, not `inline-flex`, when it has to truncate: text-overflow needs a block
+        // container to clip against, and lineHeight then does what alignItems was doing.
+        ...(flexible
+          ? { display: "block", lineHeight: "18px", flexShrink: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }
+          : { display: "inline-flex", flexShrink: 0 }),
+      }}
+    >
       {label}
     </span>
   );
@@ -1195,7 +1211,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                      that have nothing to say; a ragged grid costs the reader every card. */
                   <div style={{ display: "flex", gap: "4px", margin: "4px 0 0", height: "18px", overflow: "hidden" }}>
                     {person.groupId && groupById.has(person.groupId) && (
-                      <Tag label={groupById.get(person.groupId)!.name} bg="var(--info-100)" color="var(--info-500)" />
+                      <Tag label={groupById.get(person.groupId)!.name} bg="var(--info-100)" color="var(--info-500)" flexible />
                     )}
                     {elevated && <PriorityTag priority={person.priorityLabel!} text={t.priorityText[person.priorityLabel!]} />}
                   </div>
