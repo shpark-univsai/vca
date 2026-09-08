@@ -26,10 +26,10 @@ const T = {
     greetAfternoon: (name: string) => `Good afternoon, ${name}`,
     greetEvening: (name: string) => `Good evening, ${name}`,
     liveMonitoring: "LIVE MONITORING",
-    chipHealthy: "HEALTHY",
-    chipAttention: (n: number) => `${n} OFFLINE`,
-    chipNewThisMonth: (n: number) => `+${n} THIS MONTH`,
-    chipAccessSplit: (portal: number, app: number) => `${portal} PORTAL · ${app} APP`,
+    chipHealthy: "Healthy",
+    chipAttention: (n: number) => `${n} offline`,
+    chipNewThisMonth: (n: number) => `+${n} this month`,
+    chipAccessSplit: (portal: number, app: number) => `${portal} portal · ${app} app`,
     statAvailable: (n: number) => `${n} available`,
     statOnlineShare: (pct: number) => `${pct}% online`,
     noCamerasOnline: "NO CAMERA ONLINE",
@@ -228,9 +228,17 @@ function registeredStamp(value: string): string {
   return Number.isNaN(at.getTime()) ? day : `${day} ${sgtClockMinutes(at)}`;
 }
 
+/**
+ * The one-word state at the right end of a card's top row.
+ *
+ * Sentence case, 11px, no letter-spacing. It was 10px caps with tracking — the last all-caps text
+ * on the page after the section eyebrows and the label caps went, so with the chips moved out to
+ * the card edge four shouted words lined up in a column and were the loudest thing in the row.
+ * Caps also did nothing to the Korean strings, so the two languages were drawing different chips.
+ */
 function StateChip({ text, color }: { text: string; color: string }) {
   return (
-    <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px", whiteSpace: "nowrap", color }}>
+    <span style={{ fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap", color }}>
       {text}
     </span>
   );
