@@ -264,20 +264,17 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
 
   return (
     /**
-     * Narrower than the page, and centred.
+     * Full content width, like every other tab.
      *
-     * Every other Portal tab is a table or a grid, which wants all the width a monitor has. This
-     * one is a single card of label-and-value rows — stretched across a wide screen its values end
-     * up a hand's width from their labels, and the eye has to travel for a figure that would read
-     * at half the distance. So it is capped.
-     *
-     * `margin-inline: auto` is what makes the side margins responsive without a media query: the
-     * spare width above 900px is split evenly, and as the window narrows the two margins shrink
-     * together until they are zero and the card is simply the width of the page. Below that the
-     * only gutter left is the shell's own 32/72 padding, which every tab shares — so this tab stops
-     * looking special exactly when there is no room to be special.
+     * This was capped at 900px and centred, on the reasoning that a card of label-and-value rows
+     * reads badly stretched across a monitor. That was true when the tab was one narrow column,
+     * and it stopped being true once the banner went to four even columns and the features to two
+     * — the card lays itself out in columns now, so width buys legibility rather than spending it.
+     * The shell's own cap and gutters are what keep the page from running edge to edge, and they
+     * are the same on every tab, which is the point: no tab should be a different width from its
+     * neighbours for a reason the reader cannot see.
      */
-    <div style={{ maxWidth: "900px", marginInline: "auto" }}>
+    <div>
       {/* No page title here: the top bar's crumb already names this page, and printing the same
           word again 20px lower was the page introducing itself twice. What stays is the row of
           things you can do on it. */}
