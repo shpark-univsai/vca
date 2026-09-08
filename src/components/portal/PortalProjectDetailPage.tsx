@@ -91,7 +91,8 @@ const T = {
     todaySoFar: "Today",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · Vehicle ${vehicle} · Unknown ${unknown.toLocaleString("en-US")}`,
-    dropNote: (n: number) => `${n} drop${n === 1 ? "" : "s"} in 7 days`,
+    dropNote: (n: number) => `${n} drops`,
+    dropNoteFull: (n: number) => `Dropped its stream ${n} times in the last 7 days`,
     viewAllCameras: (n: number) => `View all ${n} cameras`,
     recentVipsTitle: "Recently Registered VIPs",
     registerVipLink: "Register VIP →",
@@ -174,7 +175,8 @@ const T = {
     todaySoFar: "오늘",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · 차량 ${vehicle} · 미확인 ${unknown.toLocaleString("en-US")}`,
-    dropNote: (n: number) => `7일간 ${n}회 끊김`,
+    dropNote: (n: number) => `${n}회 끊김`,
+    dropNoteFull: (n: number) => `지난 7일 동안 ${n}회 끊겼습니다`,
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
     recentVipsTitle: "최근 등록된 VIP",
     registerVipLink: "VIP 등록 →",
@@ -1190,17 +1192,26 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                               same thing a second time — with eight offline rows on top, the list
                               read as a column of red bullets before it read as a list of cameras.
 
-                              Under the name, in small text, how many times this camera dropped in
-                              the last seven days — and only on the cameras that did. This was a
+                              After the name, in small text, how many times this camera dropped in
+                              the last seven days — and only on the cameras that did. On the name's
+                              own line rather than under it: eleven rows each grown to two lines
+                              cost the panel four rows of list to annotate three of them. This was a
                               card of its own above the table: a diagram, a legend and four rows
                               repeating names that are already here. A camera that keeps dropping
                               is a fact about that camera, so it belongs on that camera's line. */}
-                          <div style={{ minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "baseline", gap: "6px", minWidth: 0 }}>
                             <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</p>
                             {(dropsByCamera.get(c.id) ?? 0) > 0 && (
-                              <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "1px", whiteSpace: "nowrap" }}>
+                              /* Words, not "4× 7d". An abbreviation saves four characters and
+                                 costs the reader the sentence — and this column has room for the
+                                 short form because the name beside it ellipsises first. The full
+                                 phrase, period and all, is on the hover. */
+                              <span
+                                title={t.dropNoteFull(dropsByCamera.get(c.id) as number)}
+                                style={{ fontSize: "10px", color: "var(--gray-400)", whiteSpace: "nowrap", flexShrink: 0 }}
+                              >
                                 {t.dropNote(dropsByCamera.get(c.id) as number)}
-                              </p>
+                              </span>
                             )}
                           </div>
                           <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{c.zone}</span>
