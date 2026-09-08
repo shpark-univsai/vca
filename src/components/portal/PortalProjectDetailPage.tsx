@@ -984,13 +984,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                         className="portal-attention-row"
                         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", width: "100%", border: "none", background: "none", padding: "6px", margin: "0 -6px", borderRadius: "6px", cursor: "pointer", fontFamily: "inherit" }}
                       >
-                        {/* Zone under the name, the way the VIP rows put a date under theirs. A
-                            camera name alone ("Angmokio 3") does not say where to send anybody,
-                            and the two on one line would ellipsise each other in a column this
-                            narrow. */}
-                        <span style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: 0, textAlign: "left" }}>
+                        {/* Name and zone on one line — a camera name alone ("Angmokio 3") does not
+                            say where to send anybody, and stacked they made every row two lines
+                            tall for four rows. The zone does not shrink and the name does: if
+                            something has to go it is the half you already know from the name. */}
+                        <span style={{ display: "flex", alignItems: "baseline", gap: "6px", minWidth: 0, textAlign: "left" }}>
                           <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
-                          <span style={{ fontSize: "11px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.zone}</span>
+                          <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap", flexShrink: 0 }}>{camera.zone}</span>
                         </span>
                         <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>{drops}</span>
                       </button>
