@@ -324,11 +324,11 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
           ...(open ? FIELD_FOCUS : { border: hovered ? "1px solid var(--gray-400)" : BORDER }),
         }}
       >
-        {/* 11px, to sit with the action buttons in the same toolbar. The typed content of a text
-            field stays at 13 — that is the reader's own text and it has to be comfortable — but a
-            select shows a label we wrote, and a toolbar reads as one row of controls only if its
-            words are one size. */}
-        <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis" }}>{selected?.label ?? "Select"}</span>
+        {/* 10px, the size the action buttons in the same toolbar use. The typed content of a
+            text field stays at 13 — that is the reader's own text and it has to be comfortable —
+            but a select shows a label we wrote, and a toolbar reads as one row of controls only
+            if its words are one size. */}
+        <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis" }}>{selected?.label ?? "Select"}</span>
         <span style={{ display: "flex", color: "var(--gray-600)", flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.87" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </span>
@@ -526,7 +526,7 @@ export function ActiveFilterCount({ count, onClear, label }: { count: number; on
         display: "flex", alignItems: "center", gap: "6px", flexShrink: 0,
         height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", cursor: "pointer",
         border: "none", backgroundColor: hovered ? "var(--gray-200)" : "var(--gray-100)",
-        fontSize: "11px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit",
+        fontSize: "10px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit",
       }}
     >
       {label}

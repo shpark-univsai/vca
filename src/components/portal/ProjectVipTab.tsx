@@ -1029,7 +1029,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             style={{
               display: "flex", alignItems: "center", gap: "6px", flexShrink: 0,
               height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", cursor: "pointer",
-              fontSize: "11px", fontWeight: 700, fontFamily: "inherit",
+              fontSize: "10px", fontWeight: 700, fontFamily: "inherit",
               ...(gridPriorityFirst
                 ? { border: "1px solid var(--gray-900)", backgroundColor: "var(--gray-900)", color: "white" }
                 : { border: BORDER, backgroundColor: "white", color: "var(--gray-600)" }),
@@ -1049,7 +1049,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               style={{
                 height: "100%", padding: "0 10px", borderRadius: "8px", border: "none", cursor: "pointer", fontFamily: "inherit",
                 backgroundColor: view === v ? "white" : "transparent", boxShadow: view === v ? PANEL_SHADOW : "none",
-                fontSize: "11px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
+                fontSize: "10px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
               }}>
               {v === "grid" ? t.viewGrid : t.viewTable}
             </button>
