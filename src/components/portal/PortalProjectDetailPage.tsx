@@ -25,7 +25,6 @@ const T = {
     greetMorning: (name: string) => `Good morning, ${name}`,
     greetAfternoon: (name: string) => `Good afternoon, ${name}`,
     greetEvening: (name: string) => `Good evening, ${name}`,
-    greetSub: (project: string) => `Here's the current pulse of your ${project} network.`,
     liveMonitoring: "LIVE MONITORING",
     chipHealthy: "HEALTHY",
     chipAttention: (n: number) => `${n} OFFLINE`,
@@ -105,7 +104,6 @@ const T = {
     greetMorning: (name: string) => `좋은 아침이에요, ${name}님`,
     greetAfternoon: (name: string) => `안녕하세요, ${name}님`,
     greetEvening: (name: string) => `좋은 저녁이에요, ${name}님`,
-    greetSub: (project: string) => `${project} 네트워크의 현재 상태입니다.`,
     liveMonitoring: "실시간 모니터링",
     chipHealthy: "정상",
     chipAttention: (n: number) => `오프라인 ${n}`,
@@ -493,7 +491,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               <p style={{ fontSize: "26px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.4px", minHeight: "34px" }}>
                 {nowMs !== null ? greeting(nowMs, admin.name, t) : ""}
               </p>
-              <p style={{ fontSize: "13px", color: "var(--gray-500)" }}>{t.greetSub(project.name)}</p>
+              {/* No line under the greeting. "Here's the current pulse of your … network" told the
+                  reader what the page they are already looking at is for, and the project's name
+                  is in the rail, in the crumb and in the sentence's own place — three times before
+                  this line said it a fourth. */}
             </div>
             {/* 12px, not 13. They sit beside a 26px greeting, and at 13 they were the loudest
                 thing in a header whose point is the sentence. 12 is what every other toolbar
@@ -577,7 +578,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               }}>
                 <Zap size={14} strokeWidth={2.4} />
               </span>
-              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>{t.attentionTitle}</p>
+              {/* primary-400, with the errands themselves left in gray-900. The label names the
+                  band and the mark beside it is already that colour; the things you can click are
+                  what should read as text you act on. */}
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--primary-400)", flexShrink: 0 }}>{t.attentionTitle}</p>
               {/*
                 Each errand is its own link, and there is no "Review issues" button any more.
 
