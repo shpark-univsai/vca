@@ -11,8 +11,6 @@ import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
   en: {
-    pageTitle: "Input Sources",
-    pageDesc: "Camera streams and uploaded footage — everything this project feeds to analysis.",
     reconnectAll: "Reconnect All",
     exportCsv: "Export CSV",
     addCamera: "Add camera",
@@ -146,8 +144,6 @@ const T = {
     } as Record<CameraAiFeature, string>,
   },
   ko: {
-    pageTitle: "입력 소스",
-    pageDesc: "카메라 스트림과 업로드한 영상 — 이 프로젝트가 분석에 넣는 모든 것.",
     reconnectAll: "전체 재연결",
     exportCsv: "CSV 내보내기",
     addCamera: "카메라 추가",
@@ -966,11 +962,10 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
         // appeared to grow a paler band across the top the moment it scrolled.
         backgroundColor: "var(--primary-50)", paddingTop: rect.padTop,
       } : undefined}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px" }}>
-        <div>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.pageTitle}</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.pageDesc}</p>
-        </div>
+      {/* No page title here: the top bar's crumb already names this page, and printing the same
+          word again 20px lower was the page introducing itself twice. What stays is the row of
+          things you can do on it. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: "16px" }}>
         <div style={{ display: "flex", gap: "8px" }}>
           <button onClick={batchReconnect}
             onMouseEnter={() => setHoveredAction("reconnect")} onMouseLeave={() => setHoveredAction(null)}

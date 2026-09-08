@@ -6,8 +6,6 @@ import { BORDER, CARD_BORDER, PANEL_SHADOW, FilterSelect } from "./PortalShared"
 
 const T = {
   en: {
-    title: "My page",
-    subtitle: "Your account in this console, and how it is displayed.",
     accountTitle: "Account",
     name: "Name",
     email: "Email address",
@@ -21,8 +19,6 @@ const T = {
     roles: { owner: "Owner", admin: "Admin", auditor: "Auditor", none: "No portal access" } as Record<string, string>,
   },
   ko: {
-    title: "마이페이지",
-    subtitle: "이 콘솔에서의 내 계정과 표시 설정입니다.",
     accountTitle: "계정",
     name: "이름",
     email: "이메일",
@@ -83,9 +79,9 @@ export default function PortalMyPage() {
      * rule, not the same number.
      */
     <div style={{ maxWidth: "720px", marginInline: "auto" }}>
-      <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
-      <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px", marginBottom: "20px" }}>{t.subtitle}</p>
-
+      {/* No page title here: the top bar's crumb already names this page, and printing the same
+          word again 20px lower was the page introducing itself twice. What stays is the row of
+          things you can do on it. */}
       {/* Rows built as a list so the last one can drop its divider — a rule at the foot of the
           card would just be a line above the padding. Which rows exist depends on whether the
           signed-in address matches an account: with no match there is nothing to say about a role

@@ -37,8 +37,6 @@ const PRIORITY_COLOR: Record<NonNullable<Person["priorityLabel"]>, { bg: string;
 // asked to fill and nothing acts on is a question with no answer, so it is gone — group and
 // priority are what classify a face here.
 interface VipDict {
-  pageTitle: string;
-  pageDesc: string;
   bulkUpload: string;
   registerVip: string;
   searchPlaceholder: string;
@@ -119,8 +117,6 @@ interface VipDict {
 
 const T: Record<"en" | "ko", VipDict> = {
   en: {
-    pageTitle: "VIP Registry",
-    pageDesc: "Register watchlist individuals for this project's cameras to detect.",
     bulkUpload: "Bulk Upload",
     registerVip: "Register VIP",
     searchPlaceholder: "Search by VIP name",
@@ -200,8 +196,6 @@ const T: Record<"en" | "ko", VipDict> = {
     bulkEmptyDesc: "Expected CSV rows as \"name,description\".",
   },
   ko: {
-    pageTitle: "VIP 등록",
-    pageDesc: "이 프로젝트의 카메라가 탐지할 관심인물을 등록하세요.",
     bulkUpload: "일괄 업로드",
     registerVip: "VIP 등록하기",
     searchPlaceholder: "VIP 이름으로 검색",
@@ -900,11 +894,10 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "20px" }}>
-        <div>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.pageTitle}</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.pageDesc}</p>
-        </div>
+      {/* No page title here: the top bar's crumb already names this page, and printing the same
+          word again 20px lower was the page introducing itself twice. What stays is the row of
+          things you can do on it. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: "20px" }}>
         <div style={{ display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={handleBulkUpload} style={{ display: "none" }} />
           {/* Tools follow the tab: registering a face and creating a party are different jobs, and

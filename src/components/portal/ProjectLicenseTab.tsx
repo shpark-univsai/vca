@@ -82,8 +82,6 @@ const FEATURE_LABELS: Record<string, { en: string; ko: string }> = {
 
 const T = {
   en: {
-    title: "License Management",
-    subtitle: "This project's license determines which pages and features are exposed.",
     notSet: "Not set",
     valid: "Valid",
     expired: "Expired",
@@ -116,8 +114,6 @@ const T = {
     channelsCostPerYear: (cost: string) => `$${cost}/yr`,
   },
   ko: {
-    title: "라이선스 관리",
-    subtitle: "이 프로젝트의 라이선스에 따라 노출되는 페이지와 기능이 결정됩니다.",
     notSet: "미설정",
     valid: "유효",
     expired: "만료됨",
@@ -282,9 +278,9 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
      * looking special exactly when there is no room to be special.
      */
     <div style={{ maxWidth: "900px", marginInline: "auto" }}>
-      <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
-      <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px", marginBottom: "20px" }}>{t.subtitle}</p>
-
+      {/* No page title here: the top bar's crumb already names this page, and printing the same
+          word again 20px lower was the page introducing itself twice. What stays is the row of
+          things you can do on it. */}
       {/*
         One card for one contract.
         This was a dark banner, a channel card and a feature list — three blocks for a single thing,

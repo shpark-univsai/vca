@@ -22,10 +22,6 @@ import {
 const T = {
   en: {
     // Page header
-    title: "Users & Permissions",
-    descScopedPrefix: "Showing users with access to",
-    descScopedSuffix: "",
-    descUnscoped: "Set what each person may do in Portal — or keep them app-only — and scope them to projects.",
     inviteUser: "Invite user",
     searchPlaceholder: "Search by user name or email address",
 
@@ -256,10 +252,6 @@ const T = {
   },
   ko: {
     // Page header
-    title: "사용자 및 권한",
-    descScopedPrefix: "",
-    descScopedSuffix: "프로젝트에 접근 권한이 있는 사용자를 표시합니다.",
-    descUnscoped: "각 사용자가 Portal에서 무엇을 할 수 있는지 정하거나 앱 전용으로 두고, 이용할 프로젝트를 지정하세요.",
     inviteUser: "사용자 초대",
     searchPlaceholder: "사용자 이름 또는 이메일 주소로 검색",
 
@@ -1563,26 +1555,17 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         </div>
       )}
 
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "20px" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap" }}>
-            <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
-            {/* The role descriptions only exist inside the role select, which means the answer to
-                "what is the difference between Admin and read-only" is behind opening a control you
-                may not be allowed to use. This is that answer, in the open. */}
-            <button onClick={() => setShowGuide(true)}
-              style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", textDecoration: "underline", textUnderlineOffset: "3px" }}>
-              {t.whatRolesMean}
-            </button>
-          </div>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "4px" }}>
-            {currentProject
-              ? (lang === "ko"
-                ? <><strong style={{ color: "var(--gray-600)" }}>{currentProject.name}</strong> {t.descScopedSuffix}</>
-                : <>{t.descScopedPrefix} <strong style={{ color: "var(--gray-600)" }}>{currentProject.name}</strong>.</>)
-              : t.descUnscoped}
-          </p>
-        </div>
+      {/* No page title here: the top bar's crumb already names this page, and printing the same
+          word again 20px lower was the page introducing itself twice. The roles link stays — it is
+          the one thing that was up here for a reason. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginBottom: "20px" }}>
+        {/* The role descriptions only exist inside the role select, which means the answer to
+            "what is the difference between Admin and read-only" is behind opening a control you
+            may not be allowed to use. This is that answer, in the open. */}
+        <button onClick={() => setShowGuide(true)}
+          style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", textDecoration: "underline", textUnderlineOffset: "3px", flexShrink: 0 }}>
+          {t.whatRolesMean}
+        </button>
         {/* Tools follow the tab. Six buttons in one row was every tool for both halves of the
             lifecycle competing at once, and four of them could not act on what the reader was
             looking at. The two ways of adding a person stay on the combined tab; the roster's bulk

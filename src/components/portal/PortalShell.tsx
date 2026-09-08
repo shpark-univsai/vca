@@ -272,7 +272,11 @@ export default function PortalShell() {
               {projects.find(p => p.id === currentProjectId)?.name}
             </span>
             <BreadcrumbChevron />
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap" }}>
+            {/* A step larger than the crumb before it: with the page's own title gone from the
+                content, this is the only place the screen is named, so it has to carry that
+                weight — a trail whose last segment is the heading, which is how a console with a
+                named rail and a bar above it usually ends up. */}
+            <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap" }}>
               {showAccount ? t.myPageCrumb : PROJECT_TABS.find(pt => pt.id === tab)?.label[lang]}
             </span>
           </>

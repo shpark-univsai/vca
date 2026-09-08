@@ -579,8 +579,6 @@ function MailField({ label, value, onChange, placeholder, hint, error }: {
 
 const MAIN_T = {
   en: {
-    title: "Server & API Management",
-    desc: "Configure core infrastructure nodes, network reachability and outgoing mail, and view API documentation.",
     subTabInfra: "Infrastructure", subTabMail: "Mail & Network", subTabApi: "API Documentation",
     searchPlaceholder: "Search by server name or IP address",
     allTypes: "All types", reset: "Reset", addServer: "Add server",
@@ -594,8 +592,6 @@ const MAIN_T = {
     toastAdded: "Server added", toastUpdated: "Server updated", toastRemoved: "Server removed",
   },
   ko: {
-    title: "서버 및 API 관리",
-    desc: "핵심 인프라 노드, 네트워크 연결 상태, 발신 메일을 설정하고 API 문서를 확인하세요.",
     subTabInfra: "인프라", subTabMail: "메일 및 네트워크", subTabApi: "API 문서",
     searchPlaceholder: "서버 이름 또는 IP 주소로 검색",
     allTypes: "전체 유형", reset: "초기화", addServer: "서버 추가",
@@ -703,9 +699,9 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
-      <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px", marginBottom: "16px" }}>{t.desc}</p>
-
+      {/* No page title here: the top bar's crumb already names this page, and printing the same
+          word again 20px lower was the page introducing itself twice. What stays is the row of
+          things you can do on it. */}
       <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
         {(["infra", "mail", "api"] as const).map(sub => (
           <button key={sub} onClick={() => setSubTab(sub)}
