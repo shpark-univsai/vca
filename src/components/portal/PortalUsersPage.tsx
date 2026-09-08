@@ -1355,12 +1355,13 @@ function StageBadge({ stage, t }: { stage: Stage; t: { stageRosterListed: string
  * the weight a distribution needs.
  */
 function UserCountStrip({
-  users, rosterWaiting, statusFilter, onFilter,
+  users, rosterWaiting, statusFilter, onFilter, onShowGuide,
 }: {
   users: PortalUser[];
   rosterWaiting: number;
   statusFilter: "invited" | "suspended" | "roster" | null;
   onFilter: (next: "invited" | "suspended" | "roster" | null) => void;
+  onShowGuide: () => void;
 }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -1405,8 +1406,26 @@ function UserCountStrip({
           onClick: () => onFilter(statusFilter === item.key ? null : item.key),
         }))),
       ]} />
+      {/* The distribution, and the way to what those words mean — at the end of the sentence that
+          uses them. A guide link is worth having (the role descriptions otherwise live inside a
+          select an auditor may not be allowed to open), but it needs something to be attached to,
+          and this line is the only place on the page that says all five names in a row. */}
       <p style={{ fontSize: "11px", color: "var(--gray-500)", margin: "-4px 0 16px" }}>
         {roleCounts.map(([label, count]) => `${label} ${count}`).join(" · ")}
+        <span style={{ color: "var(--gray-300)" }}>{"  ·  "}</span>
+        <button
+          onClick={onShowGuide}
+          style={{
+            border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
+            fontSize: "11px", color: "var(--gray-500)",
+            // Dotted, not solid: this is the same "there is an explanation behind this" cue the
+            // page's own hint labels use, and a solid underline in a grey caption reads as a link
+            // to another page.
+            borderBottom: "1px dotted var(--gray-300)",
+          }}
+        >
+          {t.whatRolesMean}
+        </button>
       </p>
     </>
   );
@@ -1603,16 +1622,13 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       )}
 
       {/* No page title here: the top bar's crumb already names this page, and printing the same
-          word again 20px lower was the page introducing itself twice. The roles link stays — it is
-          the one thing that was up here for a reason. */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginBottom: "20px" }}>
-        {/* The role descriptions only exist inside the role select, which means the answer to
-            "what is the difference between Admin and read-only" is behind opening a control you
-            may not be allowed to use. This is that answer, in the open. */}
-        <button onClick={() => setShowGuide(true)}
-          style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", textDecoration: "underline", textUnderlineOffset: "3px", flexShrink: 0 }}>
-          {t.whatRolesMean}
-        </button>
+          word again 20px lower was the page introducing itself twice.
+
+          The "what the roles mean" link used to sit here, alone on the left of the buttons, and it
+          belonged to nothing — a lone underlined phrase at the top of a page reads as a warning or
+          a leftover. It moved to the end of the role-distribution caption below, where the roles
+          are being named one by one and the question arises on its own. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", marginBottom: "20px" }}>
         {/* Tools follow the tab. Six buttons in one row was every tool for both halves of the
             lifecycle competing at once, and four of them could not act on what the reader was
             looking at. The two ways of adding a person stay on the combined tab; the roster's bulk
@@ -1690,7 +1706,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
 
       {!mailAvailable && <RecoveryModeNotice supportContact={authConfig.supportContact} />}
 
-      <UserCountStrip users={projectUsers} rosterWaiting={rosterWaiting.length} statusFilter={statusFilter} onFilter={setStatusFilter} />
+      <UserCountStrip users={projectUsers} rosterWaiting={rosterWaiting.length} statusFilter={statusFilter} onFilter={setStatusFilter} onShowGuide={() => setShowGuide(true)} />
 
       <AccessRequestsPanel projectId={projectId} />
 
