@@ -96,29 +96,38 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
   const [lang] = useLanguage();
   const variant = item.variant ?? "default";
   return (
+    /*
+      Small, the way every toast on Mobbin is small.
+      Whop and Pinterest are the closest references to this one — a near-black bar with a coloured
+      mark and white text — and both are a single line about 36px tall. Ours was 380×60 with a
+      14px/800 heading, which is a card that happens to float: it announced itself at the size of
+      the thing it was reporting on. Height is what the text needs (a one-line message is one
+      line), the width is a range rather than a number so "Camera removed" does not draw a box
+      three times its own length, and the type is a step down.
+    */
     <div style={{
-      display: "flex", alignItems: "center", gap: "12px",
-      padding: "12px 16px", borderRadius: "12px", height: "60px", boxSizing: "border-box",
+      display: "flex", alignItems: "center", gap: "10px",
+      padding: "10px 12px 10px 14px", borderRadius: "10px", boxSizing: "border-box",
       backgroundColor: "var(--gray-900)", border: "1px solid rgba(255, 255, 255, 0.08)",
       boxShadow: "0 12px 32px rgba(14, 22, 42, 0.28)",
-      width: "380px", flexShrink: 0,
+      minWidth: "240px", maxWidth: "420px", flexShrink: 0,
     }}>
       {variant !== "default" && (
         <div style={{ flexShrink: 0, display: "flex" }}>
           <ToastIcon variant={variant} />
         </div>
       )}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px" }}>
-        <div style={{ fontSize: "14px", fontWeight: 800, lineHeight: "20px", letterSpacing: "-0.28px", color: "white" }}>{item.title}</div>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px" }}>
+        <div style={{ fontSize: "13px", fontWeight: 600, lineHeight: "18px", letterSpacing: "-0.2px", color: "white" }}>{item.title}</div>
         {item.desc && (
-          <div style={{ fontSize: "12px", fontWeight: 400, lineHeight: "16px", letterSpacing: "-0.24px", color: "var(--gray-300)" }}>{item.desc}</div>
+          <div style={{ fontSize: "12px", fontWeight: 400, lineHeight: "16px", color: "var(--gray-300)" }}>{item.desc}</div>
         )}
       </div>
       {item.actionLabel ? (
         <button
           onClick={() => { item.onAction?.(); onDismiss(item.id); }}
           style={{
-            padding: "6px 12px", fontSize: "13px", fontWeight: 600, letterSpacing: "-0.26px",
+            padding: "5px 10px", fontSize: "12px", fontWeight: 700, letterSpacing: "-0.2px",
             color: "var(--gray-900)", backgroundColor: "white",
             border: "none", borderRadius: "8px", cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
           }}
