@@ -1054,10 +1054,12 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           })}
           {/* The reach figure closes the strip, on the tinted end and not clickable — it is the one
               number here that is not a defect and cannot be filtered to. */}
-          {/* One share of the row like the others, not "whatever is left". With flex:1 on this cell
-              alone it swallowed the spare width and the strip read as three small boxes and one
-              banner — every cell here is one figure, so every cell is one column. */}
-          <span style={{ flex: 1, minWidth: "128px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "2px", padding: "10px 18px", borderLeft: BORDER, backgroundColor: "var(--gray-50)" }}>
+          {/* One share of the row like the others, and the same white ground.
+              It was tinted grey to say "this one is not a filter", which is not what a grey cell at
+              the end of a row says — it reads as disabled, or as a stripe nobody meant. The three
+              on the left light up on hover and take a pointer; this one does neither, and that is
+              the whole difference a reader needs. */}
+          <span style={{ flex: 1, minWidth: "128px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "2px", padding: "10px 18px", borderLeft: BORDER }}>
             <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <span style={{ display: "flex", color: "var(--gray-400)" }}><Eye size={14} strokeWidth={2.4} /></span>
               <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
