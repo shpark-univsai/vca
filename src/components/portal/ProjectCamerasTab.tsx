@@ -289,7 +289,7 @@ const T = {
 /**
  * How far the stuck header overhangs the content on each side, to swallow the shadow the cards
  * underneath cast outside their own boxes. 8px covers PANEL_SHADOW's 6px blur with a pixel to
- * spare, and lands well inside the shell's 72px gutter.
+ * spare, and lands well inside the shell's 48px gutter.
  */
 const EDGE_BLEED = 8;
 
@@ -991,7 +991,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         // spreads a little outside its own box, and a cover exactly the card's width covered the
         // card but not its bleed — so the scrolled-away card's shadow was still visible as a soft
         // vertical smudge down the left and right edges of the stuck block. The overhang lands in
-        // the shell's 72px gutter, which is this same grey, so nothing else changes.
+        // the shell's gutter, which is this same grey, so nothing else changes.
         left: rect.left - EDGE_BLEED, width: rect.width + EDGE_BLEED * 2,
         paddingLeft: EDGE_BLEED, paddingRight: EDGE_BLEED,
         // No paddingBottom: the block's last child is the table's column-header card, so any
