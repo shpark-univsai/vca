@@ -2,8 +2,8 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
-import { canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
+import { ArrowDown, ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
+import { canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
 import { formatElapsed, sgtClockMinutes } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard } from "./PortalShared";
 import { useToast } from "../Toast";
@@ -83,6 +83,16 @@ const T = {
     noOfflineCameras: "No offline cameras — everything is connected.",
     noCamerasYet: "No cameras connected to this project yet.",
     openCamera: "Open this camera",
+    trendTitle: "Last 7 days",
+    trendSubtitle: "What the cameras saw, and which of them dropped out.",
+    detectionsToday: "detections today",
+    vsYesterday: (pct: number) => `${pct > 0 ? "+" : ""}${pct}% vs yesterday`,
+    todaySoFar: "Today so far",
+    detectionSplit: (vip: number, vehicle: number, unknown: number) =>
+      `VIP ${vip} · Vehicle ${vehicle} · Unknown ${unknown.toLocaleString("en-US")}`,
+    unstableTitle: "Dropped out this week",
+    dropCount: (n: number) => `${n} drop${n === 1 ? "" : "s"}`,
+    noDrops: "Every camera held its stream all week.",
     viewAllCameras: (n: number) => `View all ${n} cameras`,
     recentVipsTitle: "Recently Registered VIPs",
     registerVipLink: "Register VIP →",
@@ -158,6 +168,16 @@ const T = {
     noOfflineCameras: "오프라인 카메라가 없습니다 — 모두 연결되어 있습니다.",
     noCamerasYet: "이 프로젝트에 연결된 카메라가 아직 없습니다.",
     openCamera: "이 카메라 열기",
+    trendTitle: "지난 7일",
+    trendSubtitle: "카메라가 무엇을 봤고, 어느 카메라가 끊겼는지.",
+    detectionsToday: "건 오늘 탐지",
+    vsYesterday: (pct: number) => `어제 대비 ${pct > 0 ? "+" : ""}${pct}%`,
+    todaySoFar: "오늘 (진행 중)",
+    detectionSplit: (vip: number, vehicle: number, unknown: number) =>
+      `VIP ${vip} · 차량 ${vehicle} · 미확인 ${unknown.toLocaleString("en-US")}`,
+    unstableTitle: "이번 주에 끊긴 카메라",
+    dropCount: (n: number) => `${n}회 끊김`,
+    noDrops: "이번 주 내내 모든 카메라가 스트림을 유지했습니다.",
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
     recentVipsTitle: "최근 등록된 VIP",
     registerVipLink: "VIP 등록 →",
@@ -371,6 +391,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const [nowMs, setNowMs] = useState<number | null>(null);
   useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
 
+  // Seven days of detections and the cameras that dropped during them. Both are seeded in the
+  // store, where their shape doubles as the request to the backend — see the note above
+  // dailyDetections(). Memoised because the seed runs a sine per day per render otherwise.
+  const detectionDays = useMemo(() => dailyDetections(projectId), [projectId]);
+  const unstable = useMemo(() => unstableCameras(projectId, cameras), [projectId, cameras]);
   const project = projects.find(p => p.id === projectId);
   if (!project) {
     return <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>{t.projectNotFound}</p>;
@@ -416,6 +441,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
   const projectPersons = persons.filter(p => p.projectId === projectId);
   const projectGroupCount = personGroups.filter(g => g.projectId === projectId).length;
+  const today = detectionDays[detectionDays.length - 1];
+  const yesterday = detectionDays[detectionDays.length - 2];
+  const detectionPeak = Math.max(...detectionDays.map(d => d.total), 1);
+  const detectionDelta = yesterday && yesterday.total > 0
+    ? Math.round(((today.total - yesterday.total) / yesterday.total) * 100)
+    : 0;
   const highPriorityVipCount = projectPersons.filter(p => p.priorityLabel === "high" || p.priorityLabel === "very_high").length;
   const recentVips = [...projectPersons].sort((a, b) => b.registeredAt.localeCompare(a.registeredAt)).slice(0, 3);
   // nowMs-derived, not new Date() directly, so this stays in sync with the same not-yet-mounted ->
@@ -852,6 +883,97 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   : t.cardAccountsAllIn}
               </p>
             </MetricCard>
+          </div>
+
+          {/*
+            Seven days, under the four counts.
+
+            Everything above this line answers "how many are there right now" — a question an
+            administrator asks when they buy something, not a reason to open the console on a
+            Tuesday. This is the other half: what the cameras actually saw, and which of them
+            stopped seeing. Inventory, then flow, then the lists.
+
+            The figures are seeded (dailyDetections / unstableCameras in vcaStore), and that seed
+            is written as the API being asked for rather than as decoration — a screen the backend
+            developer can look at is a clearer specification than a sentence in a meeting.
+          */}
+          <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", marginBottom: CARD_GAP }}>
+            <div style={{ marginBottom: "14px" }}>
+              <SectionHead title={t.trendTitle} subtitle={t.trendSubtitle} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1.75fr 1fr", gap: CARD_GAP, alignItems: "start" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{today.total.toLocaleString("en-US")}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.detectionsToday}</span>
+                  {/* Grey, not green or red. More detections than yesterday is not good news or
+                      bad news — it is a busier day, and colouring it would make the reader look
+                      for a fault that is not being reported. */}
+                  <span style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}>
+                    {detectionDelta >= 0 ? <ArrowUp size={12} strokeWidth={2.6} /> : <ArrowDown size={12} strokeWidth={2.6} />}
+                    {t.vsYesterday(detectionDelta)}
+                  </span>
+                </div>
+                {/* The bars. Heights are a share of the tallest day rather than of a round number:
+                    nobody knows what "a thousand detections" looks like, but everyone can see
+                    which day was the busy one. Today's bar is the lighter step because the day is
+                    not over — a partial count drawn at full strength reads as a quiet day. */}
+                <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "72px", marginTop: "14px" }}>
+                  {detectionDays.map(d => (
+                    <div key={d.daysAgo} title={`${d.total.toLocaleString("en-US")}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
+                      <div style={{
+                        height: `${Math.max(4, (d.total / detectionPeak) * 100)}%`,
+                        borderRadius: "4px",
+                        backgroundColor: d.daysAgo === 0 ? "var(--primary-200)" : "var(--primary-300)",
+                      }} />
+                    </div>
+                  ))}
+                </div>
+                {/* Weekday letters, only once the clock is known — the labels are the only part of
+                    this chart that depends on what day it is, and a guessed one would be corrected
+                    a frame later. The row keeps its height either way so nothing jumps. */}
+                <div style={{ display: "flex", gap: "8px", marginTop: "6px", minHeight: "14px" }}>
+                  {detectionDays.map(d => (
+                    <span key={d.daysAgo} style={{ flex: 1, fontSize: "10px", color: "var(--gray-400)", textAlign: "center" }}>
+                      {nowMs !== null
+                        ? (d.daysAgo === 0
+                          ? t.todaySoFar
+                          : new Intl.DateTimeFormat(lang === "ko" ? "ko-KR" : "en-GB", { timeZone: "Asia/Singapore", weekday: "short" })
+                            .format(new Date(nowMs - d.daysAgo * 86400000)))
+                        : ""}
+                    </span>
+                  ))}
+                </div>
+                <p style={{ fontSize: "11px", color: "var(--gray-500)", marginTop: "10px" }}>
+                  {t.detectionSplit(today.vip, today.vehicle, today.unknown)}
+                </p>
+              </div>
+
+              {/* Which cameras were unreliable, not which are down now — the card above already
+                  says that. A camera that drops four times a week and is online when you look is
+                  invisible everywhere else in Portal, and it is exactly the one worth sending
+                  somebody to. */}
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "10px" }}>{t.unstableTitle}</p>
+                {unstable.length === 0 ? (
+                  <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noDrops}</p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {unstable.map(({ camera, drops }) => (
+                      <button
+                        key={camera.id}
+                        onClick={() => { setInspectCameraId(camera.id); onTabChange("cameras"); }}
+                        className="portal-attention-row"
+                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", width: "100%", border: "none", background: "none", padding: "4px 6px", margin: "0 -6px", borderRadius: "6px", cursor: "pointer", fontFamily: "inherit" }}
+                      >
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
+                        <span style={{ fontSize: "11px", color: "var(--gray-500)", flexShrink: 0 }}>{t.dropCount(drops)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Same 4-column grid + gap as the metrics row above, so the left column's right edge

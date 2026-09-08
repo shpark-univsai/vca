@@ -1225,6 +1225,57 @@ function auditAt(minutesAgo: number): string {
   return parseSgtStamp(date, time).toISOString();
 }
 
+/**
+ * Seven days of activity per project, and which cameras were unreliable during them.
+ *
+ * THIS IS A REQUEST TO THE BACKEND, WRITTEN AS DATA. Portal has no time axis today — every figure
+ * on the Overview answers "how many are there right now", which is a question an administrator
+ * asks once a month, not a reason to open the console daily. The two shapes below are what would
+ * change that, and they are drawn here so the aggregation the server needs to expose is a concrete
+ * thing rather than a sentence in a meeting:
+ *
+ *   GET /projects/:id/detections?days=7   → [{ daysAgo, total, vip, vehicle, unknown }]
+ *   GET /projects/:id/camera-stability?days=7 → [{ cameraId, drops }]
+ *
+ * Counted per Singapore calendar day (lib/time.ts owns that definition), newest last. `daysAgo` 0
+ * is today-so-far, which is why it is normally the shortest bar.
+ *
+ * Deterministic, like every other seed in this file: a function of the index and the project id's
+ * length, never Math.random, or the server and the browser would draw different bars on first
+ * paint. See the note at the top of the file.
+ */
+export interface DailyDetections {
+  daysAgo: number;
+  total: number;
+  vip: number;
+  vehicle: number;
+  unknown: number;
+}
+
+export function dailyDetections(projectId: string): DailyDetections[] {
+  const base = 900 + projectId.length * 37;
+  return Array.from({ length: 7 }, (_, i) => {
+    const daysAgo = 6 - i;
+    const swing = seededRandom(i * 3.7 + projectId.length) * 0.7 + 0.65;
+    // Today is partial — the day is not over, so its bar counts only the hours that have happened.
+    const dayFactor = daysAgo === 0 ? 0.55 : 1;
+    const total = Math.round(base * swing * dayFactor);
+    const vip = Math.round(total * (0.014 + seededRandom(i * 5.1) * 0.01));
+    const vehicle = Math.round(total * (0.08 + seededRandom(i * 6.3) * 0.04));
+    return { daysAgo, total, vip, vehicle, unknown: total - vip - vehicle };
+  });
+}
+
+/** Cameras that dropped their stream at least once in the last seven days, worst first. */
+export function unstableCameras(projectId: string, cameras: Camera[]): { camera: Camera; drops: number }[] {
+  return cameras
+    .filter(c => c.projectId === projectId)
+    .map((c, i) => ({ camera: c, drops: Math.floor(seededRandom(i * 9.13 + c.code.length) * 5) }))
+    .filter(r => r.drops > 0)
+    .sort((a, b) => b.drops - a.drops)
+    .slice(0, 4);
+}
+
 const AUDIT_LOG: AuditEvent[] = [
   { id: "audit-1", projectId: "proj-sg", message: "Camera CAM-NOV-001 RTSP URL updated", actor: "Grace Tan", at: auditAt(20) },
   { id: "audit-2", projectId: "proj-sg", message: "VIP Wei Chen registered", actor: "Marcus Lee", at: auditAt(65) },
