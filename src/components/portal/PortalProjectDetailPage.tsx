@@ -806,7 +806,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   so a zero top pad puts the ink where the neighbouring bar's first pixel is. The
                   line-height is pinned for the same reason — a default one is the font's guess and
                   the two cards would drift apart on a different machine. */}
-              <p style={{ fontSize: "11px", lineHeight: "13px", color: "var(--gray-500)", paddingTop: 0 }}>
+              <p style={{ fontSize: "11px", lineHeight: "13px", color: "var(--primary-300)", paddingTop: 0 }}>
                 {t.cardVipBreakdown(projectGroupCount, highPriorityVipCount)}
               </p>
             </MetricCard>
@@ -838,7 +838,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   so a zero top pad puts the ink where the neighbouring bar's first pixel is. The
                   line-height is pinned for the same reason — a default one is the font's guess and
                   the two cards would drift apart on a different machine. */}
-              <p style={{ fontSize: "11px", lineHeight: "13px", color: "var(--gray-500)", paddingTop: 0 }}>
+              <p style={{ fontSize: "11px", lineHeight: "13px", color: "var(--primary-300)", paddingTop: 0 }}>
                 {pendingInviteCount + suspendedCount > 0
                   ? t.cardAccountsBreakdown(pendingInviteCount, suspendedCount)
                   : t.cardAccountsAllIn}
