@@ -1140,7 +1140,10 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           })}
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "12px" }}>
+        /* gridAutoRows 1fr on top of the fixed slots inside each card. The slots are what make the
+           heights match; this is the guard that keeps a row level if something in a card ever
+           grows anyway. */
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gridAutoRows: "1fr", gap: "12px" }}>
           {projectPersons.map(person => {
             const elevated = person.priorityLabel === "high" || person.priorityLabel === "very_high";
             return (
@@ -1163,8 +1166,17 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 {/* Name first. The tags used to sit above it, which put a pill where the eye goes
                     for the thing a watchlist card is actually scanned for — a face and a name. The
                     group and the priority qualify that name, so they read after it. */}
-                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{person.name}</p>
-                {(elevated || person.groupId) && (
+                {/* Two lines, always — reserved whether the name needs them or not.
+                    "Muhammad Rizal bin Hassan" wraps at this width and "David Ho" does not, so a
+                    height that follows the name made every card a different card. Clamped rather
+                    than ellipsised on one line, because a watchlist that truncates the name has
+                    broken the one thing it is for; two lines hold every name in the registry. */}
+                <p style={{
+                  fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", lineHeight: 1.35,
+                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+                  overflow: "hidden", height: "35px",
+                }}>{person.name}</p>
+                {(
                   /* Group, and priority only when it is raised.
                      "Normal" is the register form's default, so a grey NORMAL pill sat on nearly
                      every card and said nothing — and once the role tag came off it was the only
@@ -1172,9 +1184,12 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                      which made it read as "this person is an individual". A tag on a card now
                      means something is true of this person: they are in a party, or they are
                      above normal. The table's Priority column still states it either way.
-                     Wraps, so a long group name and the priority beside it stack rather than
-                     squeeze each other. */
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", margin: "5px 0 0" }}>
+                     One line and no wrap, and the row is here even when this person has neither
+                     tag: it used to appear only when there was something to show and to wrap onto
+                     a second line when a group name ran long, which is two more ways for one card
+                     to be taller than the one beside it. Reserved space costs 18px on the cards
+                     that have nothing to say; a ragged grid costs the reader every card. */
+                  <div style={{ display: "flex", gap: "4px", margin: "4px 0 0", height: "18px", overflow: "hidden" }}>
                     {person.groupId && groupById.has(person.groupId) && (
                       <Tag label={groupById.get(person.groupId)!.name} bg="var(--info-100)" color="var(--info-500)" />
                     )}
