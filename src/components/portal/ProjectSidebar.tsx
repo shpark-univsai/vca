@@ -236,22 +236,25 @@ export default function ProjectSidebar({ brand, team, project, tab, onTabChange,
                     /*
                      * The current row: a gray-800 fill, and the label and icon in primary-400.
                      *
-                     * The accent moved from the furniture to the text. A solid primary pill was
-                     * the first attempt (it shouted, a sixth of the rail in full accent) and a bar
-                     * down the left edge was the second — but a bar is a mark beside the row,
-                     * while the colour of the words is the row.
+                     * gray-700 and white, which is what every dark rail worth copying does —
+                     * Revolut Business, Railway, TIDAL and Visual Electric all mark the current
+                     * row with a lighter step of the rail's own colour and white text. None of
+                     * them uses a light pill: on a near-black column that reads as a light-mode
+                     * element pasted in, and it pulls harder than the page beside it.
                      *
-                     * primary-300, not primary-400: the accent proper is a deep violet and on a
-                     * gray-800 fill it was dark on dark. The lighter step is the same hue with
-                     * enough of a jump off this ground to be read as the selected row.
+                     * The weak contrast was never the text colour, it was the fill. gray-800 is
+                     * one small step off gray-900; gray-700 is the step you can see. Earlier
+                     * attempts put the accent here instead — a solid primary pill (it shouted), a
+                     * bar down the left edge (a mark beside the row, not the row), primary-300
+                     * text (better, but a coloured label on a nearly invisible fill).
                      */
-                    backgroundColor: active ? "var(--gray-800)" : undefined,
-                    color: active ? "var(--primary-300)" : "var(--gray-300)",
+                    backgroundColor: active ? "var(--gray-700)" : undefined,
+                    color: active ? "white" : "var(--gray-300)",
                     fontSize: "13px", fontWeight: active ? 600 : 500,
                     whiteSpace: "nowrap", width: "100%",
                   }}
                 >
-                  <span style={{ display: "flex", flexShrink: 0 }}><Icon color={active ? "var(--primary-300)" : "var(--gray-300)"} /></span>
+                  <span style={{ display: "flex", flexShrink: 0 }}><Icon color={active ? "white" : "var(--gray-300)"} /></span>
                   {!collapsed && (
                     <>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{t.label[lang]}</span>
