@@ -268,9 +268,11 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                   a control that looks like a menu and is not. Switching teams is a real thing now,
                   but it belongs to the breadcrumb behind this modal, so this states the filter and
                   leaves the switching there. */}
+              {/* A line of text, not a boxed chip. The box was drawn back when this thing looked
+                  like a control; it states which team's projects are listed and nothing more, and
+                  a border around a statement invites a click that does nothing. */}
               <div style={{
-                display: "inline-flex", alignItems: "center", gap: "6px",
-                border: BORDER, borderRadius: "8px", padding: "6px 10px", marginBottom: "12px",
+                display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px",
                 fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
               }}>
                 <TeamIcon />
