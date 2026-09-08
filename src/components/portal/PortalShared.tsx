@@ -32,6 +32,16 @@ export const CARD_BORDER = BORDER;
 // or font size. Set the height, not the vertical padding.
 export const CONTROL_HEIGHT = "36px";
 /**
+ * Every icon in Portal is stroked at 1.5 — lucide components and the hand-drawn inline paths both.
+ *
+ * There were nine different weights across the console (1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8, 2),
+ * mostly because each icon was matched to whatever sat next to it at the time. Below about 1.4 a
+ * 14px glyph reads as a hairline beside a 12px bold label; above 1.6 it starts to look like a
+ * different icon set. Not a constant, because it is passed as a prop and an attribute in ~110
+ * places — but it is the value to use for anything new.
+ */
+export const ICON_STROKE = 1.5;
+/**
  * Column gap for the Portal tables. They were all built with no gap at all, which is merely tight
  * for columns of plain text but actually collides once a cell holds a bordered control — the Users
  * table's Permission select ran straight into the MFA badge next to it. One value so the four
@@ -265,7 +275,7 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
       >
         <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-900)" }}>{selected?.label ?? "Select"}</span>
         <span style={{ display: "flex", color: "var(--gray-600)", flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </span>
       </button>
       {open && (
@@ -297,7 +307,7 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
                 }}
               >
                 <span style={{ display: "flex", width: "12px", flexShrink: 0, marginTop: o.description ? "2px" : 0 }}>
-                  {active && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  {active && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                 </span>
                 {o.description ? (
                   <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
@@ -319,7 +329,7 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
                 fontSize: "12px", fontWeight: 700, color: "var(--gray-900)",
               }}
             >
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
               {footerAction.label}
             </button>
           )}
@@ -409,7 +419,7 @@ export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
               {disabledReasons.map(reason => (
                 <div key={reason} style={{ display: "flex", gap: "6px" }}>
                   <span style={{ flexShrink: 0, display: "flex", color: "var(--gray-400)", marginTop: "1px" }}>
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3"/><path d="M8 4.6v4.2M8 10.9v.9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 4.6v4.2M8 10.9v.9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
                   </span>
                   <p style={{ margin: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.6 }}>{reason}</p>
                 </div>
@@ -452,7 +462,7 @@ export function ActiveFilterCount({ count, onClear, label }: { count: number; on
     >
       {label}
       <span style={{ display: "flex", color: "var(--gray-500)" }}>
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
       </span>
     </button>
   );
@@ -504,7 +514,7 @@ export function Switch({ checked, onChange, label, disabled }: {
  * so a caller can tint it.
  */
 export function SelectedCheckIcon({ size = 14 }: { size?: number }) {
-  return <Check size={size} strokeWidth={1.8} />;
+  return <Check size={size} strokeWidth={1.5} />;
 }
 
 /**
@@ -687,7 +697,7 @@ export function SortableHeader<K extends string>({ label, sortKey, sort, onToggl
       {label.toUpperCase()}
       {active && (
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0, transform: sort.direction === "desc" ? "rotate(180deg)" : "none" }}>
-          <path d="M5 8V2M5 2L2.4 4.6M5 2l2.6 2.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M5 8V2M5 2L2.4 4.6M5 2l2.6 2.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       )}
     </button>

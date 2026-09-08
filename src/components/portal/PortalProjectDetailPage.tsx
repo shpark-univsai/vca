@@ -144,15 +144,15 @@ const T = {
  * sites, because MetricCard takes `icon: () => JSX.Element` and because one definition per icon is
  * the whole point.
  */
-function VideoIcon() { return <Video size={16} strokeWidth={1.2} />; }
-function KeyIcon() { return <Key size={16} strokeWidth={1.2} />; }
-function UsersGroupIcon() { return <Users size={16} strokeWidth={1.1} />; }
-function SettingsIcon() { return <Settings size={16} strokeWidth={1.2} />; }
-function ShieldIcon() { return <Shield size={16} strokeWidth={1.2} />; }
-function PlusIcon() { return <Plus size={14} strokeWidth={1.4} />; }
-function UserPlusIcon() { return <UserPlus size={14} strokeWidth={1.2} />; }
-function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={1.4} />; }
-function ExitIcon() { return <LogOut size={14} strokeWidth={1.2} />; }
+function VideoIcon() { return <Video size={16} strokeWidth={1.5} />; }
+function KeyIcon() { return <Key size={16} strokeWidth={1.5} />; }
+function UsersGroupIcon() { return <Users size={16} strokeWidth={1.5} />; }
+function SettingsIcon() { return <Settings size={16} strokeWidth={1.5} />; }
+function ShieldIcon() { return <Shield size={16} strokeWidth={1.5} />; }
+function PlusIcon() { return <Plus size={14} strokeWidth={1.5} />; }
+function UserPlusIcon() { return <UserPlus size={14} strokeWidth={1.5} />; }
+function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={1.5} />; }
+function ExitIcon() { return <LogOut size={14} strokeWidth={1.5} />; }
 
 // Shared shell for the four Overview metric cards — header (eyebrow label + icon badge), then
 // whatever body content each card needs (big value, progress bar, footer stats) as children.
