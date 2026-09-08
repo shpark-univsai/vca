@@ -1126,8 +1126,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 Only once the clock is known — the labels are the one part of this chart that
                 depends on what day it is, and a guessed one would be corrected a frame later. The
                 row keeps its height either way so nothing jumps. A weekday on its own is only
-                readable while you still know what today is; the date comes off the Singapore
-                calendar key rather than a locale format, so both languages read the same digits.
+                readable while you still know what today is, so the date leads and the weekday
+                follows it — the date identifies the column, the weekday only colours it in. The
+                date comes off the Singapore calendar key rather than a locale format, so both
+                languages read the same digits.
               */}
               <div style={{ position: "relative", height: "14px", marginTop: "8px" }}>
                 {detectionDays.map((d, i) => {
@@ -1142,9 +1144,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                         fontSize: "10px", color: "var(--gray-400)", whiteSpace: "nowrap",
                       }}
                     >
-                      {at === null ? "" : `${d.daysAgo === 0
+                      {at === null ? "" : `${sgtDateKey(at).slice(5).replace("-", ".")} ${d.daysAgo === 0
                         ? t.todaySoFar
-                        : new Intl.DateTimeFormat(lang === "ko" ? "ko-KR" : "en-GB", { timeZone: "Asia/Singapore", weekday: "short" }).format(at)} ${sgtDateKey(at).slice(5).replace("-", ".")}`}
+                        : new Intl.DateTimeFormat(lang === "ko" ? "ko-KR" : "en-GB", { timeZone: "Asia/Singapore", weekday: "short" }).format(at)}`}
                     </span>
                   );
                 })}
