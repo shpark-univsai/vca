@@ -737,12 +737,12 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                 and Add Server its plus, so Reset read as a word somebody had left there. lucide
                 rather than a hand-drawn path, at the 1.4 stroke every Portal icon now uses. */}
             <button className="portal-btn-outline" onClick={resetFilters}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "10px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
               <RotateCcw size={14} strokeWidth={2.4} />
               {t.reset}
             </button>
             <button className="portal-btn-primary" onClick={() => setShowAdd(true)}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "10px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
               {t.addServer}
             </button>
