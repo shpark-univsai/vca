@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Asterisk } from "lucide-react";
+import { Asterisk, ClipboardList, MailQuestion, Users2, UserX} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { TABLE_HEADER_COLOR, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import RosterImportModal from "./RosterImportModal";
@@ -70,7 +70,8 @@ const T = {
     countPortalOnly: "Portal only",
     countInvited: "Invited",
     countSuspended: "Suspended",
-    countTotal: "Total",
+    countTotal: "on this project",
+    countPeopleUnit: "people",
     invitedHint: "Invited but has not set a password yet — they cannot sign in until they do.",
     suspendedHint: "Kept on the list but blocked from signing in.",
 
@@ -297,7 +298,8 @@ const T = {
     countPortalOnly: "포털 전용",
     countInvited: "초대됨",
     countSuspended: "정지됨",
-    countTotal: "전체",
+    countTotal: "이 프로젝트 인원",
+    countPeopleUnit: "명",
     invitedHint: "초대는 됐지만 아직 비밀번호를 설정하지 않았습니다 — 설정 전까지 로그인할 수 없습니다.",
     suspendedHint: "명단에는 남아 있지만 로그인이 차단된 상태입니다.",
 
@@ -1337,74 +1339,76 @@ function StageBadge({ stage, t }: { stage: Stage; t: { stageRosterListed: string
   );
 }
 
-function UserCountStrip({ users, rosterWaiting }: { users: PortalUser[]; rosterWaiting: number }) {
+/**
+ * The page's summary, in the shared SummaryStrip — the same row Input Sources, the VIP registry and
+ * Server & API carry.
+ *
+ * It used to be nine figures in one line, grouped by rules: a total, five roles, three pipeline
+ * states. Two things were wrong with that. The five roles are a distribution, not something to act
+ * on, and the table's own Role column already carries them (sortable, one row per person) — so
+ * they were a chart of a column six inches below them. And none of the nine could be pressed: you
+ * read "1 suspended" and then went looking for that person by eye.
+ *
+ * So the strip states what somebody comes here to act on — who is stuck on the way in — and each
+ * of those cells filters the table to its own rows. The total closes the row as the one figure
+ * that is a fact rather than an errand. The role split moves to a caption under it, which is all
+ * the weight a distribution needs.
+ */
+function UserCountStrip({
+  users, rosterWaiting, statusFilter, onFilter,
+}: {
+  users: PortalUser[];
+  rosterWaiting: number;
+  statusFilter: "invited" | "suspended" | "roster" | null;
+  onFilter: (next: "invited" | "suspended" | "roster" | null) => void;
+}) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
 
-  /**
-   * Three groups, not nine figures.
-   *
-   * Total first, on its own: it counts everyone this page knows about, which is neither of the
-   * questions the other two groups answer.
-   *
-   * Then five that answer "who is in, and what may they do" — people with an account today. Then
-   * three that answer "who is on the way in, or stopped on the way" — an invitation nobody
-   * accepted, an account somebody suspended, a name waiting for a code. Read as one run, the two
-   * questions looked like one list and the second group's numbers looked like more roles.
-   */
-  const counts: { label: string; value: number; hint?: string; actionable?: boolean; group: "total" | "role" | "pipeline" }[] = [
-    // Total leads the row. At the end it sat against the pipeline group and read as that group's
-    // sum, which it is not — it is accounts plus the roster, and the two figures beside it
-    // (Invited, Suspended) are states of accounts already counted, not addends. First, with the
-    // rule behind it, it belongs to the whole row.
-    { group: "total", label: t.countTotal, value: users.length + rosterWaiting },
-    { group: "role", label: t.countOwners, value: users.filter(u => u.permission === "owner").length },
-    { group: "role", label: t.countAdmins, value: users.filter(u => u.permission === "admin").length },
-    { group: "role", label: t.countAuditors, value: users.filter(u => u.permission === "auditor").length },
-    { group: "role", label: t.countAppOnly, value: users.filter(u => accessModeOf(u) === "appOnly").length },
-    { group: "role", label: t.countPortalOnly, value: users.filter(u => accessModeOf(u) === "portalOnly").length },
-    { group: "pipeline", label: t.countInvited, value: users.filter(u => u.status === "invited").length, hint: t.invitedHint, actionable: true },
-    { group: "pipeline", label: t.countSuspended, value: users.filter(u => u.status === "suspended").length, hint: t.suspendedHint, actionable: true },
-    { group: "pipeline", label: t.countRosterWaiting, value: rosterWaiting, hint: t.rosterWaitingHint, actionable: true },
+  const invited = users.filter(u => u.status === "invited").length;
+  const suspended = users.filter(u => u.status === "suspended").length;
+  const roleCounts: [string, number][] = [
+    [t.countOwners, users.filter(u => u.permission === "owner").length],
+    [t.countAdmins, users.filter(u => u.permission === "admin").length],
+    [t.countAuditors, users.filter(u => u.permission === "auditor").length],
+    [t.countAppOnly, users.filter(u => accessModeOf(u) === "appOnly").length],
+    [t.countPortalOnly, users.filter(u => accessModeOf(u) === "portalOnly").length],
   ];
 
   return (
-    /* One rule per group boundary, and nothing between the figures inside a group.
-       A hairline between all nine was a rule every 60px, which turned a row of statistics into a
-       ruled table with no rows — and it argued the opposite of the grouping, since a divider
-       between "Owners" and "Admins" makes them look as separate as the group break does. Space
-       separates the figures; a rule separates the two questions. */
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "32px", rowGap: "12px", marginBottom: "16px" }}>
-      {counts.map((c, i) => {
-        const startsGroup = i > 0 && counts[i - 1].group !== c.group;
-        const figure = (
-          <div style={startsGroup ? { paddingLeft: "28px", borderLeft: "1px solid var(--gray-300)" } : undefined}>
-            {/* Label first, figure under it. Nine bold numbers along the top edge with their
-                names underneath meant reading the row twice — once for the figures, once to find
-                out what they counted. Named first, the row reads as a sentence per stat.
-
-                Dotted underline on the ones that carry an explanation: a tooltip nobody knows is
-                there is a tooltip nobody reads, and three of these nine labels ("Invited",
-                "Suspended", "On the roster") name a state whose meaning is the whole point. */}
-            <p style={{
-              fontSize: "12px", color: "var(--gray-500)",
-              ...(c.hint ? { borderBottom: "1px dotted var(--gray-300)", display: "inline-block", cursor: "help" } : null),
-            }}>{c.label}</p>
-            <p style={{
-              fontSize: "20px", fontWeight: 800, marginTop: "2px",
-              // A zero here is good news (nobody stuck, nobody blocked), so it is not worth the same
-              // ink as a number you have to do something about.
-              color: c.actionable && c.value > 0 ? "var(--warning-500)" : c.value === 0 ? "var(--gray-300)" : "var(--gray-900)",
-            }}>
-              {c.value}
-            </p>
-          </div>
-        );
-        return c.hint
-          ? <Tooltip key={c.label} text={c.hint}>{figure}</Tooltip>
-          : <span key={c.label}>{figure}</span>;
-      })}
-    </div>
+    <>
+      <SummaryStrip cells={[
+        {
+          key: "total",
+          icon: <Users2 size={14} strokeWidth={2.4} />,
+          figure: users.length + rosterWaiting,
+          unit: t.countPeopleUnit,
+          label: t.countTotal,
+        },
+        // Only the states that exist. "0 suspended" is a column spent on nothing happening, and
+        // pressing it would empty the table.
+        ...([
+          { key: "invited" as const, count: invited, label: t.countInvited, hint: t.invitedHint, icon: <MailQuestion size={14} strokeWidth={2.4} /> },
+          { key: "suspended" as const, count: suspended, label: t.countSuspended, hint: t.suspendedHint, icon: <UserX size={14} strokeWidth={2.4} /> },
+          { key: "roster" as const, count: rosterWaiting, label: t.countRosterWaiting, hint: t.rosterWaitingHint, icon: <ClipboardList size={14} strokeWidth={2.4} /> },
+        ].filter(item => item.count > 0).map(item => ({
+          key: item.key,
+          icon: item.icon,
+          figure: item.count,
+          unit: t.countPeopleUnit,
+          label: item.label,
+          tone: "warning" as const,
+          active: statusFilter === item.key,
+          // The tooltip explains the state, which is the whole point of these three labels — an
+          // invitation nobody accepted and a suspended account are not self-explanatory words.
+          title: item.hint,
+          onClick: () => onFilter(statusFilter === item.key ? null : item.key),
+        }))),
+      ]} />
+      <p style={{ fontSize: "11px", color: "var(--gray-500)", margin: "-4px 0 16px" }}>
+        {roleCounts.map(([label, count]) => `${label} ${count}`).join(" · ")}
+      </p>
+    </>
   );
 }
 
@@ -1517,13 +1521,25 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
 
   const projectName = (id: string) => projects.find(p => p.id === id)?.name ?? id;
   const currentProject = projects.find(p => p.id === projectId);
+  /**
+   * Which of the "on the way in, or stopped" states the table is narrowed to, if any — set by the
+   * summary strip above it.
+   *
+   * This page dropped its permission and status selects a while back on the grounds that the counts
+   * strip answered what they were for. It answered, but it could not act: reading "1 suspended" and
+   * then finding that person meant scanning the table. The strip's cells are the filter now, which
+   * is what the numbers were being read for.
+   */
+  const [statusFilter, setStatusFilter] = useState<"invited" | "suspended" | "roster" | null>(null);
   const q = search.trim().toLowerCase();
   // Split in two: the strip above the table counts everyone on the project, the table shows what is
   // left after the search. Counting the searched set instead would make the summary agree with the
   // table and stop being a summary.
   const projectUsers = portalUsers.filter(u => u.projectIds.includes(projectId));
   const filteredUsers = projectUsers
-    .filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+    .filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+    // "roster" narrows to people who have no account at all, so no account row can match it.
+    .filter(u => statusFilter === null || u.status === statusFilter);
   /**
    * Roster rows for this project that are still waiting — matched against accounts by employee
    * number, which is the roster's own key. Status "used" is not enough on its own: an account can
@@ -1538,6 +1554,12 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
     .filter(r => r.status !== "used" && !accountEmployeeIds.has(r.employeeId.toLowerCase()))
     .filter(r => !q || r.name.toLowerCase().includes(q) || r.employeeId.toLowerCase().includes(q))
     .sort((a, b) => STAGES.indexOf(stageOfRosterEntry(a.status)) - STAGES.indexOf(stageOfRosterEntry(b.status)) || a.name.localeCompare(b.name));
+  /**
+   * The roster rows the table shows. Separate from rosterWaiting, which the tab count and the
+   * summary strip read: a summary that shrinks when you filter to part of it has stopped being a
+   * summary (the note above filteredUsers makes the same point about accounts).
+   */
+  const visibleRoster = rosterWaiting.filter(() => statusFilter === null || statusFilter === "roster");
   const notIssuedIds = rosterWaiting.filter(r => r.status === "not-issued").map(r => r.employeeId);
   const printableEntries = rosterWaiting.filter(r => r.status === "unused" && r.code);
 
@@ -1668,7 +1690,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
 
       {!mailAvailable && <RecoveryModeNotice supportContact={authConfig.supportContact} />}
 
-      <UserCountStrip users={projectUsers} rosterWaiting={rosterWaiting.length} />
+      <UserCountStrip users={projectUsers} rosterWaiting={rosterWaiting.length} statusFilter={statusFilter} onFilter={setStatusFilter} />
 
       <AccessRequestsPanel projectId={projectId} />
 
@@ -1737,7 +1759,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           ))}
         </div>
         {/* Per tab: each half answers for itself, and neither can speak for the other's rows. */}
-        {(peopleTab === "accounts" ? scopedUsers.length : rosterWaiting.length) === 0 && (
+        {(peopleTab === "accounts" ? scopedUsers.length : visibleRoster.length) === 0 && (
           <div style={{ padding: "32px 16px", textAlign: "center", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}>
             <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
               {q ? t.emptySearch : peopleTab === "accounts" ? t.emptyNoUsers : t.rosterEmpty}
@@ -1957,8 +1979,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           );
         })}
 
-        {(peopleTab === "roster" ? rosterWaiting : []).map((entry, i) => {
-          const isLast = i === rosterWaiting.length - 1;
+        {(peopleTab === "roster" ? visibleRoster : []).map((entry, i) => {
+          const isLast = i === visibleRoster.length - 1;
           const stage = stageOfRosterEntry(entry.status);
           return (
             <div key={entry.employeeId} style={{
