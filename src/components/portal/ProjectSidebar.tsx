@@ -182,7 +182,11 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
          * is the palette's existing dark, not a new one.
          */
         backgroundColor: "var(--gray-900)",
-        padding: collapsed ? "16px 8px" : "16px 12px",
+        /* 6px of top padding, not 16: the wordmark's row is 40px tall, so its centre lands at
+           6 + 20 = 26px — exactly the middle of the 52px top bar beside it. The two are the same
+           kind of thing (the console's name, the trail into it) and were sitting on different
+           lines. The bottom keeps 16. */
+        padding: collapsed ? "6px 8px 16px" : "6px 12px 16px",
         transition: "width .15s ease",
       }}
     >
