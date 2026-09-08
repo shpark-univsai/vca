@@ -1234,7 +1234,8 @@ function auditAt(minutesAgo: number): string {
  * change that, and they are drawn here so the aggregation the server needs to expose is a concrete
  * thing rather than a sentence in a meeting:
  *
- *   GET /projects/:id/detections?days=7   → [{ daysAgo, total, vip, vehicle, unknown }]
+ *   GET /projects/:id/detections?days=14  → [{ daysAgo, total, vip, vehicle, unknown }]
+ *     (fourteen, because the Overview states a week's total against the week before it)
  *   GET /projects/:id/camera-stability?days=7 → [{ cameraId, drops }]
  *
  * Counted per Singapore calendar day (lib/time.ts owns that definition), newest last. `daysAgo` 0
@@ -1252,16 +1253,19 @@ export interface DailyDetections {
   unknown: number;
 }
 
-export function dailyDetections(projectId: string): DailyDetections[] {
+export function dailyDetections(projectId: string, days = 7): DailyDetections[] {
   const base = 900 + projectId.length * 37;
-  return Array.from({ length: 7 }, (_, i) => {
-    const daysAgo = 6 - i;
-    const swing = seededRandom(i * 3.7 + projectId.length) * 0.7 + 0.65;
+  return Array.from({ length: days }, (_, i) => {
+    const daysAgo = days - 1 - i;
+    // Seeded off daysAgo, not the array index, so asking for fourteen days and asking for
+    // seven return the same numbers for the days they share — a total and the period it is
+    // compared against have to come from one series or the comparison is with a different week.
+    const swing = seededRandom(daysAgo * 3.7 + projectId.length) * 0.7 + 0.65;
     // Today is partial — the day is not over, so its bar counts only the hours that have happened.
     const dayFactor = daysAgo === 0 ? 0.55 : 1;
     const total = Math.round(base * swing * dayFactor);
-    const vip = Math.round(total * (0.014 + seededRandom(i * 5.1) * 0.01));
-    const vehicle = Math.round(total * (0.08 + seededRandom(i * 6.3) * 0.04));
+    const vip = Math.round(total * (0.014 + seededRandom(daysAgo * 5.1) * 0.01));
+    const vehicle = Math.round(total * (0.08 + seededRandom(daysAgo * 6.3) * 0.04));
     return { daysAgo, total, vip, vehicle, unknown: total - vip - vehicle };
   });
 }

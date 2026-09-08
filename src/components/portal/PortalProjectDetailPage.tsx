@@ -82,7 +82,8 @@ const T = {
     openCamera: "Open this camera",
     trendTitle: "Detections · last 7 days",
     todaySuffix: "today",
-    vsYesterday: (pct: number) => `${pct > 0 ? "+" : ""}${pct}% vs yesterday`,
+    vsYesterday: (pct: number) => `${pct > 0 ? "+" : ""}${pct}% vs previous 7 days`,
+    weekTotalHint: (todayTotal: string) => `Includes today so far: ${todayTotal}`,
     todaySoFar: "Today",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · Vehicle ${vehicle} · Unknown ${unknown.toLocaleString("en-US")}`,
@@ -163,7 +164,8 @@ const T = {
     openCamera: "이 카메라 열기",
     trendTitle: "탐지 · 지난 7일",
     todaySuffix: "건 오늘",
-    vsYesterday: (pct: number) => `어제 대비 ${pct > 0 ? "+" : ""}${pct}%`,
+    vsYesterday: (pct: number) => `직전 7일 대비 ${pct > 0 ? "+" : ""}${pct}%`,
+    weekTotalHint: (todayTotal: string) => `진행 중인 오늘 ${todayTotal}건 포함`,
     todaySoFar: "오늘",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · 차량 ${vehicle} · 미확인 ${unknown.toLocaleString("en-US")}`,
@@ -383,7 +385,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // Seven days of detections and the cameras that dropped during them. Both are seeded in the
   // store, where their shape doubles as the request to the backend — see the note above
   // dailyDetections(). Memoised because the seed runs a sine per day per render otherwise.
-  const detectionDays = useMemo(() => dailyDetections(projectId), [projectId]);
+  // Fourteen days, of which the last seven are the chart and the first seven are what it is
+  // measured against. The card is titled "last 7 days", so its headline figure is the week — a
+  // today-versus-yesterday reading inside a weekly card was a daily statistic wearing the week's
+  // title.
+  const detectionFortnight = useMemo(() => dailyDetections(projectId, 14), [projectId]);
+  const detectionDays = useMemo(() => detectionFortnight.slice(7), [detectionFortnight]);
   const unstable = useMemo(() => unstableCameras(projectId, cameras), [projectId, cameras]);
   const project = projects.find(p => p.id === projectId);
   if (!project) {
@@ -431,10 +438,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const projectPersons = persons.filter(p => p.projectId === projectId);
   const projectGroupCount = personGroups.filter(g => g.projectId === projectId).length;
   const today = detectionDays[detectionDays.length - 1];
-  const yesterday = detectionDays[detectionDays.length - 2];
   const detectionPeak = Math.max(...detectionDays.map(d => d.total), 1);
-  const detectionDelta = yesterday && yesterday.total > 0
-    ? Math.round(((today.total - yesterday.total) / yesterday.total) * 100)
+  const weekTotal = detectionDays.reduce((sum, d) => sum + d.total, 0);
+  const previousWeekTotal = detectionFortnight.slice(0, 7).reduce((sum, d) => sum + d.total, 0);
+  const detectionDelta = previousWeekTotal > 0
+    ? Math.round(((weekTotal - previousWeekTotal) / previousWeekTotal) * 100)
     : 0;
   const highPriorityVipCount = projectPersons.filter(p => p.priorityLabel === "high" || p.priorityLabel === "very_high").length;
   const recentVips = [...projectPersons].sort((a, b) => b.registeredAt.localeCompare(a.registeredAt)).slice(0, 3);
@@ -906,8 +914,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBottom: "12px" }}>
               <SectionHead title={t.trendTitle} />
               <span style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-                <span style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>
-                  {today.total.toLocaleString("en-US")}
+                <span title={t.weekTotalHint(today.total.toLocaleString("en-US"))} style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>
+                  {weekTotal.toLocaleString("en-US")}
                 </span>
                 {/* Grey, not green or red. A busier day than yesterday is neither good news nor
                     bad, and colouring it would send the reader looking for a fault nobody is
