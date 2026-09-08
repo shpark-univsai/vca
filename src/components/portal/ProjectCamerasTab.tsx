@@ -11,7 +11,7 @@ import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
   en: {
-    reconnectAll: "Reconnect All",
+    refresh: "Refresh",
     exportCsv: "Export CSV",
     addCamera: "Add camera",
     online: "Online",
@@ -124,10 +124,8 @@ const T = {
     toastReconnectedTitle: "Reconnected",
     toastDisconnectedTitle: "Disconnected",
     toastCameraRemovedTitle: "Camera removed",
-    toastReconnectRequestedTitle: "Reconnect requested",
-    toastReconnectRequestedDesc: (n: number) =>
-      `Asked ${n} offline camera${n === 1 ? "" : "s"} to reconnect. Their status updates when they answer.`,
-    toastNoOfflineTitle: "Every camera is online",
+    toastRefreshTitle: "Refresh requested",
+    toastRefreshDesc: "Statuses update when the server answers.",
     toastExportTitle: "Export complete",
     toastExportDesc: (n: number) => `${n} camera(s) exported to CSV.`,
     csvHeaderName: "Name",
@@ -143,7 +141,7 @@ const T = {
     } as Record<CameraAiFeature, string>,
   },
   ko: {
-    reconnectAll: "전체 재연결",
+    refresh: "새로고침",
     exportCsv: "CSV 내보내기",
     addCamera: "카메라 추가",
     online: "온라인",
@@ -256,10 +254,8 @@ const T = {
     toastReconnectedTitle: "재연결됨",
     toastDisconnectedTitle: "연결 해제됨",
     toastCameraRemovedTitle: "카메라 삭제됨",
-    toastReconnectRequestedTitle: "재연결 요청됨",
-    toastReconnectRequestedDesc: (n: number) =>
-      `오프라인 카메라 ${n}대에 재연결을 요청했습니다. 상태는 카메라가 응답하면 갱신됩니다.`,
-    toastNoOfflineTitle: "모든 카메라가 온라인입니다",
+    toastRefreshTitle: "새로고침 요청됨",
+    toastRefreshDesc: "상태는 서버가 응답하면 갱신됩니다.",
     toastExportTitle: "내보내기 완료",
     toastExportDesc: (n: number) => `카메라 ${n}대가 CSV로 내보내졌습니다.`,
     csvHeaderName: "이름",
@@ -911,13 +907,20 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * camera's answer, and the backend that polls it is confirmed as planned — when it lands, this
    * gets a call and the copy already tells the truth.
    */
-  const batchReconnect = () => {
-    const offline = projectCameras.filter(c => c.status === "offline");
-    if (offline.length === 0) {
-      showToast({ variant: "info", title: t.toastNoOfflineTitle });
-      return;
-    }
-    showToast({ variant: "info", title: t.toastReconnectRequestedTitle, desc: t.toastReconnectRequestedDesc(offline.length) });
+  /**
+   * Re-reads what the server knows about these cameras.
+   *
+   * This button used to say "Reconnect All", which was a command Portal cannot give: a camera comes
+   * back when its stream comes back, and nothing here can make that happen — the honest version of
+   * it only ever reported that a request had been sent. Refresh is the thing this page can actually
+   * do, and the one an operator wants after somebody has been out to a site: fetch the statuses
+   * again rather than tell the fleet what to do.
+   *
+   * Until the camera API is wired (see the backend list) there is nothing to fetch, so it says what
+   * it did and no more. It becomes a real GET the day the endpoint exists, and the copy still fits.
+   */
+  const refreshStatuses = () => {
+    showToast({ variant: "info", title: t.toastRefreshTitle, desc: t.toastRefreshDesc });
   };
 
   // Reads only what the browser can tell us without decoding the file: its name, size and whether
@@ -1108,15 +1111,14 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           miniature with its bulk actions.
         */}
         <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
-          <button onClick={batchReconnect}
+          <button onClick={refreshStatuses}
             onMouseEnter={() => setHoveredAction("reconnect")} onMouseLeave={() => setHoveredAction(null)}
             style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "reconnect" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "10px", fontWeight: 700, cursor: "pointer" }}>
-            {/* The same lucide rotate-ccw the Server tab's Reset carries. This was a hand-drawn
-                arc turning the other way, so Portal had two "try that again" glyphs pointing in
-                opposite directions. 2.1, not 1.4: lucide draws in a 24-unit box and this renders
-                at 16px — see ICON_STROKE_PX. */}
+            {/* The same lucide rotate-ccw the Server tab's Reset carries — Portal had two
+                "do that again" glyphs pointing in opposite directions before this. 2.1, not 1.4:
+                lucide draws in a 24-unit box and this renders at 16px — see ICON_STROKE_PX. */}
             <RotateCcw size={16} strokeWidth={2.1} />
-            {t.reconnectAll}
+            {t.refresh}
           </button>
           <button onClick={exportCsv}
             onMouseEnter={() => setHoveredAction("export")} onMouseLeave={() => setHoveredAction(null)}
