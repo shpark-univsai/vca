@@ -298,7 +298,9 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           // screen, and here the only purple left is the Smart City chip's own text. Over the limit
           // still swaps the whole ground, because that state should be legible from across a room.
           backgroundColor: overLimit ? "var(--danger-400)" : "var(--gray-900)",
-          padding: "20px",
+          // More air above and below than at the sides: this block is the hero, and on a dark
+          // ground a tight top and bottom edge reads as a band rather than as a card's head.
+          padding: "28px 20px",
         }}>
           {/* The plan is the title. It was set as a 10px eyebrow over a 32px channel count, which
               made the figure the name of the card — but the figure changes as cameras are added and
