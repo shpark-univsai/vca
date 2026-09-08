@@ -17,17 +17,30 @@ interface ToastItem extends ToastOptions {
   id: number;
 }
 
-const VARIANT_STYLES: Record<ToastVariant, { bg: string; border: string; title: string; desc: string }> = {
-  default: { bg: "var(--gray-50)", border: "var(--gray-200)", title: "var(--gray-900)", desc: "var(--gray-600)" },
-  success: { bg: "var(--success-100)", border: "var(--success-200)", title: "var(--success-400)", desc: "var(--success-400)" },
-  info:    { bg: "var(--info-100)", border: "var(--info-200)", title: "var(--info-500)", desc: "var(--info-500)" },
-  warning: { bg: "var(--warning-100)", border: "var(--warning-300)", title: "var(--warning-500)", desc: "var(--warning-500)" },
-  error:   { bg: "var(--danger-100)", border: "var(--danger-400)", title: "var(--danger-400)", desc: "var(--danger-400)" },
+/**
+ * One surface for every toast, and colour only in the icon.
+ *
+ * Each variant used to tint the whole card — a success was a green box with green heading and green
+ * body text, an error a red one — which is the look of a validation summary from a decade ago: the
+ * message competes with its own background, coloured body text is harder to read than black, and
+ * four differently-tinted boxes stacking up in a corner read as a paint chart.
+ *
+ * A toast is a small floating card, so it looks like the other cards in this product: white, the
+ * shared hairline, a lifted shadow. The state lives in a 16px mark and in the words. That also
+ * fixes the thing the tints were hiding — a green box says "good" before the reader has read
+ * anything, and half of these messages are "requested", not "done".
+ */
+const VARIANT_STYLES: Record<ToastVariant, { accent: string }> = {
+  default: { accent: "var(--gray-400)" },
+  success: { accent: "var(--success-400)" },
+  info:    { accent: "var(--primary-400)" },
+  warning: { accent: "var(--warning-500)" },
+  error:   { accent: "var(--danger-400)" },
 };
 
 function ToastIcon({ variant }: { variant: ToastVariant }) {
   if (variant === "default") return null;
-  const color = VARIANT_STYLES[variant].title;
+  const color = VARIANT_STYLES[variant].accent;
   const common = { width: 20, height: 20, viewBox: "0 0 20 20", fill: "none", stroke: color, strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   if (variant === "success") return (
     <svg {...common}>
@@ -71,13 +84,12 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
   // component's own close label is its to translate, so it stays inline.
   const [lang] = useLanguage();
   const variant = item.variant ?? "default";
-  const colors = VARIANT_STYLES[variant];
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: "12px",
       padding: "12px 16px", borderRadius: "12px", height: "60px", boxSizing: "border-box",
-      backgroundColor: colors.bg, border: `1px solid ${colors.border}`,
-      boxShadow: "0 2px 5px rgba(14, 22, 42,0.05)",
+      backgroundColor: "white", border: "1px solid var(--line)",
+      boxShadow: "0 10px 28px rgba(14, 22, 42, 0.14)",
       width: "380px", flexShrink: 0,
     }}>
       {variant !== "default" && (
@@ -86,9 +98,9 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
         </div>
       )}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px" }}>
-        <div style={{ fontSize: "14px", fontWeight: 800, lineHeight: "20px", letterSpacing: "-0.28px", color: colors.title }}>{item.title}</div>
+        <div style={{ fontSize: "14px", fontWeight: 800, lineHeight: "20px", letterSpacing: "-0.28px", color: "var(--gray-900)" }}>{item.title}</div>
         {item.desc && (
-          <div style={{ fontSize: "12px", fontWeight: 400, lineHeight: "16px", letterSpacing: "-0.24px", color: colors.desc }}>{item.desc}</div>
+          <div style={{ fontSize: "12px", fontWeight: 400, lineHeight: "16px", letterSpacing: "-0.24px", color: "var(--gray-500)" }}>{item.desc}</div>
         )}
       </div>
       {item.actionLabel ? (
@@ -108,7 +120,7 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
           aria-label={lang === "ko" ? "닫기" : "Dismiss"}
           style={{ background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0, display: "flex" }}
         >
-          <CloseIcon color={colors.desc} />
+          <CloseIcon color="var(--gray-400)" />
         </button>
       )}
     </div>
