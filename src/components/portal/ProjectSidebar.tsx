@@ -160,12 +160,16 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
         /* 248, not 212. At the old width a nav row had ~100px left for its label once the icon,
            the gaps and a count badge were paid for — "Users & Permissions" and the team's full
            name both ellipsised, and a rail whose labels you cannot read is a rail you have to
-           learn by position. 272 now, another 24px, because two of the three things in the rail
-           are proper nouns nobody can shorten — a team called "City of Singapore — Smart
-           Infrastructure Office" and a project called "Marina Bay & CBD Surveillance Network" —
-           and at 248 both ended in an ellipsis at once. The content column pays it; its own cap
-           decides how wide the page gets anyway. */
-        width: collapsed ? "60px" : "272px",
+           learn by position.
+
+           It went to 272 for a while, to fit two proper nouns nobody can shorten — "City of
+           Singapore — Smart Infrastructure Office" over "Marina Bay & CBD Surveillance Network".
+           Back to 248 now that both wrap to a second line instead: measured off Mobbin, consoles
+           of this kind sit at 195-225px (PlanetScale, Replit, Grok, Fibery, Cloudflare), so 272
+           was a quarter wider than the convention and buying with width what wrapping gives for
+           free. The content column pays for what is left; its own cap decides how wide the page
+           gets anyway. */
+        width: collapsed ? "60px" : "248px",
         flexShrink: 0,
         display: "flex", flexDirection: "column",
         /*
