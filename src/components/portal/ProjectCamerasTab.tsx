@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Film as FilmIcon, Image as ImageIcon, RotateCcw, Video as VideoIcon } from "lucide-react";
-import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
+import { unstableCameras, useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
@@ -128,6 +128,11 @@ const T = {
     toastReconnectRequestedDesc: (n: number) =>
       `Asked ${n} offline camera${n === 1 ? "" : "s"} to reconnect. Their status updates when they answer.`,
     toastNoOfflineTitle: "Every camera is online",
+    stabilityTitle: "Stream drops · last 7 days",
+    stabilityNone: "no drop",
+    stabilityOnce: "once",
+    stabilityMore: "twice or more",
+    stabilityHint: (n: number) => `${n} camera${n === 1 ? "" : "s"} dropped out at least once`,
     toastExportTitle: "Export complete",
     toastExportDesc: (n: number) => `${n} camera(s) exported to CSV.`,
     csvHeaderName: "Name",
@@ -260,6 +265,11 @@ const T = {
     toastReconnectRequestedDesc: (n: number) =>
       `오프라인 카메라 ${n}대에 재연결을 요청했습니다. 상태는 카메라가 응답하면 갱신됩니다.`,
     toastNoOfflineTitle: "모든 카메라가 온라인입니다",
+    stabilityTitle: "스트림 끊김 · 지난 7일",
+    stabilityNone: "끊김 없음",
+    stabilityOnce: "1회",
+    stabilityMore: "2회 이상",
+    stabilityHint: (n: number) => `${n}대가 한 번 이상 끊겼습니다`,
     toastExportTitle: "내보내기 완료",
     toastExportDesc: (n: number) => `카메라 ${n}대가 CSV로 내보내졌습니다.`,
     csvHeaderName: "이름",
@@ -701,6 +711,15 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   // Holds just the id — the live Camera object is looked up from `cameras` below on every render,
   // so actions taken inside the modal (e.g. Reconnect) are reflected immediately instead of
   // showing a stale snapshot captured at the moment the modal opened.
+  /**
+   * Which cameras dropped their stream this week, worst first.
+   *
+   * Seeded in the store, where the shape doubles as the request to the backend. The Overview only
+   * notes the count beside a camera's name; the grid belongs here, on the page somebody opens to
+   * work on the fleet — this is where there is room for an axis and a legend, and where the
+   * reader came to answer exactly this kind of question.
+   */
+  const stability = useMemo(() => unstableCameras(projectId, cameras, 6), [projectId, cameras]);
   const [inspectingCameraId, setInspectingCameraId] = useState<string | null>(null);
   /**
    * Opens the camera the Overview's panel handed over, once, and tells the parent it is done so a
@@ -1110,7 +1129,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
           <button onClick={batchReconnect}
             onMouseEnter={() => setHoveredAction("reconnect")} onMouseLeave={() => setHoveredAction(null)}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "reconnect" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "reconnect" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
             {/* The same lucide rotate-ccw the Server tab's Reset carries. This was a hand-drawn
                 arc turning the other way, so Portal had two "try that again" glyphs pointing in
                 opposite directions. 2.1, not 1.4: lucide draws in a 24-unit box and this renders
@@ -1120,7 +1139,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           </button>
           <button onClick={exportCsv}
             onMouseEnter={() => setHoveredAction("export")} onMouseLeave={() => setHoveredAction(null)}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "export" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "export" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1.75V9.33M7 9.33 4.08 6.42M7 9.33 9.92 6.42M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
               {t.exportCsv}
             </button>
@@ -1130,7 +1149,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           <div ref={addMenuRef} style={{ position: "relative", flexShrink: 0 }}>
             <button className="portal-btn-primary" onClick={() => setAddMenuOpen(o => !o)}
               onMouseEnter={() => setHoveredAction("add")} onMouseLeave={() => setHoveredAction(null)}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", filter: hoveredAction === "add" ? "brightness(0.92)" : "none" }}>
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "11px", fontWeight: 700, cursor: "pointer", filter: hoveredAction === "add" ? "brightness(0.92)" : "none" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
               {t.addSource}
             </button>
