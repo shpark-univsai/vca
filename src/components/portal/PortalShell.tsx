@@ -220,8 +220,12 @@ export default function PortalShell() {
         The wizard is the exception: it renders without a rail, so the trail it needs (which team,
         and that you are creating rather than browsing) has nowhere else to go and stays here.
       */}
+      {/* No rule under it, and 10px shorter than it was. The bar and the page are the same
+          primary-50 ground, so a hairline between them was drawing a box around chrome that has
+          nothing to separate — the crumb and the account button read as the top of the page, which
+          is what they are. With the line gone the leftover height read as a gap, so it went too. */}
       <div style={{
-        height: "62px", borderBottom: "1px solid var(--line)",
+        height: "52px",
         display: "flex", alignItems: "center", padding: "0 24px", flexShrink: 0, gap: "10px",
       }}>
         {/* The breadcrumb says where you are, and during creation you are not inside any project —
@@ -334,7 +338,7 @@ export default function PortalShell() {
          * Input Sources' sticky header measures this container to position its fixed copy — an
          * inner box would leave the header wider than the content it covers.
          */
-        <div style={{ flex: 1, overflow: "auto", padding: "32px 72px", width: "100%", maxWidth: "1600px", marginInline: "auto" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: "20px 72px 32px", width: "100%", maxWidth: "1600px", marginInline: "auto" }}>
             {showAccount
               ? <PortalMyPage />
               : teamProjects.length === 0
