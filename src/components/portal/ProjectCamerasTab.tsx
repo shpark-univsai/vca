@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BrainCircuit, Film as FilmIcon, Image as ImageIcon, MapPinOff, ServerOff, Video as VideoIcon } from "lucide-react";
+import { Film as FilmIcon, Image as ImageIcon, MapPinOff, Scan, ServerOff, Video as VideoIcon } from "lucide-react";
 import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -1051,7 +1051,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         fleet with nothing wrong with it.
       */}
       <SummaryStrip cells={[
-        { key: "noEngine", cameras: noEngineCameras, label: t.gapNoEngine, icon: <BrainCircuit size={14} strokeWidth={2.4} /> },
+        { key: "noEngine", cameras: noEngineCameras, label: t.gapNoEngine, // Scan, not BrainCircuit: that glyph is a brain full of traces and at 14px with a
+        // 2.4 stroke it collapsed into a scribble that looked like a rotated mistake. Four
+        // corner brackets survive the size and say "detection" without any detail to lose.
+        icon: <Scan size={14} strokeWidth={2.4} /> },
         { key: "noServer", cameras: noServerCameras, label: t.gapNoServer, icon: <ServerOff size={14} strokeWidth={2.4} /> },
         { key: "noCoords", cameras: noCoordCameras, label: t.gapNoCoords, icon: <MapPinOff size={14} strokeWidth={2.4} /> },
       ]
