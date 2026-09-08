@@ -248,6 +248,15 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
+  /**
+   * Whether the list opens upward. Decided when it opens, from how much room is left under the
+   * trigger — the bulk-action bar on Input Sources is fixed to the bottom of the window, so its
+   * "Move to zone" list dropped straight off the screen and showed one row of itself.
+   *
+   * Measured rather than declared: a caller cannot know whether a select 300px down a scrolling
+   * page has room beneath it, and the same select can have room one moment and not the next.
+   */
+  const [dropUp, setDropUp] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEscapeKey(() => setOpen(false), open);
 
@@ -293,7 +302,16 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
       )}
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
+        onClick={e => {
+          if (!open) {
+            const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            // 260px is the tallest this list gets (maxHeight below plus its padding). If that will
+            // not fit under the trigger but does fit over it, flip.
+            const below = window.innerHeight - box.bottom;
+            setDropUp(below < 260 && box.top > below);
+          }
+          setOpen(o => !o);
+        }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
@@ -313,7 +331,8 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
       </button>
       {open && (
         <div style={{
-          position: "absolute", top: "100%", left: 0, marginTop: "4px", zIndex: 50,
+          position: "absolute", left: 0, zIndex: 50,
+          ...(dropUp ? { bottom: "100%", marginBottom: "4px" } : { top: "100%", marginTop: "4px" }),
           // Same radius and shadow as RowActionsMenu's dropdown — Portal has two menus and they
           // should not be two designs.
           backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "0 8px 20px rgba(14,22,42,0.12)",
