@@ -607,7 +607,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
               <div style={{ marginTop: "auto", paddingTop: "14px" }}>
                 <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
-                  <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--success-400)" }} />
+                  {/* gray-900 for the healthy share, danger only for the part that is not.
+                      It was success-400 against danger-400 — two saturated hues meeting in the
+                      middle of a white card, which reads as a chart from another product. The
+                      quantity is not a state; only the red slice is, and it is the thing worth
+                      seeing. Same reasoning as the licence bar beside it. */}
+                  <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--gray-900)" }} />
                   <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
                 </div>
                 <BarStats left={t.statOnlineShare(onlineShare)} right={t.statOffline(offlineCount)} />
@@ -617,7 +622,16 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   a non-zero offline count is a line in the "things to do" strip above. */}
             </MetricCard>
 
-            <MetricCard label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--info-100)" iconColor="var(--info-500)" onClick={() => onTabChange("license")}>
+            <MetricCard
+              label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--info-100)" iconColor="var(--info-500)"
+              /* The plan goes in the chip, not beside "59% utilised". The chip row is where each
+                 card says in a word what its figure is about, and this was the only card with that
+                 slot empty; the line under the bar is the bar's legend — how much is filled, how
+                 much is left — and a plan name there would be a third kind of fact in a row of
+                 two. Uppercased to sit with the other chips. */
+              chip={project.licensePlan ? <StateChip text={project.licensePlan.toUpperCase()} /> : undefined}
+              onClick={() => onTabChange("license")}
+            >
               {/* The figure on its own line, the bar full width at the foot of the card.
                   It was a fixed 88px bar beside the number, which fitted two readings on one row
                   and made the bar too short to show anything but "roughly half". Full width it is
@@ -631,7 +645,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
               <div style={{ marginTop: "auto", paddingTop: "14px" }}>
                 <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--info-500)" }} />
+                  <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--gray-900)" }} />
                 </div>
                 {channelLimit ? <BarStats left={t.statUtilised(channelShare)} right={t.statAvailable(Math.max(0, channelLimit - projectCameras.length))} /> : null}
               </div>
