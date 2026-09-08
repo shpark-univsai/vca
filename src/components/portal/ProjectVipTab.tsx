@@ -34,6 +34,10 @@ interface VipDict {
   bulkUpload: string;
   registerVip: string;
   searchPlaceholder: string;
+  allGroups: string;
+  allPriorities: string;
+  noGroup: string;
+  filtersActive: (n: number) => string;
   noSearchResults: string;
   noVips: string;
   registered: (date: string) => string;
@@ -115,6 +119,10 @@ const T: Record<"en" | "ko", VipDict> = {
     bulkUpload: "Bulk Upload",
     registerVip: "Register VIP",
     searchPlaceholder: "Search by VIP name",
+    allGroups: "All groups",
+    allPriorities: "All priorities",
+    noGroup: "No group",
+    filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     noSearchResults: "No VIPs match this search.",
     noVips: "No VIPs registered for this project yet.",
     registered: (date: string) => `Registered ${date}`,
@@ -195,6 +203,10 @@ const T: Record<"en" | "ko", VipDict> = {
     bulkUpload: "일괄 업로드",
     registerVip: "VIP 등록하기",
     searchPlaceholder: "VIP 이름으로 검색",
+    allGroups: "전체 그룹",
+    allPriorities: "전체 우선순위",
+    noGroup: "그룹 없음",
+    filtersActive: (n: number) => `필터 ${n}개`,
     noSearchResults: "검색 결과와 일치하는 VIP가 없습니다.",
     noVips: "이 프로젝트에 등록된 VIP가 아직 없습니다.",
     registered: (date: string) => `등록일 ${date}`,
@@ -747,6 +759,15 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
    * and shows as a removable chip while it is on.
    */
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  /**
+   * Priority, as its own select beside the group one.
+   *
+   * Worth a control of its own only now: with four registrations you read the badges, with a
+   * hundred "show me just the very-high ones" is the question the screen is for. "__none" is a real
+   * answer, not an absence — a person nobody has ranked is exactly who an administrator goes
+   * looking for when tidying the list.
+   */
+  const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
   const showGroupColumn = vipTab === "all";
   const [groupModalFor, setGroupModalFor] = useState<{ group: PersonGroup | null } | null>(null);
   const [confirmingGroupRemove, setConfirmingGroupRemove] = useState<PersonGroup | null>(null);
@@ -771,8 +792,14 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
 
   const matchingPersons = allProjectPersons
     .filter(p => vipTab !== "individuals" || !p.groupId)
-    .filter(p => !groupFilter || p.groupId === groupFilter)
+    .filter(p => !groupFilter || (groupFilter === "__none" ? !p.groupId : p.groupId === groupFilter))
+    .filter(p => priorityFilter === "ALL" || (p.priorityLabel ?? "normal") === priorityFilter)
     .filter(p => !q || p.name.toLowerCase().includes(q));
+  // Unset counts as "normal", both here and in the select's counts: the store leaves the field off
+  // for anyone registered before priorities existed, and filing them under their own bucket would
+  // invent a distinction the registry does not make.
+  const activeFilterCount = (groupFilter ? 1 : 0) + (priorityFilter === "ALL" ? 0 : 1);
+  const clearFilters = () => { setGroupFilter(null); setPriorityFilter("ALL"); };
   // Sorting only applies to the table — the grid keeps registration order, because a wall of cards
   // has no column headings to say what it is sorted by.
   const projectPersons = view === "table"
@@ -893,7 +920,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           const active = vipTab === tab.id;
           return (
             <Tooltip key={tab.id} text={tab.hint}>
-              <button onClick={() => { setVipTab(tab.id); setGroupFilter(null); }}
+              <button onClick={() => { setVipTab(tab.id); clearFilters(); }}
                 style={{
                   display: "flex", alignItems: "center", gap: "6px",
                   background: "none", border: "none", cursor: "pointer",
@@ -928,12 +955,38 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           }}
         />
       </div>
-        {groupFilter && (
-          <ActiveFilterCount
-            count={1}
-            onClear={() => setGroupFilter(null)}
-            label={groupById.get(groupFilter)?.name ?? groupFilter}
-          />
+        {/* Next to the search box, the way Input Sources puts its zone / status / engine selects
+            there. Not on the Groups tab: both of these narrow a list of people, and that tab lists
+            parties. Each option carries its own count, so the reader knows whether a filter is
+            worth applying before applying it. */}
+        {vipTab !== "groups" && (
+          <>
+            <FilterSelect
+              value={groupFilter ?? "ALL"}
+              onChange={v => setGroupFilter(v === "ALL" ? null : v)}
+              options={[
+                { value: "ALL", label: t.allGroups },
+                { value: "__none", label: `${t.noGroup} (${allProjectPersons.filter(p => !p.groupId).length})` },
+                ...projectGroupsAll.map(g => ({ value: g.id, label: `${g.name} (${memberCountOf(g.id)})` })),
+              ]}
+              fitContent
+            />
+            <FilterSelect
+              value={priorityFilter}
+              onChange={setPriorityFilter}
+              options={[
+                { value: "ALL", label: t.allPriorities },
+                ...PRIORITY_LABELS.map(pr => ({
+                  value: pr,
+                  label: `${t.priorityText[pr]} (${allProjectPersons.filter(p => (p.priorityLabel ?? "normal") === pr).length})`,
+                })),
+              ]}
+              fitContent
+            />
+            {activeFilterCount > 0 && (
+              <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
+            )}
+          </>
         )}
         <div style={{ flex: 1 }} />
         {/* Same segmented control the Input Sources tab uses, so the one gesture for "show me this
