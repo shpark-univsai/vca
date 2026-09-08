@@ -74,13 +74,10 @@ const T = {
     // normal case — an elapsed-time readout would show a healthy site as stale. Whether cameras are
     // streaming is the health question; who walked past is not.
     cameraStatusSubtitle: "Streaming status for cameras connected to this project",
-    filterAll: (n: number) => `All (${n})`,
-    filterOffline: (n: number) => `Offline (${n})`,
     colCamera: "Camera",
     colZone: "Zone",
     colStreamUrl: "Stream URL",
     colStatus: "Status",
-    noOfflineCameras: "No offline cameras — everything is connected.",
     noCamerasYet: "No cameras connected to this project yet.",
     openCamera: "Open this camera",
     trendTitle: "Detections · last 7 days",
@@ -158,13 +155,10 @@ const T = {
     activitySubtitle: "이 작업 공간에서 일어난 변경",
     vipsSubtitle: "관심대상 목록에 최근 추가된 인물",
     cameraStatusSubtitle: "이 프로젝트에 연결된 카메라의 스트리밍 상태",
-    filterAll: (n: number) => `전체 (${n})`,
-    filterOffline: (n: number) => `오프라인 (${n})`,
     colCamera: "카메라",
     colZone: "구역",
     colStreamUrl: "스트림 URL",
     colStatus: "상태",
-    noOfflineCameras: "오프라인 카메라가 없습니다 — 모두 연결되어 있습니다.",
     noCamerasYet: "이 프로젝트에 연결된 카메라가 아직 없습니다.",
     openCamera: "이 카메라 열기",
     trendTitle: "탐지 · 지난 7일",
@@ -378,9 +372,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    * reopen a modal nobody asked for.
    */
   const [inspectCameraId, setInspectCameraId] = useState<string | null>(null);
-  const [cameraStatusFilter, setCameraStatusFilter] = useState<"all" | "offline">(
-    () => (cameras.some(c => c.projectId === projectId && c.status === "offline") ? "offline" : "all")
-  );
   // Session-only, deliberately: see the banner's note. Nothing here is resolved by closing it.
   const [attentionDismissed, setAttentionDismissed] = useState(false);
   // Read after mount, not during render: the clock is not a pure input, and license expiry is
@@ -472,7 +463,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    * lastSeenAt sorts last: "unknown" is not "long ago", and guessing would put it at the top of a
    * worklist it may not belong on.
    */
-  const filteredCameraRows = (cameraStatusFilter === "offline" ? projectCameras.filter(c => c.status === "offline") : projectCameras)
+  const filteredCameraRows = projectCameras
     .slice()
     .sort((a, b) => {
       if (!a.lastSeenAt || !b.lastSeenAt) return a.lastSeenAt ? -1 : b.lastSeenAt ? 1 : 0;
@@ -1037,7 +1028,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               {unstable.length > 0 && (
                 <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "16px", flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "10px", marginBottom: "10px" }}>
-                    <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.unstableTitle}</p>
+                    {/* 15px, the size every other panel titles itself at. At 12 it read as a
+                        label on a block rather than as one of the page's cards. */}
+                    <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{t.unstableTitle}</p>
                     <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{t.dropsAxisHint}</span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -1073,10 +1066,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 </div>
               )}
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-                {/* Title and cut on one line. The segmented control had a row of its own under
-                    the head, which put three stacked things — title, description, control — above
-                    the first row of the table it filters. It belongs beside the title: it says
-                    which fleet the panel is showing, which is part of naming the panel.
+                {/* No All / Offline toggle. The panel is the fleet, ordered by longest silence, so
+                    the cameras an offline filter would have selected are already the rows at the
+                    top — and the two places that answer "how many are down" (the attention strip
+                    and the camera card) both do it without asking anyone to press anything. A
+                    control whose result is the list you are already looking at is a control that
+                    only costs a row.
 
                     No "View inventory" action up here either. The footer of this same panel is
                     already a full-width row reading "59 total →", and both went to the same tab —
@@ -1086,23 +1081,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     title={t.cameraStatusTitle}
                     subtitle={t.cameraStatusSubtitle}
                   />
-                  <div style={{ display: "flex", gap: "4px", backgroundColor: "var(--gray-50)", padding: "2px", borderRadius: "8px", flexShrink: 0 }}>
-                    {(["all", "offline"] as const).map(f => (
-                      <button key={f} onClick={() => setCameraStatusFilter(f)}
-                        style={{
-                          padding: "6px 10px", borderRadius: "6px", border: "none", cursor: "pointer", fontSize: "12px", fontWeight: 600,
-                          backgroundColor: cameraStatusFilter === f ? "white" : "transparent",
-                          boxShadow: cameraStatusFilter === f ? PANEL_SHADOW : "none",
-                          color: cameraStatusFilter === f ? "var(--gray-900)" : "var(--gray-500)",
-                        }}>
-                        {f === "all" ? t.filterAll(projectCameras.length) : t.filterOffline(offlineCount)}
-                      </button>
-                    ))}
-                  </div>
                 </div>
                 {visibleCameraRows.length === 0 ? (
                   <p style={{ fontSize: "13px", color: "var(--gray-400)", padding: "24px", textAlign: "center" }}>
-                    {cameraStatusFilter === "offline" ? t.noOfflineCameras : t.noCamerasYet}
+                    {t.noCamerasYet}
                   </p>
                 ) : (
                   <>
