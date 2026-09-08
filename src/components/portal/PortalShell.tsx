@@ -85,10 +85,6 @@ export default function PortalShell() {
   // default (its address is in no account list) — and a footer meant to say who you are showed
   // nothing at all. Name and address only; the account's role and doors still come from `me`.
   const me = useVcaStore(s => currentPortalUser(s.portalUsers));
-  // This project's cameras, counted once for the rail's badge and the bar's fleet figure.
-  const projectCameras = cameras.filter(c => c.projectId === currentProjectId);
-  const fleetOnline = projectCameras.filter(c => c.status === "online").length;
-  const fleetOffline = projectCameras.length - fleetOnline;
   const locked = !!me && !canEnterPortal(me.permission);
   useEffect(() => {
     if (locked) router.replace("/");
@@ -112,6 +108,10 @@ export default function PortalShell() {
   const currentProjectId = teamProjects.some(p => p.id === pickedProjectId)
     ? pickedProjectId
     : (teamProjects[0]?.id ?? "");
+  // This project's cameras, counted once for the rail's badge and the bar's fleet figure.
+  const projectCameras = cameras.filter(c => c.projectId === currentProjectId);
+  const fleetOnline = projectCameras.filter(c => c.status === "online").length;
+  const fleetOffline = projectCameras.length - fleetOnline;
   const [tab, setTab] = useState<DetailTab>(
     () => (PROJECT_TABS.some(t => t.id === tabParam) ? (tabParam as DetailTab) : "overview"),
   );
