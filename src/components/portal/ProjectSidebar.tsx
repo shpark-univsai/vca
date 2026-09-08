@@ -164,12 +164,13 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
 
            It went to 272 for a while, to fit two proper nouns nobody can shorten — "City of
            Singapore — Smart Infrastructure Office" over "Marina Bay & CBD Surveillance Network".
-           Back to 248 now that both wrap to a second line instead: measured off Mobbin, consoles
-           of this kind sit at 195-225px (PlanetScale, Replit, Grok, Fibery, Cloudflare), so 272
-           was a quarter wider than the convention and buying with width what wrapping gives for
-           free. The content column pays for what is left; its own cap decides how wide the page
+           232 now that both wrap to a second line instead. Measured off Mobbin, consoles of this
+           kind sit at 195-225px (PlanetScale, Replit, Grok, Fibery, Cloudflare), and the floor
+           here is about 200: "Users & Permissions" at 13px needs 122px of label, plus 24 of rail
+           padding, 24 of row padding, a 16px icon and its 12px gap. 232 leaves the longest label
+           whole with room to spare and keeps the two names inside two lines. The content column pays for what is left; its own cap decides how wide the page
            gets anyway. */
-        width: collapsed ? "60px" : "248px",
+        width: collapsed ? "60px" : "232px",
         flexShrink: 0,
         display: "flex", flexDirection: "column",
         /*
