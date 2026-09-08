@@ -334,18 +334,22 @@ export default function PortalShell() {
         // the other way round for both, which meant every card had to be white to be a card and
         // the page's own surface was doing the outlining.
         /*
-         * Capped at 1200px of content (1344 with the gutters) and centred.
+         * Capped at 1360px of content (1504 with the gutters) and centred.
          *
          * Uncapped, a 1920px monitor gave the page ~1560px: the four metric cards stretched until
          * each was mostly empty, and the camera table's five columns drifted so far apart that a
          * row stopped reading as one row. A cap is what makes the whole screen a glance rather
          * than a scan.
          *
+         * 1344 was the first number and left 182px of margin each side on a 1920 monitor, which
+         * read as a page floating in the middle of the window rather than as a page with a margin.
+         * 1504 brings that to ~100 and still stops the table's columns drifting apart.
+         *
          * The cap is on the scrolling element itself rather than on an inner wrapper, because
          * Input Sources' sticky header measures this container to position its fixed copy — an
          * inner box would leave the header wider than the content it covers.
          */
-        <div style={{ flex: 1, overflow: "auto", padding: "32px 72px", width: "100%", maxWidth: "1344px", marginInline: "auto" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: "32px 72px", width: "100%", maxWidth: "1504px", marginInline: "auto" }}>
             {showAccount
               ? <PortalMyPage />
               : teamProjects.length === 0

@@ -714,8 +714,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               members each stop wherever their own content happens to end reads as three unrelated
               boxes. Capped at OVERVIEW_PANEL_MAX_HEIGHT so a project with a lot of activity cannot
               push the rest of the page off the fold — past that, each panel scrolls its own list. */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: CARD_GAP, alignItems: "stretch", maxHeight: OVERVIEW_PANEL_MAX_HEIGHT, marginBottom: CARD_GAP }}>
-            <div style={{ gridColumn: "1 / span 2", display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
+          {/* Two columns, not three.
+              The panels used to take one grid column each so their edges landed on the metric
+              cards' boundaries above. That alignment cost the camera table half the width and left
+              the two narrow panels side by side, each too thin for the sentences in it. The
+              reference does not align them either: the list you read is wide, and the two things
+              you glance at stack in a column beside it. 1.75fr against 1fr, which is the ratio
+              that gives the table its five columns and still leaves a readable panel. */}
+          <div style={{ display: "grid", gridTemplateColumns: "1.75fr 1fr", gap: CARD_GAP, alignItems: "stretch", maxHeight: OVERVIEW_PANEL_MAX_HEIGHT, marginBottom: CARD_GAP }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ padding: "16px 20px", flexShrink: 0 }}>
                   <SectionHead
@@ -804,9 +811,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
             </div>
 
-            {/* Same width as the VIP / Target DB metric card above it (grid column 3 only, not
-                spanning) — sits directly underneath rather than sharing a row with Camera Status. */}
-            <div style={{ gridColumn: "3 / span 1", display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
+            {/* The right column: who was added, then what changed. Both are read at a glance and
+                neither needs the width the table beside them does. */}
+            <div style={{ display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ marginBottom: "14px", flexShrink: 0 }}>
                   <SectionHead eyebrow={t.eyebrowPeople} title={t.recentVipsTitle} subtitle={t.vipsSubtitle} />
@@ -842,15 +849,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <Plus size={14} strokeWidth={2.4} color="var(--gray-500)" />
                 </button>
               </div>
-            </div>
 
-            {/* Same width as the Portal Accounts & Permissions metric card above it. The Access
-                Requests card inside is hidden along with the flow it reports on — with accessRequest
-                off nothing can ever land there, and a permanently empty "Access Requests · none
-                pending" describes a door this deployment does not have. Only that card: Recent
-                Activity shares this column and is unrelated. Still shown while real requests exist,
-                so turning the flag off later cannot strand someone who already asked. */}
-            <div style={{ gridColumn: "4 / span 1", display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
+              {/* The Access Requests card is hidden along with the flow it reports on — with
+                  accessRequest off nothing can ever land there, and a permanently empty "Access
+                  Requests · none pending" describes a door this deployment does not have. Still
+                  shown while real requests exist, so turning the flag off later cannot strand
+                  someone who already asked. */}
               {showAccessRequests && (
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
