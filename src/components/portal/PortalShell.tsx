@@ -159,7 +159,21 @@ export default function PortalShell() {
 
   return (
     <ToastProvider>
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "white" }}>
+    <div style={{
+      display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "white",
+      /*
+       * Tabular figures for the whole console.
+       *
+       * Portal is columns of numbers — channel counts, camera lists, account totals — and with
+       * proportional digits a "1" is narrower than a "0", so a column of figures wobbles and a
+       * number that ticks up shifts the text beside it. SUIT ships the `tnum` feature (checked in
+       * the woff2 we serve); nothing was asking for it.
+       *
+       * Set here rather than per table so a figure looks the same wherever it appears, and it
+       * inherits — modals and popovers render inside this tree, so they get it too.
+       */
+      fontVariantNumeric: "tabular-nums",
+    }}>
       <style>{`
         .portal-hamburger-btn{transition:background-color .15s}
         .portal-hamburger-btn:hover{background-color:var(--gray-100)}
