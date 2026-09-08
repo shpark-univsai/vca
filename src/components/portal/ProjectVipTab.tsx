@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
+// 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
+import { ArrowDownWideNarrow } from "lucide-react";
 import { useVcaStore, type Person, type PersonGroup } from "@/lib/vcaStore";
 import { getFacePhoto } from "@/lib/mockData";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -40,6 +42,7 @@ interface VipDict {
   bulkUpload: string;
   registerVip: string;
   searchPlaceholder: string;
+  sortByPriority: string;
   allGroups: string;
   allPriorities: string;
   noGroup: string;
@@ -121,6 +124,7 @@ const T: Record<"en" | "ko", VipDict> = {
     bulkUpload: "Bulk Upload",
     registerVip: "Register VIP",
     searchPlaceholder: "Search by VIP name",
+    sortByPriority: "Priority first",
     allGroups: "All groups",
     allPriorities: "All priorities",
     noGroup: "No group",
@@ -201,6 +205,7 @@ const T: Record<"en" | "ko", VipDict> = {
     bulkUpload: "일괄 업로드",
     registerVip: "VIP 등록하기",
     searchPlaceholder: "VIP 이름으로 검색",
+    sortByPriority: "우선순위순",
     allGroups: "전체 그룹",
     allPriorities: "전체 우선순위",
     noGroup: "그룹 없음",
@@ -773,6 +778,15 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
    * looking for when tidying the list.
    */
   const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
+  /**
+   * Priority order in the grid, off by default.
+   *
+   * The table sorts from its column headings; the grid had no order it could state, so it kept
+   * registration order and left it at that. A toggle solves the stating problem — while it is on
+   * it is visibly on, which is the thing a wall of cards cannot say about itself. Off means newest
+   * first, which is what the list arrives in.
+   */
+  const [gridPriorityFirst, setGridPriorityFirst] = useState(false);
   const showGroupColumn = vipTab === "all";
   const [groupModalFor, setGroupModalFor] = useState<{ group: PersonGroup | null } | null>(null);
   const [confirmingGroupRemove, setConfirmingGroupRemove] = useState<PersonGroup | null>(null);
@@ -805,19 +819,22 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   // invent a distinction the registry does not make.
   const activeFilterCount = (groupFilter ? 1 : 0) + (priorityFilter === "ALL" ? 0 : 1);
   const clearFilters = () => { setGroupFilter(null); setPriorityFilter("ALL"); };
-  // Sorting only applies to the table — the grid keeps registration order, because a wall of cards
-  // has no column headings to say what it is sorted by.
+  const sortValue = (person: Person, key: VipSortKey) => {
+    switch (key) {
+      case "name": return person.name.toLowerCase();
+      // Ranked, not alphabetical: "very_high" has to sit above "high", and alphabetically it would
+      // sit below it. Unset reads as normal, the same way the filter and the card do.
+      case "priority": return PRIORITY_LABELS.indexOf(person.priorityLabel ?? "normal");
+      case "registered": return person.registeredAt;
+    }
+  };
+  // The table sorts from its headings. The grid has one order it can offer, because it has a
+  // control that says so — see gridPriorityFirst.
   const projectPersons = view === "table"
-    ? sortRows(matchingPersons, sort, (person, key) => {
-        switch (key) {
-          case "name": return person.name.toLowerCase();
-          // Ranked, not alphabetical: "very_high" has to sit above "high", and alphabetically it
-          // would sit below it.
-          case "priority": return person.priorityLabel ? PRIORITY_LABELS.indexOf(person.priorityLabel) : undefined;
-          case "registered": return person.registeredAt;
-        }
-      })
-    : matchingPersons;
+    ? sortRows(matchingPersons, sort, sortValue)
+    : gridPriorityFirst
+      ? sortRows(matchingPersons, { key: "priority", direction: "desc" }, sortValue)
+      : matchingPersons;
 
   const register = (values: RegisterValues) => {
     addPerson({
@@ -992,6 +1009,26 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           </>
         )}
         <div style={{ flex: 1 }} />
+        {/* Grid only. The table already has this in its Priority heading, and a second control
+            saying the same thing next to it would be two ways to sort one list. */}
+        {vipTab !== "groups" && view === "grid" && (
+          <button
+            className={gridPriorityFirst ? undefined : "portal-btn-outline"}
+            onClick={() => setGridPriorityFirst(v => !v)}
+            aria-pressed={gridPriorityFirst}
+            style={{
+              display: "flex", alignItems: "center", gap: "6px", flexShrink: 0,
+              height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", cursor: "pointer",
+              fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+              ...(gridPriorityFirst
+                ? { border: "1px solid var(--gray-900)", backgroundColor: "var(--gray-900)", color: "white" }
+                : { border: BORDER, backgroundColor: "white", color: "var(--gray-600)" }),
+            }}
+          >
+            <ArrowDownWideNarrow size={14} strokeWidth={2.4} />
+            {t.sortByPriority}
+          </button>
+        )}
         {/* Same segmented control the Input Sources tab uses, so the one gesture for "show me this
             differently" looks the same in both places. Not on the Groups tab: a party has no face,
             so a wall of cards would be a wall of empty squares. */}
