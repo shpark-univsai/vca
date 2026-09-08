@@ -91,7 +91,8 @@ const T = {
     todaySoFar: "Today",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · Vehicle ${vehicle} · Unknown ${unknown.toLocaleString("en-US")}`,
-    dropNote: (n: number) => `${n} drops`,
+    dropNote: (n: number) => `${n} drops this week`,
+    dropNth: (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th"} time this week`,
     dropNoteFull: (n: number) => `Dropped its stream ${n} times in the last 7 days`,
     viewAllCameras: (n: number) => `View all ${n} cameras`,
     recentVipsTitle: "Recently Registered VIPs",
@@ -175,7 +176,8 @@ const T = {
     todaySoFar: "오늘",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · 차량 ${vehicle} · 미확인 ${unknown.toLocaleString("en-US")}`,
-    dropNote: (n: number) => `${n}회 끊김`,
+    dropNote: (n: number) => `이번 주 ${n}회 끊김`,
+    dropNth: (n: number) => `이번 주 ${n}번째`,
     dropNoteFull: (n: number) => `지난 7일 동안 ${n}회 끊겼습니다`,
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
     recentVipsTitle: "최근 등록된 VIP",
@@ -1018,9 +1020,20 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               */}
               <div style={{ position: "relative", height: "56px" }}>
                 <svg width="100%" height="100%" viewBox="0 0 100 40" preserveAspectRatio="none" style={{ display: "block", overflow: "visible" }}>
+                  {/* The fill fades out downward instead of sitting as a flat block of tint. It
+                      is decoration, but the honest kind: the line is the data and the area under
+                      it is only there to give the line a body, so it should get quieter the
+                      further it is from the line. gradientUnits stays default (objectBoundingBox),
+                      so the fade follows the box however wide the card gets. */}
+                  <defs>
+                    <linearGradient id="detectionsFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--primary-300)" stopOpacity="0.28" />
+                      <stop offset="100%" stopColor="var(--primary-300)" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
                   <polygon
                     points={`0,40 ${detectionDays.map((d, i) => `${(i / (detectionDays.length - 1)) * 100},${40 - (d.total / detectionPeak) * 36}`).join(" ")} 100,40`}
-                    fill="var(--primary-100)"
+                    fill="url(#detectionsFill)"
                   />
                   <polyline
                     points={detectionDays.slice(0, -1).map((d, i) => `${(i / (detectionDays.length - 1)) * 100},${40 - (d.total / detectionPeak) * 36}`).join(" ")}
@@ -1162,7 +1175,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   </p>
                 ) : (
                   <>
-                    <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.9fr 1.5fr 0.9fr 0.8fr 56px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, gap: "8px", flexShrink: 0 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr 1.2fr 0.8fr 1.2fr 44px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, gap: "8px", flexShrink: 0 }}>
                       {/* The arrow on Last signal says which way the rows run. The panel has one
                           order and no way to change it, so this is a statement rather than a
                           control — but a list ordered by a column nobody told you about is a list
@@ -1186,7 +1199,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     {visibleCameraRows.map((c, i) => {
                       const online = c.status === "online";
                       return (
-                        <div key={c.id} style={{ display: "grid", gridTemplateColumns: "1.3fr 0.9fr 1.5fr 0.9fr 0.8fr 56px", padding: "10px 20px", alignItems: "center", gap: "8px", borderTop: i > 0 ? BORDER : "none" }}>
+                        <div key={c.id} style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr 1.2fr 0.8fr 1.2fr 44px", padding: "10px 20px", alignItems: "center", gap: "8px", borderTop: i > 0 ? BORDER : "none" }}>
                           {/* No dot before the name. The row already ends in a Online / Offline
                               chip, and a coloured dot at the other end of the same row said the
                               same thing a second time — with eight offline rows on top, the list
@@ -1199,21 +1212,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                               card of its own above the table: a diagram, a legend and four rows
                               repeating names that are already here. A camera that keeps dropping
                               is a fact about that camera, so it belongs on that camera's line. */}
-                          <div style={{ display: "flex", alignItems: "baseline", gap: "6px", minWidth: 0 }}>
-                            <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</p>
-                            {(dropsByCamera.get(c.id) ?? 0) > 0 && (
-                              /* Words, not "4× 7d". An abbreviation saves four characters and
-                                 costs the reader the sentence — and this column has room for the
-                                 short form because the name beside it ellipsises first. The full
-                                 phrase, period and all, is on the hover. */
-                              <span
-                                title={t.dropNoteFull(dropsByCamera.get(c.id) as number)}
-                                style={{ fontSize: "10px", color: "var(--gray-400)", whiteSpace: "nowrap", flexShrink: 0 }}
-                              >
-                                {t.dropNote(dropsByCamera.get(c.id) as number)}
-                              </span>
-                            )}
-                          </div>
+                          <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{c.name}</p>
                           <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{c.zone}</span>
                           <span style={{ fontSize: "12px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.rtspUrl}</span>
                           {/* Only once the clock is known — before mount there is no "ago" to
@@ -1237,9 +1236,25 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                             and the exception is dark, with the only colour in the column a 5px
                             red dot — enough to find down a scrolling list, too small to shout.
                           */}
-                          <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 600, color: online ? "var(--gray-500)" : "var(--gray-900)" }}>
+                          {/* The status, and beside it how often this camera has done this lately.
+                              The count sat next to the camera's name, where it was a fact about
+                              the camera; next to the word "Offline" it is a fact about the outage
+                              you are reading — this is the fourth time this week, not a one-off.
+                              A camera that is up but dropped three times still says so, because
+                              that is the camera nothing else on the page would flag. */}
+                          <span style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0, fontSize: "12px", fontWeight: 600, color: online ? "var(--gray-500)" : "var(--gray-900)" }}>
                             <span style={{ width: "5px", height: "5px", borderRadius: "50%", flexShrink: 0, backgroundColor: online ? "var(--gray-300)" : "var(--danger-400)" }} />
-                            {online ? t.online : t.offline}
+                            <span style={{ flexShrink: 0 }}>{online ? t.online : t.offline}</span>
+                            {(dropsByCamera.get(c.id) ?? 0) > 0 && (
+                              <span
+                                title={t.dropNoteFull(dropsByCamera.get(c.id) as number)}
+                                style={{ fontSize: "10px", fontWeight: 500, color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                              >
+                                {online
+                                  ? t.dropNote(dropsByCamera.get(c.id) as number)
+                                  : t.dropNth(dropsByCamera.get(c.id) as number)}
+                              </span>
+                            )}
                           </span>
                           {/* A chevron, no word. "View" repeated on all eleven rows and said
                               nothing the arrow did not; asked for 2026-09-08. It opens the camera
