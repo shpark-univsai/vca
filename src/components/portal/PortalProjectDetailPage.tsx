@@ -1202,8 +1202,18 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               you glance at stack in a column beside it. 1.75fr against 1fr, which is the ratio
               that gives the table its five columns and still leaves a readable panel. */}
           <div style={{ display: "grid", gridTemplateColumns: "1.75fr 1fr", gap: CARD_GAP, alignItems: "stretch", maxHeight: OVERVIEW_PANEL_MAX_HEIGHT, marginBottom: CARD_GAP }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
-              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+            {/*
+              The camera panel is as tall as the two cards beside it, and no taller.
+
+              Both columns are grid items, so the row was sized to whichever had more content —
+              and this one has fifty-nine rows, so it decided the height and the right column sat
+              in a column of white beneath its two cards. Taking the panel out of flow (absolute
+              inside a relative column) leaves the row to be measured by the right column alone;
+              the panel then stretches to exactly that and cuts its list with a scroll, which is
+              what a summary panel should do anyway.
+            */}
+            <div style={{ position: "relative", minWidth: 0 }}>
+              <div style={{ position: "absolute", inset: 0, backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 {/* No All / Offline toggle. The panel is the fleet, ordered by longest silence, so
                     the cameras an offline filter would have selected are already the rows at the
                     top — and the two places that answer "how many are down" (the attention strip
