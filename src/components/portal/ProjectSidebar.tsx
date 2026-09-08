@@ -182,8 +182,15 @@ export default function ProjectSidebar({ brand, team, project, tab, onTabChange,
           {brand && (
             <p style={{ fontSize: "15px", fontWeight: 800, color: "white", letterSpacing: "-0.2px", padding: "2px 10px 10px" }}>{brand}</p>
           )}
-          {team}
-          {project}
+          {/* One box around both. They are a pair — which organisation, and which of its projects
+              — and two separate outlines made them read as two unrelated controls stacked by
+              accident. gray-700 for the line: a step lighter than the gray-800 used for fills on
+              this ground, so the box is visible as an edge rather than as another panel. */}
+          <div style={{ border: "1px solid var(--gray-700)", borderRadius: "10px", overflow: "hidden" }}>
+            {team}
+            <div style={{ height: "1px", backgroundColor: "var(--gray-800)" }} />
+            {project}
+          </div>
         </div>
       )}
 

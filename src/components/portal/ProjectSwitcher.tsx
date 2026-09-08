@@ -153,10 +153,8 @@ export default function ProjectSwitcher({ dark, teamId, currentProjectId, onSele
              navigation. In the header it stays a bare crumb — there it sits between other crumbs
              and a box around one of them would be a button among plain text.
           */
-          ...(dark ? {
-            width: "100%", padding: "11px 12px", borderRadius: "10px",
-            border: "1px solid var(--gray-800)", backgroundColor: "var(--gray-800)",
-          } : null),
+          // Same: one row of the box drawn around the pair, not a box of its own.
+          ...(dark ? { width: "100%", padding: "10px 12px", borderRadius: 0 } : null),
         }}
       >
         <span

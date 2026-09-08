@@ -101,14 +101,16 @@ export default function TeamSwitcher({ dark, currentTeamId, onSelect }: TeamSwit
           style={{
             display: "flex", alignItems: "center", gap: "6px",
             borderRadius: "8px", padding: "6px 10px",
-            border: dark ? "1px solid var(--gray-800)" : "1px solid var(--gray-300)",
+            // No edge of its own in the rail: it is one row of a bordered box that holds both
+            // switchers, and a border inside a border is two boxes for one thing.
+            border: dark ? "none" : "1px solid var(--gray-300)",
             backgroundColor: dark
               ? (hovered === "__trigger" ? "var(--gray-800)" : "transparent")
               : (hovered === "__trigger" ? "var(--gray-50)" : "white"),
             cursor: "pointer", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap",
             color: dark ? "var(--gray-300)" : "var(--gray-600)",
             // Fills the rail there, hugs its label in the header.
-            ...(dark ? { width: "100%" } : null),
+            ...(dark ? { width: "100%", padding: "9px 12px", borderRadius: 0 } : null),
           }}
         >
           {/* Its own title, so hovering the name reveals the name in full while hovering the rest
