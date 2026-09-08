@@ -81,6 +81,14 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
   const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const [open, setOpen] = useState(false);
+  /**
+   * Whether the list opens upward, decided from the room under the trigger when it opens.
+   *
+   * The rail's team row is pinned to the bottom of the window, so a menu that always dropped down
+   * dropped off the screen — the same fix FilterSelect needed for the bulk bar. Measured rather
+   * than declared: this component is also a header crumb, where down is right.
+   */
+  const [dropUp, setDropUp] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const [showNewTeam, setShowNewTeam] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -101,7 +109,15 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
     <>
       <div ref={ref} style={{ position: "relative" }}>
         <button
-          onClick={() => setOpen(o => !o)}
+          onClick={e => {
+            if (!open) {
+              const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              const below = window.innerHeight - box.bottom;
+              // 280 is the menu at its tallest (its own max plus the "new team" footer).
+              setDropUp(below < 280 && box.top > below);
+            }
+            setOpen(o => !o);
+          }}
           title={t.switchTeam}
           onMouseEnter={() => setHovered("__trigger")}
           onMouseLeave={() => setHovered(null)}
@@ -186,7 +202,8 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
 
         {open && (
           <div style={{
-            position: "absolute", top: "100%", left: 0, marginTop: "4px", zIndex: 200,
+            position: "absolute", left: 0, zIndex: 200,
+            ...(dropUp ? { bottom: "100%", marginBottom: "6px" } : { top: "100%", marginTop: "4px" }),
             backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "0 8px 20px rgba(14,22,42,0.12)",
             minWidth: "280px", maxWidth: "360px", padding: "4px",
           }}>
