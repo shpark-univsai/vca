@@ -155,12 +155,17 @@ export const TABLE_HEADER_COLOR = "var(--gray-500)";
  * The row stretches its three panels to a common height and stops at this one; anything longer
  * scrolls inside its own panel instead of growing the page.
  *
- * 680px, up from 380. The camera list used to be cut to five rows, so 380 was all it could fill;
- * now the panel holds the whole list and scrolls, and five rows was too small a window to work in
- * — with the offline cameras sorted to the top you saw the outage and nothing else. This is
- * roughly a dozen rows: the offline ones plus enough of the healthy fleet to see that it is there.
+ * Measured against the window rather than fixed, because what this number is really for is "the
+ * page ends where the screen ends". A fixed 680px did fill nicely on a tall monitor and ran the
+ * camera list off the bottom of a shorter one, which is the one thing the cap exists to prevent.
+ *
+ * 440px is the chrome above and below the row on the Overview: the 52px top bar, the content's
+ * 12px top padding, the greeting block, the attention strip, the metric cards and their gap, and
+ * the 32px the page keeps under its last card. Whatever the window leaves after that is the
+ * panels' height, and the lists inside them scroll to fit it. The 360px floor is there so a very
+ * short window gets a usable panel instead of a sliver.
  */
-export const OVERVIEW_PANEL_MAX_HEIGHT = "680px";
+export const OVERVIEW_PANEL_MAX_HEIGHT = "max(360px, calc(100vh - 440px))";
 
 export const BREADCRUMB_TEAM_MAX_WIDTH = "min(360px, 26vw)";
 export const BREADCRUMB_PROJECT_MAX_WIDTH = "min(320px, 22vw)";
