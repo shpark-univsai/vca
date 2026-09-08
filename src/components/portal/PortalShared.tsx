@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, RotateCcw } from "lucide-react";
+import { Check } from "lucide-react";
 import { SUPPORT_CONTACT, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -451,11 +451,8 @@ export function ActiveFilterCount({ count, onClear, label }: { count: number; on
       }}
     >
       {label}
-      {/* The same lucide rotate-ccw the Server tab's Reset carries, so the one action Portal has
-          for "put the filters back" looks like itself wherever it appears. It was an ✕, which on a
-          chip means "dismiss this chip" — and this chip is not dismissible, it is a reset. */}
       <span style={{ display: "flex", color: "var(--gray-500)" }}>
-        <RotateCcw size={13} strokeWidth={1.3} />
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
       </span>
     </button>
   );
