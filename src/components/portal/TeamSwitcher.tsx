@@ -118,7 +118,7 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
             // Fills the rail there, hugs its label in the header. The height is pinned rather than
             // left to the padding: the collapsed rail has to reserve exactly this much for its
             // stand-in, and a row whose height depends on a font's metrics cannot be matched.
-            ...(dark ? { width: "100%", height: "34px", padding: "0 12px", borderRadius: 0, boxSizing: "border-box" as const } : null),
+            ...(dark ? { width: "100%", minHeight: "34px", padding: "6px 12px", borderRadius: 0, boxSizing: "border-box" as const, alignItems: "flex-start" } : null),
             ...(compact ? {
               width: "34px", height: "34px", padding: 0, borderRadius: "8px", justifyContent: "center",
               backgroundColor: hovered === "__trigger" ? "var(--gray-700)" : "var(--gray-800)",
@@ -142,12 +142,21 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
               // a fixed 360px cap belongs to a header that is as wide as the window, and inside
               // the rail it let "City of Singapore — Smart Infrastructure Office" run out past the
               // edge of the sidebar and over the page.
-              ...(dark ? { flex: 1, minWidth: 0, textAlign: "left" as const } : { maxWidth: BREADCRUMB_TEAM_MAX_WIDTH }),
+              /* Two lines in the rail, like the project card under it. A team is a proper noun
+               nobody can shorten — "City of Singapore — Smart Infrastructure Office" — and one
+               line of a 220px column ended it after three words. In the header it stays one line:
+               a crumb is a line by definition. */
+            ...(dark
+              ? {
+                flex: 1, minWidth: 0, textAlign: "left" as const, whiteSpace: "normal" as const,
+                lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const,
+              }
+              : { maxWidth: BREADCRUMB_TEAM_MAX_WIDTH }),
             }}
           >
             {current?.name ?? t.noTeam}
           </span>
-          <span style={{ display: "flex", color: "var(--gray-400)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+          <span style={{ display: "flex", color: "var(--gray-400)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", marginTop: "3px", flexShrink: 0 }}>
             <ChevronDown />
           </span>
           </>)}

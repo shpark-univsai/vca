@@ -242,7 +242,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
               the track grew past the rail and the name ran out over the page instead of
               ellipsising. */}
           {team && (
-            <div style={{ height: "34px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", alignItems: "center", justifyItems: collapsed ? "center" : "stretch" }}>
+            <div style={{ minHeight: "34px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", alignItems: "center", justifyItems: collapsed ? "center" : "stretch" }}>
               {team}
             </div>
           )}
