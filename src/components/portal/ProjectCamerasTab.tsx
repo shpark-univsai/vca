@@ -92,7 +92,6 @@ const T = {
     aiCameraBadge: "AI Camera",
     cctvBadge: "CCTV",
     toggleStatusTitle: "Toggle status",
-    removeCameraTitle: "Remove camera",
     editAction: "Edit",
     removeAction: "Remove",
     addModalTitle: "Add Input Device",
@@ -225,7 +224,6 @@ const T = {
     aiCameraBadge: "AI 카메라",
     cctvBadge: "CCTV",
     toggleStatusTitle: "상태 전환",
-    removeCameraTitle: "카메라 삭제",
     editAction: "수정",
     removeAction: "삭제",
     addModalTitle: "입력 장치 추가",
@@ -1339,9 +1337,12 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "12px" }}>
           {visibleCameras.map(cam => {
             const online = cam.status === "online";
+            // The card cannot clip: the ⋯ menu drops out of its top row, and an overflow:hidden
+            // card would cut it off at its own edge. The thumbnail rounds its own top corners
+            // instead, which is all that hiding was doing.
             return (
-              <div key={cam.id} style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW, overflow: "hidden" }}>
-                <button onClick={() => setInspectingCameraId(cam.id)} style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", border: "none", padding: 0, cursor: "pointer", display: "block", backgroundColor: "var(--gray-900)" }}>
+              <div key={cam.id} style={{ backgroundColor: "white", borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
+                <button onClick={() => setInspectingCameraId(cam.id)} style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", border: "none", padding: 0, cursor: "pointer", display: "block", backgroundColor: "var(--gray-900)", overflow: "hidden", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
                   <img src={cam.thumbnail || DEFAULT_THUMBNAIL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: online ? 1 : 0.4 }} />
                   <span style={{
                     position: "absolute", top: "8px", left: "8px", fontSize: "10px", fontWeight: 600, padding: "4px 8px", borderRadius: "999px",
@@ -1350,25 +1351,24 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
                     {online ? t.online.toUpperCase() : t.offline.toUpperCase()}
                   </span>
                 </button>
+                {/* No footer strip. It carried the AI-engine badges — which for a camera with no
+                    engine printed a bare em dash, so most cards ended in a rule with a dash under
+                    it — and two icon buttons whose meaning you had to hover to learn. The card
+                    now ends where its content ends, and everything you can do to it is behind the
+                    same ⋯ menu the table rows use: one place per row, named actions, and the
+                    destructive one marked. */}
                 <div style={{ padding: "12px" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "monospace" }}>{cam.code}</p>
-                    <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{cam.zone}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "monospace", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.code}</p>
+                    <span style={{ flex: 1 }} />
+                    <span style={{ fontSize: "10px", color: "var(--gray-400)", flexShrink: 0 }}>{cam.zone}</span>
+                    <RowActionsMenu actions={[
+                      { label: t.editAction, onClick: () => setEditingCamera(cam) },
+                      { label: t.toggleStatusTitle, onClick: () => setConfirmingStatusCam(cam) },
+                      { label: t.removeAction, onClick: () => handleDelete(cam), danger: true },
+                    ]} />
                   </div>
                   <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", marginTop: "2px" }}>{cam.name}</p>
-                  <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: BORDER, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <AiFeatureBadges features={cam.aiFeatures} t={t} />
-                    <div style={{ display: "flex", gap: "4px" }}>
-                      <button onClick={() => setConfirmingStatusCam(cam)} title={t.toggleStatusTitle} className="portal-icon-btn" style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "6px" }}>
-                        <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M12.25 7A5.25 5.25 0 1 1 10.5 3.15M12.25 1.75V4.67h-2.92" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      </button>
-                      <button className="portal-icon-btn-danger" onClick={() => handleDelete(cam)} title={t.removeCameraTitle} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "6px" }}>
-                        <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-                          <path d="M2.91663 4.08333H11.0833M5.83329 6.41667V9.33333M8.16663 6.41667V9.33333M3.49996 4.08333L4.08329 10.9167C4.08329 11.2261 4.20621 11.5228 4.42501 11.7416C4.6438 11.9604 4.9405 12.0833 5.24996 12.0833H8.74996C9.05942 12.0833 9.35612 11.9604 9.57491 11.7416C9.79371 11.5228 9.91663 11.2261 9.91663 10.9167L10.5 4.08333M5.24996 4.08333V2.33333C5.24996 2.17862 5.31142 2.03025 5.42082 1.92085C5.53022 1.81146 5.67858 1.75 5.83329 1.75H8.16663C8.32134 1.75 8.4697 1.81146 8.5791 1.92085C8.68849 2.03025 8.74996 2.17862 8.74996 2.33333V4.08333" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
                 </div>
               </div>
             );
