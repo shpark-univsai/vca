@@ -31,7 +31,6 @@ const T = {
     chipAttention: (n: number) => `${n} OFFLINE`,
     chipNewThisMonth: (n: number) => `+${n} THIS MONTH`,
     chipAccessSplit: (portal: number, app: number) => `${portal} PORTAL · ${app} APP`,
-    statUtilised: (pct: number) => `${pct}% utilised`,
     statAvailable: (n: number) => `${n} available`,
     statOnlineShare: (pct: number) => `${pct}% online`,
     statOffline: (n: number) => `${n} offline`,
@@ -114,7 +113,6 @@ const T = {
     chipAttention: (n: number) => `오프라인 ${n}`,
     chipNewThisMonth: (n: number) => `이번 달 +${n}`,
     chipAccessSplit: (portal: number, app: number) => `포털 ${portal} · 앱 ${app}`,
-    statUtilised: (pct: number) => `${pct}% 사용`,
     statAvailable: (n: number) => `${n} 여유`,
     statOnlineShare: (pct: number) => `온라인 ${pct}%`,
     statOffline: (n: number) => `오프라인 ${n}`,
@@ -384,7 +382,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const monthStr = nowMs !== null ? new Date(nowMs).toISOString().slice(0, 7) : null;
   const newVipsThisMonth = monthStr ? projectPersons.filter(p => p.registeredAt.startsWith(monthStr)).length : 0;
   const onlineShare = projectCameras.length ? Math.round((onlineCount / projectCameras.length) * 100) : 0;
-  const channelShare = channelLimit ? Math.round((projectCameras.length / channelLimit) * 100) : 0;
 
   const filteredCameraRows = (cameraStatusFilter === "offline" ? projectCameras.filter(c => c.status === "offline") : projectCameras)
     .slice()
@@ -651,16 +648,16 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--primary-300)" }} />
                 </div>
-                {/* The plan joins the legend: "Enterprise · 59% utilised". It is already the chip
-                    at the top of the card, but that is the row the eye starts on and this is the
-                    line the percentage is read from — asked for 2026-09-08, so the share and the
-                    plan it is a share of sit together. Capitalised rather than uppercased: the
-                    chip shouts it, a caption says it. */}
+                {/* The plan on the left, what is left on the right — and no percentage between
+                    them. The figure above already reads "59 / 100 channels used", and on a
+                    hundred-channel licence the share is the same digits again; the bar shows the
+                    proportion without naming it. Capitalised rather than uppercased: the chip at
+                    the top of the card shouts the plan, a caption says it. */}
                 {channelLimit ? (
                   <BarStats
                     left={project.licensePlan
-                      ? `${project.licensePlan.charAt(0).toUpperCase()}${project.licensePlan.slice(1)} · ${t.statUtilised(channelShare)}`
-                      : t.statUtilised(channelShare)}
+                      ? `${project.licensePlan.charAt(0).toUpperCase()}${project.licensePlan.slice(1)}`
+                      : ""}
                     right={t.statAvailable(Math.max(0, channelLimit - projectCameras.length))}
                   />
                 ) : null}
