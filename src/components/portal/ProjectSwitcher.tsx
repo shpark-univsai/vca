@@ -177,7 +177,12 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
             // 60px for its icon-only stand-in, so the nav starts at the same y in both states.
             width: "100%", minHeight: "60px", boxSizing: "border-box" as const,
             padding: "10px 12px", borderRadius: "12px", gap: "8px", alignItems: "flex-start",
-            backgroundColor: "var(--gray-800)", border: "1px solid var(--gray-700)",
+            /* The card wears the accent, the rows around it do not. It was gray-800 inside a
+               gray-800 hover and a gray-700 border — a box you had to look for, holding the one
+               thing the whole rail is scoped to. primary-400 at 18% with a 40% edge reads as a
+               lit panel rather than a slightly different grey, and the pin inside it goes
+               primary-300 so the colour starts at the mark and not at the border. */
+            backgroundColor: "rgba(90, 61, 251, 0.18)", border: "1px solid rgba(90, 61, 251, 0.4)",
           } : null),
           ...(compact ? { width: "44px", height: "44px", padding: 0, justifyContent: "center" } : null),
         }}
@@ -195,7 +200,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
             thinner than the menu under it. */}
         {dark && !compact && (
           <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "1px" }}>
-            <MapPin size={16} strokeWidth={1.8} />
+            <MapPin size={16} strokeWidth={1.8} color="var(--primary-300)" />
           </span>
         )}
         {compact ? null : dark ? (
@@ -225,7 +230,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
           </span>
         )}
         {!compact && (
-          <span style={{ color: dark ? "var(--gray-400)" : "var(--gray-600)", display: "flex", flexShrink: 0, marginTop: dark ? "1px" : 0 }}>
+          <span style={{ color: dark ? "var(--gray-300)" : "var(--gray-600)", display: "flex", flexShrink: 0, marginTop: dark ? "1px" : 0 }}>
             {dark ? <ChevronRight size={16} strokeWidth={1.8} /> : <ChevronDown size={14} />}
           </span>
         )}
