@@ -669,7 +669,16 @@ function csvEscape(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
 }
 
-export default function ProjectCamerasTab({ projectId }: { projectId: string }) {
+/**
+ * @param openCameraId  A camera to open the detail modal on as soon as this tab mounts — set by the
+ *   Overview's camera panel, whose rows now open the camera rather than dumping the reader at the
+ *   top of this list. Cleared through onCameraOpened so a later visit to the tab opens plain.
+ */
+export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpened }: {
+  projectId: string;
+  openCameraId?: string | null;
+  onCameraOpened?: () => void;
+}) {
   const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
   const cameras = useVcaStore(s => s.cameras);
   const uploads = useVcaStore(s => s.uploads);
@@ -693,6 +702,22 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
   // so actions taken inside the modal (e.g. Reconnect) are reflected immediately instead of
   // showing a stale snapshot captured at the moment the modal opened.
   const [inspectingCameraId, setInspectingCameraId] = useState<string | null>(null);
+  /**
+   * Opens the camera the Overview's panel handed over, once, and tells the parent it is done so a
+   * later visit to this tab opens plain. Effect rather than initial state: this component stays
+   * mounted while the tab is open, so a second click on a second camera has to reach it too.
+   */
+  useEffect(() => {
+    if (!openCameraId) return;
+    const id = openCameraId;
+    // In a microtask, not straight from the effect body: setting state synchronously there makes
+    // React render this tree twice before it paints, and the lint rule that catches cascading
+    // renders is right to flag it. The same trick the Overview uses for its post-mount clock.
+    queueMicrotask(() => {
+      setInspectingCameraId(id);
+      onCameraOpened?.();
+    });
+  }, [openCameraId, onCameraOpened]);
   const [confirmingStatusCam, setConfirmingStatusCam] = useState<Camera | null>(null);
   const [view, setView] = useState<"table" | "grid">("table");
   const [search, setSearch] = useState("");

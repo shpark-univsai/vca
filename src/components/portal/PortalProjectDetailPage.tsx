@@ -78,7 +78,7 @@ const T = {
     colStatus: "Status",
     noOfflineCameras: "No offline cameras — everything is connected.",
     noCamerasYet: "No cameras connected to this project yet.",
-    view: "View →",
+    openCamera: "Open this camera",
     viewAllCameras: (n: number) => `View all ${n} cameras`,
     recentVipsTitle: "Recently Registered VIPs",
     registerVipLink: "Register VIP →",
@@ -149,7 +149,7 @@ const T = {
     colStatus: "상태",
     noOfflineCameras: "오프라인 카메라가 없습니다 — 모두 연결되어 있습니다.",
     noCamerasYet: "이 프로젝트에 연결된 카메라가 아직 없습니다.",
-    view: "보기 →",
+    openCamera: "이 카메라 열기",
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
     recentVipsTitle: "최근 등록된 VIP",
     registerVipLink: "VIP 등록 →",
@@ -328,7 +328,24 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   );
   // Which rows the Camera Status panel's filter tabs show — declared here (not inside the panel
   // itself) for the same hooks-before-the-guard reason as everything else on this list.
-  const [cameraStatusFilter, setCameraStatusFilter] = useState<"all" | "offline">("all");
+  /**
+   * Opens on the offline cut when anything is offline, on the whole fleet when nothing is.
+   *
+   * This panel was a smaller copy of the Input Sources table: same columns, same rows, same
+   * destination. What the Overview can do that the tab cannot is open already filtered to the
+   * work — the eight cameras somebody has to chase — and let the tab be the place you go to
+   * browse all fifty-nine. With nothing offline there is no work, so it opens on everything.
+   */
+  /**
+   * The camera the Input Sources tab should open showing, set by a row in the panel below and
+   * cleared by the tab once it has opened it. Held here rather than in a URL: it is a handoff
+   * between two views one component renders, and a query string would survive a reload and
+   * reopen a modal nobody asked for.
+   */
+  const [inspectCameraId, setInspectCameraId] = useState<string | null>(null);
+  const [cameraStatusFilter, setCameraStatusFilter] = useState<"all" | "offline">(
+    () => (cameras.some(c => c.projectId === projectId && c.status === "offline") ? "offline" : "all")
+  );
   // Session-only, deliberately: see the banner's note. Nothing here is resolved by closing it.
   const [attentionDismissed, setAttentionDismissed] = useState(false);
   // Read after mount, not during render: the clock is not a pure input, and license expiry is
@@ -465,7 +482,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             date line and the greeting are absent rather than guessed, the same nowMs gate this
             page already uses for the licence countdown and the audit log's relative times.
           */}
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", marginBottom: "20px" }}>
+          {/* flex-end, so the buttons sit on the greeting's line rather than at the top of the
+              header. They used to line up with the date eyebrow above it — the smallest, quietest
+              thing on the page — which left them floating a line higher than anything they relate
+              to. The left column ends with the greeting now that the sentence under it is gone. */}
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", marginBottom: "20px" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", minHeight: "14px" }}>
                 {nowMs !== null && (
@@ -835,7 +856,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   </p>
                 ) : (
                   <>
-                    <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.9fr 1.5fr 0.9fr 0.8fr 56px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderTop: BORDER, borderBottom: BORDER, gap: "8px", flexShrink: 0 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.9fr 1.5fr 0.9fr 0.8fr 56px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, gap: "8px", flexShrink: 0 }}>
                       {/* The arrow on Last signal says which way the rows run. The panel has one
                           order and no way to change it, so this is a statement rather than a
                           control — but a list ordered by a column nobody told you about is a list
@@ -892,10 +913,19 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                             <span style={{ width: "5px", height: "5px", borderRadius: "50%", flexShrink: 0, backgroundColor: online ? "var(--gray-300)" : "var(--danger-400)" }} />
                             {online ? t.online : t.offline}
                           </span>
-                          {/* gray-500 at 600, not gray-900 at 700. It repeats on every row, and
-                              at full strength eleven copies of the same word were the darkest
-                              column in the panel — heavier than the camera names beside them. */}
-                          <button className="portal-link" onClick={() => onTabChange("cameras")} style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", fontFamily: "inherit" }}>{t.view}</button>
+                          {/* A chevron, no word. "View" repeated on all eleven rows and said
+                              nothing the arrow did not; asked for 2026-09-08. It opens the camera
+                              itself — the Input Sources tab with that camera's detail already up —
+                              rather than dropping you at the top of a list of fifty-nine to find
+                              the row you just clicked. */}
+                          <button
+                            title={t.openCamera}
+                            onClick={() => { setInspectCameraId(c.id); onTabChange("cameras"); }}
+                            className="portal-icon-btn"
+                            style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", padding: "4px", borderRadius: "6px", cursor: "pointer", color: "var(--gray-400)", justifySelf: "end" }}
+                          >
+                            <ChevronRight size={15} strokeWidth={2.4} />
+                          </button>
                         </div>
                       );
                     })}
@@ -1067,7 +1097,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
         </>
       )}
-      {tab === "cameras" && <ProjectCamerasTab projectId={projectId} />}
+      {tab === "cameras" && <ProjectCamerasTab projectId={projectId} openCameraId={inspectCameraId} onCameraOpened={() => setInspectCameraId(null)} />}
       {tab === "vip" && <ProjectVipTab projectId={projectId} />}
       {tab === "license" && <ProjectLicenseTab projectId={projectId} />}
       {tab === "server" && <ProjectServerTab projectId={projectId} />}
