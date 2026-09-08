@@ -396,17 +396,24 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const onlineShare = projectCameras.length ? Math.round((onlineCount / projectCameras.length) * 100) : 0;
 
   /**
-   * Ordered by last signal, most recent first — the column the list is read down.
+   * Ordered by last signal, longest silence first.
    *
-   * It sorted offline cameras to the top, which is a different claim: that the list is a fault
-   * report. It is not, the strip at the top of the page is; this panel is the fleet, and the
-   * question you ask of a fleet list is which cameras have spoken lately. The offline tab is one
-   * click away for the other reading, and a camera with no lastSeenAt at all sorts last because
-   * "unknown" is not "recent".
+   * A "last signal" column is read for staleness — a camera that has said nothing for ten hours is
+   * an errand, and one that reported nine seconds ago is not news. Newest-first put the least
+   * informative rows at the top and buried the useful ones under fifty healthy cameras.
+   *
+   * This does mostly reproduce the old offline-first order, since a camera that is down is a
+   * camera that stopped reporting — but it reproduces it as a consequence of the column the panel
+   * is sorted by rather than as a claim that this list is a fault report. A camera with no
+   * lastSeenAt sorts last: "unknown" is not "long ago", and guessing would put it at the top of a
+   * worklist it may not belong on.
    */
   const filteredCameraRows = (cameraStatusFilter === "offline" ? projectCameras.filter(c => c.status === "offline") : projectCameras)
     .slice()
-    .sort((a, b) => (b.lastSeenAt ?? "").localeCompare(a.lastSeenAt ?? ""));
+    .sort((a, b) => {
+      if (!a.lastSeenAt || !b.lastSeenAt) return a.lastSeenAt ? -1 : b.lastSeenAt ? 1 : 0;
+      return a.lastSeenAt.localeCompare(b.lastSeenAt);
+    });
   // Every row the filter selects, not the first five of them. The card is a fixed height and its
   // row area scrolls, so a cap bought nothing — and with offline sorted first it made "All" look
   // exactly like "Offline" on any project with five cameras down. The panel is the same size; the
@@ -805,8 +812,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 ) : (
                   <>
                     <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.9fr 1.5fr 0.9fr 0.8fr 56px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderTop: BORDER, borderBottom: BORDER, gap: "8px", flexShrink: 0 }}>
+                      {/* The arrow on Last signal says which way the rows run. The panel has one
+                          order and no way to change it, so this is a statement rather than a
+                          control — but a list ordered by a column nobody told you about is a list
+                          whose order looks arbitrary. */}
                       {[t.colCamera, t.colZone, t.colStreamUrl, t.colLastSignal, t.colStatus, ""].map(h => (
-                        <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+                        <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>
+                          {h.toUpperCase()}{h === t.colLastSignal ? " ↑" : ""}
+                        </span>
                       ))}
                     </div>
                     {/* Only the rows scroll. The column headings above and the "view all" below are
