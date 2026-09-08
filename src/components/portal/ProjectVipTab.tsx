@@ -1041,14 +1041,17 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                   backgroundColor: active ? "var(--warning-100)" : "transparent",
                 }}
               >
-                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ display: "flex", color: "var(--warning-500)" }}>{item.icon}</span>
-                  <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                    <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--warning-500)", lineHeight: "22px" }}>{item.count}</span>
-                    <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthPeopleUnit}</span>
-                  </span>
+                {/* The figure alone on the first line, the mark in front of the label on the second.
+                    Beside the number it competed with it — two things at the top of the cell, one of
+                    them 20px — and the icon is a restatement of the label, not of the count. */}
+                <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                  <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--warning-500)", lineHeight: "22px" }}>{item.count}</span>
+                  <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthPeopleUnit}</span>
                 </span>
-                <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap" }}>{item.label}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap" }}>
+                  <span style={{ display: "flex", color: "var(--warning-500)", flexShrink: 0 }}>{item.icon}</span>
+                  {item.label}
+                </span>
               </button>
             );
           })}
@@ -1060,14 +1063,14 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               on the left light up on hover and take a pointer; this one does neither, and that is
               the whole difference a reader needs. */}
           <span style={{ flex: 1, minWidth: "128px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "2px", padding: "10px 18px", borderLeft: BORDER }}>
-            <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ display: "flex", color: "var(--gray-400)" }}><Eye size={14} strokeWidth={2.4} /></span>
-              <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "22px" }}>{detectedCount}</span>
-                <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthOfTotal(allProjectPersons.length)}</span>
-              </span>
+            <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+              <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "22px" }}>{detectedCount}</span>
+              <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthOfTotal(allProjectPersons.length)}</span>
             </span>
-            <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-600)" }}>{t.healthReachLabel}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 600, color: "var(--gray-600)" }}>
+              <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Eye size={14} strokeWidth={2.4} /></span>
+              {t.healthReachLabel}
+            </span>
           </span>
         </div>
       )}
