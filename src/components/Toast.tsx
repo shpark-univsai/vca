@@ -25,16 +25,27 @@ interface ToastItem extends ToastOptions {
  * message competes with its own background, coloured body text is harder to read than black, and
  * four differently-tinted boxes stacking up in a corner read as a paint chart.
  *
- * A toast is a small floating card, so it looks like the other cards in this product: white, the
- * shared hairline, a lifted shadow. The state lives in a 16px mark and in the words. That also
- * fixes the thing the tints were hiding — a green box says "good" before the reader has read
+ * The card that replaced them was white, and it was too quiet — a white box on a near-white page
+ * is a card the eye skips. So it is dark: gray-900, white heading, the state in a 16px mark. On a
+ * light page that is the strongest surface available without tinting anything, and the product
+ * already speaks in it — the rail and the bulk-selection bar are the same near-black, and both are
+ * furniture that appears over the work rather than part of it.
+ *
+ * Dark also fixes what the tints were hiding: a green box says "good" before the reader has read
  * anything, and half of these messages are "requested", not "done".
+ */
+/*
+ * The accents, chosen for a dark card.
+ *
+ * warning takes the 400 rather than the 500 (the 500 is an orange that goes muddy on near-black)
+ * and info takes primary-300 rather than primary-400 (the saturated step is barely 2.4:1 against
+ * this ground; the lavender step is legible and still the product's colour).
  */
 const VARIANT_STYLES: Record<ToastVariant, { accent: string }> = {
   default: { accent: "var(--gray-400)" },
   success: { accent: "var(--success-400)" },
-  info:    { accent: "var(--primary-400)" },
-  warning: { accent: "var(--warning-500)" },
+  info:    { accent: "var(--primary-300)" },
+  warning: { accent: "var(--warning-400)" },
   error:   { accent: "var(--danger-400)" },
 };
 
@@ -88,8 +99,8 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
     <div style={{
       display: "flex", alignItems: "center", gap: "12px",
       padding: "12px 16px", borderRadius: "12px", height: "60px", boxSizing: "border-box",
-      backgroundColor: "white", border: "1px solid var(--line)",
-      boxShadow: "0 10px 28px rgba(14, 22, 42, 0.14)",
+      backgroundColor: "var(--gray-900)", border: "1px solid rgba(255, 255, 255, 0.08)",
+      boxShadow: "0 12px 32px rgba(14, 22, 42, 0.28)",
       width: "380px", flexShrink: 0,
     }}>
       {variant !== "default" && (
@@ -98,9 +109,9 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
         </div>
       )}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px" }}>
-        <div style={{ fontSize: "14px", fontWeight: 800, lineHeight: "20px", letterSpacing: "-0.28px", color: "var(--gray-900)" }}>{item.title}</div>
+        <div style={{ fontSize: "14px", fontWeight: 800, lineHeight: "20px", letterSpacing: "-0.28px", color: "white" }}>{item.title}</div>
         {item.desc && (
-          <div style={{ fontSize: "12px", fontWeight: 400, lineHeight: "16px", letterSpacing: "-0.24px", color: "var(--gray-500)" }}>{item.desc}</div>
+          <div style={{ fontSize: "12px", fontWeight: 400, lineHeight: "16px", letterSpacing: "-0.24px", color: "var(--gray-300)" }}>{item.desc}</div>
         )}
       </div>
       {item.actionLabel ? (
@@ -108,7 +119,7 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
           onClick={() => { item.onAction?.(); onDismiss(item.id); }}
           style={{
             padding: "6px 12px", fontSize: "13px", fontWeight: 600, letterSpacing: "-0.26px",
-            color: "var(--gray-0)", backgroundColor: "var(--gray-900)",
+            color: "var(--gray-900)", backgroundColor: "white",
             border: "none", borderRadius: "8px", cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
           }}
         >
