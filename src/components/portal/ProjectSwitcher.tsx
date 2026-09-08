@@ -182,7 +182,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                thing the whole rail is scoped to. primary-400 at 18% with a 40% edge reads as a
                lit panel rather than a slightly different grey, and the pin inside it goes
                primary-300 so the colour starts at the mark and not at the border. */
-            backgroundColor: "rgba(90, 61, 251, 0.18)", border: "1px solid rgba(90, 61, 251, 0.4)",
+            backgroundColor: "rgba(140, 133, 255, 0.16)", border: "1px solid rgba(140, 133, 255, 0.34)",
           } : null),
           ...(compact ? { width: "44px", height: "44px", padding: 0, justifyContent: "center" } : null),
         }}

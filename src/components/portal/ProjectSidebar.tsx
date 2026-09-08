@@ -186,13 +186,15 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
           gray-900, with the product's colour bled into the top of it.
           A flat near-black rail beside a primary-50 page read as two unrelated applications
           bolted together — nothing in the furniture said whose furniture it was. The gradient is
-          primary-400 at 14% fading out over the first 260px, so it sits behind the wordmark and
+          primary-300 at 12% fading out over the first 260px, so it sits behind the wordmark and
           the project card and is gone by the time the menu starts: a tint you notice only if you
           look for it, and no new colour in the palette — the same trick the detections chart uses
-          for the area under its line.
+          for the area under its line. The lavender step rather than the saturated one, because
+          this ground is a navy and primary-400 over navy reads blue (see the note on the current
+          nav row).
         */
         backgroundColor: "var(--gray-900)",
-        backgroundImage: "linear-gradient(180deg, rgba(90, 61, 251, 0.14) 0%, rgba(90, 61, 251, 0) 260px)",
+        backgroundImage: "linear-gradient(180deg, rgba(140, 133, 255, 0.12) 0%, rgba(140, 133, 255, 0) 260px)",
         /* 6px of top padding, not 16: the wordmark's row is 40px tall, so its centre lands at
            6 + 20 = 26px — exactly the middle of the 52px top bar beside it. The two are the same
            kind of thing (the console's name, the trail into it) and were sitting on different
