@@ -1008,7 +1008,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 {/* Grey, not green or red. A busier week than the last is neither good news nor
                     bad, and colouring it would send the reader looking for a fault nobody is
                     reporting. On its own line here because the column is narrow. */}
-                <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", color: "var(--gray-500)", marginTop: "2px" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", color: "var(--gray-500)", marginTop: "6px" }}>
                   {detectionDelta >= 0 ? <ArrowUp size={11} strokeWidth={2.6} /> : <ArrowDown size={11} strokeWidth={2.6} />}
                   {t.vsYesterday(detectionDelta)}
                 </span>
