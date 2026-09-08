@@ -662,8 +662,15 @@ function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
    * whether it carries a control or a sentence, and centring means the label sits level with
    * either.
    */
+  /**
+   * 22px rows, not 36.
+   *
+   * These were CONTROL_HEIGHT tall from when the Group row held a select — a row sized for a form
+   * control, kept after the control moved into the edit dialog. With an 8px gap that made a 44px
+   * pitch for four lines of plain text, so the sheet read as a form with the fields taken out.
+   */
   const row = (label: string, value: React.ReactNode) => (
-    <div style={{ display: "flex", gap: "12px", alignItems: "center", minHeight: CONTROL_HEIGHT }}>
+    <div style={{ display: "flex", gap: "12px", alignItems: "center", minHeight: "22px" }}>
       <span style={{ fontSize: "12px", color: "var(--gray-500)", minWidth: "72px", flexShrink: 0 }}>{label}</span>
       <span style={{ fontSize: "13px", color: "var(--gray-900)", minWidth: 0 }}>{value}</span>
     </div>
