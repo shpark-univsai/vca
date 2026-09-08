@@ -916,16 +916,22 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <div style={{ display: "grid", gridTemplateColumns: "1.75fr 1fr", gap: CARD_GAP, alignItems: "stretch" }}>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.detectionsLabel}</p>
-                <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)", marginTop: "2px" }}>
-                  {today.total.toLocaleString("en-US")}
-                </p>
-                {/* Grey, not green or red. A busier day than yesterday is neither good news nor
+                {/* The change sits beside the figure, not under it: it qualifies that number and a
+                    line of its own read as a third fact. Baseline-aligned so the small text sits
+                    on the big text's line rather than floating in the middle of it.
+
+                    Grey, not green or red — a busier day than yesterday is neither good news nor
                     bad, and colouring it would send the reader looking for a fault nobody is
                     reporting. */}
-                <p style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", color: "var(--gray-500)", marginTop: "2px" }}>
-                  {detectionDelta >= 0 ? <ArrowUp size={11} strokeWidth={2.6} /> : <ArrowDown size={11} strokeWidth={2.6} />}
-                  {t.vsYesterday(detectionDelta)}
-                </p>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", marginTop: "2px" }}>
+                  <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>
+                    {today.total.toLocaleString("en-US")}
+                  </span>
+                  <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", color: "var(--gray-500)" }}>
+                    {detectionDelta >= 0 ? <ArrowUp size={11} strokeWidth={2.6} /> : <ArrowDown size={11} strokeWidth={2.6} />}
+                    {t.vsYesterday(detectionDelta)}
+                  </span>
+                </div>
                 {/* Heights are a share of the tallest day, not of a round number: nobody knows what
                     a thousand detections looks like, but everyone can see which day was the busy
                     one. Today is the lighter step because the day is not over — a partial count at
