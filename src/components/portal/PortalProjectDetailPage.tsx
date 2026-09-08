@@ -1008,12 +1008,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 </span>
               </div>
 
-              {/* The plot keeps a margin of its own. The line ran to the card's inner edge, so the
-                  first and last dots sat half-off it and the fill met the border with a hard
-                  corner — the chart read as a picture that had been cropped rather than one that
-                  fits. Padding here, on the chart and the axis together, so the labels move with
-                  it. */}
-              <div style={{ flex: 1, minWidth: "280px", padding: "0 8px" }}>
+              {/* Margin, not padding.
+                  The inset was padding on this column, which moved the SVG in by 8px and left the
+                  dots and the labels where they were: both are absolutely positioned, and a
+                  percentage on those resolves against the padding box, not the content box. So
+                  the line ended 8px inside the dot that was supposed to sit on it, at both ends.
+                  Margin insets the whole column, box and contents together, and the three stay on
+                  the same coordinates. */}
+              <div style={{ flex: 1, minWidth: "280px", marginInline: "8px" }}>
               {/*
                 A line for the week, with today drawn as unfinished.
 
