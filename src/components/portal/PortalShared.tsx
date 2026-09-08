@@ -295,12 +295,18 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
           // Same radius and shadow as RowActionsMenu's dropdown — Portal has two menus and they
           // should not be two designs.
           backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "0 8px 20px rgba(14,22,42,0.12)",
-          // Matches the trigger. It was a flat 160px floor plus whatever the widest option needed,
-          // so a full-width field in a form got a list narrower than itself and a narrow filter in
-          // a toolbar got one wider — every select in Portal drew a different relationship between
-          // the two. minWidth (not width) so a long option can still push past a narrow trigger
-          // rather than being clipped: matching is the floor, legibility wins above it.
-          minWidth: "100%", maxHeight: "220px", overflowY: "auto",
+          // The trigger's width is the FLOOR, not the width. It was a flat 160px plus whatever the
+          // widest option needed, so a full-width field in a form got a list narrower than itself
+          // and a narrow filter in a toolbar got one wider — every select in Portal drew a
+          // different relationship between the two.
+          //
+          // Above that floor the list takes what its longest option needs (max-content) and stops
+          // at 340px. A fitContent trigger is only as wide as its own label — "All groups" — so at
+          // exactly 100% every option longer than that wrapped onto a second line, which in a menu
+          // reads as two options rather than one long one. Past 340px the label truncates instead;
+          // by then it is a sentence, and a menu is not where sentences are read.
+          minWidth: "100%", width: "max-content", maxWidth: "min(340px, 90vw)",
+          maxHeight: "220px", overflowY: "auto",
         }}>
           {options.map(o => {
             const active = o.value === value;
@@ -313,19 +319,26 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
                 style={{
                   display: "flex", alignItems: o.description ? "flex-start" : "center", gap: "6px", width: "100%", textAlign: "left", padding: "8px 12px",
                   border: "none", cursor: "pointer",
-                  backgroundColor: active ? "var(--gray-100)" : hoveredOption === o.value ? "var(--gray-50)" : "white",
+                  // gray-100 on hover, gray-200 on the current one. Hover was gray-50 — three per
+                  // cent of tone against white, which is not a hover so much as a rumour — and it
+                  // had to stay under the selected row's own gray-100. Moving both up a step keeps
+                  // that order and makes the pointer's position legible; the tick and the bold
+                  // label say which one is selected either way.
+                  backgroundColor: active ? "var(--gray-200)" : hoveredOption === o.value ? "var(--gray-100)" : "white",
                   fontSize: "12px", fontWeight: active ? 700 : 500, color: active ? "var(--gray-900)" : "var(--gray-700)",
                 }}
               >
                 <span style={{ display: "flex", width: "12px", flexShrink: 0, marginTop: o.description ? "2px" : 0 }}>
                   {active && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" strokeWidth="1.87" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                 </span>
+                {/* One line. Without this the option box grew a second line for a long label and
+                    the list read as more options than it has. */}
                 {o.description ? (
                   <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
                     <span>{o.label}</span>
                     <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--gray-500)", lineHeight: 1.5, whiteSpace: "normal" }}>{o.description}</span>
                   </span>
-                ) : o.label}
+                ) : <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.label}</span>}
               </button>
             );
           })}

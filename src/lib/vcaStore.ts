@@ -234,10 +234,6 @@ export interface Person {
   // forward. Optional since the seed data below predates per-project scoping and stays
   // unscoped (visible everywhere) rather than being retroactively assigned to one project.
   projectId?: string;
-  // Free-text classification tags set from Portal's Register VIP form — shown as colored badges
-  // on the VIP Registry card. Optional so existing/seeded persons (none of which have this
-  // configured) still type-check.
-  roleLabel?: string;
   priorityLabel?: "normal" | "high" | "very_high";
   /**
    * The group this person belongs to, if any.
@@ -1057,10 +1053,10 @@ export const PERSONS: Person[] = (() => {
   persons.push(
     // Two of these sit in a group and two do not, so the registry's People tab (individuals only)
     // and its Groups tab both have rows without either being empty.
-    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2026-09-01", projectId: "proj-sg", roleLabel: "Lead", priorityLabel: "high", groupId: "pgroup-1" },
-    { id: "person-portal-2", name: "Sarah Lim", type: "VIP", photoUrl: getFacePhoto("person-portal-2"), registeredAt: "2026-08-30", projectId: "proj-sg", roleLabel: "Regular", priorityLabel: "normal", groupId: "pgroup-1" },
-    { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28", projectId: "proj-sg", roleLabel: "Special", priorityLabel: "very_high", groupId: "pgroup-2" },
-    { id: "person-portal-4", name: "Rachel Wong", type: "VIP", photoUrl: getFacePhoto("person-portal-4"), registeredAt: "2026-08-25", projectId: "proj-sg", roleLabel: "Regular", priorityLabel: "normal" },
+    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2026-09-01", projectId: "proj-sg", priorityLabel: "high", groupId: "pgroup-1" },
+    { id: "person-portal-2", name: "Sarah Lim", type: "VIP", photoUrl: getFacePhoto("person-portal-2"), registeredAt: "2026-08-30", projectId: "proj-sg", priorityLabel: "normal", groupId: "pgroup-1" },
+    { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28", projectId: "proj-sg", priorityLabel: "very_high", groupId: "pgroup-2" },
+    { id: "person-portal-4", name: "Rachel Wong", type: "VIP", photoUrl: getFacePhoto("person-portal-4"), registeredAt: "2026-08-25", projectId: "proj-sg", priorityLabel: "normal" },
   );
   persons.push(...bulkSampleVips());
   return persons;
@@ -1088,12 +1084,13 @@ function bulkSampleVips(): Person[] {
    * in full, because "bin" and "binte" are the father's-name markers for a son and a daughter and
    * pairing them by modulo produced "Nur Aisyah bin Hassan" — a name no registry would hold.
    */
-  const blocks: { given: string[]; family: string[] }[] = [
+  const blocks: { given: string[]; family: string[]; gender: string }[] = [
     {
       given: ["Wei Ming", "Jia Hui", "Zhi Hao", "Xin Yi", "Kai Jie", "Mei Ling", "Jun Kai", "Hui Ying", "Cheng En", "Shu Fen",
               "Yong Sheng", "Li Wen", "Ze Yang", "Pei Shan", "Guo Wei", "Yan Ting", "Wen Jie", "Si Ying", "Hao Ran", "Xiu Mei",
               "Jing Yi", "Tian Hui", "Bo Wen", "Yu Xuan", "Qi Feng"],
       family: ["Tan", "Lim", "Ng", "Goh", "Chua"],
+      gender: "mfmfmfmfmfmfmfmfmfmfffmfm",
     },
     {
       given: ["Nur Aisyah binte Omar", "Muhammad Rizal bin Hassan", "Siti Nadia binte Salleh", "Ahmad Faiz bin Ismail", "Nurul Huda binte Yusof",
@@ -1102,21 +1099,23 @@ function bulkSampleVips(): Person[] {
               "Anisah binte Halim", "Fandi bin Yaacob", "Rohana binte Zainal", "Azman bin Roslan", "Suriani binte Kadir",
               "Danial bin Firdaus", "Maslinda binte Noor", "Hakim bin Zulkifli", "Julia binte Rahim", "Rusdi bin Samad"],
       family: [""],
+      gender: "fmfmfmfmfmfmmfmfmfmfmfmfm",
     },
     {
       given: ["Priya", "Arjun", "Deepa", "Ravi", "Kavitha", "Suresh", "Meena", "Vikram", "Lakshmi", "Ganesh",
               "Anitha", "Prakash", "Shanti", "Mohan", "Divya", "Rajesh", "Sunita", "Karthik", "Vasanthi", "Naveen",
               "Malini", "Dinesh", "Padma", "Sanjay", "Revathi"],
       family: ["Raman", "Nair", "Pillai", "Menon", "Krishnan"],
+      gender: "fmfmfmfmfmfmfmfmfmfmfmfmf",
     },
     {
       given: ["James", "Emma", "Daniel", "Sophie", "Marcus", "Claire", "Andrew", "Hannah", "Peter", "Laura",
               "Nathan", "Grace", "Oliver", "Chloe", "Simon", "Elise", "Thomas", "Naomi", "Julian", "Beatrice",
               "Adrian", "Fiona", "Lucas", "Miriam", "Victor"],
       family: ["Carter", "Whitfield", "Novak", "Rossi", "Andersen"],
+      gender: "mfmfmfmfmfmfmfmfmfmfmfmfm",
     },
   ];
-  const roles = ["Regular", "Lead", "Special", "Escort", "Delegate"];
   // Mostly normal. A watchlist where a third of the entries are the top level has no top level.
   const priorities: Person["priorityLabel"][] = [
     "normal", "normal", "normal", "normal", "normal", "normal", "high", "normal", "normal", "very_high",
@@ -1127,12 +1126,30 @@ function bulkSampleVips(): Person[] {
   // One line at most, and only on some — a note on every card would make the grid a wall of text.
   const notes = [undefined, undefined, undefined, "Escorted at all times.", undefined, undefined, "Media-facing; avoid public alerts.", undefined];
 
+  /**
+   * A face each.
+   *
+   * getFacePhoto() hashes an id into FACE_PHOTOS, which holds six pictures — so a hundred people
+   * wore six faces, seventeen of them each, and a watchlist whose whole job is telling faces apart
+   * showed the same one under seventeen different names.
+   *
+   * A stable portrait set indexed per person instead, and taken from the set that matches the
+   * name's gender so a row does not read as obviously the wrong person. Two counters, so no index
+   * is issued twice.
+   *
+   * Remote URLs, like the FACE_PHOTOS above them: the seed has always fetched its faces, and on an
+   * internet-isolated site both fail the same way. Real enrolments carry an uploaded image.
+   */
+  let menUsed = 0;
+  let womenUsed = 0;
   const out: Person[] = [];
   for (let i = 0; i < 100; i++) {
     const block = blocks[Math.floor(i / 25)];
     const given = block.given[i % 25];
     const family = block.family[i % block.family.length];
     const id = `person-seed-${i + 1}`;
+    const set = block.gender[i % 25] === "f" ? "women" : "men";
+    const portrait = `https://randomuser.me/api/portraits/${set}/${set === "women" ? womenUsed++ : menUsed++}.jpg`;
     // Spread back from 2026-08-24, a couple of registrations most days — which is what makes the
     // "registered today" figure and the date sort mean anything.
     const day = new Date(Date.UTC(2026, 7, 24) - Math.floor(i / 2) * 86_400_000);
@@ -1140,10 +1157,9 @@ function bulkSampleVips(): Person[] {
       id,
       name: family ? `${given} ${family}` : given,
       type: "VIP",
-      photoUrl: getFacePhoto(id),
+      photoUrl: portrait,
       registeredAt: day.toISOString().slice(0, 10),
       projectId: "proj-sg",
-      roleLabel: roles[i % roles.length],
       priorityLabel: priorities[i % priorities.length],
       groupId: groups[i % groups.length],
       description: notes[i % notes.length],

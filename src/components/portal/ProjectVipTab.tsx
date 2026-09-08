@@ -8,15 +8,14 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import { ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, Tooltip, sortRows, useTableSort } from "./PortalShared";
 
-type VipSortKey = "name" | "role" | "priority" | "registered";
+type VipSortKey = "name" | "priority" | "registered";
 
 // 36px for the actions column, the width RowActionsMenu gets in every other table.
-const VIP_GRID = "40px 1.2fr 0.7fr 0.7fr 0.8fr 1.4fr 36px";
+const VIP_GRID = "40px 1.5fr 0.7fr 0.8fr 1.6fr 36px";
 /** The All tab adds a Group column; the Individuals tab would print "Individual" on every row. */
-const VIP_GRID_WITH_GROUP = "40px 1.1fr 0.9fr 0.65fr 0.7fr 0.75fr 1.1fr 36px";
+const VIP_GRID_WITH_GROUP = "40px 1.3fr 0.9fr 0.7fr 0.75fr 1.3fr 36px";
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
-const ROLE_LABELS = ["Regular", "Lead", "Captain", "Health", "Special"];
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
 const PRIORITY_COLOR: Record<NonNullable<Person["priorityLabel"]>, { bg: string; color: string }> = {
   normal: { bg: "var(--gray-100)", color: "var(--gray-600)" },
@@ -24,10 +23,17 @@ const PRIORITY_COLOR: Record<NonNullable<Person["priorityLabel"]>, { bg: string;
   very_high: { bg: "var(--danger-100)", color: "var(--danger-500)" },
 };
 
-// Role/priority values stored on Person are canonical English identifiers (see ROLE_LABELS /
-// PRIORITY_LABELS above and the seed data in vcaStore.ts) — kept stable across languages so
-// existing records don't shift meaning when the display language changes. T.roleText /
-// T.priorityText below only translate how each identifier is *displayed*.
+// Priority values stored on Person are canonical English identifiers (see PRIORITY_LABELS above
+// and the seed data in vcaStore.ts) — kept stable across languages so existing records don't shift
+// meaning when the display language changes. T.priorityText below only translates how each
+// identifier is *displayed*.
+//
+// There was a "Role" beside it — Regular / Lead / Captain / Health / Special, asked for on the
+// register form and printed in a table column. Nothing read it: no filter, no alert, no camera
+// behaviour, and it had already come off the cards. Its vocabulary was not this product's either
+// ("Captain" and "Health" are a team's roles, not a watchlist's). A field an administrator is
+// asked to fill and nothing acts on is a question with no answer, so it is gone — group and
+// priority are what classify a face here.
 interface VipDict {
   pageTitle: string;
   pageDesc: string;
@@ -44,7 +50,6 @@ interface VipDict {
   viewGrid: string;
   viewTable: string;
   colName: string;
-  colRole: string;
   colPriority: string;
   colRegistered: string;
   colNote: string;
@@ -62,7 +67,6 @@ interface VipDict {
   vipUpdatedTitle: string;
   nameLabel: string;
   namePlaceholder: string;
-  tagLabel: string;
   priorityLabel: string;
   facePhotoLabel: string;
   facePhotoLabelRequired: string;
@@ -70,7 +74,6 @@ interface VipDict {
   uploadPhoto: string;
   cancel: string;
   register: string;
-  roleText: Record<string, string>;
   priorityText: Record<NonNullable<Person["priorityLabel"]>, string>;
   bulkSuccessTitle: string;
   bulkEmptyTitle: string;
@@ -128,7 +131,6 @@ const T: Record<"en" | "ko", VipDict> = {
     viewGrid: "Grid",
     viewTable: "Table",
     colName: "Name",
-    colRole: "Role",
     colPriority: "Priority",
     colRegistered: "Registered",
     colNote: "Note",
@@ -146,7 +148,6 @@ const T: Record<"en" | "ko", VipDict> = {
     vipUpdatedTitle: "VIP updated",
     nameLabel: "Name *",
     namePlaceholder: "Alexander Wright",
-    tagLabel: "Tag",
     priorityLabel: "Priority",
     facePhotoLabel: "Face photo",
     facePhotoLabelRequired: "Face photo *",
@@ -154,7 +155,6 @@ const T: Record<"en" | "ko", VipDict> = {
     uploadPhoto: "Upload photo",
     cancel: "Cancel",
     register: "Register",
-    roleText: { Regular: "Regular", Lead: "Lead", Captain: "Captain", Health: "Health", Special: "Special" } as Record<string, string>,
     priorityText: { normal: "Normal", high: "High", very_high: "Very High" } as Record<NonNullable<Person["priorityLabel"]>, string>,
     bulkSuccessTitle: "Bulk upload complete",
     bulkEmptyTitle: "No rows imported",
@@ -211,7 +211,6 @@ const T: Record<"en" | "ko", VipDict> = {
     viewGrid: "그리드",
     viewTable: "테이블",
     colName: "이름",
-    colRole: "역할",
     colPriority: "우선순위",
     colRegistered: "등록일",
     colNote: "메모",
@@ -229,7 +228,6 @@ const T: Record<"en" | "ko", VipDict> = {
     vipUpdatedTitle: "VIP 정보를 수정했습니다",
     nameLabel: "이름 *",
     namePlaceholder: "홍길동",
-    tagLabel: "태그",
     priorityLabel: "우선순위",
     facePhotoLabel: "얼굴 사진",
     facePhotoLabelRequired: "얼굴 사진 *",
@@ -237,7 +235,6 @@ const T: Record<"en" | "ko", VipDict> = {
     uploadPhoto: "사진 업로드",
     cancel: "취소",
     register: "등록",
-    roleText: { Regular: "일반", Lead: "팀장", Captain: "주장", Health: "보건", Special: "특별" } as Record<string, string>,
     priorityText: { normal: "일반", high: "높음", very_high: "매우 높음" } as Record<NonNullable<Person["priorityLabel"]>, string>,
     bulkSuccessTitle: "일괄 업로드 완료",
     bulkEmptyTitle: "가져온 행이 없습니다",
@@ -282,7 +279,6 @@ const T: Record<"en" | "ko", VipDict> = {
 
 interface RegisterValues {
   name: string;
-  roleLabel: string;
   priorityLabel: NonNullable<Person["priorityLabel"]>;
   description?: string;
   /** Undefined = an individual, i.e. in no group. */
@@ -310,7 +306,6 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
 }) {
   const editing = person !== undefined;
   const [name, setName] = useState(person?.name ?? "");
-  const [roleLabel, setRoleLabel] = useState(person?.roleLabel ?? ROLE_LABELS[0]);
   const [priorityLabel, setPriorityLabel] = useState<NonNullable<Person["priorityLabel"]>>(person?.priorityLabel ?? "normal");
   const [description, setDescription] = useState(person?.description ?? "");
   const [groupId, setGroupId] = useState(person?.groupId ?? "");
@@ -369,11 +364,8 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
             <TextField value={name} onChange={setName} placeholder={t.namePlaceholder} />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.tagLabel}</label>
-              <FilterSelect value={roleLabel} onChange={setRoleLabel} options={ROLE_LABELS.map(r => ({ value: r, label: t.roleText[r] ?? r }))} />
-            </div>
+          {/* Priority alone now, full width — it shared a two-column row with the Role select. */}
+          <div>
             <div>
               <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.priorityLabel}</label>
               <FilterSelect
@@ -452,7 +444,7 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
           </button>
           <button className="portal-btn-primary"
             onClick={() => valid && onSubmit({
-              name: name.trim(), roleLabel, priorityLabel,
+              name: name.trim(), priorityLabel,
               description: description.trim() || undefined,
               groupId: groupId || undefined,
               photoUrl: photoPreview ?? undefined,
@@ -528,10 +520,6 @@ function Tag({ label, bg, color, flexible }: { label: string; bg: string; color:
       {label}
     </span>
   );
-}
-
-function RoleTag({ label }: { label: string }) {
-  return <Tag label={label} bg="var(--gray-100)" color="var(--gray-600)" />;
 }
 
 function PriorityTag({ priority, text }: { priority: NonNullable<Person["priorityLabel"]>; text: string }) {
@@ -722,9 +710,6 @@ function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
                 a watchlist "when was this face put in" is a question an inspection asks by the
                 minute, not by the day. Rows enrolled before Portal recorded a time show only the
                 date rather than a made-up one. */}
-            {row(t.colRole, person.roleLabel
-              ? (t.roleText[person.roleLabel] ?? person.roleLabel)
-              : <span style={{ color: "var(--gray-300)" }}>—</span>)}
             {row(t.colNote, person.description || <span style={{ color: "var(--gray-400)" }}>{t.detailNoNote}</span>)}
             {row(t.colRegistered, registeredLong(person.registeredAt))}
           </div>
@@ -826,7 +811,6 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
     ? sortRows(matchingPersons, sort, (person, key) => {
         switch (key) {
           case "name": return person.name.toLowerCase();
-          case "role": return person.roleLabel;
           // Ranked, not alphabetical: "very_high" has to sit above "high", and alphabetically it
           // would sit below it.
           case "priority": return person.priorityLabel ? PRIORITY_LABELS.indexOf(person.priorityLabel) : undefined;
@@ -839,7 +823,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
     addPerson({
       name: values.name, type: "VIP", photoUrl: values.photoUrl ?? getFacePhoto(values.name),
       registeredAt: new Date().toISOString(),
-      roleLabel: values.roleLabel, priorityLabel: values.priorityLabel,
+      priorityLabel: values.priorityLabel,
       description: values.description,
       groupId: values.groupId,
       projectId,
@@ -851,7 +835,6 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
     if (!editingPerson) return;
     updatePerson(editingPerson.id, {
       name: values.name,
-      roleLabel: values.roleLabel,
       priorityLabel: values.priorityLabel,
       description: values.description,
       groupId: values.groupId,
@@ -1099,7 +1082,6 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             {([
               { label: t.colName, key: "name" },
               ...(showGroupColumn ? [{ label: t.colGroup }] : []),
-              { label: t.colRole, key: "role" },
               { label: t.colPriority, key: "priority" },
               { label: t.colRegistered, key: "registered" },
               { label: t.colNote },
@@ -1142,7 +1124,6 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                     ]}
                   />
                 )}
-                <span>{person.roleLabel ? <RoleTag label={t.roleText[person.roleLabel] ?? person.roleLabel} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
                 <span>{person.priorityLabel ? <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
                 <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{person.registeredAt.slice(0, 10)}</span>
                 <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.description || "—"}</span>
@@ -1165,7 +1146,6 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
            grows anyway. */
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gridAutoRows: "1fr", gap: "12px" }}>
           {projectPersons.map(person => {
-            const elevated = person.priorityLabel === "high" || person.priorityLabel === "very_high";
             return (
             /* Same edge, radius and padding as an Overview metric card. These were 12px and
                borderless while every card one tab over was a 16px card with a hairline, which made
@@ -1204,23 +1184,26 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                   overflow: "hidden", height: "35px",
                 }}>{person.name}</p>
                 {(
-                  /* Group, and priority only when it is raised.
-                     "Normal" is the register form's default, so a grey NORMAL pill sat on nearly
-                     every card and said nothing — and once the role tag came off it was the only
-                     tag on an ungrouped card, in the slot where other cards carry a group name,
-                     which made it read as "this person is an individual". A tag on a card now
-                     means something is true of this person: they are in a party, or they are
-                     above normal. The table's Priority column still states it either way.
+                  /* Priority on every card, "normal" included.
+                     It used to appear only when raised, on the grounds that a grey NORMAL pill said
+                     nothing — but the absence said nothing either, and worse, it said it in the
+                     same silence as "nobody has set this yet". Every face in the registry has a
+                     priority; the card states it. Normal stays grey, so the ones that are not
+                     normal are still the only colour in the grid.
                      One line and no wrap, and the row is here even when this person has neither
                      tag: it used to appear only when there was something to show and to wrap onto
                      a second line when a group name ran long, which is two more ways for one card
                      to be taller than the one beside it. Reserved space costs 18px on the cards
                      that have nothing to say; a ragged grid costs the reader every card. */
                   <div style={{ display: "flex", gap: "4px", margin: "4px 0 0", height: "18px", overflow: "hidden" }}>
+                    {/* Priority first. It is the shorter of the two and the one that decides how
+                        hard a detection is chased, so it reads before the party a person happens to
+                        be travelling with — and being first means it keeps its full width while the
+                        group name behind it is the one that gives way. */}
+                    <PriorityTag priority={person.priorityLabel ?? "normal"} text={t.priorityText[person.priorityLabel ?? "normal"]} />
                     {person.groupId && groupById.has(person.groupId) && (
                       <Tag label={groupById.get(person.groupId)!.name} bg="var(--info-100)" color="var(--info-500)" flexible />
                     )}
-                    {elevated && <PriorityTag priority={person.priorityLabel!} text={t.priorityText[person.priorityLabel!]} />}
                   </div>
                 )}
                 {/* The note is not on the card.
