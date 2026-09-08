@@ -48,7 +48,6 @@ interface VipDict {
   colPriority: string;
   colRegistered: string;
   colNote: string;
-  removeVip: string;
   confirmRemoveTitle: string;
   confirmRemoveBody: string;
   removeAction: string;
@@ -133,7 +132,6 @@ const T: Record<"en" | "ko", VipDict> = {
     colPriority: "Priority",
     colRegistered: "Registered",
     colNote: "Note",
-    removeVip: "Remove VIP",
     confirmRemoveTitle: "Remove this VIP?",
     confirmRemoveBody: "They will be removed from this project's watchlist. Cameras will no longer detect them as a registered VIP.",
     removeAction: "Remove",
@@ -217,7 +215,6 @@ const T: Record<"en" | "ko", VipDict> = {
     colPriority: "우선순위",
     colRegistered: "등록일",
     colNote: "메모",
-    removeVip: "VIP 삭제",
     confirmRemoveTitle: "정말 삭제하시겠습니까?",
     confirmRemoveBody: "이 프로젝트의 관심인물 목록에서 삭제됩니다. 이후 카메라는 이 인물을 등록된 VIP로 탐지하지 않습니다.",
     removeAction: "삭제",
@@ -1161,8 +1158,6 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 // a 60px thumbnail, and at 16 all round the space above the name read as more
                 // than the space between the lines it separates.
                 padding: "12px 16px",
-                // For the delete button, which is positioned rather than laid out — see below.
-                position: "relative",
                 display: "flex", gap: "12px", alignItems: "flex-start", cursor: "pointer",
               }}>
               {/* 60, not 44. At 44 the thumbnail told you which card was whose and nothing more —
@@ -1184,9 +1179,6 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                   fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", lineHeight: 1.35,
                   display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
                   overflow: "hidden", height: "35px",
-                  // Room for the delete button in the corner above it. Only the name pays this —
-                  // the tags and the date sit below the icon and get the card's full width.
-                  paddingRight: "22px",
                 }}>{person.name}</p>
                 {(
                   /* Group, and priority only when it is raised.
@@ -1223,22 +1215,15 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                     date sits next to other labelled values and needs to say which one it is. */}
                 <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "4px" }}>{person.registeredAt.slice(0, 10)}</p>
               </div>
-              {/* stopPropagation, or removing somebody also opens their detail behind the dialog. */}
-              {/* Grey until hovered, then a danger-100 box with a danger-400 glyph — the colour
-                  says what the click does before it is clicked, which on a delete is the point.
-
-                  Positioned in the corner rather than laid out as a third column. In the flow it
-                  took 38px off every card's text — and at five columns that is the difference
-                  between "Muhammad Rizal bin Hassan" fitting on two lines and losing its last
-                  word. A delete is a secondary action; it has no business competing with the name
-                  for width. */}
-              <button className="portal-icon-btn-danger"
-                onClick={e => { e.stopPropagation(); setConfirmingRemove(person); }} title={t.removeVip}
-                style={{ position: "absolute", top: "8px", right: "8px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "6px" }}>
-                <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-                  <path d="M2.91663 4.08333H11.0833M5.83329 6.41667V9.33333M8.16663 6.41667V9.33333M3.49996 4.08333L4.08329 10.9167C4.08329 11.2261 4.20621 11.5228 4.42501 11.7416C4.6438 11.9604 4.9405 12.0833 5.24996 12.0833H8.74996C9.05942 12.0833 9.35612 11.9604 9.57491 11.7416C9.79371 11.5228 9.91663 11.2261 9.91663 10.9167L10.5 4.08333M5.24996 4.08333V2.33333C5.24996 2.17862 5.31142 2.03025 5.42082 1.92085C5.53022 1.81146 5.67858 1.75 5.83329 1.75H8.16663C8.32134 1.75 8.4697 1.81146 8.5791 1.92085C8.68849 2.03025 8.74996 2.17862 8.74996 2.33333V4.08333" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+              {/* No delete on the card.
+                  It was a trash icon in this corner — a third route to the one irreversible action
+                  on the screen, next to the two that already exist: the ⋯ on the detail sheet this
+                  card opens, and the ⋯ on the table view's row. Same reason the Overview cards lost
+                  their "Manage" link: the card is entirely clickable, so a smaller target inside it
+                  aimed at the same person is just a worse version of the card.
+                  A hundred cards also meant a hundred delete affordances on screen for something
+                  done a handful of times a year, and every one of them needed stopPropagation to
+                  avoid opening the sheet behind its own confirmation. */}
             </div>
             );
           })}
