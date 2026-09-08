@@ -361,7 +361,11 @@ function SectionHead({ title, subtitle, action }: {
           onClick={action.onClick}
           title={action.label}
           aria-label={action.label}
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", padding: "4px", borderRadius: "6px", cursor: "pointer", color: "var(--gray-500)", flexShrink: 0 }}
+          /* On the title's line, not floating between the title and the line under it. The button
+             is 15px of icon in 4px of padding — 23px against a 17px title line — so top-aligning
+             the box left the glyph sitting a few px low, right in the gap. Tighter padding and a
+             -2px nudge put its centre on the title's centre. */
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", padding: "2px", marginTop: "-2px", borderRadius: "6px", cursor: "pointer", color: "var(--gray-500)", flexShrink: 0 }}
         >
           {action.icon}
         </button>
