@@ -549,7 +549,7 @@ export function SelectedCheckIcon({ size = 14 }: { size?: number }) {
  * two — the Input Sources strip was a single bordered box with three columns divided by rules,
  * which read as a different component doing the same job one screen over.
  */
-export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense, value, onClick, children }: {
+export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense, bare, value, onClick, children }: {
   label: string;
   /** Optional. Input Sources drops the badge: its cards sit directly above a long table, so the
    *  32px badge was spending a sixth of the card's height on decoration that the value and the
@@ -559,6 +559,16 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
   icon?: () => React.JSX.Element;
   /** Overrides the (absent) card edge — used to put a red rim on a card that is over its limit. */
   accentBorder?: string;
+  /**
+   * No card at all: no ground, no edge, no shadow, no padding — just the label, the figure and
+   * whatever is under them, sitting on the page.
+   *
+   * For metrics that are a header for the thing below rather than an object in their own right.
+   * The Input Sources pair is that: two figures about the table underneath, which were wearing a
+   * white box on a white page, so the only thing the box added was two more rectangles above a
+   * screen that already has a toolbar and a table.
+   */
+  bare?: boolean;
   /**
    * Compact form for cards that sit directly above a table (Input Sources): the label and the
    * figure share one line, the bar sits under them, and padding drops to 12/14 — about half the
@@ -592,8 +602,13 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
       onClick={onClick}
       className={onClick ? "portal-card-clickable" : undefined}
       style={{
-        backgroundColor: "white", border: accentBorder ?? CARD_BORDER, borderRadius: dense ? "12px" : "16px",
-        boxShadow: PANEL_SHADOW, padding: dense ? "12px 14px" : "16px",
+        ...(bare
+          ? { backgroundColor: "transparent", border: accentBorder ?? "none", padding: 0 }
+          : {
+              backgroundColor: "white", border: accentBorder ?? CARD_BORDER,
+              borderRadius: dense ? "12px" : "16px",
+              boxShadow: PANEL_SHADOW, padding: dense ? "12px 14px" : "16px",
+            }),
         display: "flex", flexDirection: "column", gap: dense ? "8px" : "6px", flex: 1, minWidth: 0,
         // A <button> brings its own centring, font and cursor; undo them so the clickable card is
         // pixel-identical to the static one.

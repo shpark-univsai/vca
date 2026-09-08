@@ -6,7 +6,7 @@ import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, sortRows, useTableSort, ActiveFilterCount, CARD_GAP, MetricCard, SubStat } from "./PortalShared";
+import { BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, sortRows, useTableSort, ActiveFilterCount, MetricCard, SubStat } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -1026,17 +1026,20 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           endpoint yet, so the figure was a permanent 0 (or, after an upload, a number that never
           cleared). The totals are on the video / image tabs below anyway, with each file's own
           state in its row. */}
-      {/* Capped, not stretched.
-          Two cards over `1fr 1fr` meant ~650px each on a wide monitor — a 6px bar with half a
-          screen of empty card around it, and the table pushed most of a fold down for it. These
-          are a header for the list, so they take the width they need and leave the rest; the row
-          stays left-aligned against the table below rather than centring on nothing. */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 340px))", justifyContent: "start", gap: CARD_GAP, marginBottom: "16px" }}>
+      {/* No cards. Two figures on the page, capped at 340px each and left-aligned with the table.
+          They were white boxes on a white canvas, which bought two rectangles and nothing else —
+          and they are not objects in their own right, they are the headline for the list below.
+          `1fr 1fr` came first and gave them ~650px each on a wide monitor: a 6px bar with half a
+          screen of empty card around it, and the table pushed most of a fold down for it. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 340px))", justifyContent: "start", gap: "32px", marginBottom: "20px" }}>
         {/* Dense form: label and figure share a line, the bar runs the full width under them, and
-            the online/offline split sits beside the number instead of in a bordered footer. */}
+            the online/offline split sits beside the number instead of in a bordered footer.
+            With the card gone, the gap between the two has to do the separating a border used to —
+            hence 32 rather than the card grid's 12. */}
         <MetricCard
           label={t.metricChannelUsage}
           dense
+          bare
           accentBorder={overLimit ? "1px solid var(--danger-400)" : undefined}
           value={
             <span style={{ display: "flex", alignItems: "baseline", gap: "4px", flexShrink: 0, whiteSpace: "nowrap" }}>
@@ -1055,6 +1058,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
         <MetricCard
           label={t.metricStreamHealth}
           dense
+          bare
           value={
             <span style={{ display: "flex", alignItems: "baseline", gap: "8px", flexShrink: 0, whiteSpace: "nowrap" }}>
               <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
