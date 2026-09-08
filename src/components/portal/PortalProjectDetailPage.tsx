@@ -932,29 +932,54 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 What the cameras saw and whether the cameras worked are two questions, and the
                 second belongs with the cameras: it is under the Camera status panel now. */}
             <div style={{ minWidth: 0 }}>
-              {/* Back to bars. A line was the wrong swap: the reading here is "which day was
-                  busy", one day against another, and bars are what compare quantities that stand
-                  apart. A line claims the seven points are samples of something continuous, which
-                  a daily total is not — and it drew today's partial count as a plunge rather than
-                  as a day that has not finished.
+              {/*
+                A line for the week, with today drawn as unfinished.
 
-                  Heights are a share of the tallest day, not of a round number: nobody knows what
-                  a thousand detections looks like, but everyone can see which day was the busy
-                  one. Today is the lighter step because the day is not over — a partial count at
-                  full strength reads as a quiet day. Each bar's tooltip carries the split. */}
-              <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "56px" }}>
-                {detectionDays.map(d => (
-                  <div
+                Bars compare one day against another; a line shows the week moving, which is what
+                the figure beside the title ("vs yesterday") is already asking about. The reason a
+                line was wrong the first time was the last point: today is a partial count, and a
+                solid line falling into it reads as a collapse rather than as a day with hours
+                left in it. So the last segment is dashed and today's dot is hollow — the chart
+                says "not finished" instead of "dropped".
+
+                An SVG with the viewBox in the data's own units and preserveAspectRatio off, so it
+                stretches to the card's width with no measuring in JS. The y axis runs from zero to
+                the week's peak; a baseline at the smallest day would turn every wobble into a
+                cliff. The dots are absolutely positioned rather than drawn in the SVG, because a
+                circle inside a non-uniformly scaled viewBox comes out an ellipse — the same trap
+                the app's own detection chart documents at the top of its file.
+              */}
+              <div style={{ position: "relative", height: "56px" }}>
+                <svg width="100%" height="100%" viewBox="0 0 100 40" preserveAspectRatio="none" style={{ display: "block", overflow: "visible" }}>
+                  <polygon
+                    points={`0,40 ${detectionDays.map((d, i) => `${(i / (detectionDays.length - 1)) * 100},${40 - (d.total / detectionPeak) * 36}`).join(" ")} 100,40`}
+                    fill="var(--primary-100)"
+                  />
+                  <polyline
+                    points={detectionDays.slice(0, -1).map((d, i) => `${(i / (detectionDays.length - 1)) * 100},${40 - (d.total / detectionPeak) * 36}`).join(" ")}
+                    fill="none" stroke="var(--primary-300)" strokeWidth="1.5"
+                    vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round"
+                  />
+                  <polyline
+                    points={detectionDays.slice(-2).map((d, i) => `${((detectionDays.length - 2 + i) / (detectionDays.length - 1)) * 100},${40 - (d.total / detectionPeak) * 36}`).join(" ")}
+                    fill="none" stroke="var(--primary-300)" strokeWidth="1.5" strokeDasharray="3 3"
+                    vectorEffect="non-scaling-stroke" strokeLinecap="round"
+                  />
+                </svg>
+                {detectionDays.map((d, i) => (
+                  <span
                     key={d.daysAgo}
                     title={`${d.total.toLocaleString("en-US")} — ${t.detectionSplit(d.vip, d.vehicle, d.unknown)}`}
-                    style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}
-                  >
-                    <div style={{
-                      height: `${Math.max(4, (d.total / detectionPeak) * 100)}%`,
-                      borderRadius: "4px",
-                      backgroundColor: d.daysAgo === 0 ? "var(--primary-200)" : "var(--primary-300)",
-                    }} />
-                  </div>
+                    style={{
+                      position: "absolute",
+                      left: `${(i / (detectionDays.length - 1)) * 100}%`,
+                      top: `${(1 - (d.total / detectionPeak) * 0.9) * 100}%`,
+                      transform: "translate(-50%, -50%)",
+                      width: "5px", height: "5px", borderRadius: "50%", boxSizing: "content-box",
+                      backgroundColor: d.daysAgo === 0 ? "white" : "var(--primary-300)",
+                      border: d.daysAgo === 0 ? "2px solid var(--primary-400)" : "none",
+                    }}
+                  />
                 ))}
               </div>
               {/* Weekday and date, only once the clock is known — they are the one part of this
