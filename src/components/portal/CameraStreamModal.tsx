@@ -219,32 +219,32 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
                 <p style={{ fontSize: "13px", fontWeight: 700, color: value === "—" || value === t.noRecentDetections ? "var(--gray-400)" : "var(--gray-900)", marginTop: "2px", wordBreak: "break-word" }}>{value}</p>
               </div>
             ))}
-            {/* Full width, and monospace: a stream URL is a string somebody may have to compare
-                character by character, and it does not fit half a sheet. */}
+            {/* Full width: a stream URL does not fit half a sheet. */}
             <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
               <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)" }}>
                 <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Link2 size={11} strokeWidth={2.2} /></span>
                 {t.rtspUrl}
               </p>
-              {/* 13px like every other value on the sheet. It was 12 because monospace runs wider
-                  than the body face, but a value that is a step smaller than its neighbours reads
-                  as a footnote — and this is the field somebody opens this sheet to check. */}
-              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "monospace", marginTop: "2px", wordBreak: "break-all" }}>{camera.rtspUrl}</p>
+              {/* The same face as every other value, not monospace.
+                  It was set in mono on the argument that a URL gets compared character by
+                  character — true of a hash or an IP column, but this is one value in a sheet of
+                  values, and a different typeface for one of them made it read as code pasted into
+                  a form. Same size, same weight, same family: a value is a value. */}
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "2px", wordBreak: "break-all" }}>{camera.rtspUrl}</p>
             </div>
             <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
-              <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)", marginBottom: "5px" }}>
+              <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)" }}>
                 <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Scan size={11} strokeWidth={2.2} /></span>
                 {t.mappedAiEngines}
               </p>
-              {aiFeatures.length === 0 ? (
-                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-400)" }}>{t.noAiEngines}</p>
-              ) : (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                  {aiFeatures.map(f => (
-                    <span key={f} style={{ fontSize: "10px", fontWeight: 600, color: "var(--primary-400)", backgroundColor: "var(--primary-100)", padding: "3px 8px", borderRadius: "999px" }}>{f}</span>
-                  ))}
-                </div>
-              )}
+              {/* Text, not chips. Every other value on this sheet is 13px/700 in the body face, and
+                  the engines were 10px/600 pills in primary — the one field that looked like a
+                  different kind of thing, when it is the same kind: a labelled value. Pills earn
+                  their keep in a table, where a value repeats down a column and the shape helps you
+                  scan it; in a detail sheet read once, they are decoration with a smaller font. */}
+              <p style={{ fontSize: "13px", fontWeight: 700, color: aiFeatures.length === 0 ? "var(--gray-400)" : "var(--gray-900)", marginTop: "2px" }}>
+                {aiFeatures.length === 0 ? t.noAiEngines : aiFeatures.join(", ")}
+              </p>
             </div>
           </div>
         </div>
