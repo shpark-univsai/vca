@@ -268,6 +268,51 @@ export default function PortalShell() {
             >
               {currentOrg?.name ?? t.noTeam}
             </span>
+            {/*
+              How the fleet is doing, for the pages that do not say it themselves.
+
+              Not on Overview: that page carries the same figure twice already — a card reading
+              "51 / 59 connected" with a bar under it, and a line in the attention strip when
+              anything is offline — and a third copy in the bar above them would be the same number
+              three times on one screen. On Licence, Users and Server there is nothing else on
+              screen about the cameras, and this is the only answer to "is the site up".
+
+              Not on My page either: that screen belongs to the account, not to a project, and a
+              project's camera count there would be a fact from somewhere else.
+
+              Beside the project, not after the page name: these two numbers are a fact about the
+              project — the same project the crumb to their left names — and reading "Users &
+              Permissions · 51 · 8" made them look like a count of what is on the page you opened.
+
+              Two dots and two figures, no animation. The app's header animates its own pair
+              because it sits over live video; Portal is a set of forms and tables, and a pulsing
+              icon on a settings page is movement with nothing behind it.
+            */}
+            {!showAccount && tab !== "overview" && projectCameras.length > 0 && (
+              <span style={{ display: "flex", alignItems: "center", marginLeft: "2px", flexShrink: 0 }}>
+                <button
+                  onClick={() => setTab("cameras")}
+                  title={t.fleetTitle(fleetOnline, fleetOffline)}
+                  className="portal-link"
+                  style={{
+                    display: "flex", alignItems: "center", gap: "10px", flexShrink: 0,
+                    border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)" }}>
+                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--gray-900)" }} />
+                    {fleetOnline}
+                  </span>
+                  {/* The offline figure is the only red left in the bar, and it earns it here: on
+                      these pages nothing else would tell you a camera is down. A zero is grey,
+                      because "none offline" is not news. */}
+                  <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", fontWeight: 700, color: fleetOffline > 0 ? "var(--danger-400)" : "var(--gray-400)" }}>
+                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: fleetOffline > 0 ? "var(--danger-400)" : "var(--gray-300)" }} />
+                    {fleetOffline}
+                  </span>
+                </button>
+              </span>
+            )}
             <BreadcrumbChevron />
             <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap", padding: "6px 2px" }}>
               {t.newProject}
@@ -295,48 +340,6 @@ export default function PortalShell() {
             <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap" }}>
               {showAccount ? t.myPageCrumb : PROJECT_TABS.find(pt => pt.id === tab)?.label[lang]}
             </span>
-            {/*
-              How the fleet is doing, for the pages that do not say it themselves.
-
-              Not on Overview: that page carries the same figure twice already — a card reading
-              "51 / 59 connected" with a bar under it, and a line in the attention strip when
-              anything is offline — and a third copy in the bar above them would be the same number
-              three times on one screen. On Licence, Users and Server there is nothing else on
-              screen about the cameras, and this is the only answer to "is the site up".
-
-              Not on My page either: that screen belongs to the account, not to a project, and a
-              project's camera count there would be a fact from somewhere else.
-
-              Two dots and two figures, no animation. The app's header animates its own pair
-              because it sits over live video; Portal is a set of forms and tables, and a pulsing
-              icon on a settings page is movement with nothing behind it.
-            */}
-            {!showAccount && tab !== "overview" && projectCameras.length > 0 && (
-              <>
-                <span style={{ width: "1px", height: "14px", backgroundColor: "var(--line)", marginInline: "6px", flexShrink: 0 }} />
-                <button
-                  onClick={() => setTab("cameras")}
-                  title={t.fleetTitle(fleetOnline, fleetOffline)}
-                  className="portal-link"
-                  style={{
-                    display: "flex", alignItems: "center", gap: "10px", flexShrink: 0,
-                    border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
-                  }}
-                >
-                  <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)" }}>
-                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--gray-900)" }} />
-                    {fleetOnline}
-                  </span>
-                  {/* The offline figure is the only red left in the bar, and it earns it here: on
-                      these pages nothing else would tell you a camera is down. A zero is grey,
-                      because "none offline" is not news. */}
-                  <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", fontWeight: 700, color: fleetOffline > 0 ? "var(--danger-400)" : "var(--gray-400)" }}>
-                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: fleetOffline > 0 ? "var(--danger-400)" : "var(--gray-300)" }} />
-                    {fleetOffline}
-                  </span>
-                </button>
-              </>
-            )}
           </>
         ) : (
           <>
