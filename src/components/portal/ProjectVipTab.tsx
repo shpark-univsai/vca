@@ -1027,6 +1027,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 title={active ? t.healthClear : t.healthShowOnly}
                 className="portal-attention-row"
                 style={{
+                  flex: 1, minWidth: "128px",
                   display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px",
                   padding: "10px 18px", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
                   borderLeft: i === 0 ? "none" : BORDER,
@@ -1046,7 +1047,10 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           })}
           {/* The reach figure closes the strip, on the tinted end and not clickable — it is the one
               number here that is not a defect and cannot be filtered to. */}
-          <span style={{ flex: 1, minWidth: "160px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "2px", padding: "10px 18px", borderLeft: BORDER, backgroundColor: "var(--gray-50)" }}>
+          {/* One share of the row like the others, not "whatever is left". With flex:1 on this cell
+              alone it swallowed the spare width and the strip read as three small boxes and one
+              banner — every cell here is one figure, so every cell is one column. */}
+          <span style={{ flex: 1, minWidth: "128px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "2px", padding: "10px 18px", borderLeft: BORDER, backgroundColor: "var(--gray-50)" }}>
             <span style={{ display: "flex", alignItems: "baseline", gap: "5px" }}>
               <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "22px" }}>{detectedCount}</span>
               <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthOfTotal(allProjectPersons.length)}</span>
