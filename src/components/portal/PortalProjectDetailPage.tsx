@@ -985,7 +985,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 {unstable.length === 0 ? (
                   <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "10px" }}>{t.noDrops}</p>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", marginTop: "6px" }}>
+                  {/* 4px between rows on top of each row's own 6px padding: with the rows flush
+                      the four names read as one block of text rather than four things you can
+                      click, and the hover fill of one row touched the next. */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "8px" }}>
                     {unstable.map(({ camera, drops }) => (
                       <button
                         key={camera.id}
