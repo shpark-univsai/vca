@@ -1245,7 +1245,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             {/* The right column: who was added, then what changed. Both are read at a glance and
                 neither needs the width the table beside them does. */}
             <div style={{ display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
-              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+              {/* Sized by what is in it, not by half the row. Both cards carried flex:1, so the
+                  three VIP rows were stretched over whatever height the camera table beside them
+                  happened to take and the activity card was pushed to the bottom of the page with
+                  a field of white above it. Three registrations and five log lines are what these
+                  two have to say; the column ends where they end. */}
+              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ marginBottom: "14px", flexShrink: 0 }}>
                   <SectionHead title={t.recentVipsTitle} subtitle={t.vipsSubtitle} />
                 </div>
@@ -1338,7 +1343,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               </div>
               )}
 
-              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ marginBottom: "14px", flexShrink: 0 }}>
                   {/* The way out is at the foot of this panel now, like the two beside it. It was
                       the only one with its link up here, which made the three panels' heads look
