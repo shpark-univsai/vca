@@ -2,10 +2,10 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, ArrowUpRight, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
+import { ArrowUp, ArrowUpRight, ChevronRight, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
@@ -61,7 +61,19 @@ const T = {
     attnNoCameras: "No source connected yet",
     attnNoVips: "No one registered in the watchlist yet",
     accessSplitLabel: (portal: number, app: number) => `Portal: ${portal} | App: ${app}`,
-    cameraStatusTitle: "Camera Status",
+    cameraStatusTitle: "Camera status",
+    eyebrowNetwork: "NETWORK OVERVIEW",
+    eyebrowPeople: "PEOPLE & ACCESS",
+    eyebrowAudit: "AUDIT TRAIL",
+    viewInventory: "View inventory",
+    seeAll: "See all",
+    colLastSignal: "Last signal",
+    legendOnline: (n: number) => `${n} online`,
+    legendOffline: (n: number) => `${n} offline`,
+    totalCameras: (n: number) => `${n} total`,
+    registeredOn: (d: string) => `Registered ${d}`,
+    activitySubtitle: "Changes across your workspace",
+    vipsSubtitle: "Latest profiles added to your target database",
     // This card is the page's answer to "is this deployment working". Deliberately not joined by a
     // "last detection" line: every event in this system is a VIP match (EventType is VIP |
     // Tracking, and Tracking is derived from VIP hits across cameras), so days with none are the
@@ -77,7 +89,7 @@ const T = {
     noOfflineCameras: "No offline cameras — everything is connected.",
     noCamerasYet: "No cameras connected to this project yet.",
     view: "View →",
-    viewAllCameras: (n: number) => `View all ${n} cameras →`,
+    viewAllCameras: (n: number) => `View all ${n} cameras`,
     recentVipsTitle: "Recently Registered VIPs",
     registerVipLink: "Register VIP →",
     noVipsYet: "No VIPs registered yet.",
@@ -136,6 +148,18 @@ const T = {
     attnNoVips: "등록된 관심대상이 없습니다",
     accessSplitLabel: (portal: number, app: number) => `포털: ${portal} | 앱: ${app}`,
     cameraStatusTitle: "카메라 상태",
+    eyebrowNetwork: "네트워크 현황",
+    eyebrowPeople: "사람 및 접근",
+    eyebrowAudit: "감사 기록",
+    viewInventory: "목록 보기",
+    seeAll: "전체 보기",
+    colLastSignal: "마지막 신호",
+    legendOnline: (n: number) => `온라인 ${n}`,
+    legendOffline: (n: number) => `오프라인 ${n}`,
+    totalCameras: (n: number) => `전체 ${n}`,
+    registeredOn: (d: string) => `${d} 등록`,
+    activitySubtitle: "이 작업 공간에서 일어난 변경",
+    vipsSubtitle: "관심대상 목록에 최근 추가된 인물",
     cameraStatusSubtitle: "이 프로젝트에 연결된 카메라의 스트리밍 상태",
     filterAll: (n: number) => `전체 (${n})`,
     filterOffline: (n: number) => `오프라인 (${n})`,
@@ -146,7 +170,7 @@ const T = {
     noOfflineCameras: "오프라인 카메라가 없습니다 — 모두 연결되어 있습니다.",
     noCamerasYet: "이 프로젝트에 연결된 카메라가 아직 없습니다.",
     view: "보기 →",
-    viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기 →`,
+    viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
     recentVipsTitle: "최근 등록된 VIP",
     registerVipLink: "VIP 등록 →",
     noVipsYet: "등록된 VIP가 아직 없습니다.",
@@ -206,6 +230,44 @@ function BarStats({ left, right }: { left: string; right: string }) {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginTop: "8px" }}>
       <span style={{ fontSize: "11px", color: "var(--gray-500)" }}>{left}</span>
       <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{right}</span>
+    </div>
+  );
+}
+
+/**
+ * A panel's head: a dotted eyebrow, the title, one line saying what the panel holds, and the way
+ * to the whole of it.
+ *
+ * The three panels under the metric row used to open with a coloured icon square and a title. The
+ * eyebrow names the section the way the reference does — NETWORK OVERVIEW, PEOPLE & ACCESS, AUDIT
+ * TRAIL — which is what turns three stacked boxes into three parts of one page. The dot is grey:
+ * it is punctuation, not a status.
+ */
+function SectionHead({ eyebrow, title, subtitle, action }: {
+  eyebrow: string;
+  title: string;
+  subtitle?: string;
+  action?: { label: string; onClick: () => void };
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
+      <div style={{ minWidth: 0 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+          <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--gray-300)", flexShrink: 0 }} />
+          <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px", color: "var(--gray-500)" }}>{eyebrow}</span>
+        </span>
+        <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{title}</p>
+        {subtitle && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{subtitle}</p>}
+      </div>
+      {action && (
+        <button
+          className="portal-link"
+          onClick={action.onClick}
+          style={{ display: "flex", alignItems: "center", gap: "4px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit", flexShrink: 0 }}
+        >
+          {action.label} <ArrowUpRight size={13} strokeWidth={2.6} />
+        </button>
+      )}
     </div>
   );
 }
@@ -631,24 +693,34 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: CARD_GAP, alignItems: "stretch", maxHeight: OVERVIEW_PANEL_MAX_HEIGHT, marginBottom: CARD_GAP }}>
             <div style={{ gridColumn: "1 / span 2", display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: BORDER, flexWrap: "wrap", gap: "10px", flexShrink: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <div>
-                      <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.cameraStatusTitle}</p>
-                      <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.cameraStatusSubtitle}</p>
-                    </div>
-                  </div>
+                <div style={{ padding: "16px 20px", flexShrink: 0 }}>
+                  <SectionHead
+                    eyebrow={t.eyebrowNetwork}
+                    title={t.cameraStatusTitle}
+                    subtitle={t.cameraStatusSubtitle}
+                    action={{ label: t.viewInventory, onClick: () => onTabChange("cameras") }}
+                  />
+                </div>
+                {/* The cut on the left, what the cut is made of on the right. Two readings of the
+                    same fleet: the segmented control changes the list, the legend just states the
+                    split — so the legend is text, not buttons. */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", padding: "0 20px 14px", flexShrink: 0 }}>
                   <div style={{ display: "flex", gap: "4px", backgroundColor: "var(--gray-50)", padding: "2px", borderRadius: "8px" }}>
                     {(["all", "offline"] as const).map(f => (
                       <button key={f} onClick={() => setCameraStatusFilter(f)}
                         style={{
                           padding: "6px 10px", borderRadius: "6px", border: "none", cursor: "pointer", fontSize: "12px", fontWeight: 600,
                           backgroundColor: cameraStatusFilter === f ? "white" : "transparent",
+                          boxShadow: cameraStatusFilter === f ? PANEL_SHADOW : "none",
                           color: cameraStatusFilter === f ? "var(--gray-900)" : f === "offline" ? "var(--danger-400)" : "var(--gray-500)",
                         }}>
                         {f === "all" ? t.filterAll(projectCameras.length) : t.filterOffline(offlineCount)}
                       </button>
                     ))}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <SubStat color="var(--success-400)" label={t.legendOnline(onlineCount)} />
+                    <SubStat color="var(--danger-400)" label={t.legendOffline(offlineCount)} />
                   </div>
                 </div>
                 {visibleCameraRows.length === 0 ? (
@@ -657,8 +729,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   </p>
                 ) : (
                   <>
-                    <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.4fr 0.7fr 60px", padding: "8px 20px", backgroundColor: "var(--gray-50)", gap: "8px", flexShrink: 0 }}>
-                      {[t.colCamera, t.colZone, t.colStreamUrl, t.colStatus, ""].map(h => (
+                    <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.9fr 1.5fr 0.9fr 0.8fr 56px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderTop: BORDER, borderBottom: BORDER, gap: "8px", flexShrink: 0 }}>
+                      {[t.colCamera, t.colZone, t.colStreamUrl, t.colLastSignal, t.colStatus, ""].map(h => (
                         <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
                       ))}
                     </div>
@@ -668,13 +740,20 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     {visibleCameraRows.map((c, i) => {
                       const online = c.status === "online";
                       return (
-                        <div key={c.id} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.4fr 0.7fr 60px", padding: "10px 20px", alignItems: "center", gap: "8px", borderTop: i > 0 ? BORDER : "none" }}>
+                        <div key={c.id} style={{ display: "grid", gridTemplateColumns: "1.3fr 0.9fr 1.5fr 0.9fr 0.8fr 56px", padding: "10px 20px", alignItems: "center", gap: "8px", borderTop: i > 0 ? BORDER : "none" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
                             <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: online ? "var(--success-400)" : "var(--danger-400)", flexShrink: 0 }} />
                             <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</p>
                           </div>
                           <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{c.zone}</span>
                           <span style={{ fontSize: "12px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.rtspUrl}</span>
+                          {/* Only once the clock is known — before mount there is no "ago" to
+                              compute, and a guessed one would be corrected a frame later. */}
+                          <span style={{ fontSize: "12px", color: "var(--gray-500)", whiteSpace: "nowrap" }}>
+                            {nowMs !== null && c.lastSeenAt
+                              ? `${formatElapsed(nowMs - new Date(c.lastSeenAt).getTime())}${t.agoSuffix}`
+                              : "—"}
+                          </span>
                           <span style={{
                             fontSize: "12px", fontWeight: 600, padding: "4px 8px", borderRadius: "6px", width: "fit-content",
                             backgroundColor: online ? "var(--success-100)" : "var(--danger-100)", color: online ? "var(--success-400)" : "var(--danger-400)",
@@ -686,12 +765,16 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                       );
                     })}
                     </div>
-                    {filteredCameraRows.length > visibleCameraRows.length && (
-                      <button onClick={() => onTabChange("cameras")}
-                        style={{ display: "block", width: "100%", textAlign: "center", border: "none", borderTop: BORDER, background: "none", padding: "10px 20px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>
-                        {t.viewAllCameras(filteredCameraRows.length)}
-                      </button>
-                    )}
+                    {/* Always here, not only when the list is truncated: it is the panel's way out
+                        to the tab, and the count on the right says how much is behind it. */}
+                    <button onClick={() => onTabChange("cameras")}
+                      className="portal-attention-row"
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", border: "none", borderTop: BORDER, background: "none", padding: "12px 20px", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.viewAllCameras(filteredCameraRows.length)}</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "var(--gray-400)" }}>
+                        {t.totalCameras(projectCameras.length)} <ArrowUpRight size={12} strokeWidth={2.8} />
+                      </span>
+                    </button>
                   </>
                 )}
               </div>
@@ -701,25 +784,39 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 spanning) — sits directly underneath rather than sharing a row with Camera Status. */}
             <div style={{ gridColumn: "3 / span 1", display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px", flexShrink: 0 }}>
-                  <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.recentVipsTitle}</p>
-                  <button onClick={() => onTabChange("vip")} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.registerVipLink}</button>
+                <div style={{ marginBottom: "14px", flexShrink: 0 }}>
+                  <SectionHead eyebrow={t.eyebrowPeople} title={t.recentVipsTitle} subtitle={t.vipsSubtitle} />
                 </div>
                 {recentVips.length === 0 ? (
                   <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noVipsYet}</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minHeight: 0, overflowY: "auto" }}>
+                    {/* The whole row opens the registry, and the chevron says so. It was a card
+                        with no target on it at all — a face, a name and a date that looked
+                        clickable and was not. */}
                     {recentVips.map(p => (
-                      <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "10px", border: BORDER, borderRadius: "12px", padding: "10px" }}>
+                      <button key={p.id} onClick={() => onTabChange("vip")}
+                        className="portal-attention-row"
+                        style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", border: BORDER, borderRadius: "12px", padding: "10px", background: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
                         <img src={p.photoUrl} alt="" style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
-                        <div style={{ minWidth: 0 }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
                           <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
-                          <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{p.registeredAt.slice(0, 10)}</p>
+                          <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.registeredOn(p.registeredAt.slice(0, 10))}</p>
                         </div>
-                      </div>
+                        <ChevronRight size={14} strokeWidth={2.4} color="var(--gray-400)" />
+                      </button>
                     ))}
                   </div>
                 )}
+                {/* The panel's own way to add one, at its foot — the reference puts it there and it
+                    is the right place: the list above answers "who is in", this answers "and one
+                    more". */}
+                <button onClick={() => onTabChange("vip")}
+                  className="portal-link"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", border: "none", borderTop: BORDER, background: "none", padding: "12px 0 0", marginTop: "12px", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.registerVipLink}</span>
+                  <Plus size={14} strokeWidth={2.4} color="var(--gray-500)" />
+                </button>
               </div>
             </div>
 
@@ -771,13 +868,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               )}
 
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-                {/* Plain title, no icon chip.
-                    All four panels down here wore a 28px coloured square — video blue, VIP purple,
-                    requests amber, this one grey. Four of them in one row is decoration: the panels
-                    are told apart by what is inside them, the metric cards above already carry
-                    coloured badges, and spending purple on a heading is spending the accent on
-                    something that was never the point of the screen. */}
-                <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "14px", flexShrink: 0 }}>{t.recentAdminActivity}</p>
+                <div style={{ marginBottom: "14px", flexShrink: 0 }}>
+                  <SectionHead
+                    eyebrow={t.eyebrowAudit}
+                    title={t.recentAdminActivity}
+                    subtitle={t.activitySubtitle}
+                    action={{ label: t.seeAll, onClick: () => onTabChange("users") }}
+                  />
+                </div>
                 {recentActivity.length === 0 ? (
                   <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noAdminActivity}</p>
                 ) : (
