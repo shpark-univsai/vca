@@ -796,10 +796,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                       const online = c.status === "online";
                       return (
                         <div key={c.id} style={{ display: "grid", gridTemplateColumns: "1.3fr 0.9fr 1.5fr 0.9fr 0.8fr 56px", padding: "10px 20px", alignItems: "center", gap: "8px", borderTop: i > 0 ? BORDER : "none" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
-                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: online ? "var(--success-400)" : "var(--danger-400)", flexShrink: 0 }} />
-                            <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</p>
-                          </div>
+                          {/* No dot before the name. The row already ends in a Online / Offline
+                              chip, and a coloured dot at the other end of the same row said the
+                              same thing a second time — with eight offline rows on top, the list
+                              read as a column of red bullets before it read as a list of cameras. */}
+                          <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{c.name}</p>
                           <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{c.zone}</span>
                           <span style={{ fontSize: "12px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.rtspUrl}</span>
                           {/* Only once the clock is known — before mount there is no "ago" to
