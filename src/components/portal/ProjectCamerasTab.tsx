@@ -965,7 +965,11 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
       {/* No page title here: the top bar's crumb already names this page, and printing the same
           word again 20px lower was the page introducing itself twice. What stays is the row of
           things you can do on it. */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: "16px" }}>
+      {/* The action row sits a little below the top of the page rather than flush against it: with
+          the page title gone it was the first thing in the column and lined up hard with the
+          crumb above, which made the two read as one row of controls in the chrome. A few px of
+          air puts the buttons back on the page. */}
+      <div style={{ display: "flex", marginTop: "10px", alignItems: "center", justifyContent: "flex-end", marginBottom: "16px" }}>
         <div style={{ display: "flex", gap: "8px" }}>
           <button onClick={batchReconnect}
             onMouseEnter={() => setHoveredAction("reconnect")} onMouseLeave={() => setHoveredAction(null)}
