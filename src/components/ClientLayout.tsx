@@ -12,11 +12,12 @@ import SkeletonDashboard from "./SkeletonDashboard";
 import SkeletonBestFrame from "./SkeletonBestFrame";
 import SkeletonData from "./SkeletonData";
 import SkeletonRedmap from "./SkeletonRedmap";
-import DetectionActivityChart from "./DetectionActivityChart";
+import DetectionActivityChart, { DETECTION_CHART_TITLE } from "./DetectionActivityChart";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
 import { useVcaStore, VIP_SIMULATION_CAMERAS, type Camera } from "@/lib/vcaStore";
+import { useLanguage } from "@/lib/i18n";
 
 export type NavTab = "DASHBOARD" | "BEST FRAME" | "DATA" | "REDMAP";
 const VALID_TABS: NavTab[] = ["DASHBOARD", "BEST FRAME", "DATA", "REDMAP"];
@@ -155,7 +156,11 @@ export default function ClientLayout() {
     setSidebarPositionState(pos);
     localStorage.setItem(SIDEBAR_POSITION_KEY, pos);
   };
-  const [showDetectionChart, setShowDetectionChart] = useState(true);
+  const [lang] = useLanguage();
+  // Closed until asked for. The chart covers the bottom third of the map, and the map is what
+  // this screen is for — the two numbers it summarises are already in the sidebar, so opening it
+  // is a deliberate "show me today's shape", not the resting state.
+  const [showDetectionChart, setShowDetectionChart] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [bestFrameFocusLocation, setBestFrameFocusLocation] = useState<string | null>(null);
   const [redmapAutoSearchName, setRedmapAutoSearchName] = useState<string | null>(null);
@@ -285,8 +290,10 @@ export default function ClientLayout() {
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                     <path d="M4 10L8 6L12 10" stroke="var(--gray-900)" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
+                  {/* Named after the panel it opens, not after itself — it used to say
+                      "Detection topology" over a chart titled "VIP detections today". */}
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.24px", whiteSpace: "nowrap" }}>
-                    Detection topology
+                    {DETECTION_CHART_TITLE[lang]}
                   </span>
                 </button>
               )}

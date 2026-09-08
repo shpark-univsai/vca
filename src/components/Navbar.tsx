@@ -10,6 +10,12 @@ import { getDashboardStats } from "@/lib/api/dashboard";
 import { useLanguage } from "@/lib/i18n";
 
 const BORDER = "1px solid var(--gray-200)";
+/** Shared by both forms of the site chip below — the switchable one and the plain label — so the
+ *  name reads identically whether or not there is anything to switch to. */
+const PROJECT_NAME_STYLE: React.CSSProperties = {
+  fontSize: "13px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.26px",
+  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+};
 export type NavTab = "DASHBOARD" | "BEST FRAME" | "DATA" | "REDMAP";
 
 // The ids stay English — they are route keys (?tab=) and a store value, and translating them would
@@ -98,6 +104,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
   const myProjects = projectsVisibleInApp(portalUsers, projects);
   const activeProject = myProjects.find(p => p.id === activeProjectId) ?? myProjects[0] ?? null;
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const canSwitchProject = myProjects.length > 1;
   useEscapeKey(() => setProjectMenuOpen(false), projectMenuOpen);
 
   const aiRunning = dashboardStatsError ? "—" : dashboardStats?.aiRunning ?? 0;
@@ -228,28 +235,30 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
             hover away. */}
         {activeProject && (
           <div style={{ position: "relative", flexShrink: 1, minWidth: 0 }}>
-            <button
-              onClick={() => { if (myProjects.length > 1) setProjectMenuOpen(o => !o); }}
-              title={activeProject.name}
-              aria-haspopup={myProjects.length > 1 ? "menu" : undefined}
-              style={{
-                display: "flex", alignItems: "center", gap: "6px", maxWidth: "260px",
-                background: "none", border: "none", padding: 0,
-                cursor: myProjects.length > 1 ? "pointer" : "default",
-              }}
-            >
-              <span style={{
-                fontSize: "13px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.26px",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>
-                {activeProject.name}
-              </span>
-              {myProjects.length > 1 && (
+            {/* One project is the common case, and then this is a label, not a control: no
+                chevron, no button element, no hover cursor. A caret over a menu holding the one
+                thing already on screen promises a choice that does not exist. */}
+            {canSwitchProject ? (
+              <button
+                onClick={() => setProjectMenuOpen(o => !o)}
+                title={activeProject.name}
+                aria-haspopup="menu"
+                aria-expanded={projectMenuOpen}
+                style={{
+                  display: "flex", alignItems: "center", gap: "6px", maxWidth: "260px",
+                  background: "none", border: "none", padding: 0, cursor: "pointer",
+                }}
+              >
+                <span style={PROJECT_NAME_STYLE}>{activeProject.name}</span>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
                   <path d="M3 4.5L6 7.5L9 4.5" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-              )}
-            </button>
+              </button>
+            ) : (
+              <span title={activeProject.name} style={{ display: "flex", maxWidth: "260px" }}>
+                <span style={PROJECT_NAME_STYLE}>{activeProject.name}</span>
+              </span>
+            )}
 
             {projectMenuOpen && (
               <div style={{

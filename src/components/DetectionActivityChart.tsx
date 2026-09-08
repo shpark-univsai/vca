@@ -81,9 +81,13 @@ const DOT_COLOR = "#0047ff";
 const DOT_RADIUS_PX = 2.5;
 
 // See the per-file pattern note in lib/i18n.ts.
+/** Exported because the collapsed pill on the Dashboard opens this panel — the button and the
+ *  panel it opens have to carry the same name, or they read as two different things. */
+export const DETECTION_CHART_TITLE = { en: "VIP detections today", ko: "오늘 VIP 검출" } as const;
+
 const T = {
-  en: { allCameras: "All cameras", title: "VIP detections today", minimize: "Minimize chart" },
-  ko: { allCameras: "전체 카메라", title: "오늘 VIP 검출", minimize: "차트 접기" },
+  en: { allCameras: "All cameras", title: DETECTION_CHART_TITLE.en, minimize: "Minimize chart" },
+  ko: { allCameras: "전체 카메라", title: DETECTION_CHART_TITLE.ko, minimize: "차트 접기" },
 } as const;
 // null = citywide totals (no camera filter) — kept distinct from a real camera's `id` so "no
 // filter" can never collide with an actual id string.
