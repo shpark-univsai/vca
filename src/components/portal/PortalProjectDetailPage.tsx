@@ -1000,7 +1000,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 joined to it by nothing but the seven days they shared — a period is not a subject.
                 What the cameras saw and whether the cameras worked are two questions, and the
                 second belongs with the cameras: it is under the Camera status panel now. */}
-            <div style={{ minWidth: 0 }}>
+            {/* The plot keeps a margin of its own. The line ran to the card's inner edge, so the
+                first and last dots sat half-off it and the fill met the border with a hard corner
+                — the chart read as a picture that had been cropped rather than one that fits.
+                Padding here, on the chart and the axis together, so the labels move with it. */}
+            <div style={{ minWidth: 0, padding: "0 8px" }}>
               {/*
                 A line for the week, with today drawn as unfinished.
 
