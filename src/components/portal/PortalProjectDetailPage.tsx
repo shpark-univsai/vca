@@ -801,7 +801,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   of, and these two have no denominator anyone manages by. So they carry another
                   dimension instead: how the registry is organised, and who is on the priority
                   list. Same 11px caption line the bars use, so all four cards end alike. */}
-              <p style={{ fontSize: "11px", color: "var(--gray-500)", paddingTop: "6px" }}>
+              <p style={{ fontSize: "11px", color: "var(--gray-500)", paddingTop: "2px" }}>
                 {t.cardVipBreakdown(projectGroupCount, highPriorityVipCount)}
               </p>
             </MetricCard>
@@ -828,7 +828,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               {/* Who is not all the way in. The chip above splits the accounts by which door they
                   hold; this says how many are still waiting at one or have been shut out of both.
                   With neither, it says so rather than printing two zeroes. */}
-              <p style={{ fontSize: "11px", color: "var(--gray-500)", paddingTop: "6px" }}>
+              <p style={{ fontSize: "11px", color: "var(--gray-500)", paddingTop: "2px" }}>
                 {pendingInviteCount + suspendedCount > 0
                   ? t.cardAccountsBreakdown(pendingInviteCount, suspendedCount)
                   : t.cardAccountsAllIn}
