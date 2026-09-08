@@ -17,6 +17,16 @@ interface IconProps {
  * a fraction heavier than the identical stroke on white — so keeping the number would have meant
  * not keeping the weight. Same reason the labels here sit a step lighter than elsewhere.
  */
+/** The panel-with-a-rail mark every console uses for "collapse the sidebar". */
+function RailToggleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <rect x="2.25" y="2.75" width="13.5" height="12.5" rx="3" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M6.75 3.25V14.75" stroke="currentColor" strokeWidth="1.2"/>
+    </svg>
+  );
+}
+
 function OverviewIcon({ color }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -117,6 +127,10 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
 interface ProjectSidebarProps {
   /** Product wordmark, at the very top of the rail. */
   brand?: string;
+  /** Collapses and expands the rail. Lives here rather than in the top bar: it is the rail's own
+   *  control, and with the rail running the full height the bar has no claim on it. */
+  onToggleCollapse?: () => void;
+  toggleLabel?: string;
   /** The team switcher, passed in rather than built here — the shell owns what switching means. */
   team?: React.ReactNode;
   /** The project switcher, same. */
@@ -138,7 +152,7 @@ interface ProjectSidebarProps {
   myPageOpen: boolean;
 }
 
-export default function ProjectSidebar({ brand, team, project, tab, onTabChange, collapsed, myPageOpen, counts }: ProjectSidebarProps) {
+export default function ProjectSidebar({ brand, team, project, onToggleCollapse, toggleLabel, tab, onTabChange, collapsed, myPageOpen, counts }: ProjectSidebarProps) {
   const [lang] = usePortalLanguage();
   return (
     <div
@@ -161,6 +175,8 @@ export default function ProjectSidebar({ brand, team, project, tab, onTabChange,
       }}
     >
       <style>{`
+        .portal-rail-toggle{transition:background-color .12s,color .12s}
+        .portal-rail-toggle:hover{background-color:var(--gray-800);color:white}
         .portal-navitem{transition:background-color .12s}
         .portal-navitem:hover:not([data-active="true"]){background-color:var(--gray-800)}
         .portal-navmenu-item{transition:background-color .12s}
@@ -177,10 +193,28 @@ export default function ProjectSidebar({ brand, team, project, tab, onTabChange,
         Hidden when collapsed: a 60px column cannot hold a team name, and a switcher you cannot read
         is a button that opens a surprise.
       */}
+      {/* Collapsed, the identity block cannot be read at 60px — but the way back out has to stay
+          reachable, so the toggle survives on its own, centred. */}
+      {collapsed && onToggleCollapse && (
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "18px" }}>
+          <button className="portal-rail-toggle" onClick={onToggleCollapse} title={toggleLabel}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)" }}>
+            <RailToggleIcon />
+          </button>
+        </div>
+      )}
       {!collapsed && (brand || team || project) && (
         <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "22px" }}>
-          {brand && (
-            <p style={{ fontSize: "15px", fontWeight: 800, color: "white", letterSpacing: "-0.2px", padding: "2px 10px 10px" }}>{brand}</p>
+          {(brand || onToggleCollapse) && (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "2px 4px 10px 10px" }}>
+              {brand && <p style={{ fontSize: "15px", fontWeight: 800, color: "white", letterSpacing: "-0.2px", flex: 1, minWidth: 0 }}>{brand}</p>}
+              {onToggleCollapse && (
+                <button className="portal-rail-toggle" onClick={onToggleCollapse} title={toggleLabel}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "8px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", flexShrink: 0 }}>
+                  <RailToggleIcon />
+                </button>
+              )}
+            </div>
           )}
           {/* The team is a quiet row; the project is a card.
               They were one bordered box with two rows, which gave equal weight to "which company"

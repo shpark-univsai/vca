@@ -29,14 +29,6 @@ function BreadcrumbChevron() {
   );
 }
 
-function SidebarToggleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <rect x="2.25" y="2.75" width="13.5" height="12.5" rx="3" stroke="var(--gray-600)" strokeWidth="1.4"/>
-      <path d="M6.75 3.25V14.75" stroke="var(--gray-600)" strokeWidth="1.4"/>
-    </svg>
-  );
-}
 
 // Project switching/creation stays header-only (GCP's "Select a resource" pattern). Once inside
 // a project, its own tools (Overview/Cameras/VIP Registry/License/Users & Permissions) live in a
@@ -187,14 +179,11 @@ export default function PortalShell() {
        */
       fontVariantNumeric: "tabular-nums",
     }}>
-      <style>{`
-        .portal-hamburger-btn{transition:background-color .15s}
-        .portal-hamburger-btn:hover{background-color:var(--gray-100)}
-      `}</style>
-
       {sidebarVisible && (
         <ProjectSidebar
           brand="VCA Portal"
+          onToggleCollapse={() => setSidebarCollapsed(v => !v)}
+          toggleLabel={sidebarCollapsed ? t.expand : t.collapse}
           team={<TeamSwitcher dark currentTeamId={currentOrgId} onSelect={switchTeam} />}
           project={<ProjectSwitcher dark teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />}
           /* Counts for the rail's badges — the two tabs that hold a list of things you count.
@@ -235,20 +224,6 @@ export default function PortalShell() {
         height: "62px", borderBottom: "1px solid var(--line)",
         display: "flex", alignItems: "center", padding: "0 24px", flexShrink: 0, gap: "10px",
       }}>
-        {!showWizard && teamProjects.length > 0 && (
-          <button
-            className="portal-hamburger-btn"
-            onClick={() => setSidebarCollapsed(v => !v)}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "center",
-              width: "32px", height: "32px", borderRadius: "8px", border: "none",
-              backgroundColor: "transparent", cursor: "pointer", flexShrink: 0, marginRight: "2px",
-            }}
-            title={sidebarCollapsed ? t.expand : t.collapse}
-          >
-            <SidebarToggleIcon />
-          </button>
-        )}
         {/* The breadcrumb says where you are, and during creation you are not inside any project —
             so the last crumb becomes the act of creating one. It used to keep naming whichever
             project happened to be selected, which was false (nothing has been created yet) and
