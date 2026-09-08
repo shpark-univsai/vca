@@ -61,7 +61,6 @@ const T = {
     attnNoVips: "No one registered in the watchlist yet",
     accessSplitLabel: (portal: number, app: number) => `Portal: ${portal} | App: ${app}`,
     cameraStatusTitle: "Camera status",
-    viewInventory: "View inventory",
     seeAll: "See all",
     colLastSignal: "Last signal",
     legendOnline: (n: number) => `${n} online`,
@@ -143,7 +142,6 @@ const T = {
     attnNoVips: "등록된 관심대상이 없습니다",
     accessSplitLabel: (portal: number, app: number) => `포털: ${portal} | 앱: ${app}`,
     cameraStatusTitle: "카메라 상태",
-    viewInventory: "목록 보기",
     seeAll: "전체 보기",
     colLastSignal: "마지막 신호",
     legendOnline: (n: number) => `온라인 ${n}`,
@@ -737,10 +735,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <div style={{ display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ padding: "16px 20px", flexShrink: 0 }}>
+                  {/* No "View inventory" action up here. The footer of this same panel is already
+                      a full-width row reading "View all 59 cameras · 59 total →", and both went to
+                      the same tab — one door per panel, and this panel's door is at its foot like
+                      the other two in the row. */}
                   <SectionHead
                     title={t.cameraStatusTitle}
                     subtitle={t.cameraStatusSubtitle}
-                    action={{ label: t.viewInventory, onClick: () => onTabChange("cameras") }}
                   />
                 </div>
                 {/* The cut on the left, what the cut is made of on the right. Two readings of the
@@ -862,7 +863,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     more". */}
                 <button onClick={() => onTabChange("vip")}
                   className="portal-link"
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", border: "none", borderTop: BORDER, background: "none", padding: "12px 0 0", marginTop: "12px", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+                  /* The rule runs to the card's edges, like the camera panel's footer beside it.
+                     This panel carries its 20px padding on the card itself, so a footer inside it
+                     drew a rule 20px short at each end while the panel next to it drew one edge to
+                     edge — two cards in one row disagreeing about where a card ends. Negative
+                     margins put the button back on the card's own width and its padding puts the
+                     text back where the rest of the panel's text starts. */
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "calc(100% + 40px)", border: "none", borderTop: BORDER, background: "none", padding: "12px 20px 0", margin: "12px -20px 0", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.registerVipLink}</span>
                   <Plus size={14} strokeWidth={2.4} color="var(--gray-500)" />
                 </button>
