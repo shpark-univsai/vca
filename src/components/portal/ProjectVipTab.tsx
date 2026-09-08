@@ -43,7 +43,7 @@ interface VipDict {
   registered: (date: string) => string;
   viewGrid: string;
   viewTable: string;
-  colVip: string;
+  colName: string;
   colRole: string;
   colPriority: string;
   colRegistered: string;
@@ -128,7 +128,7 @@ const T: Record<"en" | "ko", VipDict> = {
     registered: (date: string) => `Registered ${date}`,
     viewGrid: "Grid",
     viewTable: "Table",
-    colVip: "VIP",
+    colName: "Name",
     colRole: "Role",
     colPriority: "Priority",
     colRegistered: "Registered",
@@ -212,7 +212,7 @@ const T: Record<"en" | "ko", VipDict> = {
     registered: (date: string) => `등록일 ${date}`,
     viewGrid: "그리드",
     viewTable: "테이블",
-    colVip: "VIP",
+    colName: "이름",
     colRole: "역할",
     colPriority: "우선순위",
     colRegistered: "등록일",
@@ -1077,7 +1077,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 sorted alphabetically answers nothing. */}
             <span />
             {([
-              { label: t.colVip, key: "name" },
+              { label: t.colName, key: "name" },
               ...(showGroupColumn ? [{ label: t.colGroup }] : []),
               { label: t.colRole, key: "role" },
               { label: t.colPriority, key: "priority" },
