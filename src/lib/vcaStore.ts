@@ -87,6 +87,17 @@ export interface Project {
   // cameras draw from the same quota) — the License tab shows AI vs. normal as a usage breakdown
   // of this single number, not two separate limits. Optional so projects created before this
   // existed (or without a license configured yet) still type-check.
+  /**
+   * The zone this project's days and hours are counted in, e.g. "Asia/Singapore".
+   *
+   * A timezone belongs to a project, not to an account: a site sits in one country and its "today"
+   * is that country's, whoever is looking. Set from Portal (My page's project card for now — see
+   * the note there about where it should eventually live).
+   *
+   * Optional, and lib/time.ts still falls back to Singapore when it is absent — every seeded
+   * project predates the field, and a missing timezone must not become "UTC" by accident.
+   */
+  timeZone?: string;
   licenseChannelLimit?: number;
   licensePlan?: string;
   // A date string, or the literal "Unlimited" for a plan with no expiry.
@@ -323,6 +334,7 @@ interface VcaStoreState {
   addProject: (project: Omit<Project, "id">) => void;
   updateProjectLicense: (projectId: string, updates: Pick<Project, "licenseChannelLimit" | "licensePlan" | "licenseExpiresAt">) => void;
   updateProjectMail: (projectId: string, updates: Pick<Project, "mailDomain" | "smtp">) => void;
+  setProjectTimeZone: (projectId: string, timeZone: string) => void;
   // null clears the override and falls back to the auto-detected value; true/false pins it.
   setNetworkIsolationOverride: (projectId: string, override: boolean | null) => void;
   updateTeamMail: (teamId: string, updates: Pick<Team, "mailDomain" | "smtp">) => void;
@@ -453,6 +465,7 @@ const TEAMS: Team[] = [
 const PROJECTS: Project[] = [
   {
     id: "proj-sg", teamId: "team-univs", name: "Marina Bay & CBD Surveillance Network", type: "smart_city",
+    timeZone: "Asia/Singapore",
     licensePlan: "Enterprise", licenseChannelLimit: 100, licenseExpiresAt: "2029-06-04",
     computeInstance: "vca.large", gpuCount: 4, modelVersion: "model_v2_prod", lastMigration: "v2_alert_schema",
     lastBackupAt: auditAt(19 * 60),
@@ -1609,6 +1622,17 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     })),
   // Mail settings write to the audit log the way license changes do — an admin changing where
   // invites are sent is exactly the kind of thing someone has to be able to trace later.
+  setProjectTimeZone: (projectId, timeZone) =>
+    set(state => ({
+      projects: state.projects.map(p => (p.id === projectId ? { ...p, timeZone } : p)),
+      // Audited: which day a detection is filed under, when a report covers, and what "today"
+      // means on every screen all move when this changes.
+      auditLog: [
+        { id: `audit-${Date.now()}`, projectId, message: `Project timezone set to ${timeZone}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() },
+        ...state.auditLog,
+      ],
+    })),
+
   updateProjectMail: (projectId, updates) =>
     set(state => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)),

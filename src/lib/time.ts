@@ -48,6 +48,20 @@ export function isTodaySgt(d: Date, now: Date = new Date()): boolean {
   return isSameSgtDay(d, now);
 }
 
+/**
+ * Hour of day (0-23) for `d` in an arbitrary zone.
+ *
+ * For the one caller that has a project in hand and so knows better than the deployment default —
+ * the Overview's greeting. Everything else in this file is still fixed to Singapore, because the
+ * data it buckets is city-wide and has no project to ask.
+ */
+export function zoneHour(d: Date, zone: string): number {
+  return parseInt(
+    new Intl.DateTimeFormat("en-GB", { timeZone: zone, hour: "2-digit", hour12: false }).format(d),
+    10,
+  ) % 24;
+}
+
 /** Hour of day (0-23) for `d` in Singapore time — use this instead of `.getHours()` for
  * hour-of-day bucketing. */
 export function sgtHour(d: Date): number {

@@ -422,7 +422,7 @@ export default function PortalShell() {
          */
         <div style={{ flex: 1, overflow: "auto", padding: "12px 32px 32px", width: "100%", maxWidth: "1600px", marginInline: "auto" }}>
             {showAccount
-              ? <PortalMyPage />
+              ? <PortalMyPage projectId={currentProjectId} />
               : teamProjects.length === 0
               ? <PortalEmptyState
                   onNewProject={() => setShowWizard(true)}

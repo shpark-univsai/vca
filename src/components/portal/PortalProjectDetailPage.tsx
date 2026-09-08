@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
-import { PROJECT_TIME_ZONE, formatElapsed, sgtClockMinutes, sgtDateKey, sgtHour } from "@/lib/time";
+import { PROJECT_TIME_ZONE, formatElapsed, sgtClockMinutes, sgtDateKey, zoneHour } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -403,8 +403,8 @@ function ExitIcon() { return <LogOut size={14} strokeWidth={2.4} />; }
  * see the note there. Per-project timezones are the next step (a project in another country needs
  * its own), and this call site becomes a project lookup on the day that lands.
  */
-function greeting(ms: number, name: string, t: { greetMorning: (n: string) => string; greetAfternoon: (n: string) => string; greetEvening: (n: string) => string }) {
-  const h = sgtHour(new Date(ms));
+function greeting(ms: number, zone: string, name: string, t: { greetMorning: (n: string) => string; greetAfternoon: (n: string) => string; greetEvening: (n: string) => string }) {
+  const h = zoneHour(new Date(ms), zone);
   if (h < 12) return t.greetMorning(name);
   if (h < 18) return t.greetAfternoon(name);
   return t.greetEvening(name);
@@ -418,11 +418,11 @@ function greeting(ms: number, name: string, t: { greetMorning: (n: string) => st
  * another country for the hours either side of midnight — and the greeting above it would have
  * disagreed with it.
  */
-function longDate(ms: number, lang: "en" | "ko") {
+function longDate(ms: number, lang: "en" | "ko", zone: string) {
   const d = new Date(ms);
   return lang === "ko"
-    ? d.toLocaleDateString("ko-KR", { timeZone: PROJECT_TIME_ZONE, year: "numeric", month: "long", day: "numeric", weekday: "long" })
-    : d.toLocaleDateString("en-GB", { timeZone: PROJECT_TIME_ZONE, weekday: "long", day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+    ? d.toLocaleDateString("ko-KR", { timeZone: zone, year: "numeric", month: "long", day: "numeric", weekday: "long" })
+    : d.toLocaleDateString("en-GB", { timeZone: zone, weekday: "long", day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
 }
 
 // Shared shell for the four Overview metric cards — header (eyebrow label + icon badge), then
@@ -565,6 +565,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
   const projectPersons = persons.filter(p => p.projectId === projectId);
   const projectGroupCount = personGroups.filter(g => g.projectId === projectId).length;
+  // The project's own zone, falling back to the deployment's while projects predate the field.
+  const projectZone = project.timeZone ?? PROJECT_TIME_ZONE;
   const today = detectionDays[detectionDays.length - 1];
   const detectionPeak = Math.max(...detectionDays.map(d => d.total), 1);
   const weekTotal = detectionDays.reduce((sum, d) => sum + d.total, 0);
@@ -681,12 +683,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", minHeight: "14px" }}>
                 {nowMs !== null && (
                   <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px", color: "var(--gray-500)" }}>
-                    {longDate(nowMs, lang)}
+                    {longDate(nowMs, lang, projectZone)}
                   </span>
                 )}
               </div>
               <p style={{ fontSize: "26px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.4px", minHeight: "34px" }}>
-                {nowMs !== null ? greeting(nowMs, admin.name, t) : ""}
+                {nowMs !== null ? greeting(nowMs, projectZone, admin.name, t) : ""}
               </p>
               {/* No line under the greeting. "Here's the current pulse of your … network" told the
                   reader what the page they are already looking at is for, and the project's name
