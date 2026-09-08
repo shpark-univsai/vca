@@ -636,12 +636,13 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
           : {
               backgroundColor: "white", border: accentBorder ?? CARD_BORDER,
               borderRadius: dense ? "12px" : "16px",
-              // 14px top and bottom, 16 at the sides: the four Overview cards end with a bar and its two
-              // captions, and a 16px floor under an 11px caption line read as a card that had not
-              // finished. Asked for 2026-09-08 along with pulling the bars up.
-              boxShadow: PANEL_SHADOW, padding: dense ? "12px 14px" : "14px 16px",
+              // 12px top and bottom, 16 at the sides. These cards are five short lines — icon row,
+              // label, figure, bar, captions — and every px of vertical padding is a px the panels
+              // below lose. The sides keep 16 so text still starts where the card's own hairline
+              // suggests it should.
+              boxShadow: PANEL_SHADOW, padding: dense ? "12px 14px" : "12px 16px",
             }),
-        display: "flex", flexDirection: "column", gap: dense ? "8px" : "6px", flex: 1, minWidth: 0,
+        display: "flex", flexDirection: "column", gap: dense ? "8px" : "4px", flex: 1, minWidth: 0,
         // A <button> brings its own centring, font and cursor; undo them so the clickable card is
         // pixel-identical to the static one.
         ...(onClick ? { textAlign: "left" as const, font: "inherit", cursor: "pointer", width: "100%" } : null),
@@ -650,7 +651,7 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
       {/* Dense keeps label and figure on one line. Un-dense leads with the icon and its chip, then
           the label under them and the figure under that — the reference card's order, which puts
           the chip where the eye starts rather than after the number it qualifies. */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: dense ? "space-between" : "flex-start", marginBottom: dense ? 0 : (Icon || chip ? "10px" : "2px") }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: dense ? "space-between" : "flex-start", marginBottom: dense ? 0 : (Icon || chip ? "8px" : "2px") }}>
         {!dense && Icon && (
           <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
             <Icon />
