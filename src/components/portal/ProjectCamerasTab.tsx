@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Film as FilmIcon, Image as ImageIcon, RotateCcw, Video as VideoIcon } from "lucide-react";
-import { unstableCameras, useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
+import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
@@ -128,11 +128,6 @@ const T = {
     toastReconnectRequestedDesc: (n: number) =>
       `Asked ${n} offline camera${n === 1 ? "" : "s"} to reconnect. Their status updates when they answer.`,
     toastNoOfflineTitle: "Every camera is online",
-    stabilityTitle: "Stream drops · last 7 days",
-    stabilityNone: "no drop",
-    stabilityOnce: "once",
-    stabilityMore: "twice or more",
-    stabilityHint: (n: number) => `${n} camera${n === 1 ? "" : "s"} dropped out at least once`,
     toastExportTitle: "Export complete",
     toastExportDesc: (n: number) => `${n} camera(s) exported to CSV.`,
     csvHeaderName: "Name",
@@ -265,11 +260,6 @@ const T = {
     toastReconnectRequestedDesc: (n: number) =>
       `오프라인 카메라 ${n}대에 재연결을 요청했습니다. 상태는 카메라가 응답하면 갱신됩니다.`,
     toastNoOfflineTitle: "모든 카메라가 온라인입니다",
-    stabilityTitle: "스트림 끊김 · 지난 7일",
-    stabilityNone: "끊김 없음",
-    stabilityOnce: "1회",
-    stabilityMore: "2회 이상",
-    stabilityHint: (n: number) => `${n}대가 한 번 이상 끊겼습니다`,
     toastExportTitle: "내보내기 완료",
     toastExportDesc: (n: number) => `카메라 ${n}대가 CSV로 내보내졌습니다.`,
     csvHeaderName: "이름",
@@ -711,15 +701,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   // Holds just the id — the live Camera object is looked up from `cameras` below on every render,
   // so actions taken inside the modal (e.g. Reconnect) are reflected immediately instead of
   // showing a stale snapshot captured at the moment the modal opened.
-  /**
-   * Which cameras dropped their stream this week, worst first.
-   *
-   * Seeded in the store, where the shape doubles as the request to the backend. The Overview only
-   * notes the count beside a camera's name; the grid belongs here, on the page somebody opens to
-   * work on the fleet — this is where there is room for an axis and a legend, and where the
-   * reader came to answer exactly this kind of question.
-   */
-  const stability = useMemo(() => unstableCameras(projectId, cameras, 6), [projectId, cameras]);
   const [inspectingCameraId, setInspectingCameraId] = useState<string | null>(null);
   /**
    * Opens the camera the Overview's panel handed over, once, and tells the parent it is done so a
