@@ -30,8 +30,10 @@ const T = {
     rtspUrl: "RTSP Stream URL",
     mappedAiEngines: "Mapped AI engines",
     noAiEngines: "No AI engines mapped to this camera yet.",
-    recentActivity: "Recent activity",
-    noRecentDetections: "No recent detections at this camera.",
+    lastDetection: "Last detection",
+    detectionCount: "Detections on record",
+    detectionCountValue: (n: number) => `${n}`,
+    noRecentDetections: "None yet",
     close: "Close",
   },
   ko: {
@@ -50,7 +52,9 @@ const T = {
     rtspUrl: "RTSP 스트림 URL",
     mappedAiEngines: "연결된 AI 엔진",
     noAiEngines: "이 카메라에 연결된 AI 엔진이 아직 없습니다.",
-    recentActivity: "최근 활동",
+    lastDetection: "마지막 탐지",
+    detectionCount: "기록된 탐지",
+    detectionCountValue: (n: number) => `${n}건`,
     noRecentDetections: "이 카메라에서 최근 감지된 내역이 없습니다.",
     close: "닫기",
   },
@@ -73,7 +77,11 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
    * than animating something that is not happening.
    */
   const [playing, setPlaying] = useState(false);
-  const recentEvents = events.filter(e => e.cameraId === camera.id).slice(0, 5);
+  const cameraEvents = events.filter(e => e.cameraId === camera.id);
+  // Newest first, then take the top one — the store's order is not guaranteed to be chronological.
+  const lastDetection = cameraEvents.length === 0
+    ? null
+    : new Date(Math.max(...cameraEvents.map(e => new Date(e.timestamp).getTime())));
   const aiFeatures = camera.aiFeatures ?? [];
 
   return (
@@ -195,6 +203,31 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
               <span style={{ fontSize: "12px", color: "var(--gray-500)", flexShrink: 0 }}>{t.rtspUrl}</span>
               <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-900)", fontFamily: "monospace", textAlign: "right", minWidth: 0, wordBreak: "break-all" }}>{camera.rtspUrl}</span>
             </div>
+            {/*
+              Two rows where a list used to be.
+
+              This modal answers "is this camera set up correctly" — zone, location, protocol,
+              coordinates, URL, engines. Five names with timestamps under that is a different kind
+              of thing, and browsing detections is the monitoring app's job, not the console's.
+
+              But dropping it entirely would leave nothing here answering "is this camera actually
+              working", which is the same question the summary strip's "no AI engine" cell exists
+              for. So the list becomes what it was being read for: when it last saw somebody, and
+              how much it has seen. A camera with engines mapped and no detections at all is the
+              interesting case, and it takes one line to show.
+            */}
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px", padding: "9px 0", borderTop: BORDER }}>
+              <span style={{ fontSize: "12px", color: "var(--gray-500)", flexShrink: 0 }}>{t.lastDetection}</span>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: lastDetection ? "var(--gray-900)" : "var(--gray-400)", textAlign: "right" }}>
+                {lastDetection
+                  ? `${sgtDateKey(lastDetection).slice(5)} ${sgtClockMinutes(lastDetection)}`
+                  : t.noRecentDetections}
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px", padding: "9px 0", borderTop: BORDER }}>
+              <span style={{ fontSize: "12px", color: "var(--gray-500)", flexShrink: 0 }}>{t.detectionCount}</span>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", textAlign: "right" }}>{t.detectionCountValue(cameraEvents.length)}</span>
+            </div>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px", padding: "9px 0", borderTop: BORDER }}>
               <span style={{ fontSize: "12px", color: "var(--gray-500)", flexShrink: 0 }}>{t.mappedAiEngines}</span>
               {aiFeatures.length === 0 ? (
@@ -209,40 +242,6 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
             </div>
           </div>
 
-          {/*
-            Recent detections: a heading and plain rows.
-
-            Each row was a bordered, tinted box for a name and a timestamp. The list is the point,
-            so the rows are just rows — name left, time right, a hairline between them.
-
-            The time was `toLocaleString()`, which printed the browser's zone in the browser's
-            locale ("2026. 9. 8. 오후 5:16:00" — seconds nobody needs and a day that is wrong for
-            anyone reading from another country). Now it is the project's own clock, in the format
-            the rest of Portal writes: 09-08 17:16.
-          */}
-          <div>
-            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "4px" }}>{t.recentActivity}</p>
-            {recentEvents.length === 0 ? (
-              <p style={{ fontSize: "12px", color: "var(--gray-400)", paddingTop: "4px" }}>{t.noRecentDetections}</p>
-            ) : (
-              <div>
-                {recentEvents.map((e, i) => {
-                  const at = new Date(e.timestamp);
-                  return (
-                    <div key={e.id} style={{
-                      display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px",
-                      padding: "8px 0", borderTop: i === 0 ? "none" : BORDER,
-                    }}>
-                      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)" }}>{e.personName ?? e.type}</span>
-                      <span style={{ fontSize: "11px", color: "var(--gray-400)", fontFamily: "monospace", flexShrink: 0 }}>
-                        {`${sgtDateKey(at).slice(5)} ${sgtClockMinutes(at)}`}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Close, and nothing else.
