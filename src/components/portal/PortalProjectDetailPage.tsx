@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed, sgtClockMinutes } from "@/lib/time";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
@@ -32,7 +32,6 @@ const T = {
     chipAccessSplit: (portal: number, app: number) => `${portal} PORTAL · ${app} APP`,
     statAvailable: (n: number) => `${n} available`,
     statOnlineShare: (pct: number) => `${pct}% online`,
-    statOffline: (n: number) => `${n} offline`,
     noCamerasOnline: "NO CAMERA ONLINE",
     approveAccessRequests: "Approve Access Requests",
     cameraConnectivity: "Camera connectivity",
@@ -61,8 +60,6 @@ const T = {
     cameraStatusTitle: "Camera status",
     seeAll: "See all",
     colLastSignal: "Last signal",
-    legendOnline: (n: number) => `${n} online`,
-    legendOffline: (n: number) => `${n} offline`,
     totalCameras: (n: number) => `${n} total`,
     registeredOn: (d: string) => `Registered ${d}`,
     activitySubtitle: "Changes across your workspace",
@@ -111,7 +108,6 @@ const T = {
     chipAccessSplit: (portal: number, app: number) => `포털 ${portal} · 앱 ${app}`,
     statAvailable: (n: number) => `${n} 여유`,
     statOnlineShare: (pct: number) => `온라인 ${pct}%`,
-    statOffline: (n: number) => `오프라인 ${n}`,
     noCamerasOnline: "온라인 카메라 없음",
     approveAccessRequests: "접근 요청 승인",
     cameraConnectivity: "카메라 연결 상태",
@@ -140,8 +136,6 @@ const T = {
     cameraStatusTitle: "카메라 상태",
     seeAll: "전체 보기",
     colLastSignal: "마지막 신호",
-    legendOnline: (n: number) => `온라인 ${n}`,
-    legendOffline: (n: number) => `오프라인 ${n}`,
     totalCameras: (n: number) => `전체 ${n}`,
     registeredOn: (d: string) => `${d} 등록`,
     activitySubtitle: "이 작업 공간에서 일어난 변경",
@@ -677,7 +671,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--primary-300)" }} />
                   <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
                 </div>
-                <BarStats left={t.statOnlineShare(onlineShare)} right={t.statOffline(offlineCount)} />
+                {/* Left half only. The right said "8 offline", which the chip above it, the red
+                    slice in this very bar and the icon square all already say — the same figure
+                    four times inside one card. */}
+                <BarStats left={t.statOnlineShare(onlineShare)} right="" />
               </div>
               {/* The online/offline legend that used to sit under a rule here is gone: "51 / 59
                   connected" already gives both numbers, the bar's red segment shows the share, and
@@ -827,10 +824,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                       </button>
                     ))}
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <SubStat color="var(--gray-300)" label={t.legendOnline(onlineCount)} />
-                    <SubStat color="var(--danger-400)" label={t.legendOffline(offlineCount)} />
-                  </div>
+                  {/* No legend on the right. It read "51 online · 8 offline" beside tabs already
+                      labelled "All (59)" and "Offline (8)" — the same two numbers, twice, 300px
+                      apart. The tabs win: they are the control, and a count on a control tells you
+                      what you get by pressing it. */}
                 </div>
                 {visibleCameraRows.length === 0 ? (
                   <p style={{ fontSize: "13px", color: "var(--gray-400)", padding: "24px", textAlign: "center" }}>
