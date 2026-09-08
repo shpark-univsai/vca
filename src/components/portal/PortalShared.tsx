@@ -541,7 +541,7 @@ export interface SummaryCell {
   /** The small word after the figure: "people", "of 104", "cameras". */
   unit?: string;
   label: string;
-  /** warning (amber) for a defect somebody has to fix, neutral (primary) for a fact. */
+  /** warning (amber) for a defect somebody has to fix, neutral (plain black) for a fact. */
   tone?: "warning" | "neutral";
   onClick?: () => void;
   active?: boolean;
@@ -558,10 +558,12 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
       marginBottom: "12px", overflow: "hidden",
     }}>
       {cells.map((cell, i) => {
-        // A defect is amber; anything else is the product's own colour rather than grey. A grey
-        // figure in a row of amber ones reads as switched off, and these cells are all live —
-        // the difference between them is what the number means, not whether it counts.
-        const accent = cell.tone === "warning" ? "var(--warning-500)" : "var(--primary-400)";
+        // A defect is amber. Anything else is the plain text colour: these cells state a fact
+        // rather than raise one, and a coloured figure asks to be acted on. The mark beside it
+        // stays grey — with a gray-900 figure next to it there is no risk of the cell reading as
+        // switched off, which is what a grey figure did.
+        const accent = cell.tone === "warning" ? "var(--warning-500)" : "var(--gray-900)";
+        const markColor = cell.tone === "warning" ? "var(--warning-500)" : "var(--gray-400)";
         const body = (
           <>
             <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
@@ -573,7 +575,7 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
             </span>
             {/* marginTop 4 puts the mark's centre on the figure's line rather than at the top of
                 the cell's padding. */}
-            <span style={{ display: "flex", color: accent, flexShrink: 0, marginTop: "4px" }}>{cell.icon}</span>
+            <span style={{ display: "flex", color: markColor, flexShrink: 0, marginTop: "4px" }}>{cell.icon}</span>
           </>
         );
         const shared: React.CSSProperties = {

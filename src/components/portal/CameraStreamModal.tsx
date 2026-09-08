@@ -5,6 +5,7 @@ import { Play } from "lucide-react";
 import { useVcaStore, type Camera } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { BORDER } from "./PortalShared";
+import { sgtClockMinutes, sgtDateKey } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 
 const AI_OVERLAY_COLORS: Record<string, string> = {
@@ -161,53 +162,84 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
             ))}
           </div>
 
-          {/* Info grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-            {[
+          {/*
+            Facts as rows, not as a grid of boxes.
+
+            This was four tinted boxes with a label above a value, then a fifth for the stream URL,
+            then five more for the activity list — eleven bordered rectangles inside one bordered
+            modal, each drawing a frame around two words. It is the look of a screen assembled from
+            components rather than laid out: every field shouting that it is a field.
+
+            A detail sheet is a list of label-and-value pairs, so it is drawn as one — label left in
+            grey, value right, a hairline between rows, nothing else. Same grammar the licence page
+            uses for the contract it shows, which is the other place in Portal that reads like this.
+          */}
+          <div>
+            {([
               [t.zone, camera.zone || "—"],
               [t.location, camera.location || "—"],
               [t.protocol, camera.protocol ?? "TCP"],
-              [t.coordinates, camera.lat && camera.lng ? `${camera.lat}, ${camera.lng}` : "—"],
-            ].map(([label, value]) => (
-              <div key={label} style={{ padding: "8px 10px", borderRadius: "10px", backgroundColor: "var(--gray-50)", border: BORDER }}>
-                <p style={{ fontSize: "10px", color: "var(--gray-400)", fontWeight: 600 }}>{label}</p>
-                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginTop: "2px" }}>{value}</p>
+              [t.coordinates, camera.lat !== undefined && camera.lng !== undefined ? `${camera.lat}, ${camera.lng}` : "—"],
+            ] as [string, string][]).map(([label, value], i) => (
+              <div key={label} style={{
+                display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px",
+                padding: "9px 0", borderTop: i === 0 ? "none" : BORDER,
+              }}>
+                <span style={{ fontSize: "12px", color: "var(--gray-500)", flexShrink: 0 }}>{label}</span>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", textAlign: "right", minWidth: 0, wordBreak: "break-word" }}>{value}</span>
               </div>
             ))}
+            {/* The URL keeps monospace — it is a string somebody may have to compare character by
+                character — but it is a row like the others, not a panel of its own. */}
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px", padding: "9px 0", borderTop: BORDER }}>
+              <span style={{ fontSize: "12px", color: "var(--gray-500)", flexShrink: 0 }}>{t.rtspUrl}</span>
+              <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-900)", fontFamily: "monospace", textAlign: "right", minWidth: 0, wordBreak: "break-all" }}>{camera.rtspUrl}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px", padding: "9px 0", borderTop: BORDER }}>
+              <span style={{ fontSize: "12px", color: "var(--gray-500)", flexShrink: 0 }}>{t.mappedAiEngines}</span>
+              {aiFeatures.length === 0 ? (
+                <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noAiEngines}</span>
+              ) : (
+                <span style={{ display: "flex", flexWrap: "wrap", gap: "6px", justifyContent: "flex-end" }}>
+                  {aiFeatures.map(f => (
+                    <span key={f} style={{ fontSize: "10px", fontWeight: 600, color: "var(--primary-400)", backgroundColor: "var(--primary-100)", padding: "3px 8px", borderRadius: "999px" }}>{f}</span>
+                  ))}
+                </span>
+              )}
+            </div>
           </div>
 
-          <div style={{ padding: "8px 10px", borderRadius: "10px", backgroundColor: "var(--gray-50)", border: BORDER }}>
-            <p style={{ fontSize: "10px", color: "var(--gray-400)", fontWeight: 600 }}>{t.rtspUrl}</p>
-            <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-600)", fontFamily: "monospace", marginTop: "2px", wordBreak: "break-all" }}>{camera.rtspUrl}</p>
-          </div>
+          {/*
+            Recent detections: a heading and plain rows.
 
-          {/* AI features */}
+            Each row was a bordered, tinted box for a name and a timestamp. The list is the point,
+            so the rows are just rows — name left, time right, a hairline between them.
+
+            The time was `toLocaleString()`, which printed the browser's zone in the browser's
+            locale ("2026. 9. 8. 오후 5:16:00" — seconds nobody needs and a day that is wrong for
+            anyone reading from another country). Now it is the project's own clock, in the format
+            the rest of Portal writes: 09-08 17:16.
+          */}
           <div>
-            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "8px" }}>{t.mappedAiEngines}</p>
-            {aiFeatures.length === 0 ? (
-              <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noAiEngines}</p>
-            ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                {aiFeatures.map(f => (
-                  <span key={f} style={{ fontSize: "10px", fontWeight: 600, color: "var(--primary-400)", backgroundColor: "var(--primary-100)", padding: "4px 10px", borderRadius: "999px" }}>{f}</span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Recent activity — real detection events tied to this camera */}
-          <div>
-            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "8px" }}>{t.recentActivity}</p>
+            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginBottom: "4px" }}>{t.recentActivity}</p>
             {recentEvents.length === 0 ? (
-              <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noRecentDetections}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-400)", paddingTop: "4px" }}>{t.noRecentDetections}</p>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                {recentEvents.map(e => (
-                  <div key={e.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderRadius: "10px", backgroundColor: "var(--gray-50)", border: BORDER }}>
-                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{e.personName ?? e.type}</span>
-                    <span style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{new Date(e.timestamp).toLocaleString()}</span>
-                  </div>
-                ))}
+              <div>
+                {recentEvents.map((e, i) => {
+                  const at = new Date(e.timestamp);
+                  return (
+                    <div key={e.id} style={{
+                      display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px",
+                      padding: "8px 0", borderTop: i === 0 ? "none" : BORDER,
+                    }}>
+                      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)" }}>{e.personName ?? e.type}</span>
+                      <span style={{ fontSize: "11px", color: "var(--gray-400)", fontFamily: "monospace", flexShrink: 0 }}>
+                        {`${sgtDateKey(at).slice(5)} ${sgtClockMinutes(at)}`}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
