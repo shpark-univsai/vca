@@ -89,7 +89,8 @@ const T = {
     todaySoFar: "Today",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · Vehicle ${vehicle} · Unknown ${unknown.toLocaleString("en-US")}`,
-    unstableTitle: "Most drops",
+    unstableTitle: "Stream drops · last 7 days",
+    dropsAxisHint: "oldest → today",
     noDrops: "Every camera held its stream all week.",
     viewAllCameras: (n: number) => `View all ${n} cameras`,
     recentVipsTitle: "Recently Registered VIPs",
@@ -172,7 +173,8 @@ const T = {
     todaySoFar: "오늘",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · 차량 ${vehicle} · 미확인 ${unknown.toLocaleString("en-US")}`,
-    unstableTitle: "끊김 많은 순",
+    unstableTitle: "스트림 끊김 · 지난 7일",
+    dropsAxisHint: "오래된 날 → 오늘",
     noDrops: "이번 주 내내 모든 카메라가 스트림을 유지했습니다.",
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
     recentVipsTitle: "최근 등록된 VIP",
@@ -893,7 +895,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             is written as the API being asked for rather than as decoration — a screen the backend
             developer can look at is a clearer specification than a sentence in a meeting.
           */}
-          <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", marginBottom: CARD_GAP }}>
+          <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "16px", marginBottom: CARD_GAP }}>
             {/*
               Laid out the way the references lay this out.
 
@@ -906,134 +908,72 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
               The panel's subtitle is gone with it — the two column labels say what it said.
             */}
-            <div style={{ marginBottom: "16px" }}>
+            {/* The figure rides on the title's line. It had a block of its own above the chart —
+                title, then figure, then chart — which made this card the tallest thing on a page
+                whose point is the four cards and the camera list. On one line the panel says what
+                it is and how today is going in the same 22px. */}
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBottom: "12px" }}>
               <SectionHead title={t.trendTitle} />
-            </div>
-            {/* stretch, not start: the two halves are separated by a rule down the middle, and a
-                rule only reads as one if it runs the height of what it divides. */}
-            {/* 2.4fr against 1fr, not 1.75. The right block is four short rows and a label; at a
-                third of the panel it had more room than it had to say, and the chart — the thing
-                the panel is named after — was the narrower half of a card it should own. */}
-            <div style={{ display: "grid", gridTemplateColumns: "2.4fr 1fr", gap: CARD_GAP, alignItems: "stretch" }}>
-              <div style={{ minWidth: 0 }}>
-                {/* No "Detections" label here — it is in the panel's own title now, which was
-                    carrying only the period ("Last 7 days") while this line carried only the
-                    subject. Two heading-ish lines, one fact between them. */}
-                {/* The change sits beside the figure, not under it: it qualifies that number and a
-                    line of its own read as a third fact. Baseline-aligned so the small text sits
-                    on the big text's line rather than floating in the middle of it.
-
-                    Grey, not green or red — a busier day than yesterday is neither good news nor
+              <span style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+                <span style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>
+                  {today.total.toLocaleString("en-US")}
+                </span>
+                {/* Grey, not green or red. A busier day than yesterday is neither good news nor
                     bad, and colouring it would send the reader looking for a fault nobody is
                     reporting. */}
-                <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", marginTop: "2px" }}>
-                  <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>
-                    {today.total.toLocaleString("en-US")}
-                  </span>
-                  <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", color: "var(--gray-500)" }}>
-                    {detectionDelta >= 0 ? <ArrowUp size={11} strokeWidth={2.6} /> : <ArrowDown size={11} strokeWidth={2.6} />}
-                    {t.vsYesterday(detectionDelta)}
-                  </span>
-                </div>
-                {/* Heights are a share of the tallest day, not of a round number: nobody knows what
-                    a thousand detections looks like, but everyone can see which day was the busy
-                    one. Today is the lighter step because the day is not over — a partial count at
-                    full strength reads as a quiet day. The breakdown that used to sit under this
-                    chart as a fourth line of text is the bars' tooltip now. */}
-                <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "64px", marginTop: "16px" }}>
-                  {detectionDays.map(d => (
-                    <div
-                      key={d.daysAgo}
-                      title={`${d.total.toLocaleString("en-US")} — ${t.detectionSplit(d.vip, d.vehicle, d.unknown)}`}
-                      style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}
-                    >
-                      <div style={{
-                        height: `${Math.max(4, (d.total / detectionPeak) * 100)}%`,
-                        borderRadius: "4px",
-                        backgroundColor: d.daysAgo === 0 ? "var(--primary-200)" : "var(--primary-300)",
-                      }} />
-                    </div>
-                  ))}
-                </div>
-                {/* Weekday letters, only once the clock is known — they are the one part of this
-                    chart that depends on what day it is, and a guessed one would be corrected a
-                    frame later. The row keeps its height either way so nothing jumps. */}
-                <div style={{ display: "flex", gap: "8px", marginTop: "6px", minHeight: "14px" }}>
-                  {detectionDays.map(d => {
-                    const at = nowMs !== null ? new Date(nowMs - d.daysAgo * 86400000) : null;
-                    return (
-                      /* Weekday and date on one line. A weekday alone is only readable while you
-                         still know what today is — a week later, in a screenshot or a report,
-                         "Mon" names nothing — and stacked they made the axis two rows deep under a
-                         64px chart. The date comes off the Singapore calendar key rather than a
-                         locale format, so both languages read the same digits and the server and
-                         the browser cannot disagree about which day it is. */
-                      <span key={d.daysAgo} style={{ flex: 1, fontSize: "10px", color: "var(--gray-400)", textAlign: "center", whiteSpace: "nowrap" }}>
-                        {at === null ? "" : `${d.daysAgo === 0
-                          ? t.todaySoFar
-                          : new Intl.DateTimeFormat(lang === "ko" ? "ko-KR" : "en-GB", { timeZone: "Asia/Singapore", weekday: "short" }).format(at)} ${sgtDateKey(at).slice(5).replace("-", ".")}`}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
+                <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", color: "var(--gray-500)" }}>
+                  {detectionDelta >= 0 ? <ArrowUp size={11} strokeWidth={2.6} /> : <ArrowDown size={11} strokeWidth={2.6} />}
+                  {t.vsYesterday(detectionDelta)}
+                </span>
+              </span>
+            </div>
+            {/* One subject, one card. The camera-drops list used to sit on the right of this one,
+                joined to it by nothing but the seven days they shared — a period is not a subject.
+                What the cameras saw and whether the cameras worked are two questions, and the
+                second belongs with the cameras: it is under the Camera status panel now. */}
+            <div style={{ minWidth: 0 }}>
+              {/* Back to bars. A line was the wrong swap: the reading here is "which day was
+                  busy", one day against another, and bars are what compare quantities that stand
+                  apart. A line claims the seven points are samples of something continuous, which
+                  a daily total is not — and it drew today's partial count as a plunge rather than
+                  as a day that has not finished.
 
-              {/* Which cameras were unreliable, not which are down now — the card above already
-                  says that. The label names the sort, because "Stream drops this week" left the
-                  reader asking whether the list was ordered at all: it is the cameras that dropped
-                  most often, worst first, and a camera that held all week is absent rather than
-                  listed with a zero. A camera that drops four times a week and is online when you look is
-                  invisible everywhere else in Portal, and it is exactly the one worth sending
-                  somebody to. */}
-              {/*
-                A tinted block, not a hairline neighbour.
-
-                A rule was enough to say "different question" but not enough to say "this is the
-                detail behind the chart" — on one flat white surface the list still read as a
-                third column of it. A gray-50 ground with its own padding makes it a panel within
-                the panel, which is what it is: the chart is the week, this is what is behind the
-                week's worst days.
-              */}
-              <div style={{ minWidth: 0, backgroundColor: "var(--gray-50)", borderRadius: "12px", padding: "14px" }}>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.unstableTitle}</p>
-                {unstable.length === 0 ? (
-                  <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "10px" }}>{t.noDrops}</p>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "8px" }}>
-                    {/* 4px between rows on top of each row's own 6px padding: with the rows flush
-                        the four names read as one block of text rather than four things you can
-                        click, and the hover fill of one row touched the next. */}
-                    {unstable.map(({ camera, drops }, i) => (
-                      <button
-                        key={camera.id}
-                        onClick={() => { setInspectCameraId(camera.id); onTabChange("cameras"); }}
-                        className="portal-attention-row"
-                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", width: "100%", border: "none", background: "none", padding: "6px", margin: "0 -6px", borderRadius: "6px", cursor: "pointer", fontFamily: "inherit" }}
-                      >
-
-                        {/* A bar per camera rather than a rank numeral.
-                            "Most drops" claims an order, and four numbered rows only assert it —
-                            a bar shows it, and shows the thing a rank hides: whether the worst
-                            camera is twice as bad as the next one or the same. Widths are a share
-                            of the worst row, the same rule the week's bars use.
-                            Name and zone stay on one line; the zone does not shrink and the name
-                            does, because if a half has to go it is the one you already know. */}
-                        <span style={{ display: "flex", flexDirection: "column", gap: "5px", minWidth: 0, flex: 1, textAlign: "left" }}>
-                          <span style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px", minWidth: 0 }}>
-                            <span style={{ display: "flex", alignItems: "baseline", gap: "6px", minWidth: 0 }}>
-                              <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
-                              <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap", flexShrink: 0 }}>{camera.zone}</span>
-                            </span>
-                            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>{drops}</span>
-                          </span>
-                          <span style={{ display: "block", height: "4px", borderRadius: "999px", backgroundColor: "var(--gray-200)", overflow: "hidden" }}>
-                            <span style={{ display: "block", height: "100%", width: `${(drops / unstable[0].drops) * 100}%`, backgroundColor: "var(--primary-300)" }} />
-                          </span>
-                        </span>
-                      </button>
-                    ))}
+                  Heights are a share of the tallest day, not of a round number: nobody knows what
+                  a thousand detections looks like, but everyone can see which day was the busy
+                  one. Today is the lighter step because the day is not over — a partial count at
+                  full strength reads as a quiet day. Each bar's tooltip carries the split. */}
+              <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "56px" }}>
+                {detectionDays.map(d => (
+                  <div
+                    key={d.daysAgo}
+                    title={`${d.total.toLocaleString("en-US")} — ${t.detectionSplit(d.vip, d.vehicle, d.unknown)}`}
+                    style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}
+                  >
+                    <div style={{
+                      height: `${Math.max(4, (d.total / detectionPeak) * 100)}%`,
+                      borderRadius: "4px",
+                      backgroundColor: d.daysAgo === 0 ? "var(--primary-200)" : "var(--primary-300)",
+                    }} />
                   </div>
-                )}
+                ))}
+              </div>
+              {/* Weekday and date, only once the clock is known — they are the one part of this
+                  chart that depends on what day it is, and a guessed one would be corrected a
+                  frame later. The row keeps its height either way so nothing jumps. A weekday on
+                  its own is only readable while you still know what today is; a week later, in a
+                  screenshot, "Mon" names nothing. The date comes off the Singapore calendar key
+                  rather than a locale format, so both languages read the same digits. */}
+              <div style={{ display: "flex", gap: "8px", marginTop: "8px", minHeight: "14px" }}>
+                {detectionDays.map(d => {
+                  const at = nowMs !== null ? new Date(nowMs - d.daysAgo * 86400000) : null;
+                  return (
+                    <span key={d.daysAgo} style={{ flex: 1, fontSize: "10px", color: "var(--gray-400)", textAlign: "center", whiteSpace: "nowrap" }}>
+                      {at === null ? "" : `${d.daysAgo === 0
+                        ? t.todaySoFar
+                        : new Intl.DateTimeFormat(lang === "ko" ? "ko-KR" : "en-GB", { timeZone: "Asia/Singapore", weekday: "short" }).format(at)} ${sgtDateKey(at).slice(5).replace("-", ".")}`}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -1183,6 +1123,58 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   </>
                 )}
               </div>
+
+              {/*
+                Stream drops, as a grid rather than a list.
+
+                A list of "Angmokio 3 — 4" answers who but not when, and those are different
+                errands: four drops in one afternoon is a power cut, one drop a day for four days
+                is a camera on its way out. Seven cells per camera, oldest on the left, shaded by
+                how many times it dropped that day — a heat grid is the smallest diagram that
+                carries both, and at 14px a row it costs less height than the list it replaces.
+
+                Under the camera table because it is the same subject as the camera table: that
+                one is the fleet now, this is the fleet this week. It used to sit beside the
+                detections chart, joined to it by nothing but a shared seven days.
+              */}
+              {unstable.length > 0 && (
+                <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "16px", flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "10px", marginBottom: "10px" }}>
+                    <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.unstableTitle}</p>
+                    <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{t.dropsAxisHint}</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {unstable.map(({ camera, drops, dropsByDay }) => (
+                      <button
+                        key={camera.id}
+                        onClick={() => { setInspectCameraId(camera.id); onTabChange("cameras"); }}
+                        className="portal-attention-row"
+                        style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", border: "none", background: "none", padding: "4px 6px", margin: "0 -6px", borderRadius: "6px", cursor: "pointer", fontFamily: "inherit" }}
+                      >
+                        <span style={{ display: "flex", alignItems: "baseline", gap: "6px", minWidth: 0, flex: 1, textAlign: "left" }}>
+                          <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
+                          <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap", flexShrink: 0 }}>{camera.zone}</span>
+                        </span>
+                        {/* Three steps, not a gradient: nobody reads a shade off a scale, but
+                            "empty / once / more than once" is a distinction you can see. */}
+                        <span style={{ display: "flex", gap: "3px", flexShrink: 0 }}>
+                          {dropsByDay.map((n, day) => (
+                            <span
+                              key={day}
+                              title={nowMs !== null ? `${sgtDateKey(new Date(nowMs - (6 - day) * 86400000))} · ${n}` : undefined}
+                              style={{
+                                width: "12px", height: "12px", borderRadius: "3px",
+                                backgroundColor: n === 0 ? "var(--gray-100)" : n === 1 ? "var(--primary-200)" : "var(--primary-400)",
+                              }}
+                            />
+                          ))}
+                        </span>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0, width: "14px", textAlign: "right" }}>{drops}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* The right column: who was added, then what changed. Both are read at a glance and

@@ -1266,13 +1266,31 @@ export function dailyDetections(projectId: string): DailyDetections[] {
   });
 }
 
-/** Cameras that dropped their stream at least once in the last seven days, worst first. */
-export function unstableCameras(projectId: string, cameras: Camera[]): { camera: Camera; drops: number }[] {
+/**
+ * Cameras that dropped their stream at least once in the last seven days, worst first, with the
+ * drops spread over the days they happened on.
+ *
+ * `dropsByDay` is oldest-first (index 0 = six days ago, index 6 = today) so it lines up with the
+ * detection series above and with the way the Overview draws its week. A camera that dropped four
+ * times on one afternoon and one that dropped once a day for four days are the same number and a
+ * different errand, which is the whole reason the per-day breakdown is asked for rather than the
+ * total alone:
+ *
+ *   GET /projects/:id/camera-stability?days=7 → [{ cameraId, dropsByDay: number[7] }]
+ */
+export function unstableCameras(projectId: string, cameras: Camera[]): { camera: Camera; drops: number; dropsByDay: number[] }[] {
   return cameras
     .filter(c => c.projectId === projectId)
-    .map((c, i) => ({ camera: c, drops: Math.floor(seededRandom(i * 9.13 + c.code.length) * 5) }))
+    .map((c, i) => {
+      const dropsByDay = Array.from({ length: 7 }, (_, day) =>
+        seededRandom(i * 9.13 + day * 2.7 + c.code.length) > 0.78 ? 1 + Math.floor(seededRandom(i + day * 4.4) * 2) : 0
+      );
+      return { camera: c, dropsByDay, drops: dropsByDay.reduce((a, b) => a + b, 0) };
+    })
     .filter(r => r.drops > 0)
     .sort((a, b) => b.drops - a.drops)
+    // Four rows. This is a pointer at the worst offenders, not an inventory of them — past that
+    // it stops being a glance and starts being the maintenance screen it should link to.
     .slice(0, 4);
 }
 
