@@ -268,6 +268,25 @@ export default function PortalShell() {
             >
               {currentOrg?.name ?? t.noTeam}
             </span>
+            <BreadcrumbChevron />
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap", padding: "6px 2px" }}>
+              {t.newProject}
+            </span>
+          </>
+        ) : sidebarVisible ? (
+          <>
+            {/* Project, then page. It named the nav group first — WORKSPACE, MANAGE — which is a
+                heading in the rail, not a place: the first crumb of a trail should be somewhere you
+                could be, and you are in a project. The page half is read off the rail's own tab
+                table so the two cannot disagree.
+                Plain text, not a switcher: the rail already has one, and a crumb that is also a
+                menu makes two ways to do the same thing a few hundred pixels apart. */}
+            <span
+              title={projects.find(p => p.id === currentProjectId)?.name}
+              style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: BREADCRUMB_TEAM_MAX_WIDTH }}
+            >
+              {projects.find(p => p.id === currentProjectId)?.name}
+            </span>
             {/*
               How the fleet is doing, for the pages that do not say it themselves.
 
@@ -313,25 +332,6 @@ export default function PortalShell() {
                 </button>
               </span>
             )}
-            <BreadcrumbChevron />
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap", padding: "6px 2px" }}>
-              {t.newProject}
-            </span>
-          </>
-        ) : sidebarVisible ? (
-          <>
-            {/* Project, then page. It named the nav group first — WORKSPACE, MANAGE — which is a
-                heading in the rail, not a place: the first crumb of a trail should be somewhere you
-                could be, and you are in a project. The page half is read off the rail's own tab
-                table so the two cannot disagree.
-                Plain text, not a switcher: the rail already has one, and a crumb that is also a
-                menu makes two ways to do the same thing a few hundred pixels apart. */}
-            <span
-              title={projects.find(p => p.id === currentProjectId)?.name}
-              style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: BREADCRUMB_TEAM_MAX_WIDTH }}
-            >
-              {projects.find(p => p.id === currentProjectId)?.name}
-            </span>
             <BreadcrumbChevron />
             {/* A step larger than the crumb before it: with the page's own title gone from the
                 content, this is the only place the screen is named, so it has to carry that
