@@ -91,6 +91,7 @@ const T = {
     aiCameraBadge: "AI Camera",
     cctvBadge: "CCTV",
     toggleStatusTitle: "Toggle status",
+    previewAction: "Preview stream",
     editAction: "Edit",
     removeAction: "Remove",
     addModalTitle: "Add Input Device",
@@ -218,6 +219,7 @@ const T = {
     aiCameraBadge: "AI 카메라",
     cctvBadge: "CCTV",
     toggleStatusTitle: "상태 전환",
+    previewAction: "스트림 미리보기",
     editAction: "수정",
     removeAction: "삭제",
     addModalTitle: "입력 장치 추가",
@@ -1324,7 +1326,12 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: online ? "var(--success-400)" : "var(--gray-400)", flexShrink: 0 }} />
                   <span style={{ fontSize: "12px", fontWeight: 700, color: online ? "var(--success-400)" : "var(--gray-400)" }}>{online ? t.online : t.offline}</span>
                 </button>
+                {/* Preview first: it is the item somebody reaches for most and the only one that
+                    answers "is this camera actually seeing anything". The thumbnail opens the same
+                    modal, but a thumbnail is not a control anyone is told about — a named item in
+                    the menu is. */}
                 <RowActionsMenu actions={[
+                  { label: t.previewAction, onClick: () => setInspectingCameraId(cam.id) },
                   { label: t.editAction, onClick: () => setEditingCamera(cam) },
                   { label: t.removeAction, onClick: () => handleDelete(cam), danger: true },
                 ]} />

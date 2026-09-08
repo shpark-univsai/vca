@@ -176,9 +176,22 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
+      {/*
+        Bottom right, newest at the bottom.
+
+        It used to sit at top centre, 76px down — which on Portal is directly under the top bar and
+        over the breadcrumb, so a message about what just happened landed on top of the words that
+        say where you are. Bottom right is where Whop and Maze put theirs; the corner is out of the
+        way of both the rail and the page's own column, and the eye finds it because nothing else
+        lives there.
+
+        column-reverse so a new toast pushes the older ones up rather than shifting the one you are
+        reading, and align to the right edge so cards of different widths share a margin instead of
+        a centre line.
+      */}
       <div style={{
-        position: "fixed", top: "76px", left: "50%", transform: "translateX(-50%)", zIndex: 10000,
-        display: "flex", flexDirection: "column", alignItems: "center", gap: "10px",
+        position: "fixed", bottom: "24px", right: "24px", zIndex: 10000,
+        display: "flex", flexDirection: "column-reverse", alignItems: "flex-end", gap: "10px",
       }}>
         {toasts.map(t => <Toast key={t.id} item={t} onDismiss={dismiss} />)}
       </div>
