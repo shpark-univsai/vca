@@ -1087,7 +1087,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         empty table. If all three are zero the strip disappears, which is the correct state for a
         fleet with nothing wrong with it.
       */}
-      <SummaryStrip cells={[
+      {/* Not on the Videos and Images tabs. All three figures count cameras, and under a tab
+          showing two video files "60 cameras with no AI engine" is a statement about rows that are
+          not on screen — which is exactly the misreading that putting the strip below the tabs
+          invites. Shown where it matches what the list holds, hidden where it does not. */}
+      {(kindTab === "ALL" || kindTab === "camera") && <SummaryStrip cells={[
         { key: "noEngine", cameras: noEngineCameras, label: t.gapNoEngine, // Scan, not BrainCircuit: that glyph is a brain full of traces and at 14px with a
         // 2.4 stroke it collapsed into a scribble that looked like a rotated mistake. Four
         // corner brackets survive the size and say "detection" without any detail to lose.
@@ -1106,7 +1110,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           active: gapFilter === item.key,
           title: gapFilter === item.key ? t.gapClear : t.gapShowOnly,
           onClick: () => setGapFilter(gapFilter === item.key ? null : (item.key as "noEngine" | "noServer" | "noCoords")),
-        }))} />
+        }))} />}
 
       {/* Search & filters */}
       {/* alignItems center, not the default stretch: every control in this row sets its own height

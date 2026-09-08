@@ -1052,7 +1052,10 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         photo; it appears after a CSV import, which is the only path that can enrol a name without
         a face.
       */}
-      <SummaryStrip cells={[
+      {/* Not on the Groups tab: every figure here counts people, and a party is not a person —
+          under a list of four groups "12 people with an unreadable photo" reads as a fact about
+          those four rows. */}
+      {vipTab !== "groups" && <SummaryStrip cells={[
         ...([
           { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, icon: <ImageOff size={14} strokeWidth={2.4} /> },
           { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed, icon: <AlertTriangle size={14} strokeWidth={2.4} /> },
@@ -1075,7 +1078,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           unit: t.healthOfTotal(allProjectPersons.length),
           label: t.healthReachLabel,
         },
-      ]} />
+      ]} />}
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
       <div style={{ position: "relative", flex: 1, maxWidth: "320px" }}>
