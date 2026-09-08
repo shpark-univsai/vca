@@ -651,7 +651,19 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--primary-300)" }} />
                 </div>
-                {channelLimit ? <BarStats left={t.statUtilised(channelShare)} right={t.statAvailable(Math.max(0, channelLimit - projectCameras.length))} /> : null}
+                {/* The plan joins the legend: "Enterprise · 59% utilised". It is already the chip
+                    at the top of the card, but that is the row the eye starts on and this is the
+                    line the percentage is read from — asked for 2026-09-08, so the share and the
+                    plan it is a share of sit together. Capitalised rather than uppercased: the
+                    chip shouts it, a caption says it. */}
+                {channelLimit ? (
+                  <BarStats
+                    left={project.licensePlan
+                      ? `${project.licensePlan.charAt(0).toUpperCase()}${project.licensePlan.slice(1)} · ${t.statUtilised(channelShare)}`
+                      : t.statUtilised(channelShare)}
+                    right={t.statAvailable(Math.max(0, channelLimit - projectCameras.length))}
+                  />
+                ) : null}
               </div>
               {/* Plan name, "Manage" and the expiry chip are gone from here. This card answers one
                   question — how much of the licence is in use — and the rest of the contract is a
