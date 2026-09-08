@@ -911,7 +911,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <div style={{ marginBottom: "16px" }}>
               <SectionHead title={t.trendTitle} />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1.75fr 1fr", gap: CARD_GAP, alignItems: "start" }}>
+            {/* stretch, not start: the two halves are separated by a rule down the middle, and a
+                rule only reads as one if it runs the height of what it divides. */}
+            <div style={{ display: "grid", gridTemplateColumns: "1.75fr 1fr", gap: CARD_GAP, alignItems: "stretch" }}>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.detectionsLabel}</p>
                 <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)", marginTop: "2px" }}>
@@ -965,7 +967,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   says that. A camera that drops four times a week and is online when you look is
                   invisible everywhere else in Portal, and it is exactly the one worth sending
                   somebody to. */}
-              <div style={{ minWidth: 0 }}>
+              {/* Its own side of a rule. Without it the list read as a third column of the chart —
+                  two label lines at the same size, the same distance apart, on one flat surface.
+                  A hairline is enough to say "different question"; a second card inside this card
+                  would be a box inside a box. */}
+              <div style={{ minWidth: 0, borderLeft: BORDER, paddingLeft: "20px" }}>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.unstableTitle}</p>
                 {unstable.length === 0 ? (
                   <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "10px" }}>{t.noDrops}</p>
