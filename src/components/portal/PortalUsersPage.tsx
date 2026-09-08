@@ -1656,7 +1656,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             coloured action, and on this tab the invite button — the coloured one — is hidden,
             which left five grey pills and no answer to "what is the thing to do here". Adding a
             name to the roster is that thing. */}
-        {peopleTab !== "accounts" && (
+        {/* On both tabs. The note above says the two ways of adding a person stay together on the
+            combined tab, and the condition said the opposite — `!== "accounts"` hid it exactly
+            there, leaving that tab with one button and no way to put a name on the roster without
+            switching tabs first. Adding a person is the page's subject on either tab. */}
         <button
           onClick={() => setRosterEditorFor({ entry: null })}
           style={peopleTab === "roster"
@@ -1666,7 +1669,6 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           <ClipboardPlus size={14} strokeWidth={2.4} />
           {t.addToRoster}
         </button>
-        )}
         {peopleTab === "roster" && (<>
         <button onClick={() => setShowRosterImport(true)} style={SECONDARY_BTN}>
           <Upload size={14} strokeWidth={2.4} />

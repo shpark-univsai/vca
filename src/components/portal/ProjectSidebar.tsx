@@ -120,8 +120,12 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
   // The label changed because the tab now lists uploaded footage alongside cameras.
   { id: "cameras", group: "workspace", label: { en: "Input Sources", ko: "입력 소스" }, icon: CamerasIcon },
   { id: "server", group: "manage", label: { en: "Server & API", ko: "서버 및 API" }, icon: ServerIcon },
-  { id: "license", group: "manage", label: { en: "License", ko: "라이선스" }, icon: LicenseIcon },
   { id: "users", group: "manage", label: { en: "Users & Permissions", ko: "사용자 및 권한" }, icon: UsersIcon },
+  // Licence last. The three under MANAGE are read from most-touched to least: servers get changed
+  // when the site changes, people get added and removed all year, and a licence is signed once and
+  // looked at when somebody asks about the bill or runs out of channels. It sat in the middle,
+  // between two things somebody opens weekly.
+  { id: "license", group: "manage", label: { en: "License", ko: "라이선스" }, icon: LicenseIcon },
 ];
 
 interface ProjectSidebarProps {
