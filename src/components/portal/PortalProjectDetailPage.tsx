@@ -623,18 +623,17 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               four grey squares made the row look like one card repeated. What the figure is doing
               is said by the chip beside it, in a word. */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: CARD_GAP, marginBottom: CARD_GAP }}>
-            {/* The icon square says which card this is, so it is the product's colour — except on
-                this one when something is down, where it turns red with the chip beside it.
-                Green / blue / amber squares are gone (four colour systems in one row), but an
-                offline camera is the row's one real fault and the card is the first place the eye
-                lands: red here is the same red as the chip and the bar's slice, saying one thing
-                three ways rather than three things. Nothing offline and it is primary again. */}
+            {/* All four squares are grey at rest — the icon says which card this is, not how it is
+                doing, and four coloured squares in a row made the colour mark nothing. The one
+                exception is here: an offline camera turns this square red along with the chip
+                beside it and the slice in its bar, so the row has exactly one thing that can go
+                coloured and it is the one thing that can go wrong. */}
             <MetricCard
               label={t.cameraConnectivity} icon={VideoIcon}
-              iconBg={offlineCount > 0 ? "var(--danger-100)" : "var(--primary-100)"}
-              iconColor={offlineCount > 0 ? "var(--danger-400)" : "var(--primary-400)"}
+              iconBg={offlineCount > 0 ? "var(--danger-100)" : "var(--gray-100)"}
+              iconColor={offlineCount > 0 ? "var(--danger-400)" : "var(--gray-500)"}
               chip={offlineCount === 0
-                ? <StateChip text={t.chipHealthy} color="var(--success-400)" />
+                ? <StateChip text={t.chipHealthy} color="var(--gray-500)" />
                 : <StateChip text={t.chipAttention(offlineCount)} color="var(--danger-400)" />}
               onClick={() => onTabChange("cameras")}
             >
@@ -678,7 +677,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </MetricCard>
 
             <MetricCard
-              label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--primary-100)" iconColor="var(--primary-400)"
+              label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)"
               /* No chip. The plan was here as ENTERPRISE beside the icon and it is now the left
                  half of the bar's caption, which is where it belongs: the caption is read with the
                  figure it qualifies, and the same word twice on one card is once too many. This
