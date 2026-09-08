@@ -153,12 +153,14 @@ export const TABLE_HEADER_COLOR = "var(--gray-500)";
  * off the fold.
  *
  * The row stretches its three panels to a common height and stops at this one; anything longer
- * scrolls inside its own panel instead of growing the page. 380px is a little above what the
- * fullest of them needs today (Camera Status at its five-row cap is ~340px), so in the normal case
- * nothing scrolls and the three simply line up — the cap is there for the project that outgrows
- * that, not as the everyday layout.
+ * scrolls inside its own panel instead of growing the page.
+ *
+ * 680px, up from 380. The camera list used to be cut to five rows, so 380 was all it could fill;
+ * now the panel holds the whole list and scrolls, and five rows was too small a window to work in
+ * — with the offline cameras sorted to the top you saw the outage and nothing else. This is
+ * roughly a dozen rows: the offline ones plus enough of the healthy fleet to see that it is there.
  */
-export const OVERVIEW_PANEL_MAX_HEIGHT = "380px";
+export const OVERVIEW_PANEL_MAX_HEIGHT = "680px";
 
 export const BREADCRUMB_TEAM_MAX_WIDTH = "min(360px, 26vw)";
 export const BREADCRUMB_PROJECT_MAX_WIDTH = "min(320px, 22vw)";
