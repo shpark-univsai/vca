@@ -17,8 +17,16 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 
 const T = {
-  en: { noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar", newProject: "New project", myPageCrumb: "My page" },
-  ko: { noTeam: "팀 없음", expand: "사이드바 펼치기", collapse: "사이드바 접기", newProject: "새 프로젝트", myPageCrumb: "마이페이지" },
+  en: {
+    noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar",
+    newProject: "New project", myPageCrumb: "My page",
+    fleetTitle: (online: number, offline: number) => `${online} cameras online, ${offline} offline — open Input Sources`,
+  },
+  ko: {
+    noTeam: "팀 없음", expand: "사이드바 펼치기", collapse: "사이드바 접기",
+    newProject: "새 프로젝트", myPageCrumb: "마이페이지",
+    fleetTitle: (online: number, offline: number) => `카메라 ${online}대 온라인, ${offline}대 오프라인 — 입력 소스 열기`,
+  },
 } as const;
 
 function BreadcrumbChevron() {
@@ -77,6 +85,10 @@ export default function PortalShell() {
   // default (its address is in no account list) — and a footer meant to say who you are showed
   // nothing at all. Name and address only; the account's role and doors still come from `me`.
   const me = useVcaStore(s => currentPortalUser(s.portalUsers));
+  // This project's cameras, counted once for the rail's badge and the bar's fleet figure.
+  const projectCameras = cameras.filter(c => c.projectId === currentProjectId);
+  const fleetOnline = projectCameras.filter(c => c.status === "online").length;
+  const fleetOffline = projectCameras.length - fleetOnline;
   const locked = !!me && !canEnterPortal(me.permission);
   useEffect(() => {
     if (locked) router.replace("/");
@@ -191,7 +203,7 @@ export default function PortalShell() {
              and the tab it labels is where the figure is broken down by role anyway. Not the
              licence (not a count), not the server tab (read as one setting), not Overview. */
           counts={{
-            cameras: cameras.filter(c => c.projectId === currentProjectId).length,
+            cameras: projectCameras.length,
             vip: persons.filter(p => p.projectId === currentProjectId).length,
           }}
           tab={tab}
@@ -283,6 +295,48 @@ export default function PortalShell() {
             <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap" }}>
               {showAccount ? t.myPageCrumb : PROJECT_TABS.find(pt => pt.id === tab)?.label[lang]}
             </span>
+            {/*
+              How the fleet is doing, for the pages that do not say it themselves.
+
+              Not on Overview: that page carries the same figure twice already — a card reading
+              "51 / 59 connected" with a bar under it, and a line in the attention strip when
+              anything is offline — and a third copy in the bar above them would be the same number
+              three times on one screen. On Licence, Users and Server there is nothing else on
+              screen about the cameras, and this is the only answer to "is the site up".
+
+              Not on My page either: that screen belongs to the account, not to a project, and a
+              project's camera count there would be a fact from somewhere else.
+
+              Two dots and two figures, no animation. The app's header animates its own pair
+              because it sits over live video; Portal is a set of forms and tables, and a pulsing
+              icon on a settings page is movement with nothing behind it.
+            */}
+            {!showAccount && tab !== "overview" && projectCameras.length > 0 && (
+              <>
+                <span style={{ width: "1px", height: "14px", backgroundColor: "var(--line)", marginInline: "6px", flexShrink: 0 }} />
+                <button
+                  onClick={() => setTab("cameras")}
+                  title={t.fleetTitle(fleetOnline, fleetOffline)}
+                  className="portal-link"
+                  style={{
+                    display: "flex", alignItems: "center", gap: "10px", flexShrink: 0,
+                    border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)" }}>
+                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--gray-900)" }} />
+                    {fleetOnline}
+                  </span>
+                  {/* The offline figure is the only red left in the bar, and it earns it here: on
+                      these pages nothing else would tell you a camera is down. A zero is grey,
+                      because "none offline" is not news. */}
+                  <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", fontWeight: 700, color: fleetOffline > 0 ? "var(--danger-400)" : "var(--gray-400)" }}>
+                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: fleetOffline > 0 ? "var(--danger-400)" : "var(--gray-300)" }} />
+                    {fleetOffline}
+                  </span>
+                </button>
+              </>
+            )}
           </>
         ) : (
           <>
