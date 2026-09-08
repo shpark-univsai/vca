@@ -252,7 +252,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
             boxShadow: "0 20px 60px rgba(14,22,42,0.18)", overflow: "hidden",
           }}>
             {/* Header */}
-            <div style={{ padding: "20px 20px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: BORDER }}>
+            <div style={{ padding: "20px 20px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.selectResource}</p>
               <button
                 onClick={() => { setOpen(false); onNewProject(); }}
@@ -318,7 +318,12 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
 
             {/* Table */}
             <div style={{ flex: 1, overflowY: "auto" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "28px 1.6fr 0.9fr 1.3fr 32px", padding: "8px 20px", gap: "8px" }}>
+              {/* The name takes the width the other two were not using.
+                  Type is one word ("Project" / "Team") and an id is a slug — at 0.9fr and 1.3fr
+                  they each held a column of empty space while "Marina Bay & CBD Surveillance
+                  Network" was cut mid-word two columns to the left. The name is what somebody is
+                  reading this table to find. */}
+              <div style={{ display: "grid", gridTemplateColumns: "28px 2.6fr 0.7fr 0.9fr 32px", padding: "8px 20px", gap: "8px" }}>
                 <span />
                 {[t.colName, t.colType, t.colId, ""].map((h, i) => (
                   <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
@@ -326,7 +331,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
               </div>
 
               {showTeamRow && (
-                <div style={{ display: "grid", gridTemplateColumns: "28px 1.6fr 0.9fr 1.3fr 32px", padding: "8px 20px", gap: "8px", alignItems: "center" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "28px 2.6fr 0.7fr 0.9fr 32px", padding: "8px 20px", gap: "8px", alignItems: "center" }}>
                   <span />
                   <span style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
                     <TeamIcon /> {team?.name}
@@ -351,7 +356,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                     onClick={() => selectProject(p)}
                     className="portal-switcher-row"
                     style={{
-                      display: "grid", gridTemplateColumns: "28px 1.6fr 0.9fr 1.3fr 32px", padding: "8px 20px", gap: "8px",
+                      display: "grid", gridTemplateColumns: "28px 2.6fr 0.7fr 0.9fr 32px", padding: "8px 20px", gap: "8px",
                       alignItems: "center", cursor: "pointer",
                     }}
                   >

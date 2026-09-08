@@ -278,7 +278,7 @@ function ActivityLogModal({ entries, nowMs, t, onClose }: {
         backgroundColor: "white", border: BORDER, borderRadius: "16px", width: "560px", maxWidth: "100%",
         maxHeight: "78vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(14,22,42,0.18)", overflow: "hidden",
       }}>
-        <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexShrink: 0 }}>
+        <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexShrink: 0 }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.activityLogTitle}</p>
           <button className="portal-icon-btn" onClick={onClose} title={t.close}
             style={{ display: "flex", border: "none", background: "none", padding: "4px", cursor: "pointer", color: "var(--gray-400)" }}>
