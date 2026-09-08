@@ -198,7 +198,11 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
                 draws everywhere else, and deliberately so. That standard is set against 13-16px
                 icons sitting beside 12-13px text; here the mark sits beside an 11px caption, where
                 a 12px glyph at 1.4px was both taller than the letters and heavier than their
-                stems. Matching the caption means matching its height and its weight. */}
+                stems. Matching the caption means matching its height and its weight.
+
+                The values under the captions are 700, not 600: they are the content of this sheet
+                and the captions are the furniture, so the gap between them should be visible in
+                weight as well as in colour. */}
             {([
               [t.zone, camera.zone || "—", <MapIcon key="z" size={11} strokeWidth={2.2} />],
               [t.location, camera.location || "—", <MapPin key="l" size={11} strokeWidth={2.2} />],
@@ -212,7 +216,7 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
                   <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}>{icon}</span>
                   {label}
                 </p>
-                <p style={{ fontSize: "13px", fontWeight: 600, color: value === "—" || value === t.noRecentDetections ? "var(--gray-400)" : "var(--gray-900)", marginTop: "2px", wordBreak: "break-word" }}>{value}</p>
+                <p style={{ fontSize: "13px", fontWeight: 700, color: value === "—" || value === t.noRecentDetections ? "var(--gray-400)" : "var(--gray-900)", marginTop: "2px", wordBreak: "break-word" }}>{value}</p>
               </div>
             ))}
             {/* Full width, and monospace: a stream URL is a string somebody may have to compare
@@ -222,7 +226,7 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
                 <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Link2 size={11} strokeWidth={2.2} /></span>
                 {t.rtspUrl}
               </p>
-              <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", fontFamily: "monospace", marginTop: "2px", wordBreak: "break-all" }}>{camera.rtspUrl}</p>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "monospace", marginTop: "2px", wordBreak: "break-all" }}>{camera.rtspUrl}</p>
             </div>
             <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
               <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)", marginBottom: "5px" }}>
@@ -230,7 +234,7 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
                 {t.mappedAiEngines}
               </p>
               {aiFeatures.length === 0 ? (
-                <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-400)" }}>{t.noAiEngines}</p>
+                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-400)" }}>{t.noAiEngines}</p>
               ) : (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                   {aiFeatures.map(f => (
