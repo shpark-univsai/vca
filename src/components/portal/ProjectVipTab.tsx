@@ -2,9 +2,8 @@
 
 import { useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
-import { AlertTriangle, ArrowDownWideNarrow, Copy, Eye, ImageOff } from "lucide-react";
+import { AlertTriangle, ArrowDownWideNarrow, Eye, ImageOff, Users } from "lucide-react";
 import { registryHealth, useVcaStore, type Person, type PersonGroup } from "@/lib/vcaStore";
-import { getFacePhoto } from "@/lib/mockData";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
@@ -1021,7 +1020,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                stroke every icon in Portal draws (see ICON_STROKE_PX). */
             { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, icon: <ImageOff size={14} strokeWidth={2.4} /> },
             { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed, icon: <AlertTriangle size={14} strokeWidth={2.4} /> },
-            { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates, icon: <Copy size={14} strokeWidth={2.4} /> },
+            { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates, icon: <Users size={14} strokeWidth={2.4} /> },
           ]).filter(item => item.count > 0).map((item, i) => {
             const active = healthFilter === item.key;
             return (
