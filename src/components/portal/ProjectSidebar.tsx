@@ -10,13 +10,20 @@ interface IconProps {
   color: string;
 }
 
+/*
+ * Rail icons are stroked 1.2px, not the 1.4px every other icon in Portal uses.
+ *
+ * Not an inconsistency: a pale stroke on a near-black ground spreads visually — the eye reads it
+ * a fraction heavier than the identical stroke on white — so keeping the number would have meant
+ * not keeping the weight. Same reason the labels here sit a step lighter than elsewhere.
+ */
 function OverviewIcon({ color }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="2" y="2" width="5" height="5" rx="1" stroke={color} strokeWidth="1.4"/>
-      <rect x="9" y="2" width="5" height="5" rx="1" stroke={color} strokeWidth="1.4"/>
-      <rect x="2" y="9" width="5" height="5" rx="1" stroke={color} strokeWidth="1.4"/>
-      <rect x="9" y="9" width="5" height="5" rx="1" stroke={color} strokeWidth="1.4"/>
+      <rect x="2" y="2" width="5" height="5" rx="1" stroke={color} strokeWidth="1.2"/>
+      <rect x="9" y="2" width="5" height="5" rx="1" stroke={color} strokeWidth="1.2"/>
+      <rect x="2" y="9" width="5" height="5" rx="1" stroke={color} strokeWidth="1.2"/>
+      <rect x="9" y="9" width="5" height="5" rx="1" stroke={color} strokeWidth="1.2"/>
     </svg>
   );
 }
@@ -24,8 +31,8 @@ function OverviewIcon({ color }: IconProps) {
 function CamerasIcon({ color }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M2 5.5C2 4.67 2.67 4 3.5 4H5L5.8 2.8C5.98 2.53 6.28 2.37 6.6 2.37H9.4C9.72 2.37 10.02 2.53 10.2 2.8L11 4H12.5C13.33 4 14 4.67 14 5.5V11.5C14 12.33 13.33 13 12.5 13H3.5C2.67 13 2 12.33 2 11.5V5.5Z" stroke={color} strokeWidth="1.4"/>
-      <circle cx="8" cy="8.3" r="2.3" stroke={color} strokeWidth="1.4"/>
+      <path d="M2 5.5C2 4.67 2.67 4 3.5 4H5L5.8 2.8C5.98 2.53 6.28 2.37 6.6 2.37H9.4C9.72 2.37 10.02 2.53 10.2 2.8L11 4H12.5C13.33 4 14 4.67 14 5.5V11.5C14 12.33 13.33 13 12.5 13H3.5C2.67 13 2 12.33 2 11.5V5.5Z" stroke={color} strokeWidth="1.2"/>
+      <circle cx="8" cy="8.3" r="2.3" stroke={color} strokeWidth="1.2"/>
     </svg>
   );
 }
@@ -36,19 +43,20 @@ function CamerasIcon({ color }: IconProps) {
  * app's icon nor the idea: a star is a favourite or a rating, and the registry is a watchlist of
  * specific people.
  *
- * strokeWidth 1.4 — the one weight every Portal icon is drawn at, hand-drawn paths and lucide
- * components alike. The rail was at 1, which read as a hairline against 13px bold labels.
+ * 1.8, which renders 1.2px at this size — the rail's exception to the console-wide 1.4.
+ * A light stroke on a dark ground reads heavier than the same stroke on white (irradiation), so
+ * matching the number would not match the weight. See the note on the icons above.
  */
 function VipIcon({ color }: IconProps) {
-  return <Crown size={16} strokeWidth={2.1} color={color} />;
+  return <Crown size={16} strokeWidth={1.8} color={color} />;
 }
 
 function LicenseIcon({ color }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M4 2.5C4 2.22 4.22 2 4.5 2H9.5L12 4.5V13.5C12 13.78 11.78 14 11.5 14H4.5C4.22 14 4 13.78 4 13.5V2.5Z" stroke={color} strokeWidth="1.4" strokeLinejoin="round"/>
-      <path d="M9.5 2V4.5H12" stroke={color} strokeWidth="1.4" strokeLinejoin="round"/>
-      <path d="M6 8.7H10M6 10.7H10" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
+      <path d="M4 2.5C4 2.22 4.22 2 4.5 2H9.5L12 4.5V13.5C12 13.78 11.78 14 11.5 14H4.5C4.22 14 4 13.78 4 13.5V2.5Z" stroke={color} strokeWidth="1.2" strokeLinejoin="round"/>
+      <path d="M9.5 2V4.5H12" stroke={color} strokeWidth="1.2" strokeLinejoin="round"/>
+      <path d="M6 8.7H10M6 10.7H10" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -56,8 +64,8 @@ function LicenseIcon({ color }: IconProps) {
 function ServerIcon({ color }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="2" y="2.5" width="12" height="4.5" rx="1.2" stroke={color} strokeWidth="1.4"/>
-      <rect x="2" y="9" width="12" height="4.5" rx="1.2" stroke={color} strokeWidth="1.4"/>
+      <rect x="2" y="2.5" width="12" height="4.5" rx="1.2" stroke={color} strokeWidth="1.2"/>
+      <rect x="2" y="9" width="12" height="4.5" rx="1.2" stroke={color} strokeWidth="1.2"/>
       <circle cx="4.3" cy="4.75" r="0.7" fill={color}/>
       <circle cx="4.3" cy="11.25" r="0.7" fill={color}/>
     </svg>
@@ -67,10 +75,10 @@ function ServerIcon({ color }: IconProps) {
 function UsersIcon({ color }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="6" cy="5.3" r="2.2" stroke={color} strokeWidth="1.4"/>
-      <path d="M1.8 13c0-2.21 1.88-4 4.2-4s4.2 1.79 4.2 4" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
-      <circle cx="11.6" cy="6" r="1.7" stroke={color} strokeWidth="1.4"/>
-      <path d="M9.9 13c0.1-1.76 1.6-3.1 3.3-3.1 1.02 0 1.94 0.46 2.55 1.18" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
+      <circle cx="6" cy="5.3" r="2.2" stroke={color} strokeWidth="1.2"/>
+      <path d="M1.8 13c0-2.21 1.88-4 4.2-4s4.2 1.79 4.2 4" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
+      <circle cx="11.6" cy="6" r="1.7" stroke={color} strokeWidth="1.2"/>
+      <path d="M9.9 13c0.1-1.76 1.6-3.1 3.3-3.1 1.02 0 1.94 0.46 2.55 1.18" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -107,8 +115,6 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
 ];
 
 interface ProjectSidebarProps {
-  /** Product wordmark, at the head of the rail. */
-  brand?: string;
   /** The team switcher, passed in rather than built here — the shell owns what switching means. */
   team?: React.ReactNode;
   /** The project switcher, same. */
@@ -130,7 +136,7 @@ interface ProjectSidebarProps {
   myPageOpen: boolean;
 }
 
-export default function ProjectSidebar({ brand, team, project, tab, onTabChange, collapsed, myPageOpen, counts }: ProjectSidebarProps) {
+export default function ProjectSidebar({ team, project, tab, onTabChange, collapsed, myPageOpen, counts }: ProjectSidebarProps) {
   const [lang] = usePortalLanguage();
   return (
     <div
@@ -161,24 +167,17 @@ export default function ProjectSidebar({ brand, team, project, tab, onTabChange,
       {/*
         Which workspace, above which page of it.
 
-        The wordmark and the two switchers were in the top bar. They are the identity of the thing
-        the rail navigates, so they belong to the rail — which is also where the reference dashboard
-        keeps them, and it leaves the top bar free to say only where in the project you are.
+        The two switchers were in the top bar. They name the thing the rail navigates, so they
+        belong to the rail. The wordmark stayed up there: it is the console's name, not this
+        project's, and the rail is scoped to a project.
 
         Hidden when collapsed: a 60px column cannot hold a team name, and a switcher you cannot read
         is a button that opens a surprise.
       */}
-      {!collapsed && (brand || team || project) && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "22px", padding: "0 2px" }}>
-          {brand && (
-            <p style={{ fontSize: "15px", fontWeight: 800, color: "white", letterSpacing: "-0.2px", padding: "0 10px" }}>{brand}</p>
-          )}
-          {(team || project) && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              {team}
-              {project}
-            </div>
-          )}
+      {!collapsed && (team || project) && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "22px" }}>
+          {team}
+          {project}
         </div>
       )}
 
@@ -228,7 +227,7 @@ export default function ProjectSidebar({ brand, team, project, tab, onTabChange,
                      */
                     backgroundColor: active ? "var(--gray-800)" : undefined,
                     color: active ? "white" : "var(--gray-300)",
-                    fontSize: "13px", fontWeight: active ? 700 : 600,
+                    fontSize: "13px", fontWeight: active ? 600 : 500,
                     whiteSpace: "nowrap", width: "100%",
                   }}
                 >

@@ -107,13 +107,22 @@ export default function TeamSwitcher({ dark, currentTeamId, onSelect }: TeamSwit
               : (hovered === "__trigger" ? "var(--gray-50)" : "white"),
             cursor: "pointer", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap",
             color: dark ? "var(--gray-300)" : "var(--gray-600)",
+            // Fills the rail there, hugs its label in the header.
+            ...(dark ? { width: "100%" } : null),
           }}
         >
           {/* Its own title, so hovering the name reveals the name in full while hovering the rest
               of the button still explains what the button does. */}
           <span
             title={current?.name}
-            style={{ maxWidth: BREADCRUMB_TEAM_MAX_WIDTH, overflow: "hidden", textOverflow: "ellipsis" }}
+            style={{
+              overflow: "hidden", textOverflow: "ellipsis",
+              // In the rail the name takes whatever the 212px column leaves and ellipsises there;
+              // a fixed 360px cap belongs to a header that is as wide as the window, and inside
+              // the rail it let "City of Singapore — Smart Infrastructure Office" run out past the
+              // edge of the sidebar and over the page.
+              ...(dark ? { flex: 1, minWidth: 0, textAlign: "left" as const } : { maxWidth: BREADCRUMB_TEAM_MAX_WIDTH }),
+            }}
           >
             {current?.name ?? t.noTeam}
           </span>

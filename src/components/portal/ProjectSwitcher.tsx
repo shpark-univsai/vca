@@ -146,8 +146,17 @@ export default function ProjectSwitcher({ dark, teamId, currentProjectId, onSele
           border: "none", background: "none", cursor: "pointer",
           padding: "6px 8px", borderRadius: "8px",
           color: dark ? "white" : "var(--gray-900)",
-          // Fills the rail's width there; hugs its label in the header.
-          ...(dark ? { width: "100%", padding: "8px 10px" } : null),
+          /*
+             In the rail it is a drawn box, not a bare label: the reference puts the site you are
+             looking at in a bordered card with room to breathe, which is what makes it read as the
+             thing the navigation below it belongs to rather than as the first row of that
+             navigation. In the header it stays a bare crumb — there it sits between other crumbs
+             and a box around one of them would be a button among plain text.
+          */
+          ...(dark ? {
+            width: "100%", padding: "11px 12px", borderRadius: "10px",
+            border: "1px solid var(--gray-800)", backgroundColor: "var(--gray-800)",
+          } : null),
         }}
       >
         <span

@@ -163,8 +163,18 @@ export default function PortalShell() {
 
   return (
     <ToastProvider>
+    {/*
+        Rail first, full height — the top bar starts where the rail ends.
+
+        The bar used to run the whole width with the rail hanging below it, which put a horizontal
+        line across the top of the navigation and made the rail read as content of the page rather
+        than as the frame around it. Now the rail is the frame: it owns the left edge from the top
+        of the window down, and the bar sits inside the remaining column above the page it labels.
+        That is the arrangement the reference dashboard uses, and the reason its crumb can say
+        where in this project you are — the rail beside it already said which project.
+    */}
     <div style={{
-      display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "white",
+      display: "flex", height: "100vh", overflow: "hidden", backgroundColor: "white",
       /*
        * Tabular figures for the whole console.
        *
@@ -183,14 +193,36 @@ export default function PortalShell() {
         .portal-hamburger-btn:hover{background-color:var(--gray-100)}
       `}</style>
 
-      {/*
-        Top bar — where you are, and who you are. Nothing else.
+      {sidebarVisible && (
+        <ProjectSidebar
+          team={<TeamSwitcher dark currentTeamId={currentOrgId} onSelect={switchTeam} />}
+          project={<ProjectSwitcher dark teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />}
+          /* Counts for the rail's badges. Only the three tabs that hold a list of things: a
+             licence is not a count, the server tab lists servers but is read as one setting,
+             and Overview counts nothing of its own. */
+          counts={{
+            cameras: cameras.filter(c => c.projectId === currentProjectId).length,
+            vip: persons.filter(p => p.projectId === currentProjectId).length,
+            users: portalUsers.filter(u => u.projectIds.includes(currentProjectId)).length,
+          }}
+          tab={tab}
+          onTabChange={next => { setShowAccount(false); setTab(next); }}
+          collapsed={sidebarCollapsed}
+          myPageOpen={showAccount}
+        />
+      )}
 
-        It used to carry the wordmark, the team switcher and the project switcher; those are the
-        workspace's identity, so they moved into the rail with the navigation they belong to (the
-        reference dashboard puts them there too). What is left on the left is the crumb that names
-        the screen — the rail says which project, this says which page of it — and on the right the
-        account menu.
+      {/* Everything to the right of the rail: the bar, then the page under it. */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+
+      {/*
+        Top bar — the product, where you are, and who you are.
+
+        It used to carry the team and project switchers too; those name the thing the rail
+        navigates, so they moved into the rail with it. The wordmark stayed: it belongs to the
+        whole console rather than to one project, and the rail is scoped to a project. What sits
+        beside it is the crumb naming the screen — the rail says which project, this says which
+        page of it — and on the right, the account menu.
 
         The wizard is the exception: it renders without a rail, so the trail it needs (which team,
         and that you are creating rather than browsing) has nowhere else to go and stays here.
@@ -213,6 +245,8 @@ export default function PortalShell() {
             <SidebarToggleIcon />
           </button>
         )}
+        <span style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", flexShrink: 0 }}>VCA Portal</span>
+        <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-300)", margin: "0 2px" }}>/</span>
         {/* The breadcrumb says where you are, and during creation you are not inside any project —
             so the last crumb becomes the act of creating one. It used to keep naming whichever
             project happened to be selected, which was false (nothing has been created yet) and
@@ -294,30 +328,10 @@ export default function PortalShell() {
           defaultType={defaultWizardType}
         />
       ) : (
-        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          {sidebarVisible && (
-            <ProjectSidebar
-              brand="VCA Portal"
-              team={<TeamSwitcher dark currentTeamId={currentOrgId} onSelect={switchTeam} />}
-              project={<ProjectSwitcher dark teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />}
-              /* Counts for the rail's badges. Only the three tabs that hold a list of things: a
-                 licence is not a count, the server tab lists servers but is read as one setting,
-                 and Overview counts nothing of its own. */
-              counts={{
-                cameras: cameras.filter(c => c.projectId === currentProjectId).length,
-                vip: persons.filter(p => p.projectId === currentProjectId).length,
-                users: portalUsers.filter(u => u.projectIds.includes(currentProjectId)).length,
-              }}
-              tab={tab}
-              onTabChange={next => { setShowAccount(false); setTab(next); }}
-              collapsed={sidebarCollapsed}
-              myPageOpen={showAccount}
-            />
-          )}
-          {/* White canvas, tinted rail — the arrangement most consoles have settled on. It used to
-              be the other way round for both, which meant every card had to be white to be a card
-              and the page's own surface was doing the outlining. */}
-          <div style={{ flex: 1, overflow: "auto", padding: "32px 72px", backgroundColor: "white" }}>
+        // White canvas, dark rail — the arrangement most consoles have settled on. It used to be
+        // the other way round for both, which meant every card had to be white to be a card and
+        // the page's own surface was doing the outlining.
+        <div style={{ flex: 1, overflow: "auto", padding: "32px 72px", backgroundColor: "white" }}>
             {showAccount
               ? <PortalMyPage />
               : teamProjects.length === 0
@@ -327,9 +341,9 @@ export default function PortalShell() {
                   onCreateTeam={createFirstTeam}
                 />
               : <PortalProjectDetailPage projectId={currentProjectId} tab={tab} onTabChange={setTab} />}
-          </div>
         </div>
       )}
+      </div>
 
       {/* The switcher's "New team" still opens the modal — there the page behind it is worth
           preserving. The first-team case does not use it: that landing has the field on it. */}
