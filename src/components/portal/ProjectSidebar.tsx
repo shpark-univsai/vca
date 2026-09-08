@@ -160,9 +160,12 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
         /* 248, not 212. At the old width a nav row had ~100px left for its label once the icon,
            the gaps and a count badge were paid for — "Users & Permissions" and the team's full
            name both ellipsised, and a rail whose labels you cannot read is a rail you have to
-           learn by position. The content column pays 36px it can afford; its own cap decides how
-           wide the page gets anyway. */
-        width: collapsed ? "60px" : "248px",
+           learn by position. 272 now, another 24px, because two of the three things in the rail
+           are proper nouns nobody can shorten — a team called "City of Singapore — Smart
+           Infrastructure Office" and a project called "Marina Bay & CBD Surveillance Network" —
+           and at 248 both ended in an ellipsis at once. The content column pays it; its own cap
+           decides how wide the page gets anyway. */
+        width: collapsed ? "60px" : "272px",
         flexShrink: 0,
         display: "flex", flexDirection: "column",
         /*
@@ -243,8 +246,13 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
               {team}
             </div>
           )}
+          {/* minHeight, not height: the project's name is allowed a second line (see the clamp in
+              ProjectSwitcher), and a fixed 60 would have cut it. Collapsed still reserves exactly
+              60, so the nav below lines up in both states for any name that fits one line — a
+              two-line name pushes the expanded nav down by that line, which is the honest
+              trade for being able to read the name at all. */}
           {project && (
-            <div style={{ height: "60px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", alignItems: "center", justifyItems: collapsed ? "center" : "stretch" }}>
+            <div style={{ minHeight: "60px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", alignItems: "center", justifyItems: collapsed ? "center" : "stretch" }}>
               {project}
             </div>
           )}

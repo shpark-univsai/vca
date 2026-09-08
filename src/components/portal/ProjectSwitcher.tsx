@@ -173,8 +173,8 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
           ...(dark ? {
             // Height pinned, padding horizontal only: the collapsed rail reserves exactly this
             // 60px for its icon-only stand-in, so the nav starts at the same y in both states.
-            width: "100%", height: "60px", boxSizing: "border-box" as const,
-            padding: "0 12px", borderRadius: "12px", gap: "10px",
+            width: "100%", minHeight: "60px", boxSizing: "border-box" as const,
+            padding: "10px 12px", borderRadius: "12px", gap: "10px",
             backgroundColor: "var(--gray-800)", border: "1px solid var(--gray-700)",
           } : null),
           ...(compact ? { width: "44px", height: "44px", padding: 0, justifyContent: "center" } : null),
@@ -191,7 +191,14 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
         )}
         {compact ? null : dark ? (
           <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0, flex: 1, textAlign: "left" }}>
-            <span title={current?.name} style={{ fontSize: "13px", fontWeight: 700, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {/* Two lines before it gives up. A project name is a place — "Marina Bay & CBD
+                Surveillance Network" — and one line of a 200px column cut it after three words,
+                which left the rail naming a project you could not identify. -webkit-line-clamp is
+                the only thing that ellipsises a wrapped block; every browser we ship to has it. */}
+            <span title={current?.name} style={{
+              fontSize: "13px", fontWeight: 700, color: "white", lineHeight: 1.35,
+              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden",
+            }}>
               {current?.name ?? t.selectProject}
             </span>
             {subtitle && (
