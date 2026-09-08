@@ -261,7 +261,16 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
               two-line name pushes the expanded nav down by that line, which is the honest
               trade for being able to read the name at all. */}
           {project && (
-            <div style={{ minHeight: "60px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", alignItems: "center", justifyItems: collapsed ? "center" : "stretch" }}>
+            /* Collapsed reserves 74px, expanded starts at 60 and grows.
+               The expanded card holds a two-line project name plus its "Singapore · Smart City"
+               line, which comes out around 74px for the names this product actually has — and the
+               collapsed rail, holding one 44px square, was reserving 60. That 14px was the whole
+               difference: the icons below sat higher when the rail was shut than when it was open.
+               Reserving the taller of the two states keeps the menu on the same line either way.
+               A project with a name short enough to fit one line drifts the other way by that
+               much, which is the harmless direction — nothing above the menu moves, the menu just
+               starts 14px lower than it strictly needs to. */
+            <div style={{ minHeight: collapsed ? "74px" : "60px", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", alignItems: "center", justifyItems: collapsed ? "center" : "stretch" }}>
               {project}
             </div>
           )}
