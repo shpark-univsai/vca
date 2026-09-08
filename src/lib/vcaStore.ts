@@ -880,6 +880,15 @@ const CAMERA_SEEDS: Camera[] = [
     id: "cam-novena", projectId: "proj-sg", code: "CAM-NOV-001", name: "Novena",
     ip: "10.20.4.11", mac: "00:1B:44:11:3A:B7", rtspUrl: "rtsp://10.20.4.11:554/stream1",
     status: "online", location: "Novena, Singapore", zone: "Novena",
+    // Engines and a server on a handful of the named cameras, not on all sixty.
+    //
+    // aiFeatures existed only as a type: nothing seeded it, so every camera read "—", the AI
+    // Engines column was an empty column, the preview's overlay boxes never drew and the Input
+    // Sources summary counted the entire fleet as "no AI engine" — a figure that is technically
+    // true and tells you nothing. A real deployment has engines on the cameras that matter and
+    // nothing on the rest, so that is what this seeds: four of the eight named cameras run Re-ID,
+    // one of them also reads plates, and each carries the server that does the work.
+    aiFeatures: ["Re-ID Analysis"], serverId: "srv-1",
     thumbnail: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80",
     lat: 1.3202, lng: 103.8440, maker: "Hanwha", resolution: "4K (3840×2160)",
   },
@@ -887,6 +896,7 @@ const CAMERA_SEEDS: Camera[] = [
     id: "cam-geylang", projectId: "proj-sg", code: "CAM-GEY-001", name: "Geylang NC1",
     ip: "10.20.4.12", mac: "00:1B:44:11:3A:B8", rtspUrl: "rtsp://10.20.4.12:554/stream1",
     status: "online", location: "Geylang NC1, Singapore", zone: "Geylang",
+    aiFeatures: ["Re-ID Analysis", "License Plate Recognition"], serverId: "srv-1",
     thumbnail: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
     lat: 1.3148, lng: 103.8778, maker: "Hikvision", resolution: "FHD (1920×1080)",
   },
@@ -894,6 +904,7 @@ const CAMERA_SEEDS: Camera[] = [
     id: "cam-orchard", projectId: "proj-sg", code: "CAM-ORC-001", name: "Orchard MRT",
     ip: "10.20.4.13", mac: "00:1B:44:11:3A:B9", rtspUrl: "rtsp://10.20.4.13:554/stream1",
     status: "online", location: "Orchard MRT, Singapore", zone: "Orchard",
+    aiFeatures: ["Re-ID Analysis"], serverId: "srv-2",
     thumbnail: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80",
     lat: 1.3044, lng: 103.8321, maker: "Dahua", resolution: "4K (3840×2160)",
   },
@@ -901,6 +912,7 @@ const CAMERA_SEEDS: Camera[] = [
     id: "cam-bugis", projectId: "proj-sg", code: "CAM-BGS-001", name: "Bugis MRT",
     ip: "10.20.4.14", mac: "00:1B:44:11:3A:BA", rtspUrl: "rtsp://10.20.4.14:554/stream1",
     status: "online", location: "Bugis MRT, Singapore", zone: "Bugis",
+    aiFeatures: ["License Plate Recognition"], serverId: "srv-2",
     thumbnail: "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=800&q=80",
     lat: 1.3006, lng: 103.8561, maker: "Hanwha", resolution: "FHD (1920×1080)",
   },
