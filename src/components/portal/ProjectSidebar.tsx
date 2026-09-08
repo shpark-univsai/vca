@@ -75,17 +75,35 @@ function UsersIcon({ color }: IconProps) {
   );
 }
 
-export const PROJECT_TABS: { id: DetailTab; label: { en: string; ko: string }; icon: ComponentType<IconProps> }[] = [
-  { id: "overview", label: { en: "Overview", ko: "개요" }, icon: OverviewIcon },
+/**
+ * The two halves of the rail.
+ *
+ * Six tabs in one flat list gave no clue that they answer two different questions: three of them
+ * are the project's day-to-day (what is watched, what watches, how it is going) and three are the
+ * paperwork around it (the servers, the contract, who may sign in). Named groups say that before
+ * the labels do — it is the arrangement the reference dashboard uses, and the one every console
+ * with more than four destinations arrives at.
+ *
+ * English in caps, Korean not: caps do nothing to Hangul, and CSS text-transform would leave the
+ * two languages drawing different headings — the same reason MetricCard's label dropped it.
+ */
+export type NavGroup = "workspace" | "manage";
+export const NAV_GROUPS: { id: NavGroup; label: { en: string; ko: string } }[] = [
+  { id: "workspace", label: { en: "WORKSPACE", ko: "작업 공간" } },
+  { id: "manage", label: { en: "MANAGE", ko: "관리" } },
+];
+
+export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string; ko: string }; icon: ComponentType<IconProps> }[] = [
+  { id: "overview", group: "workspace", label: { en: "Overview", ko: "개요" }, icon: OverviewIcon },
   // VIP above the sources (asked for 2026-09-03): what the project watches FOR is the list an
   // operator maintains day to day; the camera and upload list is the plumbing under it.
-  { id: "vip", label: { en: "VIP Registry", ko: "VIP 등록" }, icon: VipIcon },
+  { id: "vip", group: "workspace", label: { en: "VIP Registry", ko: "VIP 등록" }, icon: VipIcon },
   // The id stays "cameras" — it is a route key, and renaming it would only churn every call site.
   // The label changed because the tab now lists uploaded footage alongside cameras.
-  { id: "cameras", label: { en: "Input Sources", ko: "입력 소스" }, icon: CamerasIcon },
-  { id: "server", label: { en: "Server & API", ko: "서버 및 API" }, icon: ServerIcon },
-  { id: "license", label: { en: "License", ko: "라이선스" }, icon: LicenseIcon },
-  { id: "users", label: { en: "Users & Permissions", ko: "사용자 및 권한" }, icon: UsersIcon },
+  { id: "cameras", group: "workspace", label: { en: "Input Sources", ko: "입력 소스" }, icon: CamerasIcon },
+  { id: "server", group: "manage", label: { en: "Server & API", ko: "서버 및 API" }, icon: ServerIcon },
+  { id: "license", group: "manage", label: { en: "License", ko: "라이선스" }, icon: LicenseIcon },
+  { id: "users", group: "manage", label: { en: "Users & Permissions", ko: "사용자 및 권한" }, icon: UsersIcon },
 ];
 
 interface ProjectSidebarProps {
@@ -107,18 +125,23 @@ export default function ProjectSidebar({ tab, onTabChange, collapsed, myPageOpen
         width: collapsed ? "60px" : "212px",
         flexShrink: 0,
         display: "flex", flexDirection: "column",
-        // The tint is the whole separation — no rule down the right edge. gray-50 against white is
-        // only a couple of percent of tone, but the rail is a full-height block of it next to a
-        // page of cards, and a line there was one more vertical edge on a screen that already has
-        // the card column starting a gutter away.
-        backgroundColor: "var(--gray-50)",
+        /*
+         * gray-900, and no rule down the right edge — against a white canvas the tone IS the edge.
+         *
+         * It was gray-50, a couple of percent of tint, which left the rail and the page reading as
+         * one surface with a list floating on the left of it. Dark says "this is the furniture, that
+         * is the work" without a line, which is what the reference dashboard does with its own
+         * near-black rail. Same value the metric figures and the licence hero already use, so this
+         * is the palette's existing dark, not a new one.
+         */
+        backgroundColor: "var(--gray-900)",
         padding: collapsed ? "16px 8px" : "16px 12px",
         transition: "width .15s ease",
       }}
     >
       <style>{`
         .portal-navitem{transition:background-color .12s}
-        .portal-navitem:hover{background-color:var(--gray-200)}
+        .portal-navitem:hover:not([data-active="true"]){background-color:var(--gray-800)}
         .portal-navmenu-item{transition:background-color .12s}
         .portal-navmenu-item:hover{background-color:var(--gray-100)}
       `}</style>
@@ -126,31 +149,50 @@ export default function ProjectSidebar({ tab, onTabChange, collapsed, myPageOpen
           enough to need one, and an `overflow: auto` on the rail itself would clip anything a
           child wanted to float outside it. */}
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4px" }}>
-        {PROJECT_TABS.map(t => {
-          const Icon = t.icon;
-          const active = tab === t.id && !myPageOpen;
-          return (
-            <button
-              key={t.id}
-              onClick={() => onTabChange(t.id)}
-              title={collapsed ? t.label[lang] : undefined}
-              className="portal-navitem"
-              style={{
-                display: "flex", alignItems: "center", gap: "12px",
-                justifyContent: collapsed ? "center" : "flex-start",
-                border: "none", cursor: "pointer", borderRadius: "12px",
-                padding: collapsed ? "12px 0" : "11px 14px",
-                backgroundColor: active ? "var(--gray-900)" : undefined,
-                color: active ? "white" : "var(--gray-600)",
-                fontSize: "13px", fontWeight: active ? 700 : 600,
-                whiteSpace: "nowrap", width: "100%",
-              }}
-            >
-              <span style={{ display: "flex", flexShrink: 0 }}><Icon color={active ? "white" : "var(--gray-600)"} /></span>
-              {!collapsed && t.label[lang]}
-            </button>
-          );
-        })}
+        {NAV_GROUPS.map((group, gi) => (
+          <div key={group.id} style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: gi === 0 ? 0 : "18px" }}>
+            {/* Collapsed, a heading has nowhere to go — 60px holds an icon and nothing else — so the
+                groups are told apart by a rule instead. */}
+            {collapsed
+              ? gi > 0 && <div style={{ height: "1px", backgroundColor: "var(--gray-800)", margin: "0 8px 6px" }} />
+              : (
+                <p style={{
+                  fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px",
+                  color: "var(--gray-500)", padding: "0 14px", marginBottom: "2px",
+                }}>{group.label[lang]}</p>
+              )}
+            {PROJECT_TABS.filter(t => t.group === group.id).map(t => {
+              const Icon = t.icon;
+              const active = tab === t.id && !myPageOpen;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => onTabChange(t.id)}
+                  title={collapsed ? t.label[lang] : undefined}
+                  data-active={active}
+                  className="portal-navitem"
+                  style={{
+                    display: "flex", alignItems: "center", gap: "12px",
+                    justifyContent: collapsed ? "center" : "flex-start",
+                    border: "none", cursor: "pointer", borderRadius: "12px",
+                    padding: collapsed ? "12px 0" : "11px 14px",
+                    // primary-400 for the one item you are on. It is the only colour in the rail and
+                    // about a sixth of it — which is what the accent is for, and the reference puts
+                    // its own accent in exactly this place. Everything else is grey on grey-900:
+                    // gray-300 reads on this ground where gray-600 did on the old light rail.
+                    backgroundColor: active ? "var(--primary-400)" : undefined,
+                    color: active ? "white" : "var(--gray-300)",
+                    fontSize: "13px", fontWeight: active ? 700 : 600,
+                    whiteSpace: "nowrap", width: "100%",
+                  }}
+                >
+                  <span style={{ display: "flex", flexShrink: 0 }}><Icon color={active ? "white" : "var(--gray-300)"} /></span>
+                  {!collapsed && t.label[lang]}
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </div>
 
     </div>
