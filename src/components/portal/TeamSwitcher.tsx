@@ -114,7 +114,10 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
               ? (hovered === "__trigger" ? "var(--gray-800)" : "transparent")
               : (hovered === "__trigger" ? "var(--gray-50)" : "white"),
             cursor: "pointer", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap",
-            color: dark ? "var(--gray-300)" : "var(--gray-600)",
+            // gray-200 in the rail, a step up from gray-300: the team's name is one of the two
+            // things the rail exists to state, and at 12px on gray-900 the lower step read as a
+            // caption on the project card rather than as a name of its own.
+            color: dark ? "var(--gray-200)" : "var(--gray-600)",
             // Fills the rail there, hugs its label in the header. The height is pinned rather than
             // left to the padding: the collapsed rail has to reserve exactly this much for its
             // stand-in, and a row whose height depends on a font's metrics cannot be matched.

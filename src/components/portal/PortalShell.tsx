@@ -395,7 +395,7 @@ export default function PortalShell() {
          * Input Sources' sticky header measures this container to position its fixed copy — an
          * inner box would leave the header wider than the content it covers.
          */
-        <div style={{ flex: 1, overflow: "auto", padding: "12px 48px 32px", width: "100%", maxWidth: "1600px", marginInline: "auto" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: "12px 32px 32px", width: "100%", maxWidth: "1600px", marginInline: "auto" }}>
             {showAccount
               ? <PortalMyPage />
               : teamProjects.length === 0

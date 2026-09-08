@@ -289,7 +289,7 @@ const T = {
 /**
  * How far the stuck header overhangs the content on each side, to swallow the shadow the cards
  * underneath cast outside their own boxes. 8px covers PANEL_SHADOW's 6px blur with a pixel to
- * spare, and lands well inside the shell's 48px gutter.
+ * spare, and lands well inside the shell's 32px gutter.
  */
 const EDGE_BLEED = 8;
 
