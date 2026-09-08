@@ -2,14 +2,14 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video } from "lucide-react";
+import { ArrowUp, ArrowUpRight, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { formatElapsed } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
-import { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
+import type { DetailTab } from "./ProjectSidebar";
 import ProjectCamerasTab from "./ProjectCamerasTab";
 import ProjectVipTab from "./ProjectVipTab";
 import ProjectLicenseTab from "./ProjectLicenseTab";
@@ -41,7 +41,9 @@ const T = {
     portalAccounts: "Portal Accounts & Permissions",
     accountsSuffix: "accounts",
     noPendingAccessRequests: "No pending access requests.",
-    attentionTitle: "Things to do",
+    attentionTitle: "Attention needed",
+    reviewIssues: "Review issues",
+    dismissBanner: "Dismiss",
     attnOffline: (n: number) => `${n} camera${n === 1 ? " is" : "s are"} offline`,
     attnInvites: (n: number) => `${n} invitation${n === 1 ? "" : "s"} not yet accepted`,
     attnRequests: (n: number) => `${n} access request${n === 1 ? "" : "s"} waiting`,
@@ -105,7 +107,9 @@ const T = {
     portalAccounts: "포털 계정 및 권한",
     accountsSuffix: "개 계정",
     noPendingAccessRequests: "대기 중인 접근 요청이 없습니다.",
-    attentionTitle: "할 일",
+    attentionTitle: "확인 필요",
+    reviewIssues: "문제 확인",
+    dismissBanner: "닫기",
     attnOffline: (n: number) => `오프라인 카메라 ${n}대`,
     attnInvites: (n: number) => `수락하지 않은 초대 ${n}건`,
     attnRequests: (n: number) => `대기 중인 접근 요청 ${n}건`,
@@ -230,6 +234,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // Which rows the Camera Status panel's filter tabs show — declared here (not inside the panel
   // itself) for the same hooks-before-the-guard reason as everything else on this list.
   const [cameraStatusFilter, setCameraStatusFilter] = useState<"all" | "offline">("all");
+  // Session-only, deliberately: see the banner's note. Nothing here is resolved by closing it.
+  const [attentionDismissed, setAttentionDismissed] = useState(false);
   // Read after mount, not during render: the clock is not a pure input, and license expiry is
   // the only thing here that needs it — same pattern ProjectLicenseTab uses. Reads as not-expired
   // for the first frame, then corrects itself once mounted (no server/client mismatch).
@@ -397,50 +403,54 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </div>
           </div>
 
-          {/* One line, not a stack.
-              The list is short by construction — most projects raise one or two of these, and the
-              worst case is six — so a stacked panel spent a card's worth of height on two
-              sentences before the reader reached anything else. On one row it reads as a status
-              strip: the label, then the errands, each its own button. It wraps rather than
-              scrolling or truncating, so a project in real trouble gets a second line instead of
-              a hidden sixth item.
-              The destination tab name is gone with the stack (it doubled each item's width); the
-              hover box says the item is clickable, and the text already says where it goes.
+          {/*
+            The banner the reference opens with: a mark, a bold label, the sentence, then the way
+            in and the way out.
 
-              The one tinted card on the page. Everything else here is white on white separated by
-              a hairline, which is right for the panels — they are all the same kind of thing. This
-              strip is not: it is the only card that appears because something is wrong, and it is
-              gone when nothing is. A different ground says that before the words do, and gray-50
-              is quiet enough to say it without becoming a banner. */}
-          {attentionItems.length > 0 && (
+            It was a one-line strip of chips, which was compact and read as a filter row — a row of
+            small buttons says "narrow this list", not "something is wrong". A tinted band with a
+            sentence in it says the second thing, and the sentence is the same content the chips
+            carried, joined: every clause is a figure that already exists on this page.
+
+            warning-100 with a warning-200 edge: the palette's quietest amber. Dismiss hides it for
+            this visit only — nothing is stored, and a reload brings it back, because none of these
+            errands go away by being closed.
+          */}
+          {attentionItems.length > 0 && !attentionDismissed && (
             <div style={{
-              // No outline: the tint is the edge. This is the same rule the white cards followed
-              // back when the page itself was grey — a fill that differs from its ground does not
-              // need a line around it as well, and the line was drawing a box around the one thing
-              // on the page that should read as a strip.
-              backgroundColor: "var(--gray-50)", border: "none", borderRadius: "16px", boxShadow: "none",
-              padding: "10px 20px", marginBottom: CARD_GAP,
-              display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap",
+              display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
+              backgroundColor: "var(--warning-100)", border: "1px solid var(--warning-200)",
+              borderRadius: "12px", padding: "14px 16px", marginBottom: CARD_GAP,
             }}>
-              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0, marginRight: "2px" }}>
-                {t.attentionTitle}
+              <span style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: "28px", height: "28px", borderRadius: "8px", flexShrink: 0,
+                backgroundColor: "var(--warning-200)", color: "var(--warning-500)",
+              }}>
+                <Zap size={14} strokeWidth={2.4} />
+              </span>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>{t.attentionTitle}</p>
+              <p style={{ fontSize: "13px", color: "var(--gray-600)", minWidth: 0 }}>
+                {attentionItems.map(i => i.text).join(" · ")}
               </p>
-              {attentionItems.map(item => (
-                <button
-                  key={item.key}
-                  className="portal-attention-row"
-                  onClick={() => onTabChange(item.tab)}
-                  title={PROJECT_TABS.find(pt => pt.id === item.tab)?.label[lang]}
-                  style={{
-                    display: "flex", alignItems: "center", gap: "6px",
-                    border: "none", background: "none", borderRadius: "8px",
-                    padding: "6px 8px", cursor: "pointer", fontFamily: "inherit", flexShrink: 0,
-                  }}
-                >
-                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: item.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-900)", whiteSpace: "nowrap" }}>{item.text}</span>
-                </button>
-              ))}
+              <span style={{ flex: 1 }} />
+              {/* Goes to the worst one. The list is already sorted by severity, so the first item
+                  is the one an administrator should be looking at. */}
+              <button
+                className="portal-link"
+                onClick={() => onTabChange(attentionItems[0].tab)}
+                style={{ display: "flex", alignItems: "center", gap: "4px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit", flexShrink: 0 }}
+              >
+                {t.reviewIssues} <ArrowUpRight size={13} strokeWidth={2.6} />
+              </button>
+              <button
+                className="portal-icon-btn"
+                onClick={() => setAttentionDismissed(true)}
+                title={t.dismissBanner}
+                style={{ display: "flex", border: "none", background: "none", padding: "4px", cursor: "pointer", color: "var(--gray-500)", flexShrink: 0 }}
+              >
+                <X size={14} strokeWidth={2.4} />
+              </button>
             </div>
           )}
 

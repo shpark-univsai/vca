@@ -67,7 +67,6 @@ export default function PortalShell() {
   // Read here only to count them for the rail's badges — see the `counts` prop below.
   const cameras = useVcaStore(s => s.cameras);
   const persons = useVcaStore(s => s.persons);
-  const portalUsers = useVcaStore(s => s.portalUsers);
   const addTeam = useVcaStore(s => s.addTeam);
   /**
    * The account viewing Portal, where there is one. Two things hang off it: whether "Exit to App"
@@ -195,15 +194,16 @@ export default function PortalShell() {
 
       {sidebarVisible && (
         <ProjectSidebar
+          brand="VCA Portal"
           team={<TeamSwitcher dark currentTeamId={currentOrgId} onSelect={switchTeam} />}
           project={<ProjectSwitcher dark teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />}
-          /* Counts for the rail's badges. Only the three tabs that hold a list of things: a
-             licence is not a count, the server tab lists servers but is read as one setting,
-             and Overview counts nothing of its own. */
+          /* Counts for the rail's badges — the two tabs that hold a list of things you count.
+             Not accounts: the number of people who may sign in is not a size you check in passing,
+             and the tab it labels is where the figure is broken down by role anyway. Not the
+             licence (not a count), not the server tab (read as one setting), not Overview. */
           counts={{
             cameras: cameras.filter(c => c.projectId === currentProjectId).length,
             vip: persons.filter(p => p.projectId === currentProjectId).length,
-            users: portalUsers.filter(u => u.projectIds.includes(currentProjectId)).length,
           }}
           tab={tab}
           onTabChange={next => { setShowAccount(false); setTab(next); }}
@@ -221,13 +221,12 @@ export default function PortalShell() {
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", backgroundColor: "var(--primary-50)" }}>
 
       {/*
-        Top bar — the product, where you are, and who you are.
+        Top bar — where you are, and who you are. Nothing else.
 
-        It used to carry the team and project switchers too; those name the thing the rail
-        navigates, so they moved into the rail with it. The wordmark stayed: it belongs to the
-        whole console rather than to one project, and the rail is scoped to a project. What sits
-        beside it is the crumb naming the screen — the rail says which project, this says which
-        page of it — and on the right, the account menu.
+        The wordmark and the two switchers moved into the rail once the rail ran the full height of
+        the window; they name the console and the project, and the rail is where both belong. What
+        is left is the crumb naming the screen — the rail says which project, this says which page
+        of it — and on the right, the account menu.
 
         The wizard is the exception: it renders without a rail, so the trail it needs (which team,
         and that you are creating rather than browsing) has nowhere else to go and stays here.
@@ -250,8 +249,6 @@ export default function PortalShell() {
             <SidebarToggleIcon />
           </button>
         )}
-        <span style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", flexShrink: 0 }}>VCA Portal</span>
-        <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-300)", margin: "0 2px" }}>/</span>
         {/* The breadcrumb says where you are, and during creation you are not inside any project —
             so the last crumb becomes the act of creating one. It used to keep naming whichever
             project happened to be selected, which was false (nothing has been created yet) and

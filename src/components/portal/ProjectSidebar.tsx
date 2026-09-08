@@ -115,6 +115,8 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
 ];
 
 interface ProjectSidebarProps {
+  /** Product wordmark, at the very top of the rail. */
+  brand?: string;
   /** The team switcher, passed in rather than built here — the shell owns what switching means. */
   team?: React.ReactNode;
   /** The project switcher, same. */
@@ -136,7 +138,7 @@ interface ProjectSidebarProps {
   myPageOpen: boolean;
 }
 
-export default function ProjectSidebar({ team, project, tab, onTabChange, collapsed, myPageOpen, counts }: ProjectSidebarProps) {
+export default function ProjectSidebar({ brand, team, project, tab, onTabChange, collapsed, myPageOpen, counts }: ProjectSidebarProps) {
   const [lang] = usePortalLanguage();
   return (
     <div
@@ -167,15 +169,19 @@ export default function ProjectSidebar({ team, project, tab, onTabChange, collap
       {/*
         Which workspace, above which page of it.
 
-        The two switchers were in the top bar. They name the thing the rail navigates, so they
-        belong to the rail. The wordmark stayed up there: it is the console's name, not this
-        project's, and the rail is scoped to a project.
+        The wordmark and both switchers were in the top bar. With the rail running the full height
+        of the window they belong here: the console's name at the top of the column that is the
+        console's frame, and under it the team and project the navigation below is scoped to. The
+        bar is left to say only which page of that project you are on.
 
         Hidden when collapsed: a 60px column cannot hold a team name, and a switcher you cannot read
         is a button that opens a surprise.
       */}
-      {!collapsed && (team || project) && (
+      {!collapsed && (brand || team || project) && (
         <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "22px" }}>
+          {brand && (
+            <p style={{ fontSize: "15px", fontWeight: 800, color: "white", letterSpacing: "-0.2px", padding: "2px 10px 10px" }}>{brand}</p>
+          )}
           {team}
           {project}
         </div>
@@ -189,7 +195,11 @@ export default function ProjectSidebar({ team, project, tab, onTabChange, collap
           rows and stopped working the moment it became two named groups: a heading belongs above
           the thing it names, and a pair of them floating at the waist of a full-height dark column
           reads as a fragment of a longer list scrolled into view. Nav starts where the page does. */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: "4px" }}>
+      {/* overflowX hidden as well as overflowY auto: `overflow-y: auto` on its own makes the x
+          axis `auto` too, so one row wider than 212px — a long team name, an English tab label —
+          put a horizontal scrollbar under the whole rail. Nothing here should ever scroll
+          sideways; what does not fit ellipsises. */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", gap: "4px" }}>
         {NAV_GROUPS.map((group, gi) => (
           <div key={group.id} style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: gi === 0 ? 0 : "18px" }}>
             {/* Collapsed, a heading has nowhere to go — 60px holds an icon and nothing else — so the
@@ -237,13 +247,13 @@ export default function ProjectSidebar({ team, project, tab, onTabChange, collap
                   <span style={{ display: "flex", flexShrink: 0 }}><Icon color={active ? "white" : "var(--gray-300)"} /></span>
                   {!collapsed && (
                     <>
-                      {t.label[lang]}
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{t.label[lang]}</span>
                       {/* The count, right-aligned. gray-800 on the resting row and gray-700 on the
                           current one, so the badge stays a step lighter than whatever is under it
                           instead of disappearing into the active fill. */}
+                      <span style={{ flex: 1 }} />
                       {counts?.[t.id] !== undefined && (
                         <>
-                          <span style={{ flex: 1 }} />
                           <span style={{
                             fontSize: "10px", fontWeight: 600, color: "var(--gray-400)",
                             backgroundColor: active ? "var(--gray-700)" : "var(--gray-800)",
