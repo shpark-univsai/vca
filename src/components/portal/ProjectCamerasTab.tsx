@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Film as FilmIcon, Image as ImageIcon, Video as VideoIcon } from "lucide-react";
+import { BrainCircuit, Film as FilmIcon, Image as ImageIcon, MapPinOff, ServerOff, Video as VideoIcon } from "lucide-react";
 import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { CARD_BORDER, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, sortRows, useTableSort, ActiveFilterCount } from "./PortalShared";
+import { CARD_BORDER, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -86,6 +86,12 @@ const T = {
     colZone: "Zone",
     colRtspStream: "RTSP Stream",
     colAiEngines: "AI Engines",
+    gapNoEngine: "no AI engine",
+    gapNoServer: "no server assigned",
+    gapNoCoords: "not on the map",
+    gapUnit: "cameras",
+    gapShowOnly: "Show only these",
+    gapClear: "Show everything again",
     colStatus: "Status",
     emptyAll: "No cameras connected to this project yet.",
     emptyFiltered: "No cameras match these filters.",
@@ -215,6 +221,12 @@ const T = {
     colZone: "구역",
     colRtspStream: "RTSP 스트림",
     colAiEngines: "AI 엔진",
+    gapNoEngine: "AI 엔진 없음",
+    gapNoServer: "서버 미할당",
+    gapNoCoords: "지도에 없음",
+    gapUnit: "대",
+    gapShowOnly: "이 항목만 보기",
+    gapClear: "전체 다시 보기",
     colStatus: "상태",
     emptyAll: "아직 이 프로젝트에 연결된 카메라가 없습니다.",
     emptyFiltered: "이 필터와 일치하는 카메라가 없습니다.",
@@ -722,6 +734,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const [zoneFilter, setZoneFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "online" | "offline" | "error">("ALL");
   const [aiFilter, setAiFilter] = useState<"ALL" | CameraAiFeature>("ALL");
+  /**
+   * Which "installed but doing nothing" gap the list is narrowed to, if any — set by the summary
+   * strip above the table.
+   */
+  const [gapFilter, setGapFilter] = useState<"noEngine" | "noServer" | "noCoords" | null>(null);
   // Which kind of source the table is showing. A tab row, not another select in the filter strip:
   // it is the top-level cut of the list, and the counts belong on it.
   const [kindTab, setKindTab] = useState<"ALL" | SourceKind>("ALL");
@@ -749,13 +766,35 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const { sort, toggle: toggleSort } = useTableSort<CameraSortKey>({ key: "status", direction: "asc" });
   // Search is not counted. It is visible as text in its own box and clearing it is obvious, whereas
   // a select that says "Offline" looks like a heading until you look twice.
-  const activeFilterCount = [zoneFilter, statusFilter, aiFilter].filter(v => v !== "ALL").length;
+  /**
+   * Three ways a camera can be on this list and be doing nothing at all.
+   *
+   * Every one of them is online, thumbnailed and unremarkable in the table — which is exactly why
+   * they need stating: a camera with no engine detects nothing, one with no server has no compute
+   * to do it on, and one with no coordinates never appears on the app's map, so the control room
+   * cannot see it exists. All three are read off fields the table already holds, so the figures
+   * and the rows behind them cannot disagree.
+   *
+   * Offline and error are deliberately not here: the status filter beside the search box already
+   * carries both counts, and a summary that repeats a control is a summary the reader learns to
+   * skip.
+   */
+  const noEngineCameras = projectCameras.filter(c => (c.aiFeatures ?? []).length === 0);
+  const noServerCameras = projectCameras.filter(c => !c.serverId);
+  const noCoordCameras = projectCameras.filter(c => c.lat === undefined || c.lng === undefined);
+  const gapCameras = {
+    noEngine: new Set(noEngineCameras.map(c => c.id)),
+    noServer: new Set(noServerCameras.map(c => c.id)),
+    noCoords: new Set(noCoordCameras.map(c => c.id)),
+  } as const;
+
+  const activeFilterCount = [zoneFilter, statusFilter, aiFilter].filter(v => v !== "ALL").length + (gapFilter ? 1 : 0);
   // Selected camera ids. Held as a Set of ids rather than of rows so a selection survives the list
   // being re-sorted or re-filtered underneath it.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
 
-  const clearFilters = () => { setZoneFilter("ALL"); setStatusFilter("ALL"); setAiFilter("ALL"); };
+  const clearFilters = () => { setZoneFilter("ALL"); setStatusFilter("ALL"); setAiFilter("ALL"); setGapFilter(null); };
 
   const q = search.trim().toLowerCase();
   const matchingCameras = projectCameras.filter(c => {
@@ -763,14 +802,17 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     const matchesZone = zoneFilter === "ALL" || c.zone === zoneFilter;
     const matchesStatus = statusFilter === "ALL" || c.status === statusFilter;
     const matchesAi = aiFilter === "ALL" || (c.aiFeatures ?? []).includes(aiFilter);
-    return matchesSearch && matchesZone && matchesStatus && matchesAi;
+    const matchesGap = !gapFilter || gapCameras[gapFilter].has(c.id);
+    return matchesSearch && matchesZone && matchesStatus && matchesAi && matchesGap;
   });
   const matchingUploads = projectUploads.filter(u => {
     const matchesSearch = !q || u.fileName.toLowerCase().includes(q);
     // Zone and AI-engine are camera properties. A file has neither, so any of those filters being
     // set means the person is looking at cameras and files should drop out — hiding them is the
     // honest answer, not showing them as if they had passed a filter they cannot be judged by.
-    const cameraOnlyFilterSet = zoneFilter !== "ALL" || aiFilter !== "ALL";
+    // A gap filter is a camera question too — a file has no engine, no server and no coordinates,
+    // and showing files while one is on would be showing rows that cannot be judged by it.
+    const cameraOnlyFilterSet = zoneFilter !== "ALL" || aiFilter !== "ALL" || gapFilter !== null;
     // Status filter is shared but its values are not: "online"/"offline" describe a connection and
     // a file has none, so the same reasoning applies.
     return matchesSearch && !cameraOnlyFilterSet && statusFilter === "ALL";
@@ -1001,6 +1043,31 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           is acted on rather than read, and a non-zero offline count raises a line in the Overview's
           "things to do". Two figures repeated from the previous screen were pushing the table they
           describe half a fold down. */}
+      {/*
+        The gaps, in the shared summary strip — the same shape the VIP registry uses.
+
+        Only cells with something in them: a column reading "0" invites a click that returns an
+        empty table. If all three are zero the strip disappears, which is the correct state for a
+        fleet with nothing wrong with it.
+      */}
+      <SummaryStrip cells={[
+        { key: "noEngine", cameras: noEngineCameras, label: t.gapNoEngine, icon: <BrainCircuit size={14} strokeWidth={2.4} /> },
+        { key: "noServer", cameras: noServerCameras, label: t.gapNoServer, icon: <ServerOff size={14} strokeWidth={2.4} /> },
+        { key: "noCoords", cameras: noCoordCameras, label: t.gapNoCoords, icon: <MapPinOff size={14} strokeWidth={2.4} /> },
+      ]
+        .filter(item => item.cameras.length > 0)
+        .map(item => ({
+          key: item.key,
+          icon: item.icon,
+          figure: item.cameras.length,
+          unit: t.gapUnit,
+          label: item.label,
+          tone: "warning" as const,
+          active: gapFilter === item.key,
+          title: gapFilter === item.key ? t.gapClear : t.gapShowOnly,
+          onClick: () => setGapFilter(gapFilter === item.key ? null : (item.key as "noEngine" | "noServer" | "noCoords")),
+        }))} />
+
       {/* Top-level cut of the list, with counts on the tabs. An underlined tab row rather than a
           fourth select in the filter strip below: which kind of source you are looking at is a
           different question from how you are narrowing that kind, and the counts belong where the
