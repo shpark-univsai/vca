@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useVcaStore } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { Building2 } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH, SelectedCheckIcon } from "./PortalShared";
 
@@ -128,6 +129,15 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
             } : null),
           }}
         >
+          {/* The mark the project card used to carry, moved up here with the team it actually
+              describes: a building is an organisation, and the card below it navigates one site
+              of that organisation. Bare, not in a filled square — this is the quiet row of the
+              two, and a 34px tile on it would outweigh the card under it. */}
+          {dark && !compact && (
+            <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "1px" }}>
+              <Building2 size={14} strokeWidth={1.8} />
+            </span>
+          )}
           {/* Collapsed, the name has nowhere to go, so the initial stands for it and the button's
               own tooltip carries the rest. */}
           {compact ? (
