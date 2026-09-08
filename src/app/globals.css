@@ -48,25 +48,30 @@
    라이브러리에 단계를 추가하는 쪽으로 올려주세요. */
 :root {
   /* Neutral — Gray
-     Re-hued 2026-09-08: the ramp was a slate (hue ~215°, a blue-navy), which meant every place
-     the product's own violet was laid over a grey came out electric blue rather than violet — the
-     sidebar's tinted panels were the case that made it obvious, but it was true of every hover,
-     every dark hero and every chart fill. The ramp now sits at hue 258°, the primary's own hue,
-     with the saturation the slate had (a little less on the dark end so the darks read as charcoal
-     with a violet cast rather than as aubergine).
-     Lightness is unchanged step for step, so contrast is at least what it was everywhere: 500 on
-     white goes 4.77 → 5.4, 600 → 8.8, 900 → 18.6.
-     HANDOFF: this is a change to the Figma variables, not just to this file — the library is the
-     source of truth and these ten values need to land there. It also affects the monitoring app,
-     which draws from the same ramp. */
+     Two hues in one ramp, on purpose (2026-09-08).
+
+     The ramp was a slate all the way down — hue ~215°, a blue-navy — and that is why laying the
+     product's violet over a grey came out electric blue instead of violet: the sidebar's tinted
+     panels made it obvious, but it was true of every dark surface the accent touched.
+
+     Every tint in this product sits on a dark step, so only the dark steps moved: 700, 800 and 900
+     are at hue 258°, the primary's own angle, at the saturation the slate had. Their lightness is
+     unchanged, so contrast is what it was or better (900 on white 18.0 → 18.6).
+
+     50 through 600 stay slate. Hue at middling lightness is what reads as muddy — a 50% grey with
+     any saturation in it looks dusty rather than coloured — and those steps are the ones carrying
+     body text on white. Colour where it deepens a surface, none where it would dirty a letter.
+
+     HANDOFF: the three dark values are a change to the Figma variables, not just to this file, and
+     they change the monitoring app too — it draws from the same ramp. */
   --gray-0: #ffffff;
-  --gray-50: #f9f8fc;
-  --gray-100: #f3f1f9;
-  --gray-200: #e6e2f0;
-  --gray-300: #d3cde0;
-  --gray-400: #9f95b7;
-  --gray-500: #706589;
-  --gray-600: #534a66;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #ccd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748a;
+  --gray-600: #475469;
   --gray-700: #3e3552;
   --gray-800: #272038;
   --gray-900: #181127;
