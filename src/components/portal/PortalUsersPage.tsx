@@ -1363,24 +1363,16 @@ function UserCountStrip({ users, rosterWaiting }: { users: PortalUser[]; rosterW
   ];
 
   return (
-    /* Ruled, not just spaced. Nine figures in a row with nothing between them read as one long
-       number sequence — "1 0 1 3 1 1 1 8 13" — and the eye had to use the labels underneath to
-       work out where one stat ended and the next began. A hairline between them does that job at
-       a glance. The rule is on each item's left edge rather than a separate element so it wraps
-       correctly on a narrow window, and the 20px each side of it replaces the old 32px gap. */
-    <div style={{ display: "flex", flexWrap: "wrap", rowGap: "12px", marginBottom: "16px" }}>
+    /* One rule per group boundary, and nothing between the figures inside a group.
+       A hairline between all nine was a rule every 60px, which turned a row of statistics into a
+       ruled table with no rows — and it argued the opposite of the grouping, since a divider
+       between "Owners" and "Admins" makes them look as separate as the group break does. Space
+       separates the figures; a rule separates the two questions. */
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "32px", rowGap: "12px", marginBottom: "16px" }}>
       {counts.map((c, i) => {
-        // Inside a group, a --line hairline with 20px either side. At a group boundary, the same
-        // rule in gray-300 with twice the air — one step darker and one step wider is enough to
-        // say "different question" without a heading over each group.
         const startsGroup = i > 0 && counts[i - 1].group !== c.group;
         const figure = (
-          <div style={{
-            paddingRight: "20px",
-            paddingLeft: i === 0 ? 0 : startsGroup ? "40px" : "20px",
-            borderLeft: i === 0 ? undefined : startsGroup ? "1px solid var(--gray-300)" : BORDER,
-            marginLeft: startsGroup ? "20px" : undefined,
-          }}>
+          <div style={startsGroup ? { paddingLeft: "28px", borderLeft: "1px solid var(--gray-300)" } : undefined}>
             <p style={{
               fontSize: "20px", fontWeight: 800,
               // A zero here is good news (nobody stuck, nobody blocked), so it is not worth the same
