@@ -594,8 +594,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   lines up across all four cards whatever height the row settles at. */}
               <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
                 <span style={{ display: "flex", alignItems: "baseline", gap: "4px", flexShrink: 0, whiteSpace: "nowrap" }}>
+                  {/* The figure is gray-900, the words after it gray-400 — one step lighter than
+                      the rest of the card's small print. "51 / 59 connected" is one number with a
+                      unit attached, and at the same weight as a caption the unit competed with it. */}
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</span>
-                  <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.connectedSuffix(projectCameras.length)}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.connectedSuffix(projectCameras.length)}</span>
                 </span>
               </div>
               {/* Directly under the figure, not pushed to the card's foot. It used to carry
@@ -639,7 +642,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
                 <span style={{ display: "flex", alignItems: "baseline", gap: "4px", flexShrink: 0, whiteSpace: "nowrap" }}>
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectCameras.length}</span>
-                  <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.channelsUsedSuffix(channelLimit ?? "∞")}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.channelsUsedSuffix(channelLimit ?? "∞")}</span>
                 </span>
               </div>
               <div style={{ paddingTop: "2px" }}>
@@ -672,7 +675,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectPersons.length}</span>
                   {/* A suffix, not a second figure — the card states the size of the registry and
                       the tab behind it breaks priorities down. */}
-                  <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.recordsSuffix}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.recordsSuffix}</span>
                   {todayVipCount > 0 && (
                     <span style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "12px", fontWeight: 600, color: "var(--success-400)" }}>
                       <ArrowUpIcon /> {t.todayBadge(todayVipCount)}
@@ -698,7 +701,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
                 <span style={{ display: "flex", alignItems: "baseline", gap: "4px", flexShrink: 0, whiteSpace: "nowrap" }}>
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectUsers.length}</span>
-                  <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.accountsSuffix}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.accountsSuffix}</span>
                 </span>
               </div>
             </MetricCard>
