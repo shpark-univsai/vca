@@ -26,14 +26,12 @@ const T = {
     greetMorning: (name: string) => `Good morning, ${name}`,
     greetAfternoon: (name: string) => `Good afternoon, ${name}`,
     greetEvening: (name: string) => `Good evening, ${name}`,
-    liveMonitoring: "LIVE MONITORING",
     chipHealthy: "Healthy",
     chipAttention: (n: number) => `${n} offline`,
     chipNewThisMonth: (n: number) => `+${n} this month`,
     chipAccessSplit: (portal: number, app: number) => `${portal} portal · ${app} app`,
     statAvailable: (n: number) => `${n} available`,
     statOnlineShare: (pct: number) => `${pct}% online`,
-    noCamerasOnline: "NO CAMERA ONLINE",
     approveAccessRequests: "Approve Access Requests",
     cameraConnectivity: "Camera connectivity",
     connectedSuffix: (n: number) => `/ ${n} connected`,
@@ -115,14 +113,12 @@ const T = {
     greetMorning: (name: string) => `좋은 아침이에요, ${name}님`,
     greetAfternoon: (name: string) => `안녕하세요, ${name}님`,
     greetEvening: (name: string) => `좋은 저녁이에요, ${name}님`,
-    liveMonitoring: "실시간 모니터링",
     chipHealthy: "정상",
     chipAttention: (n: number) => `오프라인 ${n}`,
     chipNewThisMonth: (n: number) => `이번 달 +${n}`,
     chipAccessSplit: (portal: number, app: number) => `포털 ${portal} · 앱 ${app}`,
     statAvailable: (n: number) => `${n} 여유`,
     statOnlineShare: (pct: number) => `온라인 ${pct}%`,
-    noCamerasOnline: "온라인 카메라 없음",
     approveAccessRequests: "접근 요청 승인",
     cameraConnectivity: "카메라 연결 상태",
     connectedSuffix: (n: number) => `/ ${n}대 연결됨`,
@@ -636,20 +632,17 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               to. The left column ends with the greeting now that the sentence under it is gone. */}
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", marginBottom: "20px" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: 0 }}>
+              {/* Just the date. There was a "● LIVE MONITORING" badge beside it, which had two
+                  states and neither was a fact this console owns: it turned on when at least one
+                  camera reported online, but the words claim the analysis is running, and nothing
+                  in the store knows that. The count it actually reflected is the first metric card
+                  below, stated exactly ("51 / 59 connected"). */}
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", minHeight: "14px" }}>
                 {nowMs !== null && (
                   <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px", color: "var(--gray-500)" }}>
                     {longDate(nowMs, lang)}
                   </span>
                 )}
-                {/* primary-400, not the success green. "Live monitoring" is not a good outcome,
-                    it is what this console is doing right now — the same thing the product's own
-                    colour marks everywhere else on the page. Green is left for a state something
-                    passed, and there is no test here to pass. Nothing online stays grey. */}
-                <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px", color: onlineCount > 0 ? "var(--primary-400)" : "var(--gray-400)" }}>
-                  <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: onlineCount > 0 ? "var(--primary-400)" : "var(--gray-300)" }} />
-                  {onlineCount > 0 ? t.liveMonitoring : t.noCamerasOnline}
-                </span>
               </div>
               <p style={{ fontSize: "26px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.4px", minHeight: "34px" }}>
                 {nowMs !== null ? greeting(nowMs, admin.name, t) : ""}
