@@ -8,6 +8,7 @@ import { formatElapsed, sgtClockMinutes, sgtDateKey } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { getAuthConfig } from "@/lib/authConfig";
 import type { DetailTab } from "./ProjectSidebar";
 import ProjectCamerasTab from "./ProjectCamerasTab";
@@ -62,7 +63,10 @@ const T = {
     attnNoVips: "No one registered in the watchlist yet",
     accessSplitLabel: (portal: number, app: number) => `Portal: ${portal} | App: ${app}`,
     cameraStatusTitle: "Camera status",
-    seeAll: "See all",
+    seeAllActivity: (n: number) => `All ${n} entries`,
+    activityLogTitle: "Admin activity",
+    activityLogEmpty: "Nothing has been changed in this project yet.",
+    close: "Close",
     colLastSignal: "Last signal",
     totalCameras: (n: number) => `${n} total`,
     registeredOn: (d: string) => `Registered ${d}`,
@@ -88,7 +92,9 @@ const T = {
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · Vehicle ${vehicle} · Unknown ${unknown.toLocaleString("en-US")}`,
     unstableTitle: "Stream drops · last 7 days",
-    dropsAxisHint: "oldest → today",
+    dropsLegendNone: "no drop",
+    dropsLegendOnce: "once",
+    dropsLegendMore: "twice or more",
     noDrops: "Every camera held its stream all week.",
     viewAllCameras: (n: number) => `View all ${n} cameras`,
     recentVipsTitle: "Recently Registered VIPs",
@@ -149,7 +155,10 @@ const T = {
     attnNoVips: "등록된 관심대상이 없습니다",
     accessSplitLabel: (portal: number, app: number) => `포털: ${portal} | 앱: ${app}`,
     cameraStatusTitle: "카메라 상태",
-    seeAll: "전체 보기",
+    seeAllActivity: (n: number) => `전체 ${n}건 보기`,
+    activityLogTitle: "관리자 활동",
+    activityLogEmpty: "이 프로젝트에서 변경된 것이 아직 없습니다.",
+    close: "닫기",
     colLastSignal: "마지막 신호",
     totalCameras: (n: number) => `전체 ${n}`,
     registeredOn: (d: string) => `${d} 등록`,
@@ -170,7 +179,9 @@ const T = {
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · 차량 ${vehicle} · 미확인 ${unknown.toLocaleString("en-US")}`,
     unstableTitle: "스트림 끊김 · 지난 7일",
-    dropsAxisHint: "오래된 날 → 오늘",
+    dropsLegendNone: "끊김 없음",
+    dropsLegendOnce: "1회",
+    dropsLegendMore: "2회 이상",
     noDrops: "이번 주 내내 모든 카메라가 스트림을 유지했습니다.",
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
     recentVipsTitle: "최근 등록된 VIP",
@@ -250,6 +261,58 @@ function registeredStamp(value: string): string {
  * the card edge four shouted words lined up in a column and were the loudest thing in the row.
  * Caps also did nothing to the Korean strings, so the two languages were drawing different chips.
  */
+/**
+ * Every admin action on this project, newest first.
+ *
+ * Same rows as the Overview's panel, in a box that scrolls — deliberately not a richer screen with
+ * filters and a date range, because the data behind it is a list held in memory. Building a search
+ * over something that does not survive a reload would be building the wrong thing convincingly.
+ */
+function ActivityLogModal({ entries, nowMs, t, onClose }: {
+  entries: { id: string; message: string; actor: string; at: string }[];
+  nowMs: number | null;
+  t: { activityLogTitle: string; activityLogEmpty: string; close: string; agoSuffix: string };
+  onClose: () => void;
+}) {
+  useEscapeKey(onClose, true);
+  return (
+    <div
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}
+    >
+      <div style={{
+        backgroundColor: "white", border: BORDER, borderRadius: "16px", width: "560px", maxWidth: "100%",
+        maxHeight: "78vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(14,22,42,0.18)", overflow: "hidden",
+      }}>
+        <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexShrink: 0 }}>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.activityLogTitle}</p>
+          <button className="portal-icon-btn" onClick={onClose} title={t.close}
+            style={{ display: "flex", border: "none", background: "none", padding: "4px", cursor: "pointer", color: "var(--gray-400)" }}>
+            <X size={16} strokeWidth={2.2} />
+          </button>
+        </div>
+        {entries.length === 0 ? (
+          <p style={{ fontSize: "13px", color: "var(--gray-400)", padding: "28px 20px", textAlign: "center" }}>{t.activityLogEmpty}</p>
+        ) : (
+          <div style={{ overflowY: "auto", padding: "8px 20px 16px" }}>
+            {entries.map((a, i) => (
+              <div key={a.id} style={{ display: "flex", gap: "10px", paddingTop: i === 0 ? "12px" : "10px" }}>
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--gray-300)", marginTop: "6px", flexShrink: 0 }} />
+                <div style={{ minWidth: 0, paddingBottom: "10px", borderBottom: i === entries.length - 1 ? "none" : BORDER, flex: 1 }}>
+                  <p style={{ fontSize: "12px", lineHeight: "18px", fontWeight: 600, color: "var(--gray-900)" }}>{a.message}</p>
+                  <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "2px" }}>
+                    {a.actor}{nowMs !== null ? ` · ${formatElapsed(nowMs - new Date(a.at).getTime())}${t.agoSuffix}` : ""}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function StateChip({ text, color }: { text: string; color: string }) {
   return (
     <span style={{ fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap", color }}>
@@ -376,6 +439,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const [inspectCameraId, setInspectCameraId] = useState<string | null>(null);
   /** Which day of the detections chart the pointer is over, by daysAgo. */
   const [hoverDay, setHoverDay] = useState<number | null>(null);
+  /** The full admin-activity log, in a modal — Portal has no page for it (see the note on the
+   *  panel's footer). */
+  const [showActivityLog, setShowActivityLog] = useState(false);
   // Session-only, deliberately: see the banner's note. Nothing here is resolved by closing it.
   const [attentionDismissed, setAttentionDismissed] = useState(false);
   // Read after mount, not during render: the clock is not a pure input, and license expiry is
@@ -432,10 +498,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    * and who among the accounts is not yet in.
    */
 
-  const recentActivity = auditLog
+  const projectActivity = auditLog
     .filter(a => a.projectId === projectId)
-    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
-    .slice(0, 5);
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  // Five on the card, all of them in the modal behind it.
+  const recentActivity = projectActivity.slice(0, 5);
 
   const projectPersons = persons.filter(p => p.projectId === projectId);
   const projectGroupCount = personGroups.filter(g => g.projectId === projectId).length;
@@ -1089,11 +1156,40 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               */}
               {unstable.length > 0 && (
                 <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "16px", flexShrink: 0 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "10px", marginBottom: "10px" }}>
-                    {/* 15px, the size every other panel titles itself at. At 12 it read as a
-                        label on a block rather than as one of the page's cards. */}
-                    <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{t.unstableTitle}</p>
-                    <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{t.dropsAxisHint}</span>
+                  {/* 15px, the size every other panel titles itself at. At 12 it read as a
+                      label on a block rather than as one of the page's cards. */}
+                  <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{t.unstableTitle}</p>
+                  {/* A legend, because seven shaded squares are not self-explanatory: they were
+                      read as a progress bar, a rating, anything but a week. Three states, named. */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "6px", marginBottom: "10px", flexWrap: "wrap" }}>
+                    {([
+                      { color: "var(--gray-100)", label: t.dropsLegendNone },
+                      { color: "var(--primary-200)", label: t.dropsLegendOnce },
+                      { color: "var(--primary-400)", label: t.dropsLegendMore },
+                    ]).map(item => (
+                      <span key={item.label} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", color: "var(--gray-500)" }}>
+                        <span style={{ width: "9px", height: "9px", borderRadius: "2px", backgroundColor: item.color }} />
+                        {item.label}
+                      </span>
+                    ))}
+                  </div>
+                  {/* The days, over the columns they label — the grid was seven squares with no
+                      axis, so nothing said they were days at all, let alone which end was today.
+                      Same shape as a row below it (name, cells, count) with the name and count
+                      slots empty, so the letters land exactly on their cells. */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 6px", marginBottom: "4px" }}>
+                    <span style={{ flex: 1, minWidth: 0 }} />
+                    <span style={{ display: "flex", gap: "3px", flexShrink: 0 }}>
+                      {detectionDays.map(d => {
+                        const at = nowMs !== null ? new Date(nowMs - d.daysAgo * 86400000) : null;
+                        return (
+                          <span key={d.daysAgo} style={{ width: "12px", fontSize: "9px", color: "var(--gray-400)", textAlign: "center" }}>
+                            {at === null ? "" : new Intl.DateTimeFormat(lang === "ko" ? "ko-KR" : "en-GB", { timeZone: "Asia/Singapore", weekday: "narrow" }).format(at)}
+                          </span>
+                        );
+                      })}
+                    </span>
+                    <span style={{ width: "14px", flexShrink: 0 }} />
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     {unstable.map(({ camera, drops, dropsByDay }) => (
@@ -1386,16 +1482,32 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     white strip of the card's bottom padding under a grey band, which read as the
                     row being misaligned with the card. The card clips (overflow hidden), so the
                     fill takes the bottom corners' radius. */}
-                <button onClick={() => onTabChange("users")}
+                {/* Opens the log, rather than walking to a tab that does not contain one. This
+                    said "See all" and went to Users & Permissions, where there is no activity
+                    list — a door promising the rest of what you are reading and delivering a
+                    different screen. Portal has no audit page to send anyone to, so the rest of
+                    the log is a modal until it has one. */}
+                <button onClick={() => setShowActivityLog(true)}
                   className="portal-attention-row"
                   style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "calc(100% + 40px)", border: "none", borderTop: BORDER, background: "none", padding: "12px 20px", margin: "12px -20px -20px", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.seeAll}</span>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.seeAllActivity(projectActivity.length)}</span>
                   <ArrowUpRight size={13} strokeWidth={2.6} color="var(--gray-500)" />
                 </button>
               </div>
             </div>
           </div>
 
+
+
+          {/*
+            The whole log, in a modal.
+
+            Portal has no audit page — the store keeps this list in memory and nothing persists it
+            yet (it is on the backend list) — so "all 23 entries" cannot be a route. A modal is the
+            smallest honest answer: the card shows five, this shows every one the session knows
+            about, and when the server owns the log this becomes a page and the modal goes.
+          */}
+          {showActivityLog && <ActivityLogModal entries={projectActivity} nowMs={nowMs} t={t} onClose={() => setShowActivityLog(false)} />}
 
         </>
       )}
