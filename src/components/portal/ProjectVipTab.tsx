@@ -1160,12 +1160,17 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             {([
               { label: t.colName, key: "name" },
               ...(showGroupColumn ? [{ label: t.colGroup }] : []),
-              { label: t.colPriority, key: "priority" },
+              { label: t.colPriority, key: "priority", indent: true },
               { label: t.colRegistered, key: "registered" },
               { label: t.colNote },
               { label: "" },
-            ] as { label: string; key?: VipSortKey }[]).map((h, i) => (
-              <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
+            /* Priority's heading is nudged 8px right — the pill under it carries 8px of its own
+               left padding, so a heading flush with the track's edge sat left of every value it
+               labels. The other columns are plain text and line up already. */
+            ] as { label: string; key?: VipSortKey; indent?: boolean }[]).map((h, i) => (
+              <span key={i} style={h.indent ? { paddingLeft: "8px" } : undefined}>
+                <SortableHeader label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
+              </span>
             ))}
           </div>
           {projectPersons.map((person, i) => {
