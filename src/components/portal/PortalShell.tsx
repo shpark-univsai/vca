@@ -24,7 +24,7 @@ const T = {
 function BreadcrumbChevron() {
   return (
     <svg width="10" height="10" viewBox="0 0 8 8" fill="none" style={{ flexShrink: 0 }}>
-      <path d="M2.5 1L5.5 4L2.5 7" stroke="var(--gray-500)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M2.5 1L5.5 4L2.5 7" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }
@@ -32,8 +32,8 @@ function BreadcrumbChevron() {
 function SidebarToggleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <rect x="2.25" y="2.75" width="13.5" height="12.5" rx="3" stroke="var(--gray-600)" strokeWidth="1.5"/>
-      <path d="M6.75 3.25V14.75" stroke="var(--gray-600)" strokeWidth="1.5"/>
+      <rect x="2.25" y="2.75" width="13.5" height="12.5" rx="3" stroke="var(--gray-600)" strokeWidth="1.4"/>
+      <path d="M6.75 3.25V14.75" stroke="var(--gray-600)" strokeWidth="1.4"/>
     </svg>
   );
 }

@@ -552,7 +552,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
         <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.modalTitle}</p>
           <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
           </button>
         </div>
         <div style={MODAL_BODY_WITH_SELECT}>
@@ -762,7 +762,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
     <li key={text} style={{ display: "flex", gap: "6px", alignItems: "flex-start", listStyle: "none" }}>
       <Asterisk
         size={14}
-        strokeWidth={1.5}
+        strokeWidth={1.4}
         aria-hidden
         style={{ flexShrink: 0, marginTop: "2px", color: "var(--gray-400)" }}
       />
@@ -779,7 +779,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
             {password ? c.resultTitle : c.modalTitle}
           </p>
           <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
           </button>
         </div>
 
@@ -1102,7 +1102,7 @@ function RecoveryModeNotice({ supportContact }: { supportContact: string | null 
   return (
     <div style={{ display: "flex", gap: "12px", padding: "14px 16px", borderRadius: "12px", backgroundColor: "var(--info-100)", border: "1px solid var(--info-200)", marginBottom: "16px" }}>
       <span style={{ flexShrink: 0, display: "flex", color: "var(--info-500)", marginTop: "1px" }}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 7.2v4M8 5.1v.9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/><path d="M8 7.2v4M8 5.1v.9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
       </span>
       <div>
         <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.recoveryNoticeTitle}</p>
@@ -1549,8 +1549,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         }}>
           <span style={{ display: "flex", flexShrink: 0, marginTop: "1px", color: "var(--warning-500)" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 1.8 1.5 13.2h13L8 1.8Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-              <path d="M8 6v3.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M8 1.8 1.5 13.2h13L8 1.8Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+              <path d="M8 6v3.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
               <circle cx="8" cy="11.2" r="0.75" fill="currentColor"/>
             </svg>
           </span>
@@ -1596,7 +1596,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           disabled={!manageAccess}
           title={manageAccess ? undefined : t.reasonNotOwner}
           style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: manageAccess ? "var(--primary-400)" : "var(--gray-100)", color: manageAccess ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed", flexShrink: 0 }}>
-          <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke={manageAccess ? "white" : "var(--gray-400)"} strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke={manageAccess ? "white" : "var(--gray-400)"} strokeWidth="1.4" strokeLinecap="round"/></svg>
           {t.inviteUser}
         </button>
         )}
@@ -1671,7 +1671,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
       <div style={{ position: "relative", flex: 1, minWidth: "220px", maxWidth: "320px" }}>
         <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
         </span>
         <input
           value={search}

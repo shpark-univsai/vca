@@ -148,8 +148,8 @@ const T = {
 } as const;
 
 // Lucide, at the sizes and weights these were drawn at — see PortalProjectDetailPage's note.
-function CheckIcon() { return <Check size={12} strokeWidth={1.5} />; }
-function LockIcon() { return <Lock size={11} strokeWidth={1.5} />; }
+function CheckIcon() { return <Check size={12} strokeWidth={1.4} />; }
+function LockIcon() { return <Lock size={11} strokeWidth={1.4} />; }
 
 /**
  * What the licensed channels are being spent on, in Vimeo's Billing-seats shape: the total, then a
@@ -366,9 +366,9 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           )}
         </div>
 
-        {detailRow(<Video size={14} strokeWidth={1.5} />, `${t.aiCameras} · ${t.normalCameras}`, `${aiCameraCount} · ${normalCameraCount}`)}
+        {detailRow(<Video size={14} strokeWidth={1.4} />, `${t.aiCameras} · ${t.normalCameras}`, `${aiCameraCount} · ${normalCameraCount}`)}
         {detailRow(
-          <CalendarClock size={14} strokeWidth={1.5} />,
+          <CalendarClock size={14} strokeWidth={1.4} />,
           t.licenseExpiry,
           <span style={{ display: "inline-flex", alignItems: "baseline", gap: "8px" }}>
             <span style={{ fontFamily: "monospace" }}>{isUnlimitedExpiry ? t.unlimited : (project.licenseExpiresAt ?? "—")}</span>
@@ -376,7 +376,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           </span>,
         )}
         {detailRow(
-          <UserRound size={14} strokeWidth={1.5} />,
+          <UserRound size={14} strokeWidth={1.4} />,
           t.bannerContract,
           accountManager
             ? <a href={`mailto:${accountManager.email}`} style={{ color: "var(--gray-900)", textDecoration: "underline", textUnderlineOffset: "3px" }}>{accountManager.name}</a>

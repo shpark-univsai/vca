@@ -61,7 +61,7 @@ const T = {
 function ChevronDown({ size = 12 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 12 12" fill="none">
-      <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }
@@ -69,10 +69,10 @@ function ChevronDown({ size = 12 }: { size?: number }) {
 function TeamIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1" stroke="var(--gray-400)" strokeWidth="1.5"/>
-      <rect x="9" y="1.5" width="5.5" height="5.5" rx="1" stroke="var(--gray-400)" strokeWidth="1.5"/>
-      <rect x="1.5" y="9" width="5.5" height="5.5" rx="1" stroke="var(--gray-400)" strokeWidth="1.5"/>
-      <rect x="9" y="9" width="5.5" height="5.5" rx="1" stroke="var(--gray-400)" strokeWidth="1.5"/>
+      <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1" stroke="var(--gray-400)" strokeWidth="1.4"/>
+      <rect x="9" y="1.5" width="5.5" height="5.5" rx="1" stroke="var(--gray-400)" strokeWidth="1.4"/>
+      <rect x="1.5" y="9" width="5.5" height="5.5" rx="1" stroke="var(--gray-400)" strokeWidth="1.4"/>
+      <rect x="9" y="9" width="5.5" height="5.5" rx="1" stroke="var(--gray-400)" strokeWidth="1.4"/>
     </svg>
   );
 }
@@ -80,7 +80,7 @@ function TeamIcon() {
 function ProjectIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M2 4.5C2 3.67157 2.67157 3 3.5 3H6.5L8 4.5H12.5C13.3284 4.5 14 5.17157 14 6V11.5C14 12.3284 13.3284 13 12.5 13H3.5C2.67157 13 2 12.3284 2 11.5V4.5Z" stroke="var(--gray-500)" strokeWidth="1.5"/>
+      <path d="M2 4.5C2 3.67157 2.67157 3 3.5 3H6.5L8 4.5H12.5C13.3284 4.5 14 5.17157 14 6V11.5C14 12.3284 13.3284 13 12.5 13H3.5C2.67157 13 2 12.3284 2 11.5V4.5Z" stroke="var(--gray-500)" strokeWidth="1.4"/>
     </svg>
   );
 }
@@ -88,7 +88,7 @@ function ProjectIcon() {
 function StarIcon({ filled }: { filled: boolean }) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill={filled ? "var(--warning-400)" : "none"}>
-      <path d="M8 1.5L9.85 5.6L14.3 6.15L11 9.25L11.85 13.7L8 11.5L4.15 13.7L5 9.25L1.7 6.15L6.15 5.6L8 1.5Z" stroke={filled ? "var(--warning-400)" : "var(--gray-300)"} strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M8 1.5L9.85 5.6L14.3 6.15L11 9.25L11.85 13.7L8 11.5L4.15 13.7L5 9.25L1.7 6.15L6.15 5.6L8 1.5Z" stroke={filled ? "var(--warning-400)" : "var(--gray-300)"} strokeWidth="1.4" strokeLinejoin="round"/>
     </svg>
   );
 }
@@ -167,7 +167,7 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
                 onClick={() => { setOpen(false); onNewProject(); }}
                 style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", cursor: "pointer", color: "var(--primary-400)", fontSize: "12px", fontWeight: 700 }}
               >
-                <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="var(--primary-400)" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="var(--primary-400)" strokeWidth="1.4" strokeLinecap="round"/></svg>
                 {t.newProject}
               </button>
             </div>
@@ -189,7 +189,7 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
               {/* Search */}
               <div style={{ position: "relative", marginBottom: "12px" }}>
                 <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
-                  <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
                 </span>
                 <input
                   autoFocus

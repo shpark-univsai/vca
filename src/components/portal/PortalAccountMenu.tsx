@@ -97,14 +97,14 @@ export default function PortalAccountMenu({ admin, appAccess, onMyPage }: {
             </div>
             <div style={{ height: "1px", backgroundColor: "var(--gray-200)", margin: "0 4px 6px" }} />
             <button className="portal-navmenu-item" onClick={() => { setOpen(false); onMyPage(); }} style={MENU_ITEM}>
-              <User size={14} strokeWidth={1.5} color="var(--gray-500)" /> {t.myPage}
+              <User size={14} strokeWidth={1.4} color="var(--gray-500)" /> {t.myPage}
             </button>
             <button className="portal-navmenu-item" onClick={() => { setOpen(false); setSupportOpen(true); }} style={MENU_ITEM}>
-              <Headset size={14} strokeWidth={1.5} color="var(--gray-500)" /> {t.support}
+              <Headset size={14} strokeWidth={1.4} color="var(--gray-500)" /> {t.support}
             </button>
             {appAccess && (
               <button className="portal-navmenu-item" onClick={() => { setOpen(false); router.push("/"); }} style={MENU_ITEM}>
-                <LogOut size={14} strokeWidth={1.5} color="var(--gray-500)" /> {t.toApp}
+                <LogOut size={14} strokeWidth={1.4} color="var(--gray-500)" /> {t.toApp}
               </button>
             )}
           </div>

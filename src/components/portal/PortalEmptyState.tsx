@@ -114,7 +114,7 @@ export default function PortalEmptyState({ onNewProject, noTeam = false, onCreat
             width: "56px", height: "56px", borderRadius: "16px",
             backgroundColor: "white", border: BORDER, color: "var(--gray-500)",
           }}>
-            <Users size={24} strokeWidth={1.5} />
+            <Users size={24} strokeWidth={1.4} />
           </span>
           {/* States the situation before the action — "No teams yet", not a product headline. */}
           <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)", marginTop: "20px" }}>{t.noTeamTitle}</p>
@@ -174,7 +174,7 @@ export default function PortalEmptyState({ onNewProject, noTeam = false, onCreat
             padding: "12px 20px", borderRadius: "8px", border: "none",
             backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer",
           }}>
-          <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
           {t.newProject}
         </button>
       </div>
