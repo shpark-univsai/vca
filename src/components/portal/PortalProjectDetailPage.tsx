@@ -62,9 +62,6 @@ const T = {
     attnNoVips: "No one registered in the watchlist yet",
     accessSplitLabel: (portal: number, app: number) => `Portal: ${portal} | App: ${app}`,
     cameraStatusTitle: "Camera status",
-    eyebrowNetwork: "NETWORK OVERVIEW",
-    eyebrowPeople: "PEOPLE & ACCESS",
-    eyebrowAudit: "AUDIT TRAIL",
     viewInventory: "View inventory",
     seeAll: "See all",
     colLastSignal: "Last signal",
@@ -148,9 +145,6 @@ const T = {
     attnNoVips: "등록된 관심대상이 없습니다",
     accessSplitLabel: (portal: number, app: number) => `포털: ${portal} | 앱: ${app}`,
     cameraStatusTitle: "카메라 상태",
-    eyebrowNetwork: "네트워크 현황",
-    eyebrowPeople: "사람 및 접근",
-    eyebrowAudit: "감사 기록",
     viewInventory: "목록 보기",
     seeAll: "전체 보기",
     colLastSignal: "마지막 신호",
@@ -238,16 +232,14 @@ function BarStats({ left, right }: { left: string; right: string }) {
 }
 
 /**
- * A panel's head: a dotted eyebrow, the title, one line saying what the panel holds, and the way
- * to the whole of it.
+ * A panel's head: the title, one line saying what the panel holds, and the way to the whole of it.
  *
- * The three panels under the metric row used to open with a coloured icon square and a title. The
- * eyebrow names the section the way the reference does — NETWORK OVERVIEW, PEOPLE & ACCESS, AUDIT
- * TRAIL — which is what turns three stacked boxes into three parts of one page. The dot is grey:
- * it is punctuation, not a status.
+ * There was a dotted eyebrow above the title — NETWORK OVERVIEW, PEOPLE & ACCESS, AUDIT TRAIL —
+ * copied from the reference, where it groups a longer page into named sections. Here there are
+ * three panels and each already has a title that says what it is, so the eyebrow was a second
+ * heading for the same box: two lines of label before the first line of content.
  */
-function SectionHead({ eyebrow, title, subtitle, action }: {
-  eyebrow: string;
+function SectionHead({ title, subtitle, action }: {
   title: string;
   subtitle?: string;
   action?: { label: string; onClick: () => void };
@@ -255,10 +247,6 @@ function SectionHead({ eyebrow, title, subtitle, action }: {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
       <div style={{ minWidth: 0 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
-          <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--gray-300)", flexShrink: 0 }} />
-          <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px", color: "var(--gray-500)" }}>{eyebrow}</span>
-        </span>
         <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{title}</p>
         {subtitle && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{subtitle}</p>}
       </div>
@@ -729,7 +717,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ padding: "16px 20px", flexShrink: 0 }}>
                   <SectionHead
-                    eyebrow={t.eyebrowNetwork}
                     title={t.cameraStatusTitle}
                     subtitle={t.cameraStatusSubtitle}
                     action={{ label: t.viewInventory, onClick: () => onTabChange("cameras") }}
@@ -819,7 +806,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <div style={{ display: "flex", flexDirection: "column", gap: CARD_GAP, minWidth: 0, minHeight: 0 }}>
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ marginBottom: "14px", flexShrink: 0 }}>
-                  <SectionHead eyebrow={t.eyebrowPeople} title={t.recentVipsTitle} subtitle={t.vipsSubtitle} />
+                  <SectionHead title={t.recentVipsTitle} subtitle={t.vipsSubtitle} />
                 </div>
                 {recentVips.length === 0 ? (
                   <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noVipsYet}</p>
@@ -901,7 +888,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ marginBottom: "14px", flexShrink: 0 }}>
                   <SectionHead
-                    eyebrow={t.eyebrowAudit}
                     title={t.recentAdminActivity}
                     subtitle={t.activitySubtitle}
                     action={{ label: t.seeAll, onClick: () => onTabChange("users") }}
