@@ -636,7 +636,10 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
           : {
               backgroundColor: "white", border: accentBorder ?? CARD_BORDER,
               borderRadius: dense ? "12px" : "16px",
-              boxShadow: PANEL_SHADOW, padding: dense ? "12px 14px" : "16px",
+              // 14px top and bottom, 16 at the sides: the four Overview cards end with a bar and its two
+              // captions, and a 16px floor under an 11px caption line read as a card that had not
+              // finished. Asked for 2026-09-08 along with pulling the bars up.
+              boxShadow: PANEL_SHADOW, padding: dense ? "12px 14px" : "14px 16px",
             }),
         display: "flex", flexDirection: "column", gap: dense ? "8px" : "6px", flex: 1, minWidth: 0,
         // A <button> brings its own centring, font and cursor; undo them so the clickable card is

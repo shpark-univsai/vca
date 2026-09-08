@@ -224,7 +224,7 @@ function StateChip({ text, color }: { text: string; color: string }) {
  *  the right. Only cards with a bar have one: it is the bar's legend, not a footer. */
 function BarStats({ left, right }: { left: string; right: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginTop: "8px" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginTop: "5px" }}>
       <span style={{ fontSize: "11px", color: "var(--gray-500)" }}>{left}</span>
       <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{right}</span>
     </div>
@@ -603,7 +603,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   width of nothing between the number and the bar that measures it — two halves of
                   one statement with a gap in the middle. The cards still line up: both bars have
                   the same rows above them, and the grid stretches the cards themselves. */}
-              <div style={{ paddingTop: "12px" }}>
+              <div style={{ paddingTop: "6px" }}>
                 <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
                   {/* gray-500 for the healthy share, danger only for the part that is not.
                       It was success-400 against danger-400 — two saturated hues meeting in the
@@ -642,7 +642,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.channelsUsedSuffix(channelLimit ?? "∞")}</span>
                 </span>
               </div>
-              <div style={{ paddingTop: "12px" }}>
+              <div style={{ paddingTop: "6px" }}>
                 <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--gray-500)" }} />
                 </div>
