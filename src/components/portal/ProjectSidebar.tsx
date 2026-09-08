@@ -148,7 +148,12 @@ export default function ProjectSidebar({ tab, onTabChange, collapsed, myPageOpen
       {/* The nav list is the scroller, not the rail: it is the only part that could ever be long
           enough to need one, and an `overflow: auto` on the rail itself would clip anything a
           child wanted to float outside it. */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4px" }}>
+      {/* Top-aligned, not centred.
+          The list used to sit in the middle of the rail, which worked while it was six unlabelled
+          rows and stopped working the moment it became two named groups: a heading belongs above
+          the thing it names, and a pair of them floating at the waist of a full-height dark column
+          reads as a fragment of a longer list scrolled into view. Nav starts where the page does. */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: "4px" }}>
         {NAV_GROUPS.map((group, gi) => (
           <div key={group.id} style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: gi === 0 ? 0 : "18px" }}>
             {/* Collapsed, a heading has nowhere to go — 60px holds an icon and nothing else — so the
