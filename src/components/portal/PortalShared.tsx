@@ -139,12 +139,13 @@ export const FIELD_FOCUS: React.CSSProperties = {
  */
 export const CARD_GAP = "12px";
 /**
- * Colour of a table's column headings, everywhere in Portal. gray-400 was a step too light: set
- * against gray-50 header bands it read as disabled text rather than as the labels for the columns
- * under it. gray-500 keeps them clearly quieter than the data without making them look switched off.
- * Named so the six tables that draw a heading row cannot drift apart again.
+ * Colour of a table's column headings, everywhere in Portal. It has walked up the ramp twice:
+ * gray-400 read as disabled text against the gray-50 header band, gray-500 was legible but still
+ * receded at 10px with letter-spacing on it. gray-600 is the step where the headings read as
+ * labels for the columns rather than as a watermark, and they stay clearly quieter than the
+ * gray-900 data under them. Named so the six tables that draw a heading row cannot drift apart.
  */
-export const TABLE_HEADER_COLOR = "var(--gray-500)";
+export const TABLE_HEADER_COLOR = "var(--gray-600)";
 
 /**
  * Ceiling for the Overview's three list panels — Camera Status, Recently Registered VIPs, Recent

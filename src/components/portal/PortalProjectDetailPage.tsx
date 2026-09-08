@@ -989,7 +989,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 the title, so a heading and a graphic shared one band and neither was clearly
                 first. A card's name sits above its contents; the figure and the shape it came
                 from are the contents, and they line up with each other. */}
-            <div style={{ marginBottom: "10px" }}>
+            <div style={{ marginBottom: "16px" }}>
               <SectionHead title={t.trendTitle} />
             </div>
             {/* flex-start, and the figure nudged up by its own half-leading: the column was
