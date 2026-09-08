@@ -1289,6 +1289,55 @@ export function dailyDetections(projectId: string, days = 7): DailyDetections[] 
 }
 
 /**
+ * What is wrong with a project's watchlist, and how much of it is actually working.
+ *
+ * ANOTHER REQUEST TO THE BACKEND, WRITTEN AS DATA. Everything the VIP page can say today it says
+ * about itself — how many rows, how many groups, which priorities. None of that answers the
+ * question an administrator actually has, which is whether the list they built will catch anybody:
+ *
+ *   GET /projects/:id/registry-health → {
+ *     missingPhoto: id[],      // registered with no face image at all — never matchable
+ *     embeddingFailed: id[],   // has an image the model could not turn into features
+ *     duplicates: [id, id][],  // the same face registered twice; alerts fire twice
+ *     detectedLast7d: id[],    // seen by any camera in the window
+ *   }
+ *
+ * The first three are defects with different causes and different fixes (upload a photo, replace a
+ * bad photo, merge two rows), which is why they are three lists and not one number. The fourth is
+ * not a defect: it is the reach of the list, and it is here because a watchlist nobody ever
+ * matches is the quietest way this product fails.
+ *
+ * Seeded deterministically, like everything else in this file.
+ */
+export interface RegistryHealth {
+  missingPhoto: string[];
+  embeddingFailed: string[];
+  duplicates: [string, string][];
+  detectedLast7d: string[];
+}
+
+export function registryHealth(projectId: string, persons: Person[]): RegistryHealth {
+  const rows = persons.filter(p => p.projectId === projectId);
+  const missingPhoto: string[] = [];
+  const embeddingFailed: string[] = [];
+  const detectedLast7d: string[] = [];
+  rows.forEach((p, i) => {
+    const roll = seededRandom(i * 4.77 + p.id.length);
+    if (roll > 0.9) missingPhoto.push(p.id);
+    else if (roll > 0.86) embeddingFailed.push(p.id);
+    // Only rows with a usable face can have been seen. Letting an unmatchable person appear in
+    // the detected list would make the two figures on the page contradict each other.
+    else if (seededRandom(i * 6.31 + 1.5) > 0.9) detectedLast7d.push(p.id);
+  });
+  // Pairs, not a count: a duplicate is two rows, and the fix is choosing which one to keep.
+  const duplicates: [string, string][] = [];
+  for (let i = 0; i + 1 < rows.length && duplicates.length < 2; i += 1) {
+    if (seededRandom(i * 8.19 + 3.3) > 0.96) duplicates.push([rows[i].id, rows[i + 1].id]);
+  }
+  return { missingPhoto, embeddingFailed, duplicates, detectedLast7d };
+}
+
+/**
  * Cameras that dropped their stream at least once in the last seven days, worst first, with the
  * drops spread over the days they happened on.
  *

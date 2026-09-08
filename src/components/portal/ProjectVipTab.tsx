@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
 import { ArrowDownWideNarrow } from "lucide-react";
-import { useVcaStore, type Person, type PersonGroup } from "@/lib/vcaStore";
+import { registryHealth, useVcaStore, type Person, type PersonGroup } from "@/lib/vcaStore";
 import { getFacePhoto } from "@/lib/mockData";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -52,6 +52,12 @@ interface VipDict {
   viewTable: string;
   colName: string;
   colPriority: string;
+  healthMissingPhoto: string;
+  healthEmbeddingFailed: string;
+  healthDuplicates: string;
+  healthShowOnly: string;
+  healthClear: string;
+  healthReach: (detected: number, total: number) => string;
   colRegistered: string;
   colNote: string;
   confirmRemoveTitle: string;
@@ -133,6 +139,12 @@ const T: Record<"en" | "ko", VipDict> = {
     viewTable: "Table",
     colName: "Name",
     colPriority: "Priority",
+    healthMissingPhoto: "no photo",
+    healthEmbeddingFailed: "photo unreadable",
+    healthDuplicates: "possible duplicates",
+    healthShowOnly: "Show only these",
+    healthClear: "Show everyone again",
+    healthReach: (detected: number, total: number) => `${detected} of ${total} seen in the last 7 days`,
     colRegistered: "Registered",
     colNote: "Note",
     confirmRemoveTitle: "Remove this VIP?",
@@ -213,6 +225,12 @@ const T: Record<"en" | "ko", VipDict> = {
     viewTable: "테이블",
     colName: "이름",
     colPriority: "우선순위",
+    healthMissingPhoto: "사진 없음",
+    healthEmbeddingFailed: "사진 인식 실패",
+    healthDuplicates: "중복 의심",
+    healthShowOnly: "이 항목만 보기",
+    healthClear: "전체 다시 보기",
+    healthReach: (detected: number, total: number) => `지난 7일 ${total}명 중 ${detected}명 탐지`,
     colRegistered: "등록일",
     colNote: "메모",
     confirmRemoveTitle: "정말 삭제하시겠습니까?",
@@ -793,6 +811,12 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
    */
   const [view, setView] = useState<"grid" | "table">("table");
   /**
+   * Which registry defect the list is narrowed to, if any — set by clicking one of the three cards
+   * above it. A card that only states a number leaves the reader to find the twelve rows it counted;
+   * this makes the number the way to them.
+   */
+  const [healthFilter, setHealthFilter] = useState<"missingPhoto" | "embeddingFailed" | "duplicates" | null>(null);
+  /**
    * All / Individuals / Groups. Same underlined tab row Input Sources and Users & Permissions use.
    *
    * "All" is a real answer here in a way it was not on the Users page: a group's members are
@@ -849,7 +873,21 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   // somebody removes a person. See PersonGroup in the store.
   const memberCountOf = (groupId: string) => allProjectPersons.filter(p => p.groupId === groupId).length;
 
+  /**
+   * The three defects and the reach figure. Computed from the store's seed — see registryHealth,
+   * where the shape is written as the request to the backend.
+   */
+  const health = registryHealth(projectId, persons);
+  const duplicateIds = new Set(health.duplicates.flat());
+  const healthIds = {
+    missingPhoto: new Set(health.missingPhoto),
+    embeddingFailed: new Set(health.embeddingFailed),
+    duplicates: duplicateIds,
+  } as const;
+  const detectedCount = health.detectedLast7d.length;
+
   const matchingPersons = allProjectPersons
+    .filter(p => !healthFilter || healthIds[healthFilter].has(p.id))
     .filter(p => vipTab !== "individuals" || !p.groupId)
     .filter(p => !groupFilter || (groupFilter === "__none" ? !p.groupId : p.groupId === groupFilter))
     .filter(p => priorityFilter === "ALL" || (p.priorityLabel ?? "normal") === priorityFilter)
@@ -857,8 +895,8 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   // Unset counts as "normal", both here and in the select's counts: the store leaves the field off
   // for anyone registered before priorities existed, and filing them under their own bucket would
   // invent a distinction the registry does not make.
-  const activeFilterCount = (groupFilter ? 1 : 0) + (priorityFilter === "ALL" ? 0 : 1);
-  const clearFilters = () => { setGroupFilter(null); setPriorityFilter("ALL"); };
+  const activeFilterCount = (groupFilter ? 1 : 0) + (priorityFilter === "ALL" ? 0 : 1) + (healthFilter ? 1 : 0);
+  const clearFilters = () => { setGroupFilter(null); setPriorityFilter("ALL"); setHealthFilter(null); };
   const sortValue = (person: Person, key: VipSortKey) => {
     switch (key) {
       case "name": return person.name.toLowerCase();
@@ -940,6 +978,56 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
 
   return (
     <div>
+      {/*
+        Registry health, in one line.
+
+        These started as three cards and are a strip instead: the page's job is the list, and a
+        summary that costs a hundred pixels of it has to be worth a hundred pixels. As a row of
+        figures it costs twenty-eight.
+
+        Each number is the way to the rows it counted — clicking narrows the list, clicking again
+        clears it — which is the whole reason to state them here rather than on the Overview. All
+        three are the same failure from three causes: a person on the list that no camera can match.
+        A photo that was never uploaded, one the model could not read, and a face registered twice
+        (which matches, then alerts twice).
+
+        The reach figure on the right is not a defect and is not clickable. It is the question
+        nobody else on the page asks — whether this list catches anyone at all.
+      */}
+      {(health.missingPhoto.length > 0 || health.embeddingFailed.length > 0 || health.duplicates.length > 0) && (
+        <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", marginBottom: "12px" }}>
+          {([
+            { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto },
+            { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed },
+            { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates },
+          ]).filter(item => item.count > 0).map(item => {
+            const active = healthFilter === item.key;
+            return (
+              <button
+                key={item.key}
+                onClick={() => setHealthFilter(active ? null : item.key)}
+                title={active ? t.healthClear : t.healthShowOnly}
+                style={{
+                  display: "flex", alignItems: "baseline", gap: "5px",
+                  border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
+                  // The active one is underlined rather than filled: a filled pill in a 28px strip
+                  // is a button, and these are figures that happen to be clickable.
+                  textDecoration: active ? "underline" : "none", textUnderlineOffset: "4px",
+                  textDecorationColor: "var(--warning-500)",
+                }}
+              >
+                <span style={{ fontSize: "13px", fontWeight: 800, color: "var(--warning-500)" }}>{item.count}</span>
+                <span style={{ fontSize: "11px", color: active ? "var(--gray-900)" : "var(--gray-500)" }}>{item.label}</span>
+              </button>
+            );
+          })}
+          <span style={{ flex: 1 }} />
+          <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>
+            {t.healthReach(detectedCount, allProjectPersons.length)}
+          </span>
+        </div>
+      )}
+
       {/* All / Individuals / Groups. Same underlined row as Input Sources and Users & Permissions. */}
       <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
         {([
