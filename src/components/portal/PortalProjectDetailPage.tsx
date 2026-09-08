@@ -209,17 +209,18 @@ function PlusIcon() { return <Plus size={14} strokeWidth={2.4} />; }
 function UserPlusIcon() { return <UserPlus size={14} strokeWidth={2.4} />; }
 function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={3.36} />; }
 /**
- * The state, in a word, beside the card's icon. Text only — no pill.
+ * The state, in a word, beside the card's icon — in the icon's own colour.
  *
- * It was a filled chip, which put a second small box next to the icon badge and made the card open
- * with two shapes before a word. The colour carries the state on its own here: this line is 10px
- * small-caps sitting alone on the card's top row, so nothing needs to be drawn around it to be
- * found. Grey when there is nothing to judge, green or red when there is.
+ * Text only, no pill: a filled chip put a second small box next to the badge and made the card
+ * open with two shapes before a word. And the colour is the badge's, so the two read as one mark
+ * rather than as an icon and an unrelated label that happen to share a line. The card's hue is
+ * therefore doing two jobs — saying which card this is, and carrying its state — which is why the
+ * camera card turns its badge red as well when something is offline, rather than leaving a green
+ * icon beside a red word.
  */
-function StateChip({ text, tone = "neutral" }: { text: string; tone?: "neutral" | "good" | "bad" }) {
-  const fg = tone === "good" ? "var(--success-400)" : tone === "bad" ? "var(--danger-400)" : "var(--gray-600)";
+function StateChip({ text, color }: { text: string; color: string }) {
   return (
-    <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px", whiteSpace: "nowrap", color: fg }}>
+    <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px", whiteSpace: "nowrap", color }}>
       {text}
     </span>
   );
@@ -588,10 +589,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               is said by the chip beside it, in a word. */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: CARD_GAP, marginBottom: CARD_GAP }}>
             <MetricCard
-              label={t.cameraConnectivity} icon={VideoIcon} iconBg="var(--success-100)" iconColor="var(--success-400)"
+              label={t.cameraConnectivity} icon={VideoIcon}
+              iconBg={offlineCount === 0 ? "var(--success-100)" : "var(--danger-100)"}
+              iconColor={offlineCount === 0 ? "var(--success-400)" : "var(--danger-400)"}
               chip={offlineCount === 0
-                ? <StateChip text={t.chipHealthy} tone="good" />
-                : <StateChip text={t.chipAttention(offlineCount)} tone="bad" />}
+                ? <StateChip text={t.chipHealthy} color="var(--success-400)" />
+                : <StateChip text={t.chipAttention(offlineCount)} color="var(--danger-400)" />}
               onClick={() => onTabChange("cameras")}
             >
               {/* The figure on its own line, the bar full width at the foot of the card.
@@ -630,7 +633,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                  slot empty; the line under the bar is the bar's legend — how much is filled, how
                  much is left — and a plan name there would be a third kind of fact in a row of
                  two. Uppercased to sit with the other chips. */
-              chip={project.licensePlan ? <StateChip text={project.licensePlan.toUpperCase()} /> : undefined}
+              chip={project.licensePlan ? <StateChip text={project.licensePlan.toUpperCase()} color="var(--info-500)" /> : undefined}
               onClick={() => onTabChange("license")}
             >
               {/* The figure on its own line, the bar full width at the foot of the card.
@@ -658,7 +661,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
             <MetricCard
               label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--primary-100)" iconColor="var(--primary-400)"
-              chip={newVipsThisMonth > 0 ? <StateChip text={t.chipNewThisMonth(newVipsThisMonth)} /> : undefined}
+              chip={newVipsThisMonth > 0 ? <StateChip text={t.chipNewThisMonth(newVipsThisMonth)} color="var(--primary-400)" /> : undefined}
               onClick={() => onTabChange("vip")}
             >
               {/* One row, no bar and no footer rule.
@@ -686,7 +689,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
             <MetricCard
               label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--warning-200)" iconColor="var(--warning-500)"
-              chip={<StateChip text={t.chipAccessSplit(portalUserCount, appUserCount)} />}
+              chip={<StateChip text={t.chipAccessSplit(portalUserCount, appUserCount)} color="var(--warning-500)" />}
               onClick={() => onTabChange("users")}
             >
               {/* One row, no bar and no footer rule.
