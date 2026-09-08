@@ -969,24 +969,11 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
           the page title gone it was the first thing in the column and lined up hard with the
           crumb above, which made the two read as one row of controls in the chrome. A few px of
           air puts the buttons back on the page. */}
-      <div style={{ display: "flex", marginTop: "4px", alignItems: "center", justifyContent: "flex-end", marginBottom: "16px" }}>
+      <div style={{ display: "flex", marginTop: "4px", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "16px" }}>
+        {/* Adding a source and reconnecting the ones already here both change the fleet, so they
+            lead the row; exporting takes a copy of the table away and changes nothing, so it sits
+            at the far end on its own. */}
         <div style={{ display: "flex", gap: "8px" }}>
-          <button onClick={batchReconnect}
-            onMouseEnter={() => setHoveredAction("reconnect")} onMouseLeave={() => setHoveredAction(null)}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "reconnect" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-            {/* The same lucide rotate-ccw the Server tab's Reset carries. This was a hand-drawn
-                arc turning the other way, so Portal had two "try that again" glyphs pointing in
-                opposite directions. 2.1, not 1.4: lucide draws in a 24-unit box and this renders
-                at 16px — see ICON_STROKE_PX. */}
-            <RotateCcw size={16} strokeWidth={2.1} />
-            {t.reconnectAll}
-          </button>
-          <button onClick={exportCsv}
-            onMouseEnter={() => setHoveredAction("export")} onMouseLeave={() => setHoveredAction(null)}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "export" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1.75V9.33M7 9.33 4.08 6.42M7 9.33 9.92 6.42M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            {t.exportCsv}
-          </button>
           {/* One primary action for both kinds, because "add a source" is one intention with two
               answers — a menu is what keeps the header from growing a second primary button that
               competes with this one. */}
@@ -999,7 +986,7 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
             </button>
             {addMenuOpen && (
               <div style={{
-                position: "absolute", top: "100%", right: 0, marginTop: "4px", zIndex: 60,
+                position: "absolute", top: "100%", left: 0, marginTop: "4px", zIndex: 60,
                 backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "0 8px 20px rgba(14,22,42,0.12)",
                 minWidth: "200px", padding: "4px",
               }}>
@@ -1025,7 +1012,23 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
               </div>
             )}
           </div>
+          <button onClick={batchReconnect}
+            onMouseEnter={() => setHoveredAction("reconnect")} onMouseLeave={() => setHoveredAction(null)}
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "reconnect" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            {/* The same lucide rotate-ccw the Server tab's Reset carries. This was a hand-drawn
+                arc turning the other way, so Portal had two "try that again" glyphs pointing in
+                opposite directions. 2.1, not 1.4: lucide draws in a 24-unit box and this renders
+                at 16px — see ICON_STROKE_PX. */}
+            <RotateCcw size={16} strokeWidth={2.1} />
+            {t.reconnectAll}
+          </button>
         </div>
+        <button onClick={exportCsv}
+          onMouseEnter={() => setHoveredAction("export")} onMouseLeave={() => setHoveredAction(null)}
+          style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "export" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1.75V9.33M7 9.33 4.08 6.42M7 9.33 9.92 6.42M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            {t.exportCsv}
+          </button>
       </div>
 
       {/* Metrics — the same MetricCard the Overview uses, rather than the one bordered box with
