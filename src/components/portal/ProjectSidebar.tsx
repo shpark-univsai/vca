@@ -326,13 +326,17 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
                      *
                      * gray-600 was legible but it was the rail telling you where you are in a
                      * colour that means nothing — every console worth copying marks the current
-                     * row in its own colour once the fill is dark enough to carry it. 26% of
-                     * primary-400 over gray-900 is about as light as gray-600 was and it is
-                     * unmistakably the product's violet. White text and a white icon still, for
-                     * the same reason as before: a coloured label on a coloured fill is two
-                     * things competing.
+                     * row in its own colour once the fill is dark enough to carry it.
+                     *
+                     * primary-300 at 22%, not primary-400 at 26%. gray-900 is a navy, and a
+                     * saturated indigo laid over navy comes out as a hard electric blue — the row
+                     * stopped reading as a tint of the rail and started reading as a blue chip
+                     * dropped onto it. The lighter step is a lavender: mixed at the same strength
+                     * it lands around #2a2e59, still clearly lighter than the gray-800 hover, but
+                     * quiet. White text and a white icon still, for the same reason as before: a
+                     * coloured label on a coloured fill is two things competing.
                      */
-                    backgroundColor: active ? "rgba(90, 61, 251, 0.26)" : undefined,
+                    backgroundColor: active ? "rgba(140, 133, 255, 0.22)" : undefined,
                     color: active ? "white" : "var(--gray-300)",
                     fontSize: "13px", fontWeight: active ? 600 : 500,
                     whiteSpace: "nowrap", width: "100%",
