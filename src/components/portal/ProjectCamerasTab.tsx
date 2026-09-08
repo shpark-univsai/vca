@@ -1043,34 +1043,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           is acted on rather than read, and a non-zero offline count raises a line in the Overview's
           "things to do". Two figures repeated from the previous screen were pushing the table they
           describe half a fold down. */}
-      {/*
-        The gaps, in the shared summary strip — the same shape the VIP registry uses.
-
-        Only cells with something in them: a column reading "0" invites a click that returns an
-        empty table. If all three are zero the strip disappears, which is the correct state for a
-        fleet with nothing wrong with it.
-      */}
-      <SummaryStrip cells={[
-        { key: "noEngine", cameras: noEngineCameras, label: t.gapNoEngine, // Scan, not BrainCircuit: that glyph is a brain full of traces and at 14px with a
-        // 2.4 stroke it collapsed into a scribble that looked like a rotated mistake. Four
-        // corner brackets survive the size and say "detection" without any detail to lose.
-        icon: <Scan size={14} strokeWidth={2.4} /> },
-        { key: "noServer", cameras: noServerCameras, label: t.gapNoServer, icon: <ServerOff size={14} strokeWidth={2.4} /> },
-        { key: "noCoords", cameras: noCoordCameras, label: t.gapNoCoords, icon: <MapPinOff size={14} strokeWidth={2.4} /> },
-      ]
-        .filter(item => item.cameras.length > 0)
-        .map(item => ({
-          key: item.key,
-          icon: item.icon,
-          figure: item.cameras.length,
-          unit: t.gapUnit,
-          label: item.label,
-          tone: "warning" as const,
-          active: gapFilter === item.key,
-          title: gapFilter === item.key ? t.gapClear : t.gapShowOnly,
-          onClick: () => setGapFilter(gapFilter === item.key ? null : (item.key as "noEngine" | "noServer" | "noCoords")),
-        }))} />
-
       {/* Top-level cut of the list, with counts on the tabs. An underlined tab row rather than a
           fourth select in the filter strip below: which kind of source you are looking at is a
           different question from how you are narrowing that kind, and the counts belong where the
@@ -1101,6 +1073,40 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           );
         })}
       </div>
+
+      {/*
+        The gaps, in the shared summary strip — the same shape the VIP registry uses.
+
+        Under the tabs, not above them. Above, it was the first thing on the page and the tabs
+        looked like a caption on it; under, the order reads as it should — which kind of source you
+        are looking at, then what is wrong with it, then the list. It rides in the sticky header
+        with the tabs and the toolbar, which is right for a figure you may want while scrolling a
+        long table.
+
+        Only cells with something in them: a column reading "0" invites a click that returns an
+        empty table. If all three are zero the strip disappears, which is the correct state for a
+        fleet with nothing wrong with it.
+      */}
+      <SummaryStrip cells={[
+        { key: "noEngine", cameras: noEngineCameras, label: t.gapNoEngine, // Scan, not BrainCircuit: that glyph is a brain full of traces and at 14px with a
+        // 2.4 stroke it collapsed into a scribble that looked like a rotated mistake. Four
+        // corner brackets survive the size and say "detection" without any detail to lose.
+        icon: <Scan size={14} strokeWidth={2.4} /> },
+        { key: "noServer", cameras: noServerCameras, label: t.gapNoServer, icon: <ServerOff size={14} strokeWidth={2.4} /> },
+        { key: "noCoords", cameras: noCoordCameras, label: t.gapNoCoords, icon: <MapPinOff size={14} strokeWidth={2.4} /> },
+      ]
+        .filter(item => item.cameras.length > 0)
+        .map(item => ({
+          key: item.key,
+          icon: item.icon,
+          figure: item.cameras.length,
+          unit: t.gapUnit,
+          label: item.label,
+          tone: "warning" as const,
+          active: gapFilter === item.key,
+          title: gapFilter === item.key ? t.gapClear : t.gapShowOnly,
+          onClick: () => setGapFilter(gapFilter === item.key ? null : (item.key as "noEngine" | "noServer" | "noCoords")),
+        }))} />
 
       {/* Search & filters */}
       {/* alignItems center, not the default stretch: every control in this row sets its own height
@@ -1326,8 +1332,33 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               borderBottom: isLast ? "none" : BORDER,
               borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
             };
+            /**
+             * The whole row opens the camera, and lights up under the pointer.
+             *
+             * Three separate things in the row already opened it — the thumbnail, the name, the
+             * menu's Preview — while the eighty per cent of the row between them did nothing, and
+             * nothing about the row said it could be clicked at all. A table whose rows lead
+             * somewhere should say so before it is clicked.
+             *
+             * The controls inside stop the event: a checkbox is a selection, not a visit, and the
+             * ⋯ menu opening the camera behind its own dropdown would be absurd.
+             */
+            const rowInteraction = row.kind === "camera"
+              ? {
+                className: "portal-attention-row",
+                role: "button",
+                tabIndex: 0,
+                style: { ...rowStyle, cursor: "pointer" },
+                onClick: () => setInspectingCameraId(row.camera.id),
+                onKeyDown: (e: React.KeyboardEvent) => {
+                  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setInspectingCameraId(row.camera.id); }
+                },
+              }
+              : { style: rowStyle };
+            const stopRowClick = { onClick: (e: React.MouseEvent) => e.stopPropagation() };
             const checkbox = (
               <input
+                {...stopRowClick}
                 type="checkbox"
                 checked={selectedIds.has(row.id)}
                 onChange={() => toggleRow(row.id)}
@@ -1379,9 +1410,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             const cam = row.camera;
             const isAiCamera = (cam.aiFeatures ?? []).length > 0;
             return (
-              <div key={row.id} style={rowStyle}>
+              <div key={row.id} {...rowInteraction}>
                 {checkbox}
-                <button onClick={() => setInspectingCameraId(cam.id)} style={{ width: "40px", height: "40px", borderRadius: "8px", overflow: "hidden", backgroundColor: "var(--gray-100)", border: "none", cursor: "pointer", padding: 0 }}>
+                <button {...stopRowClick} onClick={() => setInspectingCameraId(cam.id)} style={{ width: "40px", height: "40px", borderRadius: "8px", overflow: "hidden", backgroundColor: "var(--gray-100)", border: "none", cursor: "pointer", padding: 0 }}>
                   <img src={cam.thumbnail || DEFAULT_THUMBNAIL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </button>
                 <div style={{ minWidth: 0 }}>
@@ -1419,11 +1450,13 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     answers "is this camera actually seeing anything". The thumbnail opens the same
                     modal, but a thumbnail is not a control anyone is told about — a named item in
                     the menu is. */}
+                <span {...stopRowClick}>
                 <RowActionsMenu actions={[
                   { label: t.previewAction, onClick: () => setInspectingCameraId(cam.id) },
                   { label: t.editAction, onClick: () => setEditingCamera(cam) },
                   { label: t.removeAction, onClick: () => handleDelete(cam), danger: true },
                 ]} />
+                </span>
               </div>
             );
           })}

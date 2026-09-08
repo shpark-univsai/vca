@@ -1007,8 +1007,37 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         The reach figure on the right is not a defect and is not clickable. It is the question
         nobody else on the page asks — whether this list catches anyone at all.
       */}
+      {/* All / Individuals / Groups. Same underlined row as Input Sources and Users & Permissions. */}
+      <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
+        {([
+          { id: "all", label: t.tabAll, count: allProjectPersons.length, hint: t.tabAllHint },
+          { id: "individuals", label: t.tabIndividuals, count: allProjectPersons.filter(p => !p.groupId).length, hint: t.tabIndividualsHint },
+          { id: "groups", label: t.tabGroups, count: personGroups.filter(g => g.projectId === projectId).length, hint: t.tabGroupsHint },
+        ] as { id: "all" | "individuals" | "groups"; label: string; count: number; hint: string }[]).map(tab => {
+          const active = vipTab === tab.id;
+          return (
+            <Tooltip key={tab.id} text={tab.hint}>
+              <button onClick={() => { setVipTab(tab.id); clearFilters(); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: "6px",
+                  background: "none", border: "none", cursor: "pointer",
+                  padding: "0 2px 10px", fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
+                  color: active ? "var(--gray-900)" : "var(--gray-500)",
+                  borderBottom: active ? "2px solid var(--gray-900)" : "2px solid transparent",
+                }}>
+                {tab.label}
+                <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{tab.count}</span>
+              </button>
+            </Tooltip>
+          );
+        })}
+      </div>
+
       {/*
         Registry health: three defects and the list's reach, in the shared summary strip.
+
+        Under the tabs, not above them — above, the tabs read as a caption on the summary. The order
+        should be: which slice of the registry, then what is wrong with it, then the rows.
 
         The three are the same failure from three causes — a person on the list that no camera can
         match: a photo that was never uploaded, one the model could not read, and a face registered
@@ -1047,32 +1076,6 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           label: t.healthReachLabel,
         },
       ]} />
-
-      {/* All / Individuals / Groups. Same underlined row as Input Sources and Users & Permissions. */}
-      <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
-        {([
-          { id: "all", label: t.tabAll, count: allProjectPersons.length, hint: t.tabAllHint },
-          { id: "individuals", label: t.tabIndividuals, count: allProjectPersons.filter(p => !p.groupId).length, hint: t.tabIndividualsHint },
-          { id: "groups", label: t.tabGroups, count: personGroups.filter(g => g.projectId === projectId).length, hint: t.tabGroupsHint },
-        ] as { id: "all" | "individuals" | "groups"; label: string; count: number; hint: string }[]).map(tab => {
-          const active = vipTab === tab.id;
-          return (
-            <Tooltip key={tab.id} text={tab.hint}>
-              <button onClick={() => { setVipTab(tab.id); clearFilters(); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: "6px",
-                  background: "none", border: "none", cursor: "pointer",
-                  padding: "0 2px 10px", fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
-                  color: active ? "var(--gray-900)" : "var(--gray-500)",
-                  borderBottom: active ? "2px solid var(--gray-900)" : "2px solid transparent",
-                }}>
-                {tab.label}
-                <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{tab.count}</span>
-              </button>
-            </Tooltip>
-          );
-        })}
-      </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
       <div style={{ position: "relative", flex: 1, maxWidth: "320px" }}>
