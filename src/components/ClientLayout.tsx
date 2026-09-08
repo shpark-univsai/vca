@@ -238,6 +238,7 @@ export default function ClientLayout() {
               <MapWrapper
                 selectedEvent={selectedEvent}
                 onCameraSelect={(label) => { setLocationFilter((prev) => (prev === label ? null : label)); setDistrictFilter(null); }}
+                districtFilter={districtFilter}
                 onDistrictSelect={(id) => { setDistrictFilter((prev) => (prev === id ? null : id)); setLocationFilter(null); }}
                 pinnedDevice={pinnedDevice}
                 onGoLiveCam={handleGoLiveCam}

@@ -110,6 +110,13 @@ function cameraDotTooltipHtml(cam: Camera, lang: AppLanguage): string {
 // zoomed in past it shows the per-camera recent-activity dots instead — the same breakpoint
 // idea as RedmapMap's tracking-route decluttering, just gating which layer draws at all.
 const CLUSTER_ZOOM_BREAKPOINT = 14;
+/** Where a district pill flies you to. One past the cluster breakpoint, so the pills give way to
+ *  the per-camera layer as part of the same movement rather than needing a second zoom. */
+const DISTRICT_FOCUS_ZOOM = 15;
+/** The whole-island view a district selection returns to when it is cleared. Matches the map's
+ *  own init above, so clearing puts the map back exactly where it started. */
+const OVERVIEW_CENTER: [number, number] = [1.3521, 103.8198];
+const OVERVIEW_ZOOM = 12;
 
 // Ported from RedmapMap.tsx's statusMarkerHtml() — same colors/dashed-camera-icon — but driven by
 // real computed { count, hasCamera } instead of RedmapMap's hardcoded STATUS_ZONES, and by
@@ -325,13 +332,17 @@ interface MapViewProps {
   selectedEvent?: LiveEvent | null;
   onCameraSelect?: (label: string | null) => void;
   onDistrictSelect?: (districtId: string) => void;
+  /** The district currently filtered to, if any. Drives both the flyTo below and which markers
+   *  the pill/dot layer draws — selecting a district is meant to leave only that district's VIP
+   *  hits on the map, not merely tint the list beside it. */
+  districtFilter?: string | null;
   pinnedDevice?: Device | null;
   onGoLiveCam?: (location: string) => void;
   onGoRedmapTrace?: (personName: string) => void;
   onAnalyzeFrame?: (location: string) => void;
 }
 
-export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelect, pinnedDevice, onGoLiveCam, onGoRedmapTrace, onAnalyzeFrame }: MapViewProps) {
+export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelect, districtFilter = null, pinnedDevice, onGoLiveCam, onGoRedmapTrace, onAnalyzeFrame }: MapViewProps) {
   // Every effect that builds popup or tooltip markup lists `lang` in its deps, so switching the
   // language redraws what is already on the map instead of leaving the open popup in the old one.
   const [lang] = useLanguage();
@@ -418,8 +429,8 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
       // internet, where those three URLs are unreachable anyway.
 
       const map = L.map(mapRef.current!, {
-        center: [1.3521, 103.8198],
-        zoom: 12,
+        center: OVERVIEW_CENTER,
+        zoom: OVERVIEW_ZOOM,
         zoomControl: true,
         attributionControl: true,
       });
@@ -474,7 +485,71 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
       if (cancelled || !mapInstanceRef.current) return;
       const group = L.layerGroup();
 
-      if (zoom <= CLUSTER_ZOOM_BREAKPOINT) {
+      if (districtFilter) {
+        // ── A district was picked: only what was found there ──
+        // Not the camera layer with a filter on it. That layer marks camera POSITIONS and pings
+        // the ones whose coordinates match a recent hit exactly — which the hand-authored seed
+        // hits never do, so filtering it would fly you into an empty district. These are the hits
+        // themselves, drawn at their own coordinates with the same face pin a selected VIP gets.
+        //
+        // Today, matching what the pill counted. An hour would be the honest window for "recent",
+        // but the number that was just clicked says today, and a pill reading 7 that opens onto
+        // two pins is a pill that lied.
+        const now = new Date();
+        const hits = recentEvents
+          .filter(ev => ev.type === "VIP"
+            && isTodaySgt(new Date(ev.timestamp), now)
+            && nearestDistrict(ev.lat, ev.lng).id === districtFilter)
+          .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+        // Several hits at one camera would stack into an unreadable pile of identical pins, so
+        // one pin per spot carries the newest hit and says how many are underneath it. The full
+        // list is in the sidebar, which this same click has already filtered to this district.
+        const bySpot = new Map<string, typeof hits>();
+        hits.forEach(ev => {
+          const key = `${ev.lat.toFixed(4)},${ev.lng.toFixed(4)}`;
+          const at = bySpot.get(key);
+          if (at) at.push(ev); else bySpot.set(key, [ev]);
+        });
+
+        bySpot.forEach(spot => {
+          const newest = spot[0];
+          const badge = spot.length > 1
+            ? `<div style="position:absolute;top:-2px;right:-2px;z-index:3;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;
+                  border-radius:999px;background:var(--gray-900);border:1.5px solid white;display:flex;align-items:center;justify-content:center;
+                  font-family:'SUIT',sans-serif;font-size:10px;font-weight:800;color:white">${spot.length}</div>`
+            : "";
+          const icon = L.divIcon({
+            html: `<div style="position:relative;width:42px;height:56px">${getMarkerHTML("VIP", getFacePhoto(newest.id))}${badge}</div>`,
+            iconSize: [42, 56],
+            iconAnchor: [21, 50],
+            className: "",
+          });
+          L.marker([newest.lat, newest.lng], { icon })
+            .addTo(group)
+            .bindPopup(getPopupHTML(newest, lang), {
+              offset: [0, -50], className: "vca-custom-popup", closeButton: true, autoPan: false, maxWidth: 280,
+            });
+        });
+
+        // The district's own pill stays, at its centre, and clicking it again clears the filter.
+        // Without it the way back out lives only on the sidebar chip: the pill you pressed has
+        // vanished, and pressing something to make it disappear and then hunting elsewhere to
+        // undo it is the one move a map should never ask for.
+        const home = districts?.find(d => d.id === districtFilter);
+        if (home) {
+          const camerasHere = cameras.filter(c => nearestDistrict(c.lat, c.lng).id === home.id);
+          const icon = L.divIcon({
+            html: districtPillHtml(home.label, hits.length, camerasHere.some(c => c.status === "online"), alertThreshold, moderateThreshold),
+            iconSize: [1, 1],
+            iconAnchor: [0, 0],
+            className: "vca-zone-icon",
+          });
+          L.marker([home.lat, home.lng], { icon })
+            .addTo(group)
+            .on("click", () => onDistrictSelectRef.current?.(home.id));
+        }
+      } else if (zoom <= CLUSTER_ZOOM_BREAKPOINT) {
         // ── Zoomed out: one pill per district ──
         const now = new Date();
         districts.forEach((district) => {
@@ -551,7 +626,36 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
     });
 
     return () => { cancelled = true; };
-  }, [recentEvents, cameras, zoom, mapReady, alertThreshold, moderateThreshold, districts, lang]);
+  }, [recentEvents, cameras, zoom, mapReady, alertThreshold, moderateThreshold, districts, lang, districtFilter]);
+
+  // ── District selection → zoom into that district ───────────────
+  // Clicking a pill was a list filter and nothing more: the map stayed at island zoom with every
+  // other district's pill still on it, so "show me this district" left the map showing everything.
+  // Now the same click flies in past the cluster breakpoint, which also swaps the pills for the
+  // per-camera layer — and that layer is filtered to this district's VIP pings (see above).
+  //
+  // Skips the very first pass so an already-set filter on mount does not yank the map before the
+  // operator has looked at it; only an actual change moves the view.
+  const lastDistrictRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (!mapReady) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const map = mapInstanceRef.current as any;
+    if (!map) return;
+    const previous = lastDistrictRef.current;
+    lastDistrictRef.current = districtFilter;
+    if (previous === undefined || previous === districtFilter) return;
+
+    if (districtFilter) {
+      const district = districts?.find(d => d.id === districtFilter);
+      if (district) map.flyTo([district.lat, district.lng], DISTRICT_FOCUS_ZOOM, { duration: 0.8, easeLinearity: 0.5 });
+    } else {
+      // Cleared — back to the island. Returning to a remembered pre-click view sounds kinder but
+      // reads as arbitrary: by then the operator may have panned and zoomed several times, and
+      // "back out" landing somewhere they never chose is worse than landing where the map starts.
+      map.flyTo(OVERVIEW_CENTER, OVERVIEW_ZOOM, { duration: 0.8, easeLinearity: 0.5 });
+    }
+  }, [districtFilter, districts, mapReady]);
 
   // ── Keep the map's internal canvas in sync with its container ───
   // Leaflet only measures its container once on init, so collapsing/expanding the sidebar
