@@ -1172,7 +1172,10 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         /* gridAutoRows 1fr on top of the fixed slots inside each card. The slots are what make the
            heights match; this is the guard that keeps a row level if something in a card ever
            grows anyway. */
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gridAutoRows: "1fr", gap: "12px" }}>
+        {/* 8px between tiles, down from 12. With the shadow gone the gap is the only thing
+            separating one card from the next, and at 12 a hundred of them read as a hundred
+            islands — tightening it lets the grid read as one surface with rules through it. */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gridAutoRows: "1fr", gap: "8px" }}>
           {projectPersons.map(person => {
             return (
             /* Same edge, radius and padding as an Overview metric card. These were 12px and
