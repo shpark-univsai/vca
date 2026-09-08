@@ -238,33 +238,25 @@ function BarStats({ left, right }: { left: string; right: string }) {
 }
 
 /**
- * A panel's head: the title, one line saying what the panel holds, and the way to the whole of it.
+ * A panel's head: the title and one line saying what the panel holds. Nothing else.
  *
  * There was a dotted eyebrow above the title — NETWORK OVERVIEW, PEOPLE & ACCESS, AUDIT TRAIL —
  * copied from the reference, where it groups a longer page into named sections. Here there are
  * three panels and each already has a title that says what it is, so the eyebrow was a second
- * heading for the same box: two lines of label before the first line of content.
+ * heading for the same box.
+ *
+ * There was also an optional action beside the title. All three panels now put their way out at
+ * their foot, in a full-width row, so a head that could also hold one only let the three heads
+ * drift apart.
  */
-function SectionHead({ title, subtitle, action }: {
+function SectionHead({ title, subtitle }: {
   title: string;
   subtitle?: string;
-  action?: { label: string; onClick: () => void };
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
-      <div style={{ minWidth: 0 }}>
-        <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{title}</p>
-        {subtitle && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{subtitle}</p>}
-      </div>
-      {action && (
-        <button
-          className="portal-link"
-          onClick={action.onClick}
-          style={{ display: "flex", alignItems: "center", gap: "4px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit", flexShrink: 0 }}
-        >
-          {action.label} <ArrowUpRight size={13} strokeWidth={2.6} />
-        </button>
-      )}
+    <div style={{ minWidth: 0 }}>
+      <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{title}</p>
+      {subtitle && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{subtitle}</p>}
     </div>
   );
 }
@@ -1001,10 +993,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ marginBottom: "14px", flexShrink: 0 }}>
+                  {/* The way out is at the foot of this panel now, like the two beside it. It was
+                      the only one with its link up here, which made the three panels' heads look
+                      like three different components. */}
                   <SectionHead
                     title={t.recentAdminActivity}
                     subtitle={t.activitySubtitle}
-                    action={{ label: t.seeAll, onClick: () => onTabChange("users") }}
                   />
                 </div>
                 {recentActivity.length === 0 ? (
@@ -1034,6 +1028,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     ))}
                   </div>
                 )}
+                {/* Full-bleed like the VIP panel's footer: this card carries its 20px padding
+                    itself, so the button is pulled back out to the card's own width and pads its
+                    text back in. */}
+                <button onClick={() => onTabChange("users")}
+                  className="portal-attention-row"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "calc(100% + 40px)", border: "none", borderTop: BORDER, background: "none", padding: "12px 20px 0", margin: "12px -20px 0", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.seeAll}</span>
+                  <ArrowUpRight size={13} strokeWidth={2.6} color="var(--gray-500)" />
+                </button>
               </div>
             </div>
           </div>
