@@ -16,17 +16,19 @@ import { usePortalLanguage } from "@/lib/i18n";
  */
 export const BORDER = "1px solid var(--gray-300)";
 /**
- * A card's edge, at the same weight as the rules inside it.
+ * A card's edge — primary-100, from the same family as the page it sits on.
  *
- * The content area is white, so "white card on a grey page" is no longer separation and the outline
- * is what a card's edge is made of. gray-300 rather than gray-200: on white, a gray-200 hairline
- * running the full width of a card is faint enough that four cards in a row read as text floating
- * in space. One value shared with BORDER, so a card's edge and its dividers are the same line.
+ * The canvas is primary-50 and the cards are white, so the edge only has to say where one stops.
+ * A gray-300 hairline did that by contrast and read as a drawn box; the palest step of the primary
+ * ramp is the same tint the page is already made of, so the edge belongs to the surface rather
+ * than being ruled onto it.
  *
- * The exception is the "things to do" strip on the Overview, which has a gray-50 fill instead — a
- * ground that differs from the page needs no line around it as well.
+ * Deliberately not BORDER: the rules INSIDE a card — table rows, header underlines — still need to
+ * be legible as separators, and those stay gray-300. Outer edge quieter than the ruling inside it
+ * is the opposite of the usual hierarchy and the right way round here: the edge only says "this
+ * ends", the inner rules have to be read.
  */
-export const CARD_BORDER = BORDER;
+export const CARD_BORDER = "1px solid var(--primary-100)";
 // Every control that can sit on a toolbar row — search input, FilterSelect, pill buttons, the
 // table/grid segmented toggle — is this tall, so a row of them lines up regardless of padding
 // or font size. Set the height, not the vertical padding.
