@@ -5,7 +5,7 @@ import { useVcaStore, type Project } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH, TABLE_HEADER_COLOR, TYPE_META, SelectedCheckIcon } from "./PortalShared";
-import { Building2, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 interface ProjectSwitcherProps {
   /**
@@ -180,15 +180,10 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
           ...(compact ? { width: "44px", height: "44px", padding: 0, justifyContent: "center" } : null),
         }}
       >
-        {dark && (
-          <span style={{
-            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-            width: "34px", height: "34px", borderRadius: "10px",
-            backgroundColor: "var(--gray-700)", color: "var(--gray-300)",
-          }}>
-            <Building2 size={16} strokeWidth={1.8} />
-          </span>
-        )}
+        {/* No icon square in the rail's project card. It was a 34px building glyph that said
+            "this is a project" to a reader looking at a card in a rail that navigates one
+            project — and it took 44px of a 224px column away from the two proper nouns that
+            actually need the room. The team row above never had one and did not miss it. */}
         {compact ? null : dark ? (
           <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0, flex: 1, textAlign: "left" }}>
             {/* Two lines before it gives up. A project name is a place — "Marina Bay & CBD

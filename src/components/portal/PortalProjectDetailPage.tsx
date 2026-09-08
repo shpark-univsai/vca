@@ -348,7 +348,11 @@ function SectionHead({ title, subtitle, action }: {
   action?: { icon: React.ReactNode; label: string; onClick: () => void };
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", minWidth: 0 }}>
+    /* width 100%, so the action lands on the panel's right edge rather than beside the title.
+       Camera status wraps its head in a flex row, and a shrink-to-fit SectionHead inside that
+       row put its own space-between across the width of the title text — the arrow ended up two
+       characters after the word. The VIP card, whose head is a plain block, was already right. */
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", width: "100%", minWidth: 0 }}>
       <div style={{ minWidth: 0 }}>
       {/* 14px. At 15 the panel titles sat one step under the greeting and one above everything
           else, which made three sizes in a column of cards that hold the same kind of thing. */}
