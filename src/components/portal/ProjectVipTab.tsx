@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
-import { ArrowDownWideNarrow } from "lucide-react";
+import { ArrowDownWideNarrow, Copy, Eye, ImageOff, ScanFace } from "lucide-react";
 import { registryHealth, useVcaStore, type Person, type PersonGroup } from "@/lib/vcaStore";
 import { getFacePhoto } from "@/lib/mockData";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -1015,9 +1015,13 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           marginBottom: "12px", overflow: "hidden",
         }}>
           {([
-            { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto },
-            { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed },
-            { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates },
+            /* An icon per cell, because three numbers in three boxes read as one measurement taken
+               three times. The marks say which failure each is: nothing was uploaded, something was
+               uploaded and could not be read, and the same face twice. 2.4 at 14px is the 1.4px
+               stroke every icon in Portal draws (see ICON_STROKE_PX). */
+            { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, icon: <ImageOff size={14} strokeWidth={2.4} /> },
+            { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed, icon: <ScanFace size={14} strokeWidth={2.4} /> },
+            { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates, icon: <Copy size={14} strokeWidth={2.4} /> },
           ]).filter(item => item.count > 0).map((item, i) => {
             const active = healthFilter === item.key;
             return (
@@ -1037,9 +1041,12 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                   backgroundColor: active ? "var(--warning-100)" : "transparent",
                 }}
               >
-                <span style={{ display: "flex", alignItems: "baseline", gap: "5px" }}>
-                  <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--warning-500)", lineHeight: "22px" }}>{item.count}</span>
-                  <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthPeopleUnit}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ display: "flex", color: "var(--warning-500)" }}>{item.icon}</span>
+                  <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                    <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--warning-500)", lineHeight: "22px" }}>{item.count}</span>
+                    <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthPeopleUnit}</span>
+                  </span>
                 </span>
                 <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap" }}>{item.label}</span>
               </button>
@@ -1051,9 +1058,12 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               alone it swallowed the spare width and the strip read as three small boxes and one
               banner — every cell here is one figure, so every cell is one column. */}
           <span style={{ flex: 1, minWidth: "128px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "2px", padding: "10px 18px", borderLeft: BORDER, backgroundColor: "var(--gray-50)" }}>
-            <span style={{ display: "flex", alignItems: "baseline", gap: "5px" }}>
-              <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "22px" }}>{detectedCount}</span>
-              <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthOfTotal(allProjectPersons.length)}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ display: "flex", color: "var(--gray-400)" }}><Eye size={14} strokeWidth={2.4} /></span>
+              <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "22px" }}>{detectedCount}</span>
+                <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.healthOfTotal(allProjectPersons.length)}</span>
+              </span>
             </span>
             <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-600)" }}>{t.healthReachLabel}</span>
           </span>
