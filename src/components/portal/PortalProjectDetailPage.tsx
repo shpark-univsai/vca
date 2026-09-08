@@ -640,11 +640,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 button in Portal is already set at, so it is not a new size either. */}
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               <button onClick={() => onTabChange("cameras")}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "10px", fontWeight: 700, cursor: "pointer" }}>
                 <PlusIcon /> {t.addCamera}
               </button>
               <button onClick={() => onTabChange("vip")}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "10px", fontWeight: 700, cursor: "pointer" }}>
                 <UserPlusIcon /> {t.registerVip}
               </button>
               {/*
@@ -666,13 +666,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <button
                   className="portal-btn-primary"
                   onClick={() => router.push("/")}
-                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
+                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "10px", fontWeight: 700, cursor: "pointer" }}>
                   <ExitIcon /> {t.goToApp}
                 </button>
               )}
               {showAccessRequests && (
                 <button onClick={() => onTabChange("users")}
-                  style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
+                  style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "10px", fontWeight: 700, cursor: "pointer" }}>
                   <ShieldIcon /> {t.approveAccessRequests}
                   {projectAccessRequests.length > 0 && (
                     <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)", backgroundColor: "var(--warning-200)", padding: "2px 8px", borderRadius: "999px" }}>

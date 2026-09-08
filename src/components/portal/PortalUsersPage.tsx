@@ -1220,7 +1220,7 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
 const SECONDARY_BTN: React.CSSProperties = {
   display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px",
   border: BORDER, backgroundColor: "white", color: "var(--gray-600)",
-  fontSize: "11px", fontWeight: 700, cursor: "pointer", flexShrink: 0,
+  fontSize: "10px", fontWeight: 700, cursor: "pointer", flexShrink: 0,
 };
 
 const STAGES = ["rosterListed", "codeIssued", "codeExpired", "invited", "active", "suspended"] as const;
@@ -1603,7 +1603,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           onClick={() => manageAccess && setShowInvite(true)}
           disabled={!manageAccess}
           title={manageAccess ? undefined : t.reasonNotOwner}
-          style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: manageAccess ? "var(--primary-400)" : "var(--gray-100)", color: manageAccess ? "white" : "var(--gray-400)", fontSize: "11px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed", flexShrink: 0 }}>
+          style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: manageAccess ? "var(--primary-400)" : "var(--gray-100)", color: manageAccess ? "white" : "var(--gray-400)", fontSize: "10px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed", flexShrink: 0 }}>
           <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke={manageAccess ? "white" : "var(--gray-400)"} strokeWidth="1.22" strokeLinecap="round"/></svg>
           {t.inviteUser}
         </button>
