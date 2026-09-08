@@ -208,18 +208,20 @@ function ShieldIcon() { return <Shield size={16} strokeWidth={2.1} />; }
 function PlusIcon() { return <Plus size={14} strokeWidth={2.4} />; }
 function UserPlusIcon() { return <UserPlus size={14} strokeWidth={2.4} />; }
 function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={3.36} />; }
+/**
+ * The state, in a word, beside the card's icon. Text only — no pill.
+ *
+ * It was a filled chip, which put a second small box next to the icon badge and made the card open
+ * with two shapes before a word. The colour carries the state on its own here: this line is 10px
+ * small-caps sitting alone on the card's top row, so nothing needs to be drawn around it to be
+ * found. Grey when there is nothing to judge, green or red when there is.
+ */
 function StateChip({ text, tone = "neutral" }: { text: string; tone?: "neutral" | "good" | "bad" }) {
-  const c = tone === "good"
-    ? { bg: "var(--success-100)", fg: "var(--success-400)" }
-    : tone === "bad"
-      ? { bg: "var(--danger-100)", fg: "var(--danger-400)" }
-      : { bg: "var(--gray-100)", fg: "var(--gray-600)" };
+  const fg = tone === "good" ? "var(--success-400)" : tone === "bad" ? "var(--danger-400)" : "var(--gray-600)";
   return (
-    <span style={{
-      fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px",
-      padding: "3px 8px", borderRadius: "999px", whiteSpace: "nowrap",
-      backgroundColor: c.bg, color: c.fg,
-    }}>{text}</span>
+    <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px", whiteSpace: "nowrap", color: fg }}>
+      {text}
+    </span>
   );
 }
 
@@ -592,47 +594,47 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 : <StateChip text={t.chipAttention(offlineCount)} tone="bad" />}
               onClick={() => onTabChange("cameras")}
             >
-              {/* Figure left, bar right, one line.
-                  Stacked, the bar cost the card a whole row for something 8px tall, and the right
-                  half of the card sat empty on a wide monitor.
-                  Fixed 88px, not the leftover space: the figures beside it are different lengths
-                  ("59 / 100 channels used" against "51 / 59 connected"), so a flexible bar came out
-                  a different size in each card, and two proportions you cannot compare are worse
-                  than no bars. It shrinks only when the column gets too narrow to hold both. */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+              {/* The figure on its own line, the bar full width at the foot of the card.
+                  It was a fixed 88px bar beside the number, which fitted two readings on one row
+                  and made the bar too short to show anything but "roughly half". Full width it is
+                  a measure again, and pushed to the bottom (marginTop auto on the block below) it
+                  lines up across all four cards whatever height the row settles at. */}
+              <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
                 <span style={{ display: "flex", alignItems: "baseline", gap: "4px", flexShrink: 0, whiteSpace: "nowrap" }}>
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{onlineCount}</span>
                   <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.connectedSuffix(projectCameras.length)}</span>
                 </span>
-                <div style={{ flex: "0 1 88px", minWidth: 0, height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
+              </div>
+              <div style={{ marginTop: "auto", paddingTop: "14px" }}>
+                <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
                   <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--success-400)" }} />
                   <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
                 </div>
+                <BarStats left={t.statOnlineShare(onlineShare)} right={t.statOffline(offlineCount)} />
               </div>
-              <BarStats left={t.statOnlineShare(onlineShare)} right={t.statOffline(offlineCount)} />
               {/* The online/offline legend that used to sit under a rule here is gone: "51 / 59
                   connected" already gives both numbers, the bar's red segment shows the share, and
                   a non-zero offline count is a line in the "things to do" strip above. */}
             </MetricCard>
 
             <MetricCard label={t.licenseSubscription} icon={KeyIcon} iconBg="var(--info-100)" iconColor="var(--info-500)" onClick={() => onTabChange("license")}>
-              {/* Figure left, bar right, one line.
-                  Stacked, the bar cost the card a whole row for something 8px tall, and the right
-                  half of the card sat empty on a wide monitor.
-                  Fixed 88px, not the leftover space: the figures beside it are different lengths
-                  ("59 / 100 channels used" against "51 / 59 connected"), so a flexible bar came out
-                  a different size in each card, and two proportions you cannot compare are worse
-                  than no bars. It shrinks only when the column gets too narrow to hold both. */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+              {/* The figure on its own line, the bar full width at the foot of the card.
+                  It was a fixed 88px bar beside the number, which fitted two readings on one row
+                  and made the bar too short to show anything but "roughly half". Full width it is
+                  a measure again, and pushed to the bottom (marginTop auto on the block below) it
+                  lines up across all four cards whatever height the row settles at. */}
+              <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
                 <span style={{ display: "flex", alignItems: "baseline", gap: "4px", flexShrink: 0, whiteSpace: "nowrap" }}>
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)" }}>{projectCameras.length}</span>
                   <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.channelsUsedSuffix(channelLimit ?? "∞")}</span>
                 </span>
-                <div style={{ flex: "0 1 88px", minWidth: 0, height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
+              </div>
+              <div style={{ marginTop: "auto", paddingTop: "14px" }}>
+                <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--info-500)" }} />
                 </div>
+                {channelLimit ? <BarStats left={t.statUtilised(channelShare)} right={t.statAvailable(Math.max(0, channelLimit - projectCameras.length))} /> : null}
               </div>
-              {channelLimit ? <BarStats left={t.statUtilised(channelShare)} right={t.statAvailable(Math.max(0, channelLimit - projectCameras.length))} /> : null}
               {/* Plan name, "Manage" and the expiry chip are gone from here. This card answers one
                   question — how much of the licence is in use — and the rest of the contract is a
                   whole tab away, one click down the rail. An expiry that is actually close raises a
