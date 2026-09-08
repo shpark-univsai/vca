@@ -49,7 +49,6 @@ const T = {
     recordsSuffix: "records",
     noPendingAccessRequests: "No pending access requests.",
     attentionTitle: "Attention needed",
-    reviewIssues: "Review issues",
     dismissBanner: "Dismiss",
     attnOffline: (n: number) => `${n} camera${n === 1 ? " is" : "s are"} offline`,
     attnInvites: (n: number) => `${n} invitation${n === 1 ? "" : "s"} not yet accepted`,
@@ -130,7 +129,6 @@ const T = {
     recordsSuffix: "건",
     noPendingAccessRequests: "대기 중인 접근 요청이 없습니다.",
     attentionTitle: "확인 필요",
-    reviewIssues: "문제 확인",
     dismissBanner: "닫기",
     attnOffline: (n: number) => `오프라인 카메라 ${n}대`,
     attnInvites: (n: number) => `수락하지 않은 초대 ${n}건`,
@@ -571,24 +569,43 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               <span style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
                 width: "28px", height: "28px", borderRadius: "8px", flexShrink: 0,
-                backgroundColor: "var(--primary-200)", color: "var(--primary-400)",
+                // White, not primary-200. primary-200 is a mid-lilac and the icon on it is a
+                // strong violet — two neighbouring purples with little between them, which turned
+                // the square into a smudge. On the band's primary-100 the white square is the one
+                // clean edge in it and the mark reads at full strength.
+                backgroundColor: "white", color: "var(--primary-400)",
               }}>
                 <Zap size={14} strokeWidth={2.4} />
               </span>
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>{t.attentionTitle}</p>
+              {/*
+                Each errand is its own link, and there is no "Review issues" button any more.
+
+                That button went to attentionItems[0] — the worst one — so with two errands on the
+                strip, clicking it took you to the cameras while the invitation sat there unread,
+                and nothing on screen said it would. An offline camera and an unaccepted invitation
+                are two different tabs; one control cannot honestly stand for both. The sentence
+                already names them, so the names are the links.
+              */}
               <p style={{ fontSize: "13px", color: "var(--gray-600)", minWidth: 0 }}>
-                {attentionItems.map(i => i.text).join(" · ")}
+                {attentionItems.map((item, i) => (
+                  <span key={item.key}>
+                    {i > 0 && <span style={{ color: "var(--gray-400)" }}>{" · "}</span>}
+                    <button
+                      onClick={() => onTabChange(item.tab)}
+                      style={{
+                        border: "none", background: "none", padding: 0, cursor: "pointer",
+                        font: "inherit", color: "var(--gray-900)", fontWeight: 600,
+                        textDecoration: "underline", textUnderlineOffset: "3px",
+                        textDecorationColor: "var(--gray-300)",
+                      }}
+                    >
+                      {item.text}
+                    </button>
+                  </span>
+                ))}
               </p>
               <span style={{ flex: 1 }} />
-              {/* Goes to the worst one. The list is already sorted by severity, so the first item
-                  is the one an administrator should be looking at. */}
-              <button
-                className="portal-link"
-                onClick={() => onTabChange(attentionItems[0].tab)}
-                style={{ display: "flex", alignItems: "center", gap: "4px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit", flexShrink: 0 }}
-              >
-                {t.reviewIssues} <ArrowUpRight size={13} strokeWidth={2.6} />
-              </button>
               <button
                 className="portal-icon-btn"
                 onClick={() => setAttentionDismissed(true)}
