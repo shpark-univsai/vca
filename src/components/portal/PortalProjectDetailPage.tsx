@@ -719,8 +719,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </MetricCard>
 
             <MetricCard
-              label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--primary-100)" iconColor="var(--primary-400)"
-              chip={newVipsThisMonth > 0 ? <StateChip text={t.chipNewThisMonth(newVipsThisMonth)} color="var(--primary-400)" /> : undefined}
+              /* Grey, not primary. Four purple squares in a row made the colour meaningless — it
+                 marked nothing, since everything had it. The two cards that carry a bar keep the
+                 product's colour because the bar beside them is that colour too; these two are
+                 plain counts, so they are plain. Their chips follow the icon, as every chip on
+                 this row does. */
+              label={t.vipTargetDb} icon={UsersGroupIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)"
+              chip={newVipsThisMonth > 0 ? <StateChip text={t.chipNewThisMonth(newVipsThisMonth)} color="var(--gray-500)" /> : undefined}
               onClick={() => onTabChange("vip")}
             >
               {/* One row, no bar and no footer rule.
@@ -747,8 +752,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             </MetricCard>
 
             <MetricCard
-              label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--primary-100)" iconColor="var(--primary-400)"
-              chip={<StateChip text={t.chipAccessSplit(portalUserCount, appUserCount)} color="var(--primary-400)" />}
+              label={t.portalAccounts} icon={SettingsIcon} iconBg="var(--gray-100)" iconColor="var(--gray-500)"
+              chip={<StateChip text={t.chipAccessSplit(portalUserCount, appUserCount)} color="var(--gray-500)" />}
               onClick={() => onTabChange("users")}
             >
               {/* One row, no bar and no footer rule.
