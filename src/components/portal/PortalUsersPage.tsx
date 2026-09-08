@@ -1373,21 +1373,25 @@ function UserCountStrip({ users, rosterWaiting }: { users: PortalUser[]; rosterW
         const startsGroup = i > 0 && counts[i - 1].group !== c.group;
         const figure = (
           <div style={startsGroup ? { paddingLeft: "28px", borderLeft: "1px solid var(--gray-300)" } : undefined}>
+            {/* Label first, figure under it. Nine bold numbers along the top edge with their
+                names underneath meant reading the row twice — once for the figures, once to find
+                out what they counted. Named first, the row reads as a sentence per stat.
+
+                Dotted underline on the ones that carry an explanation: a tooltip nobody knows is
+                there is a tooltip nobody reads, and three of these nine labels ("Invited",
+                "Suspended", "On the roster") name a state whose meaning is the whole point. */}
             <p style={{
-              fontSize: "20px", fontWeight: 800,
+              fontSize: "12px", color: "var(--gray-500)",
+              ...(c.hint ? { borderBottom: "1px dotted var(--gray-300)", display: "inline-block", cursor: "help" } : null),
+            }}>{c.label}</p>
+            <p style={{
+              fontSize: "20px", fontWeight: 800, marginTop: "2px",
               // A zero here is good news (nobody stuck, nobody blocked), so it is not worth the same
               // ink as a number you have to do something about.
               color: c.actionable && c.value > 0 ? "var(--warning-500)" : c.value === 0 ? "var(--gray-300)" : "var(--gray-900)",
             }}>
               {c.value}
             </p>
-            {/* Dotted underline on the ones that carry an explanation: a tooltip nobody knows is
-                there is a tooltip nobody reads, and three of these nine labels ("Invited",
-                "Suspended", "On the roster") name a state whose meaning is the whole point. */}
-            <p style={{
-              fontSize: "12px", color: "var(--gray-500)", marginTop: "2px",
-              ...(c.hint ? { borderBottom: "1px dotted var(--gray-300)", display: "inline-block", cursor: "help" } : null),
-            }}>{c.label}</p>
           </div>
         );
         return c.hint
