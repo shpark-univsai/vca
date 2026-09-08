@@ -53,6 +53,18 @@ const sgtClockFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: SGT_TIME_ZONE, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
 });
 
+const sgtClockMinutesFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: SGT_TIME_ZONE, hour: "2-digit", minute: "2-digit", hour12: false,
+});
+
+/** "HH:MM" Singapore-time clock string for `d` — the same instant sgtClockTime gives, without the
+ * seconds, for stamps where the minute is as precise as the record actually is (a registration,
+ * an invitation). Fixed timezone, so a server render and a browser render agree; `toLocaleTimeString`
+ * would read the machine's own zone and tear on hydration. */
+export function sgtClockMinutes(d: Date): string {
+  return sgtClockMinutesFormatter.format(d);
+}
+
 /** "HH:MM:SS" Singapore-time clock string for `d` — for showing an actual captured time rather
  * than a relative "Xh ago" label. */
 export function sgtClockTime(d: Date): string {

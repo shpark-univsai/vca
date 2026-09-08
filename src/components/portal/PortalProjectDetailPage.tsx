@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUp, ArrowUpRight, ChevronRight, Key, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
-import { formatElapsed } from "@/lib/time";
+import { formatElapsed, sgtClockMinutes } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, SubStat } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -208,6 +208,20 @@ function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={3.36} />; }
  * camera card turns its badge red as well when something is offline, rather than leaving a green
  * icon beside a red word.
  */
+/**
+ * "2026-09-01 14:32" when the registration carries a time, "2026-09-01" when it does not.
+ *
+ * registeredAt is two shapes: a bare day on the seeded rows and a full instant on anything
+ * registered through the app. Rather than guess a time for the first kind, this prints what is
+ * actually stored.
+ */
+function registeredStamp(value: string): string {
+  const day = value.slice(0, 10);
+  if (!value.includes("T")) return day;
+  const at = new Date(value);
+  return Number.isNaN(at.getTime()) ? day : `${day} ${sgtClockMinutes(at)}`;
+}
+
 function StateChip({ text, color }: { text: string; color: string }) {
   return (
     <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px", whiteSpace: "nowrap", color }}>
@@ -381,9 +395,18 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const newVipsThisMonth = monthStr ? projectPersons.filter(p => p.registeredAt.startsWith(monthStr)).length : 0;
   const onlineShare = projectCameras.length ? Math.round((onlineCount / projectCameras.length) * 100) : 0;
 
+  /**
+   * Ordered by last signal, most recent first — the column the list is read down.
+   *
+   * It sorted offline cameras to the top, which is a different claim: that the list is a fault
+   * report. It is not, the strip at the top of the page is; this panel is the fleet, and the
+   * question you ask of a fleet list is which cameras have spoken lately. The offline tab is one
+   * click away for the other reading, and a camera with no lastSeenAt at all sorts last because
+   * "unknown" is not "recent".
+   */
   const filteredCameraRows = (cameraStatusFilter === "offline" ? projectCameras.filter(c => c.status === "offline") : projectCameras)
     .slice()
-    .sort((a, b) => (a.status === b.status ? 0 : a.status === "offline" ? -1 : 1));
+    .sort((a, b) => (b.lastSeenAt ?? "").localeCompare(a.lastSeenAt ?? ""));
   // Every row the filter selects, not the first five of them. The card is a fixed height and its
   // row area scrolls, so a cap bought nothing — and with offline sorted first it made "All" look
   // exactly like "Offline" on any project with five cameras down. The panel is the same size; the
@@ -864,7 +887,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                         <img src={p.photoUrl} alt="" style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
-                          <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.registeredOn(p.registeredAt.slice(0, 10))}</p>
+                          {/* Date and hour, where the record has an hour. Seeded rows written as
+                              a bare day have none to show, and inventing 00:00 for them would be
+                              printing a time nobody recorded. Formatted through Asia/Singapore
+                              rather than the machine's own zone, so the server's first paint and
+                              the browser's agree. */}
+                          <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.registeredOn(registeredStamp(p.registeredAt))}</p>
                         </div>
                         <ChevronRight size={14} strokeWidth={2.4} color="var(--gray-400)" />
                       </button>
@@ -951,11 +979,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                           {/* Grey, not primary: every entry gets the same dot, so the colour was
                               never distinguishing one from another — it was a purple column down
                               the side of an audit log. */}
-                          <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--gray-300)", flexShrink: 0 }} />
+                          {/* marginTop 5: the dot is 8px and the sentence's line box is 18px, so
+                              half the difference puts the dot's centre on the line's centre. It
+                              was flush with the top of the row, which left it riding a few px
+                              above the words it marks. */}
+                          <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--gray-300)", marginTop: "5px", flexShrink: 0 }} />
                           {i < recentActivity.length - 1 && <span style={{ width: "1px", flex: 1, backgroundColor: "var(--line)", marginTop: "2px" }} />}
                         </div>
                         <div style={{ paddingBottom: "14px", minWidth: 0 }}>
-                          <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)" }}>{a.message}</p>
+                          <p style={{ fontSize: "12px", lineHeight: "18px", fontWeight: 600, color: "var(--gray-900)" }}>{a.message}</p>
                           <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "2px" }}>
                             {a.actor}{nowMs !== null ? ` · ${formatElapsed(nowMs - new Date(a.at).getTime())}${t.agoSuffix}` : ""}
                           </p>

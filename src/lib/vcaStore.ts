@@ -1077,10 +1077,15 @@ export const PERSONS: Person[] = (() => {
   persons.push(
     // Two of these sit in a group and two do not, so the registry's People tab (individuals only)
     // and its Groups tab both have rows without either being empty.
-    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2026-09-01", projectId: "proj-sg", priorityLabel: "high", groupId: "pgroup-1" },
-    { id: "person-portal-2", name: "Sarah Lim", type: "VIP", photoUrl: getFacePhoto("person-portal-2"), registeredAt: "2026-08-30", projectId: "proj-sg", priorityLabel: "normal", groupId: "pgroup-1" },
-    { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28", projectId: "proj-sg", priorityLabel: "very_high", groupId: "pgroup-2" },
-    { id: "person-portal-4", name: "Rachel Wong", type: "VIP", photoUrl: getFacePhoto("person-portal-4"), registeredAt: "2026-08-25", projectId: "proj-sg", priorityLabel: "normal" },
+    //
+    // Full instants with an explicit +08:00, not bare days: the Overview panel shows the hour a
+    // person was registered, and a date-only string has no hour to show. The offset is written out
+    // so the value means one moment regardless of where it is read — the app is Singapore-only
+    // (see lib/time.ts) and every reader formats it back through that zone.
+    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2026-09-01T14:32:00+08:00", projectId: "proj-sg", priorityLabel: "high", groupId: "pgroup-1" },
+    { id: "person-portal-2", name: "Sarah Lim", type: "VIP", photoUrl: getFacePhoto("person-portal-2"), registeredAt: "2026-08-30T09:05:00+08:00", projectId: "proj-sg", priorityLabel: "normal", groupId: "pgroup-1" },
+    { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28T17:48:00+08:00", projectId: "proj-sg", priorityLabel: "very_high", groupId: "pgroup-2" },
+    { id: "person-portal-4", name: "Rachel Wong", type: "VIP", photoUrl: getFacePhoto("person-portal-4"), registeredAt: "2026-08-25T11:20:00+08:00", projectId: "proj-sg", priorityLabel: "normal" },
   );
   persons.push(...bulkSampleVips());
   return persons;
