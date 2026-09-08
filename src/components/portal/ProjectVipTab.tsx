@@ -1184,7 +1184,11 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               role="button" tabIndex={0}
               onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDetailFor(person); } }}
               style={{
-                backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW,
+                // No shadow on these. One card carries it lightly; a hundred of them in a grid
+                // put a soft grey edge under every tile and turned the gaps between them into a
+                // texture — the wall of faces reads as cluttered before it reads as a list. The
+                // hairline is enough to say where a card ends when there are this many of them.
+                backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px",
                 // 12 top and bottom against 16 at the sides. The card holds three short lines and
                 // a 60px thumbnail, and at 16 all round the space above the name read as more
                 // than the space between the lines it separates.
