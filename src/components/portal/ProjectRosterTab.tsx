@@ -230,7 +230,7 @@ function RosterCodeCell({ entry, onReveal }: { entry: RosterEntry; onReveal: () 
         {/* Lucide, like the password fields' show/hide toggle — this is the same "reveal a hidden
             value" affordance, and it was a second hand-drawn eye that happened to be a slightly
             different shape from that one. Colour comes from the wrapper so the button can tint it. */}
-        <span style={{ display: "flex", color: "var(--gray-400)" }}><Eye size={14} strokeWidth={1.4} /></span>
+        <span style={{ display: "flex", color: "var(--gray-400)" }}><Eye size={14} strokeWidth={2.4} /></span>
       </button>
     );
   }

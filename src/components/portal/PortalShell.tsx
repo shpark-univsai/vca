@@ -24,7 +24,7 @@ const T = {
 function BreadcrumbChevron() {
   return (
     <svg width="10" height="10" viewBox="0 0 8 8" fill="none" style={{ flexShrink: 0 }}>
-      <path d="M2.5 1L5.5 4L2.5 7" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M2.5 1L5.5 4L2.5 7" stroke="var(--gray-500)" strokeWidth="1.12" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }

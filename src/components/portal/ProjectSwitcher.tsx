@@ -167,7 +167,7 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
                 onClick={() => { setOpen(false); onNewProject(); }}
                 style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", cursor: "pointer", color: "var(--primary-400)", fontSize: "12px", fontWeight: 700 }}
               >
-                <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="var(--primary-400)" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="var(--primary-400)" strokeWidth="1.22" strokeLinecap="round"/></svg>
                 {t.newProject}
               </button>
             </div>
@@ -189,7 +189,7 @@ export default function ProjectSwitcher({ teamId, currentProjectId, onSelect, on
               {/* Search */}
               <div style={{ position: "relative", marginBottom: "12px" }}>
                 <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
-                  <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.22"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
                 </span>
                 <input
                   autoFocus

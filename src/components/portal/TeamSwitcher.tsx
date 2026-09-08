@@ -164,7 +164,7 @@ export default function TeamSwitcher({ currentTeamId, onSelect }: TeamSwitcherPr
                 }}
               >
                 <span style={{ display: "flex", width: "14px", flexShrink: 0, justifyContent: "center" }}>
-                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.63" strokeLinecap="round"/></svg>
                 </span>
                 {t.newTeam}
               </button>

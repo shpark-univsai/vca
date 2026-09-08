@@ -180,9 +180,9 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
 // Lucide — see PortalProjectDetailPage's note. Globe rather than Lucide's own Network for the one
 // below: the drawing it replaces was a globe with meridians, and what that card is about is whether
 // this site can reach the outside world, not the shape of its internal topology.
-function MailIcon() { return <Mail size={18} strokeWidth={1.4} />; }
+function MailIcon() { return <Mail size={18} strokeWidth={1.87} />; }
 
-function NetworkIcon() { return <Globe size={18} strokeWidth={1.4} />; }
+function NetworkIcon() { return <Globe size={18} strokeWidth={1.87} />; }
 
 const NETWORK_T = {
   en: {
@@ -742,12 +742,12 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                 rather than a hand-drawn path, at the 1.4 stroke every Portal icon now uses. */}
             <button className="portal-btn-outline" onClick={resetFilters}
               style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-              <RotateCcw size={14} strokeWidth={1.4} />
+              <RotateCcw size={14} strokeWidth={2.4} />
               {t.reset}
             </button>
             <button className="portal-btn-primary" onClick={() => setShowAdd(true)}
               style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
               {t.addServer}
             </button>
           </div>
@@ -810,7 +810,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
                   style={{ width: "28px", height: "28px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: currentPage === 1 ? "var(--gray-300)" : "var(--gray-600)", cursor: currentPage === 1 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M9 2.9L4.5 7l4.5 4.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M9 2.9L4.5 7l4.5 4.1" stroke="currentColor" strokeWidth="1.63" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
                   <button key={n} onClick={() => setPage(n)}
@@ -825,7 +825,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                 ))}
                 <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
                   style={{ width: "28px", height: "28px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: currentPage === totalPages ? "var(--gray-300)" : "var(--gray-600)", cursor: currentPage === totalPages ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M5 2.9L9.5 7l-4.5 4.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M5 2.9L9.5 7l-4.5 4.1" stroke="currentColor" strokeWidth="1.63" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>

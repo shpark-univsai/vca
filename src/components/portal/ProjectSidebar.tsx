@@ -40,7 +40,7 @@ function CamerasIcon({ color }: IconProps) {
  * components alike. The rail was at 1, which read as a hairline against 13px bold labels.
  */
 function VipIcon({ color }: IconProps) {
-  return <Crown size={16} strokeWidth={1.4} color={color} />;
+  return <Crown size={16} strokeWidth={2.1} color={color} />;
 }
 
 function LicenseIcon({ color }: IconProps) {
@@ -107,10 +107,11 @@ export default function ProjectSidebar({ tab, onTabChange, collapsed, myPageOpen
         width: collapsed ? "60px" : "212px",
         flexShrink: 0,
         display: "flex", flexDirection: "column",
-        // gray-50 against a white canvas is a couple of percent of tone, so the hairline is what
-        // actually separates the rail from the content — without it the nav floats in the page.
+        // The tint is the whole separation — no rule down the right edge. gray-50 against white is
+        // only a couple of percent of tone, but the rail is a full-height block of it next to a
+        // page of cards, and a line there was one more vertical edge on a screen that already has
+        // the card column starting a gutter away.
         backgroundColor: "var(--gray-50)",
-        borderRight: "1px solid var(--gray-300)",
         padding: collapsed ? "16px 8px" : "16px 12px",
         transition: "width .15s ease",
       }}

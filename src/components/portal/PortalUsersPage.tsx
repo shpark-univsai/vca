@@ -762,7 +762,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
     <li key={text} style={{ display: "flex", gap: "6px", alignItems: "flex-start", listStyle: "none" }}>
       <Asterisk
         size={14}
-        strokeWidth={1.4}
+        strokeWidth={2.4}
         aria-hidden
         style={{ flexShrink: 0, marginTop: "2px", color: "var(--gray-400)" }}
       />
@@ -1596,7 +1596,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           disabled={!manageAccess}
           title={manageAccess ? undefined : t.reasonNotOwner}
           style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: manageAccess ? "var(--primary-400)" : "var(--gray-100)", color: manageAccess ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed", flexShrink: 0 }}>
-          <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke={manageAccess ? "white" : "var(--gray-400)"} strokeWidth="1.4" strokeLinecap="round"/></svg>
+          <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke={manageAccess ? "white" : "var(--gray-400)"} strokeWidth="1.22" strokeLinecap="round"/></svg>
           {t.inviteUser}
         </button>
         )}
