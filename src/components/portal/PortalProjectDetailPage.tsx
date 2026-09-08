@@ -1073,21 +1073,20 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 </div>
               )}
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-                <div style={{ padding: "16px 20px", flexShrink: 0 }}>
-                  {/* No "View inventory" action up here. The footer of this same panel is already
-                      a full-width row reading "View all 59 cameras · 59 total →", and both went to
-                      the same tab — one door per panel, and this panel's door is at its foot like
-                      the other two in the row. */}
+                {/* Title and cut on one line. The segmented control had a row of its own under
+                    the head, which put three stacked things — title, description, control — above
+                    the first row of the table it filters. It belongs beside the title: it says
+                    which fleet the panel is showing, which is part of naming the panel.
+
+                    No "View inventory" action up here either. The footer of this same panel is
+                    already a full-width row reading "59 total →", and both went to the same tab —
+                    one door per panel, and this panel's door is at its foot like the other two. */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", padding: "16px 20px 14px", flexShrink: 0 }}>
                   <SectionHead
                     title={t.cameraStatusTitle}
                     subtitle={t.cameraStatusSubtitle}
                   />
-                </div>
-                {/* The cut on the left, what the cut is made of on the right. Two readings of the
-                    same fleet: the segmented control changes the list, the legend just states the
-                    split — so the legend is text, not buttons. */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", padding: "0 20px 14px", flexShrink: 0 }}>
-                  <div style={{ display: "flex", gap: "4px", backgroundColor: "var(--gray-50)", padding: "2px", borderRadius: "8px" }}>
+                  <div style={{ display: "flex", gap: "4px", backgroundColor: "var(--gray-50)", padding: "2px", borderRadius: "8px", flexShrink: 0 }}>
                     {(["all", "offline"] as const).map(f => (
                       <button key={f} onClick={() => setCameraStatusFilter(f)}
                         style={{
@@ -1100,10 +1099,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                       </button>
                     ))}
                   </div>
-                  {/* No legend on the right. It read "51 online · 8 offline" beside tabs already
-                      labelled "All (59)" and "Offline (8)" — the same two numbers, twice, 300px
-                      apart. The tabs win: they are the control, and a count on a control tells you
-                      what you get by pressing it. */}
                 </div>
                 {visibleCameraRows.length === 0 ? (
                   <p style={{ fontSize: "13px", color: "var(--gray-400)", padding: "24px", textAlign: "center" }}>
