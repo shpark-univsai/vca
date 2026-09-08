@@ -374,6 +374,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    * reopen a modal nobody asked for.
    */
   const [inspectCameraId, setInspectCameraId] = useState<string | null>(null);
+  /** Which day of the detections chart the pointer is over, by daysAgo. */
+  const [hoverDay, setHoverDay] = useState<number | null>(null);
   // Session-only, deliberately: see the banner's note. Nothing here is resolved by closing it.
   const [attentionDismissed, setAttentionDismissed] = useState(false);
   // Read after mount, not during render: the clock is not a pure input, and license expiry is
@@ -968,18 +970,70 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 {detectionDays.map((d, i) => (
                   <span
                     key={d.daysAgo}
-                    title={`${d.total.toLocaleString("en-US")} — ${t.detectionSplit(d.vip, d.vehicle, d.unknown)}`}
                     style={{
                       position: "absolute",
                       left: `${(i / (detectionDays.length - 1)) * 100}%`,
                       top: `${(1 - (d.total / detectionPeak) * 0.9) * 100}%`,
                       transform: "translate(-50%, -50%)",
-                      width: "5px", height: "5px", borderRadius: "50%", boxSizing: "content-box",
-                      backgroundColor: d.daysAgo === 0 ? "white" : "var(--primary-300)",
+                      width: hoverDay === d.daysAgo ? "7px" : "5px",
+                      height: hoverDay === d.daysAgo ? "7px" : "5px",
+                      borderRadius: "50%", boxSizing: "content-box",
+                      backgroundColor: d.daysAgo === 0 ? "white" : hoverDay === d.daysAgo ? "var(--primary-400)" : "var(--primary-300)",
                       border: d.daysAgo === 0 ? "2px solid var(--primary-400)" : "none",
+                      transition: "width .1s, height .1s",
                     }}
                   />
                 ))}
+                {/*
+                  A hover column per day, not a hover target per dot.
+
+                  A 5px circle is a hard thing to point at, and the browser's own `title` tooltip
+                  — which is what this had — waits a second before it appears and then draws a
+                  system box that belongs to no design. Full-height invisible columns mean the
+                  pointer only has to be somewhere over the right day, which is how every chart
+                  worth using behaves.
+                */}
+                {detectionDays.map((d, i) => (
+                  <span
+                    key={`hit-${d.daysAgo}`}
+                    onMouseEnter={() => setHoverDay(d.daysAgo)}
+                    onMouseLeave={() => setHoverDay(current => (current === d.daysAgo ? null : current))}
+                    style={{
+                      position: "absolute", top: 0, bottom: 0,
+                      left: `${((i - 0.5) / (detectionDays.length - 1)) * 100}%`,
+                      width: `${(1 / (detectionDays.length - 1)) * 100}%`,
+                    }}
+                  />
+                ))}
+                {/* The bubble. Above the point, clear of the pointer, and it never takes the
+                    pointer itself — a tooltip that can be hovered is a tooltip that flickers. */}
+                {detectionDays.filter(d => d.daysAgo === hoverDay).map(d => {
+                  const i = detectionDays.indexOf(d);
+                  const at = nowMs !== null ? new Date(nowMs - d.daysAgo * 86400000) : null;
+                  return (
+                    <span
+                      key={`tip-${d.daysAgo}`}
+                      style={{
+                        position: "absolute", zIndex: 5, pointerEvents: "none",
+                        left: `${(i / (detectionDays.length - 1)) * 100}%`,
+                        top: `${(1 - (d.total / detectionPeak) * 0.9) * 100}%`,
+                        transform: `translate(${i === 0 ? "0" : i === detectionDays.length - 1 ? "-100%" : "-50%"}, calc(-100% - 10px))`,
+                        backgroundColor: "var(--gray-900)", color: "white",
+                        borderRadius: "8px", padding: "6px 8px", whiteSpace: "nowrap",
+                        fontSize: "11px", lineHeight: 1.5,
+                        boxShadow: "0 8px 24px rgba(14,22,42,0.18)",
+                      }}
+                    >
+                      <span style={{ display: "block", fontWeight: 700 }}>
+                        {d.total.toLocaleString("en-US")}
+                        {at !== null && <span style={{ fontWeight: 400, color: "var(--gray-400)" }}>{`  ${sgtDateKey(at)}`}</span>}
+                      </span>
+                      <span style={{ display: "block", color: "var(--gray-300)" }}>
+                        {t.detectionSplit(d.vip, d.vehicle, d.unknown)}
+                      </span>
+                    </span>
+                  );
+                })}
               </div>
               {/* Weekday and date, only once the clock is known — they are the one part of this
                   chart that depends on what day it is, and a guessed one would be corrected a
