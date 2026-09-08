@@ -52,6 +52,12 @@ interface TeamSwitcherProps {
    * button sits on — every console with a dark rail drops a light menu out of it.
    */
   dark?: boolean;
+  /**
+   * Collapsed rail: the trigger becomes a square with the team's initial in it. 60px cannot hold a
+   * team name, but the row has to stay — the nav below it lines up with the expanded rail's nav
+   * only if what sits above it occupies the same height in both states.
+   */
+  compact?: boolean;
   currentTeamId: string;
   /** Called with the team to move to. The shell owns what switching means (it lives in the URL). */
   onSelect: (teamId: string) => void;
@@ -68,7 +74,7 @@ interface TeamSwitcherProps {
  * a short list a person knows by heart, projects are a searchable table. Overusing the big modal
  * for two rows would make switching feel heavier than it is.
  */
-export default function TeamSwitcher({ dark, currentTeamId, onSelect }: TeamSwitcherProps) {
+export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }: TeamSwitcherProps) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const teams = useVcaStore(s => s.teams);
@@ -109,10 +115,23 @@ export default function TeamSwitcher({ dark, currentTeamId, onSelect }: TeamSwit
               : (hovered === "__trigger" ? "var(--gray-50)" : "white"),
             cursor: "pointer", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap",
             color: dark ? "var(--gray-300)" : "var(--gray-600)",
-            // Fills the rail there, hugs its label in the header.
-            ...(dark ? { width: "100%", padding: "9px 12px", borderRadius: 0 } : null),
+            // Fills the rail there, hugs its label in the header. The height is pinned rather than
+            // left to the padding: the collapsed rail has to reserve exactly this much for its
+            // stand-in, and a row whose height depends on a font's metrics cannot be matched.
+            ...(dark ? { width: "100%", height: "34px", padding: "0 12px", borderRadius: 0, boxSizing: "border-box" as const } : null),
+            ...(compact ? {
+              width: "34px", height: "34px", padding: 0, borderRadius: "8px", justifyContent: "center",
+              backgroundColor: hovered === "__trigger" ? "var(--gray-700)" : "var(--gray-800)",
+            } : null),
           }}
         >
+          {/* Collapsed, the name has nowhere to go, so the initial stands for it and the button's
+              own tooltip carries the rest. */}
+          {compact ? (
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-300)" }}>
+              {(current?.name ?? "?").trim().charAt(0).toUpperCase()}
+            </span>
+          ) : (<>
           {/* Its own title, so hovering the name reveals the name in full while hovering the rest
               of the button still explains what the button does. */}
           <span
@@ -131,6 +150,7 @@ export default function TeamSwitcher({ dark, currentTeamId, onSelect }: TeamSwit
           <span style={{ display: "flex", color: "var(--gray-400)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
             <ChevronDown />
           </span>
+          </>)}
         </button>
 
         {open && (

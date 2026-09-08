@@ -141,7 +141,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
           })}
         </div>
 
-        <div style={{ height: "1px", backgroundColor: "var(--gray-100)", margin: "16px 0" }} />
+        <div style={{ height: "1px", backgroundColor: "var(--line)", margin: "16px 0" }} />
 
         <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.step2}</p>
         <input

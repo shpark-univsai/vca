@@ -1226,7 +1226,7 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
  * Ordered as the funnel runs, so the value doubles as a sort key.
  */
 const SECONDARY_BTN: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "999px",
+  display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px",
   border: BORDER, backgroundColor: "white", color: "var(--gray-600)",
   fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0,
 };

@@ -198,21 +198,27 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
         Hidden when collapsed: a 60px column cannot hold a team name, and a switcher you cannot read
         is a button that opens a surprise.
       */}
-      {/* Collapsed, the identity block cannot be read at 60px — but the way back out has to stay
-          reachable, so the toggle survives on its own, centred. */}
-      {collapsed && onToggleCollapse && (
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "18px" }}>
-          <button className="portal-rail-toggle" onClick={onToggleCollapse} title={toggleLabel}
-            style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)" }}>
-            <RailToggleIcon />
-          </button>
-        </div>
-      )}
-      {!collapsed && (brand || team || project) && (
+      {/*
+        The identity block keeps its shape when the rail collapses: a 40px brand row, a 34px team
+        row, a 60px project card, and the same 6px gaps and 22px foot. Each row is pinned to that
+        height rather than left to its padding, and the collapsed rail fills them with the same two
+        controls drawn as squares.
+
+        This is what the request was about: with the switchers simply dropped when collapsed, the
+        nav list jumped up by the height of both of them, so the row you were pointing at moved out
+        from under the cursor the moment you clicked collapse. Reserving the space also keeps the
+        team and the project reachable from a 60px rail, which is what every console with a
+        collapsible rail does with them.
+      */}
+      {(brand || team || project) && (
         <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "22px" }}>
           {(brand || onToggleCollapse) && (
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "2px 4px 10px 10px" }}>
-              {brand && <p style={{ fontSize: "15px", fontWeight: 800, color: "white", letterSpacing: "-0.2px", flex: 1, minWidth: 0 }}>{brand}</p>}
+            <div style={{
+              height: "40px", display: "flex", alignItems: "center", gap: "8px",
+              padding: collapsed ? 0 : "0 4px 0 10px",
+              justifyContent: collapsed ? "center" : undefined,
+            }}>
+              {!collapsed && brand && <p style={{ fontSize: "15px", fontWeight: 800, color: "white", letterSpacing: "-0.2px", flex: 1, minWidth: 0 }}>{brand}</p>}
               {onToggleCollapse && (
                 <button className="portal-rail-toggle" onClick={onToggleCollapse} title={toggleLabel}
                   style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "8px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", flexShrink: 0 }}>
@@ -225,9 +231,19 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
               They were one bordered box with two rows, which gave equal weight to "which company"
               and "which of its sites" — but the rail navigates the project, and the team is the
               thing you switch between rarely. The card carries the box now, and the team sits
-              above it like the account name above a switcher. */}
-          {team}
-          {project}
+              above it like the account name above a switcher.
+              Grid, not flex: it stretches the switcher to the rail's width when open and centres
+              its square when collapsed, without either state needing its own wrapper. */}
+          {team && (
+            <div style={{ height: "34px", display: "grid", alignItems: "center", justifyItems: collapsed ? "center" : "stretch" }}>
+              {team}
+            </div>
+          )}
+          {project && (
+            <div style={{ height: "60px", display: "grid", alignItems: "center", justifyItems: collapsed ? "center" : "stretch" }}>
+              {project}
+            </div>
+          )}
         </div>
       )}
 
@@ -273,21 +289,24 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
                     padding: collapsed ? "12px 0" : "11px 12px",
                     position: "relative",
                     /*
-                     * The current row: a gray-800 fill, and the label and icon in primary-400.
+                     * The current row: a gray-600 fill, and the label and icon in white.
                      *
-                     * gray-700 and white, which is what every dark rail worth copying does —
+                     * A lighter step of the rail's own colour with white text, which is what
+                     * every dark rail worth copying does —
                      * Revolut Business, Railway, TIDAL and Visual Electric all mark the current
                      * row with a lighter step of the rail's own colour and white text. None of
                      * them uses a light pill: on a near-black column that reads as a light-mode
                      * element pasted in, and it pulls harder than the page beside it.
                      *
                      * The weak contrast was never the text colour, it was the fill. gray-800 is
-                     * one small step off gray-900; gray-700 is the step you can see. Earlier
+                     * one small step off gray-900, gray-700 is visible, and gray-600 — where this
+                     * ended up — is the first step that still reads as current from across a
+                     * desk rather than only when you look for it. Earlier
                      * attempts put the accent here instead — a solid primary pill (it shouted), a
                      * bar down the left edge (a mark beside the row, not the row), primary-300
                      * text (better, but a coloured label on a nearly invisible fill).
                      */
-                    backgroundColor: active ? "var(--gray-700)" : undefined,
+                    backgroundColor: active ? "var(--gray-600)" : undefined,
                     color: active ? "white" : "var(--gray-300)",
                     fontSize: "13px", fontWeight: active ? 600 : 500,
                     whiteSpace: "nowrap", width: "100%",

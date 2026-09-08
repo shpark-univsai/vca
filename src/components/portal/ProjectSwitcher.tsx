@@ -14,6 +14,12 @@ interface ProjectSwitcherProps {
    * button sits on — every console with a dark rail drops a light menu out of it.
    */
   dark?: boolean;
+  /**
+   * Collapsed rail: the card shrinks to the icon square alone. Same reason as TeamSwitcher's —
+   * the row still has to occupy the height it does expanded, or the nav below it would sit at a
+   * different place on the screen depending on whether the rail is open.
+   */
+  compact?: boolean;
   /** The team whose projects this picker lists. Projects belong to exactly one team, and the
    *  breadcrumb to the left of this control already says which team you are in — listing every
    *  team's projects here would contradict it. */
@@ -100,7 +106,7 @@ function StarIcon({ filled }: { filled: boolean }) {
   );
 }
 
-export default function ProjectSwitcher({ dark, teamId, currentProjectId, onSelect, onNewProject }: ProjectSwitcherProps) {
+export default function ProjectSwitcher({ dark, compact, teamId, currentProjectId, onSelect, onNewProject }: ProjectSwitcherProps) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const TAB_LABELS: Record<Tab, string> = { recent: t.tabRecent, starred: t.tabStarred, all: t.tabAll };
@@ -151,6 +157,7 @@ export default function ProjectSwitcher({ dark, teamId, currentProjectId, onSele
     <>
       <button
         onClick={() => setOpen(true)}
+        title={compact ? current?.name : undefined}
         style={{
           display: "flex", alignItems: "center", gap: "6px",
           border: "none", background: "none", cursor: "pointer",
@@ -164,9 +171,13 @@ export default function ProjectSwitcher({ dark, teamId, currentProjectId, onSele
              and a box around one of them would be a button among plain text.
           */
           ...(dark ? {
-            width: "100%", padding: "12px", borderRadius: "12px", gap: "10px",
+            // Height pinned, padding horizontal only: the collapsed rail reserves exactly this
+            // 60px for its icon-only stand-in, so the nav starts at the same y in both states.
+            width: "100%", height: "60px", boxSizing: "border-box" as const,
+            padding: "0 12px", borderRadius: "12px", gap: "10px",
             backgroundColor: "var(--gray-800)", border: "1px solid var(--gray-700)",
           } : null),
+          ...(compact ? { width: "44px", height: "44px", padding: 0, justifyContent: "center" } : null),
         }}
       >
         {dark && (
@@ -178,7 +189,7 @@ export default function ProjectSwitcher({ dark, teamId, currentProjectId, onSele
             <Building2 size={16} strokeWidth={1.8} />
           </span>
         )}
-        {dark ? (
+        {compact ? null : dark ? (
           <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0, flex: 1, textAlign: "left" }}>
             <span title={current?.name} style={{ fontSize: "13px", fontWeight: 700, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {current?.name ?? t.selectProject}
@@ -197,9 +208,11 @@ export default function ProjectSwitcher({ dark, teamId, currentProjectId, onSele
             {current?.name ?? t.selectProject}
           </span>
         )}
-        <span style={{ color: dark ? "var(--gray-400)" : "var(--gray-600)", display: "flex", flexShrink: 0 }}>
-          {dark ? <ChevronRight size={16} strokeWidth={1.8} /> : <ChevronDown size={14} />}
-        </span>
+        {!compact && (
+          <span style={{ color: dark ? "var(--gray-400)" : "var(--gray-600)", display: "flex", flexShrink: 0 }}>
+            {dark ? <ChevronRight size={16} strokeWidth={1.8} /> : <ChevronDown size={14} />}
+          </span>
+        )}
       </button>
 
       {open && (

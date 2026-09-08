@@ -389,9 +389,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const filteredCameraRows = (cameraStatusFilter === "offline" ? projectCameras.filter(c => c.status === "offline") : projectCameras)
     .slice()
     .sort((a, b) => (a.status === b.status ? 0 : a.status === "offline" ? -1 : 1));
-  // Overview is a summary, not the full fleet manager — capped so this one card doesn't grow to
-  // however many cameras the project has. "View all" below covers the rest.
-  const visibleCameraRows = filteredCameraRows.slice(0, 5);
+  // Every row the filter selects, not the first five of them. The card is a fixed height and its
+  // row area scrolls, so a cap bought nothing — and with offline sorted first it made "All" look
+  // exactly like "Offline" on any project with five cameras down. The panel is the same size; the
+  // list inside it is now the whole list.
+  const visibleCameraRows = filteredCameraRows;
 
 
   /**
@@ -471,11 +473,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 button in Portal is already set at, so it is not a new size either. */}
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               <button onClick={() => onTabChange("cameras")}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                 <PlusIcon /> {t.addCamera}
               </button>
               <button onClick={() => onTabChange("vip")}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                 <UserPlusIcon /> {t.registerVip}
               </button>
               {/*
@@ -497,13 +499,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <button
                   className="portal-btn-primary"
                   onClick={() => router.push("/")}
-                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                   <ExitIcon /> {t.goToApp}
                 </button>
               )}
               {showAccessRequests && (
                 <button onClick={() => onTabChange("users")}
-                  style={{ display: "flex", alignItems: "center", gap: "8px", padding: "9px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                  style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                   <ShieldIcon /> {t.approveAccessRequests}
                   {projectAccessRequests.length > 0 && (
                     <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)", backgroundColor: "var(--warning-200)", padding: "2px 8px", borderRadius: "999px" }}>
@@ -596,7 +598,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.connectedSuffix(projectCameras.length)}</span>
                 </span>
               </div>
-              <div style={{ marginTop: "auto", paddingTop: "14px" }}>
+              <div style={{ marginTop: "auto", paddingTop: "14px", marginBottom: "6px" }}>
                 <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
                   {/* gray-500 for the healthy share, danger only for the part that is not.
                       It was success-400 against danger-400 — two saturated hues meeting in the
@@ -635,7 +637,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.channelsUsedSuffix(channelLimit ?? "∞")}</span>
                 </span>
               </div>
-              <div style={{ marginTop: "auto", paddingTop: "14px" }}>
+              <div style={{ marginTop: "auto", paddingTop: "14px", marginBottom: "6px" }}>
                 <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--gray-500)" }} />
                 </div>
@@ -904,7 +906,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                               never distinguishing one from another — it was a purple column down
                               the side of an audit log. */}
                           <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--gray-300)", flexShrink: 0 }} />
-                          {i < recentActivity.length - 1 && <span style={{ width: "1px", flex: 1, backgroundColor: "var(--gray-200)", marginTop: "2px" }} />}
+                          {i < recentActivity.length - 1 && <span style={{ width: "1px", flex: 1, backgroundColor: "var(--line)", marginTop: "2px" }} />}
                         </div>
                         <div style={{ paddingBottom: "14px", minWidth: 0 }}>
                           <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)" }}>{a.message}</p>

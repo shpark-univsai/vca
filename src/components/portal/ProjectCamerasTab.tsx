@@ -961,8 +961,10 @@ export default function ProjectCamerasTab({ projectId }: { projectId: string }) 
         // splitting the one card in two and stranding a sliver of a half-scrolled row below it.
         // Ending flush at the card's bottom edge lets rows pass directly under the header.
         // Matches the content area behind it: this block's whole job is to hide the rows passing
-        // under it, and a grey cover on a white page would be a grey band across the screen.
-        backgroundColor: "white", paddingTop: rect.padTop,
+        // under it, so it has to be the exact colour of the page it covers. It was white, from when
+        // the content column was white — against the primary-50 ground the shell uses now, the page
+        // appeared to grow a paler band across the top the moment it scrolled.
+        backgroundColor: "var(--primary-50)", paddingTop: rect.padTop,
       } : undefined}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px" }}>
         <div>

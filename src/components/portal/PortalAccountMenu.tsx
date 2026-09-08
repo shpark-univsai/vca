@@ -95,7 +95,7 @@ export default function PortalAccountMenu({ admin, appAccess, onMyPage }: {
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{admin.name}</p>
               <p style={{ fontSize: "11px", color: "var(--gray-500)", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{admin.email}</p>
             </div>
-            <div style={{ height: "1px", backgroundColor: "var(--gray-200)", margin: "0 4px 6px" }} />
+            <div style={{ height: "1px", backgroundColor: "var(--line)", margin: "0 4px 6px" }} />
             <button className="portal-navmenu-item" onClick={() => { setOpen(false); onMyPage(); }} style={MENU_ITEM}>
               <User size={14} strokeWidth={2.4} color="var(--gray-500)" /> {t.myPage}
             </button>
