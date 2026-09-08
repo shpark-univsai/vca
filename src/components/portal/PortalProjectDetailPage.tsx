@@ -68,7 +68,6 @@ const T = {
     activityLogEmpty: "Nothing has been changed in this project yet.",
     close: "Close",
     colLastSignal: "Last signal",
-    totalCameras: (n: number) => `${n} total`,
     registeredOn: (d: string) => `Registered ${d}`,
     activitySubtitle: "Changes across your workspace",
     vipsSubtitle: "Latest profiles added to your target database",
@@ -96,7 +95,7 @@ const T = {
     dropNoteFull: (n: number) => `Dropped its stream ${n} times in the last 7 days`,
     viewAllCameras: (n: number) => `View all ${n} cameras`,
     recentVipsTitle: "Recently Registered VIPs",
-    registerVipLink: "Register VIP →",
+    registerVipLink: "Register VIP",
     noVipsYet: "No VIPs registered yet.",
     accessRequestsTitle: "Access Requests",
     approve: "Approve",
@@ -158,7 +157,6 @@ const T = {
     activityLogEmpty: "이 프로젝트에서 변경된 것이 아직 없습니다.",
     close: "닫기",
     colLastSignal: "마지막 신호",
-    totalCameras: (n: number) => `전체 ${n}`,
     registeredOn: (d: string) => `${d} 등록`,
     activitySubtitle: "이 작업 공간에서 일어난 변경",
     vipsSubtitle: "관심대상 목록에 최근 추가된 인물",
@@ -181,7 +179,7 @@ const T = {
     dropNoteFull: (n: number) => `지난 7일 동안 ${n}회 끊겼습니다`,
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
     recentVipsTitle: "최근 등록된 VIP",
-    registerVipLink: "VIP 등록 →",
+    registerVipLink: "VIP 등록",
     noVipsYet: "등록된 VIP가 아직 없습니다.",
     accessRequestsTitle: "접근 요청",
     approve: "승인",
@@ -340,16 +338,38 @@ function BarStats({ left, right }: { left: string; right: string }) {
  * their foot, in a full-width row, so a head that could also hold one only let the three heads
  * drift apart.
  */
-function SectionHead({ title, subtitle }: {
+function SectionHead({ title, subtitle, action }: {
   title: React.ReactNode;
   subtitle?: string;
+  /**
+   * The panel's one way out, at the right end of its title line — an icon, no word.
+   *
+   * These lived at the foot of each panel as a full-width row with a rule over it: three panels,
+   * three rules, three labels ("59 total", "Register VIP", "All 23 entries") in a column of cards
+   * that are read from the top. The row cost every panel a line of list and drew a border across
+   * the bottom of a card that already has one. The label survives as the button's tooltip.
+   */
+  action?: { icon: React.ReactNode; label: string; onClick: () => void };
 }) {
   return (
-    <div style={{ minWidth: 0 }}>
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", minWidth: 0 }}>
+      <div style={{ minWidth: 0 }}>
       {/* 14px. At 15 the panel titles sat one step under the greeting and one above everything
           else, which made three sizes in a column of cards that hold the same kind of thing. */}
       <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{title}</p>
       {subtitle && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{subtitle}</p>}
+      </div>
+      {action && (
+        <button
+          className="portal-icon-btn"
+          onClick={action.onClick}
+          title={action.label}
+          aria-label={action.label}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", padding: "4px", borderRadius: "6px", cursor: "pointer", color: "var(--gray-500)", flexShrink: 0 }}
+        >
+          {action.icon}
+        </button>
+      )}
     </div>
   );
 }
@@ -1228,6 +1248,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <SectionHead
                     title={t.cameraStatusTitle}
                     subtitle={t.cameraStatusSubtitle}
+                    action={{ icon: <ArrowUpRight size={15} strokeWidth={2.4} />, label: t.viewAllCameras(projectCameras.length), onClick: () => onTabChange("cameras") }}
                   />
                 </div>
                 {visibleCameraRows.length === 0 ? (
@@ -1335,18 +1356,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                       );
                     })}
                     </div>
-                    {/* Always here, not only when the list is truncated: it is the panel's way out
-                        to the tab, and the count on the right says how much is behind it. */}
-                    <button onClick={() => onTabChange("cameras")}
-                      className="portal-attention-row"
-                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", border: "none", borderTop: BORDER, background: "none", padding: "12px 20px", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
-                      {/* "View all 8 cameras" is gone. With the panel opening on the offline cut
-                          it counted the cut, not the fleet — a door labelled with the number of
-                          things it is not showing you. What is behind it is all fifty-nine, so
-                          that is what the label says, and the arrow is the rest. */}
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.totalCameras(projectCameras.length)}</span>
-                      <ArrowUpRight size={13} strokeWidth={2.6} color="var(--gray-500)" />
-                    </button>
                   </>
                 )}
               </div>
@@ -1363,7 +1372,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   two have to say; the column ends where they end. */}
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ marginBottom: "14px", flexShrink: 0 }}>
-                  <SectionHead title={t.recentVipsTitle} subtitle={t.vipsSubtitle} />
+                  <SectionHead
+                    title={t.recentVipsTitle}
+                    subtitle={t.vipsSubtitle}
+                    action={{ icon: <Plus size={15} strokeWidth={2.4} />, label: t.registerVipLink, onClick: () => onTabChange("vip") }}
+                  />
                 </div>
                 {recentVips.length === 0 ? (
                   <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noVipsYet}</p>
@@ -1391,22 +1404,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     ))}
                   </div>
                 )}
-                {/* The panel's own way to add one, at its foot — the reference puts it there and it
-                    is the right place: the list above answers "who is in", this answers "and one
-                    more". */}
-                <button onClick={() => onTabChange("vip")}
-                  className="portal-attention-row"
-                  /* The rule runs to the card's edges, like the camera panel's footer beside it.
-                     This panel carries its 20px padding on the card itself, so a footer inside it
-                     drew a rule 20px short at each end while the panel next to it drew one edge to
-                     edge — two cards in one row disagreeing about where a card ends. Negative
-                     margins on the sides and the bottom put the button on the card's own width and
-                     down to its bottom edge, so a hover fills the whole footer rather than a band
-                     floating above 20px of white. */
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "calc(100% + 40px)", border: "none", borderTop: BORDER, background: "none", padding: "12px 20px", margin: "12px -20px -20px", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.registerVipLink}</span>
-                  <Plus size={14} strokeWidth={2.4} color="var(--gray-500)" />
-                </button>
               </div>
 
               {/* The Access Requests card is hidden along with the flow it reports on — with
@@ -1456,12 +1453,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
               <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ marginBottom: "14px", flexShrink: 0 }}>
-                  {/* The way out is at the foot of this panel now, like the two beside it. It was
-                      the only one with its link up here, which made the three panels' heads look
-                      like three different components. */}
                   <SectionHead
                     title={t.recentAdminActivity}
                     subtitle={t.activitySubtitle}
+                    action={{ icon: <ArrowUpRight size={15} strokeWidth={2.4} />, label: t.seeAllActivity(projectActivity.length), onClick: () => setShowActivityLog(true) }}
                   />
                 </div>
                 {recentActivity.length === 0 ? (
@@ -1497,17 +1492,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     white strip of the card's bottom padding under a grey band, which read as the
                     row being misaligned with the card. The card clips (overflow hidden), so the
                     fill takes the bottom corners' radius. */}
-                {/* Opens the log, rather than walking to a tab that does not contain one. This
-                    said "See all" and went to Users & Permissions, where there is no activity
-                    list — a door promising the rest of what you are reading and delivering a
-                    different screen. Portal has no audit page to send anyone to, so the rest of
-                    the log is a modal until it has one. */}
-                <button onClick={() => setShowActivityLog(true)}
-                  className="portal-attention-row"
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "calc(100% + 40px)", border: "none", borderTop: BORDER, background: "none", padding: "12px 20px", margin: "12px -20px -20px", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.seeAllActivity(projectActivity.length)}</span>
-                  <ArrowUpRight size={13} strokeWidth={2.6} color="var(--gray-500)" />
-                </button>
               </div>
             </div>
           </div>
