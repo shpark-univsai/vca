@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Film as FilmIcon, Image as ImageIcon, MapPinOff, ServerOff, Video as VideoIcon } from "lucide-react";
+import { CircleAlert, Film as FilmIcon, Image as ImageIcon, Video as VideoIcon, VideoOff } from "lucide-react";
 import { useVcaStore, type Camera, type CameraSourceType, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -18,6 +18,12 @@ const T = {
     statusError: "Error",
     offlineSuffix: (n: number) => `${n} offline`,
     onlineCountLabel: (n: number) => `${n} online`,
+    healthConnected: "connected",
+    healthOfFleet: (total: number) => `of ${total}`,
+    healthOffline: "offline",
+    healthError: "refusing the connection",
+    healthShowOnly: "Show only these",
+    healthClear: "Show everything again",
     searchPlaceholder: "Search by camera name, code, RTSP URL, or IP address",
     filterAllZones: "All zones",
     filterAllStatus: "All status",
@@ -83,11 +89,6 @@ const T = {
     colResolution: "Resolution",
     colZone: "Zone",
     colRtspStream: "RTSP Stream",
-    gapNoServer: "no server assigned",
-    gapNoCoords: "not on the map",
-    gapUnit: "cameras",
-    gapShowOnly: "Show only these",
-    gapClear: "Show everything again",
     colStatus: "Status",
     emptyAll: "No cameras connected to this project yet.",
     emptyFiltered: "No cameras match these filters.",
@@ -145,6 +146,12 @@ const T = {
     statusError: "오류",
     offlineSuffix: (n: number) => `${n} 오프라인`,
     onlineCountLabel: (n: number) => `온라인 ${n}`,
+    healthConnected: "연결됨",
+    healthOfFleet: (total: number) => `/ ${total}대`,
+    healthOffline: "오프라인",
+    healthError: "연결 거부",
+    healthShowOnly: "이 항목만 보기",
+    healthClear: "전체 다시 보기",
     searchPlaceholder: "카메라 이름, 코드, RTSP URL, IP 주소로 검색",
     filterAllZones: "전체 구역",
     filterAllStatus: "전체 상태",
@@ -210,11 +217,6 @@ const T = {
     colResolution: "해상도",
     colZone: "구역",
     colRtspStream: "RTSP 스트림",
-    gapNoServer: "서버 미할당",
-    gapNoCoords: "지도에 없음",
-    gapUnit: "대",
-    gapShowOnly: "이 항목만 보기",
-    gapClear: "전체 다시 보기",
     colStatus: "상태",
     emptyAll: "아직 이 프로젝트에 연결된 카메라가 없습니다.",
     emptyFiltered: "이 필터와 일치하는 카메라가 없습니다.",
@@ -699,7 +701,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * Which "installed but doing nothing" gap the list is narrowed to, if any — set by the summary
    * strip above the table.
    */
-  const [gapFilter, setGapFilter] = useState<"noServer" | "noCoords" | null>(null);
   // Which kind of source the table is showing. A tab row, not another select in the filter strip:
   // it is the top-level cut of the list, and the counts belong on it.
   const [kindTab, setKindTab] = useState<"ALL" | SourceKind>("ALL");
@@ -740,28 +741,21 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * carries both counts, and a summary that repeats a control is a summary the reader learns to
    * skip.
    */
-  const noServerCameras = projectCameras.filter(c => !c.serverId);
-  const noCoordCameras = projectCameras.filter(c => c.lat === undefined || c.lng === undefined);
-  const gapCameras = {
-    noServer: new Set(noServerCameras.map(c => c.id)),
-    noCoords: new Set(noCoordCameras.map(c => c.id)),
-  } as const;
 
-  const activeFilterCount = [zoneFilter, statusFilter].filter(v => v !== "ALL").length + (gapFilter ? 1 : 0);
+  const activeFilterCount = [zoneFilter, statusFilter].filter(v => v !== "ALL").length;
   // Selected camera ids. Held as a Set of ids rather than of rows so a selection survives the list
   // being re-sorted or re-filtered underneath it.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
 
-  const clearFilters = () => { setZoneFilter("ALL"); setStatusFilter("ALL"); setGapFilter(null); };
+  const clearFilters = () => { setZoneFilter("ALL"); setStatusFilter("ALL"); };
 
   const q = search.trim().toLowerCase();
   const matchingCameras = projectCameras.filter(c => {
     const matchesSearch = !q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q) || c.rtspUrl.toLowerCase().includes(q) || c.ip.includes(q);
     const matchesZone = zoneFilter === "ALL" || c.zone === zoneFilter;
     const matchesStatus = statusFilter === "ALL" || c.status === statusFilter;
-    const matchesGap = !gapFilter || gapCameras[gapFilter].has(c.id);
-    return matchesSearch && matchesZone && matchesStatus && matchesGap;
+    return matchesSearch && matchesZone && matchesStatus;
   });
   const matchingUploads = projectUploads.filter(u => {
     const matchesSearch = !q || u.fileName.toLowerCase().includes(q);
@@ -770,7 +764,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     // honest answer, not showing them as if they had passed a filter they cannot be judged by.
     // A gap filter is a camera question too — a file has no engine, no server and no coordinates,
     // and showing files while one is on would be showing rows that cannot be judged by it.
-    const cameraOnlyFilterSet = zoneFilter !== "ALL" || gapFilter !== null;
+    const cameraOnlyFilterSet = zoneFilter !== "ALL";
     // Status filter is shared but its values are not: "online"/"offline" describe a connection and
     // a file has none, so the same reasoning applies.
     return matchesSearch && !cameraOnlyFilterSet && statusFilter === "ALL";
@@ -1033,46 +1027,53 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       </div>
 
       {/*
-        The gaps, in the shared summary strip — the same shape the VIP registry uses.
+        Is the fleet up? — which is the question somebody opens this screen with, and the one the
+        list alone takes a scroll to answer.
 
-        Under the tabs, not above them. Above, it was the first thing on the page and the tabs
-        looked like a caption on it; under, the order reads as it should — which kind of source you
-        are looking at, then what is wrong with it, then the list. It rides in the sticky header
-        with the tabs and the toolbar, which is right for a figure you may want while scrolling a
-        long table.
+        It is not the counts the old console put here (TOTAL / NORMAL / AI / INACTIVE, four cards
+        directly above tabs that said the same four numbers). Nor is it the gaps it carried until
+        2026-09-09: "56 cameras with no server assigned", 56 of 60, is not a fault report, it is a
+        description of the deployment, and clicking it filtered away four rows.
 
-        Only cells with something in them: a column reading "0" invites a click that returns an
-        empty table. If all three are zero the strip disappears, which is the correct state for a
-        fleet with nothing wrong with it.
+        These three figures live nowhere else on the screen. They are in the status filter's list —
+        which is a closed dropdown, so the answer to "is anything wrong" cost a click to find, and
+        that is exactly why the page read as a bare list. Same numbers, said out loud.
+
+        The cells drive that same filter rather than one of their own, so pressing "8 offline" and
+        picking Offline from the dropdown are one state, not two that can disagree.
       */}
-      {/* Not on the Videos and Images tabs. Both figures count cameras, and under a tab showing two
-          video files "56 cameras with no server" is a statement about rows that are not on screen —
-          which is exactly the misreading that putting the strip below the tabs invites. Shown where
-          it matches what the list holds, hidden where it does not.
-
-          "No AI engine" was a third cell here and is gone (2026-09-09). It rested on the idea that
-          a camera carries the analysis, so a camera without an engine mapped could not see anybody
-          — and that is not how this system works. Every source is attached to a server of its own
-          kind and the server does the analysis, so the fleet being almost all "normal" says nothing
-          about whether it is watching. The real gap is the cell beside it: a camera on no server is
-          a camera nothing is processing. */}
       {(kindTab === "ALL" || kindTab === "camera") && <SummaryStrip cells={[
-        { key: "noServer", cameras: noServerCameras, label: t.gapNoServer, icon: <ServerOff size={14} strokeWidth={2.4} /> },
-        { key: "noCoords", cameras: noCoordCameras, label: t.gapNoCoords, icon: <MapPinOff size={14} strokeWidth={2.4} /> },
+        {
+          key: "online" as const, count: onlineCount, label: t.healthConnected,
+          unit: t.healthOfFleet(projectCameras.length), tone: "neutral" as const,
+          icon: <VideoIcon size={14} strokeWidth={2.4} />,
+        },
+        {
+          key: "offline" as const, count: offlineCount, label: t.healthOffline,
+          unit: undefined, tone: "warning" as const,
+          icon: <VideoOff size={14} strokeWidth={2.4} />,
+        },
+        {
+          key: "error" as const, count: errorCount, label: t.healthError,
+          unit: undefined, tone: "warning" as const,
+          icon: <CircleAlert size={14} strokeWidth={2.4} />,
+        },
       ]
-        .filter(item => item.cameras.length > 0)
+        // A cell reading "0 refusing the connection" is a click that returns an empty table. The
+        // connected cell stays whatever it says: zero of sixty connected is the loudest thing this
+        // strip could ever report.
+        .filter(item => item.key === "online" || item.count > 0)
         .map(item => ({
           key: item.key,
           icon: item.icon,
-          figure: item.cameras.length,
-          unit: t.gapUnit,
+          figure: item.count,
+          unit: item.unit,
           label: item.label,
-          tone: "warning" as const,
-          active: gapFilter === item.key,
-          title: gapFilter === item.key ? t.gapClear : t.gapShowOnly,
-          onClick: () => setGapFilter(gapFilter === item.key ? null : (item.key as "noServer" | "noCoords")),
+          tone: item.tone,
+          active: statusFilter === item.key,
+          title: statusFilter === item.key ? t.healthClear : t.healthShowOnly,
+          onClick: () => setStatusFilter(statusFilter === item.key ? "ALL" : item.key),
         }))} />}
-
       {/* Search & filters */}
       {/* alignItems center, not the default stretch: every control in this row sets its own height
           (CONTROL_HEIGHT), so stretch looked fine until a bare <span> joined them — the selection
