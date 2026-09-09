@@ -7,6 +7,9 @@ import {
   useActiveProjectId, useProjectCameras, useVcaStore,
 } from "@/lib/vcaStore";
 import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
+import {
+  SearchPurposeGate, SearchPurposeBar, SearchPurposeUndefinedNotice, usePurposeGate,
+} from "@/components/SearchPurposeGate";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import RemoveImageButton from "./RemoveImageButton";
@@ -4830,6 +4833,14 @@ export default function DataPage({ onGoRedmap, onGoAnalyzeFrame }: { onGoRedmap?
   const setLiveCam = (v: string) => { setLiveCamRaw(v); if (v === ALL_CAMERAS_ID) setReidCamRaw(""); };
   const setReidCam = (v: string) => { setReidCamRaw(v); if (v === "") setLiveCamRaw(ALL_CAMERAS_ID); };
 
+  // Why a search is being run — see SearchPurposeGate.
+  //
+  // Only the two search tabs are held. Live Monitoring is the control room's standing screen: it
+  // is watching, not looking someone up, and putting a dialog in front of it would mean the
+  // requirement gets switched off within a week. The tab bar stays visible behind the gate for
+  // the same reason — an operator who arrived here to watch the wall must be able to reach it.
+  const purposeGate = usePurposeGate();
+
 
 
   return (
@@ -4854,9 +4865,13 @@ export default function DataPage({ onGoRedmap, onGoAnalyzeFrame }: { onGoRedmap?
         })}
       </div>
 
+      <SearchPurposeUndefinedNotice />
+      <SearchPurposeBar />
+
       {activeTab==="Live Monitoring" && <LiveMonitoringTab openCam={liveCam} onOpenCamChange={setLiveCam} onNavigateTab={handleNavigateFromCard} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
-      {activeTab==="Re-ID Analysis"   && <ReIDContent camera={reidCam} onCameraChange={setReidCam} seedCard={seedCard} onSeedConsumed={() => setSeedCard(null)} onNavigateTab={handleNavigateFromCard} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
-      {activeTab==="RedFace"          && <RedFaceContent seedCard={seedCard} seedLabel={seedLabel} onSeedConsumed={() => { setSeedCard(null); setSeedLabel(null); }} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
+      {activeTab!=="Live Monitoring" && purposeGate.blocked && <SearchPurposeGate purposes={purposeGate.purposes} />}
+      {activeTab==="Re-ID Analysis" && !purposeGate.blocked && <ReIDContent camera={reidCam} onCameraChange={setReidCam} seedCard={seedCard} onSeedConsumed={() => setSeedCard(null)} onNavigateTab={handleNavigateFromCard} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
+      {activeTab==="RedFace" && !purposeGate.blocked && <RedFaceContent seedCard={seedCard} seedLabel={seedLabel} onSeedConsumed={() => { setSeedCard(null); setSeedLabel(null); }} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
     </div>
   );
 }

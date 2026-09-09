@@ -288,6 +288,51 @@ export interface WatchlistCategory {
   archived: boolean;
 }
 
+/**
+ * Why someone is running a person search.
+ *
+ * Reading footage of identified people is the most invasive thing this product does, and the one
+ * an institution has to be able to answer for afterwards: who looked, when, and what for. The
+ * server records the call on its own — confirmed by the backend — but it cannot invent the
+ * purpose. Only the person at the screen knows that, so the screen has to ask.
+ *
+ * Institution-defined for the same reason watchlist categories are: a police control room and a
+ * corporate security desk do not share a vocabulary, and a list fixed in code becomes a list
+ * somebody works around.
+ */
+export interface SearchPurpose {
+  id: string;
+  teamId: string;
+  /** The institution's own word for it. Shown verbatim, never translated. */
+  label: string;
+  /** Whether choosing this purpose requires a written reference — a case number, a document id.
+   *  A routine check may need none; a search on someone's behalf usually does. */
+  requiresReference: boolean;
+  /** Retired rather than deleted, so records that name this purpose still resolve. */
+  archived: boolean;
+}
+
+/**
+ * The purpose in force for this sitting.
+ *
+ * Asked once on entering a search screen rather than per search. A dialog on every search gets
+ * whatever the operator can type fastest — the record then exists and means nothing. Asked once
+ * and left visible on screen, it reads as a standing declaration, and that visibility is most of
+ * what makes it work.
+ *
+ * HANDOFF NOTE: this belongs on the wire, not only here. Every person-search request must carry
+ * the purpose id, the reference and the note so the server writes them beside the call it is
+ * already logging. Kept in the store because there is no request to attach it to yet.
+ */
+export interface SearchPurposeSelection {
+  purposeId: string;
+  /** Case or document reference, when the purpose requires one. */
+  reference?: string;
+  note?: string;
+  /** When it was declared — a sitting that started six hours ago is worth re-asking. */
+  at: string;
+}
+
 /** The palette a category may take. Names, not values — see WatchlistCategory.color. */
 export const WATCHLIST_CATEGORY_COLORS = ["primary", "danger", "warning", "success", "gray"] as const;
 export type WatchlistCategoryColor = typeof WATCHLIST_CATEGORY_COLORS[number];
@@ -416,6 +461,10 @@ interface VcaStoreState {
   personGroups: PersonGroup[];
   /** Empty on a fresh installation, and deliberately so — see WatchlistCategory. */
   watchlistCategories: WatchlistCategory[];
+  /** Empty on a fresh installation, same reason — see SearchPurpose. */
+  searchPurposes: SearchPurpose[];
+  /** Null until the operator declares one this sitting. See SearchPurposeSelection. */
+  searchPurpose: SearchPurposeSelection | null;
   events: VcaEvent[];
   uploads: UploadedMedia[];
   portalUsers: PortalUser[];
@@ -468,6 +517,11 @@ interface VcaStoreState {
    */
   removePersonGroup: (groupId: string, options?: { deleteMembers?: boolean }) => void;
   setPersonGroup: (personId: string, groupId: string | undefined) => void;
+  addSearchPurpose: (purpose: Omit<SearchPurpose, "id" | "archived">) => string;
+  updateSearchPurpose: (purposeId: string, updates: Partial<Omit<SearchPurpose, "id" | "teamId">>) => void;
+  archiveSearchPurpose: (purposeId: string) => void;
+  /** Declare the purpose for this sitting, or clear it to be asked again. */
+  setSearchPurpose: (selection: SearchPurposeSelection | null) => void;
   addWatchlistCategory: (category: Omit<WatchlistCategory, "id" | "archived">) => string;
   updateWatchlistCategory: (categoryId: string, updates: Partial<Omit<WatchlistCategory, "id" | "teamId">>) => void;
   /**
@@ -1657,6 +1711,7 @@ const PERSON_GROUPS: PersonGroup[] = [
 let personSeq = PERSONS.length;
 let personGroupSeq = PERSON_GROUPS.length;
 let watchlistCategorySeq = 0;
+let searchPurposeSeq = 0;
 let eventSeq = SEED_EVENTS.length;
 let portalUserSeq = PORTAL_USERS.length;
 let orgSeq = TEAMS.length;
@@ -1933,6 +1988,8 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   personGroups: PERSON_GROUPS,
   // No seed. An institution defines its own; a shipped default would become the standard.
   watchlistCategories: [],
+  searchPurposes: [],
+  searchPurpose: null,
   events: SEED_EVENTS,
   portalUsers: PORTAL_USERS,
   servers: SERVERS,
@@ -2094,6 +2151,20 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         }, ...state.auditLog].slice(0, 200),
       };
     }),
+  addSearchPurpose: (purpose) => {
+    const id = `spurpose-${++searchPurposeSeq}`;
+    set(state => ({ searchPurposes: [...state.searchPurposes, { ...purpose, id, archived: false }] }));
+    return id;
+  },
+  updateSearchPurpose: (purposeId, updates) =>
+    set(state => ({
+      searchPurposes: state.searchPurposes.map(p => (p.id === purposeId ? { ...p, ...updates } : p)),
+    })),
+  archiveSearchPurpose: (purposeId) =>
+    set(state => ({
+      searchPurposes: state.searchPurposes.map(p => (p.id === purposeId ? { ...p, archived: true } : p)),
+    })),
+  setSearchPurpose: (selection) => set({ searchPurpose: selection }),
   addWatchlistCategory: (category) => {
     const id = `wcat-${++watchlistCategorySeq}`;
     set(state => ({ watchlistCategories: [...state.watchlistCategories, { ...category, id, archived: false }] }));
