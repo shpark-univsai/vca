@@ -2,11 +2,63 @@
 // Currently returns the static mock data from lib/mockData.ts.
 // Swap the body of each function for a real fetch(`${API_BASE_URL}/...`) call later.
 
-import { dashboardStats, liveEvents, devices, mapMarkers, DISTRICTS, hourlyDetections, type HourlyDetection } from "@/lib/mockData";
+import { dashboardStats, liveEvents, devices, mapMarkers, DISTRICTS, hourlyDetections, formatTimeAgo, type Device, type HourlyDetection } from "@/lib/mockData";
+import { useVcaStore, type Camera } from "@/lib/vcaStore";
 import { mockDelay } from "./client";
 
+/**
+ * Portal is the system of record for cameras, so the app's device list has to read what Portal
+ * writes. It did not: this module returned `devices` from mockData — a separate 1,000-entry array
+ * — while Portal added, removed and took cameras offline in the store. Two raw sources for one
+ * thing, which is why a camera registered in Portal never appeared in the app's System tab, and
+ * why the camera-id mismatch kept resurfacing.
+ *
+ * Now there is one owner and one filler. Every camera the store holds is projected here; the mock
+ * array supplies only the remainder, so the deployment still reads at its real ~1,000-camera scale
+ * for the table, the stats and the pagination. When the backend owns the list, the store's half
+ * becomes the fetch and the filler is deleted — nothing else has to move.
+ *
+ * `useVcaStore.getState()` rather than a hook: this is a module function standing in for a
+ * request, same as reading the mock array was. The screens that call it pass the store's cameras
+ * as a dependency, so a change in Portal re-runs the "request".
+ */
+function cameraToDevice(camera: Camera): Device {
+  return {
+    id: camera.id,
+    // Three camera states collapse to two here. The app's device list answers "can I watch this
+    // right now", and a camera in `error` cannot be watched — grouping it with offline is the
+    // honest reading. Portal keeps the distinction, because fixing it is Portal's errand.
+    status: camera.status === "online" ? "Live" : "Off",
+    name: camera.name,
+    // The store carries no equivalent. Device.type is display-only and every mock row says the
+    // same thing, so nothing is lost until a real camera type arrives from the backend.
+    type: "Normal",
+    ip: camera.ip,
+    lat: camera.lat,
+    lng: camera.lng,
+    // English to match the filler rows, which are pre-formatted strings. The whole column is
+    // English today — translating half of it would just make the list disagree with itself.
+    lastSeen: camera.lastSeenAt ? formatTimeAgo(camera.lastSeenAt) : "—",
+  };
+}
+
+function deploymentDevices(): Device[] {
+  const registered = useVcaStore.getState().cameras.map(cameraToDevice);
+  const registeredIds = new Set(registered.map(d => d.id));
+  return [...registered, ...devices.filter(d => !registeredIds.has(d.id))];
+}
+
 export async function getDashboardStats() {
-  return mockDelay(dashboardStats);
+  // Availability was computed at module load from the static array, so it disagreed with the
+  // camera counts the moment those started coming from the store. Same list, same figure.
+  const all = deploymentDevices();
+  const live = all.filter(d => d.status === "Live").length;
+  return mockDelay({
+    ...dashboardStats,
+    linkedCams: { ...dashboardStats.linkedCams, count: live },
+    offlineCams: { ...dashboardStats.offlineCams, count: all.length - live },
+    availability: Math.round((live / all.length) * 1000) / 10,
+  });
 }
 
 export async function getLiveEvents() {
@@ -14,7 +66,7 @@ export async function getLiveEvents() {
 }
 
 export async function getDevices() {
-  return mockDelay(devices);
+  return mockDelay(deploymentDevices());
 }
 
 export async function getMapMarkers() {

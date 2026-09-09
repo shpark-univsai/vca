@@ -1012,8 +1012,13 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
   // Routed through the future-backend stubs instead of importing the mock array/object directly
   // — see lib/api/dashboard.ts. `devices` defaults to [] for the brief pre-fetch window, which
   // the existing "No devices found." empty state already covers.
-  const { data: dashboardStats } = useApiData(() => getDashboardStats(), []);
-  const { data: devicesData, error: devicesError, refetch: refetchDevices } = useApiData(() => getDevices(), []);
+  //
+  // `cameras` is a dependency because the device list is now projected from it: register or
+  // remove a camera in Portal, or take one offline, and this list re-reads instead of showing
+  // what was true when the tab first mounted. A real backend needs the same trigger — a poll or
+  // a socket signal — so the dependency is not mock scaffolding.
+  const { data: dashboardStats } = useApiData(() => getDashboardStats(), [cameras]);
+  const { data: devicesData, error: devicesError, refetch: refetchDevices } = useApiData(() => getDevices(), [cameras]);
   const devices = devicesData ?? [];
   const linkedCams = dashboardStats?.linkedCams ?? { count: 0, delta: 0, deltaPct: 0, down: false };
   const offlineCams = dashboardStats?.offlineCams ?? { count: 0, delta: 0, deltaPct: 0, down: false };
@@ -1242,7 +1247,7 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
   const todayTotal = watchlistMatch.count + tracking.count;
   const liveEvents = vcaEventsToLiveEvents(useVcaStore(s => s.events));
   const cameras = useVcaStore(s => s.cameras);
-  const { data: devicesData } = useApiData(() => getDevices(), []);
+  const { data: devicesData } = useApiData(() => getDevices(), [cameras]);
   const devices = devicesData ?? [];
 
   const handleMouseEnter = (e: React.MouseEvent, id: string, item: LiveEvent | Device) => {
