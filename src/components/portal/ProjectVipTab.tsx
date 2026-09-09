@@ -1337,8 +1337,13 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                     the group editor would mean two places that have to agree about who is in it;
                     one select on the person's own row is the single place that decides. */}
                 {showGroupColumn && (
-                  /* Fills the column rather than its label, so the boxes line up down the table
-                     instead of each row drawing a different width. */
+                  /* Padding on the cell, not a narrower column: the boxes still fill their column
+                     and line up down the table (a select sized to its own label draws a different
+                     width on every row), they just stop short of the edge. Moving the column
+                     boundary would not have helped — the gap between the two cells is the grid's
+                     columnGap either way, and what looked cramped was the select's border landing
+                     12px from the priority tag with nothing between them. */
+                  <span style={{ display: "block", minWidth: 0, paddingRight: "16px" }}>
                   <FilterSelect
                     value={person.groupId ?? ""}
                     onChange={v => setPersonGroup(person.id, v || undefined)}
@@ -1347,6 +1352,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                       ...personGroups.filter(g => g.projectId === projectId).map(g => ({ value: g.id, label: g.name })),
                     ]}
                   />
+                  </span>
                 )}
                 <span>{person.priorityLabel ? <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
                 <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{person.registeredAt.slice(0, 10)}</span>
