@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { Search } from "lucide-react";
 import { useVcaStore, useActiveProjectId, type UploadedMedia } from "@/lib/vcaStore";
 import BestFrameDetailPage from "./BestFrameDetailPage";
@@ -852,7 +852,13 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
   // Uploads carry the site they were added to, so this list shows the site on screen. A file
   // someone uploaded to another project is not footage from here.
   const activeProjectId = useActiveProjectId();
-  const storeUploads = useVcaStore(s => s.uploads).filter(u => u.projectId === activeProjectId);
+  // Memoised because the reconciliation below compares by reference: a fresh array every render
+  // makes `prevUploads !== storeUploads` always true, which sets state during render forever.
+  const uploads = useVcaStore(s => s.uploads);
+  const storeUploads = useMemo(
+    () => uploads.filter(u => u.projectId === activeProjectId),
+    [uploads, activeProjectId],
+  );
   const [videoCams,  setVideoCams]  = useState<Camera[]>(() => uploadsToCams(storeUploads, "video", []));
   const [imageCams,  setImageCams]  = useState<Camera[]>(() => uploadsToCams(storeUploads, "image", []));
 

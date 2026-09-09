@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 import { liveEvents, getFacePhoto, DISTRICTS, type EventType, type LiveEvent, type TrackingHop } from "@/lib/mockData";
 import { isTodaySgt, recentSgtStamp, parseSgtStamp } from "@/lib/time";
@@ -764,6 +765,12 @@ export function camerasInProject(cameras: Camera[], projectId: string): Camera[]
  * header is currently pointed at. Every app screen that shows detections, people or cameras reads
  * through one of these — the filter living in one place is what keeps the map, the list and the
  * counts from disagreeing about which site is on screen.
+ *
+ * Memoised, and that is not an optimisation. A filter returns a new array on every render, and
+ * this codebase leans on array identity in two places that then break: BestFramePage reconciles
+ * uploads during render by comparing `prev !== next`, and several screens pass a list as a
+ * useApiData dependency. Both turn a fresh-every-render array into an endless loop — which is
+ * exactly what happened the first time these shipped without useMemo.
  */
 export function useActiveProjectId(): string {
   const activeProjectId = useVcaStore(s => s.activeProjectId);
@@ -776,13 +783,13 @@ export function useProjectEvents(): VcaEvent[] {
   const events = useVcaStore(s => s.events);
   const cameras = useVcaStore(s => s.cameras);
   const projectId = useActiveProjectId();
-  return eventsInProject(events, projectId, cameras);
+  return useMemo(() => eventsInProject(events, projectId, cameras), [events, projectId, cameras]);
 }
 
 export function useProjectPersons(): Person[] {
   const persons = useVcaStore(s => s.persons);
   const projectId = useActiveProjectId();
-  return personsInProject(persons, projectId);
+  return useMemo(() => personsInProject(persons, projectId), [persons, projectId]);
 }
 
 /**
@@ -797,7 +804,7 @@ export function getActiveProjectId(): string {
 export function useProjectCameras(): Camera[] {
   const cameras = useVcaStore(s => s.cameras);
   const projectId = useActiveProjectId();
-  return camerasInProject(cameras, projectId);
+  return useMemo(() => camerasInProject(cameras, projectId), [cameras, projectId]);
 }
 
 /**
