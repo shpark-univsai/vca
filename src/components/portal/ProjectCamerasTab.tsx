@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CircleAlert, Film as FilmIcon, Image as ImageIcon, Video as VideoIcon, VideoOff } from "lucide-react";
+import { CircleAlert, Film as FilmIcon, Image as ImageIcon, ShieldCheck, Video as VideoIcon, VideoOff } from "lucide-react";
 import { useVcaStore, type Camera, type CameraSourceType, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -34,6 +34,15 @@ const T = {
     kindTabCamera: "Cameras",
     kindTabVideo: "Videos",
     kindTabImage: "Images",
+    kindTabDeepfake: "Deepfake",
+    sourceDeepfake: "Deepfake check",
+    verdictAuthentic: "Authentic",
+    verdictManipulated: "Manipulated",
+    verdictInconclusive: "Inconclusive",
+    verdictScore: (n: number) => `${Math.round(n * 100)}%`,
+    deepfakeFileOption: "Check a file for manipulation",
+    deepfakeUploadTitle: "Deepfake check",
+    deepfakeUploadHint: "MP4, MOV, JPG, PNG. Judged authentic or manipulated — this does not search the file for faces.",
     colSource: "Source",
     sourceCamera: "Normal camera",
     sourceAiCamera: "AI camera",
@@ -162,6 +171,15 @@ const T = {
     kindTabCamera: "카메라",
     kindTabVideo: "영상",
     kindTabImage: "이미지",
+    kindTabDeepfake: "딥페이크",
+    sourceDeepfake: "딥페이크 검사",
+    verdictAuthentic: "진짜",
+    verdictManipulated: "조작됨",
+    verdictInconclusive: "판정 불가",
+    verdictScore: (n: number) => `${Math.round(n * 100)}%`,
+    deepfakeFileOption: "딥페이크 검사 의뢰",
+    deepfakeUploadTitle: "딥페이크 검사",
+    deepfakeUploadHint: "MP4, MOV, JPG, PNG. 진짜인지 조작인지 판정합니다 — 얼굴을 찾지는 않습니다.",
     colSource: "종류",
     sourceCamera: "일반 카메라",
     sourceAiCamera: "AI 카메라",
@@ -379,10 +397,10 @@ const STATUS_RANK: Record<CameraStatus | UploadStatus, number> = {
   done: 6,
 };
 
-type SourceKind = "camera" | "video" | "image";
+type SourceKind = "camera" | "video" | "image" | "deepfake";
 type SourceRow =
   | { kind: "camera"; id: string; name: string; camera: Camera }
-  | { kind: "video" | "image"; id: string; name: string; upload: UploadedMedia };
+  | { kind: "video" | "image" | "deepfake"; id: string; name: string; upload: UploadedMedia };
 
 const MAKERS = ["Hanwha", "Hikvision", "Dahua"];
 const RESOLUTIONS = ["FHD (1920×1080)", "4K (3840×2160)"];
@@ -704,7 +722,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   // Which kind of source the table is showing. A tab row, not another select in the filter strip:
   // it is the top-level cut of the list, and the counts belong on it.
   const [kindTab, setKindTab] = useState<"ALL" | SourceKind>("ALL");
-  const [showUpload, setShowUpload] = useState(false);
+  /** Which purpose the upload sheet was opened for: null when closed. The sheet is the same one
+   *  either way — the same files go in — and only the question being asked of them differs, which
+   *  is what the wording and the resulting row's kind follow. */
+  const [uploadPurpose, setUploadPurpose] = useState<"media" | "deepfake" | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [hoveredAddItem, setHoveredAddItem] = useState<string | null>(null);
   const addMenuRef = useRef<HTMLDivElement>(null);
@@ -924,13 +945,15 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     accepted.forEach(f => addUpload({
       projectId,
       fileName: f.name,
-      kind: f.type.startsWith("image/") ? "image" : "video",
+      kind: uploadPurpose === "deepfake" ? "deepfake" : f.type.startsWith("image/") ? "image" : "video",
       sizeBytes: f.size,
       uploadedBy: SIGNED_IN_USER.name,
     }));
     if (accepted.length === 0) return;
-    setShowUpload(false);
-    setKindTab("ALL");
+    // Land on the tab the files went to, not on ALL: the person just asked a question about these
+    // files and the answer is on that list.
+    setKindTab(uploadPurpose === "deepfake" ? "deepfake" : "ALL");
+    setUploadPurpose(null);
     showToast({ variant: "success", title: t.toastUploadedTitle, desc: accepted.map(f => f.name).join(", ") });
   };
 
@@ -1008,6 +1031,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           { id: "camera", label: t.kindTabCamera, count: projectCameras.length },
           { id: "video", label: t.kindTabVideo, count: projectUploads.filter(u => u.kind === "video").length },
           { id: "image", label: t.kindTabImage, count: projectUploads.filter(u => u.kind === "image").length },
+          // Its own tab, not a filter inside Videos: a deepfake submission is a different errand
+          // with a different answer, and mixed into the footage list its verdict column would be
+          // empty on every other row.
+          { id: "deepfake", label: t.kindTabDeepfake, count: projectUploads.filter(u => u.kind === "deepfake").length },
         ] as { id: "ALL" | SourceKind; label: string; count: number }[]).map(tab => {
           const active = kindTab === tab.id;
           return (
@@ -1173,7 +1200,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               }}>
                 {[
                   { label: t.addCameraOption, onClick: () => setShowAdd(true) },
-                  { label: t.uploadFileOption, onClick: () => setShowUpload(true) },
+                  { label: t.uploadFileOption, onClick: () => setUploadPurpose("media") },
+                  { label: t.deepfakeFileOption, onClick: () => setUploadPurpose("deepfake") },
                 ].map(item => (
                   <button
                     key={item.label}
@@ -1333,6 +1361,14 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             if (row.kind !== "camera") {
               const u = row.upload;
               const tone = UPLOAD_STATUS_TONE[u.status];
+              // Only once the check has finished — a queued submission has no verdict and keeps the
+              // ordinary pipeline word.
+              const verdict = u.status === "done" ? u.deepfakeVerdict : undefined;
+              // Red for the one answer that is news. Authentic is the expected result and
+              // inconclusive is the absence of a result; colouring either would make three
+              // verdicts read as three alarms.
+              const verdictDot = verdict === "manipulated" ? "var(--danger-400)"
+                : verdict === "authentic" ? "var(--gray-900)" : "var(--gray-300)";
               return (
                 <div key={row.id} style={rowStyle}>
                   {checkbox}
@@ -1340,7 +1376,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                       a frame we do not have. Inventing a poster image would imply the analysis had
                       already looked at it. */}
                   <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "40px", height: "40px", borderRadius: "8px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)" }}>
-                    {u.kind === "image" ? <ImageIcon size={18} strokeWidth={1.87} /> : <FilmIcon size={18} strokeWidth={1.87} />}
+                    {u.kind === "image" ? <ImageIcon size={18} strokeWidth={1.87} />
+                      : u.kind === "deepfake" ? <ShieldCheck size={18} strokeWidth={1.87} />
+                      : <FilmIcon size={18} strokeWidth={1.87} />}
                   </span>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.fileName}</p>
@@ -1349,18 +1387,40 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     </p>
                   </div>
                   <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--gray-600)" }}>
-                    {u.kind === "image" ? <ImageIcon size={13} strokeWidth={2.58} /> : <FilmIcon size={13} strokeWidth={2.58} />}
-                    {u.kind === "image" ? t.sourceImage : t.sourceVideo}
+                    {u.kind === "image" ? <ImageIcon size={13} strokeWidth={2.58} />
+                      : u.kind === "deepfake" ? <ShieldCheck size={13} strokeWidth={2.58} />
+                      : <FilmIcon size={13} strokeWidth={2.58} />}
+                    {u.kind === "image" ? t.sourceImage : u.kind === "deepfake" ? t.sourceDeepfake : t.sourceVideo}
                   </span>
                   {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}
                   {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}
                   <span style={{ fontSize: "10px", color: "var(--gray-600)", fontFamily: "monospace" }}>{u.resolution ?? "—"}</span>
                   {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}
                   <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: tone.dot, flexShrink: 0 }} />
-                    <span style={{ fontSize: "12px", fontWeight: 700, color: tone.text }}>{t[tone.label]}</span>
-                    {u.status === "done" && u.detectionCount !== undefined && (
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: verdict ? verdictDot : tone.dot, flexShrink: 0 }} />
+                    {/* A finished deepfake row says the verdict here instead of "Analysed". The
+                        pipeline word is only news while the answer is missing; once it is there,
+                        printing both makes the reader step over "Analysed" to reach it. */}
+                    {!verdict && <span style={{ fontSize: "12px", fontWeight: 700, color: tone.text }}>{t[tone.label]}</span>}
+                    {u.status === "done" && u.kind !== "deepfake" && u.detectionCount !== undefined && (
                       <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{t.detectionsFound(u.detectionCount)}</span>
+                    )}
+                    {/* A deepfake row's result is a judgement, not a count — and the score travels
+                        with it, because "manipulated" at 41% and at 94% are the same word and very
+                        different news. Only "manipulated" is coloured: authentic is the expected
+                        answer and inconclusive is an absence of one, and painting either would
+                        make three verdicts look like three alarms. */}
+                    {verdict && (
+                      <>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: verdict === "manipulated" ? "var(--danger-400)" : "var(--gray-900)" }}>
+                          {verdict === "manipulated" ? t.verdictManipulated
+                            : verdict === "authentic" ? t.verdictAuthentic
+                            : t.verdictInconclusive}
+                        </span>
+                        {u.deepfakeScore !== undefined && (
+                          <span style={{ fontSize: "10px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.verdictScore(u.deepfakeScore)}</span>
+                        )}
+                      </>
                     )}
                   </span>
                   <RowActionsMenu actions={[
@@ -1489,13 +1549,13 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       {/* Same drop-zone shape Redmap's image upload already uses — dashed border on a gray-50 field
           with a Choose button — so the two upload surfaces in the product are one pattern. Accepts
           video as well as image, which is the only real difference. */}
-      {showUpload && (
-        <div onClick={e => { if (e.target === e.currentTarget) setShowUpload(false); }}
+      {uploadPurpose && (
+        <div onClick={e => { if (e.target === e.currentTarget) setUploadPurpose(null); }}
           style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
           <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "520px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
             <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.uploadTitle}</p>
-              <button onClick={() => setShowUpload(false)} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
+              <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{uploadPurpose === "deepfake" ? t.deepfakeUploadTitle : t.uploadTitle}</p>
+              <button onClick={() => setUploadPurpose(null)} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
               </button>
             </div>
@@ -1515,7 +1575,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                 </span>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                   <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{t.uploadDrop}</span>
-                  <span style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6 }}>{t.uploadHint}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6 }}>{uploadPurpose === "deepfake" ? t.deepfakeUploadHint : t.uploadHint}</span>
                 </div>
                 <button className="portal-btn-primary" onClick={() => uploadInputRef.current?.click()}
                   style={{ padding: "10px 16px", borderRadius: "8px", border: "none", cursor: "pointer", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700 }}>

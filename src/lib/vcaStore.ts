@@ -541,14 +541,30 @@ const PROJECTS: Project[] = [
  * store, read by both sides.
  */
 /**
- * Video or image, and nothing else.
+ * What a file was uploaded to have done to it.
  *
- * The console this replaces also had a DEEPFAKE tab beside IMAGE and VIDEOS. It is deliberately
- * not carried over (confirmed 2026-09-09: "없어도 될 것 같대, 일단은"). If it comes back it is a
- * third kind here, its own tab, and a status pipeline of its own — a deepfake check answers
- * "is this footage real", which is not the question the other two kinds are uploaded to ask.
+ * A kind, not a file format, which is why a deepfake check sits beside video and image rather than
+ * inside them: the same .mp4 can arrive for either, and what separates them is the question being
+ * asked. Video and image are uploaded to be searched for faces; a deepfake submission is uploaded
+ * to be judged authentic or not. Different pipeline, different result, different list — the
+ * console this replaces made the same split, with a DEEPFAKE tab beside IMAGE and VIDEOS.
+ *
+ * Kept in the model even though the feature is "probably not needed, for now" (2026-09-09): the
+ * screen is drawn so the shape of the answer is decided before anyone builds it.
  */
-export type UploadKind = "video" | "image";
+export type UploadKind = "video" | "image" | "deepfake";
+
+/**
+ * What the deepfake check concluded.
+ *
+ * Three values, not a boolean. A detector that cannot decide is the ordinary case for short,
+ * compressed or heavily re-encoded footage, and collapsing that into "authentic" would turn "we do
+ * not know" into a clearance — which is the one mistake this feature exists to avoid.
+ *
+ * HANDOFF NOTE: seeded. The real verdict comes with a score from the model, and the score is what
+ * the screen shows beside the word — a verdict without one is an opinion nobody can weigh.
+ */
+export type DeepfakeVerdict = "authentic" | "manipulated" | "inconclusive";
 /**
  * Where the analysis got to. Nothing moves a new upload past "pending" today, because extracting
  * frames and matching faces is the core's work and there is no endpoint for it yet — see
@@ -574,6 +590,11 @@ export interface UploadedMedia {
   /** Faces the analysis found. Undefined until it has run — 0 means it ran and found none, which
    *  is a different answer and has to look different on screen. */
   detectionCount?: number;
+  /** Deepfake submissions only, and only once the check has finished. */
+  deepfakeVerdict?: DeepfakeVerdict;
+  /** 0-1, the model's confidence in that verdict. Shown beside it: "manipulated" at 0.55 and at
+   *  0.98 are the same word and very different news. */
+  deepfakeScore?: number;
 }
 
 /**
@@ -586,6 +607,12 @@ const UPLOADS: UploadedMedia[] = [
   { id: "v1", projectId: "proj-sg", fileName: "marina_bay_0831_1420.mp4", kind: "video", durationSec: 902, sizeBytes: 418_000_000, resolution: "3840×2160", uploadedAt: auditAt(51 * 60), uploadedBy: "Grace Tan", status: "done", detectionCount: 14 },
   { id: "v2", projectId: "proj-sg", fileName: "cbd_northgate_0829.mp4", kind: "video", durationSec: 187, sizeBytes: 96_000_000, resolution: "2560×1440", uploadedAt: auditAt(74 * 60), uploadedBy: "Grace Tan", status: "done", detectionCount: 6 },
   { id: "v3", projectId: "proj-riverside", fileName: "campus_gate_0828.mp4", kind: "video", durationSec: 341, sizeBytes: 152_000_000, resolution: "1920×1080", uploadedAt: auditAt(96 * 60), uploadedBy: "Marcus Lee", status: "done", detectionCount: 9 },
+  // Three deepfake submissions, one per verdict, so every state the screen can draw is on screen.
+  // The fourth state — still running — is the queued row below them.
+  { id: "d1", projectId: "proj-sg", fileName: "press_briefing_clip.mp4", kind: "deepfake", durationSec: 46, sizeBytes: 18_000_000, resolution: "1920×1080", uploadedAt: auditAt(9 * 60), uploadedBy: "Grace Tan", status: "done", deepfakeVerdict: "manipulated", deepfakeScore: 0.94 },
+  { id: "d2", projectId: "proj-sg", fileName: "gate_handover_0905.mp4", kind: "deepfake", durationSec: 128, sizeBytes: 61_000_000, resolution: "1920×1080", uploadedAt: auditAt(33 * 60), uploadedBy: "Marcus Lee", status: "done", deepfakeVerdict: "authentic", deepfakeScore: 0.88 },
+  { id: "d3", projectId: "proj-sg", fileName: "lobby_reupload.mp4", kind: "deepfake", durationSec: 12, sizeBytes: 3_100_000, resolution: "854×480", uploadedAt: auditAt(58 * 60), uploadedBy: "Wei Chen", status: "done", deepfakeVerdict: "inconclusive", deepfakeScore: 0.41 },
+  { id: "d4", projectId: "proj-sg", fileName: "unverified_tipoff.mp4", kind: "deepfake", durationSec: 74, sizeBytes: 29_000_000, resolution: "1280×720", uploadedAt: auditAt(2 * 60), uploadedBy: "Grace Tan", status: "pending" },
   { id: "i1", projectId: "proj-sg", fileName: "west_gate_snapshot.jpg", kind: "image", sizeBytes: 2_400_000, resolution: "1920×1080", uploadedAt: auditAt(28 * 60), uploadedBy: "Grace Tan", status: "done", detectionCount: 2 },
 ];
 
