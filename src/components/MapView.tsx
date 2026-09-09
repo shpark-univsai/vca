@@ -25,6 +25,7 @@ const T = {
     // a map, and the full sentence lives in the tooltip below it.
     camerasShort: (n: number) => `${n} cam${n === 1 ? "" : "s"}`,
     noCamera: "no camera",
+    camerasDown: "all down",
     live: "LIVE",
     out: "OUT",
     offline: "OFFLINE",
@@ -41,6 +42,7 @@ const T = {
   ko: {
     camerasShort: (n: number) => `${n}대`,
     noCamera: "카메라 없음",
+    camerasDown: "전부 중단",
     live: "정상",
     out: "중단",
     offline: "중단",
@@ -165,7 +167,7 @@ function districtPillHtml(
   else if (isDashed || isUncovered) { bg = "white"; textColor = "var(--gray-500)"; border = "border:1.5px dashed var(--gray-300);"; }
   else              { bg = "white";   textColor = "var(--gray-700)"; border = "border:1.5px solid var(--primary-400);"; }
   const camSvg = (isDashed || isUncovered)
-    ? `<svg width="14" height="14" viewBox="0 0 18 18" fill="none" style="flex-shrink:0">
+    ? `<svg width="12" height="12" viewBox="0 0 18 18" fill="none" style="flex-shrink:0">
         <path d="M7.99512 4.5H10.5001C10.8979 4.5 11.2795 4.65804 11.5608 4.93934C11.8421 5.22064 12.0001 5.60218 12.0001 6V7.875L15.9361 5.5785C15.9931 5.54524 16.0579 5.52762 16.1238 5.52739C16.1898 5.52717 16.2547 5.54436 16.3119 5.57722C16.3691 5.61009 16.4167 5.65747 16.4497 5.71459C16.4827 5.7717 16.5001 5.83652 16.5001 5.9025V12.0495"
               stroke="var(--gray-500)" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M12 12C12 12.3978 11.842 12.7794 11.5607 13.0607C11.2794 13.342 10.8978 13.5 10.5 13.5H3C2.60218 13.5 2.22064 13.342 1.93934 13.0607C1.65804 12.7794 1.5 12.3978 1.5 12V6C1.5 5.60218 1.65804 5.22064 1.93934 4.93934C2.22064 4.65804 2.60218 4.5 3 4.5H4.5"
@@ -173,26 +175,30 @@ function districtPillHtml(
         <path d="M1.5 1.5L16.5 16.5" stroke="var(--gray-500)" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>`
     : "";
-  // Offline pills don't show the raw count — a number sitting next to an "offline" signal read as
-  // contradictory (is it online or not?). The camera-off icon carries "offline" on its own, placed
-  // after the district name rather than before it.
+
+  // Two lines, not one. Seventeen of these sit on one map and the horizontal form collided with
+  // its neighbours as soon as the count gained a denominator — a stacked box is narrower where
+  // the crowding actually happens. It also puts the figure where the eye lands: you find a
+  // district by position, then read its number; the name only confirms which one you are looking
+  // at, so it sits above as the smaller line.
   //
-  // An uncovered district says so in words. It is the one case where the absence is the finding.
-  const denom = `<span style="opacity:0.62;font-weight:500">&nbsp;/&nbsp;${t.camerasShort(cameraCount)}</span>`;
-  const labelHtml = isUncovered
-    ? `${label}&nbsp;&nbsp;<span style="font-weight:500">${t.noCamera}</span>`
+  // Same two-line shape in all three states, so a map of these reads as one kind of object. Only
+  // the second line changes — figures, "all down", or "no camera".
+  const secondLine = isUncovered
+    ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;opacity:0.85">${camSvg}${t.noCamera}</span>`
     : isDashed
-      ? label
-      : count > 0
-        ? `${label}&nbsp;&nbsp;${count}${denom}`
-        : label;
-  const fw = isDark || isAlert ? 700 : 600;
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;opacity:0.85">${camSvg}${t.camerasDown}</span>`
+      : `<span style="font-size:14px;font-weight:800;letter-spacing:-0.3px">${count}</span>` +
+        `<span style="font-size:11px;font-weight:500;opacity:0.62">&nbsp;/&nbsp;${t.camerasShort(cameraCount)}</span>`;
+
   const shadow = isDark || isAlert ? "0 2px 10px rgba(14, 22, 42,0.2)" : "0 2px 6px rgba(14, 22, 42,0.08)";
-  return `<div style="transform:translateX(-50%) translateY(-50%);display:inline-flex;align-items:center;
-      gap:5px;background:${bg};${border}border-radius:999px;padding:5px 12px;
-      font-family:'SUIT',system-ui,sans-serif;font-size:12px;font-weight:${fw};
-      color:${textColor};box-shadow:${shadow};white-space:nowrap;letter-spacing:-0.2px">
-    ${labelHtml}${camSvg}</div>`;
+  return `<div style="transform:translateX(-50%) translateY(-50%);display:inline-flex;flex-direction:column;
+      align-items:center;gap:1px;background:${bg};${border}border-radius:10px;padding:5px 10px;
+      font-family:'SUIT',system-ui,sans-serif;color:${textColor};box-shadow:${shadow};
+      white-space:nowrap;letter-spacing:-0.2px">
+    <span style="font-size:11px;font-weight:600;opacity:0.78">${label}</span>
+    <span style="display:inline-flex;align-items:baseline">${secondLine}</span>
+  </div>`;
 }
 
 function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
