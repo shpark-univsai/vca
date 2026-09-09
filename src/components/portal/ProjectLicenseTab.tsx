@@ -87,9 +87,6 @@ const T = {
     notSet: "Not set",
     valid: "Valid",
     expired: "Expired",
-    // Not "LICENSE PERIOD": a period is a range, and Project carries licenseExpiresAt and no
-    // start date, so this column has one date to show. It is the day the licence stops.
-    licenseExpiry: "EXPIRES",
     unlimited: "Unlimited",
     yrRemaining: (n: number) => `${n}yr remaining`,
     monthsRemaining: (n: number) => `${n} months remaining`,
@@ -119,19 +116,17 @@ const T = {
     nearLimit: (n: number) => `${n} channel(s) left before this project reaches its licensed limit.`,
     contractNote: "Channels and term are changed by contract, not here.",
     docTitle: "Licence record",
-    docSubtitle: "A copy of the signed agreement. Nothing on this page changes it.",
-    docRef: "Reference",
     clauseProject: "Covered project",
     clauseChannels: "Licensed channels",
-    clauseTerm: "Term",
+    // Not "Term": a term is a range, and Project carries licenseExpiresAt and no start date, so
+    // this clause has one date to show — the day the licence stops.
+    clauseTerm: "Expires",
     clauseScope: "Scope",
     clauseFees: "Fees",
     clauseParty: "Account manager",
     channelsUnitN: (n: number) => `${n} channels`,
     inUseNow: (used: number, avail: number) => `${used} in use · ${avail} free`,
     scopeExcluded: "Not covered",
-    termThrough: (from: string, to: string) => `${from} — ${to}`,
-    contractedFrom: "Effective",
     bannerContract: "Contract",
     canAddN: (n: number) => `${n} can be added`,
     channelsUnlimited: "No limit set — channels are not capped for this project",
@@ -141,7 +136,6 @@ const T = {
     notSet: "미설정",
     valid: "유효",
     expired: "만료됨",
-    licenseExpiry: "만료일",
     unlimited: "무제한",
     yrRemaining: (n: number) => `잔여 ${n}년`,
     monthsRemaining: (n: number) => `${n}개월 남음`,
@@ -169,19 +163,15 @@ const T = {
     nearLimit: (n: number) => `라이선스 한도까지 ${n}채널 남았습니다.`,
     contractNote: "채널과 기간은 계약으로 변경되며 이 화면에서는 바꿀 수 없습니다.",
     docTitle: "라이선스 계약 내역",
-    docSubtitle: "체결된 서면 계약의 내용입니다. 이 화면에서 바뀌는 것은 없습니다.",
-    docRef: "문서 번호",
     clauseProject: "대상",
     clauseChannels: "계약 채널",
-    clauseTerm: "계약 기간",
+    clauseTerm: "만료일",
     clauseScope: "포함 범위",
     clauseFees: "대금",
     clauseParty: "담당자",
     channelsUnitN: (n: number) => `${n}채널`,
     inUseNow: (used: number, avail: number) => `현재 ${used} 사용 · ${avail} 여유`,
     scopeExcluded: "미포함",
-    termThrough: (from: string, to: string) => `${from} — ${to}`,
-    contractedFrom: "발효",
     bannerContract: "계약 문의",
     canAddN: (n: number) => `${n}채널 추가 가능`,
     channelsUnlimited: "한도 미설정 — 이 프로젝트는 채널 수 제한이 없습니다",
@@ -328,6 +318,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
       {(overLimit || atLimit || nearLimit) && (
         <p style={{
           display: "block", padding: "10px 14px", borderRadius: "10px", marginBottom: "12px",
+          maxWidth: "820px", marginInline: "auto",
           backgroundColor: overLimit ? "var(--danger-100)" : "var(--warning-100)", lineHeight: 1.6,
           fontSize: "12px", fontWeight: 700,
           color: overLimit ? "var(--danger-500)" : "var(--warning-500)",
@@ -338,6 +329,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
       {expiringSoon && daysRemaining !== null && (
         <p style={{
           display: "block", padding: "10px 14px", borderRadius: "10px", marginBottom: "12px",
+          maxWidth: "820px", marginInline: "auto",
           backgroundColor: expiringUrgently ? "var(--danger-100)" : "var(--warning-100)", lineHeight: 1.6,
           fontSize: "12px", fontWeight: 700,
           color: expiringUrgently ? "var(--danger-500)" : "var(--warning-500)",
@@ -360,22 +352,28 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
         a party block at the foot. No cream ground, no serif, no seal — the design system's own
         type and palette, arranged the way an agreement is arranged.
 
-        Capped at 820px. Every other tab runs the full width because it holds a table, and a
-        document is not a table: a clause read across 1,400px of monitor is the one measure this
-        page must not have.
+        Capped at 820px and centred. Every other tab runs the full width because it holds a table,
+        and a document is not a table — a clause read across 1,400px of monitor is the one measure
+        this page must not have.
+
+        Centred rather than left-aligned, which is what it was first: flush left at 820px it read
+        as a full-width card that had failed to stretch, because its left edge lined up with every
+        other tab and its right edge did not. Centred, the same width reads as a page on a desk —
+        every document reader puts one there — and the margins are the point rather than a gap.
       */}
       <div style={{
         backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW,
-        overflow: "hidden", marginBottom: "20px", maxWidth: "820px",
+        overflow: "hidden", marginBottom: "20px", maxWidth: "820px", marginInline: "auto",
       }}>
         {/* The head names the document and stamps its state, the way the first page of an
             agreement does. */}
         <div style={{ padding: "20px", borderBottom: "2px solid var(--gray-900)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: "17px", fontWeight: 800, color: "var(--gray-900)" }}>{t.docTitle}</p>
-              <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.docSubtitle}</p>
-            </div>
+            {/* Title alone. The line under it explained that this is a copy of a signed agreement
+                and that nothing here changes it — which is what the document form now says by
+                being a document, and the note at the foot says in words. Three times was two too
+                many. */}
+            <p style={{ fontSize: "17px", fontWeight: 800, color: "var(--gray-900)", minWidth: 0 }}>{t.docTitle}</p>
             {project.licenseExpiresAt && nowMs !== null && (
               /* The stamp. Squared off, not a pill: a pill is a chip in a product and this is the
                  mark on a document — and it is the one place the status is stated, so it sits
