@@ -115,7 +115,7 @@ const T = {
     atLimit: "Every licensed channel is in use — no further camera can be connected until the limit is raised.",
     nearLimit: (n: number) => `${n} channel(s) left before this project reaches its licensed limit.`,
     contractNote: "Channels and term are changed by contract, not here.",
-    docTitle: "Licence record",
+    docTitle: "Licence",
     clauseProject: "Covered project",
     clauseChannels: "Licensed channels",
     // Not "Term": a term is a range, and Project carries licenseExpiresAt and no start date, so
@@ -162,7 +162,7 @@ const T = {
     atLimit: "라이선스 채널을 모두 쓰고 있습니다 — 한도를 올리기 전까지 카메라를 더 연결할 수 없습니다.",
     nearLimit: (n: number) => `라이선스 한도까지 ${n}채널 남았습니다.`,
     contractNote: "채널과 기간은 계약으로 변경되며 이 화면에서는 바꿀 수 없습니다.",
-    docTitle: "라이선스 계약 내역",
+    docTitle: "라이선스",
     clauseProject: "대상",
     clauseChannels: "계약 채널",
     clauseTerm: "만료일",
