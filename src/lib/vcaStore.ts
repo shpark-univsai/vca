@@ -239,6 +239,56 @@ export interface VcaEvent {
 
 // Person = the VIP/watchlist registry. Portal owns registration/CRUD for this (see
 // PortalVipRegistryTab) — VCA's own screens only ever read it, never write to it.
+/**
+ * A watchlist category, defined by the institution rather than by us.
+ *
+ * WHY THIS IS NOT AN ENUM. Who buys this is not settled, and the words differ by customer: a police
+ * force keeps wanted persons, missing persons and persons of interest; a company keeps barred
+ * visitors and restricted counterparties. Fix the names in code and every new customer is a code
+ * change — and a translation-dictionary change on top, so the same list splits in two places.
+ *
+ * WHY THERE ARE NO DEFAULTS. Seeding "Wanted" would make it the standard: the first thing a
+ * customer who is not a police force does is delete it, and the second is wonder what else in here
+ * was written for somebody else. An empty list with a Create button is the honest starting state.
+ *
+ * NOT A PRIORITY. Person.priorityLabel stays exactly as it is — a category says what kind of case
+ * this is and a priority says how urgent, and among missing persons some are more urgent than
+ * others. Folding one into the other loses a distinction the operator has to make.
+ *
+ * OWNED BY THE TEAM, not the project. One institution's classification scheme is the institution's;
+ * scoping it per project would make the same person a different kind of case at each site.
+ *
+ * HANDOFF NOTE: the API request is a CRUD list under the team —
+ *   GET/POST /teams/:id/watchlist-categories, PATCH /watchlist-categories/:id
+ * Archive rather than delete, because registered people reference these by id.
+ */
+export interface WatchlistCategory {
+  id: string;
+  teamId: string;
+  /** What the institution calls it. Shown verbatim — never translated, because it is their word. */
+  label: string;
+  /**
+   * How long a registration under this category lasts by default, in days. Null means the category
+   * has no natural end (a permanently barred visitor), and the form then asks why rather than
+   * leaving the expiry silently empty.
+   */
+  defaultValidDays: number | null;
+  /** Whether a registration under this category must carry a written basis — a case number, an
+   *  official document reference. Some categories are self-evident; most are not. */
+  requiresBasis: boolean;
+  /** A design-token family name, not a hex value: the institution picks from the palette this
+   *  product already has, so a category cannot introduce a colour the rest of the console does not
+   *  use — or one that collides with the status colours. */
+  color: WatchlistCategoryColor;
+  /** Retired rather than deleted. People registered under it still point at this id, and a
+   *  category that vanishes would leave their rows naming nothing. */
+  archived: boolean;
+}
+
+/** The palette a category may take. Names, not values — see WatchlistCategory.color. */
+export const WATCHLIST_CATEGORY_COLORS = ["primary", "danger", "warning", "success", "gray"] as const;
+export type WatchlistCategoryColor = typeof WATCHLIST_CATEGORY_COLORS[number];
+
 export interface Person {
   id: string;
   name: string;
@@ -297,6 +347,43 @@ export interface Person {
    * them differently.
    */
   lastDetectedAt?: string;
+  /**
+   * Which category this registration falls under, or absent for an unclassified one.
+   *
+   * Optional on purpose: an installation with no categories defined yet must still be able to
+   * register somebody. A registry that refuses the first entry until an administrator has built a
+   * taxonomy is a registry nobody starts using.
+   */
+  categoryId?: string;
+  /**
+   * Why this person is on the list — a case number, an official document reference, a sentence.
+   * Free text, because what counts as a basis differs by institution and by category.
+   *
+   * Required when the chosen category says so. Without it, a row that turns out to be wrong has
+   * nobody to ask: the registry knows when somebody was added and, now, by whom, but not on what
+   * authority.
+   */
+  basis?: string;
+  /** The account that registered this person. The registry recorded the moment and not the hand. */
+  registeredBy?: string;
+  /**
+   * When this registration stops. Absent means it does not — a real answer for some categories and
+   * a mistake for most, so the form asks rather than assuming.
+   *
+   * A watchlist with no expiry keeps processing people after the purpose has ended, which is the
+   * first thing an audit asks about. A found child comes off; an arrested suspect comes off.
+   *
+   * HANDOFF NOTE — THE PART THAT MATTERS. An expiry that only greys a row out is worse than no
+   * expiry at all: the operator believes the person was released while the cameras keep matching
+   * them. Expiry has to reach the analysis module. The provisioning call that carries the watchlist
+   * (PUT /v1/provision/vips in the module contract draft) is where expired people must drop out,
+   * and that belongs in the contract rather than in the screen.
+   */
+  expiresAt?: string;
+  /** When somebody took this person off the list, and why. A release, not a delete: the row stays
+   *  so the history survives, and so "released" and "expired" stay tellable apart. */
+  releasedAt?: string;
+  releaseReason?: string;
 }
 
 /**
@@ -324,6 +411,8 @@ interface VcaStoreState {
   cameras: Camera[];
   persons: Person[];
   personGroups: PersonGroup[];
+  /** Empty on a fresh installation, and deliberately so — see WatchlistCategory. */
+  watchlistCategories: WatchlistCategory[];
   events: VcaEvent[];
   uploads: UploadedMedia[];
   portalUsers: PortalUser[];
@@ -376,6 +465,21 @@ interface VcaStoreState {
    */
   removePersonGroup: (groupId: string, options?: { deleteMembers?: boolean }) => void;
   setPersonGroup: (personId: string, groupId: string | undefined) => void;
+  addWatchlistCategory: (category: Omit<WatchlistCategory, "id" | "archived">) => string;
+  updateWatchlistCategory: (categoryId: string, updates: Partial<Omit<WatchlistCategory, "id" | "teamId">>) => void;
+  /**
+   * Retire a category. Not a delete — people registered under it keep the id, and their rows would
+   * otherwise name a category that no longer exists.
+   */
+  archiveWatchlistCategory: (categoryId: string) => void;
+  /**
+   * Take somebody off the watchlist without erasing that they were on it.
+   *
+   * Separate from removePerson because the two answer different questions later: a released row
+   * says the purpose ended and when, a deleted row says nothing at all. Audited, because "who took
+   * this person off and why" is exactly what gets asked afterwards.
+   */
+  releasePerson: (personId: string, reason: string) => void;
   addEvent: (event: Omit<VcaEvent, "id">) => void;
   markNotificationsRead: () => void;
   addPortalUser: (user: Omit<PortalUser, "id">) => string;
@@ -1549,6 +1653,7 @@ const PERSON_GROUPS: PersonGroup[] = [
 
 let personSeq = PERSONS.length;
 let personGroupSeq = PERSON_GROUPS.length;
+let watchlistCategorySeq = 0;
 let eventSeq = SEED_EVENTS.length;
 let portalUserSeq = PORTAL_USERS.length;
 let orgSeq = TEAMS.length;
@@ -1823,6 +1928,8 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   uploads: UPLOADS,
   persons: PERSONS,
   personGroups: PERSON_GROUPS,
+  // No seed. An institution defines its own; a shipped default would become the standard.
+  watchlistCategories: [],
   events: SEED_EVENTS,
   portalUsers: PORTAL_USERS,
   servers: SERVERS,
@@ -1965,11 +2072,38 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     })),
   addPerson: (person) =>
     set(state => ({
-      persons: [...state.persons, { ...person, id: `person-${++personSeq}` }],
+      persons: [...state.persons, { registeredBy: SIGNED_IN_USER.name, ...person, id: `person-${++personSeq}` }],
       auditLog: [{ id: `audit-${++auditSeq}`, projectId: person.projectId, message: `VIP ${person.name} registered`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
     })),
   removePerson: (personId) =>
     set(state => ({ persons: state.persons.filter(p => p.id !== personId) })),
+  releasePerson: (personId, reason) =>
+    set(state => {
+      const person = state.persons.find(p => p.id === personId);
+      if (!person) return {};
+      const at = new Date().toISOString();
+      return {
+        persons: state.persons.map(p => (p.id === personId ? { ...p, releasedAt: at, releaseReason: reason } : p)),
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId: person.projectId,
+          message: `VIP ${person.name} released — ${reason}`,
+          actor: SIGNED_IN_USER.name, at,
+        }, ...state.auditLog].slice(0, 200),
+      };
+    }),
+  addWatchlistCategory: (category) => {
+    const id = `wcat-${++watchlistCategorySeq}`;
+    set(state => ({ watchlistCategories: [...state.watchlistCategories, { ...category, id, archived: false }] }));
+    return id;
+  },
+  updateWatchlistCategory: (categoryId, updates) =>
+    set(state => ({
+      watchlistCategories: state.watchlistCategories.map(c => (c.id === categoryId ? { ...c, ...updates } : c)),
+    })),
+  archiveWatchlistCategory: (categoryId) =>
+    set(state => ({
+      watchlistCategories: state.watchlistCategories.map(c => (c.id === categoryId ? { ...c, archived: true } : c)),
+    })),
   updatePerson: (personId, updates) =>
     set(state => {
       const person = state.persons.find(p => p.id === personId);
