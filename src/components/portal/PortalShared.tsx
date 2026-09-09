@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { ArrowDown, ArrowUp, Check } from "lucide-react";
 import { SUPPORT_CONTACT, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -540,6 +540,15 @@ export interface SummaryCell {
   figure: React.ReactNode;
   /** The small word after the figure: "people", "of 104", "cameras". */
   unit?: string;
+  /**
+   * How the figure compares with the window before it, drawn after the unit.
+   *
+   * Grey and un-tinted whichever way it points, like the Overview's detection trend: more or fewer
+   * is neither good news nor bad, and colouring it would send the reader hunting for a fault
+   * nobody reported. `text` is the whole phrase so the caller keeps its own wording and its own
+   * language; this only supplies the arrow and the colour.
+   */
+  trend?: { direction: "up" | "down" | "flat"; text: string };
   label: string;
   /** warning (amber) for a defect somebody has to fix, neutral (plain black) for a fact. */
   tone?: "warning" | "neutral";
@@ -577,6 +586,15 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
               <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
                 <span style={{ fontSize: "20px", fontWeight: 800, color: accent, lineHeight: "22px" }}>{cell.figure}</span>
                 {cell.unit && <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{cell.unit}</span>}
+                {cell.trend && (
+                  /* alignItems center rather than the row's baseline: the arrow is a glyph-sized
+                     box with no text baseline of its own, and on the baseline it hangs low. */
+                  <span style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "11px", color: "var(--gray-500)", whiteSpace: "nowrap" }}>
+                    {cell.trend.direction === "up" && <ArrowUp size={11} strokeWidth={2.6} />}
+                    {cell.trend.direction === "down" && <ArrowDown size={11} strokeWidth={2.6} />}
+                    {cell.trend.text}
+                  </span>
+                )}
               </span>
               <span style={{
                 fontSize: "11px", lineHeight: "14px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap",
@@ -615,8 +633,12 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
               borderTop: "none", borderRight: "none", borderBottom: "none",
               cursor: "pointer", fontFamily: "inherit", textAlign: "left",
               // The selected cell is tinted rather than outlined: on a panel, "this filter is on"
-              // is a state of the cell, not an annotation on its label.
-              backgroundColor: cell.active ? "var(--warning-100)" : "transparent",
+              // is a state of the cell, not an annotation on its label. The tint follows the tone
+              // — an amber wash under a cell that is not raising a defect would report a fault the
+              // cell never claimed.
+              backgroundColor: cell.active
+                ? (cell.tone === "warning" ? "var(--warning-100)" : "var(--gray-100)")
+                : "transparent",
             }}
           >
             {body}

@@ -59,6 +59,8 @@ interface VipDict {
   healthPeopleUnit: string;
   healthOfTotal: (total: number) => string;
   healthReachLabel: string;
+  healthReachTrend: (prev: number) => string;
+  healthReachFlat: string;
   colRegistered: string;
   colNote: string;
   confirmRemoveTitle: string;
@@ -147,7 +149,9 @@ const T: Record<"en" | "ko", VipDict> = {
     healthClear: "Show everyone again",
     healthPeopleUnit: "people",
     healthOfTotal: (total: number) => `of ${total}`,
-    healthReachLabel: "seen in the last 7 days",
+    healthReachLabel: "detected by a camera · 7 days",
+    healthReachTrend: (prev: number) => `vs ${prev} last week`,
+    healthReachFlat: "same as last week",
     colRegistered: "Registered",
     colNote: "Note",
     confirmRemoveTitle: "Remove this VIP?",
@@ -235,7 +239,9 @@ const T: Record<"en" | "ko", VipDict> = {
     healthClear: "전체 다시 보기",
     healthPeopleUnit: "명",
     healthOfTotal: (total: number) => `/ ${total}명`,
-    healthReachLabel: "지난 7일 탐지",
+    healthReachLabel: "지난 7일간 카메라에 탐지",
+    healthReachTrend: (prev: number) => `지난주 ${prev}명`,
+    healthReachFlat: "지난주와 같음",
     colRegistered: "등록일",
     colNote: "메모",
     confirmRemoveTitle: "정말 삭제하시겠습니까?",
@@ -820,7 +826,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
    * above it. A card that only states a number leaves the reader to find the twelve rows it counted;
    * this makes the number the way to them.
    */
-  const [healthFilter, setHealthFilter] = useState<"missingPhoto" | "embeddingFailed" | "duplicates" | null>(null);
+  const [healthFilter, setHealthFilter] = useState<"missingPhoto" | "embeddingFailed" | "duplicates" | "detected" | null>(null);
   /**
    * All / Individuals / Groups. Same underlined tab row Input Sources and Users & Permissions use.
    *
@@ -888,8 +894,13 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
     missingPhoto: new Set(health.missingPhoto),
     embeddingFailed: new Set(health.embeddingFailed),
     duplicates: duplicateIds,
+    detected: new Set(health.detectedLast7d),
   } as const;
   const detectedCount = health.detectedLast7d.length;
+  // The same count for the seven days before, which is the only thing that tells a quiet week
+  // apart from a broken one. See registryHealth, where the two windows are asked for.
+  const detectedPrevCount = health.detectedPrev7d.length;
+  const reachDelta = detectedCount - detectedPrevCount;
 
   const matchingPersons = allProjectPersons
     .filter(p => !healthFilter || healthIds[healthFilter].has(p.id))
@@ -1076,7 +1087,19 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           icon: <Eye size={14} strokeWidth={2.4} />,
           figure: detectedCount,
           unit: t.healthOfTotal(allProjectPersons.length),
+          // The figure on its own is unreadable: "9 of 104 this week" is a normal week when the
+          // VIPs did not come and a dead fleet when it was 40 last week, and nothing else on the
+          // page separates those. Grey both ways — this is a comparison, not a verdict.
+          trend: reachDelta === 0
+            ? { direction: "flat" as const, text: t.healthReachFlat }
+            : { direction: (reachDelta > 0 ? "up" : "down") as "up" | "down", text: t.healthReachTrend(detectedPrevCount) },
           label: t.healthReachLabel,
+          // Takes a click like its neighbours. It is not a defect, so it stays neutral rather than
+          // amber, but "which of them actually came this week" is a question worth an answer and a
+          // cell that filters beside two that do not would be the odd one out.
+          active: healthFilter === "detected",
+          title: healthFilter === "detected" ? t.healthClear : t.healthShowOnly,
+          onClick: () => setHealthFilter(healthFilter === "detected" ? null : "detected"),
         },
       ]} />}
 

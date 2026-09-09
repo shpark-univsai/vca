@@ -1334,12 +1334,23 @@ export function dailyDetections(projectId: string, days = 7): DailyDetections[] 
  *     embeddingFailed: id[],   // has an image the model could not turn into features
  *     duplicates: [id, id][],  // the same face registered twice; alerts fire twice
  *     detectedLast7d: id[],    // seen by any camera in the window
+ *     detectedPrev7d: id[],    // the same, for the seven days before that
  *   }
  *
  * The first three are defects with different causes and different fixes (upload a photo, replace a
- * bad photo, merge two rows), which is why they are three lists and not one number. The fourth is
- * not a defect: it is the reach of the list, and it is here because a watchlist nobody ever
- * matches is the quietest way this product fails.
+ * bad photo, merge two rows), which is why they are three lists and not one number. The last two
+ * are not defects: they are the reach of the list, and they are here because a watchlist nobody
+ * ever matches is the quietest way this product fails.
+ *
+ * WHY TWO WINDOWS. One number cannot answer the question the figure is for. "9 of 104 seen this
+ * week" is a normal week if the VIPs simply did not come, and a dead camera fleet if it was 40
+ * last week — the reader cannot tell those apart, and they are the same screen with opposite
+ * meanings. The previous window is the cheapest thing that separates them, and it is a second
+ * range over the same query rather than a time series: two counts, not a chart.
+ *
+ * Both windows are seven calendar days in the project's timezone, back to back, so the two are
+ * comparable without the client doing arithmetic on timestamps. Ids rather than counts, because
+ * the page filters its table to the rows behind the figure.
  *
  * Seeded deterministically, like everything else in this file.
  */
@@ -1348,6 +1359,7 @@ export interface RegistryHealth {
   embeddingFailed: string[];
   duplicates: [string, string][];
   detectedLast7d: string[];
+  detectedPrev7d: string[];
 }
 
 export function registryHealth(projectId: string, persons: Person[]): RegistryHealth {
@@ -1355,6 +1367,7 @@ export function registryHealth(projectId: string, persons: Person[]): RegistryHe
   const missingPhoto: string[] = [];
   const embeddingFailed: string[] = [];
   const detectedLast7d: string[] = [];
+  const detectedPrev7d: string[] = [];
   rows.forEach((p, i) => {
     // Not seeded: a person with no photoUrl has no enrolled face, full stop. The CSV import is
     // where they come from, and this reads the same field the table draws from — so the figure and
@@ -1364,14 +1377,20 @@ export function registryHealth(projectId: string, persons: Person[]): RegistryHe
     if (roll > 0.88) embeddingFailed.push(p.id);
     // Only rows with a usable face can have been seen. Letting an unmatchable person appear in
     // the detected list would make the two figures on the page contradict each other.
-    else if (seededRandom(i * 6.31 + 1.5) > 0.9) detectedLast7d.push(p.id);
+    else {
+      if (seededRandom(i * 6.31 + 1.5) > 0.9) detectedLast7d.push(p.id);
+      // Rolled separately, not derived from the week before it: which VIPs walk past a camera in a
+      // given week is not a function of who walked past in the last one, and seeding it as one
+      // would draw a trend line the real data has no reason to follow.
+      if (seededRandom(i * 7.93 + 2.7) > 0.915) detectedPrev7d.push(p.id);
+    }
   });
   // Pairs, not a count: a duplicate is two rows, and the fix is choosing which one to keep.
   const duplicates: [string, string][] = [];
   for (let i = 0; i + 1 < rows.length && duplicates.length < 2; i += 1) {
     if (seededRandom(i * 8.19 + 3.3) > 0.96) duplicates.push([rows[i].id, rows[i + 1].id]);
   }
-  return { missingPhoto, embeddingFailed, duplicates, detectedLast7d };
+  return { missingPhoto, embeddingFailed, duplicates, detectedLast7d, detectedPrev7d };
 }
 
 /**
