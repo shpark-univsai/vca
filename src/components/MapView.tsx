@@ -21,6 +21,15 @@ import { useLanguage, type AppLanguage } from "@/lib/i18n";
 // rather than reading a hook: they run outside React, inside Leaflet.
 const T = {
   en: {
+    // The district pill's denominator and its no-coverage wording. Kept short: this is a label on
+    // a map, and the full sentence lives in the tooltip below it.
+    camerasShort: (n: number) => `${n} cam${n === 1 ? "" : "s"}`,
+    noCamera: "no camera",
+    pillTooltip: (count: number, cams: number) =>
+      cams === 0
+        ? "No camera registered in this district — nothing can be detected here"
+        : `${count} VIP detection${count === 1 ? "" : "s"} today from ${cams} camera${cams === 1 ? "" : "s"}` +
+          ` · ${(count / cams).toFixed(1)} per camera`,
     live: "LIVE",
     out: "OUT",
     offline: "OFFLINE",
@@ -35,6 +44,12 @@ const T = {
     unknownZone: "Unknown",
   },
   ko: {
+    camerasShort: (n: number) => `${n}대`,
+    noCamera: "카메라 없음",
+    pillTooltip: (count: number, cams: number) =>
+      cams === 0
+        ? "이 구역에 등록된 카메라가 없습니다 — 여기서는 검출될 수 없습니다"
+        : `오늘 VIP 검출 ${count}건 · 카메라 ${cams}대 · 카메라당 ${(count / cams).toFixed(1)}건`,
     live: "정상",
     out: "중단",
     offline: "중단",
@@ -125,19 +140,40 @@ const OVERVIEW_ZOOM = 12;
 // Ported from RedmapMap.tsx's statusMarkerHtml() — same colors/dashed-camera-icon — but driven by
 // real computed { count, hasCamera } instead of RedmapMap's hardcoded STATUS_ZONES, and by
 // user-configurable thresholds instead of hardcoded ones.
-function districtPillHtml(label: string, count: number, hasOnlineCamera: boolean, alertThreshold: number, moderateThreshold: number): string {
+/**
+ * A district's pill.
+ *
+ * The count carries weight beyond this screen: customers submit it upward as the evidence for
+ * where to install more cameras. So it never travels alone.
+ *
+ * `cameraCount` is beside it because 29 hits from 3 cameras and 29 from 40 are opposite findings,
+ * and the raw number reads identically. And a district with no camera at all is called that
+ * outright rather than showing 0 — 0 reads as "nothing happens here" when it means "nothing can
+ * be seen here", which is exactly the district a coverage decision should be looking at.
+ */
+function districtPillHtml(
+  label: string,
+  count: number,
+  cameraCount: number,
+  hasOnlineCamera: boolean,
+  alertThreshold: number,
+  moderateThreshold: number,
+  t: (typeof T)[AppLanguage],
+): string {
   const isAlert = count >= alertThreshold;
   const isDark = !isAlert && count >= moderateThreshold;
+  // No camera registered here at all — a coverage gap, not a quiet district.
+  const isUncovered = cameraCount === 0;
   // Dashed = this district's camera(s) are offline, not "no camera was ever installed here".
-  const isDashed = !hasOnlineCamera;
+  const isDashed = !isUncovered && !hasOnlineCamera;
   let bg: string, textColor: string, border: string;
   if (isAlert)      { bg = "var(--danger-400)"; textColor = "white";   border = ""; }
   else if (isDark)  { bg = "var(--gray-900)"; textColor = "white";   border = ""; }
   // Offline cameras aren't as urgent a signal as a real, nonzero VIP count — purple is reserved
   // for things that actually need attention, so this stays a neutral gray instead.
-  else if (isDashed){ bg = "white";   textColor = "var(--gray-500)"; border = "border:1.5px dashed var(--gray-300);"; }
+  else if (isDashed || isUncovered) { bg = "white"; textColor = "var(--gray-500)"; border = "border:1.5px dashed var(--gray-300);"; }
   else              { bg = "white";   textColor = "var(--gray-700)"; border = "border:1.5px solid var(--primary-400);"; }
-  const camSvg = isDashed
+  const camSvg = (isDashed || isUncovered)
     ? `<svg width="14" height="14" viewBox="0 0 18 18" fill="none" style="flex-shrink:0">
         <path d="M7.99512 4.5H10.5001C10.8979 4.5 11.2795 4.65804 11.5608 4.93934C11.8421 5.22064 12.0001 5.60218 12.0001 6V7.875L15.9361 5.5785C15.9931 5.54524 16.0579 5.52762 16.1238 5.52739C16.1898 5.52717 16.2547 5.54436 16.3119 5.57722C16.3691 5.61009 16.4167 5.65747 16.4497 5.71459C16.4827 5.7717 16.5001 5.83652 16.5001 5.9025V12.0495"
               stroke="var(--gray-500)" stroke-linecap="round" stroke-linejoin="round"/>
@@ -149,7 +185,16 @@ function districtPillHtml(label: string, count: number, hasOnlineCamera: boolean
   // Offline pills don't show the raw count — a number sitting next to an "offline" signal read as
   // contradictory (is it online or not?). The camera-off icon carries "offline" on its own, placed
   // after the district name rather than before it.
-  const labelHtml = isDashed ? label : (count > 0 ? `${label}&nbsp;&nbsp;${count}` : label);
+  //
+  // An uncovered district says so in words. It is the one case where the absence is the finding.
+  const denom = `<span style="opacity:0.62;font-weight:500">&nbsp;/&nbsp;${t.camerasShort(cameraCount)}</span>`;
+  const labelHtml = isUncovered
+    ? `${label}&nbsp;&nbsp;<span style="font-weight:500">${t.noCamera}</span>`
+    : isDashed
+      ? label
+      : count > 0
+        ? `${label}&nbsp;&nbsp;${count}${denom}`
+        : label;
   const fw = isDark || isAlert ? 700 : 600;
   const shadow = isDark || isAlert ? "0 2px 10px rgba(14, 22, 42,0.2)" : "0 2px 6px rgba(14, 22, 42,0.08)";
   return `<div style="transform:translateX(-50%) translateY(-50%);display:inline-flex;align-items:center;
@@ -549,13 +594,18 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         if (home) {
           const camerasHere = cameras.filter(c => nearestDistrict(c.lat, c.lng).id === home.id);
           const icon = L.divIcon({
-            html: districtPillHtml(home.label, hits.length, camerasHere.some(c => cameraStatus.byId(c.id) === "running"), alertThreshold, moderateThreshold),
+            html: districtPillHtml(
+              home.label, hits.length, camerasHere.length,
+              camerasHere.some(c => cameraStatus.byId(c.id) === "running"),
+              alertThreshold, moderateThreshold, t,
+            ),
             iconSize: [1, 1],
             iconAnchor: [0, 0],
             className: "vca-zone-icon",
           });
           L.marker([home.lat, home.lng], { icon })
             .addTo(group)
+            .bindTooltip(t.pillTooltip(hits.length, camerasHere.length), { direction: "top", offset: [0, -16], className: "vca-camera-tooltip", opacity: 1 })
             .on("click", () => onDistrictSelectRef.current?.(home.id));
         }
       } else if (zoom <= CLUSTER_ZOOM_BREAKPOINT) {
@@ -581,13 +631,19 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           if (hasOnlineCamera && count === 0) return;
 
           const icon = L.divIcon({
-            html: districtPillHtml(district.label, count, hasOnlineCamera, alertThreshold, moderateThreshold),
+            html: districtPillHtml(
+              district.label, count, camerasInDistrict.length, hasOnlineCamera,
+              alertThreshold, moderateThreshold, t,
+            ),
             iconSize: [1, 1],
             iconAnchor: [0, 0],
             className: "vca-zone-icon",
           });
+          // The full sentence — including detections per camera — lives here rather than on the
+          // pill. The pill has room for the two figures; the reading of them needs a sentence.
           L.marker([district.lat, district.lng], { icon })
             .addTo(group)
+            .bindTooltip(t.pillTooltip(count, camerasInDistrict.length), { direction: "top", offset: [0, -16], className: "vca-camera-tooltip", opacity: 1 })
             .on("click", () => onDistrictSelectRef.current?.(district.id));
         });
       } else {
@@ -635,7 +691,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
     });
 
     return () => { cancelled = true; };
-  }, [recentEvents, cameras, zoom, mapReady, alertThreshold, moderateThreshold, districts, lang, districtFilter, cameraStatus]);
+  }, [recentEvents, cameras, zoom, mapReady, alertThreshold, moderateThreshold, districts, lang, districtFilter, cameraStatus, t]);
 
   // ── District selection → zoom into that district ───────────────
   // Clicking a pill was a list filter and nothing more: the map stayed at island zoom with every
