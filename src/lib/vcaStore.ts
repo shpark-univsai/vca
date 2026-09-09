@@ -279,6 +279,24 @@ export interface Person {
    * registry's People tab is exactly the rows with none of these.
    */
   groupId?: string;
+  /**
+   * When any camera last matched this person, or absent if none ever has.
+   *
+   * THIS IS A REQUEST TO THE BACKEND. It is `max(timestamp)` over the detection events already
+   * stored against this person — not a new aggregation, and cheap enough to return on the row
+   * rather than behind its own endpoint.
+   *
+   * It is here because the registry could say everything about itself and nothing about whether it
+   * works. A watchlist rots quietly: contracts end, delegations fly home, and the row stays. The
+   * column this feeds is sortable, so "who has not been seen since June" is one click rather than
+   * a report — and it is a column and not a warning on purpose, because never being detected is
+   * not a fault. Some of these people are watched *for*, and a name that never comes up is that
+   * list working.
+   *
+   * Absent, not a sentinel date: "never" and "long ago" are different answers and the table prints
+   * them differently.
+   */
+  lastDetectedAt?: string;
 }
 
 /**
@@ -1099,6 +1117,73 @@ const SEED_EVENTS: VcaEvent[] = liveEvents.map((e) => ({
 
 // Registration metadata for the VIP registry — not present on the raw mockData events (those are
 // detections, not registrations), so it's seeded here per known name until Portal's real API lands.
+/**
+ * The day the seed calls today.
+ *
+ * Fixed rather than `Date.now()`, for the reason every other seed in this file is fixed: the
+ * server and the browser must draw the same table on first paint. Everything dated relative to a
+ * clock would differ between the two renders and hydration would tear.
+ *
+ * It is also what "the last seven days" is measured back from, so the reach figures on the VIP page
+ * and the dates in its table are answers about the same week. The real API measures from the actual
+ * instant, in the project's timezone.
+ */
+const SEED_TODAY = Date.UTC(2026, 8, 9);
+
+/**
+ * A plausible "last seen" for a seeded person: mostly never, otherwise spread back over the months.
+ *
+ * The distribution is deliberate rather than uniform. This project has sixty cameras and four of
+ * them carry an AI engine (see the camera seed and the Input Sources summary), so a hundred-name
+ * watchlist that only four cameras can match is *supposed* to leave most rows untouched in a given
+ * week. A registry where everybody is seen every week would be the misleading mockup, not this one.
+ *
+ * Never returns a day before the person was registered — a face cannot be matched by a system it
+ * was not yet enrolled in, and a table that printed one would be teaching the reader a wrong rule.
+ */
+/**
+ * A person's own seed, from the whole id.
+ *
+ * Not the id's length and last character, which was the first attempt: across "person-seed-1" ..
+ * "person-seed-100" those vary by three lengths and ten digits, so a hundred people drew about a
+ * dozen distinct rolls and every distribution built on it came out in lumps.
+ *
+ * Shared, because two facts about the same person have to agree. A face the model could not read
+ * cannot also have been matched by a camera last Tuesday, and it will be if the two are rolled
+ * from different seeds.
+ */
+function personSeed(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) % 100_000;
+  return h;
+}
+
+/** Has a photo the model could not turn into features — enrolled, and unmatchable. */
+function seededPhotoUnreadable(id: string): boolean {
+  return seededRandom(personSeed(id) * 0.023 + 1.9) > 0.87;
+}
+
+function seededLastDetectedAt(id: string, registeredAt: string): string | undefined {
+  // Unmatchable faces are never matched. Reading this from the same predicate registryHealth uses
+  // is the only thing keeping the summary and the table from contradicting each other on the same
+  // row — "photo unreadable" over a row that says it was seen on Friday.
+  if (seededPhotoUnreadable(id)) return undefined;
+  const h = personSeed(id);
+  const roll = seededRandom(h * 0.017);
+  // 42% have never been matched at all. On a four-camera fleet that is the ordinary case, and it is
+  // what makes the sortable column worth having.
+  if (roll < 0.42) return undefined;
+  const spread = seededRandom(h * 0.041 + 7.3);
+  const daysAgo = roll < 0.52 ? Math.floor(spread * 7)          // this week
+    : roll < 0.64 ? 7 + Math.floor(spread * 7)                  // the week before
+    : roll < 0.80 ? 14 + Math.floor(spread * 16)                // the rest of the month
+    : 30 + Math.floor(spread * 150);                            // one to six months ago
+  const day = SEED_TODAY - daysAgo * 86_400_000;
+  const enrolled = Date.parse(registeredAt);
+  if (Number.isFinite(enrolled) && day < enrolled) return undefined;
+  return new Date(day).toISOString().slice(0, 10);
+}
+
 const PERSON_REGISTRY_INFO: Record<string, { registeredAt: string; description: string }> = {
   "Alexander Wright": { registeredAt: "2026-03-14", description: "Corporate Security — Executive Protection" },
   "Priya Nair":        { registeredAt: "2026-05-02", description: "VIP Watchlist — Frequent Visitor" },
@@ -1133,9 +1218,9 @@ export const PERSONS: Person[] = (() => {
     // person was registered, and a date-only string has no hour to show. The offset is written out
     // so the value means one moment regardless of where it is read — the app is Singapore-only
     // (see lib/time.ts) and every reader formats it back through that zone.
-    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2026-09-01T14:32:00+08:00", projectId: "proj-sg", priorityLabel: "high", groupId: "pgroup-1" },
-    { id: "person-portal-2", name: "Sarah Lim", type: "VIP", photoUrl: getFacePhoto("person-portal-2"), registeredAt: "2026-08-30T09:05:00+08:00", projectId: "proj-sg", priorityLabel: "normal", groupId: "pgroup-1" },
-    { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28T17:48:00+08:00", projectId: "proj-sg", priorityLabel: "very_high", groupId: "pgroup-2" },
+    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2026-09-01T14:32:00+08:00", lastDetectedAt: "2026-09-08", projectId: "proj-sg", priorityLabel: "high", groupId: "pgroup-1" },
+    { id: "person-portal-2", name: "Sarah Lim", type: "VIP", photoUrl: getFacePhoto("person-portal-2"), registeredAt: "2026-08-30T09:05:00+08:00", lastDetectedAt: "2026-09-03", projectId: "proj-sg", priorityLabel: "normal", groupId: "pgroup-1" },
+    { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28T17:48:00+08:00", lastDetectedAt: "2026-08-29", projectId: "proj-sg", priorityLabel: "very_high", groupId: "pgroup-2" },
     { id: "person-portal-4", name: "Rachel Wong", type: "VIP", photoUrl: getFacePhoto("person-portal-4"), registeredAt: "2026-08-25T11:20:00+08:00", projectId: "proj-sg", priorityLabel: "normal" },
   );
   persons.push(...bulkSampleVips());
@@ -1239,6 +1324,7 @@ function bulkSampleVips(): Person[] {
       type: "VIP",
       photoUrl: portrait,
       registeredAt: day.toISOString().slice(0, 10),
+      lastDetectedAt: seededLastDetectedAt(id, day.toISOString().slice(0, 10)),
       projectId: "proj-sg",
       priorityLabel: priorities[i % priorities.length],
       groupId: groups[i % groups.length],
@@ -1366,6 +1452,8 @@ export function registryHealth(projectId: string, persons: Person[]): RegistryHe
   const rows = persons.filter(p => p.projectId === projectId);
   const missingPhoto: string[] = [];
   const embeddingFailed: string[] = [];
+  // Derived from Person.lastDetectedAt rather than rolled here, so the figure in the summary and
+  // the date in the table row can never tell different stories about the same person.
   const detectedLast7d: string[] = [];
   const detectedPrev7d: string[] = [];
   rows.forEach((p, i) => {
@@ -1373,16 +1461,21 @@ export function registryHealth(projectId: string, persons: Person[]): RegistryHe
     // where they come from, and this reads the same field the table draws from — so the figure and
     // the rows behind it can never disagree.
     if (!p.photoUrl) { missingPhoto.push(p.id); return; }
-    const roll = seededRandom(i * 4.77 + p.id.length);
-    if (roll > 0.88) embeddingFailed.push(p.id);
+    if (seededPhotoUnreadable(p.id)) embeddingFailed.push(p.id);
     // Only rows with a usable face can have been seen. Letting an unmatchable person appear in
     // the detected list would make the two figures on the page contradict each other.
     else {
-      if (seededRandom(i * 6.31 + 1.5) > 0.9) detectedLast7d.push(p.id);
-      // Rolled separately, not derived from the week before it: which VIPs walk past a camera in a
-      // given week is not a function of who walked past in the last one, and seeding it as one
-      // would draw a trend line the real data has no reason to follow.
-      if (seededRandom(i * 7.93 + 2.7) > 0.915) detectedPrev7d.push(p.id);
+      const seenDaysAgo = p.lastDetectedAt
+        ? Math.floor((SEED_TODAY - Date.parse(p.lastDetectedAt)) / 86_400_000)
+        : Infinity;
+      if (seenDaysAgo < 7) detectedLast7d.push(p.id);
+      // Whoever was last seen 7-13 days ago was certainly in the previous window, plus a share of
+      // the people seen this week who also came the week before. That second group is the part
+      // lastDetectedAt cannot answer — it only remembers the most recent match — which is why the
+      // API asks the backend for the previous window rather than deriving it here.
+      if ((seenDaysAgo >= 7 && seenDaysAgo < 14) || (seenDaysAgo < 7 && seededRandom(i * 7.93 + 2.7) > 0.45)) {
+        detectedPrev7d.push(p.id);
+      }
     }
   });
   // Pairs, not a count: a duplicate is two rows, and the fix is choosing which one to keep.

@@ -9,12 +9,12 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, Tooltip, sortRows, useTableSort } from "./PortalShared";
 
-type VipSortKey = "name" | "priority" | "registered";
+type VipSortKey = "name" | "priority" | "registered" | "lastDetected";
 
 // 36px for the actions column, the width RowActionsMenu gets in every other table.
-const VIP_GRID = "48px 1.5fr 0.7fr 0.8fr 1.6fr 36px";
+const VIP_GRID = "48px 1.4fr 0.7fr 0.8fr 0.8fr 1.1fr 36px";
 /** The All tab adds a Group column; the Individuals tab would print "Individual" on every row. */
-const VIP_GRID_WITH_GROUP = "48px 1.3fr 0.9fr 0.7fr 0.75fr 1.3fr 36px";
+const VIP_GRID_WITH_GROUP = "48px 1.2fr 0.9fr 0.7fr 0.72fr 0.72fr 0.9fr 36px";
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -58,6 +58,8 @@ interface VipDict {
   healthClear: string;
   healthPeopleUnit: string;
   healthOfTotal: (total: number) => string;
+  colLastDetected: string;
+  lastDetectedNever: string;
   healthReachLabel: string;
   healthReachTrend: (prev: number) => string;
   healthReachFlat: string;
@@ -149,6 +151,8 @@ const T: Record<"en" | "ko", VipDict> = {
     healthClear: "Show everyone again",
     healthPeopleUnit: "people",
     healthOfTotal: (total: number) => `of ${total}`,
+    colLastDetected: "Last detected",
+    lastDetectedNever: "Never",
     healthReachLabel: "detected by a camera · 7 days",
     healthReachTrend: (prev: number) => `vs ${prev} last week`,
     healthReachFlat: "same as last week",
@@ -239,6 +243,8 @@ const T: Record<"en" | "ko", VipDict> = {
     healthClear: "전체 다시 보기",
     healthPeopleUnit: "명",
     healthOfTotal: (total: number) => `/ ${total}명`,
+    colLastDetected: "마지막 탐지",
+    lastDetectedNever: "없음",
     healthReachLabel: "지난 7일간 카메라에 탐지",
     healthReachTrend: (prev: number) => `지난주 ${prev}명`,
     healthReachFlat: "지난주와 같음",
@@ -920,6 +926,10 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       // sit below it. Unset reads as normal, the same way the filter and the card do.
       case "priority": return PRIORITY_LABELS.indexOf(person.priorityLabel ?? "normal");
       case "registered": return person.registeredAt;
+      // Never-detected rows sort as the empty string, which puts them at the top of the ascending
+      // pass — first click on this heading is "who is this list not catching", which is the whole
+      // reason the column is here.
+      case "lastDetected": return person.lastDetectedAt ?? "";
     }
   };
   // The table sorts from its headings. The grid has one order it can offer, because it has a
@@ -1299,6 +1309,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               ...(showGroupColumn ? [{ label: t.colGroup }] : []),
               { label: t.colPriority, key: "priority", indent: true },
               { label: t.colRegistered, key: "registered" },
+              { label: t.colLastDetected, key: "lastDetected" },
               { label: t.colNote },
               { label: "" },
             /* Priority's heading is nudged 8px right — the pill under it carries 8px of its own
@@ -1356,6 +1367,13 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 )}
                 <span>{person.priorityLabel ? <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
                 <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{person.registeredAt.slice(0, 10)}</span>
+                {/* "Never" is a word, not a dash: an em dash here would read as "no data", and the
+                    difference between "we have not recorded it" and "no camera has ever matched
+                    this face" is the only thing this column is for. Grey, not amber — never being
+                    seen is not a fault (see Person.lastDetectedAt). */}
+                <span style={{ fontSize: "12px", color: person.lastDetectedAt ? "var(--gray-600)" : "var(--gray-400)" }}>
+                  {person.lastDetectedAt ? person.lastDetectedAt.slice(0, 10) : t.lastDetectedNever}
+                </span>
                 <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.description || "—"}</span>
                 {/* The same overflow menu the roster, users and camera tables use. A lone trash
                     icon was the only row action this table had, which is also why there was no way
