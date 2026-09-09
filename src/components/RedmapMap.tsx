@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { DISTRICTS } from "@/lib/mockData";
 import { MAP_TILE_URL, MAP_TILE_FILTER, tileLayerOptions } from "@/lib/mapTiles";
 import { useLanguage } from "@/lib/i18n";
 
@@ -50,83 +49,9 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 
-interface StatusZone {
-  id: string;
-  label: string;
-  count: number;
-  lat: number;
-  lng: number;
-  isAlert?: boolean;
-  cam?: boolean;
-}
-
-// Per-district status for Redmap's overview: how many hits, whether it's an alert, whether it's a
-// single camera rather than a district. The districts themselves — id, label, coordinates — come
-// from DISTRICTS. All seventeen were typed out again here, identical down to the decimals, so a
-// corrected coordinate would have moved the pin on the Dashboard map and left this one behind.
-const ZONE_STATUS: Record<string, { count: number; cam?: boolean; isAlert?: boolean }> = {
-  amk:     { count: 0 },
-  sea:     { count: 0 },
-  geo1:    { count: 0, cam: true },
-  aug:     { count: 0, cam: true },
-  houg:    { count: 0 },
-  geo2:    { count: 0 },
-  bis:     { count: 0 },
-  bkt:     { count: 0, cam: true },
-  tp:      { count: 0 },
-  nov:     { count: 30 },
-  kal1:    { count: 12 },
-  geo3:    { count: 80 },
-  bdk:     { count: 0 },
-  tam:     { count: 0 },
-  cen:     { count: 0 },
-  mar:     { count: 180, isAlert: true },
-  kal2:    { count: 50 },
-};
-
-const STATUS_ZONES: StatusZone[] = DISTRICTS.map(d => ({
-  id: d.id, label: d.label, lat: d.lat, lng: d.lng,
-  count: ZONE_STATUS[d.id]?.count ?? 0,
-  cam: ZONE_STATUS[d.id]?.cam,
-  isAlert: ZONE_STATUS[d.id]?.isAlert,
-}));
-
-
-function statusMarkerHtml(zone: StatusZone): string {
-  const isDark   = !zone.cam && !zone.isAlert && zone.count >= 20;
-  const isDashed = !!zone.cam;
-
-  let bg: string, textColor: string, border: string;
-  if (zone.isAlert)  { bg = "var(--danger-400)"; textColor = "white";   border = ""; }
-  else if (isDark)   { bg = "var(--gray-900)"; textColor = "white";   border = ""; }
-  else if (isDashed) { bg = "white";   textColor = "var(--gray-500)"; border = "border:1.5px dashed var(--gray-300);"; }
-  else               { bg = "white";   textColor = "var(--gray-700)"; border = "border:1.5px solid var(--gray-200);"; }
-
-  const camSvg = isDashed
-    ? `<svg width="14" height="11" viewBox="0 0 14 11" fill="none" style="flex-shrink:0">
-        <path d="M1 1L13 10" stroke="var(--gray-400)" stroke-width="1.1" stroke-linecap="round"/>
-        <path d="M6 1H2A1.5 1.5 0 0 0 0.5 2.5v5A1.5 1.5 0 0 0 2 9h9A1.5 1.5 0 0 0 11.5 7.5V5"
-              stroke="var(--gray-400)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M10 2L13.5 0.5V10L10 8.5"
-              stroke="var(--gray-400)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`
-    : "";
-
-  const label  = isDashed ? zone.label : `${zone.label}&nbsp;&nbsp;${zone.count}`;
-  const fw     = isDark || !!zone.isAlert ? 700 : 600;
-  const shadow = isDark || !!zone.isAlert ? "0 2px 10px rgba(14, 22, 42,0.2)" : "0 2px 6px rgba(14, 22, 42,0.08)";
-
-  return `<div style="transform:translateX(-50%) translateY(-50%);display:inline-flex;align-items:center;
-      gap:5px;background:${bg};${border}border-radius:999px;padding:5px 12px;
-      font-family:'SUIT',system-ui,sans-serif;font-size:12px;font-weight:${fw};
-      color:${textColor};box-shadow:${shadow};white-space:nowrap;letter-spacing:-0.2px">
-    ${camSvg}${label}</div>`;
-}
-
 interface RedmapMapProps {
   hits: TrackingHit[];
   trackingActive: boolean;
-  showStatus: boolean;
   activeNode: number | null;
   onMarkerClick: (index: number) => void;
   // Which person-groups (TrackingHit.groupId) actually draw a trail — lets `hits` stay the full,
@@ -139,7 +64,6 @@ interface RedmapMapProps {
 export default function RedmapMap({
   hits,
   trackingActive,
-  showStatus,
   activeNode,
   onMarkerClick,
   visibleGroupIds = null,
@@ -208,38 +132,6 @@ export default function RedmapMap({
     overlayLayersRef.current = [];
 
     import("leaflet").then(({ default: L }) => {
-
-      if (!trackingActive && showStatus) {
-        // ── STATUS VIEW: per-zone activity circles + labels ───────
-
-        // Activity circles first (render behind labels)
-        STATUS_ZONES.forEach((zone) => {
-          if (!zone.cam && zone.count >= 20) {
-            const circleColor = zone.isAlert ? "var(--danger-400)" : "var(--primary-300)";
-            const circle = L.circle([zone.lat, zone.lng], {
-              radius: 600 + zone.count * 12,
-              color: "transparent",
-              fillColor: circleColor,
-              fillOpacity: 0.12,
-              weight: 0,
-            }).addTo(map);
-            overlayLayersRef.current.push(circle);
-          }
-        });
-
-        // Zone label markers
-        STATUS_ZONES.forEach((zone) => {
-          const icon = L.divIcon({
-            html: statusMarkerHtml(zone),
-            iconSize: [1, 1],
-            iconAnchor: [0, 0],
-            className: "vca-zone-icon",
-          });
-          const m = L.marker([zone.lat, zone.lng], { icon }).addTo(map);
-          overlayLayersRef.current.push(m);
-        });
-        return;
-      }
 
       if (!trackingActive) return;
 
@@ -381,7 +273,7 @@ export default function RedmapMap({
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trackingActive, showStatus, activeNode, hits, zoom, mapReady, visibleGroupIds, lang]);
+  }, [trackingActive, activeNode, hits, zoom, mapReady, visibleGroupIds, lang]);
 
   return (
     <>

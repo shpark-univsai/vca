@@ -1631,7 +1631,6 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
               hidden: excludedHitIds.has(h.id),
             })) : []}
             trackingActive={trackingActive}
-            showStatus={false}
             activeNode={activeNode}
             onMarkerClick={handleMarkerClick}
             visibleGroupIds={showPersonChips ? Array.from(selectedPersonIds) : null}
