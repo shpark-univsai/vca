@@ -151,8 +151,8 @@ const T: Record<"en" | "ko", VipDict> = {
     healthPeopleUnit: "people",
     healthOfTotal: (total: number) => `of ${total}`,
     colLastDetected: "Last detected",
-    healthReachLabel: "detected by a camera · 7 days",
-    healthReachTrend: (prev: number) => `vs ${prev} last week`,
+    healthReachLabel: "people detected · 7 days",
+    healthReachTrend: (prev: number) => `vs ${prev} people last week`,
     healthReachFlat: "same as last week",
     colRegistered: "Registered",
     colNote: "Note",
@@ -242,7 +242,7 @@ const T: Record<"en" | "ko", VipDict> = {
     healthPeopleUnit: "명",
     healthOfTotal: (total: number) => `/ ${total}명`,
     colLastDetected: "마지막 탐지",
-    healthReachLabel: "지난 7일간 카메라에 탐지",
+    healthReachLabel: "지난 7일간 탐지된 인원",
     healthReachTrend: (prev: number) => `지난주 ${prev}명`,
     healthReachFlat: "지난주와 같음",
     colRegistered: "등록일",
@@ -1094,7 +1094,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           icon: <Eye size={14} strokeWidth={2.4} />,
           figure: detectedCount,
           unit: t.healthOfTotal(allProjectPersons.length),
-          // The figure on its own is unreadable: "9 of 104 this week" is a normal week when the
+          // "People", not detections. The two are wildly different numbers off the same week — one
+          // VIP walking past a camera twenty times is 1 here and 20 there — and the backend read
+          // this cell and had to ask which it meant, which is the label's fault, not theirs.: "9 of 104 this week" is a normal week when the
           // VIPs did not come and a dead fleet when it was 40 last week, and nothing else on the
           // page separates those. Grey both ways — this is a comparison, not a verdict.
           trend: reachDelta === 0
