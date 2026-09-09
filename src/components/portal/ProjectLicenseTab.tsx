@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Gem, Layers, Sprout } from "lucide-react";
 import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -92,6 +92,8 @@ const T = {
     monthsRemaining: (n: number) => `${n} months remaining`,
     daysRemaining: (n: number) => `${n} days remaining`,
     expiringSoon: "Expiring soon",
+    perpetual: "Perpetual",
+    notRecorded: "No expiry on record",
     expiryNotice: (n: number) => `This licence expires in ${n} days. Renewing is a contract change, so start it with whoever signs — cameras stop being processed on the expiry date.`,
     includedFeatures: "Included Features",
     pendingHeading: "Coming soon",
@@ -139,6 +141,8 @@ const T = {
     monthsRemaining: (n: number) => `${n}개월 남음`,
     daysRemaining: (n: number) => `${n}일 남음`,
     expiringSoon: "만료 임박",
+    perpetual: "무기한",
+    notRecorded: "만료일 미기록",
     expiryNotice: (n: number) => `라이선스가 ${n}일 뒤 만료됩니다. 갱신은 계약 변경이라 결재선을 타야 하니 미리 시작하세요 — 만료일부터 카메라 분석이 멈춥니다.`,
     includedFeatures: "포함된 기능",
     pendingHeading: "출시 예정",
@@ -175,6 +179,27 @@ const T = {
   },
 } as const;
 
+/**
+ * How each plan is marked: an icon in the tier's own colour before its name.
+ *
+ * Chatbase's plan list is the reference — every tier carries a small coloured glyph, so the tiers
+ * are told apart by shape and hue before the word is read. Adapted to the palette this product
+ * actually has, with one rule the reference did not need: a tier's colour may not be success,
+ * warning or danger, because the validity stamp two inches to the right is drawn in exactly those
+ * and two green things on one line meaning different kinds of thing is worse than no colour.
+ *
+ * So the ladder runs in the accent and the neutrals, and weight descends with the tier: Enterprise
+ * takes the product's own purple, Professional a solid neutral, Starter an outline. An unknown
+ * plan string falls back to the Starter treatment rather than throwing — licensePlan is a free
+ * string in the model and a plan nobody has named yet should still render.
+ */
+const PLAN_META: Record<string, { color: string; bg: string; border?: string; Icon: typeof Gem }> = {
+  Enterprise:   { color: "var(--primary-400)", bg: "var(--primary-100)", Icon: Gem },
+  Professional: { color: "var(--gray-900)",    bg: "var(--gray-100)",    Icon: Layers },
+  Starter:      { color: "var(--gray-500)",    bg: "transparent", border: "1px solid var(--gray-300)", Icon: Sprout },
+};
+const planMetaFor = (plan?: string) => (plan && PLAN_META[plan]) || PLAN_META.Starter;
+
 // Lucide, at the size and weight this was drawn at — see PortalProjectDetailPage's note. The
 // padlock that used to sit beside it went with the list of locked features: what a licence does
 // not cover is now a named line, not a row of shut doors.
@@ -206,6 +231,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
   if (!project) return null;
 
   const meta = TYPE_META[project.type];
+  const planMeta = planMetaFor(project.licensePlan);
   const projectTeam = teams.find(o => o.id === project.teamId);
   const projectTeamName = projectTeam?.name;
   const accountManager = projectTeam?.accountManager;
@@ -214,6 +240,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
   const overLimit = !!limit && projectCameras.length > limit;
 
   const isUnlimitedExpiry = project.licenseExpiresAt === UNLIMITED_EXPIRY;
+  const hasExpiry = !!project.licenseExpiresAt;
   const isExpired = !isUnlimitedExpiry && !!project.licenseExpiresAt && nowMs !== null && new Date(project.licenseExpiresAt).getTime() < nowMs;
   /**
    * How long is left, in days, and the two thresholds read off it.
@@ -236,6 +263,22 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
     : daysRemaining <= 60 ? t.daysRemaining(daysRemaining)
     : daysRemaining < 365 ? t.monthsRemaining(Math.round(daysRemaining / 30))
     : t.yrRemaining(Math.round(daysRemaining / 365));
+
+  /**
+   * The one place the licence's state is decided.
+   *
+   * Ordered worst-first so the answer is the first true thing: expired outranks expiring, and both
+   * outrank a date that is simply far away. Null only before the clock is known — for one frame,
+   * where a guessed stamp would be corrected in front of the reader.
+   */
+  const stamp: { label: string; color: string } | null =
+    nowMs === null ? null
+    : !hasExpiry ? { label: t.notRecorded, color: "var(--gray-400)" }
+    : isExpired ? { label: t.expired, color: "var(--danger-400)" }
+    : expiringUrgently ? { label: t.expiringSoon, color: "var(--danger-400)" }
+    : expiringSoon ? { label: t.expiringSoon, color: "var(--warning-500)" }
+    : isUnlimitedExpiry ? { label: t.perpetual, color: "var(--success-400)" }
+    : { label: t.valid, color: "var(--success-400)" };
 
   const subscriptionYearlyCost = (limit ?? 0) * PRICE_PER_CHANNEL_PER_YEAR;
 
@@ -380,6 +423,16 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
             */}
             <div style={{ minWidth: 0 }}>
               <p style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                {/* The tier's own mark, in a tinted square rather than loose beside the word: a
+                    bare glyph at this size reads as punctuation, and the square gives the colour
+                    enough area to register as a grade. */}
+                <span style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                  width: "30px", height: "30px", borderRadius: "8px",
+                  backgroundColor: planMeta.bg, border: planMeta.border ?? "none", color: planMeta.color,
+                }}>
+                  <planMeta.Icon size={16} strokeWidth={2.1} />
+                </span>
                 <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "28px" }}>
                   {project.licensePlan ?? t.notSet}
                 </span>
@@ -391,17 +444,21 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
                 {project.name}{projectTeamName ? ` · ${projectTeamName}` : ""}
               </p>
             </div>
-            {project.licenseExpiresAt && nowMs !== null && (
-              /* The stamp. Squared off, not a pill: a pill is a chip in a product and this is the
-                 mark on a document — and it is the one place the status is stated, so it sits
-                 beside the title rather than in a row of chips further down. */
+            {/* The stamp. Squared off, not a pill: a pill is a chip in a product and this is the
+                mark on a document — and it is the one place the status is stated, so it sits beside
+                the title rather than in a row of chips further down.
+
+                All five states are decided here rather than as they arise, so none of them is a
+                blank space later. "No expiry recorded" used to render nothing at all, which reads
+                as a valid licence to anybody who does not know the stamp exists; and a perpetual
+                licence read VALID, which is true and says less than it could. */}
+            {stamp && (
               <span style={{
                 flexShrink: 0, fontSize: "11px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase",
                 padding: "5px 10px", borderRadius: "4px",
-                border: `1.5px solid ${isExpired ? "var(--danger-400)" : expiringSoon ? "var(--warning-500)" : "var(--success-400)"}`,
-                color: isExpired ? "var(--danger-500)" : expiringSoon ? "var(--warning-500)" : "var(--success-400)",
+                border: `1.5px solid ${stamp.color}`, color: stamp.color,
               }}>
-                {isExpired ? t.expired : expiringSoon ? t.expiringSoon : t.valid}
+                {stamp.label}
               </span>
             )}
           </div>
@@ -479,11 +536,18 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "20px", padding: "28px 32px", borderTop: "1px solid var(--gray-900)", flexWrap: "wrap" }}>
           <div>
             <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px", textTransform: "uppercase" }}>{t.clauseParty}</p>
-            <p style={{ fontSize: "14px", fontWeight: 700, marginTop: "5px" }}>
-              {accountManager
-                ? <a href={`mailto:${accountManager.email}`} style={{ color: "var(--gray-900)", textDecoration: "underline", textUnderlineOffset: "3px" }}>{accountManager.name}</a>
-                : <span style={{ color: "var(--gray-400)" }}>—</span>}
-            </p>
+            {/* Name and address, both as text. It was a mailto link on the name, which underlines
+                a person and hides the address behind them — the reader who wants to write has to
+                trust a link to know where it goes, and the reader who wants to phone or forward the
+                address gets nothing. A record shows what it holds. */}
+            {accountManager ? (
+              <>
+                <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginTop: "5px" }}>{accountManager.name}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{accountManager.email}</p>
+              </>
+            ) : (
+              <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-400)", marginTop: "5px" }}>—</p>
+            )}
           </div>
           <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, maxWidth: "300px", textAlign: "right" }}>{t.contractNote}</p>
         </div>
