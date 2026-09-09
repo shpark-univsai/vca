@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 import { create } from "zustand";
 import { liveEvents, getFacePhoto, DISTRICTS, type EventType, type LiveEvent, type TrackingHop } from "@/lib/mockData";
-import { isTodaySgt, recentSgtStamp, parseSgtStamp } from "@/lib/time";
+import {
+  isTodaySgt, recentSgtStamp, parseSgtStamp,
+  setSiteTimeZoneResolver, FALLBACK_TIME_ZONE,
+} from "@/lib/time";
 import { effectiveCodeStatus, generateRegistrationCode, type RosterEntry } from "@/lib/staffRoster";
 import { generateTemporaryPassword } from "@/lib/password";
 
@@ -2698,3 +2701,21 @@ export function isMailDeliverable(email: string, mailDomain: string | null): boo
   if (!mailDomain) return true;
   return email.trim().toLowerCase().endsWith(`@${mailDomain.toLowerCase()}`);
 }
+
+/**
+ * Tells lib/time.ts which site's clock to use.
+ *
+ * Registered here rather than in a screen because everything imports this store, so it runs
+ * before anything renders — and it has to be here rather than inside time.ts, which cannot import
+ * this file (this file imports it). Every date bucket, hour bucket and clock string in the app
+ * resolves through this one function.
+ *
+ * The seed constants above are computed while this module is still evaluating, so they are already
+ * fixed by the time this line runs. That is why time.ts pins its mock stamp loop to the fallback
+ * zone instead — see the note there.
+ */
+setSiteTimeZoneResolver(() => {
+  const state = useVcaStore.getState();
+  return resolveActiveProject(state.activeProjectId, state.portalUsers, state.projects)?.timeZone
+    ?? FALLBACK_TIME_ZONE;
+});

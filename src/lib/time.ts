@@ -1,100 +1,128 @@
-// Timezone-aware "today"/"hour of day" helpers — this app is Singapore-only (see Navbar's header
-// clock), but nearly every place that buckets data by day or hour used to do it with plain
-// `Date` methods (`.toDateString()`, `.getHours()`), which read the BROWSER's local timezone, not
-// Singapore's. An operator whose machine isn't set to SGT would silently get "today" and
-// hour-of-day boundaries computed against their own midnight/hour, not Singapore's — most visible
-// right around SGT midnight, where a device in a timezone hours behind could show yesterday's
-// last few hours as "today," or vice versa. These centralize the one correct definition (matching
-// Navbar's own `Intl.DateTimeFormat` usage) so every date-bucketing call site agrees.
+// Timezone-aware "today"/"hour of day" helpers. Nearly every place that buckets data by day or
+// hour used to do it with plain `Date` methods (`.toDateString()`, `.getHours()`), which read the
+// BROWSER's local timezone. An operator whose machine is not set to the site's zone silently gets
+// "today" and hour-of-day boundaries computed against their own midnight — most visible right
+// around midnight, where a device hours behind shows yesterday's last hours as "today". These
+// centralize the one correct definition so every date-bucketing call site agrees.
+//
+// UPDATED 2026-09-09 — the zone now follows the site being viewed, not Singapore.
+//
+// The backend confirmed the shape: every instant crosses the wire as UTC (`...Z`) and the client
+// converts; the only place the server uses site time is the day boundary of its daily aggregates.
+// A timezone belongs to a project — a site has a location, an account does not — and
+// `Project.timeZone` (IANA) already carries it.
+//
+// The `sgt` prefix on the exports below is now historical: they follow whatever site is on screen.
+// Renaming them is a safe mechanical follow-up across ~122 call sites; the behaviour is here.
 
-const SGT_TIME_ZONE = "Asia/Singapore";
+/** Used when no site is resolved yet, and for the mock stamp loop below. */
+export const FALLBACK_TIME_ZONE = "Asia/Singapore";
+
+/** Kept for the Portal screens that already read this as their default when a project carries no
+ *  zone of its own. Same value as FALLBACK_TIME_ZONE. */
+export const PROJECT_TIME_ZONE = FALLBACK_TIME_ZONE;
 
 /**
- * The zone every date and hour in this product is computed in, exported so screens can hand it to
- * Intl directly instead of re-typing the string.
+ * How this module finds the site's zone.
  *
- * One constant because the deployment is one country. It is named for the project rather than for
- * Singapore on purpose: a timezone belongs to a project (a site has a location; an account does
- * not), and the plan is to store it per project and look it up here — confirmed 2026-09-08. When
- * that lands, this becomes a function of a project id and the call sites already read as if it
- * were one.
+ * Injected rather than imported: the store imports this file, so this file cannot import the
+ * store. `vcaStore.ts` registers the resolver at the end of its own module, which runs before any
+ * screen renders.
+ *
+ * The resolver answers "the site the monitoring app is pointed at". A Portal screen showing one
+ * specific project's times should pass that project's zone explicitly instead — as
+ * PortalProjectDetailPage already does — because the console can be looking at a project other
+ * than the one the app has selected.
  */
-export const PROJECT_TIME_ZONE = SGT_TIME_ZONE;
+let resolveSiteZone: () => string = () => FALLBACK_TIME_ZONE;
 
-const sgtDateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: SGT_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit",
-});
-const sgtHourFormatter = new Intl.DateTimeFormat("en-GB", {
-  timeZone: SGT_TIME_ZONE, hour: "2-digit", hour12: false,
-});
-const sgtMinuteFormatter = new Intl.DateTimeFormat("en-GB", {
-  timeZone: SGT_TIME_ZONE, minute: "2-digit",
-});
-
-/** Y-M-D key for `d` in Singapore time — use this instead of `.toDateString()` for "is this
- * today" comparisons. */
-export function sgtDateKey(d: Date): string {
-  return sgtDateKeyFormatter.format(d);
+export function setSiteTimeZoneResolver(resolver: () => string): void {
+  resolveSiteZone = resolver;
 }
 
-/** True if `a` and `b` fall on the same Singapore calendar day. */
+/** The zone every date, hour and clock string below is computed in. */
+export function siteTimeZone(): string {
+  return resolveSiteZone();
+}
+
+// Intl.DateTimeFormat construction is not free and these run inside render paths and list loops,
+// so formatters are built once per (zone, shape) instead of per call.
+const formatterCache = new Map<string, Intl.DateTimeFormat>();
+function formatter(locale: string, zone: string, shape: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = `${locale}|${zone}|${shape}`;
+  let f = formatterCache.get(key);
+  if (!f) {
+    f = new Intl.DateTimeFormat(locale, { timeZone: zone, ...options });
+    formatterCache.set(key, f);
+  }
+  return f;
+}
+
+// ── Primitives, explicit about their zone ──────────────────────
+function dateKeyIn(d: Date, zone: string): string {
+  return formatter("en-CA", zone, "dateKey", { year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+}
+function hourIn(d: Date, zone: string): number {
+  // Intl gives "24" for midnight with hour12:false in some engines instead of "00" — normalize.
+  return parseInt(formatter("en-GB", zone, "hour", { hour: "2-digit", hour12: false }).format(d), 10) % 24;
+}
+function minuteIn(d: Date, zone: string): number {
+  return parseInt(formatter("en-GB", zone, "minute", { minute: "2-digit" }).format(d), 10);
+}
+function clockIn(d: Date, zone: string): string {
+  return formatter("en-GB", zone, "clock", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(d);
+}
+function clockMinutesIn(d: Date, zone: string): string {
+  return formatter("en-GB", zone, "clockMin", { hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
+}
+
+/** Y-M-D key for `d` in the site's time — use this instead of `.toDateString()` for "is this
+ * today" comparisons. */
+export function sgtDateKey(d: Date): string {
+  return dateKeyIn(d, siteTimeZone());
+}
+
+/** True if `a` and `b` fall on the same calendar day at the site. */
 export function isSameSgtDay(a: Date, b: Date): boolean {
   return sgtDateKey(a) === sgtDateKey(b);
 }
 
-/** True if `d` falls on today's Singapore calendar day (as of `now`, defaulting to the real
- * current time). */
+/** True if `d` falls on today's calendar day at the site (as of `now`, defaulting to the real
+ * current time). This is the day boundary the backend's daily aggregates also cut on. */
 export function isTodaySgt(d: Date, now: Date = new Date()): boolean {
   return isSameSgtDay(d, now);
 }
 
-/**
- * Hour of day (0-23) for `d` in an arbitrary zone.
- *
- * For the one caller that has a project in hand and so knows better than the deployment default —
- * the Overview's greeting. Everything else in this file is still fixed to Singapore, because the
- * data it buckets is city-wide and has no project to ask.
- */
+/** Hour of day (0-23) for `d` in an arbitrary zone — for a caller that has a specific project in
+ * hand and so knows better than the site currently on screen (the Overview's greeting). */
 export function zoneHour(d: Date, zone: string): number {
-  return parseInt(
-    new Intl.DateTimeFormat("en-GB", { timeZone: zone, hour: "2-digit", hour12: false }).format(d),
-    10,
-  ) % 24;
+  return hourIn(d, zone);
 }
 
-/** Hour of day (0-23) for `d` in Singapore time — use this instead of `.getHours()` for
+/** Hour of day (0-23) for `d` in the site's time — use this instead of `.getHours()` for
  * hour-of-day bucketing. */
 export function sgtHour(d: Date): number {
-  // Intl gives "24" for midnight with hour12:false in some engines instead of "00" — normalize.
-  return parseInt(sgtHourFormatter.format(d), 10) % 24;
+  return hourIn(d, siteTimeZone());
 }
 
-/** Minute of hour (0-59) for `d` in Singapore time — use this instead of `.getMinutes()` when
+/** Minute of hour (0-59) for `d` in the site's time — use this instead of `.getMinutes()` when
  * placing a point within its hour bucket. */
 export function sgtMinute(d: Date): number {
-  return parseInt(sgtMinuteFormatter.format(d), 10);
+  return minuteIn(d, siteTimeZone());
 }
 
-const sgtClockFormatter = new Intl.DateTimeFormat("en-GB", {
-  timeZone: SGT_TIME_ZONE, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
-});
-
-const sgtClockMinutesFormatter = new Intl.DateTimeFormat("en-GB", {
-  timeZone: SGT_TIME_ZONE, hour: "2-digit", minute: "2-digit", hour12: false,
-});
-
-/** "HH:MM" Singapore-time clock string for `d` — the same instant sgtClockTime gives, without the
+/** "HH:MM" clock string at the site for `d` — the same instant sgtClockTime gives, without the
  * seconds, for stamps where the minute is as precise as the record actually is (a registration,
- * an invitation). Fixed timezone, so a server render and a browser render agree; `toLocaleTimeString`
- * would read the machine's own zone and tear on hydration. */
+ * an invitation). Resolved from the site rather than the machine, so a server render and a browser
+ * render agree; `toLocaleTimeString` would read the viewer's own zone and tear on hydration. */
 export function sgtClockMinutes(d: Date): string {
-  return sgtClockMinutesFormatter.format(d);
+  return clockMinutesIn(d, siteTimeZone());
 }
 
-/** "HH:MM:SS" Singapore-time clock string for `d` — for showing an actual captured time rather
+/** "HH:MM:SS" clock string at the site for `d` — for showing an actual captured time rather
  * than a relative "Xh ago" label. */
 export function sgtClockTime(d: Date): string {
-  return sgtClockFormatter.format(d);
+  return clockIn(d, siteTimeZone());
 }
 
 /** "Now," rounded down to the nearest 10 minutes. A server-render pass and the client-hydration
@@ -108,14 +136,26 @@ function coarseNow(): Date {
   return d;
 }
 
-/** A mock "recent detection" clock time — `minutesAgo` (+ optional `secondsAgo`) before a coarse,
- * hydration-safe "now," formatted as Singapore-time "HH:MM:SS". Use this instead of a literal
- * hardcoded clock string for canned/seed detection data, so it always reads as plausibly recent
- * relative to the ACTUAL current time instead of silently drifting into the past — or even the
- * future — as real time passes. */
+/**
+ * ── The mock stamp loop ────────────────────────────────────────
+ *
+ * These three (recentSgtClockTime · recentSgtStamp · parseSgtStamp) stay pinned to
+ * FALLBACK_TIME_ZONE, and that is deliberate.
+ *
+ * They are one closed loop: seeds are written as `{date, time}` wall-clock pairs at module load —
+ * which happens before any site is resolved — and read back later by parseSgtStamp to measure the
+ * gap between two sightings. If the writer used the fallback and the reader used the site's zone,
+ * every seeded gap would shift by the offset between them and the elapsed times on screen would
+ * be wrong. Pinning both ends keeps the loop honest with itself.
+ *
+ * The cost is that a seeded sighting's absolute clock label reads in the fallback zone at a site
+ * in another one. That is mock data and goes when real detections arrive — at which point these
+ * three go with it. Live data is unaffected: it carries a real instant and renders through
+ * sgtClockTime, which follows the site.
+ */
 export function recentSgtClockTime(minutesAgo: number, secondsAgo: number = 0): string {
   const t = new Date(coarseNow().getTime() - minutesAgo * 60000 - secondsAgo * 1000);
-  return sgtClockTime(t);
+  return clockIn(t, FALLBACK_TIME_ZONE);
 }
 
 /** A canned sighting timestamp `minutesAgo` (+ optional `secondsAgo`) before the same coarse,
@@ -124,14 +164,43 @@ export function recentSgtClockTime(minutesAgo: number, secondsAgo: number = 0): 
  * until "time since last seen" reads in months; anchoring them to now keeps a demo honest. */
 export function recentSgtStamp(minutesAgo: number, secondsAgo: number = 0): { date: string; time: string } {
   const t = new Date(coarseNow().getTime() - minutesAgo * 60000 - secondsAgo * 1000);
-  return { date: sgtDateKey(t), time: sgtClockTime(t) };
+  return { date: dateKeyIn(t, FALLBACK_TIME_ZONE), time: clockIn(t, FALLBACK_TIME_ZONE) };
 }
 
-/** Turns a `{ date, time }` Singapore-time pair back into a Date, so the gap between two
+/** Turns a `{ date, time }` pair from recentSgtStamp back into a Date, so the gap between two
  * sightings can be measured from the sightings themselves instead of hand-written beside them —
- * where it drifts out of agreement with the timestamps it's supposed to describe. */
+ * where it drifts out of agreement with the timestamps it's supposed to describe. Reads the pair in
+ * the zone recentSgtStamp wrote it in; see the note above. */
 export function parseSgtStamp(date: string, time: string): Date {
-  return new Date(`${date}T${time}+08:00`);
+  return wallClockToDate(date, time, FALLBACK_TIME_ZONE);
+}
+
+/**
+ * A wall-clock date+time in a named zone, as an instant.
+ *
+ * Not `new Date(\`${date}T${time}+08:00\`)` any more — a fixed offset is only right for one zone,
+ * and it is wrong twice a year for any zone with daylight saving. Reads the offset the zone
+ * actually had at that moment: interpret the wall clock as UTC, ask what that instant looks like
+ * in the zone, and correct by the difference. Twice, because the first correction can cross a DST
+ * boundary and change the offset that applies.
+ */
+export function wallClockToDate(date: string, time: string, zone: string): Date {
+  const asIfUtc = new Date(`${date}T${time}Z`);
+  let guess = new Date(asIfUtc.getTime() - zoneOffsetMs(asIfUtc, zone));
+  guess = new Date(asIfUtc.getTime() - zoneOffsetMs(guess, zone));
+  return guess;
+}
+
+/** How far ahead of UTC `zone` was at the instant `at`, in milliseconds. */
+function zoneOffsetMs(at: Date, zone: string): number {
+  const parts = formatter("en-GB", zone, "offsetParts", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  }).formatToParts(at);
+  const get = (type: string) => Number(parts.find(p => p.type === type)?.value ?? "0");
+  // Intl can render midnight as hour 24; Date.UTC rolls that into the next day, which is correct.
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  return asUtc - at.getTime();
 }
 
 /** Human duration for a gap between sightings: "1d 55m", "2h 05m", "30m 32s", "45s". Two units at
