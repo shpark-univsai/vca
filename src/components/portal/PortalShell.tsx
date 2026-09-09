@@ -9,7 +9,7 @@ import ProjectSwitcher from "./ProjectSwitcher";
 import PortalNewProjectWizard from "./PortalNewProjectWizard";
 import TeamSwitcher from "./TeamSwitcher";
 import ProjectSidebar, { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
-import PortalMyPage from "./PortalMyPage";
+import PortalSettingsPage from "./PortalSettingsPage";
 import PortalAccountMenu from "./PortalAccountMenu";
 import { ToastProvider } from "../Toast";
 import { useVcaStore, canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, type ProjectType } from "@/lib/vcaStore";
@@ -19,12 +19,12 @@ import { BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 const T = {
   en: {
     noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar",
-    newProject: "New project", myPageCrumb: "My page",
+    newProject: "New project", settingsCrumb: "Settings",
     fleetTitle: (online: number, offline: number) => `${online} cameras online, ${offline} offline — open Input Sources`,
   },
   ko: {
     noTeam: "팀 없음", expand: "사이드바 펼치기", collapse: "사이드바 접기",
-    newProject: "새 프로젝트", myPageCrumb: "마이페이지",
+    newProject: "새 프로젝트", settingsCrumb: "설정",
     fleetTitle: (online: number, offline: number) => `카메라 ${online}대 온라인, ${offline}대 오프라인 — 입력 소스 열기`,
   },
 } as const;
@@ -234,7 +234,7 @@ export default function PortalShell() {
           tab={tab}
           onTabChange={next => { setShowAccount(false); setTab(next); }}
           collapsed={sidebarCollapsed}
-          myPageOpen={showAccount}
+          settingsOpen={showAccount}
         />
       )}
 
@@ -321,7 +321,7 @@ export default function PortalShell() {
               three times on one screen. On Licence, Users and Server there is nothing else on
               screen about the cameras, and this is the only answer to "is the site up".
 
-              Not on My page either: that screen belongs to the account, not to a project, and a
+              Not on Settings either: that screen belongs to the account, not to a project, and a
               project's camera count there would be a fact from somewhere else.
 
               Beside the project, not after the page name: these two numbers are a fact about the
@@ -363,7 +363,7 @@ export default function PortalShell() {
                 weight — a trail whose last segment is the heading, which is how a console with a
                 named rail and a bar above it usually ends up. */}
             <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap" }}>
-              {showAccount ? t.myPageCrumb : PROJECT_TABS.find(pt => pt.id === tab)?.label[lang]}
+              {showAccount ? t.settingsCrumb : PROJECT_TABS.find(pt => pt.id === tab)?.label[lang]}
             </span>
           </>
         ) : (
@@ -377,18 +377,18 @@ export default function PortalShell() {
         <div style={{ flex: 1 }} />
         {/*
           The right end of the bar is who you are. Everything that belongs to the account rather
-          than to the open project is in its menu — the way back to the app, My page, support —
+          than to the open project is in its menu — the way back to the app, Settings, support —
           and this bar is on every Portal screen, including the ones with no sidebar (an empty
           team, the wizard), so none of it needs a fallback control any more.
 
           What used to be here: an "Exit to App" pill, a language switcher and a "Contact support"
           pill. Three permanent controls, each for something taken once a session. Language is a
-          preference rather than an action, so it went to My page instead of into the menu.
+          preference rather than an action, so it went to Settings instead of into the menu.
         */}
         <PortalAccountMenu
           admin={me ?? { name: SIGNED_IN_USER.name, email: SIGNED_IN_USER.email }}
           appAccess={!me || canEnterApp(me)}
-          onMyPage={() => setShowAccount(true)}
+          onSettings={() => setShowAccount(true)}
         />
       </div>
 
@@ -422,7 +422,7 @@ export default function PortalShell() {
          */
         <div style={{ flex: 1, overflow: "auto", padding: "12px 32px 32px", width: "100%", maxWidth: "1600px", marginInline: "auto" }}>
             {showAccount
-              ? <PortalMyPage projectId={currentProjectId} />
+              ? <PortalSettingsPage projectId={currentProjectId} />
               : teamProjects.length === 0
               ? <PortalEmptyState
                   onNewProject={() => setShowWizard(true)}

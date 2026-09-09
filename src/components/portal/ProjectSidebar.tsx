@@ -150,13 +150,13 @@ interface ProjectSidebarProps {
   onTabChange: (tab: DetailTab) => void;
   collapsed: boolean;
   /**
-   * True while Portal's account screen (PortalMyPage) is showing, so no nav tab looks current —
+   * True while Portal's Settings screen is showing, so no nav tab looks current —
    * that screen belongs to the account, not to any tab of this project.
    */
-  myPageOpen: boolean;
+  settingsOpen: boolean;
 }
 
-export default function ProjectSidebar({ brand, team, project, onToggleCollapse, toggleLabel, tab, onTabChange, collapsed, myPageOpen, counts }: ProjectSidebarProps) {
+export default function ProjectSidebar({ brand, team, project, onToggleCollapse, toggleLabel, tab, onTabChange, collapsed, settingsOpen, counts }: ProjectSidebarProps) {
   const [lang] = usePortalLanguage();
   return (
     <div
@@ -304,7 +304,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
               )}
             {PROJECT_TABS.filter(t => t.group === group.id).map(t => {
               const Icon = t.icon;
-              const active = tab === t.id && !myPageOpen;
+              const active = tab === t.id && !settingsOpen;
               return (
                 <button
                   key={t.id}

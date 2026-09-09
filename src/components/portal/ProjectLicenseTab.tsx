@@ -92,6 +92,10 @@ const T = {
     licenseExpiry: "EXPIRES",
     unlimited: "Unlimited",
     yrRemaining: (n: number) => `${n}yr remaining`,
+    monthsRemaining: (n: number) => `${n} months remaining`,
+    daysRemaining: (n: number) => `${n} days remaining`,
+    expiringSoon: "Expiring soon",
+    expiryNotice: (n: number) => `This licence expires in ${n} days. Renewing is a contract change, so start it with whoever signs — cameras stop being processed on the expiry date.`,
     includedFeatures: "Included Features",
     pendingHeading: "Coming soon",
     smartSchoolOnly: "Smart School only",
@@ -121,6 +125,10 @@ const T = {
     licenseExpiry: "만료일",
     unlimited: "무제한",
     yrRemaining: (n: number) => `잔여 ${n}년`,
+    monthsRemaining: (n: number) => `${n}개월 남음`,
+    daysRemaining: (n: number) => `${n}일 남음`,
+    expiringSoon: "만료 임박",
+    expiryNotice: (n: number) => `라이선스가 ${n}일 뒤 만료됩니다. 갱신은 계약 변경이라 결재선을 타야 하니 미리 시작하세요 — 만료일부터 카메라 분석이 멈춥니다.`,
     includedFeatures: "포함된 기능",
     pendingHeading: "출시 예정",
     smartSchoolOnly: "Smart School 전용",
@@ -180,9 +188,27 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
 
   const isUnlimitedExpiry = project.licenseExpiresAt === UNLIMITED_EXPIRY;
   const isExpired = !isUnlimitedExpiry && !!project.licenseExpiresAt && nowMs !== null && new Date(project.licenseExpiresAt).getTime() < nowMs;
-  const yearsRemaining = !isUnlimitedExpiry && !isExpired && project.licenseExpiresAt && nowMs !== null
-    ? Math.max(1, Math.round((new Date(project.licenseExpiresAt).getTime() - nowMs) / (365 * 24 * 60 * 60 * 1000)))
+  /**
+   * How long is left, in days, and the two thresholds read off it.
+   *
+   * It was years only, as `Math.max(1, Math.round(...))` — which printed "1yr remaining" over a
+   * licence expiring next Tuesday, because anything under six months rounds to zero and the max
+   * put it back to one. A contract running out is the one thing on this page somebody has to act
+   * on before it happens, and the page was rounding the warning away.
+   *
+   * Ninety days because renewing a licence is a purchase order, not a click: it goes through
+   * whoever signs, and a fortnight's notice is not notice. Thirty is when it stops being a note
+   * and starts being a problem — that is where the counter switches to days.
+   */
+  const daysRemaining = !isUnlimitedExpiry && !isExpired && project.licenseExpiresAt && nowMs !== null
+    ? Math.ceil((new Date(project.licenseExpiresAt).getTime() - nowMs) / 86_400_000)
     : null;
+  const expiringSoon = daysRemaining !== null && daysRemaining <= 90;
+  const expiringUrgently = daysRemaining !== null && daysRemaining <= 30;
+  const remainingText = daysRemaining === null ? null
+    : daysRemaining <= 60 ? t.daysRemaining(daysRemaining)
+    : daysRemaining < 365 ? t.monthsRemaining(Math.round(daysRemaining / 30))
+    : t.yrRemaining(Math.round(daysRemaining / 365));
 
   const subscriptionYearlyCost = (limit ?? 0) * PRICE_PER_CHANNEL_PER_YEAR;
 
@@ -314,10 +340,10 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
             {project.licenseExpiresAt && nowMs !== null && (
               <span style={{
                 fontSize: "10px", fontWeight: 700, padding: "2px 8px", borderRadius: "999px", textTransform: "uppercase",
-                backgroundColor: isExpired ? "var(--danger-100)" : "var(--success-100)",
-                color: isExpired ? "var(--danger-500)" : "var(--success-400)",
+                backgroundColor: isExpired ? "var(--danger-100)" : expiringSoon ? "var(--warning-100)" : "var(--success-100)",
+                color: isExpired ? "var(--danger-500)" : expiringSoon ? "var(--warning-500)" : "var(--success-400)",
               }}>
-                {isExpired ? t.expired : t.valid}
+                {isExpired ? t.expired : expiringSoon ? t.expiringSoon : t.valid}
               </span>
             )}
           </div>
@@ -356,6 +382,19 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
               {overLimit ? t.overLimit(used, limit ?? 0) : atLimit ? t.atLimit : t.nearLimit(available!)}
             </p>
           )}
+          {/* The expiry gets its own pill rather than sharing the channel one: they are two
+              different contracts to change and both can be true at once, and a single line would
+              have to pick which to report. Its own line, under the other. */}
+          {expiringSoon && daysRemaining !== null && (
+            <p style={{
+              display: "block", marginTop: "8px", padding: "4px 10px", borderRadius: "999px",
+              backgroundColor: "white", lineHeight: 1.6, maxWidth: "fit-content",
+              fontSize: "11px", fontWeight: 700,
+              color: expiringUrgently ? "var(--danger-500)" : "var(--warning-500)",
+            }}>
+              {t.expiryNotice(daysRemaining)}
+            </p>
+          )}
         </div>
 
         {detailRow(<Video size={14} strokeWidth={2.4} />, t.camerasRegistered, String(projectCameras.length))}
@@ -364,7 +403,11 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           t.licenseExpiry,
           <span style={{ display: "inline-flex", alignItems: "baseline", gap: "8px" }}>
             <span style={{ fontFamily: "monospace" }}>{isUnlimitedExpiry ? t.unlimited : (project.licenseExpiresAt ?? "—")}</span>
-            {yearsRemaining ? <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}>{t.yrRemaining(yearsRemaining)}</span> : null}
+            {remainingText && (
+              <span style={{ fontSize: "12px", fontWeight: 600, color: expiringUrgently ? "var(--danger-500)" : expiringSoon ? "var(--warning-500)" : "var(--gray-500)" }}>
+                {remainingText}
+              </span>
+            )}
           </span>,
         )}
         {detailRow(

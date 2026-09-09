@@ -91,7 +91,7 @@ export interface Project {
    * The zone this project's days and hours are counted in, e.g. "Asia/Singapore".
    *
    * A timezone belongs to a project, not to an account: a site sits in one country and its "today"
-   * is that country's, whoever is looking. Set from Portal (My page's project card for now — see
+   * is that country's, whoever is looking. Set from Portal (Settings' project card for now — see
    * the note there about where it should eventually live).
    *
    * Optional, and lib/time.ts still falls back to Singapore when it is absent — every seeded
@@ -490,7 +490,10 @@ const PROJECTS: Project[] = [
   },
   {
     id: "proj-riverside", teamId: "team-univs", name: "Riverside International School", type: "smart_school",
-    licensePlan: "Professional", licenseChannelLimit: 40, licenseExpiresAt: "2027-09-01",
+    // Expiring inside the ninety-day window on purpose, so the licence page's "expiring soon"
+    // state is on screen somewhere rather than only in the code. Marina Bay stays years out, so
+    // the two states can be compared by switching projects.
+    licensePlan: "Professional", licenseChannelLimit: 40, licenseExpiresAt: "2026-11-20",
     computeInstance: "vca.medium", gpuCount: 2, modelVersion: "model_v2_prod", lastMigration: "v2_alert_schema",
     lastBackupAt: auditAt(7 * 60),
     regionName: "Singapore", networkIsolatedDetected: true, regionFlag: "🇸🇬", regionCenterCount: 1, regionSubcenterCount: 0,
