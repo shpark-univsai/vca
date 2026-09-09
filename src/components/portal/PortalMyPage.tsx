@@ -1,8 +1,9 @@
 "use client";
 
+import { Building2, Clock, Globe, Languages, LayoutGrid, LogIn, Mail, MapPin, Shield, User } from "lucide-react";
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, SIGNED_IN_USER } from "@/lib/vcaStore";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, FilterSelect, TYPE_META } from "./PortalShared";
+import { CARD_BORDER, PANEL_SHADOW, FilterSelect, TYPE_META } from "./PortalShared";
 import { PROJECT_TIME_ZONE } from "@/lib/time";
 
 const T = {
@@ -98,13 +99,13 @@ export default function PortalMyPage({ projectId }: { projectId: string }) {
   const me = currentPortalUser(portalUsers);
   const myTeam = me ? teams.find(tm => tm.id === me.teamId) : undefined;
 
-  const accountRows: { label: string; value: string }[] = [
-    { label: t.name, value: me?.name ?? SIGNED_IN_USER.name },
-    { label: t.email, value: me?.email ?? SIGNED_IN_USER.email },
+  const accountPairs: { label: string; value: string; icon: React.ReactNode }[] = [
+    { label: t.name, value: me?.name ?? SIGNED_IN_USER.name, icon: <User size={11} strokeWidth={2.2} /> },
+    { label: t.email, value: me?.email ?? SIGNED_IN_USER.email, icon: <Mail size={11} strokeWidth={2.2} /> },
     ...(me ? [
-      { label: t.portalRole, value: t.roles[me.permission] ?? me.permission },
-      { label: t.appAccess, value: canEnterApp(me) ? t.appYes : t.appNo },
-      ...(myTeam ? [{ label: t.team, value: myTeam.name }] : []),
+      { label: t.portalRole, value: t.roles[me.permission] ?? me.permission, icon: <Shield size={11} strokeWidth={2.2} /> },
+      { label: t.appAccess, value: canEnterApp(me) ? t.appYes : t.appNo, icon: <LogIn size={11} strokeWidth={2.2} /> },
+      ...(myTeam ? [{ label: t.team, value: myTeam.name, icon: <Building2 size={11} strokeWidth={2.2} /> }] : []),
     ] : []),
   ];
 
@@ -128,9 +129,9 @@ export default function PortalMyPage({ projectId }: { projectId: string }) {
           or a door, so those rows are absent rather than filled with a disclaimer. */}
       <Card>
         <CardTitle>{t.accountTitle}</CardTitle>
-        {accountRows.map((r, i) => (
-          <Row key={r.label} label={r.label} value={r.value} divider={i < accountRows.length - 1} />
-        ))}
+        <Pairs>
+          {accountPairs.map(r => <Pair key={r.label} label={r.label} icon={r.icon}>{r.value}</Pair>)}
+        </Pairs>
       </Card>
 
       {/*
@@ -148,36 +149,42 @@ export default function PortalMyPage({ projectId }: { projectId: string }) {
       {project && (
         <Card>
           <CardTitle>{t.projectTitle}</CardTitle>
-          <Row label={t.projectName} value={project.name} divider />
-          <Row label={t.projectType} value={TYPE_META[project.type].label} divider />
-          {projectTeam && <Row label={t.projectTeam} value={projectTeam.name} divider />}
-          {projectTeam?.region && <Row label={t.projectRegion} value={projectTeam.region} divider />}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px", padding: "12px 0 0" }}>
-            <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.projectTimeZone}</p>
-            <FilterSelect
-              value={project.timeZone ?? PROJECT_TIME_ZONE}
-              onChange={zone => setProjectTimeZone(project.id, zone)}
-              options={TIME_ZONE_OPTIONS}
-              fitContent
-            />
-          </div>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "8px" }}>{t.timeZoneNote}</p>
+          <Pairs>
+            <Pair label={t.projectName} icon={<MapPin size={11} strokeWidth={2.2} />}>{project.name}</Pair>
+            <Pair label={t.projectType} icon={<LayoutGrid size={11} strokeWidth={2.2} />}>{TYPE_META[project.type].label}</Pair>
+            {projectTeam && <Pair label={t.projectTeam} icon={<Building2 size={11} strokeWidth={2.2} />}>{projectTeam.name}</Pair>}
+            {projectTeam?.region && <Pair label={t.projectRegion} icon={<Globe size={11} strokeWidth={2.2} />}>{projectTeam.region}</Pair>}
+            {/* The one editable pair on the card, in the same shape as the four above it: the
+                control sits where a value would, rather than being pushed to the far right of a
+                ruled row. A setting is a value you can change, and it should look like the values
+                it sits with. */}
+            <Pair label={t.projectTimeZone} icon={<Clock size={11} strokeWidth={2.2} />}>
+              <FilterSelect
+                value={project.timeZone ?? PROJECT_TIME_ZONE}
+                onChange={zone => setProjectTimeZone(project.id, zone)}
+                options={TIME_ZONE_OPTIONS}
+                fitContent
+              />
+            </Pair>
+          </Pairs>
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "14px" }}>{t.timeZoneNote}</p>
         </Card>
       )}
 
       <Card>
         <CardTitle>{t.displayTitle}</CardTitle>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px", paddingTop: "12px" }}>
-          <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-900)" }}>{t.language}</p>
-          {/* Each language named in its own script — the one label a person who cannot read the
-              current interface still recognises. */}
-          <FilterSelect
-            value={lang}
-            onChange={v => setLang(v as AppLanguage)}
-            options={LANGUAGE_OPTIONS}
-            fitContent
-          />
-        </div>
+        <Pairs>
+          <Pair label={t.language} icon={<Languages size={11} strokeWidth={2.2} />}>
+            {/* Each language named in its own script — the one label a person who cannot read the
+                current interface still recognises. */}
+            <FilterSelect
+              value={lang}
+              onChange={v => setLang(v as AppLanguage)}
+              options={LANGUAGE_OPTIONS}
+              fitContent
+            />
+          </Pair>
+        </Pairs>
       </Card>
     </div>
   );
@@ -198,15 +205,42 @@ function CardTitle({ children }: { children: React.ReactNode }) {
   return <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{children}</p>;
 }
 
-/** Label left, value right, one per line — the same read-only pairing the licence card uses. */
-function Row({ label, value, divider }: { label: string; value: string; divider: boolean }) {
+/**
+ * Two columns of label-above-value pairs, the shape the camera sheet uses.
+ *
+ * It was one ruled row per fact, label left and value right — five rules in the first card alone,
+ * and on a 720px column the value ended up a hand's width from the word naming it. Stacking the
+ * pair puts the two together, and two columns halve the height, so the rules have nothing left to
+ * separate: whitespace does it.
+ */
+function Pairs({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px",
-      borderBottom: divider ? BORDER : "none", padding: "12px 0",
-    }}>
-      <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{label}</span>
-      <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-900)", textAlign: "right" }}>{value}</span>
+    /* Two, fixed — not auto-fit. Letting the track count follow the width gave the project card
+       three columns and the account card two on the same screen, so two cards on one page laid
+       their pairs out on different grids. The camera sheet this comes from is two as well. */
+    <div className="portal-pairs" style={{ display: "grid", gap: "16px 20px", marginTop: "16px" }}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * One fact, or one setting.
+ *
+ * 11px icon at stroke 2.2 — a 1.0px line, thinner than the 1.4px Portal draws elsewhere, because
+ * this mark sits beside an 11px caption rather than 13px text and has to match its weight as well
+ * as its height. Same reasoning as the camera sheet, where this pattern comes from.
+ */
+function Pair({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)" }}>
+        <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}>{icon}</span>
+        {label}
+      </p>
+      {typeof children === "string"
+        ? <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "2px", wordBreak: "break-word" }}>{children}</p>
+        : <div style={{ marginTop: "4px" }}>{children}</div>}
     </div>
   );
 }
