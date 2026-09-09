@@ -240,7 +240,13 @@ function Pair({ label, icon, children }: { label: string; icon: React.ReactNode;
       </p>
       {typeof children === "string"
         ? <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "2px", wordBreak: "break-word" }}>{children}</p>
-        : <div style={{ marginTop: "4px" }}>{children}</div>}
+        : (
+          /* flex, not a plain block: FilterSelect's trigger is inline-grid, so in a block it sits
+             on a text baseline and inherits this column's 24px line height — about twenty pixels
+             of leading above it that read as the control having drifted away from its own label.
+             A flex container has no line box, so the gap is the 6px written here and nothing else. */
+          <div style={{ display: "flex", marginTop: "6px" }}>{children}</div>
+        )}
     </div>
   );
 }
