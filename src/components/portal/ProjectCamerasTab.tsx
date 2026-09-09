@@ -85,7 +85,7 @@ const T = {
     viewTable: "Table",
     viewGrid: "Grid",
     colCamera: "Camera",
-    colMaker: "Maker",
+    colServer: "Server",
     colResolution: "Resolution",
     colZone: "Zone",
     colRtspStream: "RTSP Stream",
@@ -213,7 +213,7 @@ const T = {
     viewTable: "테이블",
     viewGrid: "그리드",
     colCamera: "카메라",
-    colMaker: "제조사",
+    colServer: "서버",
     colResolution: "해상도",
     colZone: "구역",
     colRtspStream: "RTSP 스트림",
@@ -342,7 +342,7 @@ function useStickyHeader<T extends HTMLElement>() {
 // Badge icons for the metric cards, at the size the Overview's badges use.
 
 const DEFAULT_THUMBNAIL = "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80";
-type CameraSortKey = "name" | "maker" | "resolution" | "zone" | "status";
+type CameraSortKey = "name" | "server" | "resolution" | "zone" | "status";
 
 /**
  * One row type for both kinds of input source.
@@ -784,7 +784,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       const c = r.camera;
       switch (key) {
         case "name": return c.name.toLowerCase();
-        case "maker": return c.maker?.toLowerCase();
+        // Unassigned sinks to the bottom of the ascending pass rather than sorting under an
+        // empty string at the top — a camera on no server is the interesting row, and the reader
+        // reaches it by sorting the other way.
+        case "server": return projectServers.find(sv => sv.id === c.serverId)?.name.toLowerCase();
         case "resolution": return c.resolution?.toLowerCase();
         case "zone": return c.zone?.toLowerCase();
         case "status": return STATUS_RANK[c.status];
@@ -1261,7 +1264,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               { label: "" },
               { label: t.colCamera, key: "name" },
               { label: t.colSource },
-              ...(showCameraColumns ? [{ label: t.colMaker, key: "maker" as CameraSortKey }, { label: t.colZone, key: "zone" as CameraSortKey }] : []),
+              ...(showCameraColumns ? [{ label: t.colServer, key: "server" as CameraSortKey }, { label: t.colZone, key: "zone" as CameraSortKey }] : []),
               { label: t.colAddress },
               { label: t.colStatus, key: "status" },
               { label: "" },
@@ -1383,7 +1386,15 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   <VideoIcon size={13} strokeWidth={2.58} />
                   {isAiCamera ? t.sourceAiCamera : t.sourceCamera}
                 </span>
-                {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{cam.maker ?? "—"}</span>}
+                {/* The server, where the maker used to be. A make is settled at purchase and is
+                    not what anybody scans a list for; the server is the answer to "why is this one
+                    doing nothing", and until now it appeared on no screen at all — not in this
+                    table and not on the camera's own sheet, where it now sits with the maker. */}
+                {showCameraColumns && (
+                  <span style={{ fontSize: "12px", color: cam.serverId ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {projectServers.find(sv => sv.id === cam.serverId)?.name ?? "—"}
+                  </span>
+                )}
                 {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{cam.zone}</span>}
                 {/* The IP, not the RTSP URL — and resolution under it, in the same column a file
                     fills with its resolution alone. (Two separate columns left one of them blank on

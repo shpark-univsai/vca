@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, Clock, Crosshair, Link2, Map as MapIcon, MapPin, Network, Play, Scan } from "lucide-react";
+import { Activity, Clock, Crosshair, Cpu, Link2, Map as MapIcon, MapPin, Network, Play, Scan, Server as ServerIcon } from "lucide-react";
 import { useVcaStore, type Camera } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { BORDER } from "./PortalShared";
@@ -23,6 +23,9 @@ const T = {
     protocol: "Protocol",
     coordinates: "Coordinates",
     rtspUrl: "RTSP Stream URL",
+    server: "Server",
+    noServer: "Not assigned",
+    hardware: "Make and model",
     sourceTypeLabel: "Source type",
     sourceTypeNormal: "Normal camera",
     sourceTypeAi: "AI camera",
@@ -46,6 +49,9 @@ const T = {
     protocol: "프로토콜",
     coordinates: "좌표",
     rtspUrl: "RTSP 스트림 URL",
+    server: "서버",
+    noServer: "미할당",
+    hardware: "제조사·모델",
     sourceTypeLabel: "소스 유형",
     sourceTypeNormal: "일반 카메라",
     sourceTypeAi: "AI 카메라",
@@ -60,6 +66,7 @@ const T = {
 export default function CameraStreamModal({ camera, onClose }: { camera: Camera; onClose: () => void }) {
   useEscapeKey(onClose);
   const events = useVcaStore(s => s.events);
+  const servers = useVcaStore(s => s.servers);
   const [lang] = usePortalLanguage();
   const t = T[lang];
 
@@ -76,6 +83,7 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
   const [playing, setPlaying] = useState(false);
   const cameraEvents = events.filter(e => e.cameraId === camera.id);
   // Newest first, then take the top one — the store's order is not guaranteed to be chronological.
+  const server = servers.find(sv => sv.id === camera.serverId);
   const lastDetection = cameraEvents.length === 0
     ? null
     : new Date(Math.max(...cameraEvents.map(e => new Date(e.timestamp).getTime())));
@@ -198,6 +206,14 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
               [t.location, camera.location || "—", <MapPin key="l" size={11} strokeWidth={2.2} />],
               [t.protocol, camera.protocol ?? "TCP", <Network key="p" size={11} strokeWidth={2.2} />],
               [t.coordinates, camera.lat !== undefined && camera.lng !== undefined ? `${camera.lat}, ${camera.lng}` : "—", <Crosshair key="c" size={11} strokeWidth={2.2} />],
+              // The server does the analysis, so which one this camera is attached to is the
+              // difference between a stream being watched and a stream being carried. It appeared
+              // on no screen until now.
+              [t.server, server?.name ?? t.noServer, <ServerIcon key="s" size={11} strokeWidth={2.2} />],
+              // Moved here from the table, which now shows the server in its place: a make and
+              // model are settled when the camera is bought and read once, which is what a detail
+              // sheet is for.
+              [t.hardware, [camera.maker, camera.model].filter(Boolean).join(" ") || "—", <Cpu key="h" size={11} strokeWidth={2.2} />],
               [t.lastDetection, lastDetection ? `${sgtDateKey(lastDetection).slice(5)} ${sgtClockMinutes(lastDetection)}` : t.noRecentDetections, <Clock key="t" size={11} strokeWidth={2.2} />],
               [t.detectionCount, t.detectionCountValue(cameraEvents.length), <Activity key="a" size={11} strokeWidth={2.2} />],
             ] as [string, string, React.ReactNode][]).map(([label, value, icon]) => (
@@ -206,7 +222,7 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
                   <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}>{icon}</span>
                   {label}
                 </p>
-                <p style={{ fontSize: "13px", fontWeight: 700, color: value === "—" || value === t.noRecentDetections ? "var(--gray-400)" : "var(--gray-900)", marginTop: "2px", wordBreak: "break-word" }}>{value}</p>
+                <p style={{ fontSize: "13px", fontWeight: 700, color: value === "—" || value === t.noRecentDetections || value === t.noServer ? "var(--gray-400)" : "var(--gray-900)", marginTop: "2px", wordBreak: "break-word" }}>{value}</p>
               </div>
             ))}
             {/* Full width: a stream URL does not fit half a sheet. */}
