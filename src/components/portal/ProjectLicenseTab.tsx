@@ -367,7 +367,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
       }}>
         {/* The head names the document and stamps its state, the way the first page of an
             agreement does. */}
-        <div style={{ padding: "20px", borderBottom: "2px solid var(--gray-900)" }}>
+        <div style={{ padding: "28px 20px", borderBottom: "2px solid var(--gray-900)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>
             {/* Title alone. The line under it explained that this is a copy of a signed agreement
                 and that nothing here changes it — which is what the document form now says by
@@ -391,7 +391,16 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
         </div>
 
         {/* The clauses. Numbered because they are a fixed, ordered set — the same five things in
-            the same order for every project, which is what makes a number worth printing. */}
+            the same order for every project, which is what makes a number worth printing.
+
+            Padding on the group, not on the first and last clause: the ends of a schedule stand
+            further off its rules than the clauses stand off each other, and putting it here keeps
+            every clause's own padding identical so the rules between them stay evenly spaced.
+
+            The whole schedule is set loose on purpose. A contract is read once, slowly, one clause
+            at a time — the density that suits a table of sixty cameras is the wrong density for
+            five clauses somebody is checking against a signed page. */}
+        <div style={{ padding: "20px 0" }}>
         <Clause n={1} label={t.clauseProject}>
           <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{project.name}</p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "3px" }}>
@@ -447,16 +456,17 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           )}
         </Clause>
 
-        <Clause n={5} label={t.clauseFees}>
+        <Clause n={5} label={t.clauseFees} last>
           <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>
             {limit ? t.channelsCostPerYear(subscriptionYearlyCost.toLocaleString()) : "—"}
           </p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "3px" }}>{t.perChannelPerYear(PRICE_PER_CHANNEL_PER_YEAR)}</p>
         </Clause>
+        </div>
 
         {/* The party block, where an agreement puts its signatures. Not a fake signature — the
             person and the way to reach them, which is what this record can honestly carry. */}
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "20px", padding: "18px 20px", borderTop: "1px solid var(--gray-900)", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "20px", padding: "28px 20px", borderTop: "1px solid var(--gray-900)", flexWrap: "wrap" }}>
           <div>
             <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px", textTransform: "uppercase" }}>{t.clauseParty}</p>
             <p style={{ fontSize: "14px", fontWeight: 700, marginTop: "5px" }}>
@@ -480,9 +490,11 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
  * line up down the page only if the gutter is the same on every row, and a fraction moves it every
  * time the window does.
  */
-function Clause({ n, label, children }: { n: number; label: string; children: React.ReactNode }) {
+function Clause({ n, label, last, children }: { n: number; label: string; last?: boolean; children: React.ReactNode }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 168px) minmax(0, 1fr)", gap: "0 20px", padding: "16px 20px", borderBottom: BORDER }}>
+    /* The last clause drops its rule: the party block below already opens with a heavier one, and
+       two lines with 16px of nothing between them is a mistake, not a division. */
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 168px) minmax(0, 1fr)", gap: "0 20px", padding: "24px 20px", borderBottom: last ? "none" : BORDER }}>
       <p style={{ display: "flex", alignItems: "baseline", gap: "8px", minWidth: 0 }}>
         {/* Tabular figures and a fixed slot, so 1 and 5 leave their labels on the same left edge. */}
         <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-300)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
