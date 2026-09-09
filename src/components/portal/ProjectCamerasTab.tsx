@@ -47,7 +47,6 @@ const T = {
     uploadDrop: "Drag a file here",
     uploadHint: "MP4, MOV, JPG, PNG. Analysed for faces and shown in Best Frame.",
     uploadChoose: "Choose file",
-    uploadPendingNotice: "Analysis runs on the server and is not connected yet — uploads stay queued.",
     toastUploadedTitle: "Uploaded",
     removeUploadAction: "Remove upload",
     toastUploadRemovedTitle: "Upload removed",
@@ -175,7 +174,6 @@ const T = {
     uploadDrop: "여기에 파일을 놓으세요",
     uploadHint: "MP4, MOV, JPG, PNG. 얼굴을 분석해 베스트 프레임에서 볼 수 있습니다.",
     uploadChoose: "파일 선택",
-    uploadPendingNotice: "분석은 서버에서 돌아가며 아직 연결되지 않았습니다 — 업로드는 대기 상태로 남습니다.",
     toastUploadedTitle: "업로드됨",
     removeUploadAction: "업로드 삭제",
     toastUploadRemovedTitle: "업로드가 삭제됨",
@@ -1515,9 +1513,12 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   onChange={e => { acceptFiles(e.target.files); e.target.value = ""; }}
                   style={{ display: "none" }} />
               </div>
-              {/* Says the analysis has not run rather than showing a progress bar that finishes on
-                  its own. A file sitting at "Queued" is the truth until the core has an endpoint. */}
-              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.6 }}>{t.uploadPendingNotice}</p>
+              {/* No "the analysis is not connected yet" line here any more (2026-09-09). It was a
+                  sentence about the state of the build, printed inside the product — and the row's
+                  own status already says "Queued", which is both true now and still true once the
+                  endpoint lands and a real job waits its turn. The note would have had to be
+                  deleted on the day the backend arrived; the status will not. The dependency is
+                  recorded where it belongs, in the HANDOFF note on addUpload in vcaStore. */}
             </div>
           </div>
         </div>
