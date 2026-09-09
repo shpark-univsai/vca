@@ -138,24 +138,27 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
 
   return (
     /**
-     * Capped and centred, the way the licence page is: both are a short column of label-and-value
-     * rows rather than a table, and stretched across a monitor a value ends up a hand's width from
-     * its label. `margin-inline: auto` splits the spare width evenly and lets the two margins
-     * shrink together to nothing as the window narrows — no media query.
+     * Full content width, and one card — the shape the licence page uses, which is this page's
+     * nearest neighbour: both are read-only facts with a control or two rather than a table.
      *
-     * Narrower than the licence page's 900px because there is less in each row here; it is the same
-     * rule, not the same number.
+     * It was capped at 720px and centred, on a comment claiming that matched the licence page. It
+     * does not: the licence page runs the full width like every other tab. So this was the one
+     * screen in Portal indented from the left edge, and the three separate cards floating in that
+     * narrow column read as a different product from the tab beside it.
+     *
+     * Sections inside one card, divided by the same hairline and headed by the same small-caps
+     * label the licence card uses for INCLUDED FEATURES — one contract is one card there, one
+     * account is one card here.
      */
-    <div style={{ maxWidth: "720px", marginInline: "auto" }}>
+    <div>
       {/* No page title here: the top bar's crumb already names this page, and printing the same
           word again 20px lower was the page introducing itself twice. What stays is the row of
           things you can do on it. */}
-      {/* Rows built as a list so the last one can drop its divider — a rule at the foot of the
-          card would just be a line above the padding. Which rows exist depends on whether the
-          signed-in address matches an account: with no match there is nothing to say about a role
-          or a door, so those rows are absent rather than filled with a disclaimer. */}
-      <Card>
-        <CardTitle>{t.accountTitle}</CardTitle>
+      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, overflow: "hidden", marginBottom: "20px" }}>
+      {/* Which pairs exist depends on whether the signed-in address matches an account: with no
+          match there is nothing to say about a role or a door, so those are absent rather than
+          filled with a disclaimer. */}
+      <Section heading={t.accountTitle} first>
         <Pairs>
           {accountPairs.map(r => <Pair key={r.label} label={r.label} icon={r.icon}>{r.value}</Pair>)}
           {/* A pair like the others, whose value is a button rather than a fact: the sentence
@@ -171,7 +174,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             </div>
           </Pair>
         </Pairs>
-      </Card>
+      </Section>
 
       {changingPassword && (
         <ChangePasswordModal t={t} lang={lang} onClose={() => setChangingPassword(false)} />
@@ -190,8 +193,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         the licence), this card moves there whole and Settings goes back to being the account only.
       */}
       {project && (
-        <Card>
-          <CardTitle>{t.projectTitle}</CardTitle>
+        <Section heading={t.projectTitle}>
           <Pairs>
             <Pair label={t.projectName} icon={<MapPin size={12} strokeWidth={2.2} />}>{project.name}</Pair>
             <Pair label={t.projectType} icon={<LayoutGrid size={12} strokeWidth={2.2} />}>{TYPE_META[project.type].label}</Pair>
@@ -211,11 +213,10 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             </Pair>
           </Pairs>
           <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "14px" }}>{t.timeZoneNote}</p>
-        </Card>
+        </Section>
       )}
 
-      <Card>
-        <CardTitle>{t.displayTitle}</CardTitle>
+      <Section heading={t.displayTitle}>
         <Pairs>
           <Pair label={t.language} icon={<Languages size={12} strokeWidth={2.2} />}>
             {/* Each language named in its own script — the one label a person who cannot read the
@@ -228,24 +229,29 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             />
           </Pair>
         </Pairs>
-      </Card>
+      </Section>
+      </div>
     </div>
   );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
+/**
+ * One band of the card, headed the way the licence card heads INCLUDED FEATURES.
+ *
+ * 10px small caps rather than the 13px bold each of these had as a card title of its own: a
+ * heading inside a card is furniture, and at 13px bold it competed with the values under it for
+ * the same weight. The hairline above does the separating that three floating cards used to.
+ */
+function Section({ heading, first, children }: { heading: string; first?: boolean; children: React.ReactNode }) {
   return (
-    <div style={{
-      backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW,
-      padding: "20px", marginBottom: "12px",
-    }}>
+    <div style={{ padding: "18px 20px", borderTop: first ? "none" : BORDER }}>
+      <p style={{
+        fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px",
+        textTransform: "uppercase",
+      }}>{heading}</p>
       {children}
     </div>
   );
-}
-
-function CardTitle({ children }: { children: React.ReactNode }) {
-  return <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{children}</p>;
 }
 
 /**
@@ -258,10 +264,11 @@ function CardTitle({ children }: { children: React.ReactNode }) {
  */
 function Pairs({ children }: { children: React.ReactNode }) {
   return (
-    /* Two, fixed — not auto-fit. Letting the track count follow the width gave the project card
-       three columns and the account card two on the same screen, so two cards on one page laid
-       their pairs out on different grids. The camera sheet this comes from is two as well. */
-    <div className="portal-pairs" style={{ display: "grid", gap: "16px 20px", marginTop: "16px" }}>
+    /* The licence card's own feature grid, same minimum. Fixing it at two columns was right while
+       this page was three separate cards of different widths — auto-fit gave them different track
+       counts and the pairs stopped lining up between cards. One card, one width, so the tracks
+       agree again and the page fills the room it has. */
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px 20px", marginTop: "14px" }}>
       {children}
     </div>
   );

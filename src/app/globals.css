@@ -200,11 +200,6 @@
 
 /* Items of the Overview's "needs attention" strip. Each item is the whole button, so the hover box
    is what tells you that before you aim at it. */
-/* Settings' label-above-value pairs: two columns, one on a narrow window. A class rather than an
-   inline style because the collapse needs a media query, and inline styles cannot hold one. */
-.portal-pairs { grid-template-columns: 1fr 1fr; }
-@media (max-width: 620px) { .portal-pairs { grid-template-columns: 1fr; } }
-
 .portal-attention-row { transition: background-color .12s ease; }
 .portal-attention-row:hover { background-color: var(--gray-100) !important; }
 
