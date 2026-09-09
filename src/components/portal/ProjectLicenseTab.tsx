@@ -116,6 +116,7 @@ const T = {
     nearLimit: (n: number) => `${n} channel(s) left before this project reaches its licensed limit.`,
     contractNote: "Channels and term are changed by contract, not here.",
     docTitle: "Licence",
+    clausePlan: "Plan",
     clauseProject: "Covered project",
     clauseChannels: "Licensed channels",
     // Not "Term": a term is a range, and Project carries licenseExpiresAt and no start date, so
@@ -163,6 +164,7 @@ const T = {
     nearLimit: (n: number) => `라이선스 한도까지 ${n}채널 남았습니다.`,
     contractNote: "채널과 기간은 계약으로 변경되며 이 화면에서는 바꿀 수 없습니다.",
     docTitle: "라이선스",
+    clausePlan: "계약 상품",
     clauseProject: "대상",
     clauseChannels: "계약 채널",
     clauseTerm: "만료일",
@@ -390,7 +392,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           </div>
         </div>
 
-        {/* The clauses. Numbered because they are a fixed, ordered set — the same five things in
+        {/* The clauses. Numbered because they are a fixed, ordered set — the same six things in
             the same order for every project, which is what makes a number worth printing.
 
             Padding on the group, not on the first and last clause: the ends of a schedule stand
@@ -401,14 +403,21 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
             at a time — the density that suits a table of sixty cameras is the wrong density for
             five clauses somebody is checking against a signed page. */}
         <div style={{ padding: "20px 0" }}>
-        <Clause n={1} label={t.clauseProject}>
+        {/* The plan leads, because it is what was bought — the name on the agreement, before the
+            thing it applies to. It was a chip in the head until the card became a document, and
+            then it was nowhere: a licence page that never says which licence. */}
+        <Clause n={1} label={t.clausePlan}>
+          <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{project.licensePlan ?? t.notSet}</p>
+        </Clause>
+
+        <Clause n={2} label={t.clauseProject}>
           <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{project.name}</p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "3px" }}>
             {meta.label}{projectTeamName ? ` · ${projectTeamName}` : ""}
           </p>
         </Clause>
 
-        <Clause n={2} label={t.clauseChannels}>
+        <Clause n={3} label={t.clauseChannels}>
           <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>
             {limit ? t.channelsUnitN(limit) : t.noLimitSet}
           </p>
@@ -427,7 +436,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           ) : null}
         </Clause>
 
-        <Clause n={3} label={t.clauseTerm}>
+        <Clause n={4} label={t.clauseTerm}>
           <p style={{ fontSize: "14px", fontWeight: 700, color: isExpired ? "var(--danger-500)" : "var(--gray-900)", fontFamily: "monospace", letterSpacing: "-0.01em" }}>
             {isUnlimitedExpiry ? t.unlimited : (project.licenseExpiresAt ?? "—")}
           </p>
@@ -438,7 +447,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           )}
         </Clause>
 
-        <Clause n={4} label={t.clauseScope}>
+        <Clause n={5} label={t.clauseScope}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "6px 20px" }}>
             {includedRows.map(r => (
               <p key={r.key} style={{ display: "flex", alignItems: "baseline", gap: "7px", fontSize: "13px", fontWeight: 600, color: "var(--gray-900)" }}>
@@ -456,7 +465,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           )}
         </Clause>
 
-        <Clause n={5} label={t.clauseFees} last>
+        <Clause n={6} label={t.clauseFees} last>
           <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>
             {limit ? t.channelsCostPerYear(subscriptionYearlyCost.toLocaleString()) : "—"}
           </p>
