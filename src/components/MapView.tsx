@@ -26,6 +26,8 @@ const T = {
     camerasShort: (n: number) => `${n} cam${n === 1 ? "" : "s"}`,
     noCamera: "no camera",
     camerasDown: "all down",
+    spotSummary: (people: number, hits: number) =>
+      `Here today: ${people} ${people === 1 ? "person" : "people"} · ${hits} detection${hits === 1 ? "" : "s"}`,
     live: "LIVE",
     out: "OUT",
     offline: "OFFLINE",
@@ -43,6 +45,7 @@ const T = {
     camerasShort: (n: number) => `${n}대`,
     noCamera: "카메라 없음",
     camerasDown: "전부 중단",
+    spotSummary: (people: number, hits: number) => `이 지점 오늘 ${people}명 · ${hits}건`,
     live: "정상",
     out: "중단",
     offline: "중단",
@@ -554,8 +557,8 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
         // Several hits at one camera would stack into an unreadable pile of identical pins, so
-        // one pin per spot carries the newest hit and says how many are underneath it. The full
-        // list is in the sidebar, which this same click has already filtered to this district.
+        // one pin per spot carries the newest hit. The full list is in the sidebar, which this
+        // same click has already filtered to this district.
         const bySpot = new Map<string, typeof hits>();
         hits.forEach(ev => {
           const key = `${ev.lat.toFixed(4)},${ev.lng.toFixed(4)}`;
@@ -565,10 +568,21 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
 
         bySpot.forEach(spot => {
           const newest = spot[0];
-          const badge = spot.length > 1
+          // The badge counts PEOPLE, not detections.
+          //
+          // It used to count detections, and next to a single face that reads as "this person was
+          // caught 13 times" — when 13 people caught once each looks identical, because the face
+          // shown is only the newest hit's. Those are opposite findings: one is about a person who
+          // keeps passing here, the other about a place a lot of people pass. They point at
+          // different decisions, so the map must not render them the same.
+          //
+          // LiveEvent.id is the person id (vcaEventsToLiveEvents resolves personId into it), so
+          // repeat sightings of one person collapse here the way they should.
+          const people = new Set(spot.map(ev => ev.id)).size;
+          const badge = people > 1
             ? `<div style="position:absolute;top:-2px;right:-2px;z-index:3;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;
                   border-radius:999px;background:var(--gray-900);border:1.5px solid white;display:flex;align-items:center;justify-content:center;
-                  font-family:'SUIT',sans-serif;font-size:10px;font-weight:800;color:white">${spot.length}</div>`
+                  font-family:'SUIT',sans-serif;font-size:10px;font-weight:800;color:white">${people}</div>`
             : "";
           const icon = L.divIcon({
             html: `<div style="position:relative;width:42px;height:56px">${getMarkerHTML("VIP", getFacePhoto(newest.id))}${badge}</div>`,
@@ -576,9 +590,18 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
             iconAnchor: [21, 50],
             className: "",
           });
+          // Both figures in the popup, where there is room for words. The pin can carry one number
+          // and no label; a person reading "3명 · 13건" cannot mistake which is which. Only shown
+          // when there is more than one of anything — a single sighting needs no summary.
+          const spotSummary = spot.length > 1
+            ? `<div style="padding:8px 12px;border-top:1px solid var(--line);font-family:'SUIT',system-ui,sans-serif;
+                  font-size:11px;font-weight:600;color:var(--gray-500);letter-spacing:-0.2px">
+                 ${t.spotSummary(people, spot.length)}
+               </div>`
+            : "";
           L.marker([newest.lat, newest.lng], { icon })
             .addTo(group)
-            .bindPopup(getPopupHTML(newest, lang), {
+            .bindPopup(getPopupHTML(newest, lang) + spotSummary, {
               offset: [0, -50], className: "vca-custom-popup", closeButton: true, autoPan: false, maxWidth: 280,
             });
         });
