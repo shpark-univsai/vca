@@ -367,6 +367,12 @@ export const dashboardStats = {
   // count is overwritten by getDashboardStats() from the actual device list — the 48/48 that used
   // to be typed here disagreed with the list it sat beside. Only the deltas are still seeded:
   // they compare against the same time yesterday, and nothing in the mock holds yesterday.
+  //
+  // Kept rather than removed, decided 2026-09-09. Portal's Overview trend cards were deleted for
+  // exactly this reason, so this looks like the opposite call and is not: those cards were ONLY a
+  // trend, so a seeded one left the panel saying nothing true. Here the trend hangs under a count
+  // that is now real, and it holds the place the backend's daily series will fill. Do not delete
+  // these to match Portal — the difference is deliberate.
   linkedCams:      { count: 0,  delta: 2,  deltaPct: 0.8, down: false },
   offlineCams:     { count: 0,  delta: 4,  deltaPct: 1.5, down: true },
   availability: Math.round((liveDeviceCount / devices.length) * 1000) / 10,
