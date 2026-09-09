@@ -6,6 +6,7 @@ import {
   CAMERA_CODES, canSearchInApp, camerasInProject, getActiveProjectId,
   useActiveProjectId, useProjectCameras, useVcaStore,
 } from "@/lib/vcaStore";
+import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import RemoveImageButton from "./RemoveImageButton";
@@ -644,8 +645,8 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
                     fontSize:"13px", fontWeight: cam.code===camId ? 700:500, color: cam.code===camId ? "var(--primary-400)":"var(--gray-700)",
                   }}>
                     {cam.code}
-                    <span style={{ fontSize:"10px", fontWeight:800, color: cam.status==="online" ? "var(--success-400)" : "var(--gray-400)" }}>
-                      {cam.status==="online" ? "ON" : "OFF"}
+                    <span style={{ fontSize:"10px", fontWeight:800, color: runStateOf(cam.status)==="running" ? "var(--success-400)" : "var(--gray-400)" }}>
+                      {runStateOf(cam.status)==="running" ? "ON" : "OFF"}
                     </span>
                   </button>
                 ))}
@@ -655,9 +656,9 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
         </div>
         {camera && (
           <>
-            <span style={{ fontSize:"10px", fontWeight:800, color: camera.status==="online" ? "var(--success-400)" : "var(--gray-400)",
-              backgroundColor: camera.status==="online" ? "var(--success-100)" : "var(--gray-100)", padding:"4px 10px", borderRadius:"999px" }}>
-              {camera.status==="online" ? "ONLINE" : "OFFLINE"}
+            <span style={{ fontSize:"10px", fontWeight:800, color: runStateOf(camera.status)==="running" ? "var(--success-400)" : "var(--gray-400)",
+              backgroundColor: runStateOf(camera.status)==="running" ? "var(--success-100)" : "var(--gray-100)", padding:"4px 10px", borderRadius:"999px" }}>
+              {runStateOf(camera.status)==="running" ? "ONLINE" : "OFFLINE"}
             </span>
             <span style={{ fontSize:"12px", color:"var(--gray-400)" }}>IP {camera.ip} · RTSP Connected</span>
           </>
@@ -1327,8 +1328,8 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
       // updating in lockstep rather than a live feed where different cameras detect faces at
       // different times. A ~1s tick over ~1/4 of cameras keeps each one's own average refresh
       // cadence close to the old 4s, just staggered instead of synchronized.
-      const onlineCams = camerasInProject(useVcaStore.getState().cameras, getActiveProjectId())
-        .filter(cam => cam.status === "online");
+      // Run state through the seam — see lib/realtime/cameraStatus.ts.
+      const onlineCams = getCameraStatus().running;
       if (onlineCams.length === 0) return;
       const batchSize = Math.max(1, Math.round(onlineCams.length / 4));
       const batch = [...onlineCams].sort(() => Math.random() - 0.5).slice(0, batchSize);
@@ -1347,7 +1348,7 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
 
   const allItems = Object.values(feed).flat();
   const detailItem = detailId !== null ? allItems.find(p => p.id===detailId) ?? null : null;
-  const onlineCameraCodes = useProjectCameras().filter(c => c.status === "online").map(c => c.code);
+  const onlineCameraCodes = useCameraStatus().running.map(c => c.code);
   const camDetailItems = openCam === ALL_CAMERAS_ID
     ? onlineCameraCodes.flatMap(code => feed[code] ?? [])
     : feed[openCam] ?? [];
@@ -2657,8 +2658,8 @@ function SlidersIconSm({ size = 16 }: { size?: number }) {
 // and neither could hand a selection to the other. REID_DATA draws from CAMERA_CODES now.
 function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
-  const cameras = useProjectCameras();
-  const statusOf = (code: string) => cameras.find(c => c.code === code)?.status;
+  const cameraStatus = useCameraStatus();
+  const statusOf = (code: string) => cameraStatus.byCode(code);
   const label = value || "All Cameras";
   return (
     /* 152px fitted "NC-1"; a real code plus its ON/OFF needs more, and the label was ellipsing. */
@@ -2702,8 +2703,8 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
               {code}
               {/* Same ON/OFF read as Live Monitoring's picker. Whether a camera is up is part of
                   what "pick this camera" means, and only one of the two lists was saying it. */}
-              <span style={{ fontSize:"10px", fontWeight:800, color: statusOf(code)==="online" ? "var(--success-400)" : "var(--gray-400)" }}>
-                {statusOf(code)==="online" ? "ON" : "OFF"}
+              <span style={{ fontSize:"10px", fontWeight:800, color: statusOf(code)==="running" ? "var(--success-400)" : "var(--gray-400)" }}>
+                {statusOf(code)==="running" ? "ON" : "OFF"}
               </span>
             </button>
           ))}

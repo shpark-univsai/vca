@@ -4,6 +4,7 @@
 
 import { dashboardStats, liveEvents, devices, mapMarkers, DISTRICTS, hourlyDetections, formatTimeAgo, type Device, type HourlyDetection } from "@/lib/mockData";
 import { useVcaStore, camerasInProject, type Camera } from "@/lib/vcaStore";
+import { runStateOf } from "@/lib/realtime/cameraStatus";
 import { mockDelay } from "./client";
 
 /**
@@ -25,10 +26,9 @@ import { mockDelay } from "./client";
 function cameraToDevice(camera: Camera): Device {
   return {
     id: camera.id,
-    // Three camera states collapse to two here. The app's device list answers "can I watch this
-    // right now", and a camera in `error` cannot be watched — grouping it with offline is the
-    // honest reading. Portal keeps the distinction, because fixing it is Portal's errand.
-    status: camera.status === "online" ? "Live" : "Off",
+    // Read through the status seam, not off the camera — lib/realtime/cameraStatus.ts is the one
+    // place that decides what "running" means, and the one place the backend swaps at intake.
+    status: runStateOf(camera.status) === "running" ? "Live" : "Off",
     name: camera.name,
     // The store carries no equivalent. Device.type is display-only and every mock row says the
     // same thing, so nothing is lost until a real camera type arrives from the backend.

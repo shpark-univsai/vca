@@ -18,6 +18,7 @@ import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
 import { useVcaStore, VIP_SIMULATION_CAMERAS, type Camera } from "@/lib/vcaStore";
 import { useLanguage } from "@/lib/i18n";
+import { runStateOf } from "@/lib/realtime/cameraStatus";
 
 export type NavTab = "DASHBOARD" | "BEST FRAME" | "DATA" | "REDMAP";
 const VALID_TABS: NavTab[] = ["DASHBOARD", "BEST FRAME", "DATA", "REDMAP"];
@@ -33,7 +34,7 @@ const SIDEBAR_POSITION_KEY = "vca-sidebar-position";
 // Drawn from the ~1,000-camera simulation pool (VIP_SIMULATION_CAMERAS), not the store's `cameras`
 // state — that pool is deliberately kept small for other features' performance. Computed once
 // since the pool is static; no reason to re-filter it on every tick.
-const VIP_SIM_ONLINE_CAMERAS = VIP_SIMULATION_CAMERAS.filter(c => c.status === "online");
+const VIP_SIM_ONLINE_CAMERAS = VIP_SIMULATION_CAMERAS.filter(c => runStateOf(c.status) === "running");
 
 function hashStringToIndex(s: string, mod: number): number {
   let h = 0;

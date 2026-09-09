@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { Search } from "lucide-react";
 import { useVcaStore, useActiveProjectId, type UploadedMedia } from "@/lib/vcaStore";
+import { runStateOf } from "@/lib/realtime/cameraStatus";
 import BestFrameDetailPage from "./BestFrameDetailPage";
 import { useToast } from "./Toast";
 import type { DetType, MonitorState, Camera, Detection, CamData, HUDState } from "@/types/detection";
@@ -309,7 +310,7 @@ export const NORMAL_CAMS_INIT: Camera[] = [
     id: cam.id,
     name: cam.name,
     checked: false,
-    monitor: (cam.status === "online" ? "normal" : "alert") as MonitorState,
+    monitor: (runStateOf(cam.status) === "running" ? "normal" : "alert") as MonitorState,
   })),
 ];
 /**

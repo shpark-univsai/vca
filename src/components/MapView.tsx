@@ -8,6 +8,7 @@ import {
   useVcaStore, vcaEventsToLiveEvents, VIP_SIMULATION_CAMERAS,
   useProjectEvents, useProjectCameras, type Camera,
 } from "@/lib/vcaStore";
+import { useCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
 import { useApiData } from "@/hooks/useApiData";
 import { getDistricts } from "@/lib/api/dashboard";
 import { isTodaySgt } from "@/lib/time";
@@ -96,7 +97,7 @@ function quietCameraDotHtml(): string {
 // notes elsewhere — so this reads Camera's own status/zone rather than trying to cross-reference).
 function cameraDotTooltipHtml(cam: Camera, lang: AppLanguage): string {
   const t = T[lang];
-  const isLive = cam.status === "online";
+  const isLive = runStateOf(cam.status) === "running";
   return `
     <div style="font-family:'SUIT',system-ui,sans-serif;padding:8px 10px;display:flex;flex-direction:column;gap:3px;min-width:120px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -404,6 +405,9 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
   // Registered cameras' real lat/lng — the exact CCTV install point, distinct from a zone
   // marker's own (approximate, district-level) coordinate.
   const cameras = useProjectCameras();
+  // Camera run state comes from one place — see lib/realtime/cameraStatus.ts. The backend owns the
+  // realtime layer and replaces that module's body at intake; nothing here changes.
+  const cameraStatus = useCameraStatus();
   const camerasRef = useRef(cameras);
   useEffect(() => { camerasRef.current = cameras; }, [cameras]);
 
@@ -545,7 +549,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         if (home) {
           const camerasHere = cameras.filter(c => nearestDistrict(c.lat, c.lng).id === home.id);
           const icon = L.divIcon({
-            html: districtPillHtml(home.label, hits.length, camerasHere.some(c => c.status === "online"), alertThreshold, moderateThreshold),
+            html: districtPillHtml(home.label, hits.length, camerasHere.some(c => cameraStatus.byId(c.id) === "running"), alertThreshold, moderateThreshold),
             iconSize: [1, 1],
             iconAnchor: [0, 0],
             className: "vca-zone-icon",
@@ -563,7 +567,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // no camera here" (every district has at least one registered camera; some just happen
           // to be down). Checking `.status === "online"` rather than just array length is what
           // actually captures that.
-          const hasOnlineCamera = camerasInDistrict.some(c => c.status === "online");
+          const hasOnlineCamera = camerasInDistrict.some(c => cameraStatus.byId(c.id) === "running");
           const count = recentEvents.filter(ev =>
             ev.type === "VIP" &&
             isTodaySgt(new Date(ev.timestamp), now) &&
@@ -631,7 +635,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
     });
 
     return () => { cancelled = true; };
-  }, [recentEvents, cameras, zoom, mapReady, alertThreshold, moderateThreshold, districts, lang, districtFilter]);
+  }, [recentEvents, cameras, zoom, mapReady, alertThreshold, moderateThreshold, districts, lang, districtFilter, cameraStatus]);
 
   // ── District selection → zoom into that district ───────────────
   // Clicking a pill was a list filter and nothing more: the map stayed at island zoom with every
