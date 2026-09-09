@@ -42,6 +42,7 @@ const T = {
     channelsUsedSuffix: (limit: number | string) => `/ ${limit} channels used`,
     vipTargetDb: "VIP / target database",
     todayBadge: (n: number) => `${n} today`,
+    yesterdayCompare: (n: number) => `${n} yesterday`,
     portalAccounts: "Portal accounts",
     accountsSuffix: "active admins",
     recordsSuffix: "records",
@@ -131,6 +132,7 @@ const T = {
     channelsUsedSuffix: (limit: number | string) => `/ ${limit}채널 사용`,
     vipTargetDb: "VIP / 관심대상 DB",
     todayBadge: (n: number) => `오늘 ${n}건`,
+    yesterdayCompare: (n: number) => `어제 ${n}건`,
     portalAccounts: "포털 계정",
     accountsSuffix: "명",
     recordsSuffix: "건",
@@ -582,6 +584,20 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // startsWith, not equality: registeredAt is a date on the seeded rows and a full ISO instant on
   // anything registered through Portal now, and "===" quietly counted none of the new ones.
   const todayVipCount = todayStr ? projectPersons.filter(p => p.registeredAt.startsWith(todayStr)).length : 0;
+  /**
+   * Yesterday's registrations, so today's figure has something to be read against.
+   *
+   * "2 today" on its own says the list was touched and nothing else — a normal Tuesday and the day
+   * a delegation of forty arrives look the same until there is a second number beside it.
+   *
+   * HANDOFF NOTE: counted here from Person.registeredAt, which works only while the client holds
+   * the whole registry. The moment that list is paged the two counts have to come from the server
+   * — one endpoint, two numbers, the same shape registry-health's two detection windows take:
+   *   GET /projects/:id/vip-intake?days=2 → [{ daysAgo, registered }]
+   * Days are the project's calendar days, like every other bucket.
+   */
+  const yesterdayStr = nowMs !== null ? new Date(nowMs - 86_400_000).toISOString().slice(0, 10) : null;
+  const yesterdayVipCount = yesterdayStr ? projectPersons.filter(p => p.registeredAt.startsWith(yesterdayStr)).length : 0;
   // Registered since the first of this month — the chip's "+12 this month". Same startsWith rule
   // the today figure uses: registeredAt is a date on seeded rows and an instant on new ones.
   const monthStr = nowMs !== null ? new Date(nowMs).toISOString().slice(0, 7) : null;
@@ -953,10 +969,16 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   {/* A suffix, not a second figure — the card states the size of the registry and
                       the tab behind it breaks priorities down. */}
                   <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.recordsSuffix}</span>
-                  {todayVipCount > 0 && (
-                    <span style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "12px", fontWeight: 600, color: "var(--success-400)" }}>
-                      <ArrowUpIcon /> {t.todayBadge(todayVipCount)}
-                    </span>
+                  {(todayVipCount > 0 || yesterdayVipCount > 0) && (
+                    <>
+                      <span style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "12px", fontWeight: 600, color: todayVipCount > 0 ? "var(--success-400)" : "var(--gray-400)" }}>
+                        {todayVipCount > 0 && <ArrowUpIcon />} {t.todayBadge(todayVipCount)}
+                      </span>
+                      {/* Grey, and no arrow: yesterday is the ruler, not a second event. */}
+                      <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>
+                        {t.yesterdayCompare(yesterdayVipCount)}
+                      </span>
+                    </>
                   )}
                 </span>
               </div>
