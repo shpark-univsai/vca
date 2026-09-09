@@ -100,12 +100,12 @@ export default function PortalMyPage({ projectId }: { projectId: string }) {
   const myTeam = me ? teams.find(tm => tm.id === me.teamId) : undefined;
 
   const accountPairs: { label: string; value: string; icon: React.ReactNode }[] = [
-    { label: t.name, value: me?.name ?? SIGNED_IN_USER.name, icon: <User size={11} strokeWidth={2.2} /> },
-    { label: t.email, value: me?.email ?? SIGNED_IN_USER.email, icon: <Mail size={11} strokeWidth={2.2} /> },
+    { label: t.name, value: me?.name ?? SIGNED_IN_USER.name, icon: <User size={12} strokeWidth={2.2} /> },
+    { label: t.email, value: me?.email ?? SIGNED_IN_USER.email, icon: <Mail size={12} strokeWidth={2.2} /> },
     ...(me ? [
-      { label: t.portalRole, value: t.roles[me.permission] ?? me.permission, icon: <Shield size={11} strokeWidth={2.2} /> },
-      { label: t.appAccess, value: canEnterApp(me) ? t.appYes : t.appNo, icon: <LogIn size={11} strokeWidth={2.2} /> },
-      ...(myTeam ? [{ label: t.team, value: myTeam.name, icon: <Building2 size={11} strokeWidth={2.2} /> }] : []),
+      { label: t.portalRole, value: t.roles[me.permission] ?? me.permission, icon: <Shield size={12} strokeWidth={2.2} /> },
+      { label: t.appAccess, value: canEnterApp(me) ? t.appYes : t.appNo, icon: <LogIn size={12} strokeWidth={2.2} /> },
+      ...(myTeam ? [{ label: t.team, value: myTeam.name, icon: <Building2 size={12} strokeWidth={2.2} /> }] : []),
     ] : []),
   ];
 
@@ -150,15 +150,15 @@ export default function PortalMyPage({ projectId }: { projectId: string }) {
         <Card>
           <CardTitle>{t.projectTitle}</CardTitle>
           <Pairs>
-            <Pair label={t.projectName} icon={<MapPin size={11} strokeWidth={2.2} />}>{project.name}</Pair>
-            <Pair label={t.projectType} icon={<LayoutGrid size={11} strokeWidth={2.2} />}>{TYPE_META[project.type].label}</Pair>
-            {projectTeam && <Pair label={t.projectTeam} icon={<Building2 size={11} strokeWidth={2.2} />}>{projectTeam.name}</Pair>}
-            {projectTeam?.region && <Pair label={t.projectRegion} icon={<Globe size={11} strokeWidth={2.2} />}>{projectTeam.region}</Pair>}
+            <Pair label={t.projectName} icon={<MapPin size={12} strokeWidth={2.2} />}>{project.name}</Pair>
+            <Pair label={t.projectType} icon={<LayoutGrid size={12} strokeWidth={2.2} />}>{TYPE_META[project.type].label}</Pair>
+            {projectTeam && <Pair label={t.projectTeam} icon={<Building2 size={12} strokeWidth={2.2} />}>{projectTeam.name}</Pair>}
+            {projectTeam?.region && <Pair label={t.projectRegion} icon={<Globe size={12} strokeWidth={2.2} />}>{projectTeam.region}</Pair>}
             {/* The one editable pair on the card, in the same shape as the four above it: the
                 control sits where a value would, rather than being pushed to the far right of a
                 ruled row. A setting is a value you can change, and it should look like the values
                 it sits with. */}
-            <Pair label={t.projectTimeZone} icon={<Clock size={11} strokeWidth={2.2} />}>
+            <Pair label={t.projectTimeZone} icon={<Clock size={12} strokeWidth={2.2} />}>
               <FilterSelect
                 value={project.timeZone ?? PROJECT_TIME_ZONE}
                 onChange={zone => setProjectTimeZone(project.id, zone)}
@@ -174,7 +174,7 @@ export default function PortalMyPage({ projectId }: { projectId: string }) {
       <Card>
         <CardTitle>{t.displayTitle}</CardTitle>
         <Pairs>
-          <Pair label={t.language} icon={<Languages size={11} strokeWidth={2.2} />}>
+          <Pair label={t.language} icon={<Languages size={12} strokeWidth={2.2} />}>
             {/* Each language named in its own script — the one label a person who cannot read the
                 current interface still recognises. */}
             <FilterSelect
@@ -227,19 +227,24 @@ function Pairs({ children }: { children: React.ReactNode }) {
 /**
  * One fact, or one setting.
  *
- * 11px icon at stroke 2.2 — a 1.0px line, thinner than the 1.4px Portal draws elsewhere, because
- * this mark sits beside an 11px caption rather than 13px text and has to match its weight as well
- * as its height. Same reasoning as the camera sheet, where this pattern comes from.
+ * A step larger than the camera sheet this pattern comes from — 12px caption over a 14px value,
+ * where the sheet runs 11 over 13. The sheet is a dense popup read at a glance with a dozen facts
+ * competing; this is a settings page with five, on a column with room to spare, and at 11px the
+ * captions read as fine print on a page that has no fine print.
+ *
+ * The icon tracks the caption: 12px at stroke 2.2 is a 1.1px line, still under the 1.4px Portal
+ * draws elsewhere, because a mark beside an 12px caption has to match its weight as well as its
+ * height — a 14px glyph at 1.4px stands taller than the letters and heavier than their stems.
  */
 function Pair({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <div style={{ minWidth: 0 }}>
-      <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)" }}>
+      <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", lineHeight: "16px", color: "var(--gray-500)" }}>
         <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}>{icon}</span>
         {label}
       </p>
       {typeof children === "string"
-        ? <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "2px", wordBreak: "break-word" }}>{children}</p>
+        ? <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginTop: "3px", wordBreak: "break-word" }}>{children}</p>
         : (
           /* flex, not a plain block: FilterSelect's trigger is inline-grid, so in a block it sits
              on a text baseline and inherits this column's 24px line height — about twenty pixels
