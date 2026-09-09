@@ -4,7 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { LiveEvent, Device, TrackingHop, nearestDistrict, getFacePhoto, formatTimeAgo,
   DISTRICT_ALERT_THRESHOLD_KEY, DISTRICT_MODERATE_THRESHOLD_KEY,
   DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD } from "@/lib/mockData";
-import { useVcaStore, vcaEventsToLiveEvents, VIP_SIMULATION_CAMERAS, type Camera } from "@/lib/vcaStore";
+import {
+  useVcaStore, vcaEventsToLiveEvents, VIP_SIMULATION_CAMERAS,
+  useProjectEvents, useProjectCameras, type Camera,
+} from "@/lib/vcaStore";
 import { useApiData } from "@/hooks/useApiData";
 import { getDistricts } from "@/lib/api/dashboard";
 import { isTodaySgt } from "@/lib/time";
@@ -400,13 +403,15 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
 
   // Registered cameras' real lat/lng — the exact CCTV install point, distinct from a zone
   // marker's own (approximate, district-level) coordinate.
-  const cameras = useVcaStore(s => s.cameras);
+  const cameras = useProjectCameras();
   const camerasRef = useRef(cameras);
   useEffect(() => { camerasRef.current = cameras; }, [cameras]);
 
   // Recently-detected locations — feeds the district-cluster/recent-activity effect below
   // directly (no ref needed there since that effect already re-runs on every change).
-  const recentEvents = vcaEventsToLiveEvents(useVcaStore(s => s.events));
+  // This site's detections only. A map is the one screen where mixing two sites is worst: the
+  // pins would sit in two cities and "respond to this" would point at the wrong one.
+  const recentEvents = vcaEventsToLiveEvents(useProjectEvents());
 
   // ── Map initialization ───────────────────────────────────────────
   useEffect(() => {

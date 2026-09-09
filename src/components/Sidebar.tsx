@@ -4,7 +4,10 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Search, Crown } from "lucide-react";
 import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, FACE_PHOTOS, getFacePhoto, formatTimeAgo, nearestDistrict } from "@/lib/mockData";
-import { useVcaStore, vcaEventsToLiveEvents, todaysDetectionHits } from "@/lib/vcaStore";
+import {
+  useVcaStore, vcaEventsToLiveEvents, todaysDetectionHits,
+  useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras,
+} from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useApiData } from "@/hooks/useApiData";
 import { getDashboardStats, getDevices, getDistricts } from "@/lib/api/dashboard";
@@ -384,9 +387,12 @@ function StatusBadge({ status }: { status: string }) {
 // Same counts EventsSummary/CollapsedSidebar both show — derived from vcaStore so a live
 // detection added anywhere (e.g. the Data tab's monitoring feed) updates them everywhere.
 function useEventCounts() {
-  const storeEvents = useVcaStore(s => s.events);
+  // Scoped to the site the header is pointed at — see useProjectEvents. These counts sit above a
+  // list of that site's detections, so counting every site's would make the number disagree with
+  // the rows under it.
+  const storeEvents = useProjectEvents();
   const detections = vcaEventsToLiveEvents(storeEvents);
-  const persons = useVcaStore(s => s.persons);
+  const persons = useProjectPersons();
   // delta/deltaPct/down (yesterday-comparison fields) come from the future-backend stub rather
   // than importing the mock object directly — see lib/api/dashboard.ts. Falls back to a flat
   // (no change) delta for the brief window before the fetch resolves.
@@ -410,7 +416,7 @@ function useEventCounts() {
 function VipListModal({ onClose, onPersonSelect }: { onClose: () => void; onPersonSelect: (name: string) => void }) {
   const [lang] = useLanguage();
   const t = T[lang];
-  const persons = useVcaStore(s => s.persons).filter(p => p.type === "VIP");
+  const persons = useProjectPersons().filter(p => p.type === "VIP");
   useEscapeKey(onClose);
 
   return createPortal(
@@ -523,7 +529,7 @@ function EventsSummary({ onPersonSelect, onToggleDetectionChart }: { onPersonSel
 function LocationPickerModal({ current, onSelect, onClose }: { current: string | null; onSelect: (location: string | null) => void; onClose: () => void }) {
   const [lang] = useLanguage();
   const t = T[lang];
-  const cameras = useVcaStore(s => s.cameras);
+  const cameras = useProjectCameras();
   const locations = Array.from(new Set(cameras.map(c => c.name)));
   useEscapeKey(onClose);
   return createPortal(
@@ -838,7 +844,7 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
   const [page, setPage] = useState(1);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const FILTERS: FilterType[] = ["All", "VIP Detection", "Tracking"];
-  const liveEvents = vcaEventsToLiveEvents(useVcaStore(s => s.events));
+  const liveEvents = vcaEventsToLiveEvents(useProjectEvents());
   // Routed through the future-backend stub instead of importing the mock array directly — see
   // lib/api/dashboard.ts. Falls back to the raw district id (still a valid, if less pretty,
   // label) for the brief pre-fetch window.
@@ -1008,7 +1014,10 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
   const [page,   setPage]   = useState(1);
   const [localPinnedId, setLocalPinnedId] = useState<string | null>(null);
   const pinnedDeviceId = externalPinnedId ?? localPinnedId;
-  const cameras = useVcaStore(s => s.cameras);
+  // This site's cameras only — both for the zone names below and as the fetch dependency, so
+  // switching sites in the header re-reads the list instead of leaving the previous site's rows.
+  const activeProjectId = useActiveProjectId();
+  const cameras = useProjectCameras();
   // Routed through the future-backend stubs instead of importing the mock array/object directly
   // — see lib/api/dashboard.ts. `devices` defaults to [] for the brief pre-fetch window, which
   // the existing "No devices found." empty state already covers.
@@ -1017,8 +1026,8 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
   // remove a camera in Portal, or take one offline, and this list re-reads instead of showing
   // what was true when the tab first mounted. A real backend needs the same trigger — a poll or
   // a socket signal — so the dependency is not mock scaffolding.
-  const { data: dashboardStats } = useApiData(() => getDashboardStats(), [cameras]);
-  const { data: devicesData, error: devicesError, refetch: refetchDevices } = useApiData(() => getDevices(), [cameras]);
+  const { data: dashboardStats } = useApiData(() => getDashboardStats(activeProjectId), [cameras, activeProjectId]);
+  const { data: devicesData, error: devicesError, refetch: refetchDevices } = useApiData(() => getDevices(activeProjectId), [cameras, activeProjectId]);
   const devices = devicesData ?? [];
   const linkedCams = dashboardStats?.linkedCams ?? { count: 0, delta: 0, deltaPct: 0, down: false };
   const offlineCams = dashboardStats?.offlineCams ?? { count: 0, delta: 0, deltaPct: 0, down: false };
@@ -1242,12 +1251,13 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
   const [tab, setTab] = usePersistedSidebarTab();
   const [hovered, setHovered] = useState<{ id: string; top: number; item: LiveEvent | Device } | null>(null);
   const { vipTargets, watchlistMatch, tracking } = useEventCounts();
-  const { data: dashboardStats } = useApiData(() => getDashboardStats(), []);
+  const activeProjectId = useActiveProjectId();
+  const { data: dashboardStats } = useApiData(() => getDashboardStats(activeProjectId), [activeProjectId]);
   const availability = dashboardStats?.availability ?? 0;
   const todayTotal = watchlistMatch.count + tracking.count;
-  const liveEvents = vcaEventsToLiveEvents(useVcaStore(s => s.events));
-  const cameras = useVcaStore(s => s.cameras);
-  const { data: devicesData } = useApiData(() => getDevices(), [cameras]);
+  const liveEvents = vcaEventsToLiveEvents(useProjectEvents());
+  const cameras = useProjectCameras();
+  const { data: devicesData } = useApiData(() => getDevices(activeProjectId), [cameras, activeProjectId]);
   const devices = devicesData ?? [];
 
   const handleMouseEnter = (e: React.MouseEvent, id: string, item: LiveEvent | Device) => {

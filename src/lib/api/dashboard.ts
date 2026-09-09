@@ -3,7 +3,7 @@
 // Swap the body of each function for a real fetch(`${API_BASE_URL}/...`) call later.
 
 import { dashboardStats, liveEvents, devices, mapMarkers, DISTRICTS, hourlyDetections, formatTimeAgo, type Device, type HourlyDetection } from "@/lib/mockData";
-import { useVcaStore, type Camera } from "@/lib/vcaStore";
+import { useVcaStore, camerasInProject, type Camera } from "@/lib/vcaStore";
 import { mockDelay } from "./client";
 
 /**
@@ -42,22 +42,37 @@ function cameraToDevice(camera: Camera): Device {
   };
 }
 
-function deploymentDevices(): Device[] {
-  const registered = useVcaStore.getState().cameras.map(cameraToDevice);
+/**
+ * The mock filler stands for cameras nobody has registered in Portal yet, and it is a thousand
+ * Singapore-district positions — so it belongs to the smart-city site and to no other. Without
+ * naming that, filtering by site either hid the whole deployment or handed a school campus a
+ * thousand cameras it does not have.
+ *
+ * Delete this along with the filler when the backend owns the list.
+ */
+const FILLER_PROJECT_ID = "proj-sg";
+
+function deploymentDevices(projectId?: string): Device[] {
+  const all = useVcaStore.getState().cameras;
+  const registered = (projectId ? camerasInProject(all, projectId) : all).map(cameraToDevice);
+  if (projectId && projectId !== FILLER_PROJECT_ID) return registered;
   const registeredIds = new Set(registered.map(d => d.id));
   return [...registered, ...devices.filter(d => !registeredIds.has(d.id))];
 }
 
-export async function getDashboardStats() {
+export async function getDashboardStats(projectId?: string) {
   // Availability was computed at module load from the static array, so it disagreed with the
   // camera counts the moment those started coming from the store. Same list, same figure.
-  const all = deploymentDevices();
+  const all = deploymentDevices(projectId);
   const live = all.filter(d => d.status === "Live").length;
+  // A site with no cameras registered yet has no availability to report — 0/0 is NaN, and a donut
+  // reading "NaN%" is worse than one reading nothing.
+  const availability = all.length === 0 ? 0 : Math.round((live / all.length) * 1000) / 10;
   return mockDelay({
     ...dashboardStats,
     linkedCams: { ...dashboardStats.linkedCams, count: live },
     offlineCams: { ...dashboardStats.offlineCams, count: all.length - live },
-    availability: Math.round((live / all.length) * 1000) / 10,
+    availability,
   });
 }
 
@@ -65,8 +80,8 @@ export async function getLiveEvents() {
   return mockDelay(liveEvents);
 }
 
-export async function getDevices() {
-  return mockDelay(deploymentDevices());
+export async function getDevices(projectId?: string) {
+  return mockDelay(deploymentDevices(projectId));
 }
 
 export async function getMapMarkers() {

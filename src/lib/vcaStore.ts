@@ -704,6 +704,103 @@ export function projectsVisibleInApp(users: PortalUser[], projects: Project[]): 
 }
 
 /**
+ * The one site the app is currently showing.
+ *
+ * The app is a single-site screen: an operator watches their own site, and a screen that mixes two
+ * sites' detections into one map is one where "respond to this" points at the wrong city. Access
+ * can span several sites — a school group's security lead watching two campuses — so the header
+ * offers a switch; what it never offers is both at once.
+ *
+ * Falls back to the first site the account can see, so the app always has a site even before
+ * anyone has chosen one. Returns null only when the account can see no site at all.
+ */
+export function resolveActiveProject(
+  activeProjectId: string,
+  users: PortalUser[],
+  projects: Project[],
+): Project | null {
+  const visible = projectsVisibleInApp(users, projects);
+  return visible.find(p => p.id === activeProjectId) ?? visible[0] ?? null;
+}
+
+/**
+ * Which site a detection belongs to.
+ *
+ * Detections carry a cameraId and nothing else about where they belong, so the camera register is
+ * what attributes them — the same rule the backend confirmed for the real thing (cameraId → the
+ * register's projectId). Two pools have to be searched: the register itself, and the much larger
+ * simulation pool the VIP ticker draws from, whose cameras are not register rows.
+ *
+ * HANDOFF NOTE: module-api v1.10 has no project on detections at all, which is why an operator
+ * could see another site's people. Once the proxy filters by the session's projects this becomes a
+ * second line of defence rather than the only one — keep it either way: it is also what makes the
+ * header's site switch mean something within one session.
+ */
+export function projectIdForCameraId(cameraId: string, cameras: Camera[]): string | undefined {
+  return cameras.find(c => c.id === cameraId)?.projectId
+    ?? VIP_SIMULATION_CAMERAS.find(c => c.id === cameraId)?.projectId;
+}
+
+/** Detections at this site's cameras. */
+export function eventsInProject(events: VcaEvent[], projectId: string, cameras: Camera[]): VcaEvent[] {
+  return events.filter(e => projectIdForCameraId(e.cameraId, cameras) === projectId);
+}
+
+/** People registered at this site. */
+export function personsInProject(persons: Person[], projectId: string): Person[] {
+  return persons.filter(p => p.projectId === projectId);
+}
+
+/** This site's cameras. */
+export function camerasInProject(cameras: Camera[], projectId: string): Camera[] {
+  return cameras.filter(c => c.projectId === projectId);
+}
+
+/**
+ * Hooks, so a screen scopes itself in one line and cannot forget a piece of it.
+ *
+ * The pure functions above take their inputs, which is what makes them testable and usable from
+ * the api layer; these wrap them for the screens, which all want the same thing: whatever the
+ * header is currently pointed at. Every app screen that shows detections, people or cameras reads
+ * through one of these — the filter living in one place is what keeps the map, the list and the
+ * counts from disagreeing about which site is on screen.
+ */
+export function useActiveProjectId(): string {
+  const activeProjectId = useVcaStore(s => s.activeProjectId);
+  const portalUsers = useVcaStore(s => s.portalUsers);
+  const projects = useVcaStore(s => s.projects);
+  return resolveActiveProject(activeProjectId, portalUsers, projects)?.id ?? "";
+}
+
+export function useProjectEvents(): VcaEvent[] {
+  const events = useVcaStore(s => s.events);
+  const cameras = useVcaStore(s => s.cameras);
+  const projectId = useActiveProjectId();
+  return eventsInProject(events, projectId, cameras);
+}
+
+export function useProjectPersons(): Person[] {
+  const persons = useVcaStore(s => s.persons);
+  const projectId = useActiveProjectId();
+  return personsInProject(persons, projectId);
+}
+
+/**
+ * Non-hook form, for imperative code that cannot call a hook — a timer, a seeder, an event
+ * handler. Same resolution as useActiveProjectId.
+ */
+export function getActiveProjectId(): string {
+  const s = useVcaStore.getState();
+  return resolveActiveProject(s.activeProjectId, s.portalUsers, s.projects)?.id ?? "";
+}
+
+export function useProjectCameras(): Camera[] {
+  const cameras = useVcaStore(s => s.cameras);
+  const projectId = useActiveProjectId();
+  return camerasInProject(cameras, projectId);
+}
+
+/**
  * Whether the person using the monitoring app may run person searches.
  *
  * HANDOFF NOTE: same stand-in as currentPortalRole — there is no session, so this resolves
@@ -1061,6 +1158,36 @@ serverId: "srv-1",
       };
     });
   }),
+  /**
+   * A second project with cameras of its own. Everything above belongs to the smart-city
+   * deployment, which meant switching sites in the app's header landed on an empty screen — the
+   * project filter had nothing to prove itself against.
+   *
+   * Six, not sixty: a school campus is not a city. The gate, the two corridors, the hall and the
+   * car park are where a school actually puts cameras, and the count is what makes a smaller site
+   * read as a smaller site rather than as a filtered version of the big one.
+   */
+  ...["Main Gate", "East Corridor", "West Corridor", "Assembly Hall", "Car Park", "Rear Gate"]
+    .map((spot, i) => ({
+      id: `cam-riverside-${i + 1}`,
+      projectId: "proj-riverside",
+      code: `CAM-RVS-${String(i + 1).padStart(3, "0")}`,
+      name: spot,
+      ip: `10.40.1.${11 + i}`,
+      mac: `00:1B:44:44:0${i}:C${i}`,
+      rtspUrl: `rtsp://10.40.1.${11 + i}:554/stream1`,
+      // One of the six is down — a site where everything is always green teaches nobody how the
+      // offline row looks, and the Rear Gate is exactly the camera a campus forgets about.
+      status: (spot === "Rear Gate" ? "offline" : "online") as CameraStatus,
+      location: `${spot}, Riverside International School`,
+      zone: spot === "Car Park" || spot === "Rear Gate" ? "Perimeter" : "Campus",
+      serverId: "srv-7",
+      thumbnail: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
+      lat: Math.round((1.3410 + i * 0.0008) * 10000) / 10000,
+      lng: Math.round((103.8080 + i * 0.0011) * 10000) / 10000,
+      maker: "Hanwha",
+      resolution: "FHD (1920×1080)",
+    })),
 ];
 
 /**
@@ -1241,6 +1368,10 @@ export const PERSONS: Person[] = (() => {
       photoUrl: getFacePhoto(e.id),
       registeredAt: info?.registeredAt ?? "2026-01-01",
       description: info?.description,
+      // Attributed through the camera that detected them, which is the same rule detections use.
+      // Without this these rows carried no site at all, so the app — once it started scoping to
+      // one site — would have shown an empty VIP list while the detections were still arriving.
+      projectId: projectIdForCameraId(cameraIdForLocation(e.location), CAMERAS),
     });
   });
   // Portal-scoped sample data for the Overview tab's "Recently Registered VIPs" panel — the

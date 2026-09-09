@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatTimeAgo, LiveEvent } from "@/lib/mockData";
-import { SIGNED_IN_USER, projectsVisibleInApp, useVcaStore, vcaEventsToLiveEvents } from "@/lib/vcaStore";
+import {
+  SIGNED_IN_USER, projectsVisibleInApp, resolveActiveProject, useVcaStore,
+  vcaEventsToLiveEvents, useActiveProjectId, useProjectEvents,
+} from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useApiData } from "@/hooks/useApiData";
 import { getDashboardStats } from "@/lib/api/dashboard";
@@ -93,7 +96,8 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
   // it, a real failed request would render "0 Running" / "0 Stopped" indistinguishable from a
   // genuinely-empty fleet — showing "—" instead makes a load failure visibly different from a
   // real zero.
-  const { data: dashboardStats, error: dashboardStatsError } = useApiData(() => getDashboardStats(), []);
+  const scopedProjectId = useActiveProjectId();
+  const { data: dashboardStats, error: dashboardStatsError } = useApiData(() => getDashboardStats(scopedProjectId), [scopedProjectId]);
   // Which site this wall is showing. Only the account's own projects are offered — a team's
   // cameras have no business on another team's screen — so a one-project account sees a plain
   // label with nothing to open.
@@ -102,7 +106,9 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
   const activeProjectId = useVcaStore(s => s.activeProjectId);
   const setActiveProjectId = useVcaStore(s => s.setActiveProjectId);
   const myProjects = projectsVisibleInApp(portalUsers, projects);
-  const activeProject = myProjects.find(p => p.id === activeProjectId) ?? myProjects[0] ?? null;
+  // Same resolution every scoped screen uses, so the name in the header and the data underneath
+  // can never point at different sites.
+  const activeProject = resolveActiveProject(activeProjectId, portalUsers, projects);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const canSwitchProject = myProjects.length > 1;
   useEscapeKey(() => setProjectMenuOpen(false), projectMenuOpen);
@@ -133,7 +139,9 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
   const notifRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
 
-  const events = useVcaStore(s => s.events);
+  // Scoped: a notification for a site the operator is not looking at is a notification they
+  // cannot act on, and clicking it would jump the map to another city.
+  const events = useProjectEvents();
   const lastReadNotifAt = useVcaStore(s => s.lastReadNotifAt);
   const markNotificationsRead = useVcaStore(s => s.markNotificationsRead);
   // Scoped to the last hour, and the footer says so. The store keeps events by COUNT (500), not by

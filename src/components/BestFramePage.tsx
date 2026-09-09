@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { Search } from "lucide-react";
-import { useVcaStore, type UploadedMedia } from "@/lib/vcaStore";
+import { useVcaStore, useActiveProjectId, type UploadedMedia } from "@/lib/vcaStore";
 import BestFrameDetailPage from "./BestFrameDetailPage";
 import { useToast } from "./Toast";
 import type { DetType, MonitorState, Camera, Detection, CamData, HUDState } from "@/types/detection";
@@ -849,7 +849,10 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
   //
   // Still local state, because `checked` is this page's business and not the store's. The effect
   // below reconciles the list when an upload is added or removed and keeps whatever was ticked.
-  const storeUploads = useVcaStore(s => s.uploads);
+  // Uploads carry the site they were added to, so this list shows the site on screen. A file
+  // someone uploaded to another project is not footage from here.
+  const activeProjectId = useActiveProjectId();
+  const storeUploads = useVcaStore(s => s.uploads).filter(u => u.projectId === activeProjectId);
   const [videoCams,  setVideoCams]  = useState<Camera[]>(() => uploadsToCams(storeUploads, "video", []));
   const [imageCams,  setImageCams]  = useState<Camera[]>(() => uploadsToCams(storeUploads, "image", []));
 

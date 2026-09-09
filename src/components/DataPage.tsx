@@ -2,7 +2,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MatchItem, ReIDStatus } from "@/types/reid";
-import { CAMERA_CODES, canSearchInApp, useVcaStore } from "@/lib/vcaStore";
+import {
+  CAMERA_CODES, canSearchInApp, camerasInProject, getActiveProjectId,
+  useActiveProjectId, useProjectCameras, useVcaStore,
+} from "@/lib/vcaStore";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import RemoveImageButton from "./RemoveImageButton";
@@ -594,7 +597,7 @@ function ScrollToTopButton({ containerRef }: { containerRef: React.RefObject<HTM
 function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTab, onGoRedmap }:
   { camId:string; items:(typeof REID_DATA); onSwitchCam:(camId:string)=>void; onCardClick:(id:number)=>void; onNavigateTab?:(tab:DataTab, card:(typeof REID_DATA)[number])=>void; onGoRedmap?:()=>void }) {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const cameras = useVcaStore(s => s.cameras);
+  const cameras = useProjectCameras();
   const camera = cameras.find(c => c.code === camId);
   const isAll = camId === ALL_CAMERAS_ID;
   const pickerLabel = isAll ? "All Cameras" : camId;
@@ -751,7 +754,9 @@ function makeLiveItem(seed: number, camId: string, index: number): (typeof REID_
 
 function seedLiveFeed(): Record<string, (typeof REID_DATA)> {
   const feed: Record<string, (typeof REID_DATA)> = {};
-  useVcaStore.getState().cameras.forEach((cam, camIndex) => {
+  // This site's cameras only. Seeding every site's meant the wall showed feeds from cameras that
+  // are not on this screen's site, and the "All Cameras" view counted them.
+  camerasInProject(useVcaStore.getState().cameras, getActiveProjectId()).forEach((cam, camIndex) => {
     feed[cam.code] = Array.from({ length: 120 }, (_, i) => makeLiveItem(500000 + camIndex * 1000 + i, cam.code, i));
   });
   return feed;
@@ -1170,6 +1175,14 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   const [detailId, setDetailId] = useState<number|null>(null);
   const [feed, setFeed]         = useState(seedLiveFeed);
   const seedRef = useRef(1);
+  // Re-seed when the header switches site. Without this the wall keeps the previous site's cards
+  // — the seed runs once at mount, and nothing else would clear them.
+  const scopedProjectId = useActiveProjectId();
+  const firstFeedRef = useRef(true);
+  useEffect(() => {
+    if (firstFeedRef.current) { firstFeedRef.current = false; return; }
+    setFeed(seedLiveFeed());
+  }, [scopedProjectId]);
 
   // Smart Search used to be its own top-level Data tab, disconnected from the camera view it was
   // actually meant to search from. Every other Data tab keeps its search filters in a collapsible
@@ -1314,7 +1327,8 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
       // updating in lockstep rather than a live feed where different cameras detect faces at
       // different times. A ~1s tick over ~1/4 of cameras keeps each one's own average refresh
       // cadence close to the old 4s, just staggered instead of synchronized.
-      const onlineCams = useVcaStore.getState().cameras.filter(cam => cam.status === "online");
+      const onlineCams = camerasInProject(useVcaStore.getState().cameras, getActiveProjectId())
+        .filter(cam => cam.status === "online");
       if (onlineCams.length === 0) return;
       const batchSize = Math.max(1, Math.round(onlineCams.length / 4));
       const batch = [...onlineCams].sort(() => Math.random() - 0.5).slice(0, batchSize);
@@ -1333,7 +1347,7 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
 
   const allItems = Object.values(feed).flat();
   const detailItem = detailId !== null ? allItems.find(p => p.id===detailId) ?? null : null;
-  const onlineCameraCodes = useVcaStore(s => s.cameras).filter(c => c.status === "online").map(c => c.code);
+  const onlineCameraCodes = useProjectCameras().filter(c => c.status === "online").map(c => c.code);
   const camDetailItems = openCam === ALL_CAMERAS_ID
     ? onlineCameraCodes.flatMap(code => feed[code] ?? [])
     : feed[openCam] ?? [];
@@ -2643,7 +2657,7 @@ function SlidersIconSm({ size = 16 }: { size?: number }) {
 // and neither could hand a selection to the other. REID_DATA draws from CAMERA_CODES now.
 function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
-  const cameras = useVcaStore(s => s.cameras);
+  const cameras = useProjectCameras();
   const statusOf = (code: string) => cameras.find(c => c.code === code)?.status;
   const label = value || "All Cameras";
   return (
