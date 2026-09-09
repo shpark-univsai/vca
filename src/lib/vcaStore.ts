@@ -142,19 +142,26 @@ export interface Project {
   regionSubcenterCount?: number;
 }
 
-// Matches existing app-wide terminology ("Re-ID Analysis" tab in DataPage, "License plate" search
-// in RedmapPage/DataPage) rather than abbreviations like "LPR" that don't appear anywhere else in
-// this codebase's UI copy.
 /**
- * The AI engines a camera can be assigned.
+ * What kind of source this is, as the operator declares it when registering the camera.
  *
- * Intrusion Detection was a third member until 2026-09-04 and is gone. It was a label with
- * nothing behind it: the form offered it, CameraStreamModal gave it a colour, and that was the
- * whole feature — EventType is "VIP" | "Tracking", so no intrusion event exists in the system, no
- * screen shows one, and no code read the tag. A checkbox that changes nothing is worse than a
- * missing one, because somebody ticks it and believes the site is watched for intruders.
+ * The real console asks for it first, above the name, as a two-way choice — so it is a field, not
+ * something to be inferred. Portal used to infer it, from whether any "AI engine" had been mapped
+ * to the camera, and called the result "AI Cameras · Normal Cameras (CCTV)" on the licence page:
+ * a configuration state wearing the name of a hardware type.
+ *
+ * A normal camera is not a camera that cannot recognise anybody. Both kinds are attached to a
+ * server of the matching type and it is the server that runs the analysis, which is why the fleet
+ * can be almost entirely "normal" and still be watching for faces. The engine list that used to
+ * live on the camera is gone with the inference (2026-09-09): Re-ID is a backend analysis over the
+ * faces already collected rather than a per-camera setting, and licence-plate recognition has not
+ * shipped — the licence page listed it under COMING SOON while four cameras claimed to be running
+ * it.
+ *
+ * Optional because seeded and app-side cameras predate the field; absent reads as "normal", which
+ * is what every one of them is.
  */
-export type CameraAiFeature = "Re-ID Analysis" | "License Plate Recognition";
+export type CameraSourceType = "normal" | "ai";
 
 export interface Camera {
   id: string;
@@ -177,10 +184,8 @@ export interface Camera {
   thumbnail: string;
   lat: number;
   lng: number;
-  // Which AI analysis engines are mapped to this camera's stream — set from Portal's Camera
-  // Management screen. Optional so existing/seeded cameras (none of which have this configured)
-  // still type-check; an empty/missing list just means no engine is mapped yet.
-  aiFeatures?: CameraAiFeature[];
+  /** Normal camera or AI camera — see CameraSourceType. Absent reads as "normal". */
+  sourceType?: CameraSourceType;
   // RTSP transport protocol, set from Portal's Add/Edit Camera form. Optional/cosmetic — nothing
   // downstream branches on this yet since there's no real stream to actually transport.
   protocol?: "TCP" | "UDP";
@@ -208,6 +213,9 @@ export interface Server {
   projectId: string;
   name: string;
   ip: string;
+  /** The real Update Server dialog asks for this next to the IP; nothing reaches a server without
+   *  it, so an address on its own was never enough to describe one. */
+  port?: number;
   type: ServerType;
   specification?: string;
   status: ServerStatus;
@@ -896,14 +904,14 @@ const STAFF_ROSTER: RosterEntry[] = [
 ];
 
 const SERVERS: Server[] = [
-  { id: "srv-1", projectId: "proj-sg", name: "FR 2", ip: "192.168.0.36", type: "Face Recognition", status: "success" },
-  { id: "srv-2", projectId: "proj-sg", name: "AI camera 1", ip: "192.168.0.36", type: "AI Camera", status: "success" },
-  { id: "srv-3", projectId: "proj-sg", name: "image store 1", ip: "192.168.0.36", type: "Image Store", status: "success" },
-  { id: "srv-4", projectId: "proj-sg", name: "database 1", ip: "192.168.0.36", type: "Database", status: "success" },
-  { id: "srv-5", projectId: "proj-sg", name: "normal camera 1", ip: "192.168.0.36", type: "Normal Camera", status: "success" },
-  { id: "srv-6", projectId: "proj-sg", name: "testServer", ip: "192.168.0.103", type: "Face Recognition", status: "error" },
-  { id: "srv-7", projectId: "proj-riverside", name: "campus-fr-1", ip: "192.168.1.20", type: "Face Recognition", status: "success" },
-  { id: "srv-8", projectId: "proj-riverside", name: "campus-db-1", ip: "192.168.1.21", type: "Database", status: "success" },
+  { id: "srv-1", projectId: "proj-sg", name: "FR 2", ip: "192.168.0.36", port: 8021, type: "Face Recognition", status: "success" },
+  { id: "srv-2", projectId: "proj-sg", name: "AI camera 1", ip: "192.168.0.36", port: 8012, type: "AI Camera", status: "success" },
+  { id: "srv-3", projectId: "proj-sg", name: "image store 1", ip: "192.168.0.36", port: 8031, type: "Image Store", status: "success" },
+  { id: "srv-4", projectId: "proj-sg", name: "database 1", ip: "192.168.0.36", port: 5432, type: "Database", status: "success" },
+  { id: "srv-5", projectId: "proj-sg", name: "normal camera 1", ip: "192.168.0.36", port: 8011, type: "Normal Camera", status: "success" },
+  { id: "srv-6", projectId: "proj-sg", name: "testServer", ip: "192.168.0.103", port: 8021, type: "Face Recognition", status: "error" },
+  { id: "srv-7", projectId: "proj-riverside", name: "campus-fr-1", ip: "192.168.1.20", port: 8021, type: "Face Recognition", status: "success" },
+  { id: "srv-8", projectId: "proj-riverside", name: "campus-db-1", ip: "192.168.1.21", port: 5432, type: "Database", status: "success" },
 ];
 
 const CAMERA_SEEDS: Camera[] = [
@@ -911,15 +919,14 @@ const CAMERA_SEEDS: Camera[] = [
     id: "cam-novena", projectId: "proj-sg", code: "CAM-NOV-001", name: "Novena",
     ip: "10.20.4.11", mac: "00:1B:44:11:3A:B7", rtspUrl: "rtsp://10.20.4.11:554/stream1",
     status: "online", location: "Novena, Singapore", zone: "Novena",
-    // Engines and a server on a handful of the named cameras, not on all sixty.
+    // A server on a handful of the named cameras, not on all sixty — which is the gap the Input
+    // Sources summary is there to report.
     //
-    // aiFeatures existed only as a type: nothing seeded it, so every camera read "—", the AI
-    // Engines column was an empty column, the preview's overlay boxes never drew and the Input
-    // Sources summary counted the entire fleet as "no AI engine" — a figure that is technically
-    // true and tells you nothing. A real deployment has engines on the cameras that matter and
-    // nothing on the rest, so that is what this seeds: four of the eight named cameras run Re-ID,
-    // one of them also reads plates, and each carries the server that does the work.
-    aiFeatures: ["Re-ID Analysis"], serverId: "srv-1",
+    // Two of the named cameras are declared AI sources and attach to the AI-camera server; the
+    // rest are ordinary CCTV on the normal-camera server. That is the shape of a real deployment,
+    // and it is the whole of what the camera itself says about analysis: which engine runs is the
+    // server's business, not the camera's.
+    sourceType: "normal", serverId: "srv-1",
     thumbnail: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80",
     lat: 1.3202, lng: 103.8440, maker: "Hanwha", resolution: "4K (3840×2160)",
   },
@@ -927,7 +934,7 @@ const CAMERA_SEEDS: Camera[] = [
     id: "cam-geylang", projectId: "proj-sg", code: "CAM-GEY-001", name: "Geylang NC1",
     ip: "10.20.4.12", mac: "00:1B:44:11:3A:B8", rtspUrl: "rtsp://10.20.4.12:554/stream1",
     status: "online", location: "Geylang NC1, Singapore", zone: "Geylang",
-    aiFeatures: ["Re-ID Analysis", "License Plate Recognition"], serverId: "srv-1",
+    sourceType: "normal", serverId: "srv-1",
     thumbnail: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
     lat: 1.3148, lng: 103.8778, maker: "Hikvision", resolution: "FHD (1920×1080)",
   },
@@ -935,7 +942,7 @@ const CAMERA_SEEDS: Camera[] = [
     id: "cam-orchard", projectId: "proj-sg", code: "CAM-ORC-001", name: "Orchard MRT",
     ip: "10.20.4.13", mac: "00:1B:44:11:3A:B9", rtspUrl: "rtsp://10.20.4.13:554/stream1",
     status: "online", location: "Orchard MRT, Singapore", zone: "Orchard",
-    aiFeatures: ["Re-ID Analysis"], serverId: "srv-2",
+    sourceType: "ai", serverId: "srv-2",
     thumbnail: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80",
     lat: 1.3044, lng: 103.8321, maker: "Dahua", resolution: "4K (3840×2160)",
   },
@@ -943,7 +950,7 @@ const CAMERA_SEEDS: Camera[] = [
     id: "cam-bugis", projectId: "proj-sg", code: "CAM-BGS-001", name: "Bugis MRT",
     ip: "10.20.4.14", mac: "00:1B:44:11:3A:BA", rtspUrl: "rtsp://10.20.4.14:554/stream1",
     status: "online", location: "Bugis MRT, Singapore", zone: "Bugis",
-    aiFeatures: ["License Plate Recognition"], serverId: "srv-2",
+    sourceType: "ai", serverId: "srv-2",
     thumbnail: "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=800&q=80",
     lat: 1.3006, lng: 103.8561, maker: "Hanwha", resolution: "FHD (1920×1080)",
   },

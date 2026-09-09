@@ -8,11 +8,6 @@ import { BORDER } from "./PortalShared";
 import { sgtClockMinutes, sgtDateKey } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 
-const AI_OVERLAY_COLORS: Record<string, string> = {
-  "Re-ID Analysis": "var(--success-400)",
-  "License Plate Recognition": "var(--primary-400)",
-};
-
 const T = {
   en: {
     live: "LIVE",
@@ -28,8 +23,9 @@ const T = {
     protocol: "Protocol",
     coordinates: "Coordinates",
     rtspUrl: "RTSP Stream URL",
-    mappedAiEngines: "Mapped AI engines",
-    noAiEngines: "No AI engines mapped to this camera yet.",
+    sourceTypeLabel: "Source type",
+    sourceTypeNormal: "Normal camera",
+    sourceTypeAi: "AI camera",
     lastDetection: "Last detection",
     detectionCount: "Detections on record",
     detectionCountValue: (n: number) => `${n}`,
@@ -50,8 +46,9 @@ const T = {
     protocol: "프로토콜",
     coordinates: "좌표",
     rtspUrl: "RTSP 스트림 URL",
-    mappedAiEngines: "연결된 AI 엔진",
-    noAiEngines: "이 카메라에 연결된 AI 엔진이 아직 없습니다.",
+    sourceTypeLabel: "소스 유형",
+    sourceTypeNormal: "일반 카메라",
+    sourceTypeAi: "AI 카메라",
     lastDetection: "마지막 탐지",
     detectionCount: "기록된 탐지",
     detectionCountValue: (n: number) => `${n}건`,
@@ -82,7 +79,6 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
   const lastDetection = cameraEvents.length === 0
     ? null
     : new Date(Math.max(...cameraEvents.map(e => new Date(e.timestamp).getTime())));
-  const aiFeatures = camera.aiFeatures ?? [];
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
@@ -166,15 +162,9 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
                 <span style={{ fontSize: "12px", fontWeight: 700, color: "white" }}>{t.streamOffline}</span>
               </div>
             )}
-            {online && aiFeatures.map((feature, i) => (
-              <div key={feature} style={{
-                position: "absolute", left: `${12 + i * 10}%`, top: `${60 - i * 14}%`,
-                border: `2px solid ${AI_OVERLAY_COLORS[feature]}`, backgroundColor: `${AI_OVERLAY_COLORS[feature]}22`,
-                padding: "4px 8px", borderRadius: "6px", fontSize: "10px", fontWeight: 600, color: "white",
-              }}>
-                {feature}
-              </div>
-            ))}
+            {/* The overlay boxes that used to be drawn over this still are gone with the
+                per-camera engine list they were keyed on (2026-09-09): labelled rectangles at fixed
+                percentages of the frame, which is a picture of an analysis nobody ran. */}
           </div>
 
           {/*
@@ -235,15 +225,12 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
             <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
               <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)" }}>
                 <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Scan size={11} strokeWidth={2.2} /></span>
-                {t.mappedAiEngines}
+                {t.sourceTypeLabel}
               </p>
-              {/* Text, not chips. Every other value on this sheet is 13px/700 in the body face, and
-                  the engines were 10px/600 pills in primary — the one field that looked like a
-                  different kind of thing, when it is the same kind: a labelled value. Pills earn
-                  their keep in a table, where a value repeats down a column and the shape helps you
-                  scan it; in a detail sheet read once, they are decoration with a smaller font. */}
-              <p style={{ fontSize: "13px", fontWeight: 700, color: aiFeatures.length === 0 ? "var(--gray-400)" : "var(--gray-900)", marginTop: "2px" }}>
-                {aiFeatures.length === 0 ? t.noAiEngines : aiFeatures.join(", ")}
+              {/* Was "Mapped AI engines". The camera never carried the analysis — it carries what
+                  kind of source it is, and the server it is attached to runs the engines. */}
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "2px" }}>
+                {(camera.sourceType ?? "normal") === "ai" ? t.sourceTypeAi : t.sourceTypeNormal}
               </p>
             </div>
           </div>

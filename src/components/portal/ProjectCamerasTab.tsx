@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Film as FilmIcon, Image as ImageIcon, MapPinOff, Scan, ServerOff, Video as VideoIcon } from "lucide-react";
-import { useVcaStore, type Camera, type CameraAiFeature, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
+import { Film as FilmIcon, Image as ImageIcon, MapPinOff, ServerOff, Video as VideoIcon } from "lucide-react";
+import { useVcaStore, type Camera, type CameraSourceType, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
@@ -21,7 +21,6 @@ const T = {
     searchPlaceholder: "Search by camera name, code, RTSP URL, or IP address",
     filterAllZones: "All zones",
     filterAllStatus: "All status",
-    filterAllAiEngines: "All AI engines",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
 
     // Source kinds — cameras and uploaded footage share one table
@@ -30,7 +29,7 @@ const T = {
     kindTabVideo: "Videos",
     kindTabImage: "Images",
     colSource: "Source",
-    sourceCamera: "Camera",
+    sourceCamera: "Normal camera",
     sourceAiCamera: "AI camera",
     sourceVideo: "Video",
     sourceImage: "Image",
@@ -85,8 +84,6 @@ const T = {
     colResolution: "Resolution",
     colZone: "Zone",
     colRtspStream: "RTSP Stream",
-    colAiEngines: "AI Engines",
-    gapNoEngine: "no AI engine",
     gapNoServer: "no server assigned",
     gapNoCoords: "not on the map",
     gapUnit: "cameras",
@@ -112,10 +109,10 @@ const T = {
     fieldRtspUrl: "Connection — RTSP URL *",
     fieldResolution: "Resolution",
     fieldMaker: "Maker",
-    fieldInputKind: "Input kind",
+    fieldSourceType: "Source Type",
     fieldStatus: "Status",
     aiCameraOption: "AI Camera",
-    cctvOption: "CCTV",
+    normalCameraOption: "Normal Camera",
     cancel: "Cancel",
     saveChanges: "Save changes",
     addDevice: "Add device",
@@ -139,11 +136,7 @@ const T = {
     csvHeaderLocation: "Location",
     csvHeaderRtspUrl: "RTSP URL",
     csvHeaderStatus: "Status",
-    csvHeaderAiFeatures: "AI Features",
-    aiFeatureLabels: {
-      "Re-ID Analysis": "Re-ID Analysis",
-      "License Plate Recognition": "License Plate Recognition",
-    } as Record<CameraAiFeature, string>,
+    csvHeaderSourceType: "Source type",
   },
   ko: {
     exportCsv: "CSV 내보내기",
@@ -156,7 +149,6 @@ const T = {
     searchPlaceholder: "카메라 이름, 코드, RTSP URL, IP 주소로 검색",
     filterAllZones: "전체 구역",
     filterAllStatus: "전체 상태",
-    filterAllAiEngines: "전체 AI 엔진",
     filtersActive: (n: number) => `필터 ${n}개`,
 
     // Source kinds — cameras and uploaded footage share one table
@@ -165,7 +157,7 @@ const T = {
     kindTabVideo: "영상",
     kindTabImage: "이미지",
     colSource: "종류",
-    sourceCamera: "카메라",
+    sourceCamera: "일반 카메라",
     sourceAiCamera: "AI 카메라",
     sourceVideo: "영상",
     sourceImage: "이미지",
@@ -220,8 +212,6 @@ const T = {
     colResolution: "해상도",
     colZone: "구역",
     colRtspStream: "RTSP 스트림",
-    colAiEngines: "AI 엔진",
-    gapNoEngine: "AI 엔진 없음",
     gapNoServer: "서버 미할당",
     gapNoCoords: "지도에 없음",
     gapUnit: "대",
@@ -247,10 +237,10 @@ const T = {
     fieldRtspUrl: "연결 — RTSP URL *",
     fieldResolution: "해상도",
     fieldMaker: "제조사",
-    fieldInputKind: "입력 유형",
+    fieldSourceType: "소스 유형",
     fieldStatus: "상태",
     aiCameraOption: "AI 카메라",
-    cctvOption: "CCTV",
+    normalCameraOption: "일반 카메라",
     cancel: "취소",
     saveChanges: "변경사항 저장",
     addDevice: "기기 추가",
@@ -274,11 +264,7 @@ const T = {
     csvHeaderLocation: "위치",
     csvHeaderRtspUrl: "RTSP URL",
     csvHeaderStatus: "상태",
-    csvHeaderAiFeatures: "AI 기능",
-    aiFeatureLabels: {
-      "Re-ID Analysis": "Re-ID 분석",
-      "License Plate Recognition": "번호판 인식",
-    } as Record<CameraAiFeature, string>,
+    csvHeaderSourceType: "소스 유형",
   },
 } as const;
 
@@ -398,11 +384,11 @@ type SourceRow =
   | { kind: "camera"; id: string; name: string; camera: Camera }
   | { kind: "video" | "image"; id: string; name: string; upload: UploadedMedia };
 
-const AI_FEATURES: CameraAiFeature[] = ["Re-ID Analysis", "License Plate Recognition"];
 const MAKERS = ["Hanwha", "Hikvision", "Dahua"];
 const RESOLUTIONS = ["FHD (1920×1080)", "4K (3840×2160)"];
-const INPUT_KINDS = ["CCTV", "AI Camera"] as const;
-type InputKind = typeof INPUT_KINDS[number];
+// The real console's Source Type, in its own order and wording. Stored on the camera rather than
+// inferred from anything: see CameraSourceType in the store.
+const SOURCE_TYPES = ["normal", "ai"] as const;
 
 interface CameraFormValues {
   name: string;
@@ -424,8 +410,7 @@ interface CameraFormValues {
   serverId: string;
   lat: string;
   lng: string;
-  inputKind: InputKind;
-  aiFeatures: CameraAiFeature[];
+  sourceType: CameraSourceType;
   status: CameraStatus;
 }
 
@@ -433,7 +418,7 @@ const EMPTY_FORM: CameraFormValues = {
   name: "", ip: "", location: "", zone: "", rtspUrl: "",
   resolution: RESOLUTIONS[0], maker: MAKERS[0], model: "", username: "", password: "",
   serverId: "", lat: "", lng: "",
-  inputKind: "CCTV", aiFeatures: [], status: "offline",
+  sourceType: "normal", status: "offline",
 };
 
 // Camera codes are an internal identifier (shown in the table, used in mock RTSP paths) — the
@@ -489,16 +474,6 @@ function CameraFormModal({
     </div>
   );
 
-  const setInputKind = (kind: InputKind) => {
-    setForm(f => ({
-      ...f,
-      inputKind: kind,
-      // Switching to AI Camera turns on a sensible default engine if none were mapped yet;
-      // switching back to CCTV clears them — granular per-engine mapping still lives in the
-      // camera detail view, this popup just decides whether any engine runs at all.
-      aiFeatures: kind === "AI Camera" ? (f.aiFeatures.length > 0 ? f.aiFeatures : ["Re-ID Analysis"]) : [],
-    }));
-  };
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
@@ -516,12 +491,12 @@ function CameraFormModal({
           {/* Source type first, as two buttons rather than a select: it is a required choice
               between exactly two things and it changes what the rest of the form means. */}
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldInputKind}</label>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldSourceType}</label>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              {INPUT_KINDS.map(kind => {
-                const active = form.inputKind === kind;
+              {SOURCE_TYPES.map(kind => {
+                const active = form.sourceType === kind;
                 return (
-                  <button key={kind} onClick={() => setInputKind(kind)}
+                  <button key={kind} onClick={() => setForm(f => ({ ...f, sourceType: kind }))}
                     style={{
                       display: "flex", alignItems: "center", gap: "8px", padding: "10px 12px", borderRadius: "10px", cursor: "pointer",
                       border: active ? "1px solid var(--gray-900)" : BORDER,
@@ -530,7 +505,7 @@ function CameraFormModal({
                       fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
                     }}>
                     <VideoIcon size={16} strokeWidth={2.1} />
-                    {kind === "AI Camera" ? t.aiCameraOption : t.cctvOption}
+                    {kind === "ai" ? t.aiCameraOption : t.normalCameraOption}
                   </button>
                 );
               })}
@@ -637,17 +612,6 @@ function ConfirmStatusModal({
   );
 }
 
-function AiFeatureBadges({ features, t }: { features?: CameraAiFeature[]; t: (typeof T)["en"] | (typeof T)["ko"] }) {
-  if (!features || features.length === 0) return <span style={{ fontSize: "10px", color: "var(--gray-300)" }}>—</span>;
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-      {features.map(f => (
-        <span key={f} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-700)", backgroundColor: "var(--gray-100)", padding: "2px 6px", borderRadius: "999px" }}>{t.aiFeatureLabels[f]}</span>
-      ))}
-    </div>
-  );
-}
-
 /**
  * Status colours for an upload. Deliberately not the camera palette: green/grey there means a live
  * connection is up or down, and an analysis that has finished is not the same kind of fact as a
@@ -733,12 +697,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const [searchFocused, setSearchFocused] = useState(false);
   const [zoneFilter, setZoneFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "online" | "offline" | "error">("ALL");
-  const [aiFilter, setAiFilter] = useState<"ALL" | CameraAiFeature>("ALL");
   /**
    * Which "installed but doing nothing" gap the list is narrowed to, if any — set by the summary
    * strip above the table.
    */
-  const [gapFilter, setGapFilter] = useState<"noEngine" | "noServer" | "noCoords" | null>(null);
+  const [gapFilter, setGapFilter] = useState<"noServer" | "noCoords" | null>(null);
   // Which kind of source the table is showing. A tab row, not another select in the filter strip:
   // it is the top-level cut of the list, and the counts belong on it.
   const [kindTab, setKindTab] = useState<"ALL" | SourceKind>("ALL");
@@ -779,31 +742,28 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * carries both counts, and a summary that repeats a control is a summary the reader learns to
    * skip.
    */
-  const noEngineCameras = projectCameras.filter(c => (c.aiFeatures ?? []).length === 0);
   const noServerCameras = projectCameras.filter(c => !c.serverId);
   const noCoordCameras = projectCameras.filter(c => c.lat === undefined || c.lng === undefined);
   const gapCameras = {
-    noEngine: new Set(noEngineCameras.map(c => c.id)),
     noServer: new Set(noServerCameras.map(c => c.id)),
     noCoords: new Set(noCoordCameras.map(c => c.id)),
   } as const;
 
-  const activeFilterCount = [zoneFilter, statusFilter, aiFilter].filter(v => v !== "ALL").length + (gapFilter ? 1 : 0);
+  const activeFilterCount = [zoneFilter, statusFilter].filter(v => v !== "ALL").length + (gapFilter ? 1 : 0);
   // Selected camera ids. Held as a Set of ids rather than of rows so a selection survives the list
   // being re-sorted or re-filtered underneath it.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
 
-  const clearFilters = () => { setZoneFilter("ALL"); setStatusFilter("ALL"); setAiFilter("ALL"); setGapFilter(null); };
+  const clearFilters = () => { setZoneFilter("ALL"); setStatusFilter("ALL"); setGapFilter(null); };
 
   const q = search.trim().toLowerCase();
   const matchingCameras = projectCameras.filter(c => {
     const matchesSearch = !q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q) || c.rtspUrl.toLowerCase().includes(q) || c.ip.includes(q);
     const matchesZone = zoneFilter === "ALL" || c.zone === zoneFilter;
     const matchesStatus = statusFilter === "ALL" || c.status === statusFilter;
-    const matchesAi = aiFilter === "ALL" || (c.aiFeatures ?? []).includes(aiFilter);
     const matchesGap = !gapFilter || gapCameras[gapFilter].has(c.id);
-    return matchesSearch && matchesZone && matchesStatus && matchesAi && matchesGap;
+    return matchesSearch && matchesZone && matchesStatus && matchesGap;
   });
   const matchingUploads = projectUploads.filter(u => {
     const matchesSearch = !q || u.fileName.toLowerCase().includes(q);
@@ -812,7 +772,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     // honest answer, not showing them as if they had passed a filter they cannot be judged by.
     // A gap filter is a camera question too — a file has no engine, no server and no coordinates,
     // and showing files while one is on would be showing rows that cannot be judged by it.
-    const cameraOnlyFilterSet = zoneFilter !== "ALL" || aiFilter !== "ALL" || gapFilter !== null;
+    const cameraOnlyFilterSet = zoneFilter !== "ALL" || gapFilter !== null;
     // Status filter is shared but its values are not: "online"/"offline" describe a connection and
     // a file has none, so the same reasoning applies.
     return matchesSearch && !cameraOnlyFilterSet && statusFilter === "ALL";
@@ -907,7 +867,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     addCamera({
       projectId, name: values.name.trim(), code: generateCameraCode(values.name.trim(), projectCameras.length), rtspUrl: values.rtspUrl.trim(),
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
-      maker: values.maker, model: values.model.trim() || undefined, resolution: values.resolution, aiFeatures: values.aiFeatures,
+      maker: values.maker, model: values.model.trim() || undefined, resolution: values.resolution, sourceType: values.sourceType,
       username: values.username.trim() || undefined, serverId: values.serverId || undefined,
       ip: values.ip.trim(), mac: "", status: values.status, thumbnail: DEFAULT_THUMBNAIL,
       lat: Number(values.lat) || 0, lng: Number(values.lng) || 0,
@@ -924,7 +884,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       maker: values.maker, model: values.model.trim() || undefined, resolution: values.resolution,
       username: values.username.trim() || undefined, serverId: values.serverId || undefined,
       lat: Number(values.lat) || 0, lng: Number(values.lng) || 0,
-      aiFeatures: values.aiFeatures,
+      sourceType: values.sourceType,
     });
     setEditingCamera(null);
     showToast({ variant: "success", title: t.toastCameraUpdatedTitle, desc: values.name.trim() });
@@ -980,10 +940,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   };
 
   const exportCsv = () => {
-    const header = [t.csvHeaderName, t.csvHeaderCode, t.csvHeaderZone, t.csvHeaderLocation, t.csvHeaderRtspUrl, t.csvHeaderStatus, t.csvHeaderAiFeatures];
+    const header = [t.csvHeaderName, t.csvHeaderCode, t.csvHeaderZone, t.csvHeaderLocation, t.csvHeaderRtspUrl, t.csvHeaderStatus, t.csvHeaderSourceType];
     const rows = projectCameras.map(c => [
       c.name, c.code, c.zone, c.location, c.rtspUrl, c.status === "online" ? t.online : t.offline,
-      (c.aiFeatures ?? []).map(f => t.aiFeatureLabels[f]).join("; "),
+      (c.sourceType ?? "normal") === "ai" ? t.aiCameraOption : t.normalCameraOption,
     ]);
     const csv = [header, ...rows].map(row => row.map(csvEscape).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -1087,15 +1047,18 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         empty table. If all three are zero the strip disappears, which is the correct state for a
         fleet with nothing wrong with it.
       */}
-      {/* Not on the Videos and Images tabs. All three figures count cameras, and under a tab
-          showing two video files "60 cameras with no AI engine" is a statement about rows that are
-          not on screen — which is exactly the misreading that putting the strip below the tabs
-          invites. Shown where it matches what the list holds, hidden where it does not. */}
+      {/* Not on the Videos and Images tabs. Both figures count cameras, and under a tab showing two
+          video files "56 cameras with no server" is a statement about rows that are not on screen —
+          which is exactly the misreading that putting the strip below the tabs invites. Shown where
+          it matches what the list holds, hidden where it does not.
+
+          "No AI engine" was a third cell here and is gone (2026-09-09). It rested on the idea that
+          a camera carries the analysis, so a camera without an engine mapped could not see anybody
+          — and that is not how this system works. Every source is attached to a server of its own
+          kind and the server does the analysis, so the fleet being almost all "normal" says nothing
+          about whether it is watching. The real gap is the cell beside it: a camera on no server is
+          a camera nothing is processing. */}
       {(kindTab === "ALL" || kindTab === "camera") && <SummaryStrip cells={[
-        { key: "noEngine", cameras: noEngineCameras, label: t.gapNoEngine, // Scan, not BrainCircuit: that glyph is a brain full of traces and at 14px with a
-        // 2.4 stroke it collapsed into a scribble that looked like a rotated mistake. Four
-        // corner brackets survive the size and say "detection" without any detail to lose.
-        icon: <Scan size={14} strokeWidth={2.4} /> },
         { key: "noServer", cameras: noServerCameras, label: t.gapNoServer, icon: <ServerOff size={14} strokeWidth={2.4} /> },
         { key: "noCoords", cameras: noCoordCameras, label: t.gapNoCoords, icon: <MapPinOff size={14} strokeWidth={2.4} /> },
       ]
@@ -1109,7 +1072,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           tone: "warning" as const,
           active: gapFilter === item.key,
           title: gapFilter === item.key ? t.gapClear : t.gapShowOnly,
-          onClick: () => setGapFilter(gapFilter === item.key ? null : (item.key as "noEngine" | "noServer" | "noCoords")),
+          onClick: () => setGapFilter(gapFilter === item.key ? null : (item.key as "noServer" | "noCoords")),
         }))} />}
 
       {/* Search & filters */}
@@ -1153,11 +1116,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             // that returns an empty table.
             ...(errorCount > 0 ? [{ value: "error", label: `${t.statusError} (${errorCount})` }] : []),
           ]}
-        />
-        <FilterSelect
-          value={aiFilter}
-          onChange={v => setAiFilter(v as typeof aiFilter)}
-          options={[{ value: "ALL", label: t.filterAllAiEngines }, ...AI_FEATURES.map(f => ({ value: f, label: t.aiFeatureLabels[f] }))]}
         />
         <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
         {/* Grid is a wall of camera thumbnails, and an unanalysed file has no frame to put in one.
@@ -1306,7 +1264,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               { label: t.colSource },
               ...(showCameraColumns ? [{ label: t.colMaker, key: "maker" as CameraSortKey }, { label: t.colZone, key: "zone" as CameraSortKey }] : []),
               { label: t.colAddress },
-              ...(showCameraColumns ? [{ label: t.colAiEngines }] : []),
               { label: t.colStatus, key: "status" },
               { label: "" },
             ] as { label: string; key?: CameraSortKey }[]).map((h, i) => (
@@ -1412,7 +1369,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             }
 
             const cam = row.camera;
-            const isAiCamera = (cam.aiFeatures ?? []).length > 0;
+            const isAiCamera = (cam.sourceType ?? "normal") === "ai";
             return (
               <div key={row.id} {...rowInteraction}>
                 {checkbox}
@@ -1436,7 +1393,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.rtspUrl}</p>
                   <p style={{ fontSize: "10px", color: "var(--gray-600)", fontFamily: "monospace" }}>{cam.resolution ?? "—"}</p>
                 </div>
-                {showCameraColumns && <AiFeatureBadges features={cam.aiFeatures} t={t} />}
                 <button onClick={() => setConfirmingStatusCam(cam)} style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                   <span style={{ width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0, backgroundColor: cam.status === "online" ? "var(--success-400)" : cam.status === "error" ? "var(--danger-400)" : "var(--gray-400)" }} />
                   {/* Three states, three words. Error is the only one in danger red: offline is a
@@ -1577,8 +1533,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             password: "",
             serverId: editingCamera.serverId ?? "",
             lat: String(editingCamera.lat ?? ""), lng: String(editingCamera.lng ?? ""),
-            inputKind: (editingCamera.aiFeatures ?? []).length > 0 ? "AI Camera" : "CCTV",
-            aiFeatures: editingCamera.aiFeatures ?? [],
+            sourceType: editingCamera.sourceType ?? "normal",
             status: editingCamera.status,
           }}
           servers={projectServers}

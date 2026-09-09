@@ -23,9 +23,8 @@ import { usePortalLanguage } from "@/lib/i18n";
  * Best Frame is a screen you can open). A licence page that
  * claims what is not there and omits what is is worse than no licence page.
  *
- * Every entry below is traceable to something in the app: CameraAiFeature in vcaStore (Re-ID
- * Analysis, License Plate Recognition), NavTab in Navbar (BEST FRAME,
- * REDMAP), DataTab in DataPage (Re-ID Analysis, RedFace), or the VIP registry.
+ * Every entry below is traceable to something in the app: NavTab in Navbar (BEST FRAME, REDMAP),
+ * DataTab in DataPage (Re-ID Analysis, RedFace), or the VIP registry.
  *
  * "Smart Search" was listed here briefly and taken back out: it is implemented, but DATA_TABS is
  * ["Live Monitoring", "Re-ID Analysis", "RedFace"] — the search lives inside Live Monitoring as a
@@ -59,10 +58,13 @@ const NOT_BUILT_REASON: Record<string, "comingSoon" | "smartSchoolComingSoon" | 
   "Advanced Crowd Behavior": "comingSoon",
   "Attendance / Reports": "smartSchoolComingSoon",
   /**
-   * Half-built, and the label says which half. The engine is a real CameraAiFeature — it can be
-   * assigned to a camera today and the Input Sources tab shows it — but RedMap's vehicle mode has
-   * the inputs and not the results, so somebody who reads "included" and goes looking for plate
-   * readings finds none. Neither a tick nor a plain "coming soon" is true here.
+   * Half-built, and the label says which half. RedMap's vehicle mode has the inputs and not the
+   * results, so somebody who reads "included" and goes looking for plate readings finds none.
+   * Neither a tick nor a plain "coming soon" is true here.
+   *
+   * It used to be assignable to a camera as well, which made this line contradict the Input
+   * Sources tab — four cameras claimed to be running an engine this page filed under COMING SOON.
+   * Per-camera engines are gone (2026-09-09): analysis belongs to the server, not the camera.
    */
   "License Plate Recognition": "analysisComingSoon",
 };
@@ -93,7 +95,7 @@ const T = {
     includedFeatures: "Included Features",
     pendingHeading: "Coming soon",
     smartSchoolOnly: "Smart School only",
-    analysisComingSoon: "assignable to cameras",
+    analysisComingSoon: "readings not available yet",
     perChannelPerYear: (price: number) => `$${price}/channel/yr`,
     noLimitSet: "No limit set",
     overLimit: (used: number, limit: number) => `Over licensed limit (${used} / ${limit})`,
@@ -123,7 +125,7 @@ const T = {
     includedFeatures: "포함된 기능",
     pendingHeading: "출시 예정",
     smartSchoolOnly: "Smart School 전용",
-    analysisComingSoon: "카메라 지정 가능",
+    analysisComingSoon: "판독 결과는 아직 없음",
     perChannelPerYear: (price: number) => `채널당 연 $${price}`,
     noLimitSet: "한도 미설정",
     overLimit: (used: number, limit: number) => `라이선스 한도 초과 (${used} / ${limit})`,
@@ -175,7 +177,12 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
   const meta = TYPE_META[project.type];
   const accountManager = teams.find(o => o.id === project.teamId)?.accountManager;
   const projectCameras = cameras.filter(c => c.projectId === projectId);
-  const aiCameraCount = projectCameras.filter(c => (c.aiFeatures ?? []).length > 0).length;
+  // The camera's declared source type, which is what the operator picked when registering it.
+  // This counted cameras with an AI engine mapped until 2026-09-09 — a configuration state wearing
+  // the name of a hardware type, and wrong in both directions: a camera with no engine was filed
+  // as a plain CCTV, and "normal camera" was made to imply one that cannot recognise anybody. It
+  // can; the server it is attached to does the work.
+  const aiCameraCount = projectCameras.filter(c => (c.sourceType ?? "normal") === "ai").length;
   const normalCameraCount = projectCameras.length - aiCameraCount;
   const limit = project.licenseChannelLimit;
   const overLimit = !!limit && projectCameras.length > limit;

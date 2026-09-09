@@ -21,17 +21,21 @@ const STATUS_T = {
 interface ServerFormValues {
   name: string;
   ip: string;
+  /** Held as text, like every other field: a half-typed port is "80", and a number input turns
+   *  that into a value the moment it is keyed. Parsed on save. */
+  port: string;
   type: ServerType;
   specification: string;
   status: "success" | "error";
 }
 
-const EMPTY_FORM: ServerFormValues = { name: "", ip: "", type: SERVER_TYPES[0], specification: "", status: "success" };
+const EMPTY_FORM: ServerFormValues = { name: "", ip: "", port: "", type: SERVER_TYPES[0], specification: "", status: "success" };
 
 const MODAL_T = {
   en: {
     serverName: "Server Name *", serverNamePlaceholder: "FR 2",
     serverIp: "Server IP *", serverIpPlaceholder: "192.168.0.36",
+    serverPort: "Server Port", serverPortPlaceholder: "8011",
     serverType: "Server Type", status: "Status",
     specification: "Specification", specificationPlaceholder: "8 vCPU · 32GB RAM",
     cancel: "Cancel", save: "Save",
@@ -39,6 +43,7 @@ const MODAL_T = {
   ko: {
     serverName: "서버 이름 *", serverNamePlaceholder: "FR 2",
     serverIp: "서버 IP *", serverIpPlaceholder: "192.168.0.36",
+    serverPort: "서버 포트", serverPortPlaceholder: "8011",
     serverType: "서버 유형", status: "상태",
     specification: "사양", specificationPlaceholder: "8 vCPU · 32GB RAM",
     cancel: "취소", save: "저장",
@@ -75,9 +80,17 @@ function ServerFormModal({
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverName}</label>
             <TextField value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder={t.serverNamePlaceholder} />
           </div>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverIp}</label>
-            <TextField value={form.ip} onChange={v => setForm(f => ({ ...f, ip: v }))} placeholder={t.serverIpPlaceholder} />
+          {/* Address and port on one row: between them they are one thing, and nothing reaches a
+              server with only half of it. */}
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "12px" }}>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverIp}</label>
+              <TextField value={form.ip} onChange={v => setForm(f => ({ ...f, ip: v }))} placeholder={t.serverIpPlaceholder} />
+            </div>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverPort}</label>
+              <TextField value={form.port} onChange={v => setForm(f => ({ ...f, port: v.replace(/[^0-9]/g, "") }))} placeholder={t.serverPortPlaceholder} />
+            </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
@@ -715,6 +728,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   const createServer = (values: ServerFormValues) => {
     addServer({
       projectId, name: values.name.trim(), ip: values.ip.trim(),
+      port: Number(values.port) || undefined,
       type: values.type, specification: values.specification.trim() || undefined, status: values.status,
     });
     setShowAdd(false);
@@ -725,6 +739,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
     if (!editingServer) return;
     updateServer(editingServer.id, {
       name: values.name.trim(), ip: values.ip.trim(),
+      port: Number(values.port) || undefined,
       type: values.type, specification: values.specification.trim() || undefined, status: values.status,
     });
     setEditingServer(null);
@@ -855,7 +870,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                       <span style={{ fontSize: "12px", fontWeight: 700, color: ok ? "var(--success-400)" : "var(--danger-400)" }}>{ok ? st.success : st.error}</span>
                     </div>
                     <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{server.name}</span>
-                    <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace" }}>{server.ip}</span>
+                    <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace" }}>{server.port ? `${server.ip}:${server.port}` : server.ip}</span>
                     <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{server.type}</span>
                     <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{server.specification ?? "—"}</span>
                     <RowActionsMenu actions={[
@@ -912,6 +927,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
           title={t.editServerTitle}
           initial={{
             name: editingServer.name, ip: editingServer.ip, type: editingServer.type,
+            port: editingServer.port ? String(editingServer.port) : "",
             specification: editingServer.specification ?? "", status: editingServer.status,
           }}
           onClose={() => setEditingServer(null)}
