@@ -540,6 +540,14 @@ const PROJECTS: Project[] = [
  * Monitoring's camera codes and Re-ID's mock ids turned out never to overlap. One list, in the
  * store, read by both sides.
  */
+/**
+ * Video or image, and nothing else.
+ *
+ * The console this replaces also had a DEEPFAKE tab beside IMAGE and VIDEOS. It is deliberately
+ * not carried over (confirmed 2026-09-09: "없어도 될 것 같대, 일단은"). If it comes back it is a
+ * third kind here, its own tab, and a status pipeline of its own — a deepfake check answers
+ * "is this footage real", which is not the question the other two kinds are uploaded to ask.
+ */
 export type UploadKind = "video" | "image";
 /**
  * Where the analysis got to. Nothing moves a new upload past "pending" today, because extracting
