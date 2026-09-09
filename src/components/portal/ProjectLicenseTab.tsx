@@ -327,111 +327,112 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
         card uses — one kit, two pages.
       */}
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, overflow: "hidden", marginBottom: "20px" }}>
-        <div style={{ padding: "20px" }}>
-          {/* Plan, type and validity as three chips on one line — the labels of the contract,
-              above the number that measures it. */}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-900)", backgroundColor: "var(--gray-100)", padding: "3px 10px", borderRadius: "999px" }}>
-              {project.licensePlan ?? t.notSet}
-            </span>
-            <span style={{ fontSize: "10px", fontWeight: 700, color: meta.color, backgroundColor: meta.bg, padding: "3px 8px", borderRadius: "999px" }}>
-              {meta.label}
-            </span>
-            {project.licenseExpiresAt && nowMs !== null && (
-              <span style={{
-                fontSize: "10px", fontWeight: 700, padding: "3px 8px", borderRadius: "999px", textTransform: "uppercase",
-                backgroundColor: isExpired ? "var(--danger-100)" : expiringSoon ? "var(--warning-100)" : "var(--success-100)",
-                color: isExpired ? "var(--danger-500)" : expiringSoon ? "var(--warning-500)" : "var(--success-400)",
-              }}>
-                {isExpired ? t.expired : expiringSoon ? t.expiringSoon : t.valid}
+        {/*
+          The contract in one band: plan, term, channels, cost — four labelled columns across the
+          head of the card, divided like a ledger and tinted so the band reads as the card's head
+          rather than as its first paragraph.
+
+          Rox's Billing & Usage strip is the reference (Current Plan / Cost / Renewal Date / Usage
+          Level, the meter living inside its own column). It suits this page better than a hero
+          because the licence has four facts of equal standing and no single figure that outranks
+          the rest — the previous arrangement kept promoting one of them and burying the others,
+          first channels over the expiry, then both over the money.
+
+          A tint, not a fill: primary-100 is pale enough that the band still reads as part of a
+          white card, and the one place full-strength primary appears is the meter — the only thing
+          here that moves. primary-50 was the first try and is within a hair of white; across a
+          band this wide it did nothing at all.
+        */}
+        <div style={{
+          display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+          backgroundColor: "var(--primary-100)", borderBottom: BORDER,
+        }}>
+          {/* Plan. The tier is what was signed, so it leads the band and carries the type beside
+              it — the two labels of the contract, in the column named for them. */}
+          <BandCell first>
+            <p style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "24px" }}>
+                {project.licensePlan ?? t.notSet}
               </span>
-            )}
-          </div>
-          {/*
-            Two figures, not one — and they are the same question asked twice: how much of what was
-            bought is left. Channels ran out along the top as the hero and the expiry sat third in a
-            list of ruled rows underneath, so the page put a bar chart on one half of the answer and
-            buried the other half.
+              <span style={{ fontSize: "10px", fontWeight: 700, color: meta.color, backgroundColor: "white", padding: "3px 8px", borderRadius: "999px" }}>
+                {meta.label}
+              </span>
+            </p>
+          </BandCell>
 
-            "Cameras registered" was one of those rows and is gone with them: it printed 60 directly
-            under a hero reading 60 / 100. Two numbers, one fact, and the reader has to check
-            whether they are the same thing.
-          */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "18px 32px", marginTop: "16px", maxWidth: "760px" }}>
-            <div>
-              <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px", textTransform: "uppercase" }}>{t.channelsHeading}</p>
-              <p style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "6px" }}>
-                <span style={{ fontSize: "28px", fontWeight: 800, color: overLimit ? "var(--danger-500)" : "var(--gray-900)", lineHeight: "30px" }}>
-                  {limit ? `${used} / ${limit}` : used}
-                </span>
-                <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>
-                  {limit ? t.canAddN(available ?? 0) : t.channelsUnlimited}
-                </span>
-              </p>
-              {/* Primary for the fill, which is what the accent is for: one figure on the page is
-                  the reason to open it, and this is the bar under it. Danger takes over when the
-                  fleet is past what was bought — the one state that should read across a room. */}
-              {limit ? (
-                <div style={{ display: "flex", height: "6px", backgroundColor: "var(--gray-200)", borderRadius: "3px", overflow: "hidden", marginTop: "10px" }}>
-                  <div style={{ width: `${pct(used)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--primary-400)" }} />
-                </div>
-              ) : null}
-            </div>
-
-            <div>
-              <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px", textTransform: "uppercase" }}>{t.termHeading}</p>
-              <p style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "6px", flexWrap: "wrap" }}>
-                {/* Monospace, at the same size as the channel figure beside it. A date is a figure
-                    here, not a caption — the two answer the same question and should carry the
-                    same weight. */}
-                <span style={{ fontSize: "28px", fontWeight: 800, color: isExpired ? "var(--danger-500)" : "var(--gray-900)", lineHeight: "30px", fontFamily: "monospace", letterSpacing: "-0.02em" }}>
-                  {isUnlimitedExpiry ? t.unlimited : (project.licenseExpiresAt ?? "—")}
-                </span>
-                <span style={{ fontSize: "12px", color: expiringUrgently ? "var(--danger-500)" : expiringSoon ? "var(--warning-500)" : "var(--gray-500)" }}>
+          {/* Term. The date is the value and how long is left is its caption — coloured only when
+              there is something to do about it. */}
+          <BandCell label={t.termHeading}>
+            <p style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "20px", fontWeight: 800, lineHeight: "24px", fontFamily: "monospace", letterSpacing: "-0.02em", color: isExpired ? "var(--danger-500)" : "var(--gray-900)" }}>
+                {isUnlimitedExpiry ? t.unlimited : (project.licenseExpiresAt ?? "—")}
+              </span>
+              {project.licenseExpiresAt && nowMs !== null && (
+                <span style={{ fontSize: "11px", fontWeight: 600, color: expiringUrgently ? "var(--danger-500)" : expiringSoon ? "var(--warning-500)" : "var(--gray-500)" }}>
                   {isExpired ? t.expiredOn : remainingText}
                 </span>
-              </p>
-              {/* The term gets a bar too, so the two halves of the answer are drawn the same way.
-                  It fills as the contract runs down — the share of the last year that is gone —
-                  which is why it only appears once there is a year or less to show. */}
-              {daysRemaining !== null && daysRemaining < 365 ? (
-                <div style={{ display: "flex", height: "6px", backgroundColor: "var(--gray-200)", borderRadius: "3px", overflow: "hidden", marginTop: "10px" }}>
-                  <div style={{
-                    width: `${Math.max(2, Math.round((1 - daysRemaining / 365) * 100))}%`,
-                    backgroundColor: expiringUrgently ? "var(--danger-400)" : expiringSoon ? "var(--warning-500)" : "var(--primary-400)",
-                  }} />
-                </div>
-              ) : null}
-            </div>
-          </div>
+              )}
+            </p>
+          </BandCell>
 
-          {/* Tinted grounds rather than white pills. The pill existed because warning-500 was
-              unreadable on the dark head; on white the token reads on its own tint, the way every
-              other warning in Portal is drawn. */}
-          {(overLimit || atLimit || nearLimit) && (
-            <p style={{
-              display: "block", marginTop: "12px", padding: "6px 10px", borderRadius: "8px", maxWidth: "fit-content",
-              backgroundColor: overLimit ? "var(--danger-100)" : "var(--warning-100)", lineHeight: 1.6,
-              fontSize: "11px", fontWeight: 700,
-              color: overLimit ? "var(--danger-500)" : "var(--warning-500)",
-            }}>
-              {overLimit ? t.overLimit(used, limit ?? 0) : atLimit ? t.atLimit : t.nearLimit(available!)}
+          {/* Channels, with the meter under the figure — the one column that measures rather than
+              states, and the only one that changes as cameras are added. */}
+          <BandCell label={t.channelsHeading}>
+            <p style={{ display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "20px", fontWeight: 800, lineHeight: "24px", color: overLimit ? "var(--danger-500)" : "var(--gray-900)" }}>
+                {limit ? `${used} / ${limit}` : used}
+              </span>
+              <span style={{ fontSize: "11px", color: "var(--gray-500)" }}>
+                {limit ? t.canAddN(available ?? 0) : t.channelsUnlimited}
+              </span>
             </p>
-          )}
-          {/* The expiry gets its own line rather than sharing the channel one: they are two
-              different contracts to change and both can be true at once, and a single line would
-              have to pick which to report. */}
-          {expiringSoon && daysRemaining !== null && (
-            <p style={{
-              display: "block", marginTop: "8px", padding: "6px 10px", borderRadius: "8px", maxWidth: "fit-content",
-              backgroundColor: expiringUrgently ? "var(--danger-100)" : "var(--warning-100)", lineHeight: 1.6,
-              fontSize: "11px", fontWeight: 700,
-              color: expiringUrgently ? "var(--danger-500)" : "var(--warning-500)",
-            }}>
-              {t.expiryNotice(daysRemaining)}
+            {limit ? (
+              <div style={{ display: "flex", height: "5px", backgroundColor: "white", borderRadius: "3px", overflow: "hidden", marginTop: "8px" }}>
+                <div style={{ width: `${pct(used)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--primary-400)" }} />
+              </div>
+            ) : null}
+          </BandCell>
+
+          {/* The money, and the person who changes it. One column: nobody reads the price without
+              also wanting to know who to ask about it. */}
+          <BandCell label={t.contractHeading}>
+            <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "24px" }}>
+              {limit ? t.channelsCostPerYear(subscriptionYearlyCost.toLocaleString()) : "—"}
             </p>
-          )}
+            <p style={{ fontSize: "11px", color: "var(--gray-500)", marginTop: "4px" }}>
+              {t.perChannelPerYear(PRICE_PER_CHANNEL_PER_YEAR)}
+              {accountManager && <> · <a href={`mailto:${accountManager.email}`} style={{ color: "var(--gray-600)", textDecoration: "underline", textUnderlineOffset: "3px" }}>{accountManager.name}</a></>}
+            </p>
+          </BandCell>
         </div>
+
+        {/* Warnings under the band, not inside a column — either can be true while the band's four
+            columns are all perfectly readable, and a sentence squeezed into a 190px track is not a
+            warning anybody reads. */}
+        {(overLimit || atLimit || nearLimit || (expiringSoon && daysRemaining !== null)) && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "14px 20px", borderBottom: BORDER }}>
+            {(overLimit || atLimit || nearLimit) && (
+              <p style={{
+                display: "block", padding: "8px 12px", borderRadius: "8px", maxWidth: "fit-content",
+                backgroundColor: overLimit ? "var(--danger-100)" : "var(--warning-100)", lineHeight: 1.6,
+                fontSize: "11px", fontWeight: 700,
+                color: overLimit ? "var(--danger-500)" : "var(--warning-500)",
+              }}>
+                {overLimit ? t.overLimit(used, limit ?? 0) : atLimit ? t.atLimit : t.nearLimit(available!)}
+              </p>
+            )}
+            {expiringSoon && daysRemaining !== null && (
+              <p style={{
+                display: "block", padding: "8px 12px", borderRadius: "8px", maxWidth: "fit-content",
+                backgroundColor: expiringUrgently ? "var(--danger-100)" : "var(--warning-100)", lineHeight: 1.6,
+                fontSize: "11px", fontWeight: 700,
+                color: expiringUrgently ? "var(--danger-500)" : "var(--warning-500)",
+              }}>
+                {t.expiryNotice(daysRemaining)}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Features as a section of the same card, not a card of their own.
             One contract is one card, and a second card holding ten short lines beside it was the
@@ -448,43 +449,44 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
               reader asking "does this licence cover plates" needs to find the answer — but they
               are a sentence, not an inventory. */}
           {pendingRows.length > 0 && (
-            <p style={{ display: "flex", alignItems: "baseline", gap: "6px", marginTop: "16px", fontSize: "11px", lineHeight: 1.7, color: "var(--gray-400)", flexWrap: "wrap" }}>
-              <span style={{ fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap" }}>{t.pendingHeading}</span>
-              <span>{pendingRows.map(r => r.label).join(" · ")}</span>
-            </p>
+            /* Two lines, two per line — not one sentence running the width of the card. Four names
+               strung end to end made a 1,100px line the eye has to track back across, and the
+               tracking-back is the whole cost of a long measure. Two columns puts each name on a
+               short line and stacks them under the features they are the counterpart to. */
+            <div style={{ marginTop: "16px" }}>
+              <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-500)", marginBottom: "6px" }}>{t.pendingHeading}</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "4px 20px", maxWidth: "820px" }}>
+                {pendingRows.map(r => (
+                  <p key={r.key} style={{ fontSize: "11px", lineHeight: 1.7, color: "var(--gray-400)" }}>{r.label}</p>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Who to talk to and what it costs, in one section.
-            The money used to sit in a grey band across the foot of the card, which made the last
-            thing on a read-only page a heavy block — and it left the account manager stranded three
-            sections above, in a ruled row, away from the numbers he is the person to change. They
-            are one subject: the terms, and who changes them. White like every other section. */}
-        <div style={{ padding: "18px 20px", borderTop: BORDER }}>
-          {groupHeading(t.contractHeading, true)}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px 20px", marginTop: "14px", maxWidth: "760px" }}>
-            <div>
-              <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.accountManagerLabel}</p>
-              <p style={{ fontSize: "14px", fontWeight: 700, marginTop: "3px" }}>
-                {accountManager
-                  ? <a href={`mailto:${accountManager.email}`} style={{ color: "var(--gray-900)", textDecoration: "underline", textUnderlineOffset: "3px" }}>{accountManager.name}</a>
-                  : <span style={{ color: "var(--gray-400)" }}>—</span>}
-              </p>
-            </div>
-            <div>
-              <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.perChannelLabel}</p>
-              <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginTop: "3px" }}>{t.perChannelPerYear(PRICE_PER_CHANNEL_PER_YEAR)}</p>
-            </div>
-            {limit ? (
-              <div>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.yearlyTotalLabel}</p>
-                <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginTop: "3px" }}>{t.channelsCostPerYear(subscriptionYearlyCost.toLocaleString())}</p>
-              </div>
-            ) : null}
-          </div>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "14px" }}>{t.contractNote}</p>
-        </div>
+        {/* The note lives at the foot on its own — it is the card's disclaimer, not a section. */}
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, padding: "0 20px 18px" }}>{t.contractNote}</p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * One column of the licence band.
+ *
+ * A left hairline on every cell but the first, the way a ledger divides its columns and the way
+ * SummaryStrip already divides its own — the band is the same idea with a label above each value
+ * instead of below it.
+ */
+function BandCell({ label, first, children }: { label?: string; first?: boolean; children: React.ReactNode }) {
+  return (
+    <div style={{ padding: "16px 20px", borderLeft: first ? "none" : "1px solid var(--gray-200)", minWidth: 0 }}>
+      {/* A reserved line even when there is no label, so the four values sit on one baseline. The
+          plan column names itself. */}
+      <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: "6px", minHeight: "13px" }}>
+        {label ?? ""}
+      </p>
+      {children}
     </div>
   );
 }
