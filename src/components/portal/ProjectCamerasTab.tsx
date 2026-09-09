@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CircleAlert, Film as FilmIcon, Image as ImageIcon, ShieldCheck, Video as VideoIcon, VideoOff } from "lucide-react";
+import { CircleAlert, Film as FilmIcon, Image as ImageIcon, RotateCw, ShieldCheck, Video as VideoIcon, VideoOff } from "lucide-react";
 import { useVcaStore, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -12,6 +12,9 @@ import CameraStreamModal from "./CameraStreamModal";
 const T = {
   en: {
     exportCsv: "Export CSV",
+    refresh: "Refresh",
+    checkedJustNow: "checked just now",
+    checkedMinsAgo: (n: number) => `checked ${n} min ago`,
     addCamera: "Add camera",
     online: "Online",
     offline: "Offline",
@@ -144,6 +147,9 @@ const T = {
   },
   ko: {
     exportCsv: "CSV 내보내기",
+    refresh: "새로고침",
+    checkedJustNow: "방금 확인함",
+    checkedMinsAgo: (n: number) => `${n}분 전 확인`,
     addCamera: "카메라 추가",
     online: "온라인",
     offline: "오프라인",
@@ -696,7 +702,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const addMenuRef = useRef<HTMLDivElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [hoveredAction, setHoveredAction] = useState<"export" | "add" | null>(null);
+  const [hoveredAction, setHoveredAction] = useState<"export" | "add" | "refresh" | null>(null);
 
   const projectCameras = cameras.filter(c => c.projectId === projectId);
   const projectUploads = uploads.filter(u => u.projectId === projectId);
@@ -921,6 +927,38 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     showToast({ variant: "success", title: t.toastUploadedTitle, desc: accepted.map(f => f.name).join(", ") });
   };
 
+  /**
+   * When the fleet's status was last fetched, and a clock to say how long ago that was.
+   *
+   * Portal polls — decided by the backend on 2026-09-09 (reply D1). The module publishes status
+   * over MQTT and the server keeps the latest value loaded, so a poll is always the current answer
+   * and costs almost nothing; a browser subscription is the fallback plan, not the v1 shape.
+   *
+   * Both are set after mount, never during render: a timestamp taken while rendering differs
+   * between the server's HTML and the browser's first pass, and the two would not match.
+   *
+   * HANDOFF NOTE: the interval below only moves the clock. The real one calls
+   * GET /api/portal/projects/{id}/camera-connectivity and puts the answer in the store — there is
+   * nothing to call yet, so nothing here claims the figures changed.
+   */
+  const [lastPolledAt, setLastPolledAt] = useState<number | null>(null);
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => {
+    // queueMicrotask, not a bare call: setting state synchronously inside an effect makes React
+    // throw the render away and start again. The same deferral the rest of Portal uses for
+    // clock-dependent values.
+    queueMicrotask(() => { setLastPolledAt(Date.now()); setNowMs(Date.now()); });
+    const poll = setInterval(() => setLastPolledAt(Date.now()), 30_000);
+    // A slower tick than the poll, just for the label: "3 min ago" does not need per-second
+    // accuracy, and a timer that fires every second to redraw two words is a timer nobody asked
+    // for.
+    const clock = setInterval(() => setNowMs(Date.now()), 10_000);
+    return () => { clearInterval(poll); clearInterval(clock); };
+  }, []);
+  const polledMinsAgo = nowMs !== null && lastPolledAt !== null
+    ? Math.floor((nowMs - lastPolledAt) / 60_000)
+    : null;
+
   const exportCsv = () => {
     const header = [t.csvHeaderName, t.csvHeaderCode, t.csvHeaderZone, t.csvHeaderLocation, t.csvHeaderRtspUrl, t.csvHeaderStatus];
     const rows = projectCameras.map(c => [
@@ -1138,7 +1176,21 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           uses (search and filters left, Import / Add right) and the one this row already had in
           miniature with its bulk actions.
         */}
-        <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+          {/* How stale the status figures are, next to the control that refreshes them. Without it
+              a refresh button is a button you press on a hunch — the reader cannot tell whether the
+              screen is a minute old or an hour. Rendered only once the clock is known. */}
+          {polledMinsAgo !== null && (
+            <span style={{ fontSize: "10px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>
+              {polledMinsAgo < 1 ? t.checkedJustNow : t.checkedMinsAgo(polledMinsAgo)}
+            </span>
+          )}
+          <button onClick={() => setLastPolledAt(Date.now())} title={t.refresh} aria-label={t.refresh}
+            onMouseEnter={() => setHoveredAction("refresh")} onMouseLeave={() => setHoveredAction(null)}
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "refresh" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "10px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            <RotateCw size={14} strokeWidth={2.4} />
+            {t.refresh}
+          </button>
           <button onClick={exportCsv}
             onMouseEnter={() => setHoveredAction("export")} onMouseLeave={() => setHoveredAction(null)}
             style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "export" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "10px", fontWeight: 700, cursor: "pointer" }}>
