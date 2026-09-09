@@ -33,7 +33,7 @@ const T = {
     sourceAiCamera: "AI camera",
     sourceVideo: "Video",
     sourceImage: "Image",
-    colAddress: "Address / Resolution",
+    colAddress: "Connection info",
     uploadsSuffix: (n: number) => `${n} uploaded`,
     statusPending: "Queued",
     statusAnalyzing: "Analysing",
@@ -161,7 +161,7 @@ const T = {
     sourceAiCamera: "AI 카메라",
     sourceVideo: "영상",
     sourceImage: "이미지",
-    colAddress: "주소 / 해상도",
+    colAddress: "연결 정보",
     uploadsSuffix: (n: number) => `업로드 ${n}건`,
     statusPending: "대기",
     statusAnalyzing: "분석 중",
@@ -1386,11 +1386,18 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                 </span>
                 {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{cam.maker ?? "—"}</span>}
                 {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{cam.zone}</span>}
-                {/* Stream address and resolution in one cell — the same column a file fills with
-                    its resolution alone. Two separate columns left one of them blank on every row
-                    of the other kind. */}
+                {/* The IP, not the RTSP URL — and resolution under it, in the same column a file
+                    fills with its resolution alone. (Two separate columns left one of them blank on
+                    every row of the other kind.)
+
+                    It printed the full stream address until 2026-09-09, which is forty characters
+                    of scheme, host, port and path in a cell narrow enough to cut it after about
+                    twenty-five: every row ended in an ellipsis and no two rows differed anywhere
+                    you could see. The address that identifies a camera at a glance is the host, so
+                    that is what is printed. The full URL is still searchable and still on the
+                    camera's own sheet, where there is room to read it. */}
                 <div style={{ minWidth: 0 }}>
-                  <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.rtspUrl}</p>
+                  <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.ip}</p>
                   <p style={{ fontSize: "10px", color: "var(--gray-600)", fontFamily: "monospace" }}>{cam.resolution ?? "—"}</p>
                 </div>
                 <button onClick={() => setConfirmingStatusCam(cam)} style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", cursor: "pointer", padding: 0 }}>

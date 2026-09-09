@@ -79,7 +79,7 @@ const T = {
     cameraStatusSubtitle: "Streaming status for cameras connected to this project",
     colCamera: "Camera",
     colZone: "Zone",
-    colStreamUrl: "Stream URL",
+    colStreamUrl: "Address",
     colStatus: "Status",
     noCamerasYet: "No cameras connected to this project yet.",
     openCamera: "Open this camera",
@@ -163,7 +163,7 @@ const T = {
     cameraStatusSubtitle: "이 프로젝트에 연결된 카메라의 스트리밍 상태",
     colCamera: "카메라",
     colZone: "구역",
-    colStreamUrl: "스트림 URL",
+    colStreamUrl: "주소",
     colStatus: "상태",
     noCamerasYet: "이 프로젝트에 연결된 카메라가 아직 없습니다.",
     openCamera: "이 카메라 열기",
@@ -1332,7 +1332,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                               is a fact about that camera, so it belongs on that camera's line. */}
                           <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{c.name}</p>
                           <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{c.zone}</span>
-                          <span style={{ fontSize: "12px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.rtspUrl}</span>
+                          <span style={{ fontSize: "12px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.ip}</span>
                           {/* Only once the clock is known — before mount there is no "ago" to
                               compute, and a guessed one would be corrected a frame later. */}
                           <span style={{ fontSize: "12px", color: "var(--gray-500)", whiteSpace: "nowrap" }}>
