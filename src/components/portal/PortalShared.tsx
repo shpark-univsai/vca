@@ -1260,8 +1260,11 @@ export function SupportContactModal({ onClose }: { onClose: () => void }) {
               {SUPPORT_CONTACT.email}
             </a>
           ))}
-          {row(t.phone, SUPPORT_CONTACT.phone)}
-          {row(t.hours, SUPPORT_CONTACT.hours[lang])}
+          {/* Only the rows this desk actually has. A missing number is dropped, not printed as a
+              dash: a dash in a contact sheet reads as "there is one and we lost it", and the
+              reader spends a moment looking for it. */}
+          {SUPPORT_CONTACT.phone && row(t.phone, SUPPORT_CONTACT.phone)}
+          {SUPPORT_CONTACT.hours && row(t.hours, SUPPORT_CONTACT.hours[lang])}
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "4px" }}>
             {t.contractNote}
           </p>

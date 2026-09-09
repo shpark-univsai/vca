@@ -872,12 +872,29 @@ export interface SignedInUser {
  *
  * HANDOFF NOTE: seeded. Real values come from whatever the support organisation publishes.
  */
-export const SUPPORT_CONTACT = {
+/**
+ * Who to call when the console cannot help.
+ *
+ * Every field is optional except the address, because a support desk is not obliged to have a
+ * phone. A supplier who handles everything by mail has no number to give, and printing a made-up
+ * one is worse than printing none — somebody will dial it. Absent fields are dropped from the
+ * sheet rather than shown empty or as "—", which would read as a number that exists and is missing.
+ *
+ * HANDOFF NOTE: seeded. The real values are deployment configuration, alongside authConfig's
+ * supportContact — one installation, one desk, fixed at deploy time.
+ */
+export interface SupportContact {
+  email: string;
+  phone?: string;
+  hours?: { en: string; ko: string };
+}
+
+export const SUPPORT_CONTACT: SupportContact = {
   email: "support@univs.ai",
   phone: "+65 6812 4400",
   /** Local time at the site, which is the only clock the person reading this has. */
   hours: { en: "Mon–Fri, 09:00–18:00 (SGT)", ko: "월–금 09:00–18:00 (SGT)" },
-} as const;
+};
 
 export const SIGNED_IN_USER: SignedInUser = {
   name: "John Doe",

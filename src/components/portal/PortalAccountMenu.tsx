@@ -6,6 +6,7 @@ import { Headset, LogOut, User } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { BORDER, SupportContactModal } from "./PortalShared";
+import { SUPPORT_CONTACT } from "@/lib/vcaStore";
 
 const T = {
   en: { toApp: "Go to app", settings: "Settings", support: "Contact support" },
@@ -48,6 +49,8 @@ export default function PortalAccountMenu({ admin, appAccess, onSettings }: {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
+  // An address is the minimum a desk needs to exist; the phone and the hours are optional on it.
+  const hasSupportDesk = !!SUPPORT_CONTACT.email;
   const ref = useRef<HTMLDivElement>(null);
   useEscapeKey(() => setOpen(false), open);
   // mousedown, not click, so a press that lands on another control both closes this and reaches it.
@@ -99,9 +102,16 @@ export default function PortalAccountMenu({ admin, appAccess, onSettings }: {
             <button className="portal-navmenu-item" onClick={() => { setOpen(false); onSettings(); }} style={MENU_ITEM}>
               <User size={14} strokeWidth={2.4} color="var(--gray-500)" /> {t.settings}
             </button>
-            <button className="portal-navmenu-item" onClick={() => { setOpen(false); setSupportOpen(true); }} style={MENU_ITEM}>
-              <Headset size={14} strokeWidth={2.4} color="var(--gray-500)" /> {t.support}
-            </button>
+            {/* Only when there is a desk to reach. An installation whose supplier handles support
+                through the account manager has no help line, and an item that opens a sheet with
+                one address and two blanks is the console offering a door it cannot open. The
+                licence page names the account manager either way, which is the path that always
+                exists. */}
+            {hasSupportDesk && (
+              <button className="portal-navmenu-item" onClick={() => { setOpen(false); setSupportOpen(true); }} style={MENU_ITEM}>
+                <Headset size={14} strokeWidth={2.4} color="var(--gray-500)" /> {t.support}
+              </button>
+            )}
             {appAccess && (
               <button className="portal-navmenu-item" onClick={() => { setOpen(false); router.push("/"); }} style={MENU_ITEM}>
                 <LogOut size={14} strokeWidth={2.4} color="var(--gray-500)" /> {t.toApp}
