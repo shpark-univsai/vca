@@ -58,6 +58,8 @@ const T = {
     attnInvites: (n: number) => `${n} invitation${n === 1 ? "" : "s"} not yet accepted`,
     attnRequests: (n: number) => `${n} access request${n === 1 ? "" : "s"} waiting`,
     attnOverLimit: (used: number, limit: number) => `Over the licensed channels — ${used} of ${limit}`,
+    attnListingsExpired: (n: number) => `${n} watchlist listing(s) have expired`,
+    attnListingsExpiring: (n: number) => `${n} watchlist listing(s) expire within 30 days`,
     attnExpiringSoon: (d: number) => `License expires in ${d} day${d === 1 ? "" : "s"}`,
     attnExpired: "License has expired",
     attnNoCameras: "No source connected yet",
@@ -148,6 +150,8 @@ const T = {
     attnInvites: (n: number) => `수락하지 않은 초대 ${n}건`,
     attnRequests: (n: number) => `대기 중인 접근 요청 ${n}건`,
     attnOverLimit: (used: number, limit: number) => `라이선스 채널 초과 — ${limit}개 중 ${used}개`,
+    attnListingsExpired: (n: number) => `등록 만료된 관심인물 ${n}명`,
+    attnListingsExpiring: (n: number) => `30일 내 등록 만료 ${n}명`,
     attnExpiringSoon: (d: number) => `라이선스 ${d}일 후 만료`,
     attnExpired: "라이선스가 만료되었습니다",
     attnNoCameras: "연결된 소스가 없습니다",
@@ -649,13 +653,39 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    * interrupt you says nothing when it has nothing, and "all clear" in a permanent box is the kind
    * of line this screen has been shedding.
    */
+  /**
+   * Watchlist listings that have run out, and ones about to.
+   *
+   * Released rows are excluded from both — somebody has already dealt with those, and the point of
+   * these two figures is the ones nobody has.
+   *
+   * Thirty days for "soon", matching the licence page's own urgent threshold: a listing is cleared
+   * by a person who has to check something (has the child been found, was the suspect arrested),
+   * and that is a conversation, not a click.
+   */
+  const activeListings = projectPersons.filter(p => !p.releasedAt && p.expiresAt);
+  const expiredListings = nowMs === null ? 0
+    : activeListings.filter(p => Date.parse(p.expiresAt!) < nowMs).length;
+  const expiringListings = nowMs === null ? 0
+    : activeListings.filter(p => {
+      const left = Date.parse(p.expiresAt!) - nowMs;
+      return left >= 0 && left <= 30 * 86_400_000;
+    }).length;
+
   const attentionItems: { key: string; text: string; color: string; tab: DetailTab }[] = [
     ...(offlineCount > 0 ? [{ key: "offline", text: t.attnOffline(offlineCount), color: "var(--danger-400)", tab: "cameras" as DetailTab }] : []),
     ...(errorCount > 0 ? [{ key: "cameraError", text: t.attnCameraError(errorCount), color: "var(--danger-400)", tab: "cameras" as DetailTab }] : []),
     ...(licenseExpired ? [{ key: "expired", text: t.attnExpired, color: "var(--danger-400)", tab: "license" as DetailTab }] : []),
     ...(overChannelLimit && channelLimit ? [{ key: "overlimit", text: t.attnOverLimit(projectCameras.length, channelLimit), color: "var(--danger-400)", tab: "license" as DetailTab }] : []),
+    // A listing that has run out is a person the console believes it released. It sits with the
+    // broken things, not with the reminders: the difference between an expired listing and a
+    // released one is that nobody has looked at the expired one.
+    ...(expiredListings > 0 ? [{ key: "listingsExpired", text: t.attnListingsExpired(expiredListings), color: "var(--danger-400)", tab: "vip" as DetailTab }] : []),
     ...(licenseExpiringSoon && daysUntilExpiry !== null ? [{ key: "expiring", text: t.attnExpiringSoon(daysUntilExpiry), color: "var(--warning-500)", tab: "license" as DetailTab }] : []),
     ...(showAccessRequests && projectAccessRequests.length > 0 ? [{ key: "requests", text: t.attnRequests(projectAccessRequests.length), color: "var(--warning-500)", tab: "users" as DetailTab }] : []),
+    // Expiring, in the reminders. The whole point of putting it here is that nobody remembers a
+    // date — a watchlist cleared by human memory is a watchlist that never gets cleared.
+    ...(expiringListings > 0 ? [{ key: "listingsExpiring", text: t.attnListingsExpiring(expiringListings), color: "var(--warning-500)", tab: "vip" as DetailTab }] : []),
     ...(pendingInviteCount > 0 ? [{ key: "invites", text: t.attnInvites(pendingInviteCount), color: "var(--warning-500)", tab: "users" as DetailTab }] : []),
     ...(projectCameras.length === 0 ? [{ key: "nocams", text: t.attnNoCameras, color: "var(--gray-400)", tab: "cameras" as DetailTab }] : []),
     ...(projectPersons.length === 0 ? [{ key: "novips", text: t.attnNoVips, color: "var(--gray-400)", tab: "vip" as DetailTab }] : []),
