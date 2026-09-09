@@ -99,8 +99,7 @@ const T = {
     perChannelPerYear: (price: number) => `$${price}/channel/yr`,
     noLimitSet: "No limit set",
     overLimit: (used: number, limit: number) => `Over licensed limit (${used} / ${limit})`,
-    aiCameras: "AI Cameras",
-    normalCameras: "Normal Cameras (CCTV)",
+    camerasRegistered: "Cameras registered",
     // "Available" said what the number was, not what it lets you do. This column exists to answer
     // "can I install another camera", so it answers it.
     channelsAvailable: "Can add",
@@ -129,8 +128,7 @@ const T = {
     perChannelPerYear: (price: number) => `채널당 연 $${price}`,
     noLimitSet: "한도 미설정",
     overLimit: (used: number, limit: number) => `라이선스 한도 초과 (${used} / ${limit})`,
-    aiCameras: "AI 카메라",
-    normalCameras: "일반 카메라 (CCTV)",
+    camerasRegistered: "등록된 카메라",
     channelsAvailable: "추가 가능",
     channelsInUse: "라이선스 채널 사용 중",
     perChannelLabel: "채널당",
@@ -177,13 +175,6 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
   const meta = TYPE_META[project.type];
   const accountManager = teams.find(o => o.id === project.teamId)?.accountManager;
   const projectCameras = cameras.filter(c => c.projectId === projectId);
-  // The camera's declared source type, which is what the operator picked when registering it.
-  // This counted cameras with an AI engine mapped until 2026-09-09 — a configuration state wearing
-  // the name of a hardware type, and wrong in both directions: a camera with no engine was filed
-  // as a plain CCTV, and "normal camera" was made to imply one that cannot recognise anybody. It
-  // can; the server it is attached to does the work.
-  const aiCameraCount = projectCameras.filter(c => (c.sourceType ?? "normal") === "ai").length;
-  const normalCameraCount = projectCameras.length - aiCameraCount;
   const limit = project.licenseChannelLimit;
   const overLimit = !!limit && projectCameras.length > limit;
 
@@ -343,14 +334,13 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
               </>
             )}
           </p>
-          {/* The breakdown stays a single segmented bar: AI cameras and plain CCTV share one
-              denominator, so three bars would hide the relationship the number is about. On a
-              coloured ground the two segments are the same white at two strengths — a second hue
-              here would be a third colour competing inside one figure. */}
+          {/* One bar, one segment. It was split into AI cameras and plain CCTV until 2026-09-09,
+              when the backend confirmed the v1 contract has no such split: one channel pool, and
+              cameras used = channels used. Two segments over a single figure implied a distinction
+              the licence does not make. */}
           {limit ? (
             <div style={{ display: "flex", height: "6px", backgroundColor: "rgba(255,255,255,0.25)", borderRadius: "3px", overflow: "hidden", marginTop: "14px" }}>
-              <div style={{ width: `${pct(aiCameraCount)}%`, backgroundColor: "white" }} />
-              <div style={{ width: `${pct(normalCameraCount)}%`, backgroundColor: "rgba(255,255,255,0.55)" }} />
+              <div style={{ width: `${pct(used)}%`, backgroundColor: "white" }} />
             </div>
           ) : null}
           {/* Warnings become a light pill rather than coloured text: warning-500 on this purple is
@@ -368,7 +358,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           )}
         </div>
 
-        {detailRow(<Video size={14} strokeWidth={2.4} />, `${t.aiCameras} · ${t.normalCameras}`, `${aiCameraCount} · ${normalCameraCount}`)}
+        {detailRow(<Video size={14} strokeWidth={2.4} />, t.camerasRegistered, String(projectCameras.length))}
         {detailRow(
           <CalendarClock size={14} strokeWidth={2.4} />,
           t.licenseExpiry,

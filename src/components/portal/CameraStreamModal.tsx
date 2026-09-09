@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, Clock, Crosshair, Cpu, Link2, Map as MapIcon, MapPin, Network, Play, Scan, Server as ServerIcon } from "lucide-react";
+import { Activity, Clock, Crosshair, Cpu, Link2, Map as MapIcon, MapPin, Network, Play, Server as ServerIcon } from "lucide-react";
 import { useVcaStore, type Camera } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { BORDER } from "./PortalShared";
@@ -26,9 +26,6 @@ const T = {
     server: "Server",
     noServer: "Not assigned",
     hardware: "Make and model",
-    sourceTypeLabel: "Source type",
-    sourceTypeNormal: "Normal camera",
-    sourceTypeAi: "AI camera",
     lastDetection: "Last detection",
     detectionCount: "Detections on record",
     detectionCountValue: (n: number) => `${n}`,
@@ -52,9 +49,6 @@ const T = {
     server: "서버",
     noServer: "미할당",
     hardware: "제조사·모델",
-    sourceTypeLabel: "소스 유형",
-    sourceTypeNormal: "일반 카메라",
-    sourceTypeAi: "AI 카메라",
     lastDetection: "마지막 탐지",
     detectionCount: "기록된 탐지",
     detectionCountValue: (n: number) => `${n}건`,
@@ -238,17 +232,9 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
                   a form. Same size, same weight, same family: a value is a value. */}
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "2px", wordBreak: "break-all" }}>{camera.rtspUrl}</p>
             </div>
-            <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
-              <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", lineHeight: "14px", color: "var(--gray-500)" }}>
-                <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><Scan size={11} strokeWidth={2.2} /></span>
-                {t.sourceTypeLabel}
-              </p>
-              {/* Was "Mapped AI engines". The camera never carried the analysis — it carries what
-                  kind of source it is, and the server it is attached to runs the engines. */}
-              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "2px" }}>
-                {(camera.sourceType ?? "normal") === "ai" ? t.sourceTypeAi : t.sourceTypeNormal}
-              </p>
-            </div>
+            {/* Nothing here about engines or camera kind. This sheet carried "Mapped AI engines"
+                and then "Source type"; both described a camera that decides its own analysis, and
+                neither exists — one site-wide module analyses every provisioned camera. */}
           </div>
         </div>
 

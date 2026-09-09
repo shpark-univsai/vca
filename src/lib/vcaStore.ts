@@ -142,26 +142,19 @@ export interface Project {
   regionSubcenterCount?: number;
 }
 
-/**
- * What kind of source this is, as the operator declares it when registering the camera.
+/*
+ * There is no camera "source type" here, and there is no per-camera engine list either.
  *
- * The real console asks for it first, above the name, as a two-way choice — so it is a field, not
- * something to be inferred. Portal used to infer it, from whether any "AI engine" had been mapped
- * to the camera, and called the result "AI Cameras · Normal Cameras (CCTV)" on the licence page:
- * a configuration state wearing the name of a hardware type.
+ * Both were carried over from the old console and both are gone (2026-09-09, backend reply C2/C4).
+ * The v1 contract covers plain CCTV only — AI cameras, meaning devices that run inference
+ * themselves, were dropped from the design on 2026-08-27 and come back as an additive field if
+ * they ever ship. So there is no inference-location split, no separate billing, and one channel
+ * pool: cameras used = channels used.
  *
- * A normal camera is not a camera that cannot recognise anybody. Both kinds are attached to a
- * server of the matching type and it is the server that runs the analysis, which is why the fleet
- * can be almost entirely "normal" and still be watching for faces. The engine list that used to
- * live on the camera is gone with the inference (2026-09-09): Re-ID is a backend analysis over the
- * faces already collected rather than a per-camera setting, and licence-plate recognition has not
- * shipped — the licence page listed it under COMING SOON while four cameras claimed to be running
- * it.
- *
- * Optional because seeded and app-side cameras predate the field; absent reads as "normal", which
- * is what every one of them is.
+ * What actually analyses a stream is a single site-wide analysis module that processes every
+ * provisioned camera. A camera is not routed to a server, which is why Camera.serverId below is
+ * infrastructure metadata and not a wiring decision.
  */
-export type CameraSourceType = "normal" | "ai";
 
 export interface Camera {
   id: string;
@@ -184,8 +177,6 @@ export interface Camera {
   thumbnail: string;
   lat: number;
   lng: number;
-  /** Normal camera or AI camera — see CameraSourceType. Absent reads as "normal". */
-  sourceType?: CameraSourceType;
   // RTSP transport protocol, set from Portal's Add/Edit Camera form. Optional/cosmetic — nothing
   // downstream branches on this yet since there's no real stream to actually transport.
   protocol?: "TCP" | "UDP";
@@ -961,7 +952,7 @@ const CAMERA_SEEDS: Camera[] = [
     // rest are ordinary CCTV on the normal-camera server. That is the shape of a real deployment,
     // and it is the whole of what the camera itself says about analysis: which engine runs is the
     // server's business, not the camera's.
-    sourceType: "normal", serverId: "srv-1",
+serverId: "srv-1",
     thumbnail: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80",
     lat: 1.3202, lng: 103.8440, maker: "Hanwha", resolution: "4K (3840×2160)",
   },
@@ -969,7 +960,7 @@ const CAMERA_SEEDS: Camera[] = [
     id: "cam-geylang", projectId: "proj-sg", code: "CAM-GEY-001", name: "Geylang NC1",
     ip: "10.20.4.12", mac: "00:1B:44:11:3A:B8", rtspUrl: "rtsp://10.20.4.12:554/stream1",
     status: "online", location: "Geylang NC1, Singapore", zone: "Geylang",
-    sourceType: "normal", serverId: "srv-1",
+    serverId: "srv-1",
     thumbnail: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
     lat: 1.3148, lng: 103.8778, maker: "Hikvision", resolution: "FHD (1920×1080)",
   },
@@ -977,7 +968,7 @@ const CAMERA_SEEDS: Camera[] = [
     id: "cam-orchard", projectId: "proj-sg", code: "CAM-ORC-001", name: "Orchard MRT",
     ip: "10.20.4.13", mac: "00:1B:44:11:3A:B9", rtspUrl: "rtsp://10.20.4.13:554/stream1",
     status: "online", location: "Orchard MRT, Singapore", zone: "Orchard",
-    sourceType: "ai", serverId: "srv-2",
+    serverId: "srv-2",
     thumbnail: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80",
     lat: 1.3044, lng: 103.8321, maker: "Dahua", resolution: "4K (3840×2160)",
   },
@@ -985,7 +976,7 @@ const CAMERA_SEEDS: Camera[] = [
     id: "cam-bugis", projectId: "proj-sg", code: "CAM-BGS-001", name: "Bugis MRT",
     ip: "10.20.4.14", mac: "00:1B:44:11:3A:BA", rtspUrl: "rtsp://10.20.4.14:554/stream1",
     status: "online", location: "Bugis MRT, Singapore", zone: "Bugis",
-    sourceType: "ai", serverId: "srv-2",
+    serverId: "srv-2",
     thumbnail: "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=800&q=80",
     lat: 1.3006, lng: 103.8561, maker: "Hanwha", resolution: "FHD (1920×1080)",
   },

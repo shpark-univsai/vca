@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CircleAlert, Film as FilmIcon, Image as ImageIcon, ShieldCheck, Video as VideoIcon, VideoOff } from "lucide-react";
-import { useVcaStore, type Camera, type CameraSourceType, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
+import { useVcaStore, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
@@ -44,8 +44,7 @@ const T = {
     deepfakeUploadTitle: "Deepfake check",
     deepfakeUploadHint: "MP4, MOV, JPG, PNG. Judged authentic or manipulated — this does not search the file for faces.",
     colSource: "Source",
-    sourceCamera: "Normal camera",
-    sourceAiCamera: "AI camera",
+    sourceCamera: "Camera",
     sourceVideo: "Video",
     sourceImage: "Image",
     colAddress: "Connection info",
@@ -118,10 +117,7 @@ const T = {
     fieldRtspUrl: "Connection — RTSP URL *",
     fieldResolution: "Resolution",
     fieldMaker: "Maker",
-    fieldSourceType: "Source Type",
     fieldStatus: "Status",
-    aiCameraOption: "AI Camera",
-    normalCameraOption: "Normal Camera",
     cancel: "Cancel",
     saveChanges: "Save changes",
     addDevice: "Add device",
@@ -145,7 +141,6 @@ const T = {
     csvHeaderLocation: "Location",
     csvHeaderRtspUrl: "RTSP URL",
     csvHeaderStatus: "Status",
-    csvHeaderSourceType: "Source type",
   },
   ko: {
     exportCsv: "CSV 내보내기",
@@ -181,8 +176,7 @@ const T = {
     deepfakeUploadTitle: "딥페이크 검사",
     deepfakeUploadHint: "MP4, MOV, JPG, PNG. 진짜인지 조작인지 판정합니다 — 얼굴을 찾지는 않습니다.",
     colSource: "종류",
-    sourceCamera: "일반 카메라",
-    sourceAiCamera: "AI 카메라",
+    sourceCamera: "카메라",
     sourceVideo: "영상",
     sourceImage: "이미지",
     colAddress: "연결 정보",
@@ -255,10 +249,7 @@ const T = {
     fieldRtspUrl: "연결 — RTSP URL *",
     fieldResolution: "해상도",
     fieldMaker: "제조사",
-    fieldSourceType: "소스 유형",
     fieldStatus: "상태",
-    aiCameraOption: "AI 카메라",
-    normalCameraOption: "일반 카메라",
     cancel: "취소",
     saveChanges: "변경사항 저장",
     addDevice: "기기 추가",
@@ -282,7 +273,6 @@ const T = {
     csvHeaderLocation: "위치",
     csvHeaderRtspUrl: "RTSP URL",
     csvHeaderStatus: "상태",
-    csvHeaderSourceType: "소스 유형",
   },
 } as const;
 
@@ -404,9 +394,8 @@ type SourceRow =
 
 const MAKERS = ["Hanwha", "Hikvision", "Dahua"];
 const RESOLUTIONS = ["FHD (1920×1080)", "4K (3840×2160)"];
-// The real console's Source Type, in its own order and wording. Stored on the camera rather than
-// inferred from anything: see CameraSourceType in the store.
-const SOURCE_TYPES = ["normal", "ai"] as const;
+// No Source Type chooser: the v1 contract is plain CCTV only, so there is nothing to choose
+// between (backend reply C2, 2026-09-09). See the note above Camera in the store.
 
 interface CameraFormValues {
   name: string;
@@ -428,7 +417,6 @@ interface CameraFormValues {
   serverId: string;
   lat: string;
   lng: string;
-  sourceType: CameraSourceType;
   status: CameraStatus;
 }
 
@@ -436,7 +424,7 @@ const EMPTY_FORM: CameraFormValues = {
   name: "", ip: "", location: "", zone: "", rtspUrl: "",
   resolution: RESOLUTIONS[0], maker: MAKERS[0], model: "", username: "", password: "",
   serverId: "", lat: "", lng: "",
-  sourceType: "normal", status: "offline",
+  status: "offline",
 };
 
 // Camera codes are an internal identifier (shown in the table, used in mock RTSP paths) — the
@@ -506,29 +494,6 @@ function CameraFormModal({
           </button>
         </div>
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
-          {/* Source type first, as two buttons rather than a select: it is a required choice
-              between exactly two things and it changes what the rest of the form means. */}
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldSourceType}</label>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              {SOURCE_TYPES.map(kind => {
-                const active = form.sourceType === kind;
-                return (
-                  <button key={kind} onClick={() => setForm(f => ({ ...f, sourceType: kind }))}
-                    style={{
-                      display: "flex", alignItems: "center", gap: "8px", padding: "10px 12px", borderRadius: "10px", cursor: "pointer",
-                      border: active ? "1px solid var(--gray-900)" : BORDER,
-                      backgroundColor: active ? "var(--gray-100)" : "white",
-                      color: active ? "var(--gray-900)" : "var(--gray-600)",
-                      fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
-                    }}>
-                    <VideoIcon size={16} strokeWidth={2.1} />
-                    {kind === "ai" ? t.aiCameraOption : t.normalCameraOption}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
           {field("name", t.fieldDeviceName, t.fieldDeviceNamePlaceholder)}
           {field("ip", t.fieldIp, t.fieldIpPlaceholder)}
@@ -883,7 +848,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     addCamera({
       projectId, name: values.name.trim(), code: generateCameraCode(values.name.trim(), projectCameras.length), rtspUrl: values.rtspUrl.trim(),
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
-      maker: values.maker, model: values.model.trim() || undefined, resolution: values.resolution, sourceType: values.sourceType,
+      maker: values.maker, model: values.model.trim() || undefined, resolution: values.resolution,
       username: values.username.trim() || undefined, serverId: values.serverId || undefined,
       ip: values.ip.trim(), mac: "", status: values.status, thumbnail: DEFAULT_THUMBNAIL,
       lat: Number(values.lat) || 0, lng: Number(values.lng) || 0,
@@ -900,7 +865,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       maker: values.maker, model: values.model.trim() || undefined, resolution: values.resolution,
       username: values.username.trim() || undefined, serverId: values.serverId || undefined,
       lat: Number(values.lat) || 0, lng: Number(values.lng) || 0,
-      sourceType: values.sourceType,
     });
     setEditingCamera(null);
     showToast({ variant: "success", title: t.toastCameraUpdatedTitle, desc: values.name.trim() });
@@ -958,10 +922,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   };
 
   const exportCsv = () => {
-    const header = [t.csvHeaderName, t.csvHeaderCode, t.csvHeaderZone, t.csvHeaderLocation, t.csvHeaderRtspUrl, t.csvHeaderStatus, t.csvHeaderSourceType];
+    const header = [t.csvHeaderName, t.csvHeaderCode, t.csvHeaderZone, t.csvHeaderLocation, t.csvHeaderRtspUrl, t.csvHeaderStatus];
     const rows = projectCameras.map(c => [
       c.name, c.code, c.zone, c.location, c.rtspUrl, c.status === "online" ? t.online : t.offline,
-      (c.sourceType ?? "normal") === "ai" ? t.aiCameraOption : t.normalCameraOption,
     ]);
     const csv = [header, ...rows].map(row => row.map(csvEscape).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -1431,7 +1394,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             }
 
             const cam = row.camera;
-            const isAiCamera = (cam.sourceType ?? "normal") === "ai";
             return (
               <div key={row.id} {...rowInteraction}>
                 {checkbox}
@@ -1444,7 +1406,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                 </div>
                 <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--gray-600)" }}>
                   <VideoIcon size={13} strokeWidth={2.58} />
-                  {isAiCamera ? t.sourceAiCamera : t.sourceCamera}
+                  {t.sourceCamera}
                 </span>
                 {/* The server, where the maker used to be. A make is settled at purchase and is
                     not what anybody scans a list for; the server is the answer to "why is this one
@@ -1613,7 +1575,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             password: "",
             serverId: editingCamera.serverId ?? "",
             lat: String(editingCamera.lat ?? ""), lng: String(editingCamera.lng ?? ""),
-            sourceType: editingCamera.sourceType ?? "normal",
             status: editingCamera.status,
           }}
           servers={projectServers}
