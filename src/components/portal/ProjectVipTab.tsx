@@ -1,20 +1,20 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
 import { AlertTriangle, ArrowDownWideNarrow, Eye, ImageOff, Users } from "lucide-react";
-import { registryHealth, useVcaStore, type Person, type PersonGroup } from "@/lib/vcaStore";
+import { registryHealth, useVcaStore, WATCHLIST_CATEGORY_COLORS, type Person, type PersonGroup, type WatchlistCategory, type WatchlistCategoryColor } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, Tooltip, sortRows, useTableSort } from "./PortalShared";
 
-type VipSortKey = "name" | "priority" | "registered" | "lastDetected";
+type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires";
 
 // 36px for the actions column, the width RowActionsMenu gets in every other table.
-const VIP_GRID = "48px 1.4fr 0.7fr 0.8fr 0.8fr 1.1fr 36px";
+const VIP_GRID = "48px 1.2fr 0.8fr 0.6fr 0.7fr 0.7fr 0.8fr 0.8fr 36px";
 /** The All tab adds a Group column; the Individuals tab would print "Individual" on every row. */
-const VIP_GRID_WITH_GROUP = "48px 1.2fr 0.9fr 0.7fr 0.72fr 0.72fr 0.9fr 36px";
+const VIP_GRID_WITH_GROUP = "48px 1.1fr 0.75fr 0.75fr 0.55fr 0.65fr 0.65fr 0.7fr 0.7fr 36px";
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -59,6 +59,44 @@ interface VipDict {
   healthPeopleUnit: string;
   healthOfTotal: (total: number) => string;
   colLastDetected: string;
+  categoryLabel: string;
+  categoryNone: string;
+  manageCategories: string;
+  basisLabel: string;
+  basisPlaceholder: string;
+  requiredMark: string;
+  optionalMark: string;
+  expiresLabel: string;
+  expiresNote: string;
+  noExpiryWarning: string;
+  colCategory: string;
+  colExpires: string;
+  statusExpired: string;
+  statusReleased: string;
+  expiringInDays: (n: number) => string;
+  noExpiry: string;
+  releaseAction: string;
+  releaseTitle: (name: string) => string;
+  releaseBody: string;
+  releaseReasonLabel: string;
+  releaseReasonPlaceholder: string;
+  releaseConfirm: string;
+  releasedToast: string;
+  catModalTitle: string;
+  catModalIntro: string;
+  catEmpty: string;
+  catNew: string;
+  catLabelField: string;
+  catLabelPlaceholder: string;
+  catValidDays: string;
+  catValidDaysNone: string;
+  catRequiresBasis: string;
+  catColor: string;
+  catArchive: string;
+  catArchived: string;
+  catArchiveNote: string;
+  catCreate: string;
+  catSave: string;
   healthReachLabel: string;
   healthReachTrend: (prev: number) => string;
   healthReachFlat: string;
@@ -151,6 +189,44 @@ const T: Record<"en" | "ko", VipDict> = {
     healthPeopleUnit: "people",
     healthOfTotal: (total: number) => `of ${total}`,
     colLastDetected: "Last detected",
+    categoryLabel: "Category",
+    categoryNone: "Unclassified",
+    manageCategories: "Manage categories",
+    basisLabel: "Basis for listing",
+    basisPlaceholder: "Case or document reference",
+    requiredMark: "required",
+    optionalMark: "optional",
+    expiresLabel: "Listing expires",
+    expiresNote: "The listing stops on this date. Expired people stay on the list, marked.",
+    noExpiryWarning: "No end date — this person stays on the watchlist until somebody removes them.",
+    colCategory: "Category",
+    colExpires: "Expires",
+    statusExpired: "Expired",
+    statusReleased: "Released",
+    expiringInDays: (n: number) => `${n}d left`,
+    noExpiry: "No end date",
+    releaseAction: "Release from watchlist",
+    releaseTitle: (name: string) => `Release ${name}?`,
+    releaseBody: "They come off the watchlist and cameras stop matching them. The row stays, marked as released, so the history survives.",
+    releaseReasonLabel: "Reason",
+    releaseReasonPlaceholder: "Found · Arrested · Listed in error",
+    releaseConfirm: "Release",
+    releasedToast: "Released from watchlist",
+    catModalTitle: "Watchlist categories",
+    catModalIntro: "Your own classification. Nothing is set up in advance — the words are yours, not ours.",
+    catEmpty: "No categories yet. People can still be registered; they are listed as unclassified.",
+    catNew: "New category",
+    catLabelField: "Name",
+    catLabelPlaceholder: "What your organisation calls it",
+    catValidDays: "Default duration (days)",
+    catValidDaysNone: "No default end date",
+    catRequiresBasis: "Require a basis when listing under this",
+    catColor: "Colour",
+    catArchive: "Retire",
+    catArchived: "Retired",
+    catArchiveNote: "Retired categories cannot be chosen again. People already listed under them keep the label.",
+    catCreate: "Create",
+    catSave: "Save",
     healthReachLabel: "people detected · 7 days",
     healthReachTrend: (prev: number) => `vs ${prev} people last week`,
     healthReachFlat: "same as last week",
@@ -242,6 +318,44 @@ const T: Record<"en" | "ko", VipDict> = {
     healthPeopleUnit: "명",
     healthOfTotal: (total: number) => `/ ${total}명`,
     colLastDetected: "마지막 탐지",
+    categoryLabel: "분류",
+    categoryNone: "미분류",
+    manageCategories: "분류 관리",
+    basisLabel: "등록 근거",
+    basisPlaceholder: "사건번호 · 공문번호 등",
+    requiredMark: "필수",
+    optionalMark: "선택",
+    expiresLabel: "등록 만료일",
+    expiresNote: "이 날짜에 등록이 끝납니다. 만료된 사람은 목록에 표시된 채로 남습니다.",
+    noExpiryWarning: "만료일 없음 — 누군가 내리기 전까지 계속 추적 대상입니다.",
+    colCategory: "분류",
+    colExpires: "만료",
+    statusExpired: "만료됨",
+    statusReleased: "해제됨",
+    expiringInDays: (n: number) => `${n}일 남음`,
+    noExpiry: "무기한",
+    releaseAction: "명단에서 해제",
+    releaseTitle: (name: string) => `${name}을(를) 해제할까요?`,
+    releaseBody: "명단에서 내려가고 카메라가 더 이상 대조하지 않습니다. 행은 해제 표시와 함께 남아 이력이 보존됩니다.",
+    releaseReasonLabel: "사유",
+    releaseReasonPlaceholder: "발견 · 검거 · 착오 등록",
+    releaseConfirm: "해제",
+    releasedToast: "명단에서 해제했습니다",
+    catModalTitle: "관심인물 분류",
+    catModalIntro: "기관이 직접 정의합니다. 미리 넣어둔 것은 없습니다 — 쓰는 말은 저희 것이 아니라 기관의 것입니다.",
+    catEmpty: "아직 분류가 없습니다. 그래도 등록은 됩니다 — 미분류로 올라갑니다.",
+    catNew: "분류 만들기",
+    catLabelField: "이름",
+    catLabelPlaceholder: "기관에서 부르는 이름",
+    catValidDays: "기본 유효기간 (일)",
+    catValidDaysNone: "기본 만료일 없음",
+    catRequiresBasis: "이 분류로 등록할 때 근거를 필수로",
+    catColor: "색",
+    catArchive: "사용 중지",
+    catArchived: "중지됨",
+    catArchiveNote: "중지한 분류는 다시 고를 수 없습니다. 이미 등록된 사람의 표시는 그대로 남습니다.",
+    catCreate: "만들기",
+    catSave: "저장",
     healthReachLabel: "지난 7일간 탐지된 인원",
     healthReachTrend: (prev: number) => `지난주 ${prev}명`,
     healthReachFlat: "지난주와 같음",
@@ -313,6 +427,11 @@ const T: Record<"en" | "ko", VipDict> = {
 
 interface RegisterValues {
   name: string;
+  /** Undefined = unclassified, which is a real state — see WatchlistCategory in the store. */
+  categoryId?: string;
+  basis?: string;
+  /** Undefined = no expiry. */
+  expiresAt?: string;
   priorityLabel: NonNullable<Person["priorityLabel"]>;
   description?: string;
   /** Undefined = an individual, i.e. in no group. */
@@ -329,20 +448,42 @@ interface RegisterValues {
  * and until now only the bulk CSV import could write it — a note could exist on a row that nobody
  * was able to type.
  */
-function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
+function RegisterVipModal({ t, person, groups, categories, projectId, onClose, onSubmit, onManageCategories }: {
   t: VipDict;
   /** Absent = registering. Present = editing that person. */
   person?: Person;
   groups: PersonGroup[];
+  categories: WatchlistCategory[];
   projectId: string;
   onClose: () => void;
   onSubmit: (values: RegisterValues) => void;
+  onManageCategories: () => void;
 }) {
   const editing = person !== undefined;
   const [name, setName] = useState(person?.name ?? "");
   const [priorityLabel, setPriorityLabel] = useState<NonNullable<Person["priorityLabel"]>>(person?.priorityLabel ?? "normal");
   const [description, setDescription] = useState(person?.description ?? "");
   const [groupId, setGroupId] = useState(person?.groupId ?? "");
+  const [categoryId, setCategoryId] = useState(person?.categoryId ?? "");
+  const [basis, setBasis] = useState(person?.basis ?? "");
+  const [expiresAt, setExpiresAt] = useState(person?.expiresAt?.slice(0, 10) ?? "");
+  const chosenCategory = categories.find(c => c.id === categoryId);
+  /**
+   * Picking a category fills the expiry from its default, and only then.
+   *
+   * Not on every keystroke and not on edit: overwriting a date somebody typed, because they
+   * happened to change the category afterwards, loses work they will not notice losing. A category
+   * with no default (defaultValidDays null) clears the field rather than leaving the previous
+   * category's date under a new heading.
+   */
+  const pickCategory = (nextId: string) => {
+    setCategoryId(nextId);
+    const next = categories.find(c => c.id === nextId);
+    if (!next) return;
+    setExpiresAt(next.defaultValidDays === null
+      ? ""
+      : new Date(Date.now() + next.defaultValidDays * 86_400_000).toISOString().slice(0, 10));
+  };
   /**
    * Making a group without leaving this form.
    *
@@ -379,7 +520,11 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
    * Editing is the other case — that person already has an enrolled face, and demanding a fresh
    * upload to fix a spelling would be asking for the expensive half of the work again.
    */
-  const valid = name.trim().length > 0 && (editing || photoPreview !== null);
+  const valid = name.trim().length > 0
+    && (editing || photoPreview !== null)
+    // A category that says a basis is required means it: without one the row has nobody to ask
+    // later, and "we will fill it in afterwards" is how a registry ends up with none at all.
+    && (!chosenCategory?.requiresBasis || basis.trim().length > 0);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -404,6 +549,43 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
             <TextField value={name} onChange={setName} placeholder={t.namePlaceholder} />
+          </div>
+          {/* Classification, then what backs it, then when it ends — the three questions an audit
+              asks about a watchlist row, in the order somebody answers them. Above priority
+              because a category decides whether the basis is required and what the expiry starts
+              at, and a field that changes two others should come before them. */}
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.categoryLabel}</label>
+            <FilterSelect
+              value={categoryId}
+              onChange={pickCategory}
+              options={[
+                // Unclassified is a choice, not a blank. An installation that has not built its
+                // taxonomy still registers people, and those rows should say so rather than look
+                // like somebody forgot.
+                { value: "", label: t.categoryNone },
+                ...categories.map(c => ({ value: c.id, label: c.label })),
+              ]}
+              footerAction={{ label: t.manageCategories, onClick: onManageCategories }}
+            />
+          </div>
+          <div>
+            <label style={{ display: "flex", alignItems: "baseline", gap: "6px", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>
+              {t.basisLabel}
+              {chosenCategory?.requiresBasis
+                ? <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)" }}>{t.requiredMark}</span>
+                : <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--gray-400)" }}>{t.optionalMark}</span>}
+            </label>
+            <TextField value={basis} onChange={setBasis} placeholder={t.basisPlaceholder} />
+          </div>
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.expiresLabel}</label>
+            <TextField value={expiresAt} onChange={setExpiresAt} type="date" />
+            {/* Said out loud rather than left to an empty field. A blank expiry is the most
+                consequential default on this form and the one nobody notices leaving. */}
+            <p style={{ fontSize: "11px", color: expiresAt ? "var(--gray-400)" : "var(--warning-500)", lineHeight: 1.6, marginTop: "6px" }}>
+              {expiresAt ? t.expiresNote : t.noExpiryWarning}
+            </p>
           </div>
           {/* Priority alone now, full width — it shared a two-column row with the Role select. */}
           <div>
@@ -513,6 +695,9 @@ function RegisterVipModal({ t, person, groups, projectId, onClose, onSubmit }: {
           </button>
           <button className="portal-btn-primary"
             onClick={() => valid && onSubmit({
+              categoryId: categoryId || undefined,
+              basis: basis.trim() || undefined,
+              expiresAt: expiresAt || undefined,
               name: name.trim(), priorityLabel,
               description: description.trim() || undefined,
               groupId: groupId || undefined,
@@ -801,6 +986,16 @@ function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
 export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const persons = useVcaStore(s => s.persons);
   const personGroups = useVcaStore(s => s.personGroups);
+  const projects = useVcaStore(s => s.projects);
+  const watchlistCategories = useVcaStore(s => s.watchlistCategories);
+  const releasePerson = useVcaStore(s => s.releasePerson);
+  // Categories belong to the institution, so they are read through the project's team rather than
+  // through the project — see WatchlistCategory in the store.
+  const teamId = projects.find(pr => pr.id === projectId)?.teamId;
+  const teamCategories = watchlistCategories.filter(c => c.teamId === teamId);
+  // Archived ones stay readable on rows that still reference them, but cannot be chosen again.
+  const activeCategories = teamCategories.filter(c => !c.archived);
+  const categoryById = new Map(watchlistCategories.map(c => [c.id, c]));
   const removePersonGroup = useVcaStore(s => s.removePersonGroup);
   const setPersonGroup = useVcaStore(s => s.setPersonGroup);
   const addPerson = useVcaStore(s => s.addPerson);
@@ -870,6 +1065,19 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const [confirmingGroupRemove, setConfirmingGroupRemove] = useState<PersonGroup | null>(null);
   const [detailFor, setDetailFor] = useState<Person | null>(null);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
+  const [managingCategories, setManagingCategories] = useState(false);
+  const [releasing, setReleasing] = useState<Person | null>(null);
+  /**
+   * The clock, read after mount like everywhere else in Portal.
+   *
+   * "Expired" and "12 days left" are both answers about today, and a value computed during render
+   * differs between the server's HTML and the browser's first pass. Null for one frame, where the
+   * cell prints the date without a verdict rather than a verdict that changes in front of the
+   * reader.
+   */
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
+  const [releaseReason, setReleaseReason] = useState("");
   const { sort, toggle: toggleSort } = useTableSort<VipSortKey>({ key: "registered", direction: "desc" });
   const [searchFocused, setSearchFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -927,6 +1135,10 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       // pass — first click on this heading is "who is this list not catching", which is the whole
       // reason the column is here.
       case "lastDetected": return person.lastDetectedAt ?? "";
+      // Soonest first on the ascending pass, and rows with no end date sink — a listing that never
+      // expires is not "expiring in a very long time", it is a different answer, and it belongs at
+      // the far end rather than mixed in among dates.
+      case "expires": return person.expiresAt ?? "9999";
     }
   };
   // The table sorts from its headings. The grid has one order it can offer, because it has a
@@ -947,6 +1159,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       priorityLabel: values.priorityLabel,
       description: values.description,
       groupId: values.groupId,
+      categoryId: values.categoryId,
+      basis: values.basis,
+      expiresAt: values.expiresAt,
       projectId,
     });
     setShowRegister(false);
@@ -959,6 +1174,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       priorityLabel: values.priorityLabel,
       description: values.description,
       groupId: values.groupId,
+      categoryId: values.categoryId,
+      basis: values.basis,
+      expiresAt: values.expiresAt,
       // Only when a new file was picked. Without this, opening the editor and saving without
       // touching the photo would replace the enrolled face with a generated placeholder.
       ...(values.photoUrl ? { photoUrl: values.photoUrl } : null),
@@ -1306,9 +1524,11 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             {([
               { label: t.colName, key: "name" },
               ...(showGroupColumn ? [{ label: t.colGroup }] : []),
+              { label: t.colCategory },
               { label: t.colPriority, key: "priority", indent: true },
               { label: t.colRegistered, key: "registered" },
               { label: t.colLastDetected, key: "lastDetected" },
+              { label: t.colExpires, key: "expires" },
               { label: t.colNote },
               { label: "" },
             /* Priority's heading is nudged 8px right — the pill under it carries 8px of its own
@@ -1364,6 +1584,24 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                   />
                   </span>
                 )}
+                {/* The category, in the institution's own word and its own colour. Unclassified
+                    says so rather than showing a dash: it is a state somebody chose (or has not
+                    got round to), not a missing value. */}
+                <span style={{ minWidth: 0 }}>
+                  {(() => {
+                    const cat = person.categoryId ? categoryById.get(person.categoryId) : undefined;
+                    if (!cat) return <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.categoryNone}</span>;
+                    const tint = categoryTint(cat.color);
+                    return (
+                      <span style={{
+                        display: "inline-block", maxWidth: "100%", padding: "2px 8px", borderRadius: "999px",
+                        backgroundColor: tint.bg, color: tint.fg,
+                        fontSize: "11px", fontWeight: 700,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>{cat.label}</span>
+                    );
+                  })()}
+                </span>
                 <span>{person.priorityLabel ? <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
                 <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{person.registeredAt.slice(0, 10)}</span>
                 {/* The same em dash every other empty cell in this table uses, in the same grey as
@@ -1376,6 +1614,26 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 <span style={{ fontSize: "12px", color: person.lastDetectedAt ? "var(--gray-600)" : "var(--gray-300)" }}>
                   {person.lastDetectedAt ? person.lastDetectedAt.slice(0, 10) : "—"}
                 </span>
+                {/* Expiry, and what has already happened to it.
+                    Released and expired rows stay in the list — if they vanished, nobody could tell
+                    which of the two happened, and "it is gone" is the one answer a watchlist must
+                    never give about somebody it used to hold. */}
+                <span style={{ fontSize: "12px", minWidth: 0 }}>
+                  {(() => {
+                    if (person.releasedAt) return <span style={{ fontWeight: 700, color: "var(--gray-500)" }}>{t.statusReleased}</span>;
+                    if (!person.expiresAt) return <span style={{ color: "var(--gray-300)" }}>{t.noExpiry}</span>;
+                    const daysLeft = nowMs === null ? null : Math.ceil((Date.parse(person.expiresAt) - nowMs) / 86_400_000);
+                    if (daysLeft !== null && daysLeft < 0) return <span style={{ fontWeight: 700, color: "var(--danger-500)" }}>{t.statusExpired}</span>;
+                    return (
+                      <span style={{ display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" }}>
+                        <span style={{ color: "var(--gray-600)" }}>{person.expiresAt.slice(0, 10)}</span>
+                        {daysLeft !== null && daysLeft <= 30 && (
+                          <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--warning-500)" }}>{t.expiringInDays(daysLeft)}</span>
+                        )}
+                      </span>
+                    );
+                  })()}
+                </span>
                 <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.description || "—"}</span>
                 {/* The same overflow menu the roster, users and camera tables use. A lone trash
                     icon was the only row action this table had, which is also why there was no way
@@ -1383,6 +1641,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 <div style={{ justifySelf: "end" }}>
                   <RowActionsMenu actions={[
                     { label: t.editPerson, onClick: () => setEditingPerson(person) },
+                    // Release before delete, and delete stays the destructive one. Taking somebody
+                    // off the list is the ordinary end of a listing; erasing the record of it is not.
+                    ...(person.releasedAt ? [] : [{ label: t.releaseAction, onClick: () => setReleasing(person) }]),
                     { label: t.removeAction, onClick: () => setConfirmingRemove(person), danger: true },
                   ]} />
                 </div>
@@ -1493,12 +1754,35 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      {showRegister && <RegisterVipModal t={t} groups={projectGroupsAll} projectId={projectId} onClose={() => setShowRegister(false)} onSubmit={register} />}
+      {showRegister && <RegisterVipModal t={t} groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} projectId={projectId} onClose={() => setShowRegister(false)} onSubmit={register} />}
       {editingPerson && (
-        <RegisterVipModal t={t} person={editingPerson} groups={projectGroupsAll} projectId={projectId} onClose={() => setEditingPerson(null)} onSubmit={saveEdit} />
+        <RegisterVipModal t={t} person={editingPerson} groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} projectId={projectId} onClose={() => setEditingPerson(null)} onSubmit={saveEdit} />
       )}
       {confirmingRemove && (
         <RemoveVipConfirmModal t={t} person={confirmingRemove} onClose={() => setConfirmingRemove(null)} onConfirm={confirmRemove} />
+      )}
+      {managingCategories && teamId && (
+        <WatchlistCategoryModal t={t} teamId={teamId} categories={teamCategories} onClose={() => setManagingCategories(false)} />
+      )}
+      {releasing && (
+        <ConfirmModal
+          title={t.releaseTitle(releasing.name)}
+          body={t.releaseBody}
+          confirmLabel={t.releaseConfirm}
+          cancelLabel={t.cancel}
+          onConfirm={() => {
+            releasePerson(releasing.id, releaseReason.trim() || t.releaseReasonPlaceholder);
+            showToast({ variant: "success", title: t.releasedToast, desc: releasing.name });
+            setReleasing(null);
+            setReleaseReason("");
+          }}
+          onClose={() => { setReleasing(null); setReleaseReason(""); }}
+        >
+          <div style={{ marginTop: "14px" }}>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.releaseReasonLabel}</label>
+            <TextField value={releaseReason} onChange={setReleaseReason} placeholder={t.releaseReasonPlaceholder} autoFocus />
+          </div>
+        </ConfirmModal>
       )}
       {detailFor && (
         <PersonDetailModal
@@ -1556,4 +1840,161 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       })()}
     </div>
   );
+}
+
+/**
+ * Where an institution defines its own watchlist categories.
+ *
+ * Opens empty, and says so. There is no shipped default and no example row: a seeded "Wanted"
+ * would read as the standard and the first thing a customer who is not a police force does is
+ * delete it — then wonder what else in the product was written for somebody else.
+ *
+ * Colours come from a fixed list of design tokens rather than a picker. A category is a label in a
+ * console, not a brand: an arbitrary hex would let one sit outside the palette, or land on the same
+ * green the validity stamp uses two screens over.
+ */
+function WatchlistCategoryModal({ t, teamId, categories, onClose }: {
+  t: VipDict;
+  teamId: string;
+  categories: WatchlistCategory[];
+  onClose: () => void;
+}) {
+  const addWatchlistCategory = useVcaStore(s => s.addWatchlistCategory);
+  const updateWatchlistCategory = useVcaStore(s => s.updateWatchlistCategory);
+  const archiveWatchlistCategory = useVcaStore(s => s.archiveWatchlistCategory);
+  const [creating, setCreating] = useState(false);
+  const [label, setLabel] = useState("");
+  const [validDays, setValidDays] = useState("");
+  const [requiresBasis, setRequiresBasis] = useState(true);
+  const [color, setColor] = useState<WatchlistCategoryColor>("gray");
+  useEscapeKey(onClose);
+
+  const reset = () => { setCreating(false); setLabel(""); setValidDays(""); setRequiresBasis(true); setColor("gray"); };
+  const create = () => {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    addWatchlistCategory({
+      teamId, label: trimmed, color, requiresBasis,
+      // Blank means no default, which is a different thing from zero days.
+      defaultValidDays: validDays.trim() === "" ? null : Math.max(1, Number(validDays)),
+    });
+    reset();
+  };
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "520px", width: "100%", maxHeight: "86vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+        <div style={{ padding: "20px 20px 0" }}>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.catModalTitle}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "6px" }}>{t.catModalIntro}</p>
+        </div>
+
+        <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "8px" }}>
+          {categories.length === 0 && !creating && (
+            <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.7, padding: "12px 0" }}>{t.catEmpty}</p>
+          )}
+          {categories.map(c => (
+            <div key={c.id} style={{
+              display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px",
+              border: BORDER, borderRadius: "10px", opacity: c.archived ? 0.55 : 1,
+            }}>
+              <span style={{ width: "10px", height: "10px", borderRadius: "3px", flexShrink: 0, backgroundColor: categoryTint(c.color).dot }} />
+              <span style={{ flex: 1, minWidth: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {c.label}
+              </span>
+              <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>
+                {c.defaultValidDays === null ? t.catValidDaysNone : `${c.defaultValidDays}d`}
+                {c.requiresBasis ? ` · ${t.basisLabel}` : ""}
+              </span>
+              {c.archived ? (
+                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.catArchived}</span>
+              ) : (
+                <button className="portal-btn-outline" onClick={() => archiveWatchlistCategory(c.id)}
+                  style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  {t.catArchive}
+                </button>
+              )}
+            </div>
+          ))}
+
+          {creating ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catLabelField}</label>
+                <TextField value={label} onChange={setLabel} placeholder={t.catLabelPlaceholder} autoFocus />
+              </div>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catValidDays}</label>
+                <TextField value={validDays} onChange={v => setValidDays(v.replace(/[^0-9]/g, ""))} placeholder={t.catValidDaysNone} inputMode="numeric" />
+              </div>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catColor}</label>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  {WATCHLIST_CATEGORY_COLORS.map(name => (
+                    <button key={name} onClick={() => setColor(name)} title={name}
+                      style={{
+                        width: "28px", height: "28px", borderRadius: "8px", cursor: "pointer",
+                        backgroundColor: categoryTint(name).bg,
+                        border: color === name ? "2px solid var(--gray-900)" : "1px solid var(--gray-200)",
+                      }}>
+                      <span style={{ display: "block", width: "10px", height: "10px", borderRadius: "3px", margin: "0 auto", backgroundColor: categoryTint(name).dot }} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Default on, because most categories need one and the cost of the wrong default is
+                  asymmetric: a required basis somebody skips is a nag, a missing basis on a row
+                  that turns out wrong is a question nobody can answer. */}
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "var(--gray-600)" }}>
+                <input type="checkbox" checked={requiresBasis} onChange={e => setRequiresBasis(e.target.checked)} />
+                {t.catRequiresBasis}
+              </label>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+                <button className="portal-btn-outline" onClick={reset}
+                  style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  {t.cancel}
+                </button>
+                <button className="portal-btn-primary" onClick={create} disabled={!label.trim()}
+                  style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: label.trim() ? "var(--primary-400)" : "var(--gray-200)", color: label.trim() ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: label.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+                  {t.catCreate}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button className="portal-btn-outline" onClick={() => setCreating(true)}
+              style={{ height: CONTROL_HEIGHT, borderRadius: "10px", border: `1px dashed var(--gray-300)`, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              + {t.catNew}
+            </button>
+          )}
+          {categories.some(c => c.archived) && (
+            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.catArchiveNote}</p>
+          )}
+        </div>
+
+        <div style={{ padding: "0 20px 20px", display: "flex", justifyContent: "flex-end" }}>
+          <button className="portal-btn-outline" onClick={onClose}
+            style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {t.close}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A category colour name resolved to the two values a chip needs.
+ *
+ * Token families only — the list is fixed in the store — so a category can never introduce a
+ * colour the console does not already use.
+ */
+function categoryTint(color: WatchlistCategoryColor): { bg: string; fg: string; dot: string } {
+  switch (color) {
+    case "primary": return { bg: "var(--primary-100)", fg: "var(--primary-400)", dot: "var(--primary-400)" };
+    case "danger":  return { bg: "var(--danger-100)",  fg: "var(--danger-500)",  dot: "var(--danger-400)" };
+    case "warning": return { bg: "var(--warning-100)", fg: "var(--warning-500)", dot: "var(--warning-500)" };
+    case "success": return { bg: "var(--success-100)", fg: "var(--success-400)", dot: "var(--success-400)" };
+    default:        return { bg: "var(--gray-100)",    fg: "var(--gray-700)",    dot: "var(--gray-400)" };
+  }
 }

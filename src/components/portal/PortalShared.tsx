@@ -1042,9 +1042,17 @@ export function SortableHeader<K extends string>({ label, sortKey, sort, onToggl
  * Remove) predate it and still carry their own markup — worth folding in here, but not while they
  * are untouched by the change that needed this.
  */
-export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, altAction, onConfirm, onClose }: {
+export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, altAction, onConfirm, onClose, children }: {
   title: string;
   body: string;
+  /**
+   * One field the confirmation needs, under the body.
+   *
+   * For the confirmations that are not purely yes/no — releasing somebody from the watchlist has to
+   * record why, and a second dialog stacked on this one to ask a single question is a stack nobody
+   * wants to be two deep in.
+   */
+  children?: React.ReactNode;
   confirmLabel: string;
   cancelLabel: string;
   /** Red confirm button — for the ones that take access away or cannot be undone from the menu. */
@@ -1069,6 +1077,7 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, a
         <div style={{ padding: "20px" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{title}</p>
           <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.6 }}>{body}</p>
+          {children}
         </div>
         {/* No rule above the buttons.
             Every modal in Portal drew one, and stacked with the header rule, the card edges, the
