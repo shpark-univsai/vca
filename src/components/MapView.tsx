@@ -5,7 +5,7 @@ import { LiveEvent, Device, TrackingHop, nearestDistrict, getFacePhoto, formatTi
   DISTRICT_ALERT_THRESHOLD_KEY, DISTRICT_MODERATE_THRESHOLD_KEY,
   DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD } from "@/lib/mockData";
 import {
-  useVcaStore, vcaEventsToLiveEvents, VIP_SIMULATION_CAMERAS,
+  vcaEventsToLiveEvents, VIP_SIMULATION_CAMERAS,
   useProjectEvents, useProjectCameras, type Camera,
 } from "@/lib/vcaStore";
 import { useCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
@@ -25,11 +25,6 @@ const T = {
     // a map, and the full sentence lives in the tooltip below it.
     camerasShort: (n: number) => `${n} cam${n === 1 ? "" : "s"}`,
     noCamera: "no camera",
-    pillTooltip: (count: number, cams: number) =>
-      cams === 0
-        ? "No camera registered in this district — nothing can be detected here"
-        : `${count} VIP detection${count === 1 ? "" : "s"} today from ${cams} camera${cams === 1 ? "" : "s"}` +
-          ` · ${(count / cams).toFixed(1)} per camera`,
     live: "LIVE",
     out: "OUT",
     offline: "OFFLINE",
@@ -46,10 +41,6 @@ const T = {
   ko: {
     camerasShort: (n: number) => `${n}대`,
     noCamera: "카메라 없음",
-    pillTooltip: (count: number, cams: number) =>
-      cams === 0
-        ? "이 구역에 등록된 카메라가 없습니다 — 여기서는 검출될 수 없습니다"
-        : `오늘 VIP 검출 ${count}건 · 카메라 ${cams}대 · 카메라당 ${(count / cams).toFixed(1)}건`,
     live: "정상",
     out: "중단",
     offline: "중단",
@@ -605,7 +596,6 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           });
           L.marker([home.lat, home.lng], { icon })
             .addTo(group)
-            .bindTooltip(t.pillTooltip(hits.length, camerasHere.length), { direction: "top", offset: [0, -16], className: "vca-camera-tooltip", opacity: 1 })
             .on("click", () => onDistrictSelectRef.current?.(home.id));
         }
       } else if (zoom <= CLUSTER_ZOOM_BREAKPOINT) {
@@ -639,11 +629,13 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
             iconAnchor: [0, 0],
             className: "vca-zone-icon",
           });
-          // The full sentence — including detections per camera — lives here rather than on the
-          // pill. The pill has room for the two figures; the reading of them needs a sentence.
+          // No tooltip. `vca-camera-tooltip` sets padding:0 because the camera-dot tooltip supplies
+          // its own padded inner box — plain text through the same class renders edge-to-edge and
+          // reads as a broken element. Detections-per-camera is worth showing, but not badly, and
+          // this map has no tooltip component to host a sentence. The pill's two figures stand on
+          // their own until there is one.
           L.marker([district.lat, district.lng], { icon })
             .addTo(group)
-            .bindTooltip(t.pillTooltip(count, camerasInDistrict.length), { direction: "top", offset: [0, -16], className: "vca-camera-tooltip", opacity: 1 })
             .on("click", () => onDistrictSelectRef.current?.(district.id));
         });
       } else {
