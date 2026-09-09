@@ -115,9 +115,6 @@ const T = {
     atLimit: "Every licensed channel is in use — no further camera can be connected until the limit is raised.",
     nearLimit: (n: number) => `${n} channel(s) left before this project reaches its licensed limit.`,
     contractNote: "Channels and term are changed by contract, not here.",
-    docTitle: "Licence",
-    clausePlan: "Plan",
-    clauseProject: "Covered project",
     clauseChannels: "Licensed channels",
     // Not "Term": a term is a range, and Project carries licenseExpiresAt and no start date, so
     // this clause has one date to show — the day the licence stops.
@@ -163,9 +160,6 @@ const T = {
     atLimit: "라이선스 채널을 모두 쓰고 있습니다 — 한도를 올리기 전까지 카메라를 더 연결할 수 없습니다.",
     nearLimit: (n: number) => `라이선스 한도까지 ${n}채널 남았습니다.`,
     contractNote: "채널과 기간은 계약으로 변경되며 이 화면에서는 바꿀 수 없습니다.",
-    docTitle: "라이선스",
-    clausePlan: "계약 상품",
-    clauseProject: "대상",
     clauseChannels: "계약 채널",
     clauseTerm: "만료일",
     clauseScope: "포함 범위",
@@ -369,13 +363,34 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
       }}>
         {/* The head names the document and stamps its state, the way the first page of an
             agreement does. */}
-        <div style={{ padding: "28px 20px", borderBottom: "2px solid var(--gray-900)" }}>
+        <div style={{ padding: "28px 32px", borderBottom: "2px solid var(--gray-900)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>
-            {/* Title alone. The line under it explained that this is a copy of a signed agreement
-                and that nothing here changes it — which is what the document form now says by
-                being a document, and the note at the foot says in words. Three times was two too
-                many. */}
-            <p style={{ fontSize: "17px", fontWeight: 800, color: "var(--gray-900)", minWidth: 0 }}>{t.docTitle}</p>
+            {/*
+              The head names the SUBJECT, not the page.
+
+              It said "Licence", which is the word the breadcrumb 20px above already says — so the
+              line carried no information and read as filler, which is exactly the "page introducing
+              itself twice" this file warns against elsewhere. A contract's first line is not
+              "Contract"; it is what the contract is for. So: the plan, and under it the project it
+              covers.
+
+              Those two were clauses 01 and 02 a moment ago and are gone from the list with this —
+              the head states the subject and the clauses state the terms, and neither repeats the
+              other.
+            */}
+            <div style={{ minWidth: 0 }}>
+              <p style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "28px" }}>
+                  {project.licensePlan ?? t.notSet}
+                </span>
+                <span style={{ fontSize: "10px", fontWeight: 700, color: meta.color, backgroundColor: meta.bg, padding: "3px 8px", borderRadius: "999px" }}>
+                  {meta.label}
+                </span>
+              </p>
+              <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px" }}>
+                {project.name}{projectTeamName ? ` · ${projectTeamName}` : ""}
+              </p>
+            </div>
             {project.licenseExpiresAt && nowMs !== null && (
               /* The stamp. Squared off, not a pill: a pill is a chip in a product and this is the
                  mark on a document — and it is the one place the status is stated, so it sits
@@ -392,7 +407,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           </div>
         </div>
 
-        {/* The clauses. Numbered because they are a fixed, ordered set — the same six things in
+        {/* The clauses. Numbered because they are a fixed, ordered set — the same four terms in
             the same order for every project, which is what makes a number worth printing.
 
             Padding on the group, not on the first and last clause: the ends of a schedule stand
@@ -403,21 +418,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
             at a time — the density that suits a table of sixty cameras is the wrong density for
             five clauses somebody is checking against a signed page. */}
         <div style={{ padding: "20px 0" }}>
-        {/* The plan leads, because it is what was bought — the name on the agreement, before the
-            thing it applies to. It was a chip in the head until the card became a document, and
-            then it was nowhere: a licence page that never says which licence. */}
-        <Clause n={1} label={t.clausePlan}>
-          <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{project.licensePlan ?? t.notSet}</p>
-        </Clause>
-
-        <Clause n={2} label={t.clauseProject}>
-          <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{project.name}</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "3px" }}>
-            {meta.label}{projectTeamName ? ` · ${projectTeamName}` : ""}
-          </p>
-        </Clause>
-
-        <Clause n={3} label={t.clauseChannels}>
+        <Clause n={1} label={t.clauseChannels}>
           <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>
             {limit ? t.channelsUnitN(limit) : t.noLimitSet}
           </p>
@@ -436,7 +437,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           ) : null}
         </Clause>
 
-        <Clause n={4} label={t.clauseTerm}>
+        <Clause n={2} label={t.clauseTerm}>
           <p style={{ fontSize: "14px", fontWeight: 700, color: isExpired ? "var(--danger-500)" : "var(--gray-900)", fontFamily: "monospace", letterSpacing: "-0.01em" }}>
             {isUnlimitedExpiry ? t.unlimited : (project.licenseExpiresAt ?? "—")}
           </p>
@@ -447,7 +448,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           )}
         </Clause>
 
-        <Clause n={5} label={t.clauseScope}>
+        <Clause n={3} label={t.clauseScope}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "6px 20px" }}>
             {includedRows.map(r => (
               <p key={r.key} style={{ display: "flex", alignItems: "baseline", gap: "7px", fontSize: "13px", fontWeight: 600, color: "var(--gray-900)" }}>
@@ -465,7 +466,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           )}
         </Clause>
 
-        <Clause n={6} label={t.clauseFees} last>
+        <Clause n={4} label={t.clauseFees} last>
           <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>
             {limit ? t.channelsCostPerYear(subscriptionYearlyCost.toLocaleString()) : "—"}
           </p>
@@ -475,7 +476,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
 
         {/* The party block, where an agreement puts its signatures. Not a fake signature — the
             person and the way to reach them, which is what this record can honestly carry. */}
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "20px", padding: "28px 20px", borderTop: "1px solid var(--gray-900)", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "20px", padding: "28px 32px", borderTop: "1px solid var(--gray-900)", flexWrap: "wrap" }}>
           <div>
             <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px", textTransform: "uppercase" }}>{t.clauseParty}</p>
             <p style={{ fontSize: "14px", fontWeight: 700, marginTop: "5px" }}>
@@ -502,8 +503,11 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
 function Clause({ n, label, last, children }: { n: number; label: string; last?: boolean; children: React.ReactNode }) {
   return (
     /* The last clause drops its rule: the party block below already opens with a heavier one, and
-       two lines with 16px of nothing between them is a mistake, not a division. */
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 168px) minmax(0, 1fr)", gap: "0 20px", padding: "24px 20px", borderBottom: last ? "none" : BORDER }}>
+       two lines with 16px of nothing between them is a mistake, not a division.
+
+       32px at the sides, matching the shell's own gutter — a document has margins, and at 20px the
+       clauses sat as close to the paper's edge as a table's cells do. */
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 168px) minmax(0, 1fr)", gap: "0 24px", padding: "24px 32px", borderBottom: last ? "none" : BORDER }}>
       <p style={{ display: "flex", alignItems: "baseline", gap: "8px", minWidth: 0 }}>
         {/* Tabular figures and a fixed slot, so 1 and 5 leave their labels on the same left edge. */}
         <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-300)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
