@@ -454,7 +454,11 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
                 licence read VALID, which is true and says less than it could. */}
             {stamp && (
               <span style={{
-                flexShrink: 0, fontSize: "11px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase",
+                /* Sentence case. Caps are the convention on a rubber stamp and they read as
+                   shouting on a screen — and the longest state here is "No expiry on record",
+                   which in caps is a shout nobody needs. The box already says "stamp"; the letters
+                   only have to say the word. */
+                flexShrink: 0, fontSize: "11px", fontWeight: 700,
                 padding: "5px 10px", borderRadius: "4px",
                 border: `1.5px solid ${stamp.color}`, color: stamp.color,
               }}>
@@ -541,10 +545,10 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
                 trust a link to know where it goes, and the reader who wants to phone or forward the
                 address gets nothing. A record shows what it holds. */}
             {accountManager ? (
-              <>
-                <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginTop: "5px" }}>{accountManager.name}</p>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{accountManager.email}</p>
-              </>
+              <p style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap", marginTop: "5px" }}>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{accountManager.name}</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{accountManager.email}</span>
+              </p>
             ) : (
               <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-400)", marginTop: "5px" }}>—</p>
             )}
