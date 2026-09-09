@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
 import { AlertTriangle, ArrowDownWideNarrow, Eye, ImageOff, Users } from "lucide-react";
-import { registryHealth, useVcaStore, WATCHLIST_CATEGORY_COLORS, type Person, type PersonGroup, type WatchlistCategory, type WatchlistCategoryColor } from "@/lib/vcaStore";
+import { canSetPolicy, currentPortalUser, registryHealth, useVcaStore, WATCHLIST_CATEGORY_COLORS, type Person, type PersonGroup, type WatchlistCategory, type WatchlistCategoryColor } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
@@ -97,6 +97,7 @@ interface VipDict {
   catArchiveNote: string;
   catCreate: string;
   catSave: string;
+  catOwnerOnly: string;
   healthReachLabel: string;
   healthReachTrend: (prev: number) => string;
   healthReachFlat: string;
@@ -227,6 +228,7 @@ const T: Record<"en" | "ko", VipDict> = {
     catArchiveNote: "Retired categories cannot be chosen again. People already listed under them keep the label.",
     catCreate: "Create",
     catSave: "Save",
+    catOwnerOnly: "Only the owner can change this list.",
     healthReachLabel: "people detected · 7 days",
     healthReachTrend: (prev: number) => `vs ${prev} people last week`,
     healthReachFlat: "same as last week",
@@ -356,6 +358,7 @@ const T: Record<"en" | "ko", VipDict> = {
     catArchiveNote: "중지한 분류는 다시 고를 수 없습니다. 이미 등록된 사람의 표시는 그대로 남습니다.",
     catCreate: "만들기",
     catSave: "저장",
+    catOwnerOnly: "이 목록은 최고관리자만 바꿀 수 있습니다.",
     healthReachLabel: "지난 7일간 탐지된 인원",
     healthReachTrend: (prev: number) => `지난주 ${prev}명`,
     healthReachFlat: "지난주와 같음",
@@ -996,6 +999,10 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   // Archived ones stay readable on rows that still reference them, but cannot be chosen again.
   const activeCategories = teamCategories.filter(c => !c.archived);
   const categoryById = new Map(watchlistCategories.map(c => [c.id, c]));
+  // Same gate as the search-purpose list — see canSetPolicy. Both decide what the audit will find,
+  // and an administrator able to loosen one and not the other would be a rule nobody could state.
+  const me = currentPortalUser(useVcaStore.getState().portalUsers);
+  const maySetPolicy = me ? canSetPolicy(me.permission) : true;
   const removePersonGroup = useVcaStore(s => s.removePersonGroup);
   const setPersonGroup = useVcaStore(s => s.setPersonGroup);
   const addPerson = useVcaStore(s => s.addPerson);
@@ -1762,7 +1769,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         <RemoveVipConfirmModal t={t} person={confirmingRemove} onClose={() => setConfirmingRemove(null)} onConfirm={confirmRemove} />
       )}
       {managingCategories && teamId && (
-        <WatchlistCategoryModal t={t} teamId={teamId} categories={teamCategories} onClose={() => setManagingCategories(false)} />
+        <WatchlistCategoryModal t={t} teamId={teamId} categories={teamCategories} canEdit={maySetPolicy} onClose={() => setManagingCategories(false)} />
       )}
       {releasing && (
         <ConfirmModal
@@ -1853,10 +1860,12 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
  * console, not a brand: an arbitrary hex would let one sit outside the palette, or land on the same
  * green the validity stamp uses two screens over.
  */
-function WatchlistCategoryModal({ t, teamId, categories, onClose }: {
+function WatchlistCategoryModal({ t, teamId, categories, canEdit, onClose }: {
   t: VipDict;
   teamId: string;
   categories: WatchlistCategory[];
+  /** Owner only — see canSetPolicy. Everyone else reads the list. */
+  canEdit: boolean;
   onClose: () => void;
 }) {
   const addWatchlistCategory = useVcaStore(s => s.addWatchlistCategory);
@@ -1909,7 +1918,7 @@ function WatchlistCategoryModal({ t, teamId, categories, onClose }: {
               </span>
               {c.archived ? (
                 <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.catArchived}</span>
-              ) : (
+              ) : !canEdit ? null : (
                 <button className="portal-btn-outline" onClick={() => archiveWatchlistCategory(c.id)}
                   style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                   {t.catArchive}
@@ -1918,7 +1927,11 @@ function WatchlistCategoryModal({ t, teamId, categories, onClose }: {
             </div>
           ))}
 
-          {creating ? (
+          {!canEdit ? (
+            /* Said, not hidden — a reader who cannot find the button should learn the list has an
+               owner rather than conclude the console is broken. */
+            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.catOwnerOnly}</p>
+          ) : creating ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
               <div>
                 <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catLabelField}</label>

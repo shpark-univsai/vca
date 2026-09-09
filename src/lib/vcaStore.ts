@@ -617,6 +617,13 @@ interface VcaStoreState {
 export interface AuditEvent {
   id: string;
   projectId?: string;
+  /**
+   * Set instead of projectId when the change belongs to the institution rather than to one site —
+   * a watchlist category, a search purpose. The Overview shows a project's own entries plus its
+   * team's, because a policy change is news at every site it governs and filing it under one of
+   * them would be a lie about where it applies.
+   */
+  teamId?: string;
   message: string;
   actor: string;
   at: string;
@@ -822,6 +829,23 @@ export function canEditPortal(permission: PortalPermission): boolean {
  * itself, so it stays with the owner (see the permission-model doc).
  */
 export function canManageAccess(permission: PortalPermission): boolean {
+  return permission === "owner";
+}
+
+/**
+ * May change the lists that decide what the audit will find: watchlist categories and search
+ * purposes.
+ *
+ * Owner only, and narrower than canEditPortal on purpose. These two are not settings, they are the
+ * constraints the console places on its own operators — what counts as a reason to look somebody
+ * up, and whether listing a person needs a written basis. An admin who finds the purpose gate
+ * tiresome could add "routine check" and the requirement is gone; that is the same shape as role
+ * granting, a power whose use removes the limit on the person using it.
+ *
+ * Both lists take the same gate. Splitting them would leave an administrator able to loosen one
+ * kind of policy and not the other for no reason anybody could state.
+ */
+export function canSetPolicy(permission: PortalPermission): boolean {
   return permission === "owner";
 }
 
@@ -1712,6 +1736,17 @@ let personSeq = PERSONS.length;
 let personGroupSeq = PERSON_GROUPS.length;
 let watchlistCategorySeq = 0;
 let searchPurposeSeq = 0;
+
+/**
+ * An audit entry for a change to the institution's own policy lists.
+ *
+ * Filed against the team, not a project — see AuditEvent.teamId. "Who changed the list of
+ * acceptable reasons to look somebody up" is the question these entries exist to answer, and it is
+ * asked of the institution rather than of one site.
+ */
+function policyAudit(teamId: string | undefined, message: string): AuditEvent {
+  return { id: `audit-${++auditSeq}`, teamId, message, actor: SIGNED_IN_USER.name, at: new Date().toISOString() };
+}
 let eventSeq = SEED_EVENTS.length;
 let portalUserSeq = PORTAL_USERS.length;
 let orgSeq = TEAMS.length;
@@ -2153,31 +2188,55 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     }),
   addSearchPurpose: (purpose) => {
     const id = `spurpose-${++searchPurposeSeq}`;
-    set(state => ({ searchPurposes: [...state.searchPurposes, { ...purpose, id, archived: false }] }));
+    set(state => ({
+      searchPurposes: [...state.searchPurposes, { ...purpose, id, archived: false }],
+      auditLog: [policyAudit(purpose.teamId, `Search purpose "${purpose.label}" created`), ...state.auditLog].slice(0, 200),
+    }));
     return id;
   },
   updateSearchPurpose: (purposeId, updates) =>
     set(state => ({
       searchPurposes: state.searchPurposes.map(p => (p.id === purposeId ? { ...p, ...updates } : p)),
+      auditLog: [policyAudit(
+        state.searchPurposes.find(p => p.id === purposeId)?.teamId,
+        `Search purpose "${updates.label ?? state.searchPurposes.find(p => p.id === purposeId)?.label ?? purposeId}" changed`,
+      ), ...state.auditLog].slice(0, 200),
     })),
   archiveSearchPurpose: (purposeId) =>
     set(state => ({
       searchPurposes: state.searchPurposes.map(p => (p.id === purposeId ? { ...p, archived: true } : p)),
+      auditLog: [policyAudit(
+        state.searchPurposes.find(p => p.id === purposeId)?.teamId,
+        `Search purpose "${state.searchPurposes.find(p => p.id === purposeId)?.label ?? purposeId}" retired`,
+      ), ...state.auditLog].slice(0, 200),
     })),
   setSearchPurpose: (selection) => set({ searchPurpose: selection }),
   addWatchlistCategory: (category) => {
     const id = `wcat-${++watchlistCategorySeq}`;
-    set(state => ({ watchlistCategories: [...state.watchlistCategories, { ...category, id, archived: false }] }));
+    set(state => ({
+      watchlistCategories: [...state.watchlistCategories, { ...category, id, archived: false }],
+      auditLog: [policyAudit(category.teamId, `Watchlist category "${category.label}" created`), ...state.auditLog].slice(0, 200),
+    }));
     return id;
   },
   updateWatchlistCategory: (categoryId, updates) =>
-    set(state => ({
-      watchlistCategories: state.watchlistCategories.map(c => (c.id === categoryId ? { ...c, ...updates } : c)),
-    })),
+    set(state => {
+      const before = state.watchlistCategories.find(c => c.id === categoryId);
+      if (!before) return {};
+      return {
+        watchlistCategories: state.watchlistCategories.map(c => (c.id === categoryId ? { ...c, ...updates } : c)),
+        auditLog: [policyAudit(before.teamId, `Watchlist category "${updates.label ?? before.label}" changed`), ...state.auditLog].slice(0, 200),
+      };
+    }),
   archiveWatchlistCategory: (categoryId) =>
-    set(state => ({
-      watchlistCategories: state.watchlistCategories.map(c => (c.id === categoryId ? { ...c, archived: true } : c)),
-    })),
+    set(state => {
+      const before = state.watchlistCategories.find(c => c.id === categoryId);
+      if (!before) return {};
+      return {
+        watchlistCategories: state.watchlistCategories.map(c => (c.id === categoryId ? { ...c, archived: true } : c)),
+        auditLog: [policyAudit(before.teamId, `Watchlist category "${before.label}" retired`), ...state.auditLog].slice(0, 200),
+      };
+    }),
   updatePerson: (personId, updates) =>
     set(state => {
       const person = state.persons.find(p => p.id === personId);

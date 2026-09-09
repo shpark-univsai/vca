@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Building2, Clock, Globe, KeyRound, Languages, LayoutGrid, LogIn, Mail, MapPin, Shield, User } from "lucide-react";
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
-import { useVcaStore, currentPortalUser, canEnterApp, SIGNED_IN_USER } from "@/lib/vcaStore";
+import { useVcaStore, currentPortalUser, canEnterApp, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
+import { getComplianceConfig } from "@/lib/complianceConfig";
 import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, TYPE_META } from "./PortalShared";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -27,6 +28,22 @@ const T = {
     projectRegion: "Region",
     projectTimeZone: "Time zone",
     timeZoneNote: "Days, hours and \"today\" on every screen are counted in this zone — for everyone who opens this project, wherever they are.",
+    purposeTitle: "Search purposes",
+    purposeIntro: "The reasons an operator may give for looking someone up. Your own wording — nothing is set up in advance.",
+    purposeEmpty: "No purposes defined.",
+    purposeRequirementOn: "Searches are supposed to record a purpose, and there is nothing to choose. Until one exists, operators search without giving a reason.",
+    purposeRequirementOff: "Recording a purpose is switched off for this installation, so this list is not asked for.",
+    purposeNew: "New purpose",
+    purposeLabelField: "Name",
+    purposeLabelPlaceholder: "What your organisation calls it",
+    purposeRequiresRef: "Require a case or document reference",
+    purposeRefShort: "Reference required",
+    purposeRetire: "Retire",
+    purposeRetired: "Retired",
+    purposeRetireNote: "Retired purposes cannot be chosen again. Past searches that name them still resolve.",
+    purposeCreate: "Create",
+    purposeCancel: "Cancel",
+    purposeOwnerOnly: "Only the owner can change this list.",
     displayTitle: "Display",
     language: "Interface language",
     password: "Password",
@@ -58,6 +75,22 @@ const T = {
     projectRegion: "지역",
     projectTimeZone: "시간대",
     timeZoneNote: "모든 화면의 날짜와 시각, \"오늘\"의 기준이 이 시간대로 계산됩니다 — 어디서 열든, 누가 열든 이 프로젝트에 대해서는 같습니다.",
+    purposeTitle: "조회 목적",
+    purposeIntro: "관제요원이 인물을 조회할 때 댈 수 있는 사유입니다. 기관이 쓰는 말 그대로 — 미리 넣어둔 것은 없습니다.",
+    purposeEmpty: "정의된 사유가 없습니다.",
+    purposeRequirementOn: "조회할 때 목적을 기록하도록 되어 있는데 고를 것이 없습니다. 하나라도 만들기 전까지는 사유 없이 조회가 실행됩니다.",
+    purposeRequirementOff: "이 설치에서는 목적 기록이 꺼져 있어 이 목록을 묻지 않습니다.",
+    purposeNew: "사유 만들기",
+    purposeLabelField: "이름",
+    purposeLabelPlaceholder: "기관에서 부르는 이름",
+    purposeRequiresRef: "사건번호·공문번호를 필수로",
+    purposeRefShort: "참조번호 필수",
+    purposeRetire: "사용 중지",
+    purposeRetired: "중지됨",
+    purposeRetireNote: "중지한 사유는 다시 고를 수 없습니다. 그 사유로 남은 과거 기록은 그대로 읽힙니다.",
+    purposeCreate: "만들기",
+    purposeCancel: "취소",
+    purposeOwnerOnly: "이 목록은 최고관리자만 바꿀 수 있습니다.",
     displayTitle: "표시",
     language: "화면 언어",
     password: "비밀번호",
@@ -116,6 +149,8 @@ const LANGUAGE_OPTIONS: { value: AppLanguage; label: string }[] = [
 export default function PortalSettingsPage({ projectId }: { projectId: string }) {
   const [lang, setLang] = useLanguage();
   const [changingPassword, setChangingPassword] = useState(false);
+  const searchPurposes = useVcaStore(s => s.searchPurposes);
+  const requirePurpose = getComplianceConfig().requireSearchPurpose;
   const t = T[lang];
   const portalUsers = useVcaStore(s => s.portalUsers);
   const teams = useVcaStore(s => s.teams);
@@ -125,6 +160,14 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const projectTeam = project ? teams.find(tm => tm.id === project.teamId) : undefined;
   const me = currentPortalUser(portalUsers);
   const myTeam = me ? teams.find(tm => tm.id === me.teamId) : undefined;
+  // The team whose policy this screen edits. Falls back to the open project's team, because the
+  // stand-in identity belongs to no account list and would otherwise see no list at all.
+  const myTeamId = me?.teamId ?? project?.teamId;
+  const teamPurposes = searchPurposes.filter(sp => sp.teamId === myTeamId);
+  const activePurposes = teamPurposes.filter(sp => !sp.archived);
+  // Owner only — see canSetPolicy. With no matching account the stand-in identity is treated as
+  // the owner it stands in for, the same assumption the rest of Portal makes about it.
+  const maySetPolicy = me ? canSetPolicy(me.permission) : true;
 
   const accountPairs: { label: string; value: string; icon: React.ReactNode }[] = [
     { label: t.name, value: me?.name ?? SIGNED_IN_USER.name, icon: <User size={12} strokeWidth={2.2} /> },
@@ -213,6 +256,36 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             </PairItem>
           </PairGrid>
           <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "14px" }}>{t.timeZoneNote}</p>
+        </CardSection>
+      )}
+
+      {/*
+        Search purposes — the institution's own list, and the reason the app's purpose gate can be
+        satisfied at all.
+
+        Here rather than on the VIP screen (where watchlist categories are managed) because a
+        purpose is not a project's: it belongs to the institution, and the operator declaring one is
+        in the monitoring app, not in this console. Settings is where the things that govern every
+        site live.
+      */}
+      {myTeamId && (
+        <CardSection heading={t.purposeTitle}>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, marginTop: "10px", maxWidth: "62ch" }}>{t.purposeIntro}</p>
+          {/* What the empty list actually costs, said here rather than only in the app. An
+              administrator who has not built this list needs to know that the requirement is on and
+              unmet — otherwise the console looks configured and the gate quietly waves everyone
+              through. */}
+          {requirePurpose && activePurposes.length === 0 && (
+            <p style={{
+              marginTop: "12px", padding: "10px 12px", borderRadius: "8px", maxWidth: "fit-content",
+              backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
+              fontSize: "12px", fontWeight: 700, lineHeight: 1.6,
+            }}>{t.purposeRequirementOn}</p>
+          )}
+          {!requirePurpose && (
+            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "10px" }}>{t.purposeRequirementOff}</p>
+          )}
+          <SearchPurposeList t={t} teamId={myTeamId} purposes={teamPurposes} canEdit={maySetPolicy} />
         </CardSection>
       )}
 
@@ -308,6 +381,104 @@ function ChangePasswordModal({ t, lang, onClose }: {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The institution's list of search purposes: what is on it, and how to add to it.
+ *
+ * Opens empty and says so. No example row, for the same reason the watchlist categories have none
+ * — a shipped "Case enquiry" would read as the standard, and the first thing a customer does with
+ * somebody else's vocabulary is delete it.
+ *
+ * Retire, never delete. A recorded search names the purpose by id; remove the row and every past
+ * record points at nothing, which is the one thing an audit trail may not do.
+ */
+function SearchPurposeList({ t, teamId, purposes, canEdit }: {
+  t: (typeof T)["en"] | (typeof T)["ko"];
+  teamId: string;
+  purposes: SearchPurpose[];
+  canEdit: boolean;
+}) {
+  const addSearchPurpose = useVcaStore(s => s.addSearchPurpose);
+  const archiveSearchPurpose = useVcaStore(s => s.archiveSearchPurpose);
+  const [creating, setCreating] = useState(false);
+  const [label, setLabel] = useState("");
+  const [requiresReference, setRequiresReference] = useState(false);
+
+  const reset = () => { setCreating(false); setLabel(""); setRequiresReference(false); };
+  const create = () => {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    addSearchPurpose({ teamId, label: trimmed, requiresReference });
+    reset();
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "14px", maxWidth: "620px" }}>
+      {purposes.length === 0 && !creating && (
+        <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.7 }}>{t.purposeEmpty}</p>
+      )}
+      {purposes.map(sp => (
+        <div key={sp.id} style={{
+          display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px",
+          border: BORDER, borderRadius: "10px", opacity: sp.archived ? 0.55 : 1,
+        }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {sp.label}
+          </span>
+          {sp.requiresReference && (
+            <span style={{ flexShrink: 0, fontSize: "11px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap" }}>{t.purposeRefShort}</span>
+          )}
+          {sp.archived ? (
+            <span style={{ flexShrink: 0, fontSize: "11px", fontWeight: 700, color: "var(--gray-400)" }}>{t.purposeRetired}</span>
+          ) : canEdit ? (
+            <button className="portal-btn-outline" onClick={() => archiveSearchPurpose(sp.id)}
+              style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              {t.purposeRetire}
+            </button>
+          ) : null}
+        </div>
+      ))}
+
+      {!canEdit ? (
+        // Said, not hidden. A reader who cannot find the Create button should learn that the list
+        // has an owner rather than conclude the console is broken.
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.purposeOwnerOnly}</p>
+      ) : creating ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.purposeLabelField}</label>
+            <TextField value={label} onChange={setLabel} placeholder={t.purposeLabelPlaceholder} autoFocus />
+          </div>
+          {/* Off by default, unlike the watchlist category's basis. A purpose is declared once a
+              sitting and a reference is not always available at that moment; a category is chosen
+              per person, where the paperwork already exists. */}
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "var(--gray-600)" }}>
+            <input type="checkbox" checked={requiresReference} onChange={e => setRequiresReference(e.target.checked)} />
+            {t.purposeRequiresRef}
+          </label>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+            <button className="portal-btn-outline" onClick={reset}
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              {t.purposeCancel}
+            </button>
+            <button className="portal-btn-primary" onClick={create} disabled={!label.trim()}
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: label.trim() ? "var(--primary-400)" : "var(--gray-200)", color: label.trim() ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: label.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+              {t.purposeCreate}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button className="portal-btn-outline" onClick={() => setCreating(true)}
+          style={{ height: CONTROL_HEIGHT, borderRadius: "10px", border: "1px dashed var(--gray-300)", backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          + {t.purposeNew}
+        </button>
+      )}
+      {purposes.some(sp => sp.archived) && (
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.purposeRetireNote}</p>
+      )}
     </div>
   );
 }

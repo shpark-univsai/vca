@@ -563,8 +563,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    * and who among the accounts is not yet in.
    */
 
+  // This project's entries, plus the institution's own policy changes — a watchlist category or a
+  // search purpose governs every site the team runs, so filing it under one of them would misplace
+  // it and filtering it out would hide it everywhere. See AuditEvent.teamId.
   const projectActivity = auditLog
-    .filter(a => a.projectId === projectId)
+    .filter(a => a.projectId === projectId || (a.teamId !== undefined && a.teamId === project?.teamId))
     .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
   // Five on the card, all of them in the modal behind it.
   const recentActivity = projectActivity.slice(0, 5);
