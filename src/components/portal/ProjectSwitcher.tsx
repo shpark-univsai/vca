@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useVcaStore, type Project } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH, TABLE_HEADER_COLOR, TYPE_META, SelectedCheckIcon } from "./PortalShared";
-import { ChevronRight, MapPin } from "lucide-react";
+import { Building2, Check, ChevronRight, MapPin } from "lucide-react";
 
 interface ProjectSwitcherProps {
   /**
@@ -24,6 +24,8 @@ interface ProjectSwitcherProps {
    *  breadcrumb to the left of this control already says which team you are in — listing every
    *  team's projects here would contradict it. */
   teamId: string;
+  /** Switch the whole picker — and the shell behind it — to another team. */
+  onSwitchTeam?: (teamId: string) => void;
   currentProjectId: string;
   onSelect: (projectId: string) => void;
   onNewProject: () => void;
@@ -46,6 +48,7 @@ const T = {
     colType: "Type",
     colId: "ID",
     typeTeam: "Team",
+    switchTeam: "Switch team",
     typeProject: "Project",
     noStarredProjects: "No starred projects yet.",
     noResultsFor: (query: string) => `No results for "${query}".`,
@@ -64,6 +67,7 @@ const T = {
     colType: "유형",
     colId: "ID",
     typeTeam: "팀",
+    switchTeam: "팀 변경",
     typeProject: "프로젝트",
     noStarredProjects: "즐겨찾기한 프로젝트가 없습니다.",
     noResultsFor: (query: string) => `"${query}"에 대한 검색 결과가 없습니다.`,
@@ -79,15 +83,10 @@ function ChevronDown({ size = 12 }: { size?: number }) {
   );
 }
 
+/** The building the rail's team foot wears. It was four squares here and a building there, for
+ *  the same thing on the same screen. One mark per idea. */
 function TeamIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1" stroke="var(--gray-400)" strokeWidth="1.4"/>
-      <rect x="9" y="1.5" width="5.5" height="5.5" rx="1" stroke="var(--gray-400)" strokeWidth="1.4"/>
-      <rect x="1.5" y="9" width="5.5" height="5.5" rx="1" stroke="var(--gray-400)" strokeWidth="1.4"/>
-      <rect x="9" y="9" width="5.5" height="5.5" rx="1" stroke="var(--gray-400)" strokeWidth="1.4"/>
-    </svg>
-  );
+  return <Building2 size={16} strokeWidth={1.8} color="var(--gray-400)" />;
 }
 
 function ProjectIcon() {
@@ -106,7 +105,7 @@ function StarIcon({ filled }: { filled: boolean }) {
   );
 }
 
-export default function ProjectSwitcher({ dark, compact, teamId, currentProjectId, onSelect, onNewProject }: ProjectSwitcherProps) {
+export default function ProjectSwitcher({ dark, compact, teamId, currentProjectId, onSelect, onNewProject, onSwitchTeam }: ProjectSwitcherProps) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const TAB_LABELS: Record<Tab, string> = { recent: t.tabRecent, starred: t.tabStarred, all: t.tabAll };
@@ -117,6 +116,17 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
   const [searchFocused, setSearchFocused] = useState(false);
   const [tab, setTab] = useState<Tab>("all");
   const [starred, setStarred] = useState<Set<string>>(new Set());
+  const [teamMenuOpen, setTeamMenuOpen] = useState(false);
+  const teamMenuRef = useRef<HTMLDivElement>(null);
+  // Same outside-click close every other menu in Portal uses.
+  useEffect(() => {
+    if (!teamMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (teamMenuRef.current && !teamMenuRef.current.contains(e.target as Node)) setTeamMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [teamMenuOpen]);
 
   const current = projects.find(p => p.id === currentProjectId);
   /**
@@ -268,19 +278,68 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
             </div>
 
             <div style={{ padding: "14px 20px 0" }}>
-              {/* Which team's projects are listed. It used to carry a chevron and open nothing —
-                  a control that looks like a menu and is not. Switching teams is a real thing now,
-                  but it belongs to the breadcrumb behind this modal, so this states the filter and
-                  leaves the switching there. */}
-              {/* A line of text, not a boxed chip. The box was drawn back when this thing looked
-                  like a control; it states which team's projects are listed and nothing more, and
-                  a border around a statement invites a click that does nothing. */}
-              <div style={{
-                display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px",
-                fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
-              }}>
-                <TeamIcon />
-                {team?.name ?? t.noTeam}
+              {/*
+                Which team's projects are listed — and, when there is more than one team, the way
+                to change that.
+
+                This line has been a chip with a chevron that opened nothing, then a plain
+                statement. Neither was right: the list below is scoped to one team, so somebody
+                looking for a project that is not there has no way forward from the screen they
+                are on, and the only door was the breadcrumb behind the modal they would first
+                have to close.
+
+                Still plain text on a single-team installation. A menu with one item in it is a
+                control that lies about having a choice.
+              */}
+              <div ref={teamMenuRef} style={{ position: "relative", marginBottom: "12px", width: "fit-content" }}>
+                {teams.length > 1 ? (
+                  <button onClick={() => setTeamMenuOpen(o => !o)} title={t.switchTeam}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "6px",
+                      background: "none", border: "none", padding: "2px 4px", marginLeft: "-4px", borderRadius: "6px",
+                      cursor: "pointer", fontFamily: "inherit",
+                      fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
+                    }}>
+                    <TeamIcon />
+                    {team?.name ?? t.noTeam}
+                    <span style={{ display: "flex", color: "var(--gray-400)" }}><ChevronDown size={12} /></span>
+                  </button>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>
+                    <TeamIcon />
+                    {team?.name ?? t.noTeam}
+                  </div>
+                )}
+                {teamMenuOpen && (
+                  <div style={{
+                    position: "absolute", top: "100%", left: 0, marginTop: "4px", zIndex: 20,
+                    minWidth: "260px", backgroundColor: "white", border: BORDER, borderRadius: "10px",
+                    boxShadow: "0 12px 28px rgba(14,22,42,0.16)", padding: "4px", overflow: "hidden",
+                  }}>
+                    {teams.map(tm => (
+                      <button key={tm.id} className="portal-navmenu-item"
+                        onClick={() => {
+                          setTeamMenuOpen(false);
+                          if (tm.id === team?.id) return;
+                          setQuery("");
+                          setOpen(false);
+                          onSwitchTeam?.(tm.id);
+                        }}
+                        style={{
+                          display: "flex", alignItems: "center", gap: "8px", width: "100%",
+                          padding: "8px 10px", borderRadius: "8px", border: "none", background: "none",
+                          cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+                          fontSize: "13px", fontWeight: tm.id === team?.id ? 700 : 500,
+                          color: "var(--gray-900)",
+                        }}>
+                        <span style={{ display: "flex", width: "14px", flexShrink: 0, color: "var(--gray-900)" }}>
+                          {tm.id === team?.id ? <Check size={14} strokeWidth={2.6} /> : null}
+                        </span>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tm.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Search */}

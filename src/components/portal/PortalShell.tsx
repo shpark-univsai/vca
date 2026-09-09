@@ -222,7 +222,7 @@ export default function PortalShell() {
           onToggleCollapse={() => setSidebarCollapsed(v => !v)}
           toggleLabel={sidebarCollapsed ? t.expand : t.collapse}
           team={<TeamSwitcher dark compact={sidebarCollapsed} currentTeamId={currentOrgId} onSelect={switchTeam} />}
-          project={<ProjectSwitcher dark compact={sidebarCollapsed} teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />}
+          project={<ProjectSwitcher dark compact={sidebarCollapsed} teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} onSwitchTeam={switchTeam} />}
           /* Counts for the rail's badges — the two tabs that hold a list of things you count.
              Not accounts: the number of people who may sign in is not a size you check in passing,
              and the tab it labels is where the figure is broken down by role anyway. Not the
@@ -370,7 +370,7 @@ export default function PortalShell() {
           <>
             <TeamSwitcher currentTeamId={currentOrgId} onSelect={switchTeam} />
             <BreadcrumbChevron />
-            <ProjectSwitcher teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} />
+            <ProjectSwitcher teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} onSwitchTeam={switchTeam} />
           </>
         )}
 
