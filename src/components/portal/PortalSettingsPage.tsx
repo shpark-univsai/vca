@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Building2, Clock, Globe, KeyRound, Languages, LayoutGrid, LogIn, Mail, MapPin, Shield, User } from "lucide-react";
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, SIGNED_IN_USER } from "@/lib/vcaStore";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, FilterSelect, TextField, TYPE_META } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, TYPE_META } from "./PortalShared";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "@/components/Toast";
@@ -158,13 +158,13 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       {/* Which pairs exist depends on whether the signed-in address matches an account: with no
           match there is nothing to say about a role or a door, so those are absent rather than
           filled with a disclaimer. */}
-      <Section heading={t.accountTitle} first>
-        <Pairs>
-          {accountPairs.map(r => <Pair key={r.label} label={r.label} icon={r.icon}>{r.value}</Pair>)}
+      <CardSection heading={t.accountTitle} first>
+        <PairGrid>
+          {accountPairs.map(r => <PairItem key={r.label} label={r.label} icon={r.icon}>{r.value}</PairItem>)}
           {/* A pair like the others, whose value is a button rather than a fact: the sentence
               under "Password" is the only thing this page can honestly say about one — never the
               password itself, and not a row of dots pretending to be its length. */}
-          <Pair label={t.password} icon={<KeyRound size={12} strokeWidth={2.2} />}>
+          <PairItem label={t.password} icon={<KeyRound size={12} strokeWidth={2.2} />}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
               <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.passwordSetAgo}</span>
               <button className="portal-btn-outline" onClick={() => setChangingPassword(true)}
@@ -172,9 +172,9 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 {t.changePassword}
               </button>
             </div>
-          </Pair>
-        </Pairs>
-      </Section>
+          </PairItem>
+        </PairGrid>
+      </CardSection>
 
       {changingPassword && (
         <ChangePasswordModal t={t} lang={lang} onClose={() => setChangingPassword(false)} />
@@ -193,32 +193,32 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         the licence), this card moves there whole and Settings goes back to being the account only.
       */}
       {project && (
-        <Section heading={t.projectTitle}>
-          <Pairs>
-            <Pair label={t.projectName} icon={<MapPin size={12} strokeWidth={2.2} />}>{project.name}</Pair>
-            <Pair label={t.projectType} icon={<LayoutGrid size={12} strokeWidth={2.2} />}>{TYPE_META[project.type].label}</Pair>
-            {projectTeam && <Pair label={t.projectTeam} icon={<Building2 size={12} strokeWidth={2.2} />}>{projectTeam.name}</Pair>}
-            {projectTeam?.region && <Pair label={t.projectRegion} icon={<Globe size={12} strokeWidth={2.2} />}>{projectTeam.region}</Pair>}
+        <CardSection heading={t.projectTitle}>
+          <PairGrid>
+            <PairItem label={t.projectName} icon={<MapPin size={12} strokeWidth={2.2} />}>{project.name}</PairItem>
+            <PairItem label={t.projectType} icon={<LayoutGrid size={12} strokeWidth={2.2} />}>{TYPE_META[project.type].label}</PairItem>
+            {projectTeam && <PairItem label={t.projectTeam} icon={<Building2 size={12} strokeWidth={2.2} />}>{projectTeam.name}</PairItem>}
+            {projectTeam?.region && <PairItem label={t.projectRegion} icon={<Globe size={12} strokeWidth={2.2} />}>{projectTeam.region}</PairItem>}
             {/* The one editable pair on the card, in the same shape as the four above it: the
                 control sits where a value would, rather than being pushed to the far right of a
                 ruled row. A setting is a value you can change, and it should look like the values
                 it sits with. */}
-            <Pair label={t.projectTimeZone} icon={<Clock size={12} strokeWidth={2.2} />}>
+            <PairItem label={t.projectTimeZone} icon={<Clock size={12} strokeWidth={2.2} />}>
               <FilterSelect
                 value={project.timeZone ?? PROJECT_TIME_ZONE}
                 onChange={zone => setProjectTimeZone(project.id, zone)}
                 options={TIME_ZONE_OPTIONS}
                 fitContent
               />
-            </Pair>
-          </Pairs>
+            </PairItem>
+          </PairGrid>
           <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "14px" }}>{t.timeZoneNote}</p>
-        </Section>
+        </CardSection>
       )}
 
-      <Section heading={t.displayTitle}>
-        <Pairs>
-          <Pair label={t.language} icon={<Languages size={12} strokeWidth={2.2} />}>
+      <CardSection heading={t.displayTitle}>
+        <PairGrid>
+          <PairItem label={t.language} icon={<Languages size={12} strokeWidth={2.2} />}>
             {/* Each language named in its own script — the one label a person who cannot read the
                 current interface still recognises. */}
             <FilterSelect
@@ -227,81 +227,10 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
               options={LANGUAGE_OPTIONS}
               fitContent
             />
-          </Pair>
-        </Pairs>
-      </Section>
+          </PairItem>
+        </PairGrid>
+      </CardSection>
       </div>
-    </div>
-  );
-}
-
-/**
- * One band of the card, headed the way the licence card heads INCLUDED FEATURES.
- *
- * 10px small caps rather than the 13px bold each of these had as a card title of its own: a
- * heading inside a card is furniture, and at 13px bold it competed with the values under it for
- * the same weight. The hairline above does the separating that three floating cards used to.
- */
-function Section({ heading, first, children }: { heading: string; first?: boolean; children: React.ReactNode }) {
-  return (
-    <div style={{ padding: "18px 20px", borderTop: first ? "none" : BORDER }}>
-      <p style={{
-        fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px",
-        textTransform: "uppercase",
-      }}>{heading}</p>
-      {children}
-    </div>
-  );
-}
-
-/**
- * Two columns of label-above-value pairs, the shape the camera sheet uses.
- *
- * It was one ruled row per fact, label left and value right — five rules in the first card alone,
- * and on a 720px column the value ended up a hand's width from the word naming it. Stacking the
- * pair puts the two together, and two columns halve the height, so the rules have nothing left to
- * separate: whitespace does it.
- */
-function Pairs({ children }: { children: React.ReactNode }) {
-  return (
-    /* The licence card's own feature grid, same minimum. Fixing it at two columns was right while
-       this page was three separate cards of different widths — auto-fit gave them different track
-       counts and the pairs stopped lining up between cards. One card, one width, so the tracks
-       agree again and the page fills the room it has. */
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px 20px", marginTop: "14px" }}>
-      {children}
-    </div>
-  );
-}
-
-/**
- * One fact, or one setting.
- *
- * A step larger than the camera sheet this pattern comes from — 12px caption over a 14px value,
- * where the sheet runs 11 over 13. The sheet is a dense popup read at a glance with a dozen facts
- * competing; this is a settings page with five, on a column with room to spare, and at 11px the
- * captions read as fine print on a page that has no fine print.
- *
- * The icon tracks the caption: 12px at stroke 2.2 is a 1.1px line, still under the 1.4px Portal
- * draws elsewhere, because a mark beside an 12px caption has to match its weight as well as its
- * height — a 14px glyph at 1.4px stands taller than the letters and heavier than their stems.
- */
-function Pair({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div style={{ minWidth: 0 }}>
-      <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", lineHeight: "16px", color: "var(--gray-500)" }}>
-        <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}>{icon}</span>
-        {label}
-      </p>
-      {typeof children === "string"
-        ? <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginTop: "3px", wordBreak: "break-word" }}>{children}</p>
-        : (
-          /* flex, not a plain block: FilterSelect's trigger is inline-grid, so in a block it sits
-             on a text baseline and inherits this column's 24px line height — about twenty pixels
-             of leading above it that read as the control having drifted away from its own label.
-             A flex container has no line box, so the gap is the 6px written here and nothing else. */
-          <div style={{ display: "flex", marginTop: "6px" }}>{children}</div>
-        )}
     </div>
   );
 }

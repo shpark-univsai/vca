@@ -303,43 +303,33 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           word again 20px lower was the page introducing itself twice. What stays is the row of
           things you can do on it. */}
       {/*
-        One card for one contract.
-        This was a dark banner, a channel card and a feature list — three blocks for a single thing,
-        each with its own heading. Remote's subscription page is the arrangement borrowed here: a
-        tinted hero carrying the figure the page is opened for, icon-and-value rows under it, and a
-        ruled footer for the two numbers nobody reads first.
+        One card for one contract, on the same white ground as every other page.
 
-        Two things from that reference are deliberately left out. Its hero number is money, which
-        works for a bill that arrives monthly and not for a licence fixed for three years — the
-        figure an administrator comes here for is how much of what they bought is in use, so that
-        is the hero and the money is in the footer. And its generative artwork stays out: this app
-        took shadows and card borders off its cards on purpose, and decoration would walk that back.
+        The head of this card was gray-900 — the only dark surface in Portal, borrowed from the
+        pricing-page idiom (a tinted hero carrying the plan name at 26px). Two things were wrong
+        with it here. It made the licence tab look like a different product from the tab beside
+        it, which is the complaint the settings page had just been fixed for. And it put the
+        largest type on the page on the least useful fact: the plan name is what was signed once,
+        while the figure somebody opens this page for is how much of it is in use.
+
+        So the figure is the hero now and the plan is a chip beside the status, and the sections
+        below use the same small-caps headings and the same label-above-value pairs the settings
+        card uses — one kit, two pages.
       */}
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, overflow: "hidden", marginBottom: "20px" }}>
-        <div style={{
-          // gray-900, not the primary step. Purple at full strength across the widest block on the
-          // page spent the accent on a background; the palette guidance keeps it to a tenth of a
-          // screen, and here the only purple left is the Smart City chip's own text. Over the limit
-          // still swaps the whole ground, because that state should be legible from across a room.
-          backgroundColor: overLimit ? "var(--danger-400)" : "var(--gray-900)",
-          // More air above and below than at the sides: this block is the hero, and on a dark
-          // ground a tight top and bottom edge reads as a band rather than as a card's head.
-          padding: "28px 20px",
-        }}>
-          {/* The plan is the title. It was set as a 10px eyebrow over a 32px channel count, which
-              made the figure the name of the card — but the figure changes as cameras are added and
-              the plan is what the customer signed. The count is still the thing the page is opened
-              for, so it keeps the emphasis on the line below rather than the size above it. */}
-          <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap" }}>
-            <p style={{ fontSize: "26px", fontWeight: 800, color: "white", lineHeight: 1.15 }}>
+        <div style={{ padding: "20px" }}>
+          {/* Plan, type and validity as three chips on one line — the labels of the contract,
+              above the number that measures it. */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-900)", backgroundColor: "var(--gray-100)", padding: "3px 10px", borderRadius: "999px" }}>
               {project.licensePlan ?? t.notSet}
-            </p>
-            <span style={{ fontSize: "10px", fontWeight: 700, color: meta.color, backgroundColor: "white", padding: "2px 8px", borderRadius: "999px" }}>
+            </span>
+            <span style={{ fontSize: "10px", fontWeight: 700, color: meta.color, backgroundColor: meta.bg, padding: "3px 8px", borderRadius: "999px" }}>
               {meta.label}
             </span>
             {project.licenseExpiresAt && nowMs !== null && (
               <span style={{
-                fontSize: "10px", fontWeight: 700, padding: "2px 8px", borderRadius: "999px", textTransform: "uppercase",
+                fontSize: "10px", fontWeight: 700, padding: "3px 8px", borderRadius: "999px", textTransform: "uppercase",
                 backgroundColor: isExpired ? "var(--danger-100)" : expiringSoon ? "var(--warning-100)" : "var(--success-100)",
                 color: isExpired ? "var(--danger-500)" : expiringSoon ? "var(--warning-500)" : "var(--success-400)",
               }}>
@@ -347,48 +337,47 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
               </span>
             )}
           </div>
-          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.65)", marginTop: "10px" }}>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "12px" }}>
             {limit ? (
               <>
-                <span style={{ fontSize: "17px", fontWeight: 800, color: "white" }}>{used} / {limit}</span>
+                <span style={{ fontSize: "28px", fontWeight: 800, color: overLimit ? "var(--danger-500)" : "var(--gray-900)", lineHeight: "30px" }}>{used} / {limit}</span>
                 {"  "}{t.channelsInUse} · {t.canAddN(available ?? 0)}
               </>
             ) : (
               <>
-                <span style={{ fontSize: "17px", fontWeight: 800, color: "white" }}>{used}</span>
+                <span style={{ fontSize: "28px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "30px" }}>{used}</span>
                 {"  "}{t.channelsUnlimited}
               </>
             )}
           </p>
-          {/* One bar, one segment. It was split into AI cameras and plain CCTV until 2026-09-09,
-              when the backend confirmed the v1 contract has no such split: one channel pool, and
-              cameras used = channels used. Two segments over a single figure implied a distinction
-              the licence does not make. */}
+          {/* Primary for the fill, which is what the accent is for: one figure on the page is the
+              reason to open it, and this is the bar under it. Danger takes over when the fleet is
+              past what was bought — the one state that should read from across a room. */}
           {limit ? (
-            <div style={{ display: "flex", height: "6px", backgroundColor: "rgba(255,255,255,0.25)", borderRadius: "3px", overflow: "hidden", marginTop: "14px" }}>
-              <div style={{ width: `${pct(used)}%`, backgroundColor: "white" }} />
+            <div style={{ display: "flex", height: "6px", backgroundColor: "var(--gray-200)", borderRadius: "3px", overflow: "hidden", marginTop: "12px" }}>
+              <div style={{ width: `${pct(used)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--primary-400)" }} />
             </div>
           ) : null}
-          {/* Warnings become a light pill rather than coloured text: warning-500 on this purple is
-              unreadable, and dropping it to white would throw away the one thing the colour was
-              carrying. The pill keeps the token and puts a legible ground under it. */}
+          {/* Tinted grounds rather than white pills. The pill existed because warning-500 was
+              unreadable on the dark head; on white the token reads on its own tint, the way every
+              other warning in Portal is drawn. */}
           {(overLimit || atLimit || nearLimit) && (
             <p style={{
-              display: "inline-block", marginTop: "12px", padding: "4px 10px", borderRadius: "999px",
-              backgroundColor: "white", lineHeight: 1.6,
+              display: "block", marginTop: "12px", padding: "6px 10px", borderRadius: "8px", maxWidth: "fit-content",
+              backgroundColor: overLimit ? "var(--danger-100)" : "var(--warning-100)", lineHeight: 1.6,
               fontSize: "11px", fontWeight: 700,
               color: overLimit ? "var(--danger-500)" : "var(--warning-500)",
             }}>
               {overLimit ? t.overLimit(used, limit ?? 0) : atLimit ? t.atLimit : t.nearLimit(available!)}
             </p>
           )}
-          {/* The expiry gets its own pill rather than sharing the channel one: they are two
+          {/* The expiry gets its own line rather than sharing the channel one: they are two
               different contracts to change and both can be true at once, and a single line would
-              have to pick which to report. Its own line, under the other. */}
+              have to pick which to report. */}
           {expiringSoon && daysRemaining !== null && (
             <p style={{
-              display: "block", marginTop: "8px", padding: "4px 10px", borderRadius: "999px",
-              backgroundColor: "white", lineHeight: 1.6, maxWidth: "fit-content",
+              display: "block", marginTop: "8px", padding: "6px 10px", borderRadius: "8px", maxWidth: "fit-content",
+              backgroundColor: expiringUrgently ? "var(--danger-100)" : "var(--warning-100)", lineHeight: 1.6,
               fontSize: "11px", fontWeight: 700,
               color: expiringUrgently ? "var(--danger-500)" : "var(--warning-500)",
             }}>

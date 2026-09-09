@@ -188,9 +188,17 @@ export const BREADCRUMB_PROJECT_MAX_WIDTH = "min(320px, 22vw)";
  */
 export const PANEL_SHADOW = "0 1px 2px rgba(14,22,42,0.03), 0 1px 3px rgba(14,22,42,0.03)";
 
+/**
+ * What kind of project it is, as a chip.
+ *
+ * The ground was `white`, which was right while the only place this chip appeared was the licence
+ * page's gray-900 hero. That head is gone (2026-09-09) and a white chip on a white card is a
+ * coloured word floating between two chips that have grounds, so each type now carries its own
+ * tint — the same 100 step every other status chip in Portal sits on.
+ */
 export const TYPE_META: Record<ProjectType, { label: string; bg: string; color: string }> = {
-  smart_city: { label: "Smart City", bg: "white", color: "var(--primary-400)" },
-  smart_school: { label: "Smart School", bg: "white", color: "var(--success-400)" },
+  smart_city: { label: "Smart City", bg: "var(--primary-100)", color: "var(--primary-400)" },
+  smart_school: { label: "Smart School", bg: "var(--success-100)", color: "var(--success-400)" },
 };
 
 interface RowAction {
@@ -650,6 +658,78 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
     </div>
   );
 }
+
+/**
+ * One band of the card, headed the way the licence card heads INCLUDED FEATURES.
+ *
+ * 10px small caps rather than the 13px bold each of these had as a card title of its own: a
+ * heading inside a card is furniture, and at 13px bold it competed with the values under it for
+ * the same weight. The hairline above does the separating that three floating cards used to.
+ */
+export function CardSection({ heading, first, children }: { heading: string; first?: boolean; children: React.ReactNode }) {
+  return (
+    <div style={{ padding: "18px 20px", borderTop: first ? "none" : BORDER }}>
+      <p style={{
+        fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px",
+        textTransform: "uppercase",
+      }}>{heading}</p>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Two columns of label-above-value pairs, the shape the camera sheet uses.
+ *
+ * It was one ruled row per fact, label left and value right — five rules in the first card alone,
+ * and on a 720px column the value ended up a hand's width from the word naming it. Stacking the
+ * pair puts the two together, and two columns halve the height, so the rules have nothing left to
+ * separate: whitespace does it.
+ */
+export function PairGrid({ children }: { children: React.ReactNode }) {
+  return (
+    /* The licence card's own feature grid, same minimum. Fixing it at two columns was right while
+       this page was three separate cards of different widths — auto-fit gave them different track
+       counts and the pairs stopped lining up between cards. One card, one width, so the tracks
+       agree again and the page fills the room it has. */
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px 20px", marginTop: "14px" }}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * One fact, or one setting.
+ *
+ * A step larger than the camera sheet this pattern comes from — 12px caption over a 14px value,
+ * where the sheet runs 11 over 13. The sheet is a dense popup read at a glance with a dozen facts
+ * competing; this is a settings page with five, on a column with room to spare, and at 11px the
+ * captions read as fine print on a page that has no fine print.
+ *
+ * The icon tracks the caption: 12px at stroke 2.2 is a 1.1px line, still under the 1.4px Portal
+ * draws elsewhere, because a mark beside an 12px caption has to match its weight as well as its
+ * height — a 14px glyph at 1.4px stands taller than the letters and heavier than their stems.
+ */
+export function PairItem({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", lineHeight: "16px", color: "var(--gray-500)" }}>
+        <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}>{icon}</span>
+        {label}
+      </p>
+      {typeof children === "string"
+        ? <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginTop: "3px", wordBreak: "break-word" }}>{children}</p>
+        : (
+          /* flex, not a plain block: FilterSelect's trigger is inline-grid, so in a block it sits
+             on a text baseline and inherits this column's 24px line height — about twenty pixels
+             of leading above it that read as the control having drifted away from its own label.
+             A flex container has no line box, so the gap is the 6px written here and nothing else. */
+          <div style={{ display: "flex", marginTop: "6px" }}>{children}</div>
+        )}
+    </div>
+  );
+}
+
 
 export function ActiveFilterCount({ count, onClear, label }: { count: number; onClear: () => void; label: string }) {
   const [hovered, setHovered] = useState(false);
