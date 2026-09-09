@@ -32,8 +32,8 @@ export const TABS: { id: NavTab; label: { en: string; ko: string }; icon: string
 const T = {
   en: {
     goToDashboard: "Go to Dashboard",
-    running: (n: number | string) => `${n} running`,
-    stopped: (n: number | string) => `${n} stopped`,
+    running: (n: number | string) => `${n} cameras running`,
+    stopped: (n: number | string) => `${n} cameras stopped`,
     vipDetections: "VIP detections",
     noneInWindow: "No VIP detections in the last hour",
     notifWindow: "last hour",
@@ -49,7 +49,7 @@ const T = {
   },
   ko: {
     goToDashboard: "대시보드로 이동",
-    running: (n: number | string) => `분석 중 ${n}대`,
+    running: (n: number | string) => `구동 중 ${n}대`,
     stopped: (n: number | string) => `중지 ${n}대`,
     vipDetections: "VIP 검출",
     noneInWindow: "최근 1시간 동안 VIP 검출이 없습니다",
@@ -107,8 +107,13 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
   const canSwitchProject = myProjects.length > 1;
   useEscapeKey(() => setProjectMenuOpen(false), projectMenuOpen);
 
-  const aiRunning = dashboardStatsError ? "—" : dashboardStats?.aiRunning ?? 0;
-  const aiStopped = dashboardStatsError ? "—" : dashboardStats?.aiStopped ?? 0;
+  // The camera run state, and the same figures the Dashboard sidebar's SYSTEM panel shows under
+  // "연결된 카메라 / 중단된 카메라". This used to read `aiRunning`/`aiStopped` — a fixed 42 and 34
+  // that named per-camera AI state this product does not have, summed to 76, and matched neither
+  // the camera list nor the device list. One source now, so the header and the panel cannot
+  // disagree about how many cameras are up.
+  const camsRunning = dashboardStatsError ? "—" : dashboardStats?.linkedCams.count ?? 0;
+  const camsStopped = dashboardStatsError ? "—" : dashboardStats?.offlineCams.count ?? 0;
   const location = dashboardStats?.location ?? "Singapore";
 
   const [sgNow, setSgNow] = useState<Date | null>(null);
@@ -200,7 +205,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
       .navbar-dropdown-item--danger:hover{background-color:var(--danger-100)}
       .navbar-dropdown-item--danger:hover::before{background-color:var(--danger-400)}
       .navbar-logo-btn{transition:opacity .15s}
-      @media (max-width: 1400px){ .navbar-ai-status{display:none} }
+      @media (max-width: 1400px){ .navbar-cam-status{display:none} }
       .navbar-logo-btn:hover{opacity:.8}
     `}</style>
     <nav style={{
@@ -290,10 +295,12 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
           </div>
         )}
 
-        {/* AI status — folded away under 1400px so the site name keeps its room. The same two
-            numbers are on the Dashboard, which is where someone goes when they want to act on
-            them; up here they are a glance, and a glance is what gets sacrificed first. */}
-        <div className="navbar-ai-status" style={{ display: "flex", alignItems: "center", gap: "20px", flexShrink: 0 }}>
+        {/* Camera run state — folded away under 1400px so the site name keeps its room. The same
+            two numbers are on the Dashboard sidebar's SYSTEM panel, which is where someone goes
+            when they want to act on them; up here they are a glance, and a glance is what gets
+            sacrificed first. Each number carries its meaning in its icon: the first one runs, the
+            second flickers out. */}
+        <div className="navbar-cam-status" style={{ display: "flex", alignItems: "center", gap: "20px", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           {/* Running icon */}
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ flexShrink:0, animation:"run-icon 1.8s ease-in-out infinite" }}>
@@ -305,8 +312,8 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
           </svg>
           {/* Number only: the icon beside it already says which, and the words were costing the
               header the width the project name now needs. The word survives as a tooltip. */}
-          <span title={t.running(aiRunning)} style={{ fontWeight: 800, fontSize: "13px", color: "var(--gray-800)", letterSpacing: "-0.26px", lineHeight: "16px" }}>
-            {aiRunning}
+          <span title={t.running(camsRunning)} style={{ fontWeight: 800, fontSize: "13px", color: "var(--gray-800)", letterSpacing: "-0.26px", lineHeight: "16px" }}>
+            {camsRunning}
           </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -328,8 +335,8 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
               </clipPath>
             </defs>
           </svg>
-          <span title={t.stopped(aiStopped)} style={{ fontWeight: 800, fontSize: "13px", color: "var(--danger-400)", letterSpacing: "-0.26px", lineHeight: "16px" }}>
-            {aiStopped}
+          <span title={t.stopped(camsStopped)} style={{ fontWeight: 800, fontSize: "13px", color: "var(--danger-400)", letterSpacing: "-0.26px", lineHeight: "16px" }}>
+            {camsStopped}
           </span>
           </div>
         </div>

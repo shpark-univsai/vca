@@ -356,13 +356,19 @@ const liveDeviceCount = devices.filter((d) => d.status === "Live").length;
 // delta/deltaPct/down are all compared against the same time yesterday.
 export const dashboardStats = {
   vipTargets: 12,
-  aiRunning: 42,
-  aiStopped: 34,
+  // `aiRunning: 42` / `aiStopped: 34` used to sit here, read only by the app header. They named
+  // something that does not exist — no camera in this product carries per-camera AI state — and
+  // the two figures summed to 76, which matched neither the camera list nor the device list. They
+  // were the camera run state all along, which `linkedCams`/`offlineCams` below already hold, so
+  // the header reads those instead of a second pair that could disagree with them.
   watchlistMatch:  { count: watchlistMatchCount, delta: 4,  deltaPct: 1.5, down: true },
   tracking:        { count: trackingCount,       delta: 4,  deltaPct: 1.5, down: true },
   eventsToday:     { count: eventsTodayCount,    delta: 3,  deltaPct: 2.1, down: false },
-  linkedCams:      { count: 48,  delta: 2,  deltaPct: 0.8, down: false },
-  offlineCams:     { count: 48,  delta: 4,  deltaPct: 1.5, down: true },
+  // count is overwritten by getDashboardStats() from the actual device list — the 48/48 that used
+  // to be typed here disagreed with the list it sat beside. Only the deltas are still seeded:
+  // they compare against the same time yesterday, and nothing in the mock holds yesterday.
+  linkedCams:      { count: 0,  delta: 2,  deltaPct: 0.8, down: false },
+  offlineCams:     { count: 0,  delta: 4,  deltaPct: 1.5, down: true },
   availability: Math.round((liveDeviceCount / devices.length) * 1000) / 10,
   currentDate: "2026-07-02",
   currentTime: "16:32:15",
