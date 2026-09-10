@@ -81,7 +81,6 @@ const T = {
     currentPassword: "Current password",
     verifyStep: "Confirm it is you",
     verify: "Continue",
-    verified: "Current password confirmed",
     changeStep: "Choose a new password",
     newPassword: "New password",
     confirmPassword: "Confirm password",
@@ -160,7 +159,6 @@ const T = {
     currentPassword: "현재 비밀번호",
     verifyStep: "본인 확인",
     verify: "확인",
-    verified: "현재 비밀번호가 확인되었습니다",
     changeStep: "새 비밀번호 정하기",
     newPassword: "새 비밀번호",
     confirmPassword: "비밀번호 확인",
@@ -757,18 +755,16 @@ function ChangePasswordModal({ t, lang, onClose }: {
             </div>
           </>
         ) : (
+          /* Nothing here restates step 1.
+   
+             It briefly had a "current password confirmed" box, and a button in it to go back.
+             The button went first — once the server answers step 1, a wrong password never
+             reaches this screen, so it only existed because the mock lets anything through. The
+             box followed for the same kind of reason: the subtitle above already says "choose a
+             new password", and being on this step IS the confirmation. A panel repeating it was
+             height spent on a fact the reader already has. Cancel is the way out. */
           <>
             <div style={{ padding: "16px 20px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
-              {/* The step behind you, stated rather than left blank.
-   
-                  No way back from here, and that is not an omission. It briefly had one, on the
-                  reasoning that you might have typed the current password wrong — but once the
-                  server answers step 1, a wrong one never reaches this screen. The button existed
-                  only because the mock lets anything through, and it would have been dead weight
-                  the day this was wired. Cancel is the way out. */}
-              <div style={{ padding: "9px 12px", borderRadius: "8px", backgroundColor: "var(--gray-50)", border: BORDER }}>
-                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{t.verified}</span>
-              </div>
               {field(t.newPassword, next, setNext, "new-password",
                 /* The rule under the field, not in a tooltip: it should be readable before it is
                    broken rather than after. Amber only once what is typed breaks it. */
