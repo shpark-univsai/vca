@@ -230,11 +230,19 @@ function LoginForm() {
       <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
         <div className="vca-auth-scroll" style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
         <div style={{
-          width: "420px", maxWidth: "420px", backgroundColor: "white",
+          // No card. Every one of these screens is white on a white page, so a white panel with a
+          // 28px radius drew nothing — the radius and the horizontal padding were doing invisible
+          // work, and the padding was quietly narrowing the fields to 348px. A card separates
+          // content from a DIFFERENT surface; there is no different surface here. Eight of the ten
+          // reference logins sit the form straight on the background for the same reason (Stripe's
+          // card works because it sits on a gradient, not on white).
+          // 400 is the measure now, and it is the field width: in the reference range, and wider
+          // than the padding was leaving.
+          width: "400px", maxWidth: "400px",
           // 20px of top padding is left over from when the illustration sat above the title
           // inside this card. It is gone, and the card has no visible edge to sit in from — it is
           // white on white — so the padding was only pushing the title down for nothing.
-          borderRadius: "28px", padding: "0 36px 36px", margin: "auto 0",
+          margin: "auto 0",
           // 40, not 24. The card centres as one block, so widening the gap between the title and
           // the form lifts the title and drops the form in one move — and the form needs the
           // separation more than it needs to sit close to a greeting.

@@ -132,8 +132,16 @@ function PasswordSetupForm() {
         <AuthHeader />
         <div className="vca-auth-scroll" style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
           <div style={{
-            width: "420px", maxWidth: "420px", backgroundColor: "white",
-            borderRadius: "28px", padding: "36px", margin: "auto 0",
+            // No card. Every one of these screens is white on a white page, so a white panel with a
+          // 28px radius drew nothing — the radius and the horizontal padding were doing invisible
+          // work, and the padding was quietly narrowing the fields to 348px. A card separates
+          // content from a DIFFERENT surface; there is no different surface here. Eight of the ten
+          // reference logins sit the form straight on the background for the same reason (Stripe's
+          // card works because it sits on a gradient, not on white).
+          // 400 is the measure now, and it is the field width: in the reference range, and wider
+          // than the padding was leaving.
+          width: "400px", maxWidth: "400px",
+            margin: "auto 0",
             display: "flex", flexDirection: "column", gap: "32px", alignItems: "center",
           }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
@@ -186,8 +194,16 @@ function PasswordSetupForm() {
       <AuthHeader />
       <div className="vca-auth-scroll" style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
         <div style={{
-          width: "420px", maxWidth: "420px", backgroundColor: "white",
-          borderRadius: "28px", padding: "36px", margin: "auto 0",
+          // No card. Every one of these screens is white on a white page, so a white panel with a
+          // 28px radius drew nothing — the radius and the horizontal padding were doing invisible
+          // work, and the padding was quietly narrowing the fields to 348px. A card separates
+          // content from a DIFFERENT surface; there is no different surface here. Eight of the ten
+          // reference logins sit the form straight on the background for the same reason (Stripe's
+          // card works because it sits on a gradient, not on white).
+          // 400 is the measure now, and it is the field width: in the reference range, and wider
+          // than the padding was leaving.
+          width: "400px", maxWidth: "400px",
+          margin: "auto 0",
           display: "flex", flexDirection: "column", gap: "40px", alignItems: "center",
         }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
