@@ -1463,13 +1463,26 @@ export interface PortalUser {
    * May run person searches in the monitoring app (Data's search screens and Redmap).
    *
    * Kept apart from `permission`, which is a console role: a person can be app-only and still be
-   * the one who runs searches, and a Portal admin may have no business searching at all. It is one
-   * flag rather than an app role ladder because search is the only weighted action the app actually
-   * has — no export, no VIP editing, no camera control lives there (checked 2026-09-04). When more
-   * of those arrive, this is the seam to widen.
+   * the one who runs searches, and a Portal admin may have no business searching at all.
    *
    * Undefined means not granted. Reconstructing where a person went is the app's most invasive
    * capability, so it is given deliberately, not inherited.
+   *
+   * STILL ONE FLAG, BUT NO LONGER FOR THE ORIGINAL REASON. It said "search is the only weighted
+   * action the app has — no export, no VIP editing, no camera control (checked 2026-09-04)", and
+   * on 2026-09-10 evidence export arrived in Redmap: a detection's metadata and the operator's
+   * call, as a file, out of the console. That is a second weighted action.
+   *
+   * It is covered today because it sits inside Redmap, and Redmap is gated by this flag as a
+   * whole screen — you cannot export a sighting you were never allowed to find. That is a real
+   * containment, not an accident, and it is why this is not urgent.
+   *
+   * What it does not answer: whether taking evidence OUT deserves its own grant. Searching and
+   * exporting fail differently — a search that should not have happened leaves a record and
+   * ends; an export leaves a copy the console can no longer see. Institutions that separate
+   * "may look" from "may take away" are not being fussy. Deciding that is a policy call about
+   * who gets which grant, not a refactor, so it is written here rather than guessed at: this is
+   * the seam to widen, and there is now one thing waiting at it.
    */
   appSearch?: boolean;
   /**
