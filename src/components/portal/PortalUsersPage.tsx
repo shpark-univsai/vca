@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Asterisk, ClipboardList, MailQuestion, Users2, UserX, ClipboardPlus, Download, KeyRound, Printer, Upload} from "lucide-react";
+import { Asterisk, ClipboardList, MailQuestion, Users2, UserMinus, UserX, ClipboardPlus, Download, KeyRound, Printer, Upload} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -74,6 +74,8 @@ const T = {
     countPeopleUnit: "people",
     invitedHint: "Invited but has not set a password yet — they cannot sign in until they do.",
     suspendedHint: "Kept on the list but blocked from signing in.",
+    countDormant: "Dormant",
+    dormantHint: "Active accounts that have not signed in for 90 days, and accounts invited over 90 days ago that never did. On a site whose staff rotate, these are the accounts nobody remembers to close.",
 
     // Toolbar filters
 
@@ -313,6 +315,8 @@ const T = {
     countPeopleUnit: "명",
     invitedHint: "초대는 됐지만 아직 비밀번호를 설정하지 않았습니다 — 설정 전까지 로그인할 수 없습니다.",
     suspendedHint: "명단에는 남아 있지만 로그인이 차단된 상태입니다.",
+    countDormant: "미접속",
+    dormantHint: "90일 넘게 로그인하지 않은 활성 계정, 그리고 초대된 지 90일이 지나도록 한 번도 들어오지 않은 계정입니다. 인력이 도는 현장에서 아무도 닫는 것을 기억하지 못하는 계정이 이것입니다.",
 
     // Toolbar filters
 
@@ -1523,12 +1527,14 @@ function StageBadge({ stage, t }: { stage: Stage; t: { stageRosterListed: string
  * the weight a distribution needs.
  */
 function UserCountStrip({
-  users, rosterWaiting, statusFilter, onFilter, onShowGuide,
+  users, rosterWaiting, dormant, statusFilter, onFilter, onShowGuide,
 }: {
   users: PortalUser[];
   rosterWaiting: number;
-  statusFilter: "invited" | "suspended" | "roster" | null;
-  onFilter: (next: "invited" | "suspended" | "roster" | null) => void;
+  /* Counted by the page, not here: it needs a post-mount clock, and this component has none. */
+  dormant: number;
+  statusFilter: "invited" | "suspended" | "roster" | "dormant" | null;
+  onFilter: (next: "invited" | "suspended" | "roster" | "dormant" | null) => void;
   onShowGuide: () => void;
 }) {
   const [lang] = usePortalLanguage();
@@ -1560,6 +1566,9 @@ function UserCountStrip({
           { key: "invited" as const, count: invited, label: t.countInvited, hint: t.invitedHint, icon: <MailQuestion size={14} strokeWidth={2.4} /> },
           { key: "suspended" as const, count: suspended, label: t.countSuspended, hint: t.suspendedHint, icon: <UserX size={14} strokeWidth={2.4} /> },
           { key: "roster" as const, count: rosterWaiting, label: t.countRosterWaiting, hint: t.rosterWaitingHint, icon: <ClipboardList size={14} strokeWidth={2.4} /> },
+          // Last, because it is the only one that is not a state the console set — it is a state
+          // that accumulated while nobody looked.
+          { key: "dormant" as const, count: dormant, label: t.countDormant, hint: t.dormantHint, icon: <UserMinus size={14} strokeWidth={2.4} /> },
         ].filter(item => item.count > 0).map(item => ({
           key: item.key,
           icon: item.icon,
@@ -1608,7 +1617,45 @@ interface PortalUsersPageProps {
   projectId: string;
 }
 
+/**
+ * An account nobody is using, on a site where nobody would notice.
+ *
+ * The reason this needs a name: contractor staff rotate, and the account that leaves with them
+ * is the one nobody closes. It is not suspended, not invited, not anything the console already
+ * counts — it is active and quiet, which looks exactly like an account in good standing until
+ * somebody signs in with it.
+ *
+ * Two shapes, one meaning. An active account that has not signed in for 90 days, and an
+ * invitation older than 90 days that was never accepted — a credential issued to somebody who
+ * never arrived is a live credential too.
+ *
+ * 90 days is a threshold, not a policy. It is long enough that leave, secondment and a quiet
+ * season do not fill this list with people who are simply not on shift, and short enough to
+ * catch a rotation. Nothing is done automatically on it: this only makes the accounts visible,
+ * and an administrator decides one at a time.
+ */
+const DORMANT_AFTER_DAYS = 90;
+
+function isDormant(u: PortalUser, nowMs: number): boolean {
+  const cutoff = nowMs - DORMANT_AFTER_DAYS * 24 * 60 * 60 * 1000;
+  if (u.status === "active") {
+    // Never signed in and still active: the account exists and has never been used.
+    if (!u.lastLoginAt) return true;
+    return new Date(u.lastLoginAt).getTime() < cutoff;
+  }
+  // Active only. An unaccepted invitation is a live credential too, but PortalUser records no
+  // issue date, so its age cannot be judged — counting every open invitation as dormant would
+  // put yesterday's new hire on this list. That needs an `invitedAt`, not a guess. Suspended
+  // accounts are already counted as suspended: they are closed, which is the outcome this tile
+  // exists to push somebody toward.
+  return false;
+}
+
 export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
+  // Post-mount, like every other clock read in Portal — see TempPasswordBadge. Dormancy is a
+  // judgement about elapsed time, so it cannot be decided during a server render.
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
   const portalUsers = useVcaStore(s => s.portalUsers);
   const projects = useVcaStore(s => s.projects);
   const updatePortalUserPermission = useVcaStore(s => s.updatePortalUserPermission);
@@ -1729,7 +1776,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
    * then finding that person meant scanning the table. The strip's cells are the filter now, which
    * is what the numbers were being read for.
    */
-  const [statusFilter, setStatusFilter] = useState<"invited" | "suspended" | "roster" | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"invited" | "suspended" | "roster" | "dormant" | null>(null);
   /** True when the list is empty only because something is filtering it. The two empty states
    *  send the reader to different places, and one message for both sends half of them wrong. */
   const narrowed = statusFilter !== null || search.trim() !== "";
@@ -1744,7 +1791,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const filteredUsers = projectUsers
     .filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
     // "roster" narrows to people who have no account at all, so no account row can match it.
-    .filter(u => statusFilter === null || u.status === statusFilter);
+    // "dormant" is not a status the record carries — it is a judgement about time, so it cannot
+    // be compared against u.status like the other three.
+    .filter(u => statusFilter === null
+      || (statusFilter === "dormant" ? nowMs !== null && isDormant(u, nowMs) : u.status === statusFilter));
   /**
    * Roster rows for this project that are still waiting — matched against accounts by employee
    * number, which is the roster's own key. Status "used" is not enough on its own: an account can
@@ -1969,7 +2019,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           Accounts tab used to set a filter no account's status can equal: the table emptied and
           printed "No users have access to this project yet" with six accounts one click away.
           The mirror case did the same on the other tab. A cell now shows what it counts. */}
-      <UserCountStrip users={projectUsers} rosterWaiting={rosterWaiting.length} statusFilter={statusFilter}
+      <UserCountStrip users={projectUsers} rosterWaiting={rosterWaiting.length}
+        dormant={nowMs === null ? 0 : projectUsers.filter(u => isDormant(u, nowMs)).length}
+        statusFilter={statusFilter}
         onFilter={next => {
           setStatusFilter(next);
           if (next === "roster") setPeopleTab("roster");
