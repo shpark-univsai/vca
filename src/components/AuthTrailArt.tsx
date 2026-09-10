@@ -22,30 +22,21 @@
  */
 
 /**
- * The ground: blocks with gaps between them.
+ * The ground: a plan grid.
  *
- * Restored after a version that dropped it. Irregular blocks are not graph paper — the uniform
- * grid that came before read as a chart's backdrop, which is the thing this drawing must not be
- * — and they give the cameras somewhere to be rather than floating in white.
+ * Back to this after two versions of a street map. Blocks with roads between them look more like
+ * a map, which is exactly the problem — the deployments are a city AND a school and the list keeps
+ * growing, so a street map is wrong on a campus and will be wrong again on the next kind of site.
+ * A plan grid is what any space looks like before you say which space it is.
  *
- * Back to the first version's weight and its two landmarks — a road cutting across and water
- * along one edge. They were pulled out for committing to a city, and the drawing lost more than
- * it gained: blocks alone read as a diagram, and a diagram is not a place. A main drive and a
- * water edge exist on a campus and a plant too, so they cost less specificity than they buy.
+ * It read as a chart's backdrop once, but that was the grid together with a line climbing left to
+ * right. The trail changes direction now and each mark is a camera, so the grid is free to be
+ * what it is: a floor for the cameras to stand on.
  *
- * It is still the floor. Blocks are opaque but light, the gaps between them are the roads, and
- * everything here sits under a fade — the cameras and the trail stay the subject.
+ * 40 fine, every fifth heavier — the convention a floor plan or a site plan already uses.
  */
-const BLOCKS: [number, number, number, number][] = [
-  [16, 20, 58, 62], [104, 20, 96, 62], [230, 20, 106, 40], [230, 68, 106, 14],
-  [368, 20, 86, 62], [486, 20, 58, 34],
-  [16, 112, 58, 96], [104, 112, 96, 44], [104, 170, 96, 38],
-  [230, 112, 106, 96], [368, 112, 86, 60], [486, 112, 58, 96],
-  [16, 238, 58, 94], [104, 238, 96, 94], [230, 238, 44, 94], [288, 238, 48, 60],
-  [368, 238, 86, 94], [486, 238, 58, 60],
-  [16, 378, 58, 68], [104, 378, 96, 68], [230, 378, 106, 68],
-  [368, 378, 86, 44], [486, 378, 58, 68],
-];
+const FINE = Array.from({ length: 14 }, (_, i) => (i + 1) * 40);
+const HEAVY = [200, 400];
 
 /**
  * The sightings, in the order the cameras saw them.
@@ -107,30 +98,15 @@ export default function AuthTrailArt({ className }: { className?: string }) {
         </radialGradient>
       </defs>
 
-      {/* The ground is the roads: light between filled blocks is how a street map reads, so the
-          grid needs no drawn lines. */}
       <rect x="0" y="0" width="560" height="560" fill="var(--gray-50)" />
-      <g>
-        {BLOCKS.map(([x, y, w, h], i) => (
-          <rect key={i} x={x} y={y} width={w} height={h} rx="3"
-                fill={(x + y) % 3 === 0 ? "var(--gray-300)" : "var(--gray-200)"} />
-        ))}
+      <g stroke="var(--gray-200)" strokeWidth="1">
+        {FINE.map(v => <line key={`v${v}`} x1={v} y1="0" x2={v} y2="560" />)}
+        {FINE.map(v => <line key={`h${v}`} x1="0" y1={v} x2="560" y2={v} />)}
       </g>
-
-      {/* A green and water along one edge — the two things a grid of blocks needs so it stops
-          looking like a spreadsheet. Both in grey: the palette has no green, and inventing one
-          here would put a colour on screen that appears nowhere else in the product. */}
-      <rect x="288" y="306" width="48" height="26" rx="10" fill="var(--gray-100)" />
-      <path d="M0 496 C 120 480, 210 520, 330 500 C 430 484, 500 510, 560 496 L560 560 L0 560 Z"
-            fill="var(--gray-300)" />
-      <path d="M0 496 C 120 480, 210 520, 330 500 C 430 484, 500 510, 560 496"
-            stroke="var(--gray-400)" strokeWidth="1.5" opacity="0.45" />
-
-      {/* The one drawn road, because it cuts across blocks rather than running between them — and
-          it is what tells the eye where to enter the picture. */}
-      <line x1="-20" y1="150" x2="580" y2="430" stroke="var(--gray-50)" strokeWidth="16" />
-      <line x1="-20" y1="150" x2="580" y2="430" stroke="var(--gray-300)" strokeWidth="1" />
-
+      <g stroke="var(--gray-300)" strokeWidth="1.5">
+        {HEAVY.map(v => <line key={`V${v}`} x1={v} y1="0" x2={v} y2="560" />)}
+        {HEAVY.map(v => <line key={`H${v}`} x1="0" y1={v} x2="560" y2={v} />)}
+      </g>
       <rect x="0" y="0" width="560" height="560" fill="url(#vca-auth-fade)" />
 
       {/* The trail. Dashed because it is inferred, not recorded — the system did not follow anyone,
