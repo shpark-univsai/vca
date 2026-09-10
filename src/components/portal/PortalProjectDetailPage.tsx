@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
-import { canEnterApp, canEnterPortal, canManageAccess, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
+import { canEnterApp, canEnterPortal, canManageAccess, currentPortalUser, resolveMailConfig, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed, zoneHour } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, usePortalEditAccess } from "./PortalShared";
 import { useToast } from "../Toast";
@@ -65,6 +65,9 @@ const T = {
     attnListingsExpiring: (n: number) => `${n} watchlist listing(s) expire within 30 days`,
     attnExpiringSoon: (d: number) => `License expires in ${d} day${d === 1 ? "" : "s"}`,
     attnExpired: "License has expired",
+    attnNoMail: "No mail server configured — nobody can be invited",
+    attnSoleOwner: "Only one owner account — no way back if it is lost",
+    attnNoTimeZone: "Time zone never set — every date on this project is a guess",
     attnNoCameras: "No source connected yet",
     attnNoVips: "No one registered in the watchlist yet",
     accessSplitLabel: (portal: number, app: number) => `Portal: ${portal} | App: ${app}`,
@@ -161,6 +164,9 @@ const T = {
     attnListingsExpiring: (n: number) => `30일 내 등록 만료 ${n}명`,
     attnExpiringSoon: (d: number) => `라이선스 ${d}일 후 만료`,
     attnExpired: "라이선스가 만료되었습니다",
+    attnNoMail: "메일 서버가 설정되지 않았습니다 — 아무도 초대할 수 없습니다",
+    attnSoleOwner: "최고관리자가 한 명뿐입니다 — 잃으면 돌아올 길이 없습니다",
+    attnNoTimeZone: "시간대를 정한 적이 없습니다 — 이 프로젝트의 모든 날짜가 추측입니다",
     attnNoCameras: "연결된 소스가 없습니다",
     attnNoVips: "등록된 관심대상이 없습니다",
     accessSplitLabel: (portal: number, app: number) => `포털: ${portal} | 앱: ${app}`,
@@ -405,6 +411,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const projects = useVcaStore(s => s.projects);
   const cameras = useVcaStore(s => s.cameras);
   const portalUsers = useVcaStore(s => s.portalUsers);
+  const teams = useVcaStore(s => s.teams);
   const persons = useVcaStore(s => s.persons);
   const personGroups = useVcaStore(s => s.personGroups);
   const auditLog = useVcaStore(s => s.auditLog);
@@ -652,6 +659,40 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
       return left >= 0 && left <= 30 * 86_400_000;
     }).length;
 
+  /*
+   * The four ways a handover can be left unfinished.
+   *
+   * A different kind of thing from the rest of this strip. "8 cameras offline" is operations —
+   * it happens, somebody calls an electrician, and next week it happens again. These four mean
+   * the deployment was never completed, each is silent, and each is fixed once and then never
+   * appears again.
+   *
+   * Not a separate card: three of the four are the same shape the strip already carries ("no
+   * source connected yet", "nobody registered yet"), and a second box saying the same kind of
+   * thing somewhere else is a second place to look.
+   */
+  /*
+   * No "N cameras not assigned to a server" here, and it was tried.
+   *
+   * Input Sources carried exactly that until 2026-09-09 and it was removed with a reason on
+   * the record: 56 of 60 is not a fault report, it is a description of the deployment.
+   * Camera.serverId is optional and mostly unset, so a count of the unset ones measures how
+   * the seed was written rather than whether anything is being processed — and phrasing it as
+   * "nothing is processing them" would be asserting something no code here establishes.
+   *
+   * It comes back when a camera genuinely cannot be processed without an assignment, and the
+   * thing to surface then is that fact, not the empty field.
+   */
+  const mailMissing = resolveMailConfig(projectId, projects, teams).mailDomain === null;
+  // Scoped to the team, which is the boundary an owner grants across. Counted through
+  // canManageAccess for the same reason the Users page's banner is — the power at stake is
+  // granting, and that is the owner's.
+  const teamOwners = portalUsers.filter(u =>
+    u.teamId === project.teamId && u.status === "active" && canManageAccess(u.permission)).length;
+  // Never set, not "set to the value that happens to be the default" — Singapore is a correct
+  // answer for a Singapore site, and flagging that would be a false alarm on a finished install.
+  const timeZoneUnset = project.timeZone === undefined;
+
   const attentionItems: { key: string; text: string; color: string; tab: DetailTab }[] = [
     ...(offlineCount > 0 ? [{ key: "offline", text: t.attnOffline(offlineCount), color: "var(--danger-400)", tab: "cameras" as DetailTab }] : []),
     ...(errorCount > 0 ? [{ key: "cameraError", text: t.attnCameraError(errorCount), color: "var(--danger-400)", tab: "cameras" as DetailTab }] : []),
@@ -667,6 +708,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     // date — a watchlist cleared by human memory is a watchlist that never gets cleared.
     ...(expiringListings > 0 ? [{ key: "listingsExpiring", text: t.attnListingsExpiring(expiringListings), color: "var(--warning-500)", tab: "vip" as DetailTab }] : []),
     ...(pendingInviteCount > 0 ? [{ key: "invites", text: t.attnInvites(pendingInviteCount), color: "var(--warning-500)", tab: "users" as DetailTab }] : []),
+    // Setup, between the reminders and the "nothing here yet" notes. Amber rather than grey:
+    // each of these means a capability is dead, not that a list is empty.
+    ...(mailMissing ? [{ key: "nomail", text: t.attnNoMail, color: "var(--warning-500)", tab: "server" as DetailTab }] : []),
+    ...(teamOwners <= 1 ? [{ key: "soleowner", text: t.attnSoleOwner, color: "var(--warning-500)", tab: "users" as DetailTab }] : []),
+    ...(timeZoneUnset ? [{ key: "notz", text: t.attnNoTimeZone, color: "var(--warning-500)", tab: "overview" as DetailTab }] : []),
     ...(projectCameras.length === 0 ? [{ key: "nocams", text: t.attnNoCameras, color: "var(--gray-400)", tab: "cameras" as DetailTab }] : []),
     ...(projectPersons.length === 0 ? [{ key: "novips", text: t.attnNoVips, color: "var(--gray-400)", tab: "vip" as DetailTab }] : []),
   ];
