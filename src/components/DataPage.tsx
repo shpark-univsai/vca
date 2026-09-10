@@ -56,6 +56,23 @@ const T = {
     reset: "Reset",
     search: "Search",
     noSearchPermission: "You do not have permission to search people — ask an administrator",
+    allCameras: "All cameras",
+    labelType: "Type",
+    plate: "Plate",
+    labelCamera: "Camera",
+    refineSearch: "Refine search",
+    refresh: "Refresh",
+    matchesFound: (n: number) => `${n} ${n === 1 ? "match" : "matches"}`,
+    aboveSimilarity: (n: number) => `Showing targets above ${n}% similarity`,
+    vehicleSearchResult: "Vehicle search result",
+    searchResultTitle: "Search result",
+    noVipMatch: (q: string) => `No VIPs match “${q}”`,
+    filterAll: "All",
+    camOnline: "ONLINE",
+    camOffline: "OFFLINE",
+    rtspConnected: "RTSP connected",
+    noFeedTitle: "No feed to show",
+    noFeedBody: "This camera is not running, so there is nothing being captured. The device list shows when it was last seen.",
     noReidTitle: "Person search permission required",
     noReidBody: "Re-ID Analysis answers where one person has been seen across the site's cameras, which is a person search. An administrator can grant the permission in the Portal, under Users & Permissions.",
     noRedFaceTitle: "Person search permission required",
@@ -165,6 +182,23 @@ const T = {
     reset: "초기화",
     search: "검색",
     noSearchPermission: "인물 검색 권한이 없습니다 — 관리자에게 요청하세요",
+    allCameras: "전체 카메라",
+    labelType: "종류",
+    plate: "번호판",
+    labelCamera: "카메라",
+    refineSearch: "조건 다시 설정",
+    refresh: "새로 고침",
+    matchesFound: (n: number) => `${n}건`,
+    aboveSimilarity: (n: number) => `유사도 ${n}% 이상만 표시`,
+    vehicleSearchResult: "차량 검색 결과",
+    searchResultTitle: "검색 결과",
+    noVipMatch: (q: string) => `“${q}”에 해당하는 VIP가 없습니다`,
+    filterAll: "전체",
+    camOnline: "정상",
+    camOffline: "중단",
+    rtspConnected: "RTSP 연결됨",
+    noFeedTitle: "표시할 화면이 없습니다",
+    noFeedBody: "이 카메라는 가동 중이 아니라 촬영되는 것이 없습니다. 마지막 신호 시각은 장비 목록에서 볼 수 있습니다.",
     noReidTitle: "인물 검색 권한이 필요합니다",
     noReidBody: "Re-ID 분석은 한 사람이 이 현장의 카메라들에서 언제 어디서 보였는지를 답하는 화면입니다. 인물 검색에 해당하므로 권한이 필요합니다. 관리자에게 요청하면 포털의 사용자 및 권한에서 열어 줄 수 있습니다.",
     noRedFaceTitle: "인물 검색 권한이 필요합니다",
@@ -605,11 +639,14 @@ function ScrollToTopButton({ containerRef }: { containerRef: React.RefObject<HTM
 // landing page (horizontal per-camera carousels) used to show. ───────────
 function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTab, onGoRedmap }:
   { camId:string; items:(typeof REID_DATA); onSwitchCam:(camId:string)=>void; onCardClick:(id:number)=>void; onNavigateTab?:(tab:DataTab, card:(typeof REID_DATA)[number])=>void; onGoRedmap?:()=>void }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const [pickerOpen, setPickerOpen] = useState(false);
   const cameras = useProjectCameras();
   const camera = cameras.find(c => c.code === camId);
   const isAll = camId === ALL_CAMERAS_ID;
-  const pickerLabel = isAll ? "All Cameras" : camId;
+  // The camera code itself is data and stays as it is; only the "everything" option is wording.
+  const pickerLabel = isAll ? t.allCameras : camId;
   const scrollRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -640,7 +677,7 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
                 display:"flex", alignItems:"center", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer", flexShrink:0,
                 fontSize:"13px", fontWeight: isAll ? 700:500, color: isAll ? "var(--primary-400)":"var(--gray-700)",
               }}>
-                All Cameras
+                {t.allCameras}
               </button>
               <div style={{ height:"1px", backgroundColor:"var(--gray-200)", flexShrink:0 }} />
               {/* The camera roster can run to dozens of entries — without its own scroll region
@@ -666,17 +703,27 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
           <>
             <span style={{ fontSize:"10px", fontWeight:800, color: runStateOf(camera.status)==="running" ? "var(--success-400)" : "var(--gray-400)",
               backgroundColor: runStateOf(camera.status)==="running" ? "var(--success-100)" : "var(--gray-100)", padding:"4px 10px", borderRadius:"999px" }}>
-              {runStateOf(camera.status)==="running" ? "ONLINE" : "OFFLINE"}
+              {runStateOf(camera.status)==="running" ? t.camOnline : t.camOffline}
             </span>
-            <span style={{ fontSize:"12px", color:"var(--gray-400)" }}>IP {camera.ip} · RTSP Connected</span>
+            <span style={{ fontSize:"12px", color:"var(--gray-400)" }}>IP {camera.ip} · {t.rtspConnected}</span>
           </>
         )}
       </div>
 
       {/* flex-wrap + flex-grow (not CSS grid) — see the "All Cameras" grid above for why. */}
+      {items.length === 0 ? (
+        // Nothing captured, which happens for a real reason: this camera is not running, or the
+        // whole site is stopped. The wall used to render a header over blank white and leave the
+        // operator to guess whether the screen had failed.
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"72px 24px", gap:"6px" }}>
+          <p style={{ margin:0, fontSize:"14px", fontWeight:700, color:"var(--gray-600)" }}>{t.noFeedTitle}</p>
+          <p style={{ margin:0, fontSize:"13px", fontWeight:500, color:"var(--gray-400)", textAlign:"center", maxWidth:"360px", lineHeight:1.6 }}>{t.noFeedBody}</p>
+        </div>
+      ) : (
       <div style={{ display:"flex", flexWrap:"wrap", gap:"12px" }}>
         {items.map(p => <MonitorCard key={p.id} p={p} onClick={() => onCardClick(p.id)} showCam={isAll} fill onNavigateTab={onNavigateTab} onGoRedmap={onGoRedmap} />)}
       </div>
+      )}
     </div>
     <ScrollToTopButton containerRef={scrollRef} />
     </div>
@@ -802,6 +849,12 @@ const ETHNIC_GROUP_OPTIONS = ["African American","Indian","Asian","Caucasian"];
 // a native <select>'s browser/OS-drawn list, so it looks identical everywhere rather than however
 // the current OS happens to render native selects.
 function SimpleSelect({ value, options, onChange }: { value:string; options:string[]; onChange:(v:string)=>void }) {
+  // The values stay English in state — they are what the model reports and what the filter holds
+  // — and are translated here, where they are drawn. Its sibling AllOptionRow already did this;
+  // this widget did not, so the two rows above it read Korean while Emotion and Ethnic group
+  // stayed "All / Neutral / Caucasian" with translations sitting unused in ATTR_KO.
+  const [lang] = useLanguage();
+  const t = T[lang];
   const [open, setOpen] = useState(false);
   return (
     <div style={{ position:"relative", width:"100%" }}>
@@ -818,7 +871,7 @@ function SimpleSelect({ value, options, onChange }: { value:string; options:stri
         display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
         height:"32px", padding:"0 10px", borderRadius:"8px", border:BORDER, backgroundColor:"white", cursor:"pointer",
       }}>
-        <span style={{ fontSize:"12px", fontWeight:600, color: value ? "var(--gray-900)" : "var(--gray-400)" }}>{value || "All"}</span>
+        <span style={{ fontSize:"12px", fontWeight:600, color: value ? "var(--gray-900)" : "var(--gray-400)" }}>{value ? attr(value, lang) : t.filterAll}</span>
         <span style={{ display:"flex", color:"var(--gray-600)", transform: open ? "rotate(180deg)" : "none", transition:"transform 0.15s" }}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </span>
@@ -837,7 +890,7 @@ function SimpleSelect({ value, options, onChange }: { value:string; options:stri
                 <span style={{ display:"flex", width:"12px", flexShrink:0 }}>
                   {active && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                 </span>
-                {o || "All"}
+                {o ? attr(o, lang) : t.filterAll}
               </button>
             );
           })}
@@ -1788,7 +1841,7 @@ function VipQuickSelectRow({ activeVIP, onSelect, compact = false }: { activeVIP
         </div>
       </div>
       {indexed.length === 0 ? (
-        <div style={{ padding:"16px 0", textAlign:"center", color:"var(--gray-400)", fontSize:"12px" }}>No VIPs match &quot;{query}&quot;</div>
+        <div style={{ padding:"16px 0", textAlign:"center", color:"var(--gray-400)", fontSize:"12px" }}>{T[lang].noVipMatch(query)}</div>
       ) : (
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(90px, 1fr))", gap:"8px", width:"100%" }}>
           {indexed.map(({ v, i }) => {
@@ -2057,7 +2110,7 @@ function SmartSearchResults({ state, results, onCardClick, onRefine, onReset, to
         </div>
         <button onClick={onRefine} style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", cursor:"pointer",
           fontSize:"13px", fontWeight:700, color:"var(--gray-900)", flexShrink:0 }}>
-          <SlidersIconSm size={14} /> Refine search
+          <SlidersIconSm size={14} /> {t.refineSearch}
         </button>
       </div>
 
@@ -2065,16 +2118,14 @@ function SmartSearchResults({ state, results, onCardClick, onRefine, onReset, to
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"16px", flexWrap:"wrap", gap:"8px" }}>
           <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
             <span style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)" }}>{t.searchResults}</span>
-            <span style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-500)" }}>{results.length} matches</span>
+            <span style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-500)" }}>{t.matchesFound(results.length)}</span>
             <div style={{ width:"1px", height:"12px", backgroundColor:"var(--gray-200)" }} />
-            <span style={{ fontSize:"13px", color:"var(--gray-400)" }}>
-              Showing targets above <span style={{ fontWeight:700, color:"var(--gray-600)" }}>{threshold}%</span> similarity
-            </span>
+            <span style={{ fontSize:"13px", color:"var(--gray-400)" }}>{t.aboveSimilarity(threshold)}</span>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:"16px" }}>
             <span style={{ fontSize:"12px", color:"var(--gray-400)" }}>{t.resultsAsOf(refreshedAt.toLocaleTimeString(lang === "ko" ? "ko-KR" : "en-US", { hour12:false }))}</span>
             <button onClick={() => setRefreshedAt(new Date())} style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", cursor:"pointer", fontSize:"12px", fontWeight:700, color:"var(--gray-600)" }}>
-              <RefreshIconSm /> Refresh
+              <RefreshIconSm /> {t.refresh}
             </button>
           </div>
         </div>
@@ -2766,6 +2817,8 @@ function SlidersIconSm({ size = 16 }: { size?: number }) {
 // what REID_DATA's `cam` field held, so the two tabs showed different names for the same estate
 // and neither could hand a selection to the other. REID_DATA draws from CAMERA_CODES now.
 function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const [open, setOpen] = useState(false);
   const cameraStatus = useCameraStatus();
   const statusOf = (code: string) => cameraStatus.byCode(code);
@@ -2773,7 +2826,7 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
   // list. That constant is every camera in the mock, so switching site in the header left the
   // picker naming another site's cameras and the switch was decoration in this tab.
   const options = useSiteCameraCodes();
-  const label = value || "All Cameras";
+  const label = value || t.allCameras;
   return (
     /* 152px fitted "NC-1"; a real code plus its ON/OFF needs more, and the label was ellipsing. */
     <div style={{ position:"relative", width:"186px" }}>
@@ -2799,7 +2852,7 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
             display:"flex", alignItems:"center", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer", flexShrink:0,
             fontSize:"13px", fontWeight: !value ? 700:500, color: !value ? "var(--primary-400)":"var(--gray-700)",
           }}>
-            All Cameras
+            {t.allCameras}
           </button>
           <div style={{ height:"1px", backgroundColor:"var(--gray-200)", flexShrink:0 }} />
           {/* Same scroll region Live Monitoring's picker has. This list was 4 fixed entries and fit
@@ -3018,27 +3071,30 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
     // search that is the best-scoring row it actually returned.
     subject,
     thumbnail: searchType === "VEHICLE" ? carSvgDataUri(VEHICLE_COLOR_CYCLE[0]) : (searchTarget?.face ?? MATCH_DATA[0].face),
-    title: searchType === "VEHICLE" ? "Vehicle search result" : searchTarget && "label" in searchTarget ? searchTarget.label : searchTarget ? searchTarget.name : "Search result",
+    title: searchType === "VEHICLE" ? t.vehicleSearchResult : searchTarget && "label" in searchTarget ? searchTarget.label : searchTarget ? searchTarget.name : t.searchResultTitle,
+    // Labels are wording and go through T; the values are what the model reports and what the
+    // filter state holds, so they translate only where they are drawn (attr()) — see the note at
+    // the top of this file.
     meta: targetMatches ? [
-      { label:"Type", value: searchType },
-      { label:"Similarity", value:`${threshold}%` },
+      { label:t.labelType, value: attr(searchType === "PERSON" ? "Person" : "Vehicle", lang) },
+      { label:t.similarity, value:`${threshold}%` },
     ] : searchType === "VEHICLE" ? [
-      { label:"Type", value: searchType },
-      ...(camera ? [{ label:"Camera", value:camera }] : []),
-      ...(licensePlate ? [{ label:"Plate", value:licensePlate }] : []),
-      { label:"Similarity", value:`${threshold}%` },
+      { label:t.labelType, value: attr("Vehicle", lang) },
+      ...(camera ? [{ label:t.labelCamera, value:camera }] : []),
+      ...(licensePlate ? [{ label:t.plate, value:licensePlate }] : []),
+      { label:t.similarity, value:`${threshold}%` },
     ] : [
-      { label:"Type", value: searchType },
-      ...(camera ? [{ label:"Camera", value:camera }] : []),
-      ...(gender ? [{ label:"Gender", value:gender }] : []),
-      ...(derivedApparel.length ? [{ label:"Apparel", value:derivedApparel.join(", ") }] : []),
-      ...(derivedProps.length ? [{ label:"Props", value:derivedProps.join(", ") }] : []),
-      ...(topColors.length ? [{ label:"Top color", value:topColors.join(", ") }] : []),
-      ...(bottomColors.length ? [{ label:"Bottom color", value:bottomColors.join(", ") }] : []),
-      ...(shoesColors.length ? [{ label:"Shoes color", value:shoesColors.join(", ") }] : []),
-      ...(emotion ? [{ label:"Emotion", value:emotion }] : []),
-      ...(ethnicGroup ? [{ label:"Ethnic group", value:ethnicGroup }] : []),
-      { label:"Similarity", value:`${threshold}%` },
+      { label:t.labelType, value: attr("Person", lang) },
+      ...(camera ? [{ label:t.labelCamera, value:camera }] : []),
+      ...(gender ? [{ label:t.labelGender, value:attr(gender, lang) }] : []),
+      ...(derivedApparel.length ? [{ label:t.labelApparel, value:derivedApparel.map(v => attr(v, lang)).join(", ") }] : []),
+      ...(derivedProps.length ? [{ label:t.labelProps, value:derivedProps.map(v => attr(v, lang)).join(", ") }] : []),
+      ...(topColors.length ? [{ label:t.topColor, value:topColors.map(v => attr(v, lang)).join(", ") }] : []),
+      ...(bottomColors.length ? [{ label:t.bottomColor, value:bottomColors.map(v => attr(v, lang)).join(", ") }] : []),
+      ...(shoesColors.length ? [{ label:t.shoesColor, value:shoesColors.map(v => attr(v, lang)).join(", ") }] : []),
+      ...(emotion ? [{ label:t.labelEmotion, value:attr(emotion, lang) }] : []),
+      ...(ethnicGroup ? [{ label:t.labelEthnic, value:attr(ethnicGroup, lang) }] : []),
+      { label:t.similarity, value:`${threshold}%` },
     ],
     action: "RedFace",
     matches: targetMatches ?? (attributeRows ?? []).map(p => ({ ...reidToMatchItem(p), similarity: p.similarity })),

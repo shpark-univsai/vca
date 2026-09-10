@@ -22,6 +22,28 @@ import {
   type Camera,
 } from "@/lib/vcaStore";
 import { useLanguage } from "@/lib/i18n";
+
+/**
+ * See the per-file pattern note in lib/i18n.ts.
+ *
+ * The ticker's toast was the one alert in the app still in English only — every other toast here
+ * already goes through a dictionary. The values inside it (the person's name, the camera) are the
+ * install's own data and stay as they are.
+ */
+const T = {
+  en: {
+    vipDetected: "VIP detected",
+    viewOnMap: "View on map",
+    expandSidebar: "Expand sidebar",
+    collapseSidebar: "Collapse sidebar",
+  },
+  ko: {
+    vipDetected: "VIP 검출",
+    viewOnMap: "지도에서 보기",
+    expandSidebar: "사이드바 펼치기",
+    collapseSidebar: "사이드바 접기",
+  },
+} as const;
 import { runStateOf } from "@/lib/realtime/cameraStatus";
 
 export type NavTab = "DASHBOARD" | "BEST FRAME" | "DATA" | "REDMAP";
@@ -73,6 +95,7 @@ function regularCamerasForPerson(personId: string, pool: Camera[]): Camera[] {
 
 function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void }) {
   const { showToast } = useToast();
+  const [lang] = useLanguage();
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const scheduleNext = () => {
@@ -129,12 +152,12 @@ function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void
           });
           showToast({
             variant: "warning",
-            title: "VIP Detected",
+            title: T[lang].vipDetected,
             // Match confidence in the alert itself: it decides whether this is worth acting on
             // right now, and it was already computed above for the event record while the toast —
             // the thing the operator actually sees first — left it out.
             desc: `${person.name} · ${camera.name} · ${confidence}%`,
-            actionLabel: "View on Map",
+            actionLabel: T[lang].viewOnMap,
             onAction: () => onNavigate(liveEvent),
           });
         }
@@ -143,7 +166,9 @@ function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void
     };
     scheduleNext();
     return () => clearTimeout(timer);
-  }, [onNavigate, showToast]);
+    // `lang` is a dependency because the toast is written in it. Re-arming the timer on a language
+    // change costs one skipped interval and keeps the next alert in the language on screen.
+  }, [onNavigate, showToast, lang]);
   return null;
 }
 
@@ -319,7 +344,7 @@ export default function ClientLayout() {
                 onClick={() => setSidebarCollapsed(c => !c)}
                 role="button"
                 tabIndex={0}
-                aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                aria-label={sidebarCollapsed ? T[lang].expandSidebar : T[lang].collapseSidebar}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSidebarCollapsed(c => !c); } }}
                 style={{
                   position: "absolute", top: "50%",
