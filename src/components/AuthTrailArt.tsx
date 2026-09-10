@@ -65,12 +65,12 @@ const CAMERAS: { x: number; y: number }[] = [
 const GLYPH_C = 9.7;
 const GLYPH_CY = 10.4;
 
-function CameraGlyph({ x, y, size }: { x: number; y: number; size: number }) {
+function CameraGlyph({ x, y, size, color = "var(--primary-400)" }: { x: number; y: number; size: number; color?: string }) {
   const k = size / 20;
   return (
     <g
       transform={`translate(${x - GLYPH_C * k} ${y - GLYPH_CY * k}) scale(${k})`}
-      stroke="var(--primary-400)"
+      stroke={color}
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -129,15 +129,27 @@ export default function AuthTrailArt({ className }: { className?: string }) {
         const last = i === CAMERAS.length - 1;
         return (
           <g key={i}>
-            <circle cx={c.x} cy={c.y} r={last ? 40 : 33} fill="var(--gray-50)" />
-            <circle cx={c.x} cy={c.y} r={last ? 40 : 33} fill="var(--primary-400)" opacity="0.09" />
-            <CameraGlyph x={c.x} y={c.y} size={last ? 42 : 34} />
-            {/* Numbered, so the trail on the left and the list on the right are one object rather
-                than two drawings that happen to share a colour. */}
+            {/* The last sighting is filled, the rest are washes.
+                The list beside this map gives its 04 a solid ring and a LAST SEEN chip, and the
+                map answered with a camera barely larger than the others — the same row carried
+                two different weights. Filled here, so whichever half the eye lands on first, the
+                most recent sighting is the one it finds. That is also the one an operator is
+                looking for: where are they now. */}
+            <circle cx={c.x} cy={c.y} r={last ? 44 : 33} fill="var(--gray-50)" />
+            <circle cx={c.x} cy={c.y} r={last ? 44 : 33} fill="var(--primary-400)" opacity={last ? 0.14 : 0.09} />
+            {last && <circle cx={c.x} cy={c.y} r="44" stroke="var(--primary-400)" strokeWidth="1.5" opacity="0.4" />}
+            {last && <circle cx={c.x} cy={c.y} r="27" fill="var(--primary-400)" />}
+            <CameraGlyph
+              x={c.x} y={c.y}
+              size={last ? 40 : 34}
+              color={last ? "var(--gray-0)" : "var(--primary-400)"}
+            />
+            {/* Numbered, so the trail here and the list there are one object rather than two
+                drawings that happen to share a colour. */}
             <text
-              x={c.x + (last ? 30 : 25)} y={c.y - (last ? 24 : 20)}
-              fontFamily="'SUIT', system-ui, sans-serif" fontSize={last ? 19 : 16} fontWeight={700}
-              fill="var(--primary-400)" opacity={last ? 1 : 0.55}
+              x={c.x + (last ? 34 : 25)} y={c.y - (last ? 28 : 20)}
+              fontFamily="'SUIT', system-ui, sans-serif" fontSize={last ? 20 : 16} fontWeight={800}
+              fill="var(--primary-400)" opacity={last ? 1 : 0.5}
             >
               {String(i + 1).padStart(2, "0")}
             </text>
