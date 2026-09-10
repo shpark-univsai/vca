@@ -1434,6 +1434,15 @@ export default function Sidebar({ onEventSelect, selectedEventId, locationFilter
   const t = T[lang];
   const [activeTab, setActiveTab] = usePersistedSidebarTab();
   const [personFilter, setPersonFilter] = useState<string | null>(null);
+  // A person filter names one person at one site. Left standing through a site switch it filtered
+  // this site's list by a name that is not in it, so the list read as empty with a purple chip on
+  // top explaining why in terms of somebody who was never here.
+  const sidebarProjectId = useActiveProjectId();
+  const firstSidebarSiteRef = useRef(true);
+  useEffect(() => {
+    if (firstSidebarSiteRef.current) { firstSidebarSiteRef.current = false; return; }
+    setPersonFilter(null);
+  }, [sidebarProjectId]);
 
   if (isCollapsed) return (
     <CollapsedSidebar

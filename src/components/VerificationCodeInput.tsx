@@ -46,20 +46,24 @@ export default function VerificationCodeInput({
   }, [focusSignal]);
 
   /** Handles a pasted or autofilled run of digits by spilling it across the boxes from here
-   *  rightwards, which is how people actually move a code between two windows. */
-  const setDigitAt = (index: number, raw: string) => {
+   *  rightwards, which is how people actually move a code between two windows.
+   *
+   *  Returns whether anything was accepted, so the caller can put a rejected character back —
+   *  see the onChange handler below. */
+  const setDigitAt = (index: number, raw: string): boolean => {
     const typed = charset === "alnum"
       // Drops the characters a printed code should never contain anyway, so a misread O or I does
       // not silently enter a character that can never match.
       ? raw.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, "")
       : raw.replace(/\D/g, "");
-    if (!typed) return;
+    if (!typed) return false;
     const next = [...value];
     for (let i = 0; i < typed.length && index + i < length; i++) {
       next[index + i] = typed[i];
     }
     onChange(next);
     boxes.current[Math.min(index + typed.length, length - 1)]?.focus();
+    return true;
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -74,6 +78,16 @@ export default function VerificationCodeInput({
         next[index - 1] = "";
         boxes.current[index - 1]?.focus();
       }
+      onChange(next);
+      return;
+    }
+    // Delete was not handled at all, and onFocus selects the box's contents — so clicking a
+    // filled box and pressing Delete emptied it on screen while the value behind it kept the
+    // digit. The code then read as complete with a blank box in it.
+    if (e.key === "Delete") {
+      e.preventDefault();
+      const next = [...value];
+      next[index] = "";
       onChange(next);
       return;
     }
@@ -98,7 +112,13 @@ export default function VerificationCodeInput({
         <input
           ref={el => { boxes.current[i] = el; }}
           value={digit}
-          onChange={e => setDigitAt(i, e.target.value)}
+          onChange={e => {
+            // A controlled input whose state does not change is not re-rendered, so a rejected
+            // character stayed visible in the box while `value` said that box was empty: typing
+            // "ㄱ" through a Korean IME, or a letter into a digits-only code, filled the row on
+            // screen while Continue stayed disabled with no way to see why. Put the box back.
+            if (!setDigitAt(i, e.target.value)) e.currentTarget.value = digit;
+          }}
           onKeyDown={e => handleKeyDown(i, e)}
           onFocus={e => e.currentTarget.select()}
           inputMode={charset === "digits" ? "numeric" : "text"}

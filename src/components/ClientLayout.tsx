@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
@@ -18,7 +18,7 @@ import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
 import {
   useVcaStore, canEnterApp, canEnterPortal, currentPortalUser,
-  camerasInProject, getActiveProjectId, watchedPersonsInProject,
+  camerasInProject, getActiveProjectId, useActiveProjectId, watchedPersonsInProject,
   type Camera,
 } from "@/lib/vcaStore";
 import { useLanguage } from "@/lib/i18n";
@@ -184,6 +184,21 @@ export default function ClientLayout() {
   // a district groups several sites by geographic proximity, not by a shared name substring.
   const [districtFilter, setDistrictFilter] = useState<string | null>(null);
   const [pinnedDevice, setPinnedDevice] = useState<Device | null>(null);
+  // Everything above points at one site's data — a selected detection, a camera-name filter, a
+  // district, a pinned device. The header can switch site under all of them, and none of them was
+  // cleared: the map kept another site's face pin and its name/confidence popup, the filters kept
+  // narrowing a list they no longer matched, and the pinned marker could not be removed at all,
+  // because the only way to unpin is to click the same row again and that row is not in this
+  // site's device list.
+  const layoutProjectId = useActiveProjectId();
+  const firstLayoutSiteRef = useRef(true);
+  useEffect(() => {
+    if (firstLayoutSiteRef.current) { firstLayoutSiteRef.current = false; return; }
+    setSelectedEvent(null);
+    setLocationFilter(null);
+    setDistrictFilter(null);
+    setPinnedDevice(null);
+  }, [layoutProjectId]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   // Default "left" on the server-rendered pass so hydration never mismatches; a client-only
   // effect then applies whatever the user last chose on this browser.

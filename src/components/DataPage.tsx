@@ -1320,13 +1320,31 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
     backpackFilter === "Exists" ? "Backpack/Bag" : null,
   ].filter((v): v is string => !!v);
 
+  // All three ways a person becomes the subject of these results. A card's own Search button is
+  // the one the results panel could not see for itself — see SearchFilterState.activeTarget.
+  const activeTarget = activeVIP >= 0
+    ? { face: VIP_QUICK[activeVIP].face, label: VIP_QUICK[activeVIP].name }
+    : selectedTarget >= 0
+      ? { face: RECENT_TARGETS_EN[selectedTarget].face, label: RECENT_TARGETS_EN[selectedTarget].label }
+      : cardSearchTarget
+        // A crop from the wall has no name, only its object id — the same designation the rest of
+        // this screen calls it by. Nothing here invents one.
+        ? { face: cardSearchTarget.url, label: `TS${String(cardSearchTarget.id).padStart(6, "0")}` }
+        : null;
+  const clearActiveTarget = () => {
+    if (activeVIP >= 0) selectVIP(activeVIP);
+    else if (selectedTarget >= 0) selectRecentTarget(selectedTarget);
+    else setCardSearchTarget(null);
+  };
   const searchState: SearchFilterState = {
     searchType, setSearchType, selectedTarget, selectRecentTarget, activeVIP, selectVIP,
     threshold, setThreshold, gender, setGender,
     apparel: derivedApparel, toggleApparel: () => {}, props: derivedProps, toggleProps: () => {},
     topColors, toggleTopColor, bottomColors, toggleBottomColor, shoesColors, toggleShoesColor,
     dateRange: searchDateRange, setDateRange: setSearchDateRange, licensePlate, setLicensePlate,
-    camera: searchCamera, setCamera: setSearchCamera, reset: searchReset,
+    camera: searchCamera, setCamera: setSearchCamera,
+    activeTarget, clearActiveTarget,
+    reset: searchReset,
   };
   const searchTarget = activeVIP >= 0 ? VIP_QUICK[activeVIP]
     : selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget]
@@ -1979,7 +1997,7 @@ function SmartSearchResults({ state, results, onCardClick, onRefine, onReset, to
     topColors: string[]; bottomColors: string[]; shoesColors: string[]; emotion: string; ethnicGroup: string }) {
   const [lang] = useLanguage();
   const t = T[lang];
-  const { searchType, selectedTarget, selectRecentTarget, activeVIP, selectVIP, threshold, gender, apparel, props, dateRange, licensePlate, camera } = state;
+  const { searchType, threshold, gender, apparel, props, dateRange, licensePlate, camera, activeTarget, clearActiveTarget } = state;
   // Captured once when results first land, not read live on every render — otherwise "as of"
   // would silently keep advancing on any unrelated re-render, making the Refresh button's job
   // (bump this to "now") indistinguishable from doing nothing.
@@ -1988,8 +2006,8 @@ function SmartSearchResults({ state, results, onCardClick, onRefine, onReset, to
   // results — otherwise there's no way to tell "who am I even looking for" without going back to
   // the form. Reuse the same toggle-off logic the picker rows use, so clearing it here is
   // identical to clicking it again in the form.
-  const target = selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget] : activeVIP >= 0 ? VIP_QUICK[activeVIP] : null;
-  const clearTarget = () => { if (selectedTarget >= 0) selectRecentTarget(selectedTarget); else if (activeVIP >= 0) selectVIP(activeVIP); };
+  const target = activeTarget;
+  const clearTarget = clearActiveTarget;
   // What each card in the grid actually satisfied to be included — filterReidData() already hard-
   // filters on these, so every result matches all of them; surfacing that here turns the bare
   // similarity % into "matched because of X, Y, Z" instead of an unexplained number. None of this
@@ -2028,7 +2046,7 @@ function SmartSearchResults({ state, results, onCardClick, onRefine, onReset, to
         <div className="vca-hide-scrollbar" style={{ display:"flex", alignItems:"center", gap:"8px", overflowX:"auto" }}>
           {target && (
             <FilterChip avatar={target.face} onRemove={clearTarget}>
-              {t.similarTo} {"label" in target ? target.label : target.name}
+              {t.similarTo} {target.label}
             </FilterChip>
           )}
           {activeChips.map((c, i) => <FilterChip key={i}>{c}</FilterChip>)}
@@ -2093,6 +2111,17 @@ interface SearchFilterState {
   dateRange: DateRangeValue; setDateRange:(v:DateRangeValue)=>void;
   licensePlate: string; setLicensePlate:(v:string)=>void;
   camera: string; setCamera:(v:string)=>void;
+  /**
+   * The person the results are actually about, however they were picked.
+   *
+   * Resolved by the owner, because only the owner knows about the third way in: a camera card's
+   * own Search button (cardSearchTarget). The results panel used to re-derive this from
+   * selectedTarget/activeVIP alone, so on that third path it saw no target and drew the whole
+   * attribute filter bar — date, colours, emotion — as the reasons those results matched, while
+   * the rows came from buildTargetResultRows, which reads none of them.
+   */
+  activeTarget: { face: string; label: string } | null;
+  clearActiveTarget: () => void;
   reset: () => void;
 }
 
@@ -2944,7 +2973,16 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
     threshold, setThreshold, gender, setGender,
     apparel: derivedApparel, toggleApparel: () => {}, props: derivedProps, toggleProps: () => {},
     topColors, toggleTopColor, bottomColors, toggleBottomColor, shoesColors, toggleShoesColor,
-    dateRange, setDateRange, licensePlate, setLicensePlate, camera, setCamera: onCameraChange, reset,
+    dateRange, setDateRange, licensePlate, setLicensePlate, camera, setCamera: onCameraChange,
+    // This tab has only the two pickers; a seeded card becomes the RedFace primary target rather
+    // than this panel's subject.
+    activeTarget: activeVIP >= 0
+      ? { face: VIP_QUICK[activeVIP].face, label: VIP_QUICK[activeVIP].name }
+      : selectedTarget >= 0
+        ? { face: RECENT_TARGETS_EN[selectedTarget].face, label: RECENT_TARGETS_EN[selectedTarget].label }
+        : null,
+    clearActiveTarget: () => { if (activeVIP >= 0) selectVIP(activeVIP); else if (selectedTarget >= 0) selectRecentTarget(selectedTarget); },
+    reset,
   };
 
   // Before a search runs, show the two illustrative example clusters (unchanged from before).
