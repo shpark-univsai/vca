@@ -98,6 +98,12 @@ interface VipDict {
   expiringInDays: (n: number) => string;
   noExpiry: string;
   releaseAction: string;
+  reinstateAction: string;
+  reinstateTitle: (name: string) => string;
+  reinstateBody: string;
+  reinstateReasonPlaceholder: string;
+  reinstateConfirm: string;
+  reinstatedToast: string;
   releaseTitle: (name: string) => string;
   releaseBody: string;
   releaseReasonLabel: string;
@@ -246,6 +252,12 @@ const T: Record<"en" | "ko", VipDict> = {
     expiringInDays: (n: number) => `${n}d left`,
     noExpiry: "No end date",
     releaseAction: "Release from watchlist",
+    reinstateAction: "Put back on the watchlist",
+    reinstateTitle: (name: string) => `Put ${name} back on the watchlist?`,
+    reinstateBody: "Cameras start matching them again. The release and this reversal both stay in the activity log.",
+    reinstateReasonPlaceholder: "Released in error · Listing renewed",
+    reinstateConfirm: "Reinstate",
+    reinstatedToast: "Back on the watchlist",
     releaseTitle: (name: string) => `Release ${name}?`,
     releaseBody: "They come off the watchlist and cameras stop matching them. The row stays, marked as released, so the history survives.",
     releaseReasonLabel: "Reason",
@@ -393,6 +405,12 @@ const T: Record<"en" | "ko", VipDict> = {
     expiringInDays: (n: number) => `${n}일 남음`,
     noExpiry: "무기한",
     releaseAction: "명단에서 해제",
+    reinstateAction: "명단에 다시 올리기",
+    reinstateTitle: (name: string) => `${name}을(를) 명단에 다시 올릴까요?`,
+    reinstateBody: "카메라가 다시 이 사람을 매칭합니다. 해제와 이번 복구 둘 다 변경 기록에 남습니다.",
+    reinstateReasonPlaceholder: "잘못 해제함 · 등록 연장",
+    reinstateConfirm: "다시 올리기",
+    reinstatedToast: "명단에 다시 올렸습니다",
     releaseTitle: (name: string) => `${name}을(를) 해제할까요?`,
     releaseBody: "명단에서 내려가고 카메라가 더 이상 대조하지 않습니다. 행은 해제 표시와 함께 남아 이력이 보존됩니다.",
     releaseReasonLabel: "사유",
@@ -1074,6 +1092,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const projects = useVcaStore(s => s.projects);
   const watchlistCategories = useVcaStore(s => s.watchlistCategories);
   const releasePerson = useVcaStore(s => s.releasePerson);
+  const reinstatePerson = useVcaStore(s => s.reinstatePerson);
   // Categories belong to the institution, so they are read through the project's team rather than
   // through the project — see WatchlistCategory in the store.
   const teamId = projects.find(pr => pr.id === projectId)?.teamId;
@@ -1159,6 +1178,8 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [managingCategories, setManagingCategories] = useState(false);
   const [releasing, setReleasing] = useState<Person | null>(null);
+  const [reinstating, setReinstating] = useState<Person | null>(null);
+  const [reinstateReason, setReinstateReason] = useState("");
   /**
    * The clock, read after mount like everywhere else in Portal.
    *
@@ -1798,7 +1819,12 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                     { label: t.editPerson, onClick: () => setEditingPerson(person), disabled: !mayEdit, reason: readOnlyReason },
                     // Release before delete, and delete stays the destructive one. Taking somebody
                     // off the list is the ordinary end of a listing; erasing the record of it is not.
-                    ...(person.releasedAt ? [] : [{ label: t.releaseAction, onClick: () => setReleasing(person), disabled: !mayEdit, reason: readOnlyReason }]),
+                    // Released rows got no action at all here, which made release one-way: the
+                    // only undo was delete-and-re-register, destroying the registration history
+                    // the release was kept to preserve.
+                    person.releasedAt
+                      ? { label: t.reinstateAction, onClick: () => setReinstating(person), disabled: !mayEdit, reason: readOnlyReason }
+                      : { label: t.releaseAction, onClick: () => setReleasing(person), disabled: !mayEdit, reason: readOnlyReason },
                     { label: t.removeAction, onClick: () => setConfirmingRemove(person), danger: true, disabled: !mayEdit, reason: readOnlyReason },
                   ]} />
                 </div>
@@ -1873,7 +1899,14 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                         hard a detection is chased, so it reads before the party a person happens to
                         be travelling with — and being first means it keeps its full width while the
                         group name behind it is the one that gives way. */}
-                    <PriorityTag priority={person.priorityLabel ?? "normal"} text={t.priorityText[person.priorityLabel ?? "normal"]} />
+                    {/* Released reads first and replaces the priority, because it overrides it:
+                        a "Very High" pill on somebody nobody is watching any more is the card
+                        stating the loudest thing about them and the wrong one. Released rows
+                        were marked only in the table's expiry column, so in the grid — the view
+                        this screen opens on — they were indistinguishable from active ones. */}
+                    {person.releasedAt
+                      ? <Tag label={t.statusReleased} bg="var(--gray-100)" color="var(--gray-500)" />
+                      : <PriorityTag priority={person.priorityLabel ?? "normal"} text={t.priorityText[person.priorityLabel ?? "normal"]} />}
                     {person.groupId && groupById.has(person.groupId) && (
                       <Tag label={groupById.get(person.groupId)!.name} bg="var(--info-100)" color="var(--info-500)" flexible />
                     )}
@@ -1938,6 +1971,28 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           <div style={{ marginTop: "14px" }}>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.releaseReasonLabel}</label>
             <TextField value={releaseReason} onChange={setReleaseReason} placeholder={t.releaseReasonPlaceholder} autoFocus />
+          </div>
+        </ConfirmModal>
+      )}
+      {reinstating && (
+        <ConfirmModal
+          title={t.reinstateTitle(reinstating.name)}
+          body={t.reinstateBody}
+          confirmLabel={t.reinstateConfirm}
+          cancelLabel={t.cancel}
+          onConfirm={() => {
+            reinstatePerson(reinstating.id, reinstateReason.trim() || t.reinstateReasonPlaceholder);
+            showToast({ variant: "success", title: t.reinstatedToast, desc: reinstating.name });
+            setReinstating(null);
+            setReinstateReason("");
+          }}
+          onClose={() => { setReinstating(null); setReinstateReason(""); }}
+        >
+          {/* A reason, the same as releasing asks for. Putting somebody back under watch is not
+              a lighter act than taking them off it. */}
+          <div style={{ marginTop: "14px" }}>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.releaseReasonLabel}</label>
+            <TextField value={reinstateReason} onChange={setReinstateReason} placeholder={t.reinstateReasonPlaceholder} autoFocus />
           </div>
         </ConfirmModal>
       )}

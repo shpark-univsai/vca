@@ -617,6 +617,19 @@ interface VcaStoreState {
    * this person off and why" is exactly what gets asked afterwards.
    */
   releasePerson: (personId: string, reason: string) => void;
+  /**
+   * Put a released person back on the watchlist.
+   *
+   * Release was one-way: the row menu dropped the action once releasedAt was set, saveEdit never
+   * cleared it, and no reinstate existed anywhere — so the only undo was delete-and-re-register,
+   * which destroys the registration history the release was kept to preserve. The product
+   * anticipated a wrongly LISTED person (the release-reason placeholder literally offers "Listed
+   * in error") and not a wrongly RELEASED one, which is the same mistake in the other direction.
+   *
+   * Both dates survive in the audit log, which is where "was this person off the list on the 3rd"
+   * is answered. The row itself carries only the current state.
+   */
+  reinstatePerson: (personId: string, reason: string) => void;
   addEvent: (event: Omit<VcaEvent, "id">) => void;
   markNotificationsRead: () => void;
   addPortalUser: (user: Omit<PortalUser, "id">) => string;
@@ -2389,6 +2402,26 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         auditLog: [{
           id: `audit-${++auditSeq}`, projectId: person.projectId,
           message: `VIP ${person.name} released — ${reason}`,
+          actor: SIGNED_IN_USER.name, at,
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  reinstatePerson: (personId, reason) =>
+    set(state => {
+      const person = state.persons.find(p => p.id === personId);
+      if (!person || !person.releasedAt) return {};
+      const at = new Date().toISOString();
+      // The old release date goes into the message before it is cleared off the row. The row
+      // holds the current state; the log holds the history, and "when did this person go back
+      // on the list, and how long had they been off it" is only answerable if both are written.
+      const wasReleasedOn = person.releasedAt.slice(0, 10);
+      return {
+        persons: state.persons.map(p => (
+          p.id === personId ? { ...p, releasedAt: undefined, releaseReason: undefined } : p
+        )),
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId: person.projectId,
+          message: `VIP ${person.name} reinstated (released ${wasReleasedOn}) — ${reason}`,
           actor: SIGNED_IN_USER.name, at,
         }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
