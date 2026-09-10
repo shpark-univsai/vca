@@ -6,7 +6,7 @@ import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type Se
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
-import { SummaryStrip, CARD_BORDER, TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch } from "./PortalShared";
+import { SummaryStrip, CARD_BORDER, TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch, usePortalEditAccess } from "./PortalShared";
 
 const SERVER_TYPES: ServerType[] = ["AI Camera", "Normal Camera", "Face Recognition", "Image Store", "Database"];
 
@@ -383,6 +383,7 @@ const MAIL_T = {
 } as const;
 
 function MailSettings({ projectId }: { projectId: string }) {
+  const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
   const projects = useVcaStore(s => s.projects);
   const teams = useVcaStore(s => s.teams);
   const updateProjectMail = useVcaStore(s => s.updateProjectMail);
@@ -410,7 +411,8 @@ function MailSettings({ projectId }: { projectId: string }) {
   // reject or spam-file it — worth catching here rather than discovering it when invites stop
   // arriving.
   const fromMatchesDomain = !domain || !fromAddress || fromAddress.trim().toLowerCase().endsWith(`@${domain.trim().toLowerCase()}`);
-  const canSave = !override || (domain.trim() !== "" && host.trim() !== "" && portValid && fromAddress.trim() !== "" && fromMatchesDomain);
+  const canSave = mayEdit
+    && (!override || (domain.trim() !== "" && host.trim() !== "" && portValid && fromAddress.trim() !== "" && fromMatchesDomain));
 
   const save = () => {
     if (!canSave) return;
@@ -456,8 +458,8 @@ function MailSettings({ projectId }: { projectId: string }) {
               </p>
             </div>
           </div>
-          <button className="portal-btn-primary" onClick={() => setOverride(true)}
-            style={{ padding: "8px 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>
+          <button className="portal-btn-primary" onClick={() => setOverride(true)} disabled={!mayEdit} title={readOnlyReason}
+            style={{ padding: "8px 14px", borderRadius: "8px", border: "none", backgroundColor: mayEdit ? "var(--gray-900)" : "var(--gray-200)", color: mayEdit ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed", flexShrink: 0, whiteSpace: "nowrap" }}>
             {t.setUpSmtp}
           </button>
         </div>
@@ -537,7 +539,7 @@ function MailSettings({ projectId }: { projectId: string }) {
             real change (revert to default) that still needs to be committed. */}
         {(override || overridden) && (
           <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
-            <button onClick={save} disabled={!canSave}
+            <button onClick={save} disabled={!canSave} title={mayEdit ? undefined : readOnlyReason}
               style={{
                 padding: "10px 16px", borderRadius: "8px", border: "none",
                 backgroundColor: canSave ? "var(--gray-900)" : "var(--gray-200)",
@@ -648,6 +650,9 @@ const MAIN_T = {
 type ServerSortKey = "status" | "name" | "ip" | "type";
 
 export default function ProjectServerTab({ projectId }: { projectId: string }) {
+  // Servers and mail are infrastructure. An auditor reads what is deployed and where mail comes
+  // from; changing either is not what the role is for.
+  const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
   const servers = useVcaStore(s => s.servers);
   const cameras = useVcaStore(s => s.cameras);
   const addServer = useVcaStore(s => s.addServer);
@@ -840,8 +845,8 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               <RotateCcw size={14} strokeWidth={2.4} />
               {t.reset}
             </button>
-            <button className="portal-btn-primary" onClick={() => setShowAdd(true)}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+            <button className="portal-btn-primary" onClick={() => setShowAdd(true)} disabled={!mayEdit} title={readOnlyReason}
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-200)", color: mayEdit ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed", flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
               {t.addServer}
             </button>
@@ -888,8 +893,8 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                     <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{server.type}</span>
                     <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{server.specification ?? "—"}</span>
                     <RowActionsMenu actions={[
-                      { label: t.edit, onClick: () => setEditingServer(server) },
-                      { label: t.remove, onClick: () => handleDelete(server), danger: true },
+                      { label: t.edit, onClick: () => setEditingServer(server), disabled: !mayEdit, reason: readOnlyReason },
+                      { label: t.remove, onClick: () => handleDelete(server), danger: true, disabled: !mayEdit, reason: readOnlyReason },
                     ]} />
                   </div>
                 );

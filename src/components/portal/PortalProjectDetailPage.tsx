@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed, zoneHour } from "@/lib/time";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, usePortalEditAccess } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -99,6 +99,7 @@ const T = {
     dropNth: (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th"} time this week`,
     dropNoteFull: (n: number) => `Dropped its stream ${n} times in the last 7 days`,
     viewAllCameras: (n: number) => `View all ${n} cameras`,
+    viewAllVips: "Open the registry",
     recentVipsTitle: "Recently Registered VIPs",
     registerVipLink: "Register VIP",
     noVipsYet: "No VIPs registered yet.",
@@ -186,6 +187,7 @@ const T = {
     dropNth: (n: number) => `이번 주 ${n}번째`,
     dropNoteFull: (n: number) => `지난 7일 동안 ${n}회 끊겼습니다`,
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
+    viewAllVips: "명단 열기",
     recentVipsTitle: "최근 등록된 VIP",
     registerVipLink: "VIP 등록",
     noVipsYet: "등록된 VIP가 아직 없습니다.",
@@ -464,6 +466,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // that greets you by name cannot greet you by nobody.
   const admin = meUser ?? SIGNED_IN_USER;
   const appAccess = !meUser || canEnterApp(meUser);
+  // The Overview writes nothing; what it has are shortcuts into screens that do. Above the
+  // "project not found" guard with every other hook — see the note below it.
+  const { mayEdit } = usePortalEditAccess();
   const [lang] = usePortalLanguage();
   const t = T[lang];
 
@@ -761,14 +766,20 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 on the last one was larger than the words beside it. What makes these recede is
                 losing the box, not shrinking the type. */}
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-              <button className="portal-btn-quiet" onClick={() => onTabChange("cameras")}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                <PlusIcon /> {t.addCamera}
-              </button>
-              <button className="portal-btn-quiet" onClick={() => onTabChange("vip")}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                <UserPlusIcon /> {t.registerVip}
-              </button>
+              {/* Both only navigate — but they name an action, and sending a read-only account
+                  to a tab where that action is greyed out is a longer way of saying no. Hidden
+                  rather than disabled: this is a shortcut row, and a shortcut you cannot take is
+                  not worth the space. */}
+              {mayEdit && (<>
+                <button className="portal-btn-quiet" onClick={() => onTabChange("cameras")}
+                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  <PlusIcon /> {t.addCamera}
+                </button>
+                <button className="portal-btn-quiet" onClick={() => onTabChange("vip")}
+                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  <UserPlusIcon /> {t.registerVip}
+                </button>
+              </>)}
               {/*
                 The visible way out, next to the other things you might do from this screen.
                 The header pill is gone (the door lives in the sidebar's account menu now, matching
@@ -1479,7 +1490,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <SectionHead
                     title={t.recentVipsTitle}
                     subtitle={t.vipsSubtitle}
-                    action={{ icon: <Plus size={15} strokeWidth={2.4} />, label: t.registerVipLink, onClick: () => onTabChange("vip") }}
+                    // "Register a VIP" for whoever can; "Open the registry" for whoever cannot.
+                    action={mayEdit
+                      ? { icon: <Plus size={15} strokeWidth={2.4} />, label: t.registerVipLink, onClick: () => onTabChange("vip") }
+                      : { icon: <ArrowUpRight size={15} strokeWidth={2.4} />, label: t.viewAllVips, onClick: () => onTabChange("vip") }}
                   />
                 </div>
                 {recentVips.length === 0 ? (

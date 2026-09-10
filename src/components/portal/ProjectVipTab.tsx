@@ -7,7 +7,7 @@ import { canSetPolicy, currentPortalUser, registryHealth, useVcaStore, WATCHLIST
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, Tooltip, sortRows, useTableSort } from "./PortalShared";
+import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, Tooltip, sortRows, useTableSort, usePortalEditAccess } from "./PortalShared";
 
 type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires";
 
@@ -944,6 +944,7 @@ function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
   onRemove: () => void;
 }) {
   useEscapeKey(onClose);
+  const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
   const group = groups.find(g => g.id === person.groupId);
 
   /**
@@ -999,8 +1000,8 @@ function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
               on the sheet that cannot be undone is the one thing that should not be a step away
               from a stray click, and red belongs in the confirmation, not in the furniture. */}
           <RowActionsMenu actions={[
-            { label: t.editPerson, onClick: onEdit },
-            { label: t.removeAction, onClick: onRemove, danger: true },
+            { label: t.editPerson, onClick: onEdit, disabled: !mayEdit, reason: readOnlyReason },
+            { label: t.removeAction, onClick: onRemove, danger: true, disabled: !mayEdit, reason: readOnlyReason },
           ]} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: BORDER, paddingTop: "12px" }}>
@@ -1049,6 +1050,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   // and an administrator able to loosen one and not the other would be a rule nobody could state.
   const me = currentPortalUser(useVcaStore.getState().portalUsers);
   const maySetPolicy = me ? canSetPolicy(me.permission) : true;
+  // Registering, editing, releasing and deleting a listed person. Categories keep their own,
+  // narrower gate above — an admin may add a person, not redefine what a listing means.
+  const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
   const removePersonGroup = useVcaStore(s => s.removePersonGroup);
   const setPersonGroup = useVcaStore(s => s.setPersonGroup);
   const addPerson = useVcaStore(s => s.addPerson);
@@ -1533,14 +1537,16 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           {/* Tools follow the tab: registering a face and creating a party are different jobs, and
               a bulk face upload has nothing to do with the list of parties. */}
           {vipTab === "groups" ? (
-            <button className="portal-btn-primary" onClick={() => setGroupModalFor({ group: null })}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            <button className="portal-btn-primary" onClick={() => setGroupModalFor({ group: null })} disabled={!mayEdit} title={readOnlyReason}
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-200)", color: mayEdit ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
               {t.addGroup}
             </button>
           ) : (<>
-          <button className="portal-btn-quiet" onClick={() => fileInputRef.current?.click()}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
+          {/* Export stays open to a read-only account — handing the watchlist to an auditor as a
+              file is most of what the role is for. Import is what goes. */}
+          <button className="portal-btn-quiet" onClick={() => fileInputRef.current?.click()} disabled={!mayEdit} title={readOnlyReason}
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: mayEdit ? "var(--gray-600)" : "var(--gray-300)", fontSize: "12px", fontWeight: 600, cursor: mayEdit ? "pointer" : "not-allowed" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 9.33V1.75M7 1.75 4.08 4.67M7 1.75 9.92 4.67M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
             {t.bulkUpload}
           </button>
@@ -1549,8 +1555,8 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1.75V9.33M7 9.33 4.08 6.42M7 9.33 9.92 6.42M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
             {t.exportCsv}
           </button>
-          <button className="portal-btn-primary" onClick={() => setShowRegister(true)}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-primary" onClick={() => setShowRegister(true)} disabled={!mayEdit} title={readOnlyReason}
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-200)", color: mayEdit ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
             {t.registerVip}
           </button>
@@ -1606,8 +1612,8 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                     {group.description || <span style={{ color: "var(--gray-300)" }}>—</span>}
                   </span>
                   <RowActionsMenu actions={[
-                    { label: t.editGroup, onClick: () => setGroupModalFor({ group }) },
-                    { label: t.removeGroup, onClick: () => setConfirmingGroupRemove(group), danger: true },
+                    { label: t.editGroup, onClick: () => setGroupModalFor({ group }), disabled: !mayEdit, reason: readOnlyReason },
+                    { label: t.removeGroup, onClick: () => setConfirmingGroupRemove(group), danger: true, disabled: !mayEdit, reason: readOnlyReason },
                   ]} />
                 </div>
               );
@@ -1749,11 +1755,11 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                     to edit a VIP from the table at all. */}
                 <div style={{ justifySelf: "end" }}>
                   <RowActionsMenu actions={[
-                    { label: t.editPerson, onClick: () => setEditingPerson(person) },
+                    { label: t.editPerson, onClick: () => setEditingPerson(person), disabled: !mayEdit, reason: readOnlyReason },
                     // Release before delete, and delete stays the destructive one. Taking somebody
                     // off the list is the ordinary end of a listing; erasing the record of it is not.
-                    ...(person.releasedAt ? [] : [{ label: t.releaseAction, onClick: () => setReleasing(person) }]),
-                    { label: t.removeAction, onClick: () => setConfirmingRemove(person), danger: true },
+                    ...(person.releasedAt ? [] : [{ label: t.releaseAction, onClick: () => setReleasing(person), disabled: !mayEdit, reason: readOnlyReason }]),
+                    { label: t.removeAction, onClick: () => setConfirmingRemove(person), danger: true, disabled: !mayEdit, reason: readOnlyReason },
                   ]} />
                 </div>
               </div>

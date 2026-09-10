@@ -5,7 +5,7 @@ import { Building2, Clock, Globe, KeyRound, Languages, LayoutGrid, LogIn, Mail, 
 import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, TYPE_META } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, TYPE_META, usePortalEditAccess } from "./PortalShared";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "@/components/Toast";
@@ -156,6 +156,10 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const setProjectTimeZone = useVcaStore(s => s.setProjectTimeZone);
+  // The project card's one editable pair. Account and display settings below belong to whoever
+  // is signed in and stay open to every role — an auditor still sets their own password and
+  // their own interface language.
+  const { mayEdit } = usePortalEditAccess();
   const project = projects.find(p => p.id === projectId);
   const projectTeam = project ? teams.find(tm => tm.id === project.teamId) : undefined;
   const me = currentPortalUser(portalUsers);
@@ -250,13 +254,20 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 control sits where a value would, rather than being pushed to the far right of a
                 ruled row. A setting is a value you can change, and it should look like the values
                 it sits with. */}
+            {/* A select that opens and then refuses is worse than a value that never looked
+                editable — the same rule the Users table's permission cell follows. */}
             <PairItem label={t.projectTimeZone} icon={<Clock size={12} strokeWidth={2.2} />}>
-              <FilterSelect
-                value={project.timeZone ?? PROJECT_TIME_ZONE}
-                onChange={zone => setProjectTimeZone(project.id, zone)}
-                options={TIME_ZONE_OPTIONS}
-                fitContent
-              />
+              {mayEdit ? (
+                <FilterSelect
+                  value={project.timeZone ?? PROJECT_TIME_ZONE}
+                  onChange={zone => setProjectTimeZone(project.id, zone)}
+                  options={TIME_ZONE_OPTIONS}
+                  fitContent
+                />
+              ) : (
+                TIME_ZONE_OPTIONS.find(o => o.value === (project.timeZone ?? PROJECT_TIME_ZONE))?.label
+                  ?? (project.timeZone ?? PROJECT_TIME_ZONE)
+              )}
             </PairItem>
           </PairGrid>
           <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "14px" }}>{t.timeZoneNote}</p>

@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip, usePortalEditAccess } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import RosterImportModal from "./RosterImportModal";
@@ -1355,6 +1355,12 @@ function stageOfRosterEntry(status: RosterCodeStatus): Stage {
  * Every cell is derived from the same helpers the app enforces with (canManageAccess,
  * canEditPortal, canEnterPortal) rather than typed out. A hand-written permissions table is a
  * document that starts telling the truth and stops the first time one of those functions changes.
+ *
+ * Deriving it was only half the guarantee, and for a while it was the wrong half: canEditPortal
+ * had exactly one call site — the row below — so the table read from a function nothing else
+ * consulted, and every tab let an auditor change whatever it liked. It is now read through
+ * usePortalEditAccess by Input Sources, the VIP registry, servers, mail and the project card in
+ * Settings. A derived table is honest only while the thing it derives from is enforced.
  */
 function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko"]; onClose: () => void }) {
   const roles: PortalPermission[] = ["owner", "admin", "auditor"];
@@ -1573,6 +1579,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   // installation's settings, not who can get in. See PortalPermission in vcaStore.
   const myRole = currentPortalRole(portalUsers);
   const manageAccess = canManageAccess(myRole);
+  // The roster is in the guide's "cameras, VIP, roster, license, server" row, so it takes the
+  // wider gate — an admin maintains it, an auditor reads it. Everything about ACCOUNTS above
+  // stays owner-only under manageAccess.
+  const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
   // The user whose already-issued setup code is being looked up again, or null.
   const [viewingCodeFor, setViewingCodeFor] = useState<PortalUser | null>(null);
   // The user a temporary password is being issued for, or null. Held as the user rather than an id
@@ -1800,20 +1810,26 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         */}
         {peopleTab === "roster" && (
         <button
-          onClick={() => setRosterEditorFor({ entry: null })}
-          style={{ ...SECONDARY_BTN, padding: "10px 16px", backgroundColor: "var(--primary-400)", border: "none", color: "white", fontWeight: 700 }}
+          onClick={() => mayEdit && setRosterEditorFor({ entry: null })}
+          disabled={!mayEdit}
+          title={readOnlyReason}
+          style={{ ...SECONDARY_BTN, padding: "10px 16px", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-100)", border: "none", color: mayEdit ? "white" : "var(--gray-400)", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed" }}
         >
           <ClipboardPlus size={14} strokeWidth={2.4} />
           {t.addToRoster}
         </button>
         )}
         {peopleTab === "roster" && (<>
-        <button className="portal-btn-quiet" onClick={() => setShowRosterImport(true)} style={SECONDARY_BTN}>
+        <button className="portal-btn-quiet" onClick={() => setShowRosterImport(true)} disabled={!mayEdit} title={readOnlyReason}
+          style={{ ...SECONDARY_BTN, color: mayEdit ? "var(--gray-600)" : "var(--gray-300)", cursor: mayEdit ? "pointer" : "not-allowed" }}>
           <Upload size={14} strokeWidth={2.4} />
           {t.importRoster}
         </button>
-        <button className="portal-btn-quiet" onClick={bulkIssueCodes} disabled={notIssuedIds.length === 0}
-          style={{ ...SECONDARY_BTN, color: notIssuedIds.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: notIssuedIds.length === 0 ? "not-allowed" : "pointer" }}>
+        {/* Export and Print stay open below: handing the roster to somebody as a file or a sheet
+            is reading it, not changing it, and it is most of what a read-only account is for. */}
+        <button className="portal-btn-quiet" onClick={bulkIssueCodes} disabled={!mayEdit || notIssuedIds.length === 0}
+          title={readOnlyReason}
+          style={{ ...SECONDARY_BTN, color: (!mayEdit || notIssuedIds.length === 0) ? "var(--gray-300)" : "var(--gray-600)", cursor: (!mayEdit || notIssuedIds.length === 0) ? "not-allowed" : "pointer" }}>
           <KeyRound size={14} strokeWidth={2.4} />
           {t.bulkIssue(notIssuedIds.length)}
         </button>

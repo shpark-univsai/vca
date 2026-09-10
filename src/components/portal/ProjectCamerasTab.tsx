@@ -6,7 +6,7 @@ import { useVcaStore, type Camera, type CameraStatus, type UploadedMedia, type U
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { CARD_BORDER, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount } from "./PortalShared";
+import { CARD_BORDER, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -704,6 +704,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    *  is what the wording and the resulting row's kind follow. */
   const [uploadPurpose, setUploadPurpose] = useState<"media" | "deepfake" | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  // An auditor reads this fleet; they do not add to it, re-point it or delete from it.
+  const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
   const [hoveredAddItem, setHoveredAddItem] = useState<string | null>(null);
   const addMenuRef = useRef<HTMLDivElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
@@ -1225,8 +1227,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               answers — a menu is what keeps the header from growing a second primary button that
               competes with this one. */}
           <div ref={addMenuRef} style={{ position: "relative", flexShrink: 0 }}>
-            <button className="portal-btn-primary" onClick={() => setAddMenuOpen(o => !o)}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            {/* Export stays. A read-only account still needs the fleet list as a file — that is
+                most of what the role is for. Adding is what goes. */}
+            <button className="portal-btn-primary" onClick={() => setAddMenuOpen(o => !o)} disabled={!mayEdit} title={readOnlyReason}
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-200)", color: mayEdit ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
               {t.addSource}
             </button>
@@ -1285,18 +1289,25 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               {t.selectedCount(visibleSelectedIds.length)}
             </span>
             <span style={{ width: "1px", alignSelf: "stretch", backgroundColor: "var(--gray-700)" }} />
-            <FilterSelect
-              fitContent
-              value=""
-              onChange={zone => { if (zone) bulkMoveToZone(zone); }}
-              options={[{ value: "", label: t.bulkMoveToZone }, ...zones.map(z => ({ value: z, label: z }))]}
-            />
-            <button
-              onClick={() => setConfirmingBulkDelete(true)}
-              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
-            >
-              {t.bulkDelete}
-            </button>
+            {/* Selecting rows is still allowed — it is how you count a subset. The two things
+                that change them are what a read-only account loses, and the bar says so rather
+                than showing two dead buttons. */}
+            {mayEdit ? (<>
+              <FilterSelect
+                fitContent
+                value=""
+                onChange={zone => { if (zone) bulkMoveToZone(zone); }}
+                options={[{ value: "", label: t.bulkMoveToZone }, ...zones.map(z => ({ value: z, label: z }))]}
+              />
+              <button
+                onClick={() => setConfirmingBulkDelete(true)}
+                style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
+              >
+                {t.bulkDelete}
+              </button>
+            </>) : (
+              <span style={{ fontSize: "12px", color: "var(--gray-400)", flexShrink: 0 }}>{readOnlyReason}</span>
+            )}
             {/* The way out of the mode, and the reason the bar can be this assertive: nothing here
                 is reachable by accident, and one click puts the page back. */}
             <button
@@ -1462,7 +1473,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     )}
                   </span>
                   <RowActionsMenu actions={[
-                    { label: t.removeUploadAction, onClick: () => { removeUpload(u.id); showToast({ variant: "warning", title: t.toastUploadRemovedTitle, desc: u.fileName }); }, danger: true },
+                    { label: t.removeUploadAction, onClick: () => { removeUpload(u.id); showToast({ variant: "warning", title: t.toastUploadRemovedTitle, desc: u.fileName }); }, danger: true, disabled: !mayEdit, reason: readOnlyReason },
                   ]} />
                 </div>
               );
@@ -1511,7 +1522,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   <p style={{ fontSize: "11px", color: "var(--gray-500)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.ip}</p>
                   <p style={{ fontSize: "11px", color: "var(--gray-600)", fontFamily: "monospace" }}>{cam.resolution ?? "—"}</p>
                 </div>
-                <button onClick={() => setConfirmingStatusCam(cam)} style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                {/* The status pill is also the control that changes it. For a reader who cannot
+                    change it, it goes back to being a pill. */}
+                <button onClick={() => mayEdit && setConfirmingStatusCam(cam)} disabled={!mayEdit} title={readOnlyReason} style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", cursor: mayEdit ? "pointer" : "default", padding: 0 }}>
                   <span style={{ width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0, backgroundColor: cam.status === "online" ? "var(--success-400)" : cam.status === "error" ? "var(--danger-400)" : "var(--gray-400)" }} />
                   {/* Three states, three words. Error is the only one in danger red: offline is a
                       camera that stopped talking, which is common and often expected, while an
@@ -1529,10 +1542,12 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     modal, but a thumbnail is not a control anyone is told about — a named item in
                     the menu is. */}
                 <span {...stopRowClick}>
+                {/* Preview stays open to everybody — looking at a camera is the auditor's job.
+                    Only the two that change something take the gate. */}
                 <RowActionsMenu actions={[
                   { label: t.previewAction, onClick: () => setInspectingCameraId(cam.id) },
-                  { label: t.editAction, onClick: () => setEditingCamera(cam) },
-                  { label: t.removeAction, onClick: () => handleDelete(cam), danger: true },
+                  { label: t.editAction, onClick: () => setEditingCamera(cam), disabled: !mayEdit, reason: readOnlyReason },
+                  { label: t.removeAction, onClick: () => handleDelete(cam), danger: true, disabled: !mayEdit, reason: readOnlyReason },
                 ]} />
                 </span>
               </div>
@@ -1573,9 +1588,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     <span style={{ flex: 1 }} />
                     <span style={{ fontSize: "10px", color: "var(--gray-400)", flexShrink: 0 }}>{cam.zone}</span>
                     <RowActionsMenu actions={[
-                      { label: t.editAction, onClick: () => setEditingCamera(cam) },
-                      { label: t.toggleStatusTitle, onClick: () => setConfirmingStatusCam(cam) },
-                      { label: t.removeAction, onClick: () => handleDelete(cam), danger: true },
+                      { label: t.editAction, onClick: () => setEditingCamera(cam), disabled: !mayEdit, reason: readOnlyReason },
+                      { label: t.toggleStatusTitle, onClick: () => setConfirmingStatusCam(cam), disabled: !mayEdit, reason: readOnlyReason },
+                      { label: t.removeAction, onClick: () => handleDelete(cam), danger: true, disabled: !mayEdit, reason: readOnlyReason },
                     ]} />
                   </div>
                   <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", marginTop: "2px" }}>{cam.name}</p>

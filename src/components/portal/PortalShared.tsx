@@ -2,9 +2,41 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Check } from "lucide-react";
-import { SUPPORT_CONTACT, type ProjectType } from "@/lib/vcaStore";
+import { SUPPORT_CONTACT, canEditPortal, currentPortalUser, useVcaStore, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
+
+/**
+ * Whether the person at this console may change anything on it, and the sentence to show when
+ * they may not.
+ *
+ * The Auditor role was advertised as read-only and enforced nowhere. The Access-and-roles modal
+ * printed "Cameras, VIP, roster, license, server — View only" for Auditor, derived from
+ * canEditPortal so the table could not lie — and canEditPortal had exactly that one call site.
+ * No tab checked it. An auditor could delete cameras, delete enrolled faces and rewrite the
+ * roster, having just read a screen promising they could not. A security officer is given that
+ * account precisely because of the promise.
+ *
+ * Fails OPEN when the stand-in identity matches no account, the same as every other gate in
+ * Portal: there is no session yet, and a lock keyed on "we could not identify you" would shut
+ * the demo out of its own console. See currentPortalUser.
+ *
+ * HANDOFF NOTE: this decides what to show and what to disable, nothing more. Every mutating
+ * endpoint checks the caller's role again — auth-flow doc, section 07.
+ */
+export function usePortalEditAccess(): { mayEdit: boolean; reason: string | undefined } {
+  const portalUsers = useVcaStore(s => s.portalUsers);
+  const [lang] = usePortalLanguage();
+  const me = currentPortalUser(portalUsers);
+  const mayEdit = me ? canEditPortal(me.permission) : true;
+  return { mayEdit, reason: mayEdit ? undefined : READ_ONLY_REASON[lang] };
+}
+
+/** Why a control is disabled, said in the role's own words rather than "no permission". */
+const READ_ONLY_REASON = {
+  en: "Auditor accounts have view-only access to this console.",
+  ko: "감사자 계정은 이 콘솔을 보기만 할 수 있습니다.",
+} as const;
 
 /**
  * Every hairline in Portal — card edges, table rules, row dividers, field borders.
