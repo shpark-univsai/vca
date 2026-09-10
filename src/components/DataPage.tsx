@@ -348,7 +348,16 @@ function attr(value: string, lang: AppLanguage): string {
 }
 
 const BORDER = "1px solid var(--gray-200)";
-export type DataTab = "Live Monitoring" | "Re-ID Analysis" | "Smart Search" | "RedFace";
+/**
+ * The Data screen's sub-tabs.
+ *
+ * "Smart Search" was a fourth one until 2026-09-10. It was merged into Live Monitoring's own
+ * collapsible sidebar long before that, so nothing rendered for it — and the only code that still
+ * named it was a dead deep-link that seeded attribute filters from a card and threw the card's
+ * crop away. A card now goes to Re-ID with the crop as the target, which is what
+ * re-identification is, so the name has nothing left to refer to.
+ */
+export type DataTab = "Live Monitoring" | "Re-ID Analysis" | "RedFace";
 
 // The sub-tab rides the URL the way the top-level tab already does (?tab=DATA), so a reload lands
 // back where the user was rather than on Live Monitoring. Short slugs rather than the tab labels:
@@ -356,7 +365,6 @@ export type DataTab = "Live Monitoring" | "Re-ID Analysis" | "Smart Search" | "R
 const DATA_TAB_SLUGS: Record<DataTab, string> = {
   "Live Monitoring": "live",
   "Re-ID Analysis": "reid",
-  "Smart Search": "search",
   "RedFace": "redface",
 };
 const DATA_TAB_BY_SLUG = Object.fromEntries(
@@ -558,7 +566,7 @@ function HoverActionBtn({ label, icon, color, onClick }:
   );
 }
 
-function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab, onGoRedmap }: { p: (typeof REID_DATA)[number]; onClick: () => void; showCam?: boolean; fill?: boolean; onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number]) => void; onGoRedmap?: () => void }) {
+function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab, onGoRedmap, onGoRedmapFrame }: { p: (typeof REID_DATA)[number]; onClick: () => void; showCam?: boolean; fill?: boolean; onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number]) => void; onGoRedmap?: () => void; onGoRedmapFrame?: (url: string, label: string) => void }) {
   const [lang] = useLanguage();
   const status = REID_STATUS_STYLE[p.status];
   // Shown on hover AND on keyboard focus. The three actions on this card were the only way to
@@ -607,7 +615,16 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
           display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"8px", zIndex:20 }}>
           <HoverActionBtn label="Re-ID" icon={<ReidIconSm />} color="var(--primary-400)" onClick={e => { e.stopPropagation(); onNavigateTab?.("Re-ID Analysis", p); }} />
           <HoverActionBtn label="RedFace" icon={<RedFaceIconSm />} color="var(--warning-500)" onClick={e => { e.stopPropagation(); onNavigateTab?.("RedFace", p); }} />
-          <HoverActionBtn label="Redmap" icon={<RedMapIconSm />} color="var(--success-400)" onClick={e => { e.stopPropagation(); onGoRedmap?.(); }} />
+          {/* Carries this detection's frame across as the search target. It used to call
+              onGoRedmap() with nothing — a card that knows exactly who it is showing, opening an
+              empty form and asking the operator to describe them from memory. There is no name
+              on these records to pass, so the frame is what goes. */}
+          <HoverActionBtn label="Redmap" icon={<RedMapIconSm />} color="var(--success-400)"
+            onClick={e => {
+              e.stopPropagation();
+              if (onGoRedmapFrame) onGoRedmapFrame(p.url, [p.cam, p.time].filter(Boolean).join(" · "));
+              else onGoRedmap?.();
+            }} />
         </div>
       )}
       <div style={{ position:"absolute", left:"-1px", right:"-1px", bottom:"-2px", height:"72px", backgroundColor:"white",
@@ -697,8 +714,8 @@ function ScrollToTopButton({ containerRef }: { containerRef: React.RefObject<HTM
 // ── Camera Detail View (Figma: "Live monitoring detail") — now the ONLY Live Monitoring
 // screen; the camera-select dropdown's "All Cameras" option covers what the old separate
 // landing page (horizontal per-camera carousels) used to show. ───────────
-function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTab, onGoRedmap }:
-  { camId:string; items:(typeof REID_DATA); onSwitchCam:(camId:string)=>void; onCardClick:(id:number)=>void; onNavigateTab?:(tab:DataTab, card:(typeof REID_DATA)[number])=>void; onGoRedmap?:()=>void }) {
+function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTab, onGoRedmap, onGoRedmapFrame }:
+  { camId:string; items:(typeof REID_DATA); onSwitchCam:(camId:string)=>void; onCardClick:(id:number)=>void; onNavigateTab?:(tab:DataTab, card:(typeof REID_DATA)[number])=>void; onGoRedmap?:()=>void; onGoRedmapFrame?: (url: string, label: string) => void; }) {
   const [lang] = useLanguage();
   const t = T[lang];
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -781,7 +798,7 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
         </div>
       ) : (
       <div style={{ display:"flex", flexWrap:"wrap", gap:"12px" }}>
-        {items.map(p => <MonitorCard key={p.id} p={p} onClick={() => onCardClick(p.id)} showCam={isAll} fill onNavigateTab={onNavigateTab} onGoRedmap={onGoRedmap} />)}
+        {items.map(p => <MonitorCard key={p.id} p={p} onClick={() => onCardClick(p.id)} showCam={isAll} fill onNavigateTab={onNavigateTab} onGoRedmap={onGoRedmap} onGoRedmapFrame={onGoRedmapFrame} />)}
       </div>
       )}
     </div>
@@ -1013,7 +1030,6 @@ function LiveSearchSidebar({
   state, tab, onTabChange,
   hatFilter, onHatChange, sleeveFilter, onSleeveChange, bottomsFilter, onBottomsChange, backpackFilter, onBackpackChange,
   emotion, onEmotionChange, ethnicGroup, onEthnicGroupChange,
-  cardFace, cardBody,
   onSearch, onCollapse,
 }: {
   state: SearchFilterState;
@@ -1026,7 +1042,6 @@ function LiveSearchSidebar({
   ethnicGroup: string; onEthnicGroupChange: (v: string) => void;
   // Seeds the Photo tab's preview from a camera card's own photo (via the "Search" hover
   // button) — optional since the other tab that reuses this sidebar has no such card to seed from.
-  cardFace?: string; cardBody?: string;
   onSearch: () => void; onCollapse: () => void;
 }) {
   // Read from the store rather than threaded through props: this is the only place in Data that
@@ -1083,8 +1098,8 @@ function LiveSearchSidebar({
     if (uploadedBody) URL.revokeObjectURL(uploadedBody);
     setUploadedBody(null);
   };
-  const faceSrc = uploadedFace ?? target?.face ?? cardFace;
-  const bodySrc = uploadedBody ?? target?.body ?? cardBody;
+  const faceSrc = uploadedFace ?? target?.face;
+  const bodySrc = uploadedBody ?? target?.body;
   // Picking a Recent target/VIP after uploading a photo should switch the preview to THAT
   // person, not keep showing the stale upload underneath it. Compared during render rather than
   // reset from an effect — compare during render instead. An effect would paint one
@@ -1305,9 +1320,9 @@ function LiveSearchSidebar({
 }
 
 // ── Live Monitoring Tab (wrapper: landing ↔ per-camera detail) ──
-function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap, onGoAnalyzeFrame }: {
+function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap, onGoRedmapFrame, onGoAnalyzeFrame }: {
   openCam: string; onOpenCamChange: (v: string) => void;
-  onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number]) => void; onGoRedmap?: () => void; onGoAnalyzeFrame?: (location: string) => void;
+  onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number]) => void; onGoRedmap?: () => void; onGoRedmapFrame?: (url: string, label: string) => void; onGoAnalyzeFrame?: (location: string) => void;
 }) {
   const [detailId, setDetailId] = useState<number|null>(null);
   const [feed, setFeed]         = useState(seedLiveFeed);
@@ -1340,7 +1355,6 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   // The specific REID_DATA row a camera card's "Search" button was clicked on — its own face/
   // body photos become the search target, same as picking a Recent target or VIP, rather than
   // landing on a blank Photo tab that only filters by camera/gender/date.
-  const [cardSearchTarget, setCardSearchTarget] = useState<(typeof REID_DATA)[number] | null>(null);
   const [threshold, setThreshold]               = useState(70);
   const [gender, setGender]                     = useState("");
   // These four are broken out into their own ALL/one-of-N segmented controls (matching the
@@ -1387,12 +1401,12 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   const searchReset = () => {
     setSearchType("PERSON"); setThreshold(70); setGender(""); clearAttrFilters();
     setTopColors([]); setBottomColors([]); setShoesColors([]);
-    setSelectedTarget(-1); setActiveVIP(-1); setCardSearchTarget(null); setSearchDateRange({ start:null, end:null });
+    setSelectedTarget(-1); setActiveVIP(-1); setSearchDateRange({ start:null, end:null });
     setLicensePlate(""); setSearchCamera(""); setSearched(false); setSearchTab("Photo");
   };
   const selectRecentTarget = (i: number) => {
     if (selectedTarget === i) { setSelectedTarget(-1); setGender(""); clearAttrFilters(); return; }
-    setSelectedTarget(i); setActiveVIP(-1); setCardSearchTarget(null);
+    setSelectedTarget(i); setActiveVIP(-1);
     const t = RECENT_TARGETS_EN[i];
     setGender(t.gender);
     if (t.apparel === "Short Sleeve" || t.apparel === "Long Sleeve") {
@@ -1407,27 +1421,9 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   };
   const selectVIP = (i: number) => {
     if (activeVIP === i) { setActiveVIP(-1); return; }
-    setActiveVIP(i); setSelectedTarget(-1); setCardSearchTarget(null);
+    setActiveVIP(i); setSelectedTarget(-1);
   };
   const handleNavigate = (tab: DataTab, card: (typeof REID_DATA)[number]) => {
-    if (tab === "Smart Search") {
-      // Deep-link from a camera card's "Search" hover button — seed the filters that actually
-      // narrow results (camera/gender/date) and land straight on that person's real results,
-      // matching what the old standalone Smart Search tab did with an incoming seedCard.
-      setSearchExpanded(true); setSearchTab("Photo");
-      setSelectedTarget(-1); setActiveVIP(-1); clearAttrFilters(); setLicensePlate("");
-      setTopColors([]); setBottomColors([]); setShoesColors([]);
-      setSearchCamera(card.cam);
-      setGender(card.gender === "M" ? "Male" : "Female");
-      const day = new Date(card.date);
-      setSearchDateRange({ start: day, end: day });
-      // This card's own face/body become the search target — same as picking a Recent target or
-      // VIP — so results are actually seeded from the detection that was clicked, not just
-      // filtered by its camera/gender/date with no real photo behind the search.
-      setCardSearchTarget(card);
-      setSearched(true);
-      return;
-    }
     onNavigateTab?.(tab, card);
   };
 
@@ -1443,21 +1439,17 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
     backpackFilter === "Exists" ? "Backpack/Bag" : null,
   ].filter((v): v is string => !!v);
 
-  // All three ways a person becomes the subject of these results. A card's own Search button is
-  // the one the results panel could not see for itself — see SearchFilterState.activeTarget.
+  // Who these results are about — see SearchFilterState.activeTarget. This panel has the two
+  // pickers; a crop off the wall goes to Re-ID, which is the screen for "where else has this
+  // person been".
   const activeTarget = activeVIP >= 0
     ? { face: VIP_QUICK[activeVIP].face, label: VIP_QUICK[activeVIP].name }
     : selectedTarget >= 0
       ? { face: RECENT_TARGETS_EN[selectedTarget].face, label: RECENT_TARGETS_EN[selectedTarget].label }
-      : cardSearchTarget
-        // A crop from the wall has no name, only its object id — the same designation the rest of
-        // this screen calls it by. Nothing here invents one.
-        ? { face: cardSearchTarget.url, label: `TS${String(cardSearchTarget.id).padStart(6, "0")}` }
-        : null;
+      : null;
   const clearActiveTarget = () => {
     if (activeVIP >= 0) selectVIP(activeVIP);
     else if (selectedTarget >= 0) selectRecentTarget(selectedTarget);
-    else setCardSearchTarget(null);
   };
   const searchState: SearchFilterState = {
     searchType, setSearchType, selectedTarget, selectRecentTarget, activeVIP, selectVIP,
@@ -1473,7 +1465,6 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
     : selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget]
     // REID_DATA's own gender is "M"/"F"; buildTargetResultRows and the rest of this shape expect
     // "Male"/"Female", the same format VIP_QUICK/RECENT_TARGETS_EN already use.
-    : cardSearchTarget ? { face: cardSearchTarget.face, body: cardSearchTarget.url, gender: cardSearchTarget.gender === "M" ? "Male" : "Female" }
     : null;
   const searchResults = searchType === "PERSON" && searchTarget
     ? buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20, siteCameras)
@@ -1542,7 +1533,6 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
             backpackFilter={backpackFilter} onBackpackChange={setBackpackFilter}
             emotion={emotion} onEmotionChange={setEmotion}
             ethnicGroup={ethnicGroup} onEthnicGroupChange={setEthnicGroup}
-            cardFace={cardSearchTarget?.face} cardBody={cardSearchTarget?.url}
             onSearch={() => setSearched(true)} onCollapse={() => setSearchExpanded(false)}
           />
         }
@@ -1555,7 +1545,7 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
               onRefine={() => setSearched(false)} onReset={searchReset}
               topColors={topColors} bottomColors={bottomColors} shoesColors={shoesColors}
               emotion={emotion} ethnicGroup={ethnicGroup} />
-          : <CameraDetailView camId={openCam} items={camDetailItems} onSwitchCam={onOpenCamChange} onCardClick={setDetailId} onNavigateTab={handleNavigate} onGoRedmap={onGoRedmap} />
+          : <CameraDetailView camId={openCam} items={camDetailItems} onSwitchCam={onOpenCamChange} onCardClick={setDetailId} onNavigateTab={handleNavigate} onGoRedmap={onGoRedmap} onGoRedmapFrame={onGoRedmapFrame} />
         }
       </div>
       {detailItem && <DetailModal item={reidToMatchItem(detailItem)} onClose={() => setDetailId(null)} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
@@ -2975,6 +2965,9 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   const [searchType, setSearchType]     = useState<"PERSON"|"VEHICLE">("PERSON");
   const [selectedTarget, setSelectedTarget] = useState(-1);
   const [activeVIP, setActiveVIP]       = useState(-1);
+  // A crop handed over from a camera card — the third way a person becomes the subject here, and
+  // the one an operator reaches for most: they are looking at the person already.
+  const [cardTarget, setCardTarget] = useState<(typeof REID_DATA)[number] | null>(null);
   const [threshold, setThreshold]       = useState(70);
   const [gender, setGender]             = useState("");
   const [hatFilter, setHatFilter]             = useState<""|"Hat"|"None">("");
@@ -3039,19 +3032,23 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
     setLicensePlate(""); onCameraChange(""); setHasSearched(false); setSearchTab("Photo");
   };
 
-  // Deep-link from a Live Monitoring card's "Re-ID" hover button — seed the filters that
-  // actually narrow filterReidData() (camera/gender/date) so this lands on that person's
-  // real results instead of a blank form the operator has to fill in by hand.
+  // Deep-link from a Live Monitoring card's "Re-ID" hover button: the crop on that card becomes
+  // the TARGET, which is what re-identification means — find this identity on other cameras.
+  //
+  // It used to seed camera, gender and that day's date instead and throw the crop away, so
+  // "this person" turned into "any woman that camera saw that day". That is the weaker query of
+  // the two: putting a description into words loses most of what the photo already carries. It
+  // also produced the filter-bar disconnect twice over — chips claiming to be the reason for
+  // results that a target search never reads.
+  //
+  // The attribute filters are deliberately NOT touched. A target search ignores them, so
+  // pre-filling them would only put words on screen that are not narrowing anything.
   if (seedCard !== prevSeedCard) {
     setPrevSeedCard(seedCard);
     if (seedCard) {
       setExpanded(true); setSearchTab("Photo");
-      setSelectedTarget(-1); setActiveVIP(-1); clearAttrFilters(); setLicensePlate("");
-      setTopColors([]); setBottomColors([]); setShoesColors([]);
-      onCameraChange(seedCard.cam);
-      setGender(seedCard.gender === "M" ? "Male" : "Female");
-      const day = new Date(seedCard.date);
-      setDateRange({ start: day, end: day });
+      setSelectedTarget(-1); setActiveVIP(-1);
+      setCardTarget(seedCard);
       setHasSearched(true);
     }
   }
@@ -3076,7 +3073,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   };
   const selectVIP = (i: number) => {
     if (activeVIP === i) { setActiveVIP(-1); return; }
-    setActiveVIP(i); setSelectedTarget(-1);
+    setActiveVIP(i); setSelectedTarget(-1); setCardTarget(null);
   };
 
   // Resolved down into the same apparel/props shape filterReidData/the results cluster expect —
@@ -3103,8 +3100,16 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
       ? { face: VIP_QUICK[activeVIP].face, label: VIP_QUICK[activeVIP].name }
       : selectedTarget >= 0
         ? { face: RECENT_TARGETS_EN[selectedTarget].face, label: RECENT_TARGETS_EN[selectedTarget].label }
-        : null,
-    clearActiveTarget: () => { if (activeVIP >= 0) selectVIP(activeVIP); else if (selectedTarget >= 0) selectRecentTarget(selectedTarget); },
+        : cardTarget
+          // A crop off the wall has no name, only its object id — the designation the rest of
+          // this screen already calls it by. Nothing here invents one.
+          ? { face: cardTarget.face, label: t.targetNo(String(cardTarget.id).padStart(6, "0")) }
+          : null,
+    clearActiveTarget: () => {
+      if (activeVIP >= 0) selectVIP(activeVIP);
+      else if (selectedTarget >= 0) selectRecentTarget(selectedTarget);
+      else setCardTarget(null);
+    },
     reset,
   };
 
@@ -3112,7 +3117,12 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   // Once Search is clicked, replace them with one real cluster built from the actual filter
   // state and the live-filtered dataset — the target's face if one was picked, else a generic
   // "Search Result" placeholder.
-  const searchTarget = activeVIP >= 0 ? VIP_QUICK[activeVIP] : selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget] : null;
+  // REID_DATA's own gender is "M"/"F"; this shape wants "Male"/"Female", the format VIP_QUICK and
+  // RECENT_TARGETS_EN already use. `url` is the body crop, `face` the face crop.
+  const searchTarget = activeVIP >= 0 ? VIP_QUICK[activeVIP]
+    : selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget]
+    : cardTarget ? { face: cardTarget.face, body: cardTarget.url, gender: cardTarget.gender === "M" ? "Male" : "Female" }
+    : null;
   // A named target (VIP Quick Select / Recent Targets) means "find this specific person
   // elsewhere" — the results should be that one identity re-appearing, not just anyone who shares
   // the filter attributes. Only the attribute-only search (no target picked) falls back to
@@ -3141,7 +3151,13 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
     // search that is the best-scoring row it actually returned.
     subject,
     thumbnail: searchType === "VEHICLE" ? carSvgDataUri(VEHICLE_COLOR_CYCLE[0]) : (searchTarget?.face ?? MATCH_DATA[0].face),
-    title: searchType === "VEHICLE" ? t.vehicleSearchResult : searchTarget && "label" in searchTarget ? searchTarget.label : searchTarget ? searchTarget.name : t.searchResultTitle,
+    // Whichever way the subject was picked, it is named by what we actually know it as: a VIP's
+    // name, a recent target's label, or — for a crop off the wall — its object id.
+    title: searchType === "VEHICLE" ? t.vehicleSearchResult
+      : searchTarget && "label" in searchTarget ? searchTarget.label
+      : searchTarget && "name" in searchTarget ? searchTarget.name
+      : cardTarget ? t.targetNo(String(cardTarget.id).padStart(6, "0"))
+      : t.searchResultTitle,
     // Labels are wording and go through T; the values are what the model reports and what the
     // filter state holds, so they translate only where they are drawn (attr()) — see the note at
     // the top of this file.
@@ -5155,12 +5171,6 @@ export const TAB_ICONS: Record<DataTab, React.ReactNode> = {
       <path d="M7.33333 12H5.33333C4.97971 12 4.64057 11.8595 4.39052 11.6095C4.14048 11.3594 4 11.0203 4 10.6667V6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   ),
-  "Smart Search": (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-      <path d="M13.9998 13.9998L11.1064 11.1064" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M7.33333 12.6667C10.2789 12.6667 12.6667 10.2789 12.6667 7.33333C12.6667 4.38781 10.2789 2 7.33333 2C4.38781 2 2 4.38781 2 7.33333C2 10.2789 4.38781 12.6667 7.33333 12.6667Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ),
   "RedFace": (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
       <path d="M13.5609 4.32275C14.2801 5.40986 14.6649 6.68395 14.6676 7.98743C14.6703 9.2909 14.2908 10.5666 13.5761 11.6566C12.8613 12.7467 11.8427 13.6033 10.6463 14.1206C9.4498 14.6378 8.12795 14.7929 6.84424 14.5668" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
@@ -5188,7 +5198,7 @@ const DATA_TAB_LABEL: Partial<Record<DataTab, keyof typeof T.en>> = {
   "Re-ID Analysis": "tabReid",
   "RedFace": "tabRedface",
 };
-export default function DataPage({ onGoRedmap, onGoAnalyzeFrame }: { onGoRedmap?: () => void; onGoAnalyzeFrame?: (location: string, at?: { date: string; time: string }) => void } = {}) {
+export default function DataPage({ onGoRedmap, onGoRedmapFrame, onGoAnalyzeFrame }: { onGoRedmap?: () => void; onGoRedmapFrame?: (url: string, label: string) => void; onGoAnalyzeFrame?: (location: string, at?: { date: string; time: string }) => void } = {}) {
   const [lang] = useLanguage();
   const t = T[lang];
   // Always lands on Live Monitoring — deliberately not persisted, unlike Best Frame's
@@ -5198,11 +5208,10 @@ export default function DataPage({ onGoRedmap, onGoAnalyzeFrame }: { onGoRedmap?
   const pathname = usePathname();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<DataTab>(() => {
-    // A slug this screen does not render is not a destination. "Smart Search" still exists as a
-    // DataTab — it is the signal that opens Live Monitoring's own search panel — but it has no
-    // tab of its own since that screen was merged, so ?sub=search used to select a tab that
-    // renders nothing: three inactive tab buttons over a blank body, and the URL was left alone
-    // because the mirror effect below saw it as already correct.
+    // A slug this screen does not render is not a destination. Kept as a guard rather than
+    // trusting the slug table to stay in step with DATA_TABS: when they disagreed, ?sub=search
+    // selected a tab that renders nothing — three inactive tab buttons over a blank body, and the
+    // URL was left alone because the mirror effect below saw it as already correct.
     const fromSlug = DATA_TAB_BY_SLUG[searchParams.get("sub") ?? ""];
     return fromSlug && DATA_TABS.includes(fromSlug) ? fromSlug : "Live Monitoring";
   });
@@ -5276,7 +5285,7 @@ export default function DataPage({ onGoRedmap, onGoAnalyzeFrame }: { onGoRedmap?
         })}
       </div>
 
-      {activeTab==="Live Monitoring" && <LiveMonitoringTab openCam={liveCam} onOpenCamChange={setLiveCam} onNavigateTab={handleNavigateFromCard} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
+      {activeTab==="Live Monitoring" && <LiveMonitoringTab openCam={liveCam} onOpenCamChange={setLiveCam} onNavigateTab={handleNavigateFromCard} onGoRedmap={onGoRedmap} onGoRedmapFrame={onGoRedmapFrame} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
       {activeTab==="Re-ID Analysis"   && <ReIDContent camera={reidCam} onCameraChange={setReidCam} seedCard={seedCard} onSeedConsumed={() => setSeedCard(null)} onNavigateTab={handleNavigateFromCard} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
       {activeTab==="RedFace"          && <RedFaceContent seedCard={seedCard} seedLabel={seedLabel} onSeedConsumed={() => { setSeedCard(null); setSeedLabel(null); }} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
     </div>
