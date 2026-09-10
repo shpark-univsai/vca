@@ -16,7 +16,10 @@ import DetectionActivityChart, { DETECTION_CHART_TITLE } from "./DetectionActivi
 import SidebarToggleIcon from "./SidebarToggleIcon";
 import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
-import { useVcaStore, VIP_SIMULATION_CAMERAS, type Camera } from "@/lib/vcaStore";
+import {
+  useVcaStore, VIP_SIMULATION_CAMERAS, canEnterApp, canEnterPortal, currentPortalUser,
+  type Camera,
+} from "@/lib/vcaStore";
 import { useLanguage } from "@/lib/i18n";
 import { runStateOf } from "@/lib/realtime/cameraStatus";
 
@@ -136,6 +139,25 @@ export default function ClientLayout() {
     setActivePageState(tab);
     router.replace(`${pathname}?tab=${tab}`, { scroll: false });
   };
+
+  // The app's door, mirroring PortalShell's. An account without appAccess could type `/` and walk
+  // straight in — Portal had a guard and this side had none, so the two halves of one permission
+  // model were enforced on one half.
+  //
+  // Sends a console-only account to Portal rather than to login: they have somewhere to be, and
+  // bouncing them to a sign-in screen they are already past reads as a fault. The store refuses an
+  // account with neither door (see hasSomeAccess), but this checks anyway — if that invariant ever
+  // broke, redirecting to Portal would bounce back here and the two guards would loop forever.
+  //
+  // HANDOFF NOTE: fail-open on purpose, same as Portal's. `currentPortalUser` answers undefined
+  // for an address in no account list, and then nothing is locked. The real door is the server.
+  const me = useVcaStore(s => currentPortalUser(s.portalUsers));
+  const locked = !!me && !canEnterApp(me);
+  const canGoToPortal = !!me && canEnterPortal(me.permission);
+  useEffect(() => {
+    if (!locked) return;
+    router.replace(canGoToPortal ? "/portal" : "/login");
+  }, [locked, canGoToPortal, router]);
   const [selectedEvent, setSelectedEvent] = useState<LiveEvent | null>(null);
   const [locationFilter, setLocationFilter] = useState<string | null>(null);
   // Clicking a district cluster pill (zoomed-out map view) filters the sidebar to just that

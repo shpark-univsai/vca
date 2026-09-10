@@ -55,7 +55,8 @@ const T = {
     onlyThisDevice: "Only this device",
     activeNow: "Active now",
     systemPreferences: "System preferences",
-    interfaceLanguage: "Interface language",
+    interfaceLanguage: "App interface language",
+    interfaceLanguageNote: "The monitoring app only. Portal keeps its own, set from Settings there.",
     thresholdLevels: "Alert levels",
     thresholdSummary: (alert: number, moderate: number) => `Alert ${alert} · Moderate ${moderate}`,
   },
@@ -97,7 +98,8 @@ const T = {
     onlyThisDevice: "이 기기뿐입니다",
     activeNow: "지금 접속 중",
     systemPreferences: "시스템 환경설정",
-    interfaceLanguage: "화면 언어",
+    interfaceLanguage: "앱 화면 언어",
+    interfaceLanguageNote: "모니터링 앱에만 적용됩니다. 포털은 별도이고, 포털의 설정에서 정합니다.",
     thresholdLevels: "경보 단계",
     thresholdSummary: (alert: number, moderate: number) => `경보 ${alert} · 주의 ${moderate}`,
   },
@@ -720,6 +722,12 @@ export default function MyPage() {
                         interface still recognises. */}
                     <DropdownBtn value={lang} options={LANGUAGE_OPTIONS} onSelect={setLang} />
                   </div>
+                  {/* The two halves keep separate choices, so each says which one it is setting —
+                      a bare "Interface language" in two places reads as one setting that does not
+                      stick. Mirrors Portal's own note. */}
+                  <p style={{ margin: 0, fontSize: "11px", fontWeight: 600, color: "var(--gray-400)", lineHeight: 1.6 }}>
+                    {t.interfaceLanguageNote}
+                  </p>
                 </div>
                 <div style={{ height: "1px", backgroundColor: "var(--gray-200)", width: "100%" }} />
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
