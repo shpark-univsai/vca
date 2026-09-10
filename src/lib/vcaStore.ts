@@ -324,6 +324,48 @@ export interface SearchPurpose {
  * the purpose id, the reference and the note so the server writes them beside the call it is
  * already logging. Kept in the store because there is no request to attach it to yet.
  */
+/**
+ * One recorded look-up: who searched for whom, under what declared purpose.
+ *
+ * WHY IT IS NOT THE AUDIT LOG. auditLog answers "who changed the configuration"; this answers "who
+ * looked at a person". They have different readers, different retention and different volume — a
+ * control room produces these by the hundred and settings changes by the handful, and mixing them
+ * buries the ones somebody is meant to sample.
+ *
+ * THE LABEL IS A SNAPSHOT, not a lookup. A record has to stay readable after the purpose it names
+ * is renamed or retired, and an audit entry that resolves to nothing is worse than no entry — so
+ * the wording used at the time is copied onto the record and never updated. purposeId is kept
+ * beside it for filtering, not for display.
+ *
+ * HANDOFF NOTE: the server already logs that a search call happened; this is the half only the
+ * screen can supply. Two fields it cannot: `ip` — which desk the search came from, the one thing
+ * that separates two operators sharing a control-room account — and the authoritative timestamp.
+ * Both should come from the server on write rather than be trusted from the client.
+ */
+export interface SearchAccessRecord {
+  id: string;
+  projectId: string;
+  /** The institution, so an auditor can read across the sites it runs. */
+  teamId: string;
+  at: string;
+  /** The account that ran it. */
+  actor: string;
+  purposeId: string;
+  /** The purpose's wording at the time — see the note above. */
+  purposeLabel: string;
+  /** Case or document reference, when the purpose required one. */
+  reference?: string;
+  note?: string;
+  /** What was searched for, as the operator entered it. */
+  target: string;
+  /** Where it was run from — Re-ID, RedFace, RedMap. */
+  surface: string;
+  /** How many candidates came back. Zero is a result, not a missing value. */
+  resultCount?: number;
+  /** HANDOFF: set by the server, not the browser. */
+  ip?: string;
+}
+
 export interface SearchPurposeSelection {
   purposeId: string;
   /** Case or document reference, when the purpose requires one. */
@@ -465,6 +507,8 @@ interface VcaStoreState {
   searchPurposes: SearchPurpose[];
   /** Null until the operator declares one this sitting. See SearchPurposeSelection. */
   searchPurpose: SearchPurposeSelection | null;
+  /** Every look-up, newest first. Empty until the app records one — see SearchAccessRecord. */
+  searchAccessLog: SearchAccessRecord[];
   events: VcaEvent[];
   uploads: UploadedMedia[];
   portalUsers: PortalUser[];
@@ -522,6 +566,13 @@ interface VcaStoreState {
   archiveSearchPurpose: (purposeId: string) => void;
   /** Declare the purpose for this sitting, or clear it to be asked again. */
   setSearchPurpose: (selection: SearchPurposeSelection | null) => void;
+  /**
+   * Write one look-up to the access log. Called by the app when a search runs.
+   *
+   * Takes the purpose's label rather than resolving it, so the record keeps the wording that was
+   * on screen at the time — see SearchAccessRecord.
+   */
+  recordSearchAccess: (record: Omit<SearchAccessRecord, "id">) => void;
   addWatchlistCategory: (category: Omit<WatchlistCategory, "id" | "archived">) => string;
   updateWatchlistCategory: (categoryId: string, updates: Partial<Omit<WatchlistCategory, "id" | "teamId">>) => void;
   /**
@@ -1736,6 +1787,7 @@ let personSeq = PERSONS.length;
 let personGroupSeq = PERSON_GROUPS.length;
 let watchlistCategorySeq = 0;
 let searchPurposeSeq = 0;
+let searchAccessSeq = 0;
 
 /**
  * An audit entry for a change to the institution's own policy lists.
@@ -2025,6 +2077,8 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   watchlistCategories: [],
   searchPurposes: [],
   searchPurpose: null,
+  // No seed. These are events, and an installation that has run no searches has none.
+  searchAccessLog: [],
   events: SEED_EVENTS,
   portalUsers: PORTAL_USERS,
   servers: SERVERS,
@@ -2211,6 +2265,13 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       ), ...state.auditLog].slice(0, 200),
     })),
   setSearchPurpose: (selection) => set({ searchPurpose: selection }),
+  recordSearchAccess: (record) =>
+    set(state => ({
+      // Newest first, and no cap here. The audit log is trimmed to 200 because it is a convenience
+      // feed; this one is the record somebody is answerable for, and silently dropping the oldest
+      // entries is how a log stops being evidence. Retention belongs to the server.
+      searchAccessLog: [{ ...record, id: `saccess-${++searchAccessSeq}` }, ...state.searchAccessLog],
+    })),
   addWatchlistCategory: (category) => {
     const id = `wcat-${++watchlistCategorySeq}`;
     set(state => ({

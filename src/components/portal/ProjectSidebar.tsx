@@ -4,7 +4,7 @@ import type { ComponentType } from "react";
 import { Crown } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 
-export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users";
+export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "searchlog";
 
 interface IconProps {
   color: string;
@@ -82,6 +82,17 @@ function ServerIcon({ color }: IconProps) {
   );
 }
 
+/** A magnifier over a ruled page — a look-up that left a line behind. */
+function SearchLogIcon({ color }: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M3 2.6C3 2.32 3.22 2.1 3.5 2.1H10L13 5.1V13.4C13 13.68 12.78 13.9 12.5 13.9H3.5C3.22 13.9 3 13.68 3 13.4V2.6Z" stroke={color} strokeWidth="1.2" strokeLinejoin="round"/>
+      <circle cx="7.4" cy="8.4" r="2.1" stroke={color} strokeWidth="1.2"/>
+      <path d="M8.95 9.95 10.6 11.6" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 function UsersIcon({ color }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -121,7 +132,11 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
   { id: "cameras", group: "workspace", label: { en: "Input Sources", ko: "입력 소스" }, icon: CamerasIcon },
   { id: "server", group: "manage", label: { en: "Server & API", ko: "서버 및 API" }, icon: ServerIcon },
   { id: "users", group: "manage", label: { en: "Users & Permissions", ko: "사용자 및 권한" }, icon: UsersIcon },
-  // Licence last. The three under MANAGE are read from most-touched to least: servers get changed
+  // Between the people and the licence: the search log is read on a review cycle — weekly, or when
+  // somebody asks — which puts it below the two things an administrator opens on their own account
+  // and above the one they open when the bill arrives.
+  { id: "searchlog", group: "manage", label: { en: "Search log", ko: "조회 기록" }, icon: SearchLogIcon },
+  // Licence last. The four under MANAGE are read from most-touched to least: servers get changed
   // when the site changes, people get added and removed all year, and a licence is signed once and
   // looked at when somebody asks about the bill or runs out of channels. It sat in the middle,
   // between two things somebody opens weekly.

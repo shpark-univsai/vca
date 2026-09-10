@@ -16,6 +16,7 @@ import ProjectVipTab from "./ProjectVipTab";
 import ProjectLicenseTab from "./ProjectLicenseTab";
 import ProjectServerTab from "./ProjectServerTab";
 import PortalUsersPage from "./PortalUsersPage";
+import ProjectSearchLogTab from "./ProjectSearchLogTab";
 
 const T = {
   en: {
@@ -1606,6 +1607,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
       {tab === "license" && <ProjectLicenseTab projectId={projectId} />}
       {tab === "server" && <ProjectServerTab projectId={projectId} />}
       {tab === "users" && <PortalUsersPage projectId={projectId} />}
+      {tab === "searchlog" && <ProjectSearchLogTab projectId={projectId} />}
     </div>
   );
 }
