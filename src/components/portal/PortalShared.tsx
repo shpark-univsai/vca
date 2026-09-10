@@ -570,16 +570,30 @@ export interface SummaryCell {
    * "suspended", "on the roster" — where the word is the whole question and the tooltip is the
    * answer. A tooltip nobody knows is there is a tooltip nobody reads.
    */
-  explain?: boolean;
+  /**
+   * A sentence explaining what the label means, shown on hover with the dotted underline that
+   * advertises it.
+   *
+   * For cells whose label names a state rather than a thing — "invited", "suspended", "on the
+   * roster" — where the word is the whole question and this is the answer.
+   *
+   * Our own Tooltip, not the browser's `title`: that one waits about a second with the pointer
+   * held still, so an underline promising an explanation delivered nothing to anybody moving at
+   * normal speed. It was `explain: true` plus a `title`, which is exactly that mistake.
+   */
+  explanation?: string;
 }
 
 export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
   if (cells.length === 0) return null;
   return (
+    /* No overflow:hidden. It kept the cells' active tint inside the rounded corners, and clipped
+       the one thing that has to escape — the explanation tooltip, which hangs below its label. The
+       corners are handled by rounding the end cells instead. */
     <div style={{
       display: "flex", alignItems: "stretch", flexWrap: "wrap",
       backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px",
-      marginBottom: "12px", overflow: "hidden",
+      marginBottom: "12px",
     }}>
       {cells.map((cell, i) => {
         // A defect is amber. Anything else is the plain text colour: these cells state a fact
@@ -604,10 +618,18 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
                   </span>
                 )}
               </span>
-              <span style={{
-                fontSize: "11px", lineHeight: "14px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap",
-                ...(cell.explain ? { borderBottom: "1px dotted var(--gray-400)", cursor: "help" } : null),
-              }}>{cell.label}</span>
+              {cell.explanation ? (
+                <Tooltip text={cell.explanation}>
+                  <span style={{
+                    fontSize: "11px", lineHeight: "14px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap",
+                    borderBottom: "1px dotted var(--gray-400)", cursor: "help",
+                  }}>{cell.label}</span>
+                </Tooltip>
+              ) : (
+                <span style={{ fontSize: "11px", lineHeight: "14px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap" }}>
+                  {cell.label}
+                </span>
+              )}
             </span>
             {/* marginTop 4 puts the mark's centre on the figure's line rather than at the top of
                 the cell's padding. */}
@@ -622,6 +644,10 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
           // panel with nothing else to separate the cells, and at #e7e7f1 on white the middle
           // divider was there in the markup and invisible on the screen.
           borderLeft: i === 0 ? "none" : "1px solid var(--gray-200)",
+          // The end cells carry the strip's own corners, so a tinted cell does not square them off
+          // now that the container no longer clips.
+          ...(i === 0 ? { borderTopLeftRadius: "12px", borderBottomLeftRadius: "12px" } : null),
+          ...(i === cells.length - 1 ? { borderTopRightRadius: "12px", borderBottomRightRadius: "12px" } : null),
         };
         return cell.onClick ? (
           <button

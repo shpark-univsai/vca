@@ -1411,11 +1411,11 @@ function UserCountStrip({
           label: item.label,
           tone: "warning" as const,
           active: statusFilter === item.key,
-          // The tooltip explains the state, which is the whole point of these three labels — an
-          // invitation nobody accepted and a suspended account are not self-explanatory words —
-          // and the dotted underline is what tells the reader the explanation is there.
-          title: item.hint,
-          explain: true,
+          // The explanation is the whole point of these three labels — an invitation nobody
+          // accepted and a suspended account are not self-explanatory words — and the dotted
+          // underline is what tells the reader it is there. No `title` beside it: two tooltips on
+          // one control, one of them the browser's, is a race the reader did not enter.
+          explanation: item.hint,
           onClick: () => onFilter(statusFilter === item.key ? null : item.key),
         }))),
       ]} />
