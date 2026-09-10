@@ -457,6 +457,24 @@ export interface Person {
   /** The account that registered this person. The registry recorded the moment and not the hand. */
   registeredBy?: string;
   /**
+   * When a new photo was last submitted for this person, if one has been.
+   *
+   * The way out of "photo unreadable", and the reason that state needed one. The console reported
+   * a defect — a face the model could not turn into features — and offered no remedy: an admin
+   * could upload a clean photo, save, and the flag, the count and the unmatchable row were all
+   * exactly as before, because the flag was a hash of the person's id and nothing could move it.
+   *
+   * Set by updatePerson whenever photoUrl actually changes. It does NOT mean the new photo is
+   * readable — only the model can answer that, and Portal has not asked it yet. It means the
+   * question has been re-asked, which is a different and honestly reportable state: the registry
+   * health strip counts these separately from the ones nobody has touched.
+   *
+   * HANDOFF NOTE: the backend replaces this with a real answer. Re-enrolment is
+   * POST /v1/vips/{id}/enroll, and its result — readable, or not, and why — belongs on the row.
+   * Until then a re-submitted photo stays "awaiting re-enrolment" and is never claimed to work.
+   */
+  reenrolledAt?: string;
+  /**
    * When this registration stops. Absent means it does not — a real answer for some categories and
    * a mistake for most, so the form asks rather than assuming.
    *
@@ -1922,6 +1940,8 @@ export function dailyDetections(projectId: string, days = 7): DailyDetections[] 
 export interface RegistryHealth {
   missingPhoto: string[];
   embeddingFailed: string[];
+  /** Photo replaced, waiting on the model's answer. See Person.reenrolledAt. */
+  reenrolling: string[];
   duplicates: [string, string][];
   detectedLast7d: string[];
   detectedPrev7d: string[];
@@ -1931,6 +1951,10 @@ export function registryHealth(projectId: string, persons: Person[]): RegistryHe
   const rows = persons.filter(p => p.projectId === projectId);
   const missingPhoto: string[] = [];
   const embeddingFailed: string[] = [];
+  // Re-submitted and waiting on the model. Separated from embeddingFailed rather than dropped
+  // from it: the count going down on a save would claim the new photo works, which nothing here
+  // knows. See Person.reenrolledAt.
+  const reenrolling: string[] = [];
   // Derived from Person.lastDetectedAt rather than rolled here, so the figure in the summary and
   // the date in the table row can never tell different stories about the same person.
   const detectedLast7d: string[] = [];
@@ -1940,7 +1964,10 @@ export function registryHealth(projectId: string, persons: Person[]): RegistryHe
     // where they come from, and this reads the same field the table draws from — so the figure and
     // the rows behind it can never disagree.
     if (!p.photoUrl) { missingPhoto.push(p.id); return; }
-    if (seededPhotoUnreadable(p.id)) embeddingFailed.push(p.id);
+    if (seededPhotoUnreadable(p.id)) {
+      if (p.reenrolledAt) reenrolling.push(p.id);
+      else embeddingFailed.push(p.id);
+    }
     // Only rows with a usable face can have been seen. Letting an unmatchable person appear in
     // the detected list would make the two figures on the page contradict each other.
     else {
@@ -1962,7 +1989,7 @@ export function registryHealth(projectId: string, persons: Person[]): RegistryHe
   for (let i = 0; i + 1 < rows.length && duplicates.length < 2; i += 1) {
     if (seededRandom(i * 8.19 + 3.3) > 0.96) duplicates.push([rows[i].id, rows[i + 1].id]);
   }
-  return { missingPhoto, embeddingFailed, duplicates, detectedLast7d, detectedPrev7d };
+  return { missingPhoto, embeddingFailed, reenrolling, duplicates, detectedLast7d, detectedPrev7d };
 }
 
 /**
@@ -2362,13 +2389,24 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     set(state => {
       const person = state.persons.find(p => p.id === personId);
       if (!person) return {};
+      const at = new Date().toISOString();
+      // Replacing the face is a different act from correcting a name, and until now the registry
+      // could not tell them apart: an admin opened a person flagged "photo unreadable", uploaded
+      // a clean picture, saved — and the flag, the count and the unmatchable row were unchanged.
+      // See Person.reenrolledAt. It records that the question was re-asked, not that the answer
+      // came back good.
+      const photoReplaced = updates.photoUrl !== undefined && updates.photoUrl !== person.photoUrl;
       const auditEntry: AuditEvent = {
         id: `audit-${++auditSeq}`, projectId: person.projectId,
-        message: `VIP updated: ${updates.name ?? person.name}`,
-        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        message: photoReplaced
+          ? `VIP photo replaced for re-enrolment: ${updates.name ?? person.name}`
+          : `VIP updated: ${updates.name ?? person.name}`,
+        actor: SIGNED_IN_USER.name, at,
       };
       return {
-        persons: state.persons.map(p => (p.id === personId ? { ...p, ...updates } : p)),
+        persons: state.persons.map(p => (
+          p.id === personId ? { ...p, ...updates, ...(photoReplaced ? { reenrolledAt: at } : null) } : p
+        )),
         auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),

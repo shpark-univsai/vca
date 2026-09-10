@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
-import { AlertTriangle, ArrowDownWideNarrow, Eye, ImageOff, Users } from "lucide-react";
+import { AlertTriangle, ArrowDownWideNarrow, Eye, ImageOff, RefreshCw, Users } from "lucide-react";
 import { canSetPolicy, currentPortalUser, registryHealth, useVcaStore, WATCHLIST_CATEGORY_COLORS, type Person, type PersonGroup, type WatchlistCategory, type WatchlistCategoryColor } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -70,6 +70,10 @@ interface VipDict {
   healthMissingPhotoWhy: string;
   healthEmbeddingFailed: string;
   healthEmbeddingFailedWhy: string;
+  healthReenrolling: string;
+  photoUnreadableHint: string;
+  photoReenrollingHint: string;
+  healthReenrollingWhy: string;
   healthDuplicates: string;
   healthDuplicatesWhy: string;
   healthShowOnly: string;
@@ -213,7 +217,11 @@ const T: Record<"en" | "ko", VipDict> = {
     healthMissingPhoto: "no photo",
     healthMissingPhotoWhy: "On the watchlist with no face attached. A CSV import can add a name without a photo; these people cannot be matched until one is uploaded.",
     healthEmbeddingFailed: "photo unreadable",
-    healthEmbeddingFailedWhy: "A photo is attached, but the model could not read a face out of it — too small, too dark or turned too far. Replacing the photo is what clears it.",
+    healthEmbeddingFailedWhy: "A photo is attached, but the model could not read a face out of it — too small, too dark or turned too far. Open the person and replace the photo; that is what clears it.",
+    healthReenrolling: "awaiting re-enrolment",
+    photoUnreadableHint: "The model could not read a face out of this photo, so this person cannot be matched by any camera. Replace it with a clearer, front-facing picture.",
+    photoReenrollingHint: "A replacement photo has been submitted. Until the model answers, this person is still unmatchable.",
+    healthReenrollingWhy: "A new photo has been submitted and the model has not answered yet. These people are still unmatchable until it does — a replaced photo is a question re-asked, not a fix confirmed.",
     healthDuplicates: "possible duplicates",
     healthDuplicatesWhy: "Two or more records that share a name. Usually the same person enrolled twice; the watchlist counts them twice either way.",
     healthShowOnly: "Show only these",
@@ -356,7 +364,11 @@ const T: Record<"en" | "ko", VipDict> = {
     healthMissingPhoto: "사진 없음",
     healthMissingPhotoWhy: "명단에는 있지만 얼굴 사진이 없습니다. CSV로 가져오면 사진 없이 이름만 등록될 수 있고, 사진을 올리기 전까지는 매칭되지 않습니다.",
     healthEmbeddingFailed: "사진 인식 실패",
-    healthEmbeddingFailedWhy: "사진은 있지만 모델이 얼굴을 읽어내지 못했습니다. 너무 작거나 어둡거나 옆을 봤을 때 생깁니다. 사진을 다시 올려야 풀립니다.",
+    healthEmbeddingFailedWhy: "사진은 있지만 모델이 얼굴을 읽어내지 못했습니다. 너무 작거나 어둡거나 옆을 봤을 때 생깁니다. 해당 인물을 열어 사진을 교체하면 풀립니다.",
+    healthReenrolling: "재등록 대기",
+    photoUnreadableHint: "이 사진에서 얼굴을 읽어내지 못했습니다. 어느 카메라에서도 이 인물은 매칭되지 않습니다. 정면이 선명한 사진으로 교체하세요.",
+    photoReenrollingHint: "교체할 사진이 접수되었습니다. 모델의 답이 오기 전까지는 여전히 매칭되지 않습니다.",
+    healthReenrollingWhy: "새 사진을 올렸고 모델의 답을 기다리는 중입니다. 답이 오기 전까지는 여전히 매칭되지 않습니다 — 사진 교체는 다시 물어본 것이지, 해결이 확인된 게 아닙니다.",
     healthDuplicates: "중복 의심",
     healthDuplicatesWhy: "이름이 같은 기록이 둘 이상입니다. 대개 같은 사람을 두 번 등록한 경우이고, 어느 쪽이든 명단에서는 두 명으로 셉니다.",
     healthShowOnly: "이 항목만 보기",
@@ -497,10 +509,13 @@ interface RegisterValues {
  * and until now only the bulk CSV import could write it — a note could exist on a row that nobody
  * was able to type.
  */
-function RegisterVipModal({ t, person, groups, categories, projectId, onClose, onSubmit, onManageCategories }: {
+function RegisterVipModal({ t, person, photoUnreadable, groups, categories, projectId, onClose, onSubmit, onManageCategories }: {
   t: VipDict;
   /** Absent = registering. Present = editing that person. */
   person?: Person;
+  /** Whether the model could not read the photo on file. From registryHealth, which owns the
+   *  predicate — recomputing it here would be a second opinion on the same question. */
+  photoUnreadable?: boolean;
   groups: PersonGroup[];
   categories: WatchlistCategory[];
   projectId: string;
@@ -560,6 +575,16 @@ function RegisterVipModal({ t, person, groups, categories, projectId, onClose, o
   /** True while the pointer is over the photo, so the control can offer to replace it. */
   const [photoHovered, setPhotoHovered] = useState(false);
   const [photoFileName, setPhotoFileName] = useState<string | null>(null);
+  /**
+   * What the model made of the photo currently on file: nothing wrong reported, unreadable, or
+   * re-submitted and unanswered. Passed in rather than recomputed — registryHealth owns the
+   * predicate, and a second copy of it here would be a second opinion.
+   */
+  const photoState: "ok" | "unreadable" | "reenrolling" = !person
+    ? "ok"
+    : person.reenrolledAt && photoUnreadable ? "reenrolling"
+    : photoUnreadable ? "unreadable"
+    : "ok";
   const photoInputRef = useRef<HTMLInputElement>(null);
   /**
    * A photo is required to register and not to edit.
@@ -736,6 +761,16 @@ function RegisterVipModal({ t, person, groups, categories, projectId, onClose, o
                 </>
               )}
             </button>
+            {/* The reason this form is open, for the people it is open about.
+                An admin who clicked "12 photo unreadable", picked a row and got here saw a
+                perfectly ordinary-looking photograph and no hint of what was wrong with it. The
+                model's complaint belongs against the picture it could not read. */}
+            {photoState === "unreadable" && (
+              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.6, marginTop: "6px" }}>{t.photoUnreadableHint}</p>
+            )}
+            {photoState === "reenrolling" && (
+              <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "6px" }}>{t.photoReenrollingHint}</p>
+            )}
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
@@ -1081,7 +1116,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
    * above it. A card that only states a number leaves the reader to find the twelve rows it counted;
    * this makes the number the way to them.
    */
-  const [healthFilter, setHealthFilter] = useState<"missingPhoto" | "embeddingFailed" | "duplicates" | "detected" | null>(null);
+  const [healthFilter, setHealthFilter] = useState<"missingPhoto" | "embeddingFailed" | "reenrolling" | "duplicates" | "detected" | null>(null);
   /**
    * All / Individuals / Groups. Same underlined tab row Input Sources and Users & Permissions use.
    *
@@ -1161,6 +1196,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const healthIds = {
     missingPhoto: new Set(health.missingPhoto),
     embeddingFailed: new Set(health.embeddingFailed),
+    reenrolling: new Set(health.reenrolling),
     duplicates: duplicateIds,
     detected: new Set(health.detectedLast7d),
   } as const;
@@ -1397,6 +1433,10 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         ...([
           { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, why: t.healthMissingPhotoWhy, icon: <ImageOff size={14} strokeWidth={2.4} /> },
           { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed, why: t.healthEmbeddingFailedWhy, icon: <AlertTriangle size={14} strokeWidth={2.4} /> },
+          // Not amber. A photo somebody has already replaced is not an outstanding defect, it is
+          // work in progress, and colouring it the same as the untouched ones would mean the
+          // strip never rewarded doing anything about them.
+          { key: "reenrolling" as const, count: health.reenrolling.length, label: t.healthReenrolling, why: t.healthReenrollingWhy, icon: <RefreshCw size={14} strokeWidth={2.4} />, neutral: true },
           { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates, why: t.healthDuplicatesWhy, icon: <Users size={14} strokeWidth={2.4} /> },
         ].filter(item => item.count > 0).map(item => ({
           key: item.key,
@@ -1407,7 +1447,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           // Every label here names a defect in three words. The dotted underline is where the
           // fourth to fortieth live — including, for the two that are fixable, what fixes them.
           explanation: item.why,
-          tone: "warning" as const,
+          tone: ("neutral" in item && item.neutral ? "neutral" : "warning") as "neutral" | "warning",
           active: healthFilter === item.key,
           title: healthFilter === item.key ? t.healthClear : t.healthShowOnly,
           onClick: () => setHealthFilter(healthFilter === item.key ? null : item.key),
@@ -1871,7 +1911,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
 
       {showRegister && <RegisterVipModal t={t} groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} projectId={projectId} onClose={() => setShowRegister(false)} onSubmit={register} />}
       {editingPerson && (
-        <RegisterVipModal t={t} person={editingPerson} groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} projectId={projectId} onClose={() => setEditingPerson(null)} onSubmit={saveEdit} />
+        <RegisterVipModal t={t} person={editingPerson}
+          photoUnreadable={healthIds.embeddingFailed.has(editingPerson.id) || healthIds.reenrolling.has(editingPerson.id)}
+          groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} projectId={projectId} onClose={() => setEditingPerson(null)} onSubmit={saveEdit} />
       )}
       {confirmingRemove && (
         <RemoveVipConfirmModal t={t} person={confirmingRemove} onClose={() => setConfirmingRemove(null)} onConfirm={confirmRemove} />
