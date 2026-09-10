@@ -6,7 +6,7 @@ import type { DetType, Detection, CamData } from "@/types/detection";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { sgtDateKey } from "@/lib/time";
 
-import { useLanguage } from "@/lib/i18n";
+import { useLanguage, type AppLanguage } from "@/lib/i18n";
 
 // See the per-file pattern note in lib/i18n.ts. Attribute tags, the enrolled-database names and
 // camera codes come from the detection data and stay as they are.
@@ -31,6 +31,7 @@ const T = {
     eventTime: "Event time",
     analysisResults: "Analysis results",
     attrBasic: "Basic",
+    noRegistration: "None on record",
     attrTop: "Top",
     attrBottom: "Bottom",
     attrAddons: "Add-ons",
@@ -64,6 +65,7 @@ const T = {
     eventTime: "검출 시각",
     analysisResults: "분석 결과",
     attrBasic: "기본",
+    noRegistration: "등록 정보 없음",
     attrTop: "상의",
     attrBottom: "하의",
     attrAddons: "소지품",
@@ -115,15 +117,40 @@ const VEHICLE_PHOTO = "https://images.unsplash.com/photo-1503376780353-7e6692767
 const DB_PHOTO = "/enrolled-db-sample.png";
 const LIVE_CAPTURE_PHOTO = "/live-capture-sample.png";
 
+/**
+ * The model's own words for what it saw, translated only where they are drawn — the same rule
+ * DataPage's ATTR_KO follows, and the reason the values below stay English in the data.
+ *
+ * Ages, years and plate numbers are not words and are left alone: "34YR" reads the same either
+ * way, and a plate is an identifier.
+ */
+const ATTR_KO_DETAIL: Record<string, string> = {
+  ASIAN: "아시아계", MALE: "남성", FEMALE: "여성",
+  "WHITE TOP": "흰 상의", "RED JACKET": "빨간 재킷",
+  "LONG SLEEVE": "긴팔", "SHORT SLEEVE": "반팔",
+  "BROWN BOTTOM": "갈색 하의", TROUSERS: "긴바지", "BLACK JEANS": "검정 청바지",
+  BACKPACK: "가방", "NO BACKPACK": "가방 없음",
+  SEDAN: "세단", WHITE: "흰색", REGISTERED: "등록됨",
+};
+function detailAttr(value: string, lang: AppLanguage): string {
+  return lang === "ko" ? ATTR_KO_DETAIL[value] ?? value : value;
+}
+
 const ATTRS: Record<DetType, { basic: string[]; top: string[]; bottom: string[]; addons: string[] }> = {
   VIP:     { basic:["ASIAN","MALE","34YR"],  top:["WHITE TOP","LONG SLEEVE"],   bottom:["BROWN BOTTOM","TROUSERS"], addons:["NO BACKPACK"] },
   Unknown: { basic:["ASIAN","MALE","28YR"],  top:["RED JACKET","SHORT SLEEVE"], bottom:["BLACK JEANS"],             addons:["BACKPACK"] },
   Vehicle: { basic:["SEDAN","WHITE","2020"], top:["SGX411"],                    bottom:[],                          addons:["REGISTERED"] },
 };
 
-const REGISTERED: Record<DetType, string> = {
+/**
+ * What the registry has on this person or vehicle.
+ *
+ * The Unknown case is not data: nothing was found, and saying so is the screen's own sentence, so
+ * it comes from T rather than sitting here in English under a Korean label.
+ */
+const REGISTERED: Record<DetType, string | null> = {
   VIP:     "Admin_Staff (Parking Zone F)",
-  Unknown: "N/A — No registration found",
+  Unknown: null,
   Vehicle: "Navy Fleet Registry",
 };
 
@@ -280,7 +307,7 @@ function ReelFilterBar({ filter, onChange }: { filter: ReelFilter; onChange: (f:
               border: active ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)",
               backgroundColor: active ? "var(--gray-900)" : "white",
               color: active ? "white" : "var(--gray-700)", fontSize:"12px", fontWeight: active ? 700 : 600,
-            }}>All</button>
+            }}>{f.label}</button>
           );
         }
         const c = f.color!;
@@ -490,7 +517,7 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
           <TypeIcon type={det.type} color={c} size={15} />
           <span style={{ fontSize:"16px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.32px" }}>{det.name}</span>
         </div>
-        <p style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-500)", marginBottom:"14px" }}>{t.registeredAs} {REGISTERED[det.type]}</p>
+        <p style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-500)", marginBottom:"14px" }}>{t.registeredAs} {REGISTERED[det.type] ?? t.noRegistration}</p>
 
         {/* Divider — info below is separated by rules, not a boxed container */}
         <div style={{ height:"1px", backgroundColor:"var(--gray-200)", marginBottom:"14px" }} />
@@ -521,7 +548,7 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
             <div key={label as string} style={{ display:"flex", alignItems:"flex-start", gap:"8px", marginBottom:"8px" }}>
               <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-600)", width:"52px", flexShrink:0, paddingTop:"2px" }}>{label as string}</span>
               <div style={{ display:"flex", gap:"4px", flexWrap:"wrap" }}>
-                {(tags as string[]).map(t => <Tag key={t} label={t} />)}
+                {(tags as string[]).map(v => <Tag key={v} label={detailAttr(v, lang)} />)}
               </div>
             </div>
           ))}
@@ -1135,7 +1162,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   display:"flex", flexDirection:"column", alignItems:"center", pointerEvents:"none", zIndex:5,
                 }}>
                   <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"4px 10px", borderRadius:"999px", fontFamily:"monospace", whiteSpace:"nowrap" }}>
-                    Hour {pad2(hoveredHour)}
+                    {lang === "ko" ? `${pad2(hoveredHour)}${t.hour}` : `${t.hour} ${pad2(hoveredHour)}`}
                   </span>
                   <span style={{ width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:"6px solid var(--primary-400)", marginTop:"-2px" }} />
                 </div>
@@ -1170,7 +1197,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   display:"flex", flexDirection:"column", alignItems:"center", pointerEvents:"none", zIndex:5,
                 }}>
                   <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"4px 10px", borderRadius:"999px", fontFamily:"monospace", whiteSpace:"nowrap" }}>
-                    Min {pad2(hoveredMinute)}
+                    {lang === "ko" ? `${pad2(hoveredMinute)}${t.minute}` : `${t.minute} ${pad2(hoveredMinute)}`}
                   </span>
                   <span style={{ width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:"6px solid var(--primary-400)", marginTop:"-2px" }} />
                 </div>

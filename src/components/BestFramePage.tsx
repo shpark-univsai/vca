@@ -18,6 +18,12 @@ import { useLanguage } from "@/lib/i18n";
 const T = {
   en: {
     filterAll: "All",
+    noCamMatch: (q: string) => `No cameras match “${q}”`,
+    selectedOf: (n: number, max: number) => `${n} / ${max} selected`,
+    resetSelection: "Reset",
+    vipNow: "VIP detected now",
+    pinPanel: "Pin panel",
+    unpinPanel: "Unpin panel",
     close: "Close",
     liveSnapshot: "LIVE SNAPSHOT",
     liveSnapshotHint: "Frame the camera just captured",
@@ -58,6 +64,12 @@ const T = {
   },
   ko: {
     filterAll: "전체",
+    noCamMatch: (q: string) => `“${q}”에 해당하는 카메라가 없습니다`,
+    selectedOf: (n: number, max: number) => `${max}대 중 ${n}대 선택`,
+    resetSelection: "선택 해제",
+    vipNow: "지금 VIP 검출",
+    pinPanel: "패널 고정",
+    unpinPanel: "고정 해제",
     close: "닫기",
     liveSnapshot: "실시간 검출",
     liveSnapshotHint: "카메라가 방금 잡은 프레임입니다",
@@ -517,7 +529,7 @@ function CameraCard({
               <path d="M15.75 12H12.75" stroke="white" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M8.25 2.25H6.75" stroke="white" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            Analyze Frame
+            {t.analyzeFrame}
           </button>
         )}
         <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:"linear-gradient(to bottom,rgba(14, 22, 42,0) 50%,rgba(14, 22, 42,0.04) 50%)", backgroundSize:"100% 4px" }} />
@@ -549,7 +561,7 @@ function CameraCard({
             {sidePanelOnHover && (
               <button
                 onClick={e => { e.stopPropagation(); setPinned(p => !p); }}
-                aria-label={pinned ? "Unpin panel" : "Pin panel"}
+                aria-label={pinned ? t.unpinPanel : t.pinPanel}
                 style={{ background:"none", border:"none", padding:0, cursor:"pointer", display:"flex" }}
               >
                 <PinIcon active={pinned} />
@@ -771,6 +783,8 @@ function BulletCameraIcon() {
 }
 
 function CameraItem({ cam, onToggle, type = "camera", disabled = false, activityRank }: { cam: Camera; onToggle: () => void; type?: "camera" | "video" | "image"; disabled?: boolean; activityRank?: number }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   const isAlert = cam.monitor === "alert";
   const isChecked = !isAlert && cam.checked;
   // Both alert cameras and (unchecked items at) the 16-camera grid cap are dimmed and stay
@@ -801,7 +815,7 @@ function CameraItem({ cam, onToggle, type = "camera", disabled = false, activity
           ? <VideoFileIcon color={iconColor} />
           : <ImageFileIcon />}
         {isVipActive && (
-          <div title="VIP detected now" className="vca-vip-dot-pulse" style={{ position:"absolute", top:-2, right:-2, width:"7px", height:"7px", borderRadius:"50%", backgroundColor:"var(--primary-400)", border:"1.5px solid white" }} />
+          <div title={t.vipNow} className="vca-vip-dot-pulse" style={{ position:"absolute", top:-2, right:-2, width:"7px", height:"7px", borderRadius:"50%", backgroundColor:"var(--primary-400)", border:"1.5px solid white" }} />
         )}
       </div>
       <span style={{ flex:1, textAlign:"left", fontSize:"13px", fontWeight: isChecked ? 700 : 400, color: isChecked ? "var(--primary-400)" : "var(--gray-500)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
@@ -1403,7 +1417,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
               && (!showVideoSection || visibleVideoCams.length === 0)
               && (!showImageSection || visibleImageCams.length === 0) && (
               <div style={{ padding:"24px 16px", textAlign:"center", fontSize:"12px", fontWeight:600, color:"var(--gray-400)" }}>
-                No cameras match &quot;{camSearch}&quot;.
+                {t.noCamMatch(camSearch)}
               </div>
             )}
           </div>
@@ -1434,7 +1448,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 20px 12px", flexShrink:0, borderBottom:BORDER }}>
           <div style={{ display:"flex", alignItems:"center", gap:"8px", flexShrink:0 }}>
             <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)", letterSpacing:"-0.24px" }}>
-              {gridCams.length} / {MAX_GRID_CAMS} selected
+              {t.selectedOf(gridCams.length, MAX_GRID_CAMS)}
             </span>
             {gridCams.length > 0 && (
               <button
@@ -1445,7 +1459,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
                   <path d="M3 12a9 9 0 1 0 2.64-6.36L3 8" stroke="var(--primary-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M3 3v5h5" stroke="var(--primary-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                Reset
+                {t.resetSelection}
               </button>
             )}
           </div>
@@ -1460,7 +1474,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
                     backgroundColor: active ? "var(--gray-900)" : "white",
                     color: active ? "white" : "var(--gray-700)",
                     fontSize:"13px", fontWeight: active ? 700 : 600,
-                  }}>All</button>
+                  }}>{t.filterAll}</button>
                 );
               }
               const c = f.color!;
