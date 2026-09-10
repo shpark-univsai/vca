@@ -661,6 +661,23 @@ interface VcaStoreState {
   lastReadNotifAt: string;
   setCameraStatus: (cameraId: string, status: CameraStatus) => void;
   addCamera: (camera: Omit<Camera, "id">) => void;
+  /**
+   * Register many cameras at once — installation day, from the installer's own spreadsheet.
+   *
+   * One store call rather than addCamera in a loop, for the reason addRosterEntries exists: each
+   * mutation trims the audit log, so a file of three hundred cameras would erase every entry
+   * before it. And one line in the log is the truth anyway — this was one decision about three
+   * hundred cameras, not three hundred decisions.
+   *
+   * THE CHANNEL LIMIT IS ENFORCED HERE, not only on the screen. A licence granting 100 channels
+   * has to mean 100 whichever way cameras arrive; a limit that only the Add form respects is a
+   * limit that an import walks straight past. Cameras beyond the remaining allowance are refused
+   * and returned, so the caller can say which ones did not make it rather than reporting a
+   * success that silently dropped the tail of the file.
+   *
+   * Returns the codes it refused: over the limit, or colliding with a code already registered.
+   */
+  addCameras: (cameras: Omit<Camera, "id">[], source: string) => string[];
   updateCamera: (cameraId: string, updates: Partial<Omit<Camera, "id" | "projectId">>) => void;
   removeCamera: (cameraId: string) => void;
   /**
@@ -2446,6 +2463,41 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
+  addCameras: (cameras, source) => {
+    const state = get();
+    const projectId = cameras[0]?.projectId;
+    if (projectId === undefined) return [];
+    const project = state.projects.find(p => p.id === projectId);
+    const limit = project ? projectChannelLimit(project) : undefined;
+    const used = state.cameras.filter(c => c.projectId === projectId).length;
+    // Undefined limit is "not licensed", the same reading the Cameras tab uses — a project with
+    // no channel count recorded cannot take cameras from a file any more than from the form.
+    const allowance = limit === undefined ? 0 : Math.max(0, limit - used);
+
+    const taken = new Set(state.cameras.map(c => c.code.trim().toLowerCase()));
+    const refused: string[] = [];
+    const accepted: Camera[] = [];
+    cameras.forEach(cam => {
+      const key = cam.code.trim().toLowerCase();
+      if (taken.has(key)) { refused.push(cam.code); return; }
+      if (accepted.length >= allowance) { refused.push(cam.code); return; }
+      taken.add(key);
+      accepted.push({ ...cam, id: `cam-${++cameraSeq}` });
+    });
+
+    if (accepted.length > 0) {
+      set(st => ({
+        cameras: [...st.cameras, ...accepted],
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId,
+          message: `${accepted.length} camera${accepted.length === 1 ? "" : "s"} imported from ${source}`
+            + (refused.length > 0 ? ` (${refused.length} refused)` : ""),
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      }));
+    }
+    return refused;
+  },
   addCamera: (camera) =>
     set(state => ({
       cameras: [...state.cameras, { ...camera, id: `cam-${++cameraSeq}` }],

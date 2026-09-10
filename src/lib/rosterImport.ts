@@ -78,7 +78,9 @@ const PERMISSION_VALUES: Record<string, "admin" | "operator"> = {
   앱사용자: "operator", 앱만: "operator", 앱: "operator",
 };
 
-function normalizeHeader(raw: string): string {
+/** Exported because the camera importer matches its own headings the same way — one rule for
+ *  what counts as "the same column name" across both files. */
+export function normalizeHeader(raw: string): string {
   return raw
     .replace(/^﻿/, "")
     .toLowerCase()

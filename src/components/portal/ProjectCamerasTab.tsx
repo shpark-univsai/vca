@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import CameraImportModal from "./CameraImportModal";
 import { CircleAlert, Film as FilmIcon, Image as ImageIcon, RotateCw, ShieldCheck, Video as VideoIcon, VideoOff } from "lucide-react";
 import { useVcaStore, projectChannelLimit, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -12,6 +13,7 @@ import CameraStreamModal from "./CameraStreamModal";
 const T = {
   en: {
     exportCsv: "Export CSV",
+    importCsv: "Import CSV",
     refresh: "Refresh",
     checkedJustNow: "checked just now",
     checkedMinsAgo: (n: number) => `checked ${n} min ago`,
@@ -162,6 +164,7 @@ const T = {
   },
   ko: {
     exportCsv: "CSV 내보내기",
+    importCsv: "CSV 가져오기",
     refresh: "새로고침",
     checkedJustNow: "방금 확인함",
     checkedMinsAgo: (n: number) => `${n}분 전 확인`,
@@ -1109,6 +1112,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     ? Math.floor((nowMs - lastPolledAt) / 60_000)
     : null;
 
+  const [showImport, setShowImport] = useState(false);
+
   const exportCsv = () => {
     const header = [t.csvHeaderName, t.csvHeaderCode, t.csvHeaderZone, t.csvHeaderLocation, t.csvHeaderRtspUrl, t.csvHeaderStatus];
     const rows = projectCameras.map(c => [
@@ -1377,6 +1382,16 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             <RotateCw size={14} strokeWidth={2.4} />
             {t.refresh}
           </button>
+          {/* Beside Export, and before it: the first thing a new site does is put a list in,
+              and the round trip this reads is the one Export writes. Behind the same edit gate
+              as adding a camera — this is the same act, three hundred times. */}
+          {mayEdit && (
+            <button className="portal-btn-quiet" onClick={() => setShowImport(true)}
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 9.33V1.75M7 1.75 4.08 4.67M7 1.75 9.92 4.67M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              {t.importCsv}
+            </button>
+          )}
           <button className="portal-btn-quiet" onClick={exportCsv}
             style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1.75V9.33M7 9.33 4.08 6.42M7 9.33 9.92 6.42M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1864,6 +1879,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       {/* Confirmed, not undoable-with-a-toast: removing cameras in bulk takes a whole set of feeds
           off monitoring at once, and there is no restore. Says what actually happens and what does
           not, because "are you sure?" alone leaves people guessing about the recordings. */}
+      {showImport && <CameraImportModal projectId={projectId} onClose={() => setShowImport(false)} />}
+
       {confirmingBulkDelete && (
         <div onClick={e => { if (e.target === e.currentTarget) setConfirmingBulkDelete(false); }}
           style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
