@@ -540,9 +540,11 @@ body {
   display: none;
 }
 .vca-auth-brand-art {
-  height: 300px;
-  aspect-ratio: 614 / 639;   /* the cropped PNG's own proportion */
-  width: auto;
+  /* Square, and sized off the panel's width rather than the window's height — the drawing is a
+     map, so it wants to be as large as the column allows. */
+  width: min(100%, 460px);
+  height: auto;
+  aspect-ratio: 1;
   flex-shrink: 0;
 }
 @media (min-width: 900px) {
@@ -560,7 +562,7 @@ body {
 /* Only rule left that reads the window's height, and it is about the artwork alone — the form no
    longer moves when the window gets short. */
 @media (max-height: 760px) {
-  .vca-auth-brand-art { height: 220px; }
+  .vca-auth-brand-art { width: min(100%, 340px); }
 }
 
 .vca-auth-scroll { padding-top: 44px; }

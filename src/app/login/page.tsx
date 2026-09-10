@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
+import AuthMapArt from "@/components/AuthMapArt";
 import { getAuthConfig } from "@/lib/authConfig";
 import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { LOGIN_NOTICES, parseLoginNotice, type LoginFailure } from "@/lib/authErrors";
@@ -402,10 +403,10 @@ function LoginForm() {
         </div>
         </div>
 
-        {/* Decorative, so aria-hidden and alt="" — a screen reader should reach the form, not a
-            picture of a camera. Sized in globals.css so the short-window rules can reach it. */}
+        {/* Decorative, so aria-hidden — a screen reader should reach the form, not a picture of a
+            city. Sized in globals.css. */}
         <div className="vca-auth-brand" aria-hidden>
-          <img className="vca-auth-brand-art" src="/login-illustration.png" alt="" width={188} height={196} />
+          <AuthMapArt className="vca-auth-brand-art" />
         </div>
       </div>
     </div>
