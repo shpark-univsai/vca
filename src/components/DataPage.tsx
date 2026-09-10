@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MatchItem, ReIDStatus } from "@/types/reid";
 import {
-  CAMERA_CODES, canSearchInApp, camerasInProject, getActiveProjectId,
+  CAMERA_CODES, canSearchInApp,
   useActiveProjectId, useProjectCameras, useVcaStore,
 } from "@/lib/vcaStore";
 import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
@@ -759,9 +759,13 @@ function makeLiveItem(seed: number, camId: string, index: number): (typeof REID_
 
 function seedLiveFeed(): Record<string, (typeof REID_DATA)> {
   const feed: Record<string, (typeof REID_DATA)> = {};
-  // This site's cameras only. Seeding every site's meant the wall showed feeds from cameras that
-  // are not on this screen's site, and the "All Cameras" view counted them.
-  camerasInProject(useVcaStore.getState().cameras, getActiveProjectId()).forEach((cam, camIndex) => {
+  // This site's RUNNING cameras only. Seeding every site's meant the wall showed feeds from
+  // cameras that are not on this screen's site, and the "All Cameras" view counted them — and
+  // seeding stopped ones meant a camera that is dark had 120 captures under its name, a third of
+  // them badged "VIP · 87.8%". The picker offers stopped cameras (with an OFF badge), so that
+  // wall was one click away, while the "All Cameras" view already excluded them: the two views
+  // of the same site disagreed. A camera that is not running captured nothing.
+  getCameraStatus().running.forEach((cam, camIndex) => {
     feed[cam.code] = Array.from({ length: 120 }, (_, i) => makeLiveItem(500000 + camIndex * 1000 + i, cam.code, i));
   });
   return feed;

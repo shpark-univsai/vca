@@ -10,6 +10,7 @@ import {
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useApiData } from "@/hooks/useApiData";
 import { getDashboardStats } from "@/lib/api/dashboard";
+import { sgtClockTime, sgtDateKey } from "@/lib/time";
 import { useLanguage } from "@/lib/i18n";
 
 const BORDER = "1px solid var(--gray-200)";
@@ -129,10 +130,13 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, []);
-  const sgDateFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Singapore", year: "numeric", month: "2-digit", day: "2-digit" });
-  const sgTimeFmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Singapore", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-  const currentDate = sgNow ? sgDateFmt.format(sgNow) : dashboardStats?.currentDate ?? "";
-  const currentTime = sgNow ? sgTimeFmt.format(sgNow) : dashboardStats?.currentTime ?? "";
+  // The site's own time zone, not a hardcoded Asia/Singapore. Everything else on the screen —
+  // "detections today", the hour buckets in the activity chart, every card timestamp — already
+  // reads the clock through the project's zone (see lib/time.ts), so a header pinned to Singapore
+  // put the wall clock twelve hours away from the numbers underneath it on a site set to another
+  // zone, with nothing on screen saying which one was the site's.
+  const currentDate = sgNow ? sgtDateKey(sgNow) : dashboardStats?.currentDate ?? "";
+  const currentTime = sgNow ? sgtClockTime(sgNow) : dashboardStats?.currentTime ?? "";
 
   const [notifOpen, setNotifOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
