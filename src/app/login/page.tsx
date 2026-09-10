@@ -192,33 +192,21 @@ function LoginForm() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "white" }}>
       <AuthHeader />
-      {/* Top-aligned, not centred. While this was `alignItems: "center"` the space above the
-          illustration was decided by the browser splitting the leftover height — trimming the
-          card's padding just handed the same space back as centring margin, so the gap never
-          moved. Anchoring to the top makes paddingTop the actual number: 44 here + 20 of card
-          padding = 64px above the artwork, about half of the ~130px centring was producing on a
-          typical window. Same pattern /password-setup already uses. */}
-      <div className="vca-auth-scroll" style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
+      {/* Two columns from 900px up: the form on the left, the artwork on its own panel to the
+          right. It used to sit stacked above the form, which cost the column ~200px of height on
+          the one screen everybody uses every shift — and paying for that took three height
+          breakpoints in globals.css, the last of which gave up and hid the image entirely below
+          820px. A control-room monitor is short and wide, so the space was there sideways all
+          along. Kit, Remote and Productboard all place their imagery this way; none of the ten
+          reference logins stack it above the form.
+          Below 900px the panel is gone and the form has the width to itself. */}
+      <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
+        <div className="vca-auth-scroll" style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
         <div style={{
           width: "480px", maxWidth: "480px", backgroundColor: "white",
           borderRadius: "28px", padding: "20px 36px 36px", margin: "0 0 40px",
           display: "flex", flexDirection: "column", gap: "24px", alignItems: "center",
         }}>
-          {/* Exported from the Figma login frame (node 49:21165), then cropped to the artwork
-              itself. The 1024px source carries ~186px of transparent padding above the camera,
-              which at render size put roughly 50px of dead space inside the image and read as a
-              gap nobody asked for. Cropping means the box IS the artwork, so the 24px column gap
-              below is the only spacing between it and the title. 227x236 keeps the source's 614:639
-              proportion. Decorative, so alt="" keeps a screen reader from announcing it before the
-              form. Its rendered size lives in globals.css so the short-window rules can change it —
-              an inline height would outrank them. */}
-          <img
-            className="vca-auth-illustration"
-            src="/login-illustration.png"
-            alt=""
-            width={188}
-            height={196}
-          />
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
             <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>{t.title}</h1>
             <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.welcome}</p>
@@ -411,6 +399,13 @@ function LoginForm() {
               </div>
             </div>
           </form>
+        </div>
+        </div>
+
+        {/* Decorative, so aria-hidden and alt="" — a screen reader should reach the form, not a
+            picture of a camera. Sized in globals.css so the short-window rules can reach it. */}
+        <div className="vca-auth-brand" aria-hidden>
+          <img className="vca-auth-brand-art" src="/login-illustration.png" alt="" width={188} height={196} />
         </div>
       </div>
     </div>

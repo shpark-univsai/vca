@@ -526,32 +526,44 @@ body {
 .vca-picker-option[data-on="true"] { background-color: var(--primary-100); }
 .vca-picker-option:not([data-on="true"]):hover { background-color: var(--gray-50); }
 
-/* ── Auth screens: short-window behaviour ─────────────────────────────
-   The login card needs ~840px of height. Below that the form falls past the fold, and on a laptop
-   with a bookmarks bar or a half-height window that is most of the form. The illustration is
-   decoration, so it is what gives up space first — it shrinks, then goes entirely, so email /
-   password / the button reach the fold before anything else does.
-
+/* ── Auth screens ─────────────────────────────────────────────────────
    These live here rather than inline because an inline height would outrank the media queries —
    the same trap that left the navbar tabs with a :hover rule that never fired. */
-.vca-auth-illustration {
-  /* 196, not the 236 the Figma frame renders at — at full size the camera outweighed the form it
-     sits above, which is the thing people came to the screen to use. */
-  height: 196px;
+/* The login artwork's own panel, from 900px up. Below that the form takes the whole width and
+   the panel is not rendered at all — a control-room monitor is wide, a laptop in a stairwell is
+   not, and the form is what the screen is for either way.
+
+   This replaced three height breakpoints. While the artwork sat above the form it competed with
+   it for vertical space, so it shrank at 900px tall and vanished at 820px; on its own column it
+   costs the form nothing and needs none of that. */
+.vca-auth-brand {
+  display: none;
+}
+.vca-auth-brand-art {
+  height: 300px;
   aspect-ratio: 614 / 639;   /* the cropped PNG's own proportion */
   width: auto;
   flex-shrink: 0;
 }
-.vca-auth-scroll { padding-top: 44px; }
-
-@media (max-height: 900px) {
-  .vca-auth-illustration { height: 160px; }
-  .vca-auth-scroll { padding-top: 24px; }
+@media (min-width: 900px) {
+  .vca-auth-brand {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background-color: var(--gray-50);
+    border-left: 1px solid var(--line);
+  }
 }
-/* Below this the illustration cannot buy enough room to matter — at 176px it still leaves the
-   button past the fold — and the form is what the screen is for, so it goes rather than shrinking
-   through sizes that help nobody. */
-@media (max-height: 820px) {
-  .vca-auth-illustration { display: none; }
-  .vca-auth-scroll { padding-top: 16px; }
+/* Only rule left that reads the window's height, and it is about the artwork alone — the form no
+   longer moves when the window gets short. */
+@media (max-height: 760px) {
+  .vca-auth-brand-art { height: 220px; }
+}
+
+.vca-auth-scroll { padding-top: 44px; }
+@media (max-height: 900px) {
+  .vca-auth-scroll { padding-top: 24px; }
 }
