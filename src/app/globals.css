@@ -472,6 +472,30 @@ body {
      which shows up as a visible stutter every 0.9s. */
   to { stroke-dashoffset: -9; }
 }
+/* The login panel's most recent sighting, breathing.
+   A filled disc that grows and fades, drawn behind the static ones so only the part that gets
+   past them is visible — what shows is a ring leaving the camera. Same idea as the map's live
+   ping (see live-ping in Navbar.tsx), and deliberately NOT a blink: a blinking element in a
+   control room means "act on this now", and this is a label on a record, not an alarm. Borrowing
+   that vocabulary here would cost the real blinks their meaning.
+   Slow — 2.6s. The panel already has a flowing trail, and two fast things beside a login form
+   compete with the form. */
+.vca-auth-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: vca-auth-pulse 2.6s ease-out infinite;
+}
+@keyframes vca-auth-pulse {
+  0%   { transform: scale(0.74); opacity: 0.22; }
+  70%  { transform: scale(1.34); opacity: 0; }
+  100% { transform: scale(1.34); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Left as a faint outer wash rather than removed: the emphasis it carries is the point, and the
+     motion was only how it was delivered. */
+  .vca-auth-pulse { animation: none; opacity: 0.14; }
+}
+
 /* The route still reads as a route without the motion — the dashes say "inferred" on their own.
    Someone who has asked their system for less movement should not have to watch a line loop on
    every screen that draws one, and the login panel now draws one too. */

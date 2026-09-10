@@ -138,6 +138,9 @@ export default function AuthTrailArt({ className }: { className?: string }) {
                 camera and read as a control — something to click — where the point is only that
                 this one is louder than the others. Rings of tint say the same thing with no edge,
                 and it is what the app's own map does around a live ping. */}
+            {/* Behind the static discs, so only what expands past them shows — a ring leaving
+                the camera rather than a flash over it. */}
+            {last && <circle className="vca-auth-pulse" cx={c.x} cy={c.y} r="58" fill="var(--primary-400)" />}
             {last && <circle cx={c.x} cy={c.y} r="58" fill="var(--gray-50)" />}
             {last && <circle cx={c.x} cy={c.y} r="58" fill="var(--primary-100)" />}
             {/* The earlier sightings are quieter than they were — smaller halo, lighter purple,
