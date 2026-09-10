@@ -197,7 +197,11 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       {/* No page title here: the top bar's crumb already names this page, and printing the same
           word again 20px lower was the page introducing itself twice. What stays is the row of
           things you can do on it. */}
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, overflow: "hidden", marginBottom: "20px" }}>
+      {/* No overflow:hidden. It was there to keep the section rules inside the rounded corners,
+          which they never reach — the first section has no top rule and the last no bottom one —
+          and it clipped the one thing that has to escape this box: the language select sits in the
+          final section, so its list opened straight into the card's bottom edge and was cut off. */}
+      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, marginBottom: "20px" }}>
       {/* Which pairs exist depends on whether the signed-in address matches an account: with no
           match there is nothing to say about a role or a door, so those are absent rather than
           filled with a disclaimer. */}
