@@ -140,20 +140,25 @@ export default function AuthTrailArt({ className }: { className?: string }) {
                 and it is what the app's own map does around a live ping. */}
             {last && <circle cx={c.x} cy={c.y} r="58" fill="var(--gray-50)" />}
             {last && <circle cx={c.x} cy={c.y} r="58" fill="var(--primary-100)" />}
-            <circle cx={c.x} cy={c.y} r={last ? 42 : 33} fill={last ? "var(--primary-100)" : "var(--gray-50)"} />
-            <circle cx={c.x} cy={c.y} r={last ? 42 : 33} fill="var(--primary-400)" opacity={last ? 0.13 : 0.09} />
+            {/* The earlier sightings are quieter than they were — smaller halo, lighter purple,
+                smaller camera. The point of the drawing is where the person is NOW, and three
+                marks at nearly the last one's weight made the eye pick between four equals.
+                Weak, not faint: they still have to read as cameras, because a trail between three
+                anonymous dots and one camera is a different picture. */}
+            <circle cx={c.x} cy={c.y} r={last ? 42 : 28} fill={last ? "var(--primary-100)" : "var(--gray-50)"} />
+            <circle cx={c.x} cy={c.y} r={last ? 42 : 28} fill="var(--primary-400)" opacity={last ? 0.13 : 0.06} />
             {last && <circle cx={c.x} cy={c.y} r="27" fill="var(--primary-400)" />}
             <CameraGlyph
               x={c.x} y={c.y}
-              size={last ? 40 : 34}
-              color={last ? "var(--gray-0)" : "var(--primary-400)"}
+              size={last ? 40 : 29}
+              color={last ? "var(--gray-0)" : "var(--primary-300)"}
             />
             {/* Numbered, so the trail here and the list there are one object rather than two
                 drawings that happen to share a colour. */}
             <text
-              x={c.x + (last ? 44 : 25)} y={c.y - (last ? 38 : 20)}
-              fontFamily="'SUIT', system-ui, sans-serif" fontSize={last ? 20 : 16} fontWeight={800}
-              fill="var(--primary-400)" opacity={last ? 1 : 0.5}
+              x={c.x + (last ? 44 : 21)} y={c.y - (last ? 38 : 17)}
+              fontFamily="'SUIT', system-ui, sans-serif" fontSize={last ? 20 : 13} fontWeight={800}
+              fill="var(--primary-400)" opacity={last ? 1 : 0.4}
             >
               {String(i + 1).padStart(2, "0")}
             </text>
