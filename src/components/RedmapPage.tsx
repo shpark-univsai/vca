@@ -788,7 +788,13 @@ function DateRangePicker({ value, onChange }: { value: DateRange; onChange: (v: 
 }
 
 /* ── Component ─────────────────────────────────────────────── */
-export default function RedmapPage({ initialSearchName, onInitialSearchConsumed }: { initialSearchName?: string | null; onInitialSearchConsumed?: () => void } = {}) {
+export default function RedmapPage({ initialSearchName, onInitialSearchConsumed, initialSeedFace, onInitialSeedConsumed }: {
+  initialSearchName?: string | null;
+  onInitialSearchConsumed?: () => void;
+  /** A frame handed over from another screen — "this person, find them again". */
+  initialSeedFace?: { url: string; label: string } | null;
+  onInitialSeedConsumed?: () => void;
+} = {}) {
   const [lang] = useLanguage();
   const t = T[lang];
   const { showToast } = useToast();
@@ -925,6 +931,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
   // is the common case, not an edge case) is still detected as "new" instead of being silently
   // treated as already-consumed because it happened to match the initial state.
   const [consumedSearchName, setConsumedSearchName] = useState<string | null | undefined>(undefined);
+  const [consumedSeedFace, setConsumedSeedFace] = useState<string | null | undefined>(undefined);
   useEscapeKey(() => setUploadFor(null), uploadFor !== null);
 
   // Compared in Singapore time, not the browser's: on New Year's Eve a device a few hours behind
@@ -959,11 +966,39 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
     setTraceName(initialSearchName);
   }
 
+  /**
+   * Arriving with the person already attached.
+   *
+   * The other entry to this screen is a form: describe who you are looking for, in words, and
+   * hope the description survives the translation. That is the weaker half of person search and
+   * always was — a captured frame carries everything a sentence about clothing throws away. The
+   * frame is usually already on screen somewhere else when the question comes up, so the useful
+   * move is to carry it here rather than ask the operator to re-describe it.
+   *
+   * Attached, NOT searched. The threshold and the date range are still the operator's to set,
+   * and now that the slider shows what a setting costs, landing on a finished search would have
+   * spent that decision for them.
+   */
+  if (initialSeedFace != null && initialSeedFace.url !== consumedSeedFace) {
+    setConsumedSeedFace(initialSeedFace.url);
+    setMode("person");
+    setFaceImage(initialSeedFace.url);
+    // The upload path keys a file by name+size so the same image reproduces the same result set.
+    // A seeded frame has neither, and its URL is both stable and unique — same guarantee.
+    setFaceFileKey(`seed:${initialSeedFace.url}`);
+    setTraceName(initialSeedFace.label);
+    setHasSearched(false);
+    setResults(defaultResults);
+  }
+
   // Tell the parent its deep-link hint has been consumed — a real side effect (notifying an
   // external callback), so it belongs in an effect rather than the render-phase block above.
   useEffect(() => {
     if (initialSearchName) onInitialSearchConsumed?.();
   }, [initialSearchName, onInitialSearchConsumed]);
+  useEffect(() => {
+    if (initialSeedFace) onInitialSeedConsumed?.();
+  }, [initialSeedFace, onInitialSeedConsumed]);
 
   // A body-only search has only build and clothing to go on, which matches far more loosely than a
   // face does — the same 70% a face search treats as solid confidence lets in the kind of

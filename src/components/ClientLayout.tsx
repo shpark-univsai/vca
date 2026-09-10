@@ -246,6 +246,8 @@ export default function ClientLayout() {
   const [isLoading, setIsLoading] = useState(true);
   const [bestFrameFocusLocation, setBestFrameFocusLocation] = useState<string | null>(null);
   const [redmapAutoSearchName, setRedmapAutoSearchName] = useState<string | null>(null);
+  /** A captured frame carried to Redmap as the search target — see handleGoRedmapFrame. */
+  const [redmapSeedFace, setRedmapSeedFace] = useState<{ url: string; label: string } | null>(null);
   const [bestFrameAnalyzeLocation, setBestFrameAnalyzeLocation] = useState<string | null>(null);
   // Optional moment that goes with the location. RedFace's shared-frame lightbox names one exact
   // frame, so Best Frame should open on that second rather than on the camera's live position;
@@ -261,6 +263,18 @@ export default function ClientLayout() {
   };
   const handleGoRedmapTrace = (personName: string) => {
     setRedmapAutoSearchName(personName);
+    setActivePage("REDMAP");
+  };
+  /**
+   * "This person on screen — find them again."
+   *
+   * The name-based route above only works where the detection has a name. Most do not: a live
+   * monitoring card is a photo, a camera and a time, and it used to offer a Redmap button that
+   * threw all three away and opened an empty search form. Carrying the frame keeps the one thing
+   * worth carrying.
+   */
+  const handleGoRedmapFrame = (url: string, label: string) => {
+    setRedmapSeedFace({ url, label });
     setActivePage("REDMAP");
   };
   const handleNotificationNavigate = (event: LiveEvent) => {
@@ -405,11 +419,13 @@ export default function ClientLayout() {
             />
           </div>
         )}
-        {!isLoading && activePage === "DATA"   && <DataPage onGoRedmap={() => setActivePage("REDMAP")} onGoAnalyzeFrame={handleGoAnalyzeFrame} />}
+        {!isLoading && activePage === "DATA"   && <DataPage onGoRedmap={() => setActivePage("REDMAP")} onGoRedmapFrame={handleGoRedmapFrame} onGoAnalyzeFrame={handleGoAnalyzeFrame} />}
         {!isLoading && activePage === "REDMAP" && (
           <RedmapPage
             initialSearchName={redmapAutoSearchName}
             onInitialSearchConsumed={() => setRedmapAutoSearchName(null)}
+            initialSeedFace={redmapSeedFace}
+            onInitialSeedConsumed={() => setRedmapSeedFace(null)}
           />
         )}
       </div>
