@@ -1132,9 +1132,27 @@ export const SUPPORT_CONTACT: SupportContact = {
   hours: { en: "Mon–Fri, 09:00–18:00 (SGT)", ko: "월–금 09:00–18:00 (SGT)" },
 };
 
+/**
+ * Who the product thinks is looking at it, until a session exists.
+ *
+ * Now one of the seeded accounts rather than a name that matches none of them. That sounds like a
+ * cosmetic change and is not: every permission helper resolves the signed-in address against the
+ * account list, and an address matching nobody falls through to the permissive branch — so the
+ * console let you switch a person's app-search off and the app carried on searching, because the
+ * viewer was not that person or any person. The rules were writable and unobservable.
+ *
+ * Grace Tan because she is the seeded owner: Portal keeps working exactly as before (an account
+ * with a lesser role would bounce the viewer out of the console entirely), while the app-side
+ * flags now belong to somebody real and toggling them in Users & Permissions changes what the
+ * monitoring app does.
+ *
+ * HANDOFF NOTE: this whole constant disappears with the login response. It is the stand-in, not a
+ * default — a real build reads the identity off the session and denies by default when it has none
+ * (see canSearchInApp, currentPortalUser).
+ */
 export const SIGNED_IN_USER: SignedInUser = {
-  name: "John Doe",
-  email: "johndoe@email.com",
+  name: "Grace Tan",
+  email: "grace.tan@univs.ai",
   accountId: "VCA-ADMIN-8821",
   role: "Smart City Operations Manager",
   team: "Operational Control Team Alpha",
@@ -1245,7 +1263,7 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, status: "active", lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appSearch: true, status: "active", lastLoginAt: "2026-08-25 09:14" },
   { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appSearch: true, status: "active", lastLoginAt: "2026-08-24 18:02" },
   // Admin who also works the app — the combination the single-field model could not hold.
   { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, status: "active", lastLoginAt: "2026-08-20 11:47" },
