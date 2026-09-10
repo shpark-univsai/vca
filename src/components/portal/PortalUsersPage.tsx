@@ -1249,7 +1249,7 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
               </div>
               {r.reason && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{r.reason}</p>}
               <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "4px" }}>
-                {nowMs !== null ? t.requestedAgo(formatElapsed(nowMs - new Date(r.requestedAt).getTime())) : t.requestedLoading}
+                {nowMs !== null ? t.requestedAgo(formatElapsed(nowMs - new Date(r.requestedAt).getTime(), lang)) : t.requestedLoading}
               </p>
             </div>
             <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>

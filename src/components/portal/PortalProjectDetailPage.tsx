@@ -1430,7 +1430,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                               compute, and a guessed one would be corrected a frame later. */}
                           <span style={{ fontSize: "12px", color: "var(--gray-500)", whiteSpace: "nowrap" }}>
                             {nowMs !== null && c.lastSeenAt
-                              ? `${formatElapsed(nowMs - new Date(c.lastSeenAt).getTime())}${t.agoSuffix}`
+                              ? `${formatElapsed(nowMs - new Date(c.lastSeenAt).getTime(), lang)}${t.agoSuffix}`
                               : "—"}
                           </span>
                           {/*
@@ -1620,7 +1620,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                         <div style={{ paddingBottom: "14px", minWidth: 0 }}>
                           <p style={{ fontSize: "12px", lineHeight: "18px", fontWeight: 600, color: "var(--gray-900)" }}>{a.message}</p>
                           <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "2px" }}>
-                            {a.actor}{nowMs !== null ? ` · ${formatElapsed(nowMs - new Date(a.at).getTime())}${t.agoSuffix}` : ""}
+                            {a.actor}{nowMs !== null ? ` · ${formatElapsed(nowMs - new Date(a.at).getTime(), lang)}${t.agoSuffix}` : ""}
                           </p>
                         </div>
                       </div>
