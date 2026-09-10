@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Clock, Globe, KeyRound, Languages, LayoutGrid, LogIn, Mail, MapPin, Pencil, Shield, Trash2, User } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
@@ -305,13 +305,13 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   // the owner it stands in for, the same assumption the rest of Portal makes about it.
   const maySetPolicy = me ? canSetPolicy(me.permission) : true;
 
-  const accountPairs: { label: string; value: string; icon: React.ReactNode }[] = [
-    { label: t.name, value: me?.name ?? SIGNED_IN_USER.name, icon: <User size={12} strokeWidth={2.2} /> },
-    { label: t.email, value: me?.email ?? SIGNED_IN_USER.email, icon: <Mail size={12} strokeWidth={2.2} /> },
+  const accountPairs: { label: string; value: string }[] = [
+    { label: t.name, value: me?.name ?? SIGNED_IN_USER.name },
+    { label: t.email, value: me?.email ?? SIGNED_IN_USER.email },
     ...(me ? [
-      { label: t.portalRole, value: t.roles[me.permission] ?? me.permission, icon: <Shield size={12} strokeWidth={2.2} /> },
-      { label: t.appAccess, value: canEnterApp(me) ? t.appYes : t.appNo, icon: <LogIn size={12} strokeWidth={2.2} /> },
-      ...(myTeam ? [{ label: t.team, value: myTeam.name, icon: <Building2 size={12} strokeWidth={2.2} /> }] : []),
+      { label: t.portalRole, value: t.roles[me.permission] ?? me.permission },
+      { label: t.appAccess, value: canEnterApp(me) ? t.appYes : t.appNo },
+      ...(myTeam ? [{ label: t.team, value: myTeam.name }] : []),
     ] : []),
   ];
 
@@ -353,11 +353,11 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           filled with a disclaimer. */}
       <CardSection heading={t.accountTitle} first>
         <PairGrid>
-          {accountPairs.map(r => <PairItem key={r.label} label={r.label} icon={r.icon}>{r.value}</PairItem>)}
+          {accountPairs.map(r => <PairItem key={r.label} label={r.label}>{r.value}</PairItem>)}
           {/* A pair like the others, whose value is a button rather than a fact: the sentence
               under "Password" is the only thing this page can honestly say about one — never the
               password itself, and not a row of dots pretending to be its length. */}
-          <PairItem label={t.password} icon={<KeyRound size={12} strokeWidth={2.2} />}>
+          <PairItem label={t.password}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
               <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.passwordSetAgo}</span>
               <button className="portal-btn-outline" onClick={() => setChangingPassword(true)}
@@ -391,7 +391,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             {/* Editable, at last. Every handover starts with a test project and a typo, and
                 there was no renameProject anywhere in the codebase — the first name a project
                 was given was the only one it would ever have. */}
-            <PairItem label={t.projectName} icon={<MapPin size={12} strokeWidth={2.2} />}>
+            <PairItem label={t.projectName}>
               {renaming !== null ? (
                 <span style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                   <span style={{ minWidth: "180px", flex: 1 }}>
@@ -434,16 +434,16 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 </span>
               )}
             </PairItem>
-            <PairItem label={t.projectType} icon={<LayoutGrid size={12} strokeWidth={2.2} />}>{typeLabel(project.type)}</PairItem>
-            {projectTeam && <PairItem label={t.projectTeam} icon={<Building2 size={12} strokeWidth={2.2} />}>{projectTeam.name}</PairItem>}
-            {projectTeam?.region && <PairItem label={t.projectRegion} icon={<Globe size={12} strokeWidth={2.2} />}>{projectTeam.region}</PairItem>}
+            <PairItem label={t.projectType}>{typeLabel(project.type)}</PairItem>
+            {projectTeam && <PairItem label={t.projectTeam}>{projectTeam.name}</PairItem>}
+            {projectTeam?.region && <PairItem label={t.projectRegion}>{projectTeam.region}</PairItem>}
             {/* The one editable pair on the card, in the same shape as the four above it: the
                 control sits where a value would, rather than being pushed to the far right of a
                 ruled row. A setting is a value you can change, and it should look like the values
                 it sits with. */}
             {/* A select that opens and then refuses is worse than a value that never looked
                 editable — the same rule the Users table's permission cell follows. */}
-            <PairItem label={t.projectTimeZone} icon={<Clock size={12} strokeWidth={2.2} />}>
+            <PairItem label={t.projectTimeZone}>
               {mayEdit ? (
                 <FilterSelect
                   value={project.timeZone ?? PROJECT_TIME_ZONE}
@@ -631,7 +631,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
 
       <CardSection heading={t.displayTitle}>
         <PairGrid>
-          <PairItem label={t.language} icon={<Languages size={12} strokeWidth={2.2} />}>
+          <PairItem label={t.language}>
             {/* Each language named in its own script — the one label a person who cannot read the
                 current interface still recognises. */}
             <FilterSelect

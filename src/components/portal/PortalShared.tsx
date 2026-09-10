@@ -807,11 +807,14 @@ export function CardSection({ heading, desc, first, children }: { heading: strin
  */
 export function PairGrid({ children }: { children: React.ReactNode }) {
   return (
-    /* Two columns in practice, and by arithmetic rather than by a hard-coded 2: the section's
-       content column is capped at 520px, so 220px tracks fit twice and never three times. It is
-       written as auto-fit so the grid drops to one column when the section stacks on a narrow
-       card, which a fixed two would not do. */
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px 20px" }}>
+    /* One column.
+   
+       Two fitted, and that was the trouble: at 240px a track is narrower than half the values in
+       it, so "City of Singapore — Smart Infrastructure Office" wrapped to two lines while the
+       pair beside it took one, and the eye had to zigzag between columns to read six facts.
+       Six facts do not need to be dense. One column reads top to bottom, every value gets the
+       full width before it wraps, and the section is a list instead of a grid. */
+    <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
       {children}
     </div>
   );
@@ -825,19 +828,22 @@ export function PairGrid({ children }: { children: React.ReactNode }) {
  * competing; this is a settings page with five, on a column with room to spare, and at 11px the
  * captions read as fine print on a page that has no fine print.
  *
- * The icon tracks the caption: 12px at stroke 2.2 is a 1.1px line, still under the 1.4px Portal
- * draws elsewhere, because a mark beside an 12px caption has to match its weight as well as its
- * height — a 14px glyph at 1.4px stands taller than the letters and heavier than their stems.
+ * No icon, and no bold on the value. Every pair used to carry a 12px glyph beside its 12px
+ * caption, which put a second mark on a row whose first mark was already the word "Name" — nine
+ * of them in the top two sections, none of them telling you anything the caption did not. With
+ * every value at 700 on top of that, a page of six plain facts arrived looking like a form to be
+ * filled in. 600 is still unmistakably the value against a grey caption; the weight above it now
+ * belongs to the section heading, which is the thing that should be leading.
+ *
+ * None of the settings pages this was checked against (Later, Airtable, Lindy, Flodesk,
+ * Time2book) puts an icon on a field label.
  */
-export function PairItem({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
+export function PairItem({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ minWidth: 0 }}>
-      <p style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", lineHeight: "16px", color: "var(--gray-500)" }}>
-        <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}>{icon}</span>
-        {label}
-      </p>
+      <p style={{ fontSize: "12px", lineHeight: "16px", color: "var(--gray-500)" }}>{label}</p>
       {typeof children === "string"
-        ? <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginTop: "3px", wordBreak: "break-word" }}>{children}</p>
+        ? <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-900)", marginTop: "3px", wordBreak: "break-word" }}>{children}</p>
         : (
           /* flex, not a plain block: FilterSelect's trigger is inline-grid, so in a block it sits
              on a text baseline and inherits this column's 24px line height — about twenty pixels
