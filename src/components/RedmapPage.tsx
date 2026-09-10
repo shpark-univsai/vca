@@ -6,7 +6,7 @@ import type { RedmapMode as Mode, SimilarityLimit, HitResult, DateRange } from "
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "./Toast";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
-import { camerasInProject, canSearchInApp, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
+import { camerasInProject, canSearchInApp, judgementFor, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
 import RemoveImageButton from "./RemoveImageButton";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 
@@ -26,6 +26,11 @@ const T = {
     searchResults: "Search results",
     excluded: "Excluded",
     restore: "Restore",
+    confirmed: "Confirmed",
+    confirmIt: "Same person — confirm this sighting",
+    undoConfirm: "Undo",
+    confirmedToast: (place: string) => `Confirmed "${place}" as the same person`,
+    unnamedTarget: "Manual search",
     modePerson: "PERSON",
     modeVehicle: "VEHICLE",
     licensePlate: "License plate",
@@ -98,6 +103,11 @@ const T = {
     searchResults: "검색 결과",
     excluded: "제외됨",
     restore: "복원",
+    confirmed: "확인됨",
+    confirmIt: "같은 사람입니다 — 이 목격을 확인",
+    undoConfirm: "되돌리기",
+    confirmedToast: (place: string) => `"${place}"${josa(place, "을", "를")} 같은 사람으로 확인했습니다`,
+    unnamedTarget: "직접 검색",
     modePerson: "사람",
     modeVehicle: "차량",
     licensePlate: "차량 번호",
@@ -822,7 +832,20 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
   // gets pulled out of the route without being deleted from the underlying search results — the
   // left result list still shows it, just dimmed, so excluding is a correction to the trace, not
   // a destructive edit to what was actually found.
-  const [excludedHitIds, setExcludedHitIds] = useState<Set<string>>(new Set());
+  /**
+   * Judgements live in the store now, not in this component.
+   *
+   * This was a Set of excluded ids, and it was wiped by every new search and by Reset because it
+   * counted as "search outcome". A call that a sighting is the wrong person is not an outcome of
+   * a query — it is a person's conclusion about a specific record, and it is worth exactly as
+   * much the second time somebody searches. So it survives both, and it now carries who said so
+   * and when. See DetectionJudgement.
+   */
+  const detectionJudgements = useVcaStore(state => state.detectionJudgements);
+  const recordJudgement = useVcaStore(state => state.recordJudgement);
+  const clearJudgement = useVcaStore(state => state.clearJudgement);
+  const verdictOf = (id: string) => judgementFor(detectionJudgements, "redmap", id)?.verdict;
+  const isExcluded = (id: string) => verdictOf(id) === "false_positive";
   // Which distinct person(s) the map/route-history panel currently trace — only meaningful (and
   // only shown as chips) when the current results actually contain more than one distinct person.
   const [selectedPersonIds, setSelectedPersonIds] = useState<Set<string>>(new Set());
@@ -989,7 +1012,9 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
             desc: t.widenDates });
     }
     setResults(filtered);
-    setExcludedHitIds(new Set());
+    // Judgements are NOT cleared here. They used to be, on the reasoning that they described this
+    // search's outcome; they describe a sighting instead, and re-running a query is not a reason
+    // to make somebody decide the same false positive twice.
     setHasSearched(true);
     // Nothing is selected until the user selects something. The route (map line + timeline) shows
     // the whole result set on its own, so pre-selecting the most recent hit added no information —
@@ -1025,7 +1050,6 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
     setActiveNode(null);
     setSelectedPersonIds(new Set());
     setTraceName(null);
-    setExcludedHitIds(new Set());
     setEmptyReason(null);
   }, [defaultResults]);
 
@@ -1589,7 +1613,8 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 {results.map((hit, index) => {
-                  const excluded = excludedHitIds.has(hit.id);
+                  const verdict = verdictOf(hit.id);
+                  const excluded = verdict === "false_positive";
                   return (
                   <div
                     key={hit.id}
@@ -1627,11 +1652,23 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                     </div>
                     {excluded ? (
                       <button
-                        onClick={e => { e.stopPropagation(); setExcludedHitIds(prev => { const next = new Set(prev); next.delete(hit.id); return next; }); }}
+                        onClick={e => { e.stopPropagation(); clearJudgement("redmap", hit.id); }}
                         style={{ display: "flex", alignItems: "center", gap: "4px", border: "none", background: "none", padding: 0, cursor: "pointer", width: "fit-content" }}
                       >
                         <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--danger-400)" }}>{t.excluded}</span>
                         <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--primary-400)", textDecoration: "underline" }}>{t.restore}</span>
+                      </button>
+                    ) : verdict === "confirmed" ? (
+                      /* The other half of the pair. Without it, "nobody has looked at this" and
+                         "somebody looked and it is right" are the same picture — and the second
+                         is the one a handover, a defence and a training set all need stated. */
+                      <button
+                        onClick={e => { e.stopPropagation(); clearJudgement("redmap", hit.id); }}
+                        title={t.undoConfirm}
+                        style={{ display: "flex", alignItems: "center", gap: "4px", border: "none", background: "none", padding: 0, cursor: "pointer", width: "fit-content" }}
+                      >
+                        <CheckIconSm />
+                        <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--success-400)" }}>{t.confirmed}</span>
                       </button>
                     ) : showPersonChips && (
                       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
@@ -1693,7 +1730,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
               groupId: h.personId,
               // Keeps `results` and `hits` the same length/order — see the comment on
               // TrackingHit.hidden in RedmapMap.tsx for why this can't just be a `.filter()`.
-              hidden: excludedHitIds.has(h.id),
+              hidden: isExcluded(h.id),
             })) : []}
             trackingActive={trackingActive}
             activeNode={activeNode}
@@ -1741,7 +1778,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                     const tracedHits = results
                       .map((hit, hitIndex) => ({ hit, hitIndex }))
                       .filter(({ hit }) => !showPersonChips || selectedPersonIds.has(hit.personId))
-                      .filter(({ hit }) => !excludedHitIds.has(hit.id));
+                      .filter(({ hit }) => !isExcluded(hit.id));
                     // Every node is a sighting from the results — no synthetic starting point.
                     // A fixed TRACKING_ORIGIN used to be prepended here, the same hardcoded place,
                     // photo and timestamp for every search regardless of who was being traced. It
@@ -1897,7 +1934,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                                 <button
                                   onClick={e => {
                                     e.stopPropagation();
-                                    setExcludedHitIds(prev => new Set(prev).add(node.key));
+                                    recordJudgement({ surface: "redmap", subjectId: node.key, targetLabel: traceName ?? t.unnamedTarget, verdict: "false_positive" });
                                     // The left list's own "Excluded · Restore" tag is the lasting way
                                     // back, but it's easy to miss right after the click — a toast with
                                     // its own Undo gives an immediate way to reverse a misclick without
@@ -1905,7 +1942,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                                     showToast({
                                       variant: "default", title: t.removedFromTrace(node.fullLocation),
                                       actionLabel: t.undo,
-                                      onAction: () => setExcludedHitIds(prev => { const next = new Set(prev); next.delete(node.key); return next; }),
+                                      onAction: () => clearJudgement("redmap", node.key),
                                     });
                                   }}
                                   title={t.notSamePerson}
@@ -1918,7 +1955,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                                     e.currentTarget.style.color = "var(--gray-500)";
                                   }}
                                   style={{
-                                    position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)",
+                                    position: "absolute", right: "26px", top: "50%", transform: "translateY(-50%)",
                                     width: "22px", height: "22px", borderRadius: "999px", flexShrink: 0,
                                     // Grey, borderless, and quiet. This is a secondary action on a
                                     // reversible change — it drops a hit from this one route, leaves
@@ -1932,6 +1969,59 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                                   <RemoveFromTraceIcon />
                                 </button>
                               )}
+                              {/* The other verdict, beside the one that was already here.
+   
+                                  An exclude button on its own can only ever record doubt, so a
+                                  route full of sightings nobody has looked at looks exactly like
+                                  a route somebody has been through and agreed with. Saying "yes,
+                                  this is them" is the half that a handover reads, that a defence
+                                  rests on, and that a model can learn from — and it costs one
+                                  button beside a button that already exists.
+   
+                                  Toggles: pressing it again clears the call rather than leaving
+                                  the operator with no way to take back a misclick. */}
+                              {node.hitIndex >= 0 && (() => {
+                                const confirmed = verdictOf(node.key) === "confirmed";
+                                return (
+                                  <button
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      if (confirmed) { clearJudgement("redmap", node.key); return; }
+                                      recordJudgement({ surface: "redmap", subjectId: node.key, targetLabel: traceName ?? t.unnamedTarget, verdict: "confirmed" });
+                                      showToast({
+                                        variant: "default", title: t.confirmedToast(node.fullLocation),
+                                        actionLabel: t.undoConfirm,
+                                        onAction: () => clearJudgement("redmap", node.key),
+                                      });
+                                    }}
+                                    title={confirmed ? t.undoConfirm : t.confirmIt}
+                                    aria-pressed={confirmed}
+                                    onMouseEnter={e => {
+                                      if (confirmed) return;
+                                      e.currentTarget.style.backgroundColor = "var(--gray-200)";
+                                      e.currentTarget.style.color = "var(--gray-700)";
+                                    }}
+                                    onMouseLeave={e => {
+                                      if (confirmed) return;
+                                      e.currentTarget.style.backgroundColor = "var(--gray-100)";
+                                      e.currentTarget.style.color = "var(--gray-500)";
+                                    }}
+                                    style={{
+                                      position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)",
+                                      width: "22px", height: "22px", borderRadius: "999px", flexShrink: 0,
+                                      border: "none",
+                                      // Filled only once the call is made. At rest it matches the
+                                      // exclude button beside it — neither verdict is the default,
+                                      // and a green button sitting there would suggest one is.
+                                      backgroundColor: confirmed ? "var(--success-100)" : "var(--gray-100)",
+                                      color: confirmed ? "var(--success-400)" : "var(--gray-500)",
+                                      display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                                    }}
+                                  >
+                                    <CheckIconSm />
+                                  </button>
+                                );
+                              })()}
                             </div>
                             {/* The frame itself, 16:9 at the panel's full width. Opening it here
                                 rather than navigating to Best Frame keeps the trace alive —

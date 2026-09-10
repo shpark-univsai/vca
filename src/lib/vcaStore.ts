@@ -366,6 +366,51 @@ export interface SearchAccessRecord {
   ip?: string;
 }
 
+/**
+ * A person's call on one detection: this is them, or it is not.
+ *
+ * Kept apart from the audit log on purpose. The audit log records what an administrator did to
+ * the system; this records what an operator concluded about a face, which is a different kind of
+ * fact with a different reader. An auditor asks the first "who changed the retention period"; a
+ * prosecutor, an ML engineer and the next shift all ask the second.
+ *
+ * It was component state until 2026-09-10 — a Set in the Redmap page — so a judgement lived until
+ * the next search cleared it and was never attributed to anybody. Three things needed it to be a
+ * record instead: a defence that a human reviewed the match, a signal for the model about what it
+ * got wrong, and a handover so the next shift does not re-decide the same false positive.
+ *
+ * Both verdicts, not just the rejection. "Nobody has looked at this yet" and "somebody looked and
+ * it is right" are different states, and a screen with only an exclude button cannot tell them
+ * apart — which is exactly the question a shift handover asks.
+ *
+ * HANDOFF NOTE: lives in the store, so it survives moving around the app and does NOT survive a
+ * refresh — the whole mock store is in memory. The server owns these: they are evidence, and the
+ * write needs the operator's identity from the session rather than the browser's word for it.
+ */
+export type DetectionVerdict = "confirmed" | "false_positive";
+
+export interface DetectionJudgement {
+  id: string;
+  /** Which screen the call was made on — the same subject id can exist on more than one. */
+  surface: "redmap" | "redface";
+  /** The sighting or node judged. Stable across searches: these are seeded record ids. */
+  subjectId: string;
+  /** Who the search was about, so a verdict belongs to an investigation and not to nothing. */
+  targetLabel: string;
+  verdict: DetectionVerdict;
+  actor: string;
+  at: string;
+}
+
+/** The one on a subject, or undefined if nobody has judged it. */
+export function judgementFor(
+  list: DetectionJudgement[],
+  surface: DetectionJudgement["surface"],
+  subjectId: string,
+): DetectionJudgement | undefined {
+  return list.find(j => j.surface === surface && j.subjectId === subjectId);
+}
+
 export interface SearchPurposeSelection {
   purposeId: string;
   /** Case or document reference, when the purpose requires one. */
@@ -553,6 +598,8 @@ interface VcaStoreState {
   searchPurpose: SearchPurposeSelection | null;
   /** Every look-up, newest first. Empty until the app records one — see SearchAccessRecord. */
   searchAccessLog: SearchAccessRecord[];
+  /** Operator calls on individual detections — see DetectionJudgement. */
+  detectionJudgements: DetectionJudgement[];
   events: VcaEvent[];
   uploads: UploadedMedia[];
   portalUsers: PortalUser[];
@@ -602,6 +649,10 @@ interface VcaStoreState {
    * Channels, plan and term arrive with the licence and are read-only to everything in here.
    * Removed 2026-09-10; see the licence-as-signed-file question in the vendor-admin review.
    */
+  /** One call per subject: recording again replaces the previous verdict rather than stacking. */
+  recordJudgement: (j: Pick<DetectionJudgement, "surface" | "subjectId" | "targetLabel" | "verdict">) => void;
+  /** Back to "nobody has looked at this". Not the same as marking it a false positive. */
+  clearJudgement: (surface: DetectionJudgement["surface"], subjectId: string) => void;
   updateProjectMail: (projectId: string, updates: Pick<Project, "mailDomain" | "smtp">) => void;
   setProjectTimeZone: (projectId: string, timeZone: string) => void;
   // null clears the override and falls back to the auto-detected value; true/false pins it.
@@ -2196,6 +2247,7 @@ const AUDIT_LOG: AuditEvent[] = [
   { id: "audit-19", projectId: "proj-sg", message: "License renewed until 2029-03-31", actor: "Grace Tan", at: auditAt(12960) },
 ];
 let auditSeq = AUDIT_LOG.length;
+let judgementSeq = 0;
 
 // Latest seed timestamp — anything at or before this is historical, so the bell starts with
 // nothing unread instead of surfacing all 12 seed VIP hits as "new" on first load.
@@ -2284,6 +2336,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   searchPurpose: null,
   // No seed. These are events, and an installation that has run no searches has none.
   searchAccessLog: [],
+  detectionJudgements: [],
   events: SEED_EVENTS,
   portalUsers: PORTAL_USERS,
   servers: SERVERS,
@@ -2493,6 +2546,28 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       ].slice(0, AUDIT_LOG_LIMIT),
     })),
 
+  recordJudgement: ({ surface, subjectId, targetLabel, verdict }) =>
+    set(state => ({
+      detectionJudgements: [
+        {
+          id: `judge-${++judgementSeq}`,
+          surface, subjectId, targetLabel, verdict,
+          // The signed-in stand-in, like every other actor field in this mock. The real one comes
+          // from the session — a browser naming its own operator is not evidence of anything.
+          actor: SIGNED_IN_USER.name,
+          at: new Date().toISOString(),
+        },
+        // Replace rather than append: one subject holds one current verdict. The history of
+        // changed minds belongs on the server, where an earlier call cannot be quietly dropped.
+        ...state.detectionJudgements.filter(j => !(j.surface === surface && j.subjectId === subjectId)),
+      ],
+    })),
+  clearJudgement: (surface, subjectId) =>
+    set(state => ({
+      detectionJudgements: state.detectionJudgements.filter(
+        j => !(j.surface === surface && j.subjectId === subjectId),
+      ),
+    })),
   updateProjectMail: (projectId, updates) =>
     set(state => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)),

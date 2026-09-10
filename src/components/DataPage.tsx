@@ -4851,17 +4851,24 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
   const [selectedNode, setSelectedNode] = useState<{ tier:"tier1"|"tier2"|"tier3"; node:RedfaceNode } | null>(null);
   const toggleSelectedNode = (tier: string, node: RedfaceNode) =>
     setSelectedNode(prev => prev && prev.node.id === node.id ? null : { tier: tier as "tier1"|"tier2"|"tier3", node });
-  // Investigator override on top of the seeded/deterministic data — "Exclude false positive"
-  // hides a node from every view (pyramid/grid/counts) since a dismissed non-match shouldn't keep
-  // cluttering the associate list. Reset whenever the Primary Target itself changes — these ids
-  // belong to THIS person's associate graph, not the next one's.
-  const [excludedIds, setExcludedIds] = useState<Set<number>>(new Set());
+  /**
+   * Removed 2026-09-10: a Set of excluded node ids that nothing wrote to.
+   *
+   * It backed an "Exclude false positive" action in the joint-evidence panel, and that panel's
+   * exclude entry point is gone — so the state, its reset, and the filter that read it were all
+   * running for nobody. Dead state is worse than no state: the next person reads it as a working
+   * feature and threads new code through it.
+   *
+   * When RedFace gets a judgement action back, it should not come back here. Redmap's calls now
+   * live in the store as DetectionJudgement records with a verdict, an operator and a timestamp —
+   * pass `surface: "redface"` and the node id and the same slice holds these too. Component state
+   * is what made the Redmap version worthless: it vanished on the next search and named nobody.
+   */
   // Compared during render, not reset from an effect: an effect would render one frame of the new
-  // target's graph still carrying the previous target's exclusions and open panel.
+  // target's graph still carrying the previous target's open panel.
   const [prevPrimaryName, setPrevPrimaryName] = useState(primaryTarget?.name);
   if (primaryTarget?.name !== prevPrimaryName) {
     setPrevPrimaryName(primaryTarget?.name);
-    setExcludedIds(new Set());
     setSelectedNode(null);
   }
   // Recomputed only when the Primary Target actually changes — same person always reproduces the
@@ -4878,19 +4885,16 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
 
   const [sortDir, setSortDir] = useState<"desc"|"asc">("desc");
 
-  // Nothing writes to excludedIds any more — its entry point (the joint-evidence panel's exclude
-  // action) is gone. Kept so an entry point can be added back without rethreading the filter,
-  // but as it stands this always returns true.
-  const notExcluded = (n: RedfaceNode) => !excludedIds.has(n.id);
+
   // Reuses buildCooccurEvents' own dates rather than a separate fabricated "last activity" field —
   // a node passes the filter if ANY of its sampled co-capture events fall inside the range.
   const [dateRange, setDateRange] = useState<DateRangeValue>(DEFAULT_REDFACE_RANGE);
   const inDateRange = (n: RedfaceNode) => cooccurEventsInRange(n, cooccurCams, dateRange).length > 0;
   const sortNodes = (nodes: RedfaceNode[]) => [...nodes].sort((a, b) => sortDir === "desc" ? b.count - a.count : a.count - b.count);
 
-  const tier1 = sortNodes(REDFACE_TIER1.filter(n => notExcluded(n) && inDateRange(n)));
-  const tier2 = sortNodes(REDFACE_TIER2.filter(n => notExcluded(n) && inDateRange(n)));
-  const tier3 = sortNodes(REDFACE_TIER3.filter(n => notExcluded(n) && inDateRange(n)));
+  const tier1 = sortNodes(REDFACE_TIER1.filter(inDateRange));
+  const tier2 = sortNodes(REDFACE_TIER2.filter(inDateRange));
+  const tier3 = sortNodes(REDFACE_TIER3.filter(inDateRange));
   const reset = () => { setTier1On(true); setTier2On(true); setTier3On(true); setSortDir("desc"); setDateRange(DEFAULT_REDFACE_RANGE); };
 
   // No primary target yet means there's nobody to compute co-occurrence against — the tier
@@ -4927,9 +4931,9 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
   ];
 
   const tierRows = [
-    { on:tier1On, toggle:() => setTier1On(o => !o), bg:"var(--danger-100)", text:"var(--danger-400)", short:"Tier 1", label:"Tier 1 red zone (>100)", count:REDFACE_TIER1.filter(notExcluded).length, badgeBg:"var(--danger-400)" },
-    { on:tier2On, toggle:() => setTier2On(o => !o), bg:"var(--warning-100)", text:"var(--warning-500)", short:"Tier 2", label:"Tier 2 orange zone (10~99)", count:REDFACE_TIER2.filter(notExcluded).length, badgeBg:"var(--warning-400)" },
-    { on:tier3On, toggle:() => setTier3On(o => !o), bg:"var(--gray-100)", text:"var(--gray-700)", short:"Tier 3", label:"Tier 3 slate zone (<10)", count:REDFACE_TIER3.filter(notExcluded).length, badgeBg:"var(--gray-600)" },
+    { on:tier1On, toggle:() => setTier1On(o => !o), bg:"var(--danger-100)", text:"var(--danger-400)", short:"Tier 1", label:"Tier 1 red zone (>100)", count:REDFACE_TIER1.length, badgeBg:"var(--danger-400)" },
+    { on:tier2On, toggle:() => setTier2On(o => !o), bg:"var(--warning-100)", text:"var(--warning-500)", short:"Tier 2", label:"Tier 2 orange zone (10~99)", count:REDFACE_TIER2.length, badgeBg:"var(--warning-400)" },
+    { on:tier3On, toggle:() => setTier3On(o => !o), bg:"var(--gray-100)", text:"var(--gray-700)", short:"Tier 3", label:"Tier 3 slate zone (<10)", count:REDFACE_TIER3.length, badgeBg:"var(--gray-600)" },
   ];
 
   return (
