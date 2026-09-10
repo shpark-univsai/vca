@@ -32,6 +32,19 @@ export function usePortalEditAccess(): { mayEdit: boolean; reason: string | unde
   return { mayEdit, reason: mayEdit ? undefined : READ_ONLY_REASON[lang] };
 }
 
+/**
+ * The handful of strings the shared components own.
+ *
+ * They had none: the kebab menu's only label was a hardcoded `title="More actions"` — untranslated
+ * in Korean, and the single thing a screen reader had to go on for an icon-only button used in six
+ * Portal tables — and FilterSelect fell back to an English "Select" whenever its value matched no
+ * option (reachable, e.g. a camera whose assigned server was deleted).
+ */
+const SHARED_LABELS = {
+  en: { moreActions: "More actions", select: "Select", typeSmartCity: "Smart City", typeSmartSchool: "Smart School" },
+  ko: { moreActions: "더 보기", select: "선택", typeSmartCity: "스마트시티", typeSmartSchool: "스마트스쿨" },
+} as const;
+
 /** Why a control is disabled, said in the role's own words rather than "no permission". */
 const READ_ONLY_REASON = {
   en: "Auditor accounts have view-only access to this console.",
@@ -228,10 +241,24 @@ export const PANEL_SHADOW = "0 1px 2px rgba(14,22,42,0.03), 0 1px 3px rgba(14,22
  * coloured word floating between two chips that have grounds, so each type now carries its own
  * tint — the same 100 step every other status chip in Portal sits on.
  */
+/**
+ * The two project types, and how a chip for one is coloured.
+ *
+ * `label` stays English here because it is also a data value shared with screens that do not
+ * localise; `useTypeLabel()` below is what a rendered chip should use. Three Portal screens were
+ * printing TYPE_META.label straight into a Korean UI while the project wizard translated the
+ * same two words correctly, so the console showed both spellings.
+ */
 export const TYPE_META: Record<ProjectType, { label: string; bg: string; color: string }> = {
   smart_city: { label: "Smart City", bg: "var(--primary-100)", color: "var(--primary-400)" },
   smart_school: { label: "Smart School", bg: "var(--success-100)", color: "var(--success-400)" },
 };
+
+/** The project type's name in the reader's language. */
+export function useTypeLabel(): (type: ProjectType) => string {
+  const [lang] = usePortalLanguage();
+  return type => (type === "smart_city" ? SHARED_LABELS[lang].typeSmartCity : SHARED_LABELS[lang].typeSmartSchool);
+}
 
 interface RowAction {
   label: string;
@@ -285,6 +312,7 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
    */
   fitContent?: boolean;
 }) {
+  const [lang] = usePortalLanguage();
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
@@ -369,7 +397,7 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
             this trigger opens — at 10 the control was smaller than its own list. The typed content
             of a text field stays at 13: that is the reader's own text and it has to be
             comfortable, but a select shows a label we wrote. */}
-        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis" }}>{selected?.label ?? "Select"}</span>
+        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis" }}>{selected?.label ?? SHARED_LABELS[lang].select}</span>
         <span style={{ display: "flex", color: "var(--gray-600)", flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.87" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </span>
@@ -453,6 +481,7 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
 // always-visible icon buttons with one trigger, matching how Vimeo (and most SaaS admin tables)
 // keep row actions compact and consistent as more of them get added over time.
 export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
+  const [lang] = usePortalLanguage();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -474,7 +503,8 @@ export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
     <div ref={ref} style={{ position: "relative", justifySelf: "end" }}>
       <button
         onClick={() => setOpen(o => !o)}
-        title="More actions"
+        title={SHARED_LABELS[lang].moreActions}
+        aria-label={SHARED_LABELS[lang].moreActions}
         style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", borderRadius: "6px" }}
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

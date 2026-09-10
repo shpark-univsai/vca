@@ -2743,14 +2743,29 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const where = canEnterPortal(permission)
         ? (appAccess ? "Portal and the app" : "Portal only")
         : "the app only";
-      const auditEntry: AuditEvent = {
+      // Losing the app takes person search with it. appSearch is a grant on a surface the
+      // account can no longer reach, and the row went on showing its "Search on" badge — the
+      // most sensitive grant in the product reading as live on somebody who cannot use it.
+      // Logged separately, because granting and revoking it is its own audited act.
+      const at = new Date().toISOString();
+      const searchDropped = !appAccess && user?.appSearch === true;
+      const entries: AuditEvent[] = [{
         id: `audit-${++auditSeq}`, projectId: user?.projectIds[0],
         message: `${user?.name ?? userId} may now use ${where} (role: ${permission})`,
-        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
-      };
+        actor: SIGNED_IN_USER.name, at,
+      }];
+      if (searchDropped) {
+        entries.unshift({
+          id: `audit-${++auditSeq}`, projectId: user?.projectIds[0],
+          message: `Person search revoked with app access: ${user?.name ?? userId}`,
+          actor: SIGNED_IN_USER.name, at,
+        });
+      }
       return {
-        portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, permission, appAccess } : u)),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+        portalUsers: state.portalUsers.map(u => (
+          u.id === userId ? { ...u, permission, appAccess, ...(appAccess ? null : { appSearch: false }) } : u
+        )),
+        auditLog: [...entries, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   setActiveProjectId: (projectId) => set({ activeProjectId: projectId }),

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Gem, Layers, Sprout } from "lucide-react";
 import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, useTypeLabel } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 
 // Cumulative — each tier includes everything the tier before it unlocks.
@@ -83,12 +83,12 @@ const T = {
     expired: "Expired",
     unlimited: "Unlimited",
     yrRemaining: (n: number) => `${n}yr remaining`,
-    monthsRemaining: (n: number) => `${n} months remaining`,
-    daysRemaining: (n: number) => `${n} days remaining`,
+    monthsRemaining: (n: number) => `${n} month${n === 1 ? "" : "s"} remaining`,
+    daysRemaining: (n: number) => `${n} day${n === 1 ? "" : "s"} remaining`,
     expiringSoon: "Expiring soon",
     perpetual: "Perpetual",
     notRecorded: "No expiry on record",
-    expiryNotice: (n: number) => `This licence expires in ${n} days. Renewing is a contract change, so start it with whoever signs — cameras stop being processed on the expiry date.`,
+    expiryNotice: (n: number) => `This licence expires in ${n} day${n === 1 ? "" : "s"}. Renewing is a contract change, so start it with whoever signs — cameras stop being processed on the expiry date.`,
     smartSchoolOnly: "Smart School only",
     analysisComingSoon: "readings not available yet",
     perChannelPerYear: (price: number) => `$${price}/channel/yr`,
@@ -105,7 +105,7 @@ const T = {
     clauseScope: "Scope",
     clauseFees: "Fees",
     clauseParty: "Account manager",
-    channelsUnitN: (n: number) => `${n} channels`,
+    channelsUnitN: (n: number) => `${n} channel${n === 1 ? "" : "s"}`,
     inUseNow: (used: number, avail: number) => `${used} in use · ${avail} free`,
     scopeExcluded: "Not covered",
     channelsCostPerYear: (cost: string) => `$${cost}/yr`,
@@ -181,6 +181,7 @@ function CheckIcon() { return <Check size={12} strokeWidth={2.8} />; }
  */
 export default function ProjectLicenseTab({ projectId }: { projectId: string }) {
   const [lang] = usePortalLanguage();
+  const typeLabel = useTypeLabel();
   const t = T[lang];
   const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
   const teams = useVcaStore(s => s.teams);
@@ -194,7 +195,6 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
 
   if (!project) return null;
 
-  const meta = TYPE_META[project.type];
   const planMeta = planMetaFor(project.licensePlan);
   const projectTeam = teams.find(o => o.id === project.teamId);
   const projectTeamName = projectTeam?.name;
@@ -404,8 +404,8 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
                 <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "28px" }}>
                   {project.licensePlan ?? t.notSet}
                 </span>
-                <span style={{ fontSize: "10px", fontWeight: 700, color: meta.color, backgroundColor: meta.bg, padding: "3px 8px", borderRadius: "999px" }}>
-                  {meta.label}
+                <span style={{ fontSize: "10px", fontWeight: 700, color: TYPE_META[project.type].color, backgroundColor: TYPE_META[project.type].bg, padding: "3px 8px", borderRadius: "999px" }}>
+                  {typeLabel(project.type)}
                 </span>
               </p>
               <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px" }}>

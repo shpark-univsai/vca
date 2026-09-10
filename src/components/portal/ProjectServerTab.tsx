@@ -609,7 +609,7 @@ const MAIN_T = {
     gapNoCameras: "no cameras assigned",
     gapNoCamerasWhy: "The server is registered and reachable but has nothing pointed at it — capacity that is paid for and idle.",
     gapServerUnit: "servers",
-    gapPerServers: (n: number) => `across ${n} servers`,
+    gapPerServers: (n: number) => `across ${n} server${n === 1 ? "" : "s"}`,
     gapLoadLabel: "cameras to process",
     gapLoadWhy: "Cameras in this project divided across its servers. The figure an argument for another server is made from — it is not a limit, and nothing here enforces one.",
     gapShowOnly: "Show only these",

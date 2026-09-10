@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useVcaStore, type Project } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH, TABLE_HEADER_COLOR, TYPE_META, SelectedCheckIcon } from "./PortalShared";
+import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH, TABLE_HEADER_COLOR, SelectedCheckIcon, useTypeLabel } from "./PortalShared";
 import { Building2, Check, ChevronRight, Mail, MapPin } from "lucide-react";
 
 interface ProjectSwitcherProps {
@@ -171,6 +171,7 @@ function StarIcon({ filled }: { filled: boolean }) {
 export default function ProjectSwitcher({ dark, compact, teamId, currentProjectId, onSelect, onRequestProject, onSwitchTeam, reopenSignal }: ProjectSwitcherProps) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
+  const typeLabel = useTypeLabel();
   const TAB_LABELS: Record<Tab, string> = { recent: t.tabRecent, starred: t.tabStarred, all: t.tabAll };
   const projects = useVcaStore(s => s.projects);
   const teams = useVcaStore(s => s.teams);
@@ -212,7 +213,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
    * below cannot say. A missing half is dropped rather than printing a separator with nothing on
    * one side of it.
    */
-  const subtitle = [teams.find(tm => tm.id === current?.teamId)?.region, current ? TYPE_META[current.type].label : undefined]
+  const subtitle = [teams.find(tm => tm.id === current?.teamId)?.region, current ? typeLabel(current.type) : undefined]
     .filter(Boolean)
     .join(" · ");
   const team = teams.find(o => o.id === teamId) ?? teams[0];

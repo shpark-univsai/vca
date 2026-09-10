@@ -19,6 +19,10 @@ const T = {
     online: "Online",
     offline: "Offline",
     statusError: "Error",
+    errIp: "That does not look like an address.",
+    errRtsp: "A stream address starts with rtsp://",
+    errLat: "Latitude runs from -90 to 90.",
+    errLng: "Longitude runs from -180 to 180.",
     offlineSuffix: (n: number) => `${n} offline`,
     onlineCountLabel: (n: number) => `${n} online`,
     confirmDeleteCamTitle: (name: string) => `Remove ${name}?`,
@@ -159,6 +163,10 @@ const T = {
     online: "온라인",
     offline: "오프라인",
     statusError: "오류",
+    errIp: "주소 형식이 아닙니다.",
+    errRtsp: "스트림 주소는 rtsp:// 로 시작합니다.",
+    errLat: "위도는 -90에서 90 사이입니다.",
+    errLng: "경도는 -180에서 180 사이입니다.",
     offlineSuffix: (n: number) => `${n} 오프라인`,
     onlineCountLabel: (n: number) => `온라인 ${n}`,
     confirmDeleteCamTitle: (name: string) => `${name}을(를) 삭제할까요?`,
@@ -492,13 +500,30 @@ function CameraFormModal({
 }) {
   useEscapeKey(onClose);
   const [form, setForm] = useState<CameraFormValues>(initial);
-  const valid = form.name.trim().length > 0 && form.rtspUrl.trim().length > 0;
+  /*
+   * Coordinates and the address are checked, not swallowed.
+   *
+   * `Number(values.lat) || 0` turned a typo into 0,0 — a camera silently placed in the Gulf of
+   * Guinea rather than a form saying the number is wrong. The IP took any string at all, and
+   * the RTSP field took one with no scheme.
+   *
+   * Deliberately loose where looseness is right: IP is optional (a camera can be registered
+   * before its address is known) and only refused when what is typed plainly is not one.
+   */
+  const latNum = form.lat.trim() === "" ? null : Number(form.lat);
+  const lngNum = form.lng.trim() === "" ? null : Number(form.lng);
+  const latError = latNum !== null && (!Number.isFinite(latNum) || latNum < -90 || latNum > 90);
+  const lngError = lngNum !== null && (!Number.isFinite(lngNum) || lngNum < -180 || lngNum > 180);
+  const ipError = form.ip.trim() !== "" && !/^[0-9a-zA-Z.:_-]+$/.test(form.ip.trim());
+  const rtspError = form.rtspUrl.trim() !== "" && !/^rtsp:\/\/.+/i.test(form.rtspUrl.trim());
+  const valid = form.name.trim().length > 0 && form.rtspUrl.trim().length > 0
+    && !latError && !lngError && !ipError && !rtspError;
 
   const field = (
     key: "name" | "ip" | "location" | "zone" | "rtspUrl" | "model" | "username" | "password" | "lat" | "lng",
     label: string,
     placeholder: string,
-    opts?: { type?: string; inputMode?: "decimal" },
+    opts?: { type?: string; inputMode?: "decimal"; error?: string },
   ) => (
     <div>
       <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{label}</label>
@@ -512,6 +537,11 @@ function CameraFormModal({
         inputMode={opts?.inputMode}
         autoComplete={key === "password" ? "new-password" : undefined}
       />
+      {/* Under the field it belongs to. The submit button greys out either way, but a disabled
+          button with no reason is a form that has stopped talking to you. */}
+      {opts?.error && (
+        <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.5, marginTop: "6px" }}>{opts.error}</p>
+      )}
     </div>
   );
 
@@ -538,7 +568,7 @@ function CameraFormModal({
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
 
           {field("name", t.fieldDeviceName, t.fieldDeviceNamePlaceholder)}
-          {field("ip", t.fieldIp, t.fieldIpPlaceholder)}
+          {field("ip", t.fieldIp, t.fieldIpPlaceholder, { error: ipError ? t.errIp : undefined })}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             {selectField(t.fieldMaker, form.maker, MAKERS.map(m => ({ value: m, label: m })), v => setForm(f => ({ ...f, maker: v })))}
@@ -557,7 +587,7 @@ function CameraFormModal({
             </p>
           </div>
 
-          {field("rtspUrl", t.fieldRtspUrl, "rtsp://10.20.4.11:554/stream1")}
+          {field("rtspUrl", t.fieldRtspUrl, "rtsp://10.20.4.11:554/stream1", { error: rtspError ? t.errRtsp : undefined })}
 
           {selectField(
             t.fieldServer,
@@ -567,8 +597,8 @@ function CameraFormModal({
           )}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            {field("lat", t.fieldLat, "0.0", { inputMode: "decimal" })}
-            {field("lng", t.fieldLng, "0.0", { inputMode: "decimal" })}
+            {field("lat", t.fieldLat, "0.0", { inputMode: "decimal", error: latError ? t.errLat : undefined })}
+            {field("lng", t.fieldLng, "0.0", { inputMode: "decimal", error: lngError ? t.errLng : undefined })}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
@@ -776,6 +806,16 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   // being re-sorted or re-filtered underneath it.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
+  /*
+   * Escape for the two dialogs on this screen that are inline JSX rather than components, so
+   * they cannot each call useEscapeKey for themselves. Both had a working backdrop click and a
+   * dead Escape key, which is the exact drift the shared hook exists to prevent — and one of
+   * the two is the bulk delete.
+   */
+  useEscapeKey(
+    () => { if (confirmingBulkDelete) setConfirmingBulkDelete(false); else setUploadPurpose(null); },
+    confirmingBulkDelete || uploadPurpose !== null,
+  );
 
   const clearFilters = () => { setZoneFilter("ALL"); setStatusFilter("ALL"); };
 
@@ -894,7 +934,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       maker: values.maker, model: values.model.trim() || undefined, resolution: values.resolution,
       username: values.username.trim() || undefined, serverId: values.serverId || undefined,
       ip: values.ip.trim(), mac: "", status: values.status, thumbnail: DEFAULT_THUMBNAIL,
-      lat: Number(values.lat) || 0, lng: Number(values.lng) || 0,
+      lat: values.lat.trim() === "" ? 0 : Number(values.lat),
+      lng: values.lng.trim() === "" ? 0 : Number(values.lng),
     });
     setShowAdd(false);
     showToast({ variant: "success", title: t.toastCameraAddedTitle, desc: t.toastCameraAddedDesc(values.name.trim()) });
@@ -907,7 +948,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
       maker: values.maker, model: values.model.trim() || undefined, resolution: values.resolution,
       username: values.username.trim() || undefined, serverId: values.serverId || undefined,
-      lat: Number(values.lat) || 0, lng: Number(values.lng) || 0,
+      lat: values.lat.trim() === "" ? 0 : Number(values.lat),
+      lng: values.lng.trim() === "" ? 0 : Number(values.lng),
     });
     setEditingCamera(null);
     showToast({ variant: "success", title: t.toastCameraUpdatedTitle, desc: values.name.trim() });
@@ -1012,7 +1054,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const exportCsv = () => {
     const header = [t.csvHeaderName, t.csvHeaderCode, t.csvHeaderZone, t.csvHeaderLocation, t.csvHeaderRtspUrl, t.csvHeaderStatus];
     const rows = projectCameras.map(c => [
-      c.name, c.code, c.zone, c.location, c.rtspUrl, c.status === "online" ? t.online : t.offline,
+      // Three states, not two. A camera refusing the connection is not "a worse offline" —
+      // the store's own note says so — and exporting it as Offline hands an auditor a file
+      // that disagrees with the screen it came from.
+      c.name, c.code, c.zone, c.location, c.rtspUrl,
+      c.status === "online" ? t.online : c.status === "error" ? t.statusError : t.offline,
     ]);
     const csv = [header, ...rows].map(row => row.map(csvEscape).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });

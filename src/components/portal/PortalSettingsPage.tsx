@@ -5,7 +5,7 @@ import { Building2, Clock, Globe, KeyRound, Languages, LayoutGrid, LogIn, Mail, 
 import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, TYPE_META, ConfirmModal, usePortalEditAccess } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, usePortalEditAccess, useTypeLabel } from "./PortalShared";
 import { WatchlistCategoryModal } from "./WatchlistCategories";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -220,6 +220,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   // is signed in and stay open to every role — an auditor still sets their own password and
   // their own interface language.
   const { mayEdit } = usePortalEditAccess();
+  const typeLabel = useTypeLabel();
   const watchlistCategories = useVcaStore(s => s.watchlistCategories);
   const [managingCategories, setManagingCategories] = useState(false);
   const project = projects.find(p => p.id === projectId);
@@ -349,7 +350,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 </span>
               )}
             </PairItem>
-            <PairItem label={t.projectType} icon={<LayoutGrid size={12} strokeWidth={2.2} />}>{TYPE_META[project.type].label}</PairItem>
+            <PairItem label={t.projectType} icon={<LayoutGrid size={12} strokeWidth={2.2} />}>{typeLabel(project.type)}</PairItem>
             {projectTeam && <PairItem label={t.projectTeam} icon={<Building2 size={12} strokeWidth={2.2} />}>{projectTeam.name}</PairItem>}
             {projectTeam?.region && <PairItem label={t.projectRegion} icon={<Globe size={12} strokeWidth={2.2} />}>{projectTeam.region}</PairItem>}
             {/* The one editable pair on the card, in the same shape as the four above it: the

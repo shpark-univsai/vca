@@ -38,6 +38,7 @@ const T = {
     colDepartment: "Department",
     colEmail: "Email",
     colPermission: "Permission",
+    colReason: "Reason",
     colVerdict: "",
     ok: "OK",
     admin: "Portal admin",
@@ -91,6 +92,7 @@ const T = {
     colDepartment: "부서",
     colEmail: "이메일",
     colPermission: "권한",
+    colReason: "사유",
     colVerdict: "",
     ok: "정상",
     admin: "포털 관리자",
@@ -231,7 +233,7 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
   const downloadSkipped = () => {
     if (!result) return;
     downloadCsv("staff-roster-skipped.csv", [
-      [t.colLine, t.colName, t.colEmployeeId, t.colDepartment, t.colEmail, t.colPermission, "Reason"],
+      [t.colLine, t.colName, t.colEmployeeId, t.colDepartment, t.colEmail, t.colPermission, t.colReason],
       ...result.skipped.map(s => [
         String(s.row.line), s.row.name, s.row.employeeId, s.row.department ?? "", s.row.email ?? "",
         s.row.permission === "admin" ? t.admin : t.operator, s.reasons.join("; "),

@@ -95,7 +95,15 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
   const projectZone = project?.timeZone ?? PROJECT_TIME_ZONE;
   const { sort, toggle: toggleSort } = useTableSort<ActivitySortKey>({ key: "at", direction: "desc" });
   const [actorFilter, setActorFilter] = useState("ALL");
-  const [range, setRange] = useState("30");
+  /*
+   * 30 days is the default, and a default is not a filter somebody set.
+   *
+   * The chip beside the controls read "1 filter" on a screen nobody had touched, and clearing
+   * that filter widened the window to all time instead of returning to the default — so the
+   * one control labelled "clear" was the only one that made the list bigger.
+   */
+  const DEFAULT_RANGE = "30";
+  const [range, setRange] = useState(DEFAULT_RANGE);
   const [search, setSearch] = useState("");
   // Post-mount, like every other clock read in Portal: a date range measured during render cuts
   // at a different instant on the server than in the browser, and the two frames disagree about
@@ -131,8 +139,8 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
 
   // The date range is a filter like the other two, so it counts as one unless it is showing
   // everything — otherwise the chip would read "1 filter" on a screen nobody has narrowed.
-  const activeFilterCount = (range === "ALL" ? 0 : 1) + (actorFilter === "ALL" ? 0 : 1) + (q ? 1 : 0);
-  const clearFilters = () => { setRange("ALL"); setActorFilter("ALL"); setSearch(""); };
+  const activeFilterCount = (range === DEFAULT_RANGE ? 0 : 1) + (actorFilter === "ALL" ? 0 : 1) + (q ? 1 : 0);
+  const clearFilters = () => { setRange(DEFAULT_RANGE); setActorFilter("ALL"); setSearch(""); };
 
   const stamp = (at: string) => {
     const d = new Date(at);

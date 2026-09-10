@@ -1414,6 +1414,7 @@ function stageOfRosterEntry(status: RosterCodeStatus): Stage {
  * Settings. A derived table is honest only while the thing it derives from is enforced.
  */
 function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko"]; onClose: () => void }) {
+  useEscapeKey(onClose);
   const roles: PortalPermission[] = ["owner", "admin", "auditor"];
   const cell = (allowed: boolean, yes: string, no: string) => ({
     label: allowed ? yes : no,
