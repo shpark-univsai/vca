@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MatchItem, ReIDStatus } from "@/types/reid";
 import {
   CAMERA_CODES, canSearchInApp,
-  useActiveProjectId, useProjectCameras, useVcaStore,
+  useActiveProjectId, useProjectCameras, useVcaStore, type Camera,
 } from "@/lib/vcaStore";
 import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
@@ -56,6 +56,8 @@ const T = {
     reset: "Reset",
     search: "Search",
     noSearchPermission: "You do not have permission to search people — ask an administrator",
+    noReidTitle: "Person search permission required",
+    noReidBody: "Re-ID Analysis answers where one person has been seen across the site's cameras, which is a person search. An administrator can grant the permission in the Portal, under Users & Permissions.",
     noRedFaceTitle: "Person search permission required",
     noRedFaceBody: "RedFace matches a face against the registry and builds an association network from it, so with no search permission there is nothing it can show. An administrator can grant it in the Portal, under Users & Permissions.",
     searchVips: "Search VIPs",
@@ -163,6 +165,8 @@ const T = {
     reset: "초기화",
     search: "검색",
     noSearchPermission: "인물 검색 권한이 없습니다 — 관리자에게 요청하세요",
+    noReidTitle: "인물 검색 권한이 필요합니다",
+    noReidBody: "Re-ID 분석은 한 사람이 이 현장의 카메라들에서 언제 어디서 보였는지를 답하는 화면입니다. 인물 검색에 해당하므로 권한이 필요합니다. 관리자에게 요청하면 포털의 사용자 및 권한에서 열어 줄 수 있습니다.",
     noRedFaceTitle: "인물 검색 권한이 필요합니다",
     noRedFaceBody: "RedFace는 얼굴을 등록부와 대조해 동행 관계를 만드는 화면이라, 검색 권한 없이는 보여줄 것이 없습니다. 관리자에게 요청하면 포털의 사용자 및 권한에서 열어 줄 수 있습니다.",
     searchVips: "VIP 검색",
@@ -2801,6 +2805,12 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   const [lang] = useLanguage();
   const t = T[lang];
   const [expanded, setExpanded]         = useState(false);
+  // Re-ID is a person search: its answer is one identity's appearances across the site's cameras.
+  // Redmap and RedFace were gated and this was not, and a Live Monitoring card's "Re-ID" button
+  // walks straight in — setting hasSearched during render, so the twenty matches were on screen
+  // without the Search button ever being pressed. One door was locked and the other stood open.
+  const portalUsers = useVcaStore(state => state.portalUsers);
+  const searchAllowed = canSearchInApp(portalUsers);
   const siteProjectId = useActiveProjectId();
   const siteCameras = useSiteCameraCodes();
   // Same collapsible tabbed sidebar as Live Monitoring's Photo/Filter/VIP/Car search (see
@@ -2997,6 +3007,23 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   const clusters = hasSearched ? (searchResultCluster ? [searchResultCluster] : []) : liveClusters;
   const detailItem = detailId !== null ? clusters.flatMap(c => c.matches).find(m => m.id === detailId) ?? null : null;
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // After the hooks, so the rule stays a rule no matter which way this tab was entered — the tab
+  // bar, a deep-link, or a card's Re-ID button.
+  if (!searchAllowed) {
+    return (
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px", backgroundColor: "var(--gray-50)" }}>
+        <div style={{ maxWidth: "420px", textAlign: "center" }}>
+          <p style={{ margin: 0, fontSize: "18px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.36px" }}>
+            {t.noReidTitle}
+          </p>
+          <p style={{ margin: "10px 0 0", fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", lineHeight: 1.7 }}>
+            {t.noReidBody}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ flex:1, display:"flex", gap:"12px", overflow:"hidden", padding:"20px 24px 12px", backgroundColor:"var(--gray-100)", boxSizing:"border-box" }}>
@@ -3656,6 +3683,7 @@ function xAt(i: number, count: number, step: number) {
 }
 
 function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId }: { primaryTarget:{ name:string; face:string } | null; rows: PyramidRow[]; onNodeClick:(tier:string, node:RedfaceNode)=>void; selectedNodeId:number|null }) {
+  const cooccurCams = useCooccurCameras();
   const [lang] = useLanguage();
   const totalWeight = rows.reduce((s, r) => s + r.weight, 0) || 1;
   const positioned = rows.reduce<{ list: Array<PyramidRow & { top:number; bottom:number; center:number }>; acc:number }>((state, r) => {
@@ -3745,7 +3773,7 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId }: { p
         const y = nodeY(r, i);
         // Same buildCooccurEvents sample the Joint Evidence panel uses for this node — reused
         // here only for a lightweight last-seen/location tooltip, not to duplicate the panel.
-        const nodeEvents = buildCooccurEvents(n);
+        const nodeEvents = buildCooccurEvents(n, cooccurCams);
         const nodeTopGroup = groupCooccurEvents(nodeEvents)[0];
         const nodeLastSeen = [...nodeEvents].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).pop()!;
         return (
@@ -3809,23 +3837,50 @@ const TIER_LINK_META: Record<string, { label: Record<AppLanguage, string> }> = {
   tier3: { label:{ en:"Tier 3 link", ko:"3단계 연결" } },
 };
 
-// Four cameras that ACTUALLY EXIST in Best Frame's CAM_DATA, by both code and location. They used
-// to be invented ("CAM-BGS-007" / "Bugis St Crossing"), which quietly broke the lightbox's Analyze
-// frame button: it hands the location to Best Frame, which matches it against CAM_DATA by substring
-// — and no invented name matched anything, so every click ended in a "No matching camera" toast.
-// Anything added here has to name a real CAM_DATA entry that has at least one detection.
-//
 // One scene per camera. Until the backend serves the actual still behind each detection, every
 // row shared a single image, so paging through 15 pages of frames looked like the same moment
 // listed over and over — the scene is what tells you these are different places. Remote stills
-// come from the same source as the face crops; Bugis keeps the local CCTV asset.
+// come from the same source as the face crops; the first keeps the local CCTV asset.
 const CO_SCENE = (id: string) => `https://images.unsplash.com/${id}?w=640&h=368&fit=crop&q=70`;
-const COOCCUR_CAMERAS = [
-  { code:"CAM_WestGate_BS1B", location:"Bugis MRT",       scene:"/cctv-sample.png" },
-  { code:"CAM_OrchardC_OR2",  location:"Orchard Central", scene:CO_SCENE("photo-1449824913935-59a10b8d2000") },
-  { code:"CAM_TampinesH_TP1", location:"Tampines Hub",    scene:CO_SCENE("photo-1519501025264-65ba15a82390") },
-  { code:"CAM_ClarkeQ_CQ1",   location:"Clarke Quay",     scene:CO_SCENE("photo-1493780474015-ba834fd0ce2f") },
+const CO_SCENES = [
+  "/cctv-sample.png",
+  CO_SCENE("photo-1449824913935-59a10b8d2000"),
+  CO_SCENE("photo-1519501025264-65ba15a82390"),
+  CO_SCENE("photo-1493780474015-ba834fd0ce2f"),
 ];
+
+/** A camera a pair can be co-captured by: the register's own code and place, plus a stand-in still. */
+type CooccurCamera = { code: string; location: string; scene: string };
+
+/**
+ * The cameras this site's co-captures can have happened at.
+ *
+ * These were four hardcoded entries naming Bugis MRT, Orchard Central, Tampines Hub and Clarke
+ * Quay — and RedFace took no site argument at all, so a school campus was shown MRT stations as
+ * the evidence for who its people associate with. Their codes were in no register either, the
+ * same private-code-space problem that made Re-ID's camera filter always return nothing.
+ *
+ * Four of them, spread across the roster rather than the first four: "Peak location" only means
+ * something if the co-captures cluster, and one camera out of fifty-nine collects too few rows to
+ * cluster. Four is also what the scene pool can dress.
+ */
+function cooccurCamerasForSite(cams: Camera[]): CooccurCamera[] {
+  if (cams.length === 0) return [];
+  const stride = Math.max(1, Math.floor(cams.length / CO_SCENES.length));
+  const picked: CooccurCamera[] = [];
+  for (let i = 0; i < CO_SCENES.length; i++) {
+    const cam = cams[(i * stride) % cams.length];
+    if (picked.some(p => p.code === cam.code)) continue;
+    picked.push({ code: cam.code, location: cam.location, scene: CO_SCENES[i] });
+  }
+  return picked;
+}
+
+/** Memoised so the four RedFace views that need this list all get the same one. */
+function useCooccurCameras(): CooccurCamera[] {
+  const cams = useProjectCameras();
+  return useMemo(() => cooccurCamerasForSite(cams), [cams]);
+}
 
 function assocId(n: RedfaceNode) {
   return `AS${String((100000 + n.id * 6421) % 900000 + 100000).padStart(6,"0")}`;
@@ -3868,14 +3923,18 @@ const COOCCUR_HOURS = [7, 8, 8, 12, 14, 18, 19, 21];
 
 // Every co-capture the pair has, not a sample of it: the timeline pages through them instead of
 // truncating, so a count of 148 in the grid means 148 rows here.
-function buildCooccurEvents(node: RedfaceNode): CooccurEvent[] {
-  const primaryIdx = node.id % COOCCUR_CAMERAS.length;
+function buildCooccurEvents(node: RedfaceNode, cams: CooccurCamera[]): CooccurEvent[] {
+  // No cameras registered at this site means no frame either of them could have been captured in.
+  if (cams.length === 0) return [];
+  const primaryIdx = node.id % cams.length;
   return Array.from({ length: node.count }, (_, i) => {
     // 3 in 5 at the pair's usual camera, the rest scattered — that skew is what makes "Peak
     // location" mean anything rather than just naming whichever camera came first.
     const isPrimary = i % 5 < 3;
-    const idx = isPrimary ? primaryIdx : (primaryIdx + 1 + (i % (COOCCUR_CAMERAS.length - 1))) % COOCCUR_CAMERAS.length;
-    const cam = COOCCUR_CAMERAS[idx];
+    const idx = cams.length === 1 ? 0
+      : isPrimary ? primaryIdx
+      : (primaryIdx + 1 + (i % (cams.length - 1))) % cams.length;
+    const cam = cams[idx];
     // Dates cycle, so `seq` is the nth capture on that one date. Minutes step by 7 (coprime with
     // 60) against seq, which keeps timestamps distinct up to 60 captures a day — no two rows in
     // the timeline can collide and read as one frame counted twice.
@@ -4124,7 +4183,8 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
   // Names arrive either bare ("TS700005", "Mina") or with the id in parentheses; take the id when
   // it is there, otherwise the name itself is the identifier.
   const primaryId = primary.name.match(/\(([^)]+)\)/)?.[1] ?? primary.name;
-  const events = buildCooccurEvents(node);
+  const cooccurCams = useCooccurCameras();
+  const events = buildCooccurEvents(node, cooccurCams);
   const groups = groupCooccurEvents(events);
   const topGroup = groups[0];
   const { bucket, count: bucketCount, pct } = dominantTimeBucket(events);
@@ -4458,6 +4518,7 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort }
 }) {
   const [lang] = useLanguage();
   const t = T[lang];
+  const cooccurCams = useCooccurCameras();
   // Read after mount, not during render: same reason the portal's license countdown does it this
   // way — the clock isn't a pure input, and rendering it during the server pass would mismatch.
   const [nowMs, setNowMs] = useState<number | null>(null);
@@ -4515,7 +4576,7 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort }
         // an unrelated 3-entry JOINT_EVENT_DATES pool (keyed only by node.id % 3) while the panel
         // computed its own independently-seeded sample, so the two views could show different
         // "Last detected" dates for the SAME associate.
-        const events = buildCooccurEvents(r.node);
+        const events = buildCooccurEvents(r.node, cooccurCams);
         const groups = groupCooccurEvents(events);
         const topGroup = groups[0];
         const sortedByDate = [...events].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
@@ -4576,6 +4637,7 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
 }) {
   const [lang] = useLanguage();
   const t = T[lang];
+  const cooccurCams = useCooccurCameras();
   const [tier1On, setTier1On] = useState(true);
   const [tier2On, setTier2On] = useState(true);
   const [tier3On, setTier3On] = useState(true);
@@ -4619,7 +4681,7 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
   const [dateRange, setDateRange] = useState<DateRangeValue>(DEFAULT_REDFACE_RANGE);
   const inDateRange = (n: RedfaceNode) => {
     if (!dateRange.start && !dateRange.end) return true;
-    return buildCooccurEvents(n).some(e => dateWithinRange(e.date, dateRange));
+    return buildCooccurEvents(n, cooccurCams).some(e => dateWithinRange(e.date, dateRange));
   };
   const sortNodes = (nodes: RedfaceNode[]) => [...nodes].sort((a, b) => sortDir === "desc" ? b.count - a.count : a.count - b.count);
 
