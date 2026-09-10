@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { ClipboardList, Mail, MapPin, Monitor, Pencil, Tag, Trash2, User } from "lucide-react";
 import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
@@ -23,7 +23,7 @@ const T = {
     appNo: "Portal only",
     team: "Team",
     teamMailTitle: "Team mail",
-    teamMailIntro: "A project can override this from its Server tab, and most do not — so this is the address staff actually receive mail from.",
+    teamMailIntro: "A project can override this in its Server tab. Most do not.",
     teamMailDomain: "Mail domain",
     teamMailDomainHint: "Accounts must have an address on this domain. Requests and invites to anything else are refused.",
     teamMailHost: "SMTP host",
@@ -98,7 +98,7 @@ const T = {
     appNo: "포털만",
     team: "팀",
     teamMailTitle: "팀 메일",
-    teamMailIntro: "프로젝트의 서버 탭에서 덮어쓸 수 있지만 대개 그러지 않으므로, 직원이 실제로 받는 주소가 여기입니다.",
+    teamMailIntro: "프로젝트의 서버 탭에서 덮어쓸 수 있습니다. 대개 그러지 않습니다.",
     teamMailDomain: "메일 도메인",
     teamMailDomainHint: "계정은 반드시 이 도메인의 주소여야 합니다. 그 외 주소로의 요청과 초대는 거부됩니다.",
     teamMailHost: "SMTP 호스트",
@@ -351,7 +351,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       {/* Which pairs exist depends on whether the signed-in address matches an account: with no
           match there is nothing to say about a role or a door, so those are absent rather than
           filled with a disclaimer. */}
-      <CardSection heading={t.accountTitle} first>
+      <CardSection heading={t.accountTitle} icon={<User size={15} strokeWidth={2.2} />} first>
         <PairGrid>
           {accountPairs.map(r => <PairItem key={r.label} label={r.label}>{r.value}</PairItem>)}
           {/* A pair like the others, whose value is a button rather than a fact: the sentence
@@ -386,7 +386,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         the licence), this card moves there whole and Settings goes back to being the account only.
       */}
       {project && (
-        <CardSection heading={t.projectTitle}>
+        <CardSection heading={t.projectTitle} icon={<MapPin size={15} strokeWidth={2.2} />}>
           <PairGrid>
             {/* Editable, at last. Every handover starts with a test project and a typo, and
                 there was no renameProject anywhere in the codebase — the first name a project
@@ -545,7 +545,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         is why it sits here beside the other two team policies.
       */}
       {myTeam && (
-        <CardSection heading={t.teamMailTitle} desc={t.teamMailIntro}>
+        <CardSection heading={t.teamMailTitle} icon={<Mail size={15} strokeWidth={2.2} />} desc={t.teamMailIntro}>
           {/* No maxWidth of its own any more — the section's content column is the cap, and two
               of these grids with two different ones is how columns stop lining up between
               sections. */}
@@ -586,7 +586,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       )}
 
       {myTeamId && (
-        <CardSection heading={t.categoryTitle}>
+        <CardSection heading={t.categoryTitle} icon={<Tag size={15} strokeWidth={2.2} />}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>
               {t.categoryCount(teamCategories.filter(c => !c.archived).length)}
@@ -613,7 +613,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           a question the reader has to answer ("do I need to fill this in?") about something that
           cannot affect them. The flag is the switch — see complianceConfig. */}
       {requirePurpose && myTeamId && (
-        <CardSection heading={t.purposeTitle}>
+        <CardSection heading={t.purposeTitle} icon={<ClipboardList size={15} strokeWidth={2.2} />}>
           {/* What the empty list actually costs, said here rather than only in the app. An
               administrator who has not built this list needs to know that the requirement is on and
               unmet — otherwise the console looks configured and the gate quietly waves everyone
@@ -629,7 +629,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         </CardSection>
       )}
 
-      <CardSection heading={t.displayTitle}>
+      <CardSection heading={t.displayTitle} icon={<Monitor size={15} strokeWidth={2.2} />}>
         <PairGrid>
           <PairItem label={t.language}>
             {/* Each language named in its own script — the one label a person who cannot read the

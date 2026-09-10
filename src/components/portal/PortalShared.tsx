@@ -778,14 +778,23 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
  *
  * `desc` is optional because not every section has something to explain — Account is five facts
  * about you, and a sentence saying so would be furniture.
+ *
+ * The icon belongs here and nowhere else on this page. Nine of them once sat beside the 12px
+ * field captions, where each one repeated a word that was already written ("Name", with a person
+ * beside it) and put a second mark on every row. Six beside the 15px headings do the opposite
+ * job: they mark where a section starts, which is what the eye looks for when it comes back to a
+ * settings page for one thing. One rank carries a mark, and it is the rank that leads.
  */
-export function CardSection({ heading, desc, first, children }: { heading: string; desc?: string; first?: boolean; children: React.ReactNode }) {
+export function CardSection({ heading, icon, desc, first, children }: { heading: string; icon?: React.ReactNode; desc?: string; first?: boolean; children: React.ReactNode }) {
   return (
     <div className="portal-settings-section" style={{ padding: "22px 24px", borderTop: first ? "none" : BORDER }}>
       <div>
         {/* <p>, not <h2>: nothing in Portal uses heading elements yet, and one lone h2 under no h1
             is not an outline. Giving Portal a real heading order is its own pass. */}
-        <p style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "20px" }}>{heading}</p>
+        <p style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "20px" }}>
+          {icon && <span style={{ display: "flex", flexShrink: 0, color: "var(--gray-400)" }}>{icon}</span>}
+          {heading}
+        </p>
         {desc && (
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.65, marginTop: "6px" }}>{desc}</p>
         )}
