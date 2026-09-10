@@ -575,6 +575,32 @@ body {
   .vca-auth-brand-art { width: min(100%, 250px); }
 }
 
+/* ── Autofill: no second box inside the field ─────────────────────────
+   Chrome paints the input element itself while its suggestion list is open and after it fills a
+   value. Our fields are a bordered row with an icon, a flex:1 input and sometimes a reveal button,
+   so that paint lands only on the input's own strip — between the icon and the button — and reads
+   as a smaller box drawn inside the field. It made every field look narrower than it is, which is
+   exactly the complaint it produced.
+
+   background-color cannot override it; Chrome ignores that for autofill. A large inset box-shadow
+   in the field's own colour is the way, and text-fill-color has to be restated or the autofilled
+   value comes back in Chrome's colour rather than ours. The 9999s transition keeps the yellow
+   flash from appearing for a frame before the shadow applies.
+
+   Every field this applies to sits on white, so gray-0 is the fill. Autofilled state stays legible
+   — nothing here hides that a value was filled in, only the box drawn around it. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+input:autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--gray-0) inset !important;
+  box-shadow: 0 0 0 1000px var(--gray-0) inset !important;
+  -webkit-text-fill-color: var(--gray-900) !important;
+  caret-color: var(--gray-900);
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 /* The card centres itself with an auto vertical margin (see the auth pages). This only supplies
    the breathing room around it, so a card taller than the window still clears the header and the
    bottom edge instead of butting against them. Symmetric, because an asymmetric padding would
