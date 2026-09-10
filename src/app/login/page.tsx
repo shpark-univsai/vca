@@ -31,8 +31,15 @@ const T = {
     useProjectLink: "Open the project link you were sent to request access.",
     askForInvite: "Ask your administrator to send you an invitation.",
     restrictedNetwork: "This system runs on a restricted internal network.",
-    panelHeading: "Sightings scattered across cameras, joined into one person.",
-    panelBody: "Start from one photo, or from a few conditions. VCA matches the detections left on separate cameras and lays out where the person passed, in order.",
+    panelHeading: "Sightings joined into one person.",
+    panelBody: "Start from a photo, or a few conditions. VCA lays out where they passed, in order.",
+    // Taken from the product's own pages, where each is stated with the same wording. Figures, not
+    // claims — a control room can check every one of them against its own site.
+    panelFacts: [
+      { value: "99.97%", label: "Recognition accuracy under KISA certification" },
+      { value: "Under 1s", label: "1:N search response" },
+      { value: "2MP", label: "Runs on ordinary CCTV" },
+    ],
     contactNamed: (who: string) => <>For an account or access, contact <strong style={{ color: "var(--gray-500)" }}>{who}</strong>.</>,
     contactGeneric: "For an account or access, contact your security operations team.",
   },
@@ -53,8 +60,13 @@ const T = {
     useProjectLink: "받으신 프로젝트 링크를 열어 접근을 요청해주세요.",
     askForInvite: "관리자에게 초대를 요청해주세요.",
     restrictedNetwork: "이 시스템은 외부와 분리된 내부 전용 네트워크에서 운영됩니다.",
-    panelHeading: "여러 카메라에 흩어진 목격을 한 사람으로 잇습니다.",
-    panelBody: "사진 한 장이나 몇 가지 조건에서 시작합니다. 카메라마다 따로 남은 검출을 대조해, 그 사람이 언제 어디를 지났는지 순서대로 펼쳐 보여줍니다.",
+    panelHeading: "흩어진 목격을 한 사람으로.",
+    panelBody: "사진 한 장이나 몇 가지 조건에서 시작해, 지나간 순서를 펼쳐 보여줍니다.",
+    panelFacts: [
+      { value: "99.97%", label: "KISA 인증 기준 인식률" },
+      { value: "1초 이내", label: "1:N 검색 응답" },
+      { value: "2MP", label: "일반 CCTV로 동작" },
+    ],
     contactNamed: (who: string) => <>계정이나 접근 권한은 <strong style={{ color: "var(--gray-500)" }}>{who}</strong>에게 문의해주세요.</>,
     contactGeneric: "계정이나 접근 권한은 보안 관제 담당자에게 문의해주세요.",
   },
@@ -427,15 +439,40 @@ function LoginForm() {
               <AuthTrailArt className="vca-auth-brand-art" />
               <AuthTrailList className="vca-auth-brand-list" />
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px", textAlign: "center" }}>
+            {/* Measure capped so the two lines wrap into a block instead of running the panel's
+                full width — a hundred characters a line is a paragraph, and this is a caption. */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", textAlign: "center", maxWidth: "360px" }}>
               <p style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--gray-800)", letterSpacing: "-0.32px", lineHeight: 1.5 }}>
                 {t.panelHeading}
               </p>
               {/* Grey, not primary. The purple on this panel belongs to the three marks — that is
                   the whole point of the drawing, and copy in the same colour would take it. */}
-              <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.26px", lineHeight: 1.8 }}>
+              {/* 1.55, not 1.8. At two short lines the wider leading pulled them apart and they
+                  stopped reading as one sentence. */}
+              <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.26px", lineHeight: 1.55 }}>
                 {t.panelBody}
               </p>
+
+              {/* Three figures, quiet, under a hairline.
+                  This is what "appeal" means for an institution. Every reference login that fills
+                  this panel is selling to somebody who might churn or upgrade — a feature
+                  announcement, a testimonial, customer logos. Nobody in a control room chose this
+                  product and there is nothing to upsell them. What does carry weight in public
+                  procurement is what the system is certified for and what it runs on, and both are
+                  checkable rather than persuasive.
+                  Grey, not primary: the purple on this panel belongs to the cameras. */}
+              <div style={{ display: "flex", gap: "22px", justifyContent: "center", flexWrap: "wrap", marginTop: "6px", paddingTop: "20px", borderTop: "1px solid var(--line)" }}>
+                {t.panelFacts.map(fact => (
+                  <div key={fact.value} style={{ display: "flex", flexDirection: "column", gap: "3px", alignItems: "center" }}>
+                    <span style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-700)", letterSpacing: "-0.3px" }}>
+                      {fact.value}
+                    </span>
+                    <span style={{ fontSize: "10.5px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.21px" }}>
+                      {fact.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
