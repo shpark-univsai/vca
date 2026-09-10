@@ -65,6 +65,18 @@ const T = {
     framesCount: (n: number) => `${n} ${n === 1 ? "FRAME" : "FRAMES"}`,
     pageRange: (a: number, b: number, n: number) => `${a}–${b} of ${n}`,
     colCoCaptures: "Co-captures",
+    analyzeFrame: "Analyze frame",
+    reidObject: (id: string) => `Re-ID object #REC-${id}`,
+    attrClassification: "Attribute classification",
+    genderAge: "Gender / age",
+    belongings: "Belongings",
+    trackOnMap: "Track on map",
+    clickCandidate: "Click a candidate below to select",
+    setPrimaryTarget: "Set as primary target",
+    vipQuickSelect: "VIP quick select",
+    selectedLabel: "Selected",
+    targetNo: (id: string) => `Target #TS${id}`,
+    todayAt: (time: string) => `today ${time}`,
     peakLocationTip: (here: number, total: number) => `${here} of ${total} shared frames were captured here — click to show only those`,
     peakTimeTip: (here: number, total: number, pct: number, bucket: string) => `${here} of ${total} shared frames (${pct}%) were captured in the ${bucket} — click to show only those`,
     sortByCoCaptures: (asc: boolean) => `Sort by co-captures, ${asc ? "low to high" : "high to low"}`,
@@ -202,6 +214,18 @@ const T = {
     framesCount: (n: number) => `프레임 ${n}장`,
     pageRange: (a: number, b: number, n: number) => `${n}건 중 ${a}–${b}`,
     colCoCaptures: "동반검출",
+    analyzeFrame: "프레임 분석",
+    reidObject: (id: string) => `Re-ID 객체 #REC-${id}`,
+    attrClassification: "속성 분류",
+    genderAge: "성별 / 나이",
+    belongings: "소지품",
+    trackOnMap: "지도에서 추적",
+    clickCandidate: "아래에서 후보를 눌러 고르세요",
+    setPrimaryTarget: "이 대상으로 확정",
+    vipQuickSelect: "VIP 빠른 선택",
+    selectedLabel: "선택됨",
+    targetNo: (id: string) => `대상 #TS${id}`,
+    todayAt: (time: string) => `오늘 ${time}`,
     peakLocationTip: (here: number, total: number) => `같이 찍힌 ${total}장 중 ${here}장이 이곳에서 촬영됐습니다 — 누르면 그 장면만 봅니다`,
     peakTimeTip: (here: number, total: number, pct: number, bucket: string) => `같이 찍힌 ${total}장 중 ${here}장(${pct}%)이 ${bucket}에 촬영됐습니다 — 누르면 그 장면만 봅니다`,
     sortByCoCaptures: (asc: boolean) => `동반검출 ${asc ? "적은 순" : "많은 순"}으로 정렬`,
@@ -403,7 +427,7 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
             <div style={{ width:"10px", height:"10px", borderRadius:"50%", backgroundColor:"var(--success-400)", flexShrink:0 }} />
             <div>
               <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-                <p style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>Re-ID Object #REC-{String(item.id).padStart(4,"0")}</p>
+                <p style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{T[lang].reidObject(String(item.id).padStart(4,"0"))}</p>
                 <ScoreBadge score={item.similarity} />
                 <span style={{ fontSize:"10px", fontWeight:700, color:"var(--gray-600)", backgroundColor:"var(--gray-100)", padding:"2px 7px", borderRadius:"999px" }}>{item.cam}</span>
                 <span style={{ fontSize:"10px", fontWeight:800, color:REID_STATUS_STYLE[item.status].text, backgroundColor:`${REID_STATUS_STYLE[item.status].text}1a`, padding:"2px 7px", borderRadius:"999px" }}>{attr(item.status, lang)}</span>
@@ -423,7 +447,7 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px" }}>
             <div style={{ border:BORDER, borderRadius:"12px", padding:"10px", backgroundColor:"var(--gray-50)", display:"flex", flexDirection:"column", alignItems:"center", gap:"8px" }}>
               <img src={item.face} alt="" style={{ width:"156px", height:"156px", objectFit:"cover", borderRadius:"12px", border:"2px solid var(--primary-400)" }} />
-              <p style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", letterSpacing:"0.5px" }}>Face</p>
+              <p style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", letterSpacing:"0.5px" }}>{T[lang].face}</p>
             </div>
             <div style={{ border:BORDER, borderRadius:"12px", padding:"10px", backgroundColor:"var(--gray-50)", display:"flex", flexDirection:"column", alignItems:"center", gap:"8px" }}>
               <img src={item.body} alt="" style={{ width:"124px", height:"186px", objectFit:"cover", borderRadius:"12px", border:"2px solid var(--primary-400)" }} />
@@ -433,13 +457,13 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
 
           {/* AI attrs */}
           <div>
-            <p style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-900)", marginBottom:"8px" }}>AI attribute classification</p>
+            <p style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-900)", marginBottom:"8px" }}>{T[lang].attrClassification}</p>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"8px" }}>
               {([
-                ["Gender/age", item.gender==="F"?`Female | ${item.age}`:`Male | ${item.age}`, item.gender==="F"?"#ec4899":"var(--primary-400)"],
-                ["Top color", "White Jacket", "var(--gray-700)"],
-                ["Bottom color", "Dark Accent", "var(--gray-700)"],
-                ["Belongings", "Black Handbag", "var(--gray-700)"],
+                [T[lang].genderAge, `${attr(item.gender==="F"?"Female":"Male", lang)} | ${item.age}`, item.gender==="F"?"#ec4899":"var(--primary-400)"],
+                [T[lang].topColor, attr("White Jacket", lang), "var(--gray-700)"],
+                [T[lang].bottomColor, attr("Dark Accent", lang), "var(--gray-700)"],
+                [T[lang].belongings, attr("Black Handbag", lang), "var(--gray-700)"],
               ] as [string,string,string][]).map(([label,val,color]) => (
                 <div key={label} style={{ padding:"8px 10px", borderRadius:"10px", backgroundColor:"var(--gray-50)", border:BORDER }}>
                   <p style={{ fontSize:"10px", color:"var(--gray-400)", fontWeight:600, marginBottom:"2px" }}>{label}</p>
@@ -459,10 +483,10 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
             onClick={() => onGoAnalyzeFrame?.(item.cam)}
             style={{ display:"flex", alignItems:"center", gap:"5px", padding:"7px 14px", borderRadius:"8px", border:BORDER, backgroundColor:"white", fontSize:"12px", fontWeight:600, color:"var(--gray-500)", cursor:"pointer" }}
           >
-            Analyze Frame
+            {T[lang].analyzeFrame}
           </button>
           <button onClick={onGoRedmap} style={{ display:"flex", alignItems:"center", gap:"5px", padding:"7px 14px", borderRadius:"8px", backgroundColor:"var(--gray-900)", border:"none", color:"white", fontSize:"12px", fontWeight:700, cursor:"pointer" }}>
-            Track on Map
+            {T[lang].trackOnMap}
           </button>
         </div>
       </div>
@@ -2810,7 +2834,7 @@ function ImageDropzoneBox({ icon, label, previewSrc, onClick, onClear, aspect }:
       <div style={{ position:"relative", display:"flex", flexDirection:"column", alignItems:"center", gap:"8px" }}>
         {icon}
         <span className="vca-dropzone-label" style={{ fontSize:"11px", color:"var(--gray-400)" }}>{label}</span>
-        {onClick && hovered && <span style={{ fontSize:"10px", fontWeight:700, color:"var(--primary-400)" }}>{previewSrc ? "Click to change" : "Click to upload"}</span>}
+        {onClick && hovered && <span style={{ fontSize:"10px", fontWeight:700, color:"var(--primary-400)" }}>{previewSrc ? T[lang].clickToChange : T[lang].clickToUpload}</span>}
       </div>
       {onClear && hovered && (
         <RemoveImageButton label={T[lang].removeImage(label.toLowerCase())} onRemove={onClear} />
@@ -3235,6 +3259,8 @@ function candidatesFromFilters(f: {
 
 function CandidateCard({ c, selected, onClick }:
   { c: RedfaceCandidate; selected:boolean; onClick:()=>void }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   return (
     <div onClick={onClick} style={{
       position:"relative", width:"144px", backgroundColor:"white",
@@ -3252,13 +3278,13 @@ function CandidateCard({ c, selected, onClick }:
         {selected && (
           <span style={{ position:"absolute", top:6, left:6, display:"flex", alignItems:"center", gap:"3px",
             backgroundColor:"var(--primary-400)", color:"white", fontSize:"10px", fontWeight:800, padding:"2px 6px", borderRadius:"4px" }}>
-            <CheckIconSm /> Selected
+            <CheckIconSm /> {t.selectedLabel}
           </span>
         )}
       </div>
       <div>
-        <p style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-900)", margin:0 }}>Target #TS{String(c.id).padStart(6,"0")}</p>
-        <p style={{ fontSize:"10px", color:"var(--gray-700)", margin:0 }}>today {c.time}</p>
+        <p style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-900)", margin:0 }}>{c.label ?? t.targetNo(String(c.id).padStart(6,"0"))}</p>
+        <p style={{ fontSize:"10px", color:"var(--gray-700)", margin:0 }}>{t.todayAt(c.time)}</p>
       </div>
     </div>
   );
@@ -3516,7 +3542,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
               <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:"4px", color:"var(--gray-700)" }}>
                   <StarIconSm />
-                  <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>VIP quick select</span>
+                  <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.vipQuickSelect}</span>
                 </div>
                 <VipQuickSelectRow activeVIP={activeVIP} onSelect={selectVIP} compact />
               </div>
@@ -3684,7 +3710,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                 callout instead until a card's actually clicked. */}
             {candidates.length > 0 && effectiveSelected === null && (
               <span style={{ fontSize:"12px", fontWeight:700, color:"var(--primary-400)", backgroundColor:"var(--primary-100)", padding:"4px 10px", borderRadius:"999px" }}>
-                ↓ Click a candidate below to select
+                ↓ {t.clickCandidate}
               </span>
             )}
           </div>
@@ -3720,7 +3746,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
           <button disabled={!selectedObj} onClick={() => selectedObj && onConfirm(selectedObj)} style={{ padding:"8px 12px", borderRadius:"8px", border:"none",
             backgroundColor: selectedObj ? "var(--primary-400)" : "var(--primary-200)", color:"white", fontSize:"13px", fontWeight:700,
             cursor: selectedObj ? "pointer" : "default" }}>
-            Set as primary target
+            {t.setPrimaryTarget}
           </button>
         </div>
       </div>
@@ -4309,7 +4335,7 @@ function SharedFrameLightbox({ event, assocLabel, index, total, onStep, onClose,
             style={{ display:"flex", alignItems:"center", gap:"6px", padding:"8px 14px", borderRadius:"8px",
               border:"none", backgroundColor: onAnalyze ? "var(--gray-900)" : "var(--gray-300)", color:"white",
               fontSize:"12px", fontWeight:800, cursor: onAnalyze ? "pointer" : "default", whiteSpace:"nowrap" }}>
-            Analyze frame
+            {T[lang].analyzeFrame}
           </button>
         </div>
       </div>
