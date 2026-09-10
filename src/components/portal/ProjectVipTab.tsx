@@ -18,6 +18,13 @@ const VIP_GRID_WITH_GROUP = "48px 1.1fr 0.75fr 0.75fr 0.55fr 0.65fr 0.65fr 0.7fr
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
+
+/* A field is quoted when it holds a comma, a quote or a newline, and inner quotes are doubled.
+   TODO: this is the fifth copy in Portal (cameras, roster, roster import, search log) — one
+   src/lib/csv.ts, once no other session has those files open. */
+function csvEscape(value: string): string {
+  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
 const PRIORITY_COLOR: Record<NonNullable<Person["priorityLabel"]>, { bg: string; color: string }> = {
   normal: { bg: "var(--gray-100)", color: "var(--gray-600)" },
   high: { bg: "var(--warning-200)", color: "var(--warning-500)" },
@@ -50,6 +57,14 @@ interface VipDict {
   viewGrid: string;
   viewTable: string;
   colName: string;
+  exportCsv: string;
+  csvRegisteredBy: string;
+  csvStatus: string;
+  csvNever: string;
+  csvUnclassified: string;
+  csvStatusActive: string;
+  toastVipExportTitle: string;
+  toastVipExportDesc: (n: number) => string;
   colPriority: string;
   healthMissingPhoto: string;
   healthMissingPhotoWhy: string;
@@ -185,6 +200,14 @@ const T: Record<"en" | "ko", VipDict> = {
     viewGrid: "Grid",
     viewTable: "Table",
     colName: "Name",
+    exportCsv: "Export CSV",
+    csvRegisteredBy: "Registered by",
+    csvStatus: "Status",
+    csvNever: "never",
+    csvUnclassified: "unclassified",
+    csvStatusActive: "active",
+    toastVipExportTitle: "Export complete",
+    toastVipExportDesc: (n: number) => `${n} watchlist record(s) exported to CSV.`,
     colPriority: "Priority",
     healthMissingPhoto: "no photo",
     healthMissingPhotoWhy: "On the watchlist with no face attached. A CSV import can add a name without a photo; these people cannot be matched until one is uploaded.",
@@ -319,6 +342,14 @@ const T: Record<"en" | "ko", VipDict> = {
     viewGrid: "그리드",
     viewTable: "테이블",
     colName: "이름",
+    exportCsv: "CSV 내보내기",
+    csvRegisteredBy: "등록자",
+    csvStatus: "상태",
+    csvNever: "없음",
+    csvUnclassified: "미분류",
+    csvStatusActive: "유효",
+    toastVipExportTitle: "내보내기 완료",
+    toastVipExportDesc: (n: number) => `명단 ${n}건이 CSV로 내보내졌습니다.`,
     colPriority: "우선순위",
     healthMissingPhoto: "사진 없음",
     healthMissingPhotoWhy: "명단에는 있지만 얼굴 사진이 없습니다. CSV로 가져오면 사진 없이 이름만 등록될 수 있고, 사진을 올리기 전까지는 매칭되지 않습니다.",
@@ -1168,6 +1199,51 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       ? sortRows(matchingPersons, { key: "priority", direction: "desc" }, sortValue)
       : matchingPersons;
 
+  /**
+   * The watchlist as a file.
+   *
+   * Cameras and the staff roster both export; this list — the one a control centre is audited on
+   * and the one a shift supervisor is handed on paper — did not, while the seeded audit log
+   * carried a line reading "VIP watchlist exported to CSV" and taught the customer the button
+   * was there.
+   *
+   * What is on screen, not the whole registry: the toolbar's filters and search are how somebody
+   * says which part of the list they want, and exporting past them would hand back a file they
+   * did not ask for. Released rows carry their status and reason rather than being dropped — a
+   * removal is exactly what an audit asks about.
+   */
+  const exportCsv = () => {
+    const header = [
+      t.colName, t.colGroup, t.colCategory, t.colPriority, t.basisLabel,
+      t.colRegistered, t.csvRegisteredBy, t.colExpires, t.colLastDetected, t.csvStatus,
+    ];
+    const rows = projectPersons.map(person => [
+      person.name,
+      person.groupId ? groupById.get(person.groupId)?.name ?? "" : "",
+      person.categoryId ? categoryById.get(person.categoryId)?.label ?? "" : t.csvUnclassified,
+      t.priorityText[person.priorityLabel ?? "normal"],
+      person.basis ?? "",
+      person.registeredAt.slice(0, 10),
+      person.registeredBy ?? "",
+      person.expiresAt?.slice(0, 10) ?? "",
+      person.lastDetectedAt?.slice(0, 10) ?? t.csvNever,
+      person.releasedAt
+        ? `${t.statusReleased}${person.releaseReason ? ` — ${person.releaseReason}` : ""}`
+        : t.csvStatusActive,
+    ]);
+    const csv = [header, ...rows].map(row => row.map(csvEscape).join(",")).join("\n");
+    // The BOM is what makes Excel read the Korean columns as UTF-8 rather than as the local code
+    // page — the same thing the roster import's skipped-rows file does.
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${projects.find(pr => pr.id === projectId)?.name ?? "project"}-watchlist.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast({ variant: "success", title: t.toastVipExportTitle, desc: t.toastVipExportDesc(rows.length) });
+  };
+
   const register = (values: RegisterValues) => {
     addPerson({
       // The form requires a photo, so values.photoUrl is set here — but it is passed straight
@@ -1464,6 +1540,11 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 9.33V1.75M7 1.75 4.08 4.67M7 1.75 9.92 4.67M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
             {t.bulkUpload}
+          </button>
+          <button className="portal-btn-quiet" onClick={exportCsv} disabled={projectPersons.length === 0}
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: projectPersons.length === 0 ? "var(--gray-300)" : "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: projectPersons.length === 0 ? "not-allowed" : "pointer" }}>
+            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1.75V9.33M7 9.33 4.08 6.42M7 9.33 9.92 6.42M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            {t.exportCsv}
           </button>
           <button className="portal-btn-primary" onClick={() => setShowRegister(true)}
             style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>

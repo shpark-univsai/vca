@@ -22,12 +22,14 @@ const T = {
     },
     step2: "2. Project Name",
     namePlaceholder: "Guri City Smart School - Phase 3",
-    step3: "3. Video Channel Stream (RTSP)",
+    step3: "3. First Video Channel (RTSP)",
+    step3Optional: "Optional — you can add every source later from Input Sources.",
     rtspPlaceholder: "Enter your rtsp:// address",
     rtspTag: "RTSP 1CH",
-    deploy: "Deploy & Start Monitoring",
+    firstCameraName: "Channel 1",
+    deploy: "Create project",
     cancel: "Cancel",
-    footer: "You'll be redirected to the monitoring dashboard automatically after deployment",
+    footer: "The project opens on its Portal overview, where you add the rest of its sources, servers and watchlist.",
   },
   ko: {
     badge: "새 프로젝트 설정",
@@ -40,14 +42,24 @@ const T = {
     },
     step2: "2. 프로젝트 이름",
     namePlaceholder: "구리시 스마트스쿨 - 3단계",
-    step3: "3. 영상 채널 스트림 (RTSP)",
+    step3: "3. 첫 영상 채널 (RTSP)",
+    step3Optional: "선택 사항입니다. 나머지 소스는 입력소스 화면에서 언제든 추가할 수 있습니다.",
     rtspPlaceholder: "rtsp:// 주소를 입력하세요",
     rtspTag: "RTSP 1CH",
-    deploy: "배포 및 모니터링 시작",
+    firstCameraName: "채널 1",
+    deploy: "프로젝트 만들기",
     cancel: "취소",
-    footer: "배포가 완료되면 자동으로 모니터링 대시보드로 이동합니다",
+    footer: "만들어진 프로젝트의 포털 개요로 이동합니다. 나머지 소스와 서버, 명단은 거기서 추가합니다.",
   },
 } as const;
+
+/** Host out of an rtsp:// address, without scheme, port, path or credentials. Returns "" for
+ *  anything it cannot parse rather than guessing — an empty IP cell is readable, a wrong one is
+ *  not. */
+function hostOf(url: string): string {
+  const m = /^[a-z]+:\/\/(?:[^@/]*@)?([^:/?#]+)/i.exec(url.trim());
+  return m ? m[1] : "";
+}
 
 interface PortalNewProjectWizardProps {
   teamId: string;
@@ -62,6 +74,7 @@ interface PortalNewProjectWizardProps {
 
 export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, defaultType = "smart_city" }: PortalNewProjectWizardProps) {
   const addProject = useVcaStore(s => s.addProject);
+  const addCamera = useVcaStore(s => s.addCamera);
   const [selectedType, setSelectedType] = useState<ProjectType>(defaultType);
   const [name, setName] = useState("");
   const [rtspUrl, setRtspUrl] = useState("");
@@ -73,6 +86,27 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
     const existingIds = new Set(useVcaStore.getState().projects.map(p => p.id));
     addProject({ name: name.trim(), teamId, type: selectedType });
     const created = useVcaStore.getState().projects.find(p => !existingIds.has(p.id));
+    // Step 3's address becomes the project's first camera. It was read into state and thrown
+    // away — three steps of form, one of which did nothing, under a button that said
+    // "Deploy & Start Monitoring" and landed you on a project with no sources at all.
+    if (created && rtspUrl.trim()) {
+      addCamera({
+        projectId: created.id,
+        name: t.firstCameraName,
+        code: "CAM-CH1-001",
+        rtspUrl: rtspUrl.trim(),
+        // The host out of the address, which is the only field the operator has given us that
+        // identifies the device. Everything else the Add Camera form collects — location, zone,
+        // coordinates, maker — is asked for there, not in a three-field setup wizard.
+        ip: hostOf(rtspUrl.trim()),
+        mac: "", location: "", zone: "",
+        // No status is claimed. Portal has not reached this address and will not until camera
+        // polling lands, so "offline" is the honest starting state — the same one a camera added
+        // from Input Sources gets before anything answers.
+        status: "offline",
+        thumbnail: "", lat: 0, lng: 0,
+      });
+    }
     onDeployed(created?.id ?? "");
   };
 
@@ -155,7 +189,11 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
           }}
         />
 
-        <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.step3}</p>
+        <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "4px" }}>{t.step3}</p>
+        {/* Said out loud, because the step numbers imply all three are required and this one is
+            not. A project with no sources is a normal way to start — the hardware often arrives
+            after the paperwork. */}
+        <p style={{ fontSize: "12px", color: "var(--gray-400)", marginBottom: "8px" }}>{t.step3Optional}</p>
         <div style={{ display: "flex", gap: "16px" }}>
           <input
             value={rtspUrl}

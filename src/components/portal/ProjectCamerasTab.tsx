@@ -942,9 +942,16 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * Both are set after mount, never during render: a timestamp taken while rendering differs
    * between the server's HTML and the browser's first pass, and the two would not match.
    *
-   * HANDOFF NOTE: the interval below only moves the clock. The real one calls
-   * GET /api/portal/projects/{id}/camera-connectivity and puts the answer in the store — there is
-   * nothing to call yet, so nothing here claims the figures changed.
+   * There is no 30-second interval resetting lastPolledAt. There was, and it fetched nothing:
+   * the value the label measures FROM was being pushed forward by the same timer that was
+   * supposed to make the label move, so polledMinsAgo could never reach 1 and the toolbar read
+   * "checked just now" permanently, over figures that might be hours old. A label that always
+   * says the same thing is worse than a stale one — a stale timestamp at least tells you to
+   * distrust it. The refresh button is now the only writer, so the words measure a real event.
+   *
+   * HANDOFF NOTE: pressing refresh is where the fetch goes —
+   * GET /api/portal/projects/{id}/camera-connectivity, answer into the store. Until that exists
+   * the button only re-stamps the clock, which is why it does not claim the figures changed.
    */
   const [lastPolledAt, setLastPolledAt] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState<number | null>(null);
@@ -953,12 +960,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     // throw the render away and start again. The same deferral the rest of Portal uses for
     // clock-dependent values.
     queueMicrotask(() => { setLastPolledAt(Date.now()); setNowMs(Date.now()); });
-    const poll = setInterval(() => setLastPolledAt(Date.now()), 30_000);
-    // A slower tick than the poll, just for the label: "3 min ago" does not need per-second
-    // accuracy, and a timer that fires every second to redraw two words is a timer nobody asked
-    // for.
+    // Just the label's clock. "3 min ago" does not need per-second accuracy, and a timer that
+    // fires every second to redraw two words is a timer nobody asked for.
     const clock = setInterval(() => setNowMs(Date.now()), 10_000);
-    return () => { clearInterval(poll); clearInterval(clock); };
+    return () => clearInterval(clock);
   }, []);
   const polledMinsAgo = nowMs !== null && lastPolledAt !== null
     ? Math.floor((nowMs - lastPolledAt) / 60_000)

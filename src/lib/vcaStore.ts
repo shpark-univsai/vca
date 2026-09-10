@@ -1991,20 +1991,29 @@ const AUDIT_LOG: AuditEvent[] = [
   // console's log is weeks deep, and the point of the modal is that the card is a window onto
   // something bigger. Times fan out from an hour ago to nine days, in the order things actually
   // happen in a project: cameras get added and re-pointed, people get invited and promoted,
-  // watchlists get edited, servers get restarted.
+  // watchlists get edited, servers get reconfigured.
+  //
+  // Every line here names an action Portal can actually perform, and is worded the way that
+  // action words itself when it writes its own entry. Four of them did not: "Face recognition
+  // enabled on 4 cameras" (per-camera engines were removed on 2026-09-09), "Server FR 2
+  // restarted" (no restart control exists), "Retention period changed from 30 to 60 days" (no
+  // retention control exists) and "Mail server verified" (saving mail settings verifies
+  // nothing). This is the same trap ACCESS_REQUESTS was emptied to avoid — a seeded row that
+  // cannot occur teaches whoever reads the screen that the product does something it does not,
+  // and the audit log is the one screen a customer reads to find out what happened.
   { id: "audit-5", projectId: "proj-sg", message: "Camera CAM-BLK-019 added to zone August", actor: "Marcus Lee", at: auditAt(320) },
   { id: "audit-6", projectId: "proj-sg", message: "VIP group \"Executive Protection\" created", actor: "Grace Tan", at: auditAt(400) },
   { id: "audit-7", projectId: "proj-sg", message: "Aaron Sim invited as auditor", actor: "Grace Tan", at: auditAt(690) },
-  { id: "audit-8", projectId: "proj-sg", message: "Face recognition enabled on 4 cameras in Bugis", actor: "Marcus Lee", at: auditAt(1080) },
-  { id: "audit-9", projectId: "proj-sg", message: "Server FR 2 restarted after firmware update", actor: "Wei Chen", at: auditAt(1500) },
+  { id: "audit-8", projectId: "proj-sg", message: "4 cameras in Bugis assigned to server FR 2", actor: "Marcus Lee", at: auditAt(1080) },
+  { id: "audit-9", projectId: "proj-sg", message: "Server FR 2 updated", actor: "Wei Chen", at: auditAt(1500) },
   { id: "audit-10", projectId: "proj-sg", message: "VIP Sarah Lim's priority raised to High", actor: "Grace Tan", at: auditAt(2160) },
   { id: "audit-11", projectId: "proj-sg", message: "Camera CAM-BDK-001 stream credentials rotated", actor: "Marcus Lee", at: auditAt(2880) },
   { id: "audit-12", projectId: "proj-sg", message: "Registration codes issued to 6 staff", actor: "Grace Tan", at: auditAt(3600) },
-  { id: "audit-13", projectId: "proj-sg", message: "Retention period changed from 30 to 60 days", actor: "Grace Tan", at: auditAt(4320) },
+  { id: "audit-13", projectId: "proj-sg", message: "Project timezone set to Asia/Singapore", actor: "Grace Tan", at: auditAt(4320) },
   { id: "audit-14", projectId: "proj-sg", message: "Camera CAM-QTN-001 renamed to Queenstown", actor: "Wei Chen", at: auditAt(5760) },
   { id: "audit-15", projectId: "proj-sg", message: "Marcus Lee granted app access", actor: "Grace Tan", at: auditAt(7200) },
   { id: "audit-16", projectId: "proj-sg", message: "VIP watchlist exported to CSV", actor: "Aaron Sim", at: auditAt(8640) },
-  { id: "audit-17", projectId: "proj-sg", message: "Mail server smtp.univs.ai verified", actor: "Wei Chen", at: auditAt(10080) },
+  { id: "audit-17", projectId: "proj-sg", message: "Project mail settings updated", actor: "Wei Chen", at: auditAt(10080) },
   { id: "audit-18", projectId: "proj-sg", message: "Zone Angmokio created with 3 cameras", actor: "Marcus Lee", at: auditAt(11520) },
   { id: "audit-19", projectId: "proj-sg", message: "License renewed until 2029-03-31", actor: "Grace Tan", at: auditAt(12960) },
 ];

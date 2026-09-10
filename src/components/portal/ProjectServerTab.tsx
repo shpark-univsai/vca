@@ -348,7 +348,7 @@ const MAIL_T = {
     useTls: "Use TLS", save: "Save",
     toastUsingTeam: "Using team mail settings",
     toastSaved: "Mail settings saved",
-    toastSavedDesc: (addr: string) => `Invites will be sent from ${addr}`,
+    toastSavedDesc: (addr: string) => `Invites will be sent from ${addr}. Nothing has been sent through this relay yet — send one invite and confirm it arrives before you rely on it.`,
     whatVcaSends: "What VCA sends",
     accountInvitation: "Account invitation", accountInvitationValue: "To the invited address, on approval",
     passwordReset: "Password reset", passwordResetValue: "To the account's own address, on request",
@@ -375,7 +375,7 @@ const MAIL_T = {
     useTls: "TLS 사용", save: "저장",
     toastUsingTeam: "팀 메일 설정 사용 중",
     toastSaved: "메일 설정 저장됨",
-    toastSavedDesc: (addr: string) => `초대장은 ${addr}에서 발송됩니다.`,
+    toastSavedDesc: (addr: string) => `초대장은 ${addr}에서 발송됩니다. 아직 이 릴레이로 보낸 적은 없습니다. 초대를 한 통 보내 도착하는지 확인한 뒤에 쓰세요.`,
     whatVcaSends: "VCA가 발송하는 메일",
     accountInvitation: "계정 초대", accountInvitationValue: "승인 시 초대받은 주소로 발송",
     passwordReset: "비밀번호 재설정", passwordResetValue: "요청 시 계정 본인 주소로 발송",
@@ -423,6 +423,12 @@ function MailSettings({ projectId }: { projectId: string }) {
       mailDomain: domain.trim(),
       smtp: { host: host.trim(), port: portNumber, fromAddress: fromAddress.trim(), useTls },
     });
+    // Saved, not verified — nothing here connects to the relay. On an on-prem site the invite
+    // mail is how staff get accounts, so a typo'd host means invitations vanish with no sign on
+    // this screen; the toast says so rather than letting "saved" read as "working".
+    //
+    // HANDOFF NOTE: a test send is the fix — POST /api/portal/projects/{id}/mail/test, and this
+    // toast becomes a real result instead of a caveat.
     showToast({ variant: "success", title: t.toastSaved, desc: t.toastSavedDesc(fromAddress.trim()) });
   };
 
