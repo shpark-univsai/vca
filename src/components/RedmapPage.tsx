@@ -39,6 +39,9 @@ const T = {
     exportedDesc: "The extraction is recorded in this project's log.",
     thresholdCost: (kept: number, total: number) => `${kept} of ${total} candidates`,
     thresholdCostNone: (total: number) => `none of ${total} candidates`,
+    personChip: (n: number) => `Person ${n}`,
+    resultTally: (hits: number, people: number) => `${hits} sighting${hits === 1 ? "" : "s"} · ${people} different people`,
+    peopleNote: "These sightings were matched to more than one person. Pick a chip to follow one of them.",
     modePerson: "PERSON",
     modeVehicle: "VEHICLE",
     licensePlate: "License plate",
@@ -122,6 +125,9 @@ const T = {
     exportedDesc: "추출 사실이 이 프로젝트 기록에 남았습니다.",
     thresholdCost: (kept: number, total: number) => `후보 ${total}건 중 ${kept}건`,
     thresholdCostNone: (total: number) => `후보 ${total}건 중 0건`,
+    personChip: (n: number) => `인물 ${n}`,
+    resultTally: (hits: number, people: number) => `목격 ${hits}건 · 인물 ${people}명`,
+    peopleNote: "서로 다른 사람으로 판정된 결과입니다. 칩을 눌러 한 명씩 경로를 보세요.",
     modePerson: "사람",
     modeVehicle: "차량",
     licensePlate: "차량 번호",
@@ -255,7 +261,7 @@ const HIT_SET_TRAIL: HitShape[] = [
     faceUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
     elapsed: "20m 12s",
-    personId: "p1", personLabel: "Match 1",
+    personId: "p1",
   },
   {
     id: "hit-2",
@@ -266,7 +272,7 @@ const HIT_SET_TRAIL: HitShape[] = [
     faceUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
     elapsed: "30m 32s",
-    personId: "p1", personLabel: "Match 1",
+    personId: "p1",
   },
   {
     id: "hit-3",
@@ -276,7 +282,7 @@ const HIT_SET_TRAIL: HitShape[] = [
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
-    personId: "p1", personLabel: "Match 1",
+    personId: "p1",
   },
 ];
 
@@ -295,7 +301,7 @@ const HIT_SET_MODERATE: HitShape[] = [
     faceUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
     elapsed: "1h 40m",
-    personId: "p1", personLabel: "Match 1",
+    personId: "p1",
   },
   {
     id: "hit-m2",
@@ -305,7 +311,7 @@ const HIT_SET_MODERATE: HitShape[] = [
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
-    personId: "p1", personLabel: "Match 1",
+    personId: "p1",
   },
 ];
 
@@ -318,7 +324,7 @@ const HIT_SET_SPARSE: HitShape[] = [
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
-    personId: "p1", personLabel: "Match 1",
+    personId: "p1",
   },
 ];
 
@@ -334,7 +340,7 @@ const HIT_SET_LOOKALIKES: HitShape[] = [
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
-    personId: "p1", personLabel: "Match 1",
+    personId: "p1",
   },
   {
     id: "hit-l2",
@@ -344,7 +350,7 @@ const HIT_SET_LOOKALIKES: HitShape[] = [
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
-    personId: "p1", personLabel: "Match 1",
+    personId: "p1",
   },
   {
     id: "hit-l3",
@@ -354,7 +360,7 @@ const HIT_SET_LOOKALIKES: HitShape[] = [
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=150&h=200&q=80",
-    personId: "p2", personLabel: "Match 2",
+    personId: "p2",
   },
   {
     id: "hit-l4",
@@ -364,7 +370,7 @@ const HIT_SET_LOOKALIKES: HitShape[] = [
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=150&h=200&q=80",
-    personId: "p2", personLabel: "Match 2",
+    personId: "p2",
   },
 ];
 
@@ -1230,10 +1236,23 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
   // Distinct people in the CURRENT results, in first-appearance order. Chips only render when
   // there's more than one — a single person's own sightings don't need disambiguating, and
   // showing a one-chip row every search would just be noise.
-  const distinctPersons = Array.from(new Map(results.map((h) => [h.personId, h.personLabel])).entries())
-    .map(([personId, personLabel], i) => ({ personId, personLabel, color: PERSON_COLORS[i % PERSON_COLORS.length] }));
+  /**
+   * The label is made here, not read from the data.
+   *
+   * The seeds carried personLabel: "Match 1" / "Match 2", and on screen that reads as a ranking
+   * of one person's results — "the first match, the second match". They are not: they are
+   * DIFFERENT PEOPLE the search returned. In a control room that misreading turns four sightings
+   * into one person's route (Novena → Geylang → Toa Payoh → Bedok) and a journey nobody made.
+   *
+   * Numbering positionally also keeps it honest as a display concern: it is "the first distinct
+   * person in these results", which is exactly what the chip selects, and it translates. A label
+   * frozen into the mock data could do neither.
+   */
+  const distinctPersons = Array.from(new Set(results.map((h) => h.personId)))
+    .map((personId, i) => ({ personId, personLabel: t.personChip(i + 1), color: PERSON_COLORS[i % PERSON_COLORS.length] }));
   const showPersonChips = distinctPersons.length > 1;
   const personColor = (personId: string) => distinctPersons.find((p) => p.personId === personId)?.color ?? PERSON_COLORS[0];
+  const personLabelOf = (personId: string) => distinctPersons.find((p) => p.personId === personId)?.personLabel ?? "";
   const togglePerson = (personId: string) => {
     setSelectedPersonIds((prev) => {
       const next = new Set(prev);
@@ -1676,6 +1695,14 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                 distinct person. Toggling a chip controls who the map/route-history panel trace;
                 the results grid below always keeps showing everyone regardless of selection. */}
             {showPersonChips && (
+              /* Said once, above the chips. The chips alone leave the reader to work out why
+                 there is more than one — and the wrong answer to that ("these are ranked
+                 matches") is the one that produces a route nobody walked. */
+              <p style={{ fontSize: "11px", lineHeight: 1.6, color: "var(--gray-500)", margin: "0 0 8px" }}>
+                {t.resultTally(results.length, distinctPersons.length)} — {t.peopleNote}
+              </p>
+            )}
+            {showPersonChips && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                 {distinctPersons.map((p) => {
                   const active = selectedPersonIds.has(p.personId);
@@ -1815,7 +1842,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                     ) : showPersonChips && (
                       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                         <span style={{ width: "6px", height: "6px", borderRadius: "999px", backgroundColor: personColor(hit.personId), flexShrink: 0 }} />
-                        <span style={{ fontSize: "10px", fontWeight: 700, color: personColor(hit.personId) }}>{hit.personLabel}</span>
+                        <span style={{ fontSize: "10px", fontWeight: 700, color: personColor(hit.personId) }}>{personLabelOf(hit.personId)}</span>
                       </div>
                     )}
                     <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>

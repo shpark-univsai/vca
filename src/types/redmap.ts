@@ -25,7 +25,10 @@ export interface HitResult {
   // can legitimately return sightings of more than one distinct person, not just multiple sightings
   // of the same one — this is what the person-filter chips group/color by.
   personId: string;
-  personLabel: string;
+  // No personLabel. It used to live here as "Match 1" / "Match 2" and read on screen as a ranking
+  // of one person's results rather than as different people — see the note by distinctPersons in
+  // RedmapPage. The label is a display concern now: made from position, translated, and never
+  // frozen into data.
 }
 
 export interface DateRange {
