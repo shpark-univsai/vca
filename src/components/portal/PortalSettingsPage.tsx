@@ -319,19 +319,23 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
 
   return (
     /**
-     * Full content width, and one card — the shape the licence page uses, which is this page's
-     * nearest neighbour: both are read-only facts with a control or two rather than a table.
+     * One card, capped, and flush left.
      *
-     * It was capped at 720px and centred, on a comment claiming that matched the licence page. It
-     * does not: the licence page runs the full width like every other tab. So this was the one
-     * screen in Portal indented from the left edge, and the three separate cards floating in that
-     * narrow column read as a different product from the tab beside it.
+     * The tabs beside this one are tables, and a table earns the full 1600px of the shell: more
+     * width is more rows visible at once. This page is the opposite — five facts, a form and two
+     * sentences — and at full width the pairs opened into six columns, the paragraphs ran to a
+     * measure the eye cannot return from, and the card was mostly air. Both of the settings pages
+     * this was checked against (Time2book, ClickUp) hold their content near 850px on any monitor.
      *
-     * Sections inside one card, divided by the same hairline and headed by the same small-caps
-     * label the licence card uses for INCLUDED FEATURES — one contract is one card there, one
-     * account is one card here.
+     * 880px: a 240px rail, a 520px column and the card's own padding, which is the width the
+     * sections actually need rather than a round number.
+     *
+     * Flush left, not centred, and that distinction is the whole of the earlier objection to a
+     * 720px version of this: centring pushed the card off the left edge every other tab starts
+     * at, so the page read as a different product. Capped and left-aligned, the first pixel of
+     * this card sits where the first pixel of the Users table sits.
      */
-    <div>
+    <div style={{ maxWidth: "880px" }}>
       {/* No page title here: the top bar's crumb already names this page, and printing the same
           word again 20px lower was the page introducing itself twice. What stays is the row of
           things you can do on it. */}
@@ -339,7 +343,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           which they never reach — the first section has no top rule and the last no bottom one —
           and it clipped the one thing that has to escape this box: the language select sits in the
           final section, so its list opened straight into the card's bottom edge and was cut off. */}
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, marginBottom: "20px" }}>
+      <div className="portal-settings-card" style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, marginBottom: "20px" }}>
       {/* Which pairs exist depends on whether the signed-in address matches an account: with no
           match there is nothing to say about a role or a door, so those are absent rather than
           filled with a disclaimer. */}
@@ -521,24 +525,26 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         is why it sits here beside the other two team policies.
       */}
       {myTeam && (
-        <CardSection heading={t.teamMailTitle}>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, marginTop: "10px", maxWidth: "62ch" }}>{t.teamMailIntro}</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px", marginTop: "16px", maxWidth: "760px" }}>
+        <CardSection heading={t.teamMailTitle} desc={t.teamMailIntro}>
+          {/* No maxWidth of its own any more — the section's content column is the cap, and two
+              of these grids with two different ones is how columns stop lining up between
+              sections. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px" }}>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.teamMailDomain}</label>
+              <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailDomain}</label>
               <TextField value={mailDomain} onChange={setMailDomain} placeholder="company.local" />
               <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.55, marginTop: "6px" }}>{t.teamMailDomainHint}</p>
             </div>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.teamMailHost}</label>
+              <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailHost}</label>
               <TextField value={mailHost} onChange={setMailHost} placeholder="mail.company.local" />
             </div>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.teamMailPort}</label>
+              <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailPort}</label>
               <TextField value={mailPort} onChange={v => setMailPort(v.replace(/[^0-9]/g, ""))} placeholder="587" inputMode="numeric" />
             </div>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.teamMailFrom}</label>
+              <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailFrom}</label>
               <TextField value={mailFrom} onChange={setMailFrom} placeholder="vca-noreply@company.local" />
               {mailFromMismatch && (
                 <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.55, marginTop: "6px" }}>{t.teamMailFromMismatch(mailDomain.trim())}</p>
@@ -549,7 +555,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             <input type="checkbox" checked={mailTls} onChange={e => setMailTls(e.target.checked)} disabled={!mayEdit} />
             {t.teamMailTls}
           </label>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "12px", maxWidth: "62ch" }}>{t.teamMailUnverified}</p>
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "12px" }}>{t.teamMailUnverified}</p>
           <div style={{ marginTop: "14px" }}>
             <button className="portal-btn-primary" onClick={saveTeamMail} disabled={!canSaveTeamMail}
               style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSaveTeamMail ? "var(--primary-400)" : "var(--gray-200)", color: canSaveTeamMail ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSaveTeamMail ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
@@ -560,10 +566,9 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       )}
 
       {myTeamId && (
-        <CardSection heading={t.categoryTitle}>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, marginTop: "10px", maxWidth: "62ch" }}>{t.categoryIntro}</p>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginTop: "14px" }}>
-            <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>
+        <CardSection heading={t.categoryTitle} desc={t.categoryIntro}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>
               {t.categoryCount(teamCategories.filter(c => !c.archived).length)}
             </span>
             <button className="portal-btn-quiet" onClick={() => setManagingCategories(true)}
@@ -588,15 +593,14 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           a question the reader has to answer ("do I need to fill this in?") about something that
           cannot affect them. The flag is the switch — see complianceConfig. */}
       {requirePurpose && myTeamId && (
-        <CardSection heading={t.purposeTitle}>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, marginTop: "10px", maxWidth: "62ch" }}>{t.purposeIntro}</p>
+        <CardSection heading={t.purposeTitle} desc={t.purposeIntro}>
           {/* What the empty list actually costs, said here rather than only in the app. An
               administrator who has not built this list needs to know that the requirement is on and
               unmet — otherwise the console looks configured and the gate quietly waves everyone
               through. */}
           {requirePurpose && activePurposes.length === 0 && (
             <p style={{
-              marginTop: "12px", padding: "10px 12px", borderRadius: "8px", maxWidth: "fit-content",
+              padding: "10px 12px", marginBottom: "12px", borderRadius: "8px", maxWidth: "fit-content",
               backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
               fontSize: "12px", fontWeight: 700, lineHeight: 1.6,
             }}>{t.purposeRequirementOn}</p>
@@ -736,7 +740,7 @@ function SearchPurposeList({ t, teamId, purposes, canEdit }: {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "14px", maxWidth: "620px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
       {purposes.length === 0 && !creating && (
         <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.7 }}>{t.purposeEmpty}</p>
       )}
@@ -769,7 +773,7 @@ function SearchPurposeList({ t, teamId, purposes, canEdit }: {
       ) : creating ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.purposeLabelField}</label>
+            <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.purposeLabelField}</label>
             <TextField value={label} onChange={setLabel} placeholder={t.purposeLabelPlaceholder} autoFocus />
           </div>
           {/* Off by default, unlike the watchlist category's basis. A purpose is declared once a

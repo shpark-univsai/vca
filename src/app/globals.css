@@ -256,6 +256,26 @@
   color: var(--danger-400) !important;
 }
 
+/* A settings section: what it is on the left, what you can do on the right.
+
+   The rail is what stops a settings page from being read across the full width of a 1600px
+   shell. Everything that explains a section lives in it, so the controls start at the same x
+   on every section and the column they sit in never grows past a readable measure.
+
+   Container width, not viewport: Portal's sidebar collapses, so the same viewport width means
+   two different card widths and a viewport breakpoint guesses wrong at one of them. 620px is
+   where the 240px rail stops leaving the controls a usable column. */
+.portal-settings-card { container-type: inline-size; }
+.portal-settings-section {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 16px 40px;
+  align-items: start;
+}
+@container (max-width: 620px) {
+  .portal-settings-section { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+}
+
 :where(input, textarea, select, button, [contenteditable], [tabindex]):focus-visible {
   outline: 1px solid var(--gray-900);
   outline-offset: 0;

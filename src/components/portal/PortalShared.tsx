@@ -761,14 +761,38 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
  * heading inside a card is furniture, and at 13px bold it competed with the values under it for
  * the same weight. The hairline above does the separating that three floating cards used to.
  */
-export function CardSection({ heading, first, children }: { heading: string; first?: boolean; children: React.ReactNode }) {
+/**
+ * One section of the settings card: what it is on the left, what you can do on the right.
+ *
+ * It was a full-width stack under a 10px small-caps label, and two things were wrong with that.
+ * The label was the smallest, lightest text in its own section — under the 12px pair captions
+ * and the 14px values it was meant to govern — so a section never announced itself; and on the
+ * 1600px shell the content under it ran the whole width, which put a value an arm's length from
+ * the word naming it and set every paragraph on a measure nobody can track back to.
+ *
+ * The rail fixes both at once. A heading with the room to be one (15px above the 14px values it
+ * governs, which is the order they should have been in), the section's own explanation under it
+ * rather than as a paragraph the controls have to be read past, and a content column that stops
+ * at 520px however wide the window gets. Time2book, ClickUp and Later's settings all converge on
+ * this shape, and for the same reason: a settings page is read one section at a time.
+ *
+ * `desc` is optional because not every section has something to explain — Account is five facts
+ * about you, and a sentence saying so would be furniture.
+ */
+export function CardSection({ heading, desc, first, children }: { heading: string; desc?: string; first?: boolean; children: React.ReactNode }) {
   return (
-    <div style={{ padding: "18px 20px", borderTop: first ? "none" : BORDER }}>
-      <p style={{
-        fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px",
-        textTransform: "uppercase",
-      }}>{heading}</p>
-      {children}
+    <div className="portal-settings-section" style={{ padding: "22px 24px", borderTop: first ? "none" : BORDER }}>
+      <div>
+        {/* <p>, not <h2>: nothing in Portal uses heading elements yet, and one lone h2 under no h1
+            is not an outline. Giving Portal a real heading order is its own pass. */}
+        <p style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "20px" }}>{heading}</p>
+        {desc && (
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.65, marginTop: "6px" }}>{desc}</p>
+        )}
+      </div>
+      {/* 520px, not 1fr. The rail alone would still let a four-column grid of pairs open up on a
+          wide screen — the cap is the half of this that holds at 1600px. */}
+      <div style={{ minWidth: 0, maxWidth: "520px" }}>{children}</div>
     </div>
   );
 }
@@ -783,11 +807,11 @@ export function CardSection({ heading, first, children }: { heading: string; fir
  */
 export function PairGrid({ children }: { children: React.ReactNode }) {
   return (
-    /* The licence card's own feature grid, same minimum. Fixing it at two columns was right while
-       this page was three separate cards of different widths — auto-fit gave them different track
-       counts and the pairs stopped lining up between cards. One card, one width, so the tracks
-       agree again and the page fills the room it has. */
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px 20px", marginTop: "14px" }}>
+    /* Two columns in practice, and by arithmetic rather than by a hard-coded 2: the section's
+       content column is capped at 520px, so 220px tracks fit twice and never three times. It is
+       written as auto-fit so the grid drops to one column when the section stacks on a narrow
+       card, which a fixed two would not do. */
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px 20px" }}>
       {children}
     </div>
   );
