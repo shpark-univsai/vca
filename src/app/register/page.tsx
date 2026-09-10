@@ -353,10 +353,10 @@ function RegisterFlow() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "white" }}>
       <AuthHeader />
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", overflowY: "auto" }}>
+      <div className="vca-auth-scroll" style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
         <div style={{
           width: "480px", maxWidth: "480px", backgroundColor: "white",
-          borderRadius: "28px", padding: "36px", margin: "40px 0",
+          borderRadius: "28px", padding: "36px", margin: "auto 0",
           display: "flex", flexDirection: "column", gap: "40px", alignItems: "center",
         }}>
 

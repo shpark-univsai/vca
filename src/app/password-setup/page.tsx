@@ -130,10 +130,10 @@ function PasswordSetupForm() {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "white" }}>
         <AuthHeader />
-        <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "200px", overflowY: "auto" }}>
+        <div className="vca-auth-scroll" style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
           <div style={{
             width: "480px", maxWidth: "480px", backgroundColor: "white",
-            borderRadius: "28px", padding: "36px",
+            borderRadius: "28px", padding: "36px", margin: "auto 0",
             display: "flex", flexDirection: "column", gap: "32px", alignItems: "center",
           }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
@@ -184,10 +184,10 @@ function PasswordSetupForm() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "white" }}>
       <AuthHeader />
-      <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "200px", overflowY: "auto" }}>
+      <div className="vca-auth-scroll" style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
         <div style={{
           width: "480px", maxWidth: "480px", backgroundColor: "white",
-          borderRadius: "28px", padding: "36px",
+          borderRadius: "28px", padding: "36px", margin: "auto 0",
           display: "flex", flexDirection: "column", gap: "40px", alignItems: "center",
         }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>

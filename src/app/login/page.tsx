@@ -209,7 +209,7 @@ function LoginForm() {
         <div className="vca-auth-scroll" style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
         <div style={{
           width: "480px", maxWidth: "480px", backgroundColor: "white",
-          borderRadius: "28px", padding: "20px 36px 36px", margin: "0 0 40px",
+          borderRadius: "28px", padding: "20px 36px 36px", margin: "auto 0",
           display: "flex", flexDirection: "column", gap: "24px", alignItems: "center",
         }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>

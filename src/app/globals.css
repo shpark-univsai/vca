@@ -176,6 +176,15 @@
   border-color: var(--gray-400) !important;
 }
 
+/* The borderless secondary — Input Sources' table tools, the Users page's row of five, the
+   toolbar Reset buttons. No border and no fill at rest, so the box stops competing with the one
+   filled button on the screen; the tint is the only thing that says it is a target, which makes
+   it the one part that cannot be left out. It was left out in three different ways: gray-100
+   written inline with React hover state, portal-btn-outline (gray-50, plus a border-color rule
+   that does nothing to a button with no border), and on the Users page nothing at all. */
+.portal-btn-quiet { transition: background-color .12s ease; }
+.portal-btn-quiet:hover:not(:disabled) { background-color: var(--gray-100) !important; }
+
 .portal-btn-danger { transition: background-color .12s ease; }
 .portal-btn-danger:hover:not(:disabled) { background-color: var(--danger-500) !important; }
 
@@ -540,9 +549,10 @@ body {
   display: none;
 }
 .vca-auth-brand-art {
-  /* Square, and sized off the panel's width rather than the window's height — the drawing is a
-     map, so it wants to be as large as the column allows. */
-  width: min(100%, 460px);
+  /* Square, and sized off the panel's width rather than the window's height. Smaller than the
+     column allows now that a caption sits under it — the two together are the object, and art
+     filling the panel edge to edge would push the words out of the same glance. */
+  width: min(100%, 360px);
   height: auto;
   aspect-ratio: 1;
   flex-shrink: 0;
@@ -562,10 +572,14 @@ body {
 /* Only rule left that reads the window's height, and it is about the artwork alone — the form no
    longer moves when the window gets short. */
 @media (max-height: 760px) {
-  .vca-auth-brand-art { width: min(100%, 340px); }
+  .vca-auth-brand-art { width: min(100%, 250px); }
 }
 
-.vca-auth-scroll { padding-top: 44px; }
-@media (max-height: 900px) {
-  .vca-auth-scroll { padding-top: 24px; }
+/* The card centres itself with an auto vertical margin (see the auth pages). This only supplies
+   the breathing room around it, so a card taller than the window still clears the header and the
+   bottom edge instead of butting against them. Symmetric, because an asymmetric padding would
+   pull the centred state off centre. */
+.vca-auth-scroll { padding: 40px 24px; }
+@media (max-height: 760px) {
+  .vca-auth-scroll { padding: 20px 24px; }
 }
