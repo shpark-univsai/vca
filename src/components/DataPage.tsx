@@ -58,6 +58,8 @@ const T = {
     noSearchPermission: "You do not have permission to search people — ask an administrator",
     allCameras: "All cameras",
     labelType: "Type",
+    thresholdCost: (kept: number, total: number) => `${kept} of ${total} candidates`,
+    thresholdCostNone: (total: number) => `none of ${total} candidates`,
     associatesCount: (n: number) => `${n} ${n === 1 ? "ASSOCIATE" : "ASSOCIATES"}`,
     associateNo: (n: string) => `Associate #${n}`,
     noTiersSelected: "No tiers selected",
@@ -208,6 +210,8 @@ const T = {
     noSearchPermission: "인물 검색 권한이 없습니다 — 관리자에게 요청하세요",
     allCameras: "전체 카메라",
     labelType: "종류",
+    thresholdCost: (kept: number, total: number) => `후보 ${total}건 중 ${kept}건`,
+    thresholdCostNone: (total: number) => `후보 ${total}건 중 0건`,
     associatesCount: (n: number) => `동행 ${n}명`,
     associateNo: (n: string) => `동행 #${n}`,
     noTiersSelected: "선택된 단계가 없습니다",
@@ -1221,7 +1225,7 @@ function LiveSearchSidebar({
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
               <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>{t.similarity}</span>
-              <SimilarityControl value={threshold} onChange={setThreshold} height={32} />
+              <SimilarityControl value={threshold} onChange={setThreshold} height={32} cost={state.thresholdCost} />
             </div>
           </>
         )}
@@ -1430,14 +1434,16 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   // Resolved down into the same apparel/props shape filterReidData and SmartSearchResults expect
   // — the segmented Hat/Sleeve/Bottoms/Backpack controls are a different UI over the same data,
   // not a parallel filtering concept.
-  const derivedApparel = [
+  // Memoised: these feed the threshold-cost memo below, and a fresh array on every render would
+  // make it recompute every render instead of when the query actually changes.
+  const derivedApparel = useMemo(() => [
     sleeveFilter === "Short" ? "Short Sleeve" : sleeveFilter === "Long" ? "Long Sleeve" : null,
     bottomsFilter || null,
-  ].filter((v): v is string => !!v);
-  const derivedProps = [
+  ].filter((v): v is string => !!v), [sleeveFilter, bottomsFilter]);
+  const derivedProps = useMemo(() => [
     hatFilter === "Hat" ? "Hat" : null,
     backpackFilter === "Exists" ? "Backpack/Bag" : null,
-  ].filter((v): v is string => !!v);
+  ].filter((v): v is string => !!v), [hatFilter, backpackFilter]);
 
   // Who these results are about — see SearchFilterState.activeTarget. This panel has the two
   // pickers; a crop off the wall goes to Re-ID, which is the screen for "where else has this
@@ -1451,6 +1457,30 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
     if (activeVIP >= 0) selectVIP(activeVIP);
     else if (selectedTarget >= 0) selectRecentTarget(selectedTarget);
   };
+  const searchTarget = activeVIP >= 0 ? VIP_QUICK[activeVIP]
+    : selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget]
+    // REID_DATA's own gender is "M"/"F"; buildTargetResultRows and the rest of this shape expect
+    // "Male"/"Female", the same format VIP_QUICK/RECENT_TARGETS_EN already use.
+    : null;
+
+  /**
+   * What this threshold costs, counted against the pool this query actually has — see
+   * SimilarityControl. Null with no query: the unfiltered pool is the whole mock, and a count of
+   * that would describe a question nobody asked.
+   */
+  const thresholdCost = useMemo(() => {
+    if (searchType !== "PERSON") return null;
+    const hasAttributeQuery = !!gender || derivedApparel.length > 0 || derivedProps.length > 0
+      || topColors.length > 0 || bottomColors.length > 0 || shoesColors.length > 0
+      || !!emotion || !!ethnicGroup;
+    if (!searchTarget && !hasAttributeQuery) return null;
+    const pool = searchTarget
+      ? buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20, siteCameras)
+      : filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange: searchDateRange, threshold: 0, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras });
+    if (!pool.length) return null;
+    return { kept: pool.filter(r => r.similarity >= threshold).length, total: pool.length };
+  }, [searchType, searchTarget, gender, derivedApparel, derivedProps, topColors, bottomColors, shoesColors, emotion, ethnicGroup, searchDateRange, threshold, siteCameras]);
+
   const searchState: SearchFilterState = {
     searchType, setSearchType, selectedTarget, selectRecentTarget, activeVIP, selectVIP,
     threshold, setThreshold, gender, setGender,
@@ -1458,14 +1488,10 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
     topColors, toggleTopColor, bottomColors, toggleBottomColor, shoesColors, toggleShoesColor,
     dateRange: searchDateRange, setDateRange: setSearchDateRange, licensePlate, setLicensePlate,
     camera: searchCamera, setCamera: setSearchCamera,
-    activeTarget, clearActiveTarget,
+    activeTarget, clearActiveTarget, thresholdCost,
     reset: searchReset,
   };
-  const searchTarget = activeVIP >= 0 ? VIP_QUICK[activeVIP]
-    : selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget]
-    // REID_DATA's own gender is "M"/"F"; buildTargetResultRows and the rest of this shape expect
-    // "Male"/"Female", the same format VIP_QUICK/RECENT_TARGETS_EN already use.
-    : null;
+
   const searchResults = searchType === "PERSON" && searchTarget
     ? buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20, siteCameras)
         .filter(r => r.similarity >= threshold)
@@ -1984,7 +2010,21 @@ function SimilaritySliderStyleTag() {
     `}</style>
   );
 }
-function SimilarityControl({ value, onChange, height = 36 }: { value:number; onChange:(v:number)=>void; height?:number }) {
+/**
+ * The threshold, and what the current setting costs.
+ *
+ * This control decides which matches an operator ever sees, and moving it used to tell you
+ * nothing until after the search — you turned the dial with your eyes shut and found out
+ * afterwards, by which time the number you had before was gone.
+ *
+ * `cost` is resolved by the owner, because only the owner knows what the current query's
+ * candidate pool is; null means there is no query to count against. Same wording and the same
+ * amber-only-at-zero rule as Redmap's slider (see RedmapPage's thresholdCost) — the same control
+ * explaining its cost two different ways on two screens would be worse than not explaining it.
+ */
+function SimilarityControl({ value, onChange, height = 36, cost }: { value:number; onChange:(v:number)=>void; height?:number; cost?: { kept:number; total:number } | null }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
       <SimilaritySliderStyleTag />
@@ -2009,6 +2049,18 @@ function SimilarityControl({ value, onChange, height = 36 }: { value:number; onC
         />
         <span style={{ fontSize:"12px", fontWeight:700, color:"var(--primary-400)", width:"32px", textAlign:"right", flexShrink:0 }}>{value}%</span>
       </div>
+      {cost && (
+        // Its own line: this column has the room the toolbar's slider did not, so the cost sits
+        // under the control it belongs to instead of squeezing beside the number.
+        <span style={{
+          fontSize:"11px", fontWeight:600, marginTop:"-6px",
+          // Amber only when the setting leaves nothing. Colouring every reduction would paint the
+          // normal case as a problem — dropping weak candidates is this control's job.
+          color: cost.kept === 0 ? "var(--warning-500)" : "var(--gray-500)",
+        }}>
+          {cost.kept === 0 ? t.thresholdCostNone(cost.total) : t.thresholdCost(cost.kept, cost.total)}
+        </span>
+      )}
     </div>
   );
 }
@@ -2233,6 +2285,12 @@ interface SearchFilterState {
    */
   activeTarget: { face: string; label: string } | null;
   clearActiveTarget: () => void;
+  /**
+   * What the current threshold keeps, out of the current query's candidate pool. Null when there
+   * is no query to count against — see SimilarityControl. Resolved by the owner for the same
+   * reason activeTarget is: only the owner knows which dataset this query draws from.
+   */
+  thresholdCost: { kept: number; total: number } | null;
   reset: () => void;
 }
 
@@ -3079,14 +3137,47 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   // Resolved down into the same apparel/props shape filterReidData/the results cluster expect —
   // the segmented Hat/Sleeve/Bottoms/Backpack controls are a different UI over the same data,
   // not a parallel filtering concept. Same derivation as Live Monitoring's LiveSearchSidebar.
-  const derivedApparel = [
+  // Memoised: these feed the threshold-cost memo below, and a fresh array on every render would
+  // make it recompute every render instead of when the query actually changes.
+  const derivedApparel = useMemo(() => [
     sleeveFilter === "Short" ? "Short Sleeve" : sleeveFilter === "Long" ? "Long Sleeve" : null,
     bottomsFilter || null,
-  ].filter((v): v is string => !!v);
-  const derivedProps = [
+  ].filter((v): v is string => !!v), [sleeveFilter, bottomsFilter]);
+  const derivedProps = useMemo(() => [
     hatFilter === "Hat" ? "Hat" : null,
     backpackFilter === "Exists" ? "Backpack/Bag" : null,
-  ].filter((v): v is string => !!v);
+  ].filter((v): v is string => !!v), [hatFilter, backpackFilter]);
+
+  // Before a search runs, show the two illustrative example clusters (unchanged from before).
+  // Once Search is clicked, replace them with one real cluster built from the actual filter
+  // state and the live-filtered dataset — the target's face if one was picked, else a generic
+  // "Search Result" placeholder.
+  // REID_DATA's own gender is "M"/"F"; this shape wants "Male"/"Female", the format VIP_QUICK and
+  // RECENT_TARGETS_EN already use. `url` is the body crop, `face` the face crop.
+  // Memoised because the card branch builds an object: a new one every render would make the
+  // threshold-cost memo below recompute on every render.
+  const searchTarget = useMemo(() => activeVIP >= 0 ? VIP_QUICK[activeVIP]
+    : selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget]
+    : cardTarget ? { face: cardTarget.face, body: cardTarget.url, gender: cardTarget.gender === "M" ? "Male" : "Female" }
+    : null, [activeVIP, selectedTarget, cardTarget]);
+
+  /**
+   * What this threshold costs, counted against the pool this query actually has — see
+   * SimilarityControl. Null with no query: the unfiltered pool is the whole mock, and a count of
+   * that would describe a question nobody asked.
+   */
+  const thresholdCost = useMemo(() => {
+    if (searchType !== "PERSON") return null;
+    const hasAttributeQuery = !!gender || derivedApparel.length > 0 || derivedProps.length > 0
+      || topColors.length > 0 || bottomColors.length > 0 || shoesColors.length > 0
+      || !!emotion || !!ethnicGroup;
+    if (!searchTarget && !hasAttributeQuery) return null;
+    const pool = searchTarget
+      ? buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20, siteCameras)
+      : filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange: dateRange, threshold: 0, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras });
+    if (!pool.length) return null;
+    return { kept: pool.filter(r => r.similarity >= threshold).length, total: pool.length };
+  }, [searchType, searchTarget, gender, derivedApparel, derivedProps, topColors, bottomColors, shoesColors, emotion, ethnicGroup, dateRange, threshold, siteCameras]);
 
   const state: SearchFilterState = {
     searchType, setSearchType, selectedTarget, selectRecentTarget, activeVIP, selectVIP,
@@ -3110,19 +3201,11 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
       else if (selectedTarget >= 0) selectRecentTarget(selectedTarget);
       else setCardTarget(null);
     },
+    thresholdCost,
     reset,
   };
 
-  // Before a search runs, show the two illustrative example clusters (unchanged from before).
-  // Once Search is clicked, replace them with one real cluster built from the actual filter
-  // state and the live-filtered dataset — the target's face if one was picked, else a generic
-  // "Search Result" placeholder.
-  // REID_DATA's own gender is "M"/"F"; this shape wants "Male"/"Female", the format VIP_QUICK and
-  // RECENT_TARGETS_EN already use. `url` is the body crop, `face` the face crop.
-  const searchTarget = activeVIP >= 0 ? VIP_QUICK[activeVIP]
-    : selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget]
-    : cardTarget ? { face: cardTarget.face, body: cardTarget.url, gender: cardTarget.gender === "M" ? "Male" : "Female" }
-    : null;
+
   // A named target (VIP Quick Select / Recent Targets) means "find this specific person
   // elsewhere" — the results should be that one identity re-appearing, not just anyone who shares
   // the filter attributes. Only the attribute-only search (no target picked) falls back to
@@ -3477,6 +3560,25 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   // Live — recomputes on every filter change instead of staying empty until a "Search" click, so
   // the results panel never sits disconnected from the filters actually driving it.
   const candidates = targetCandidates ?? candidatesFromFilters({ searchType, gender, apparel, props, dateRange, threshold, licensePlate, topColors, bottomColors, shoesColors, siteCameras });
+  /**
+   * What the threshold is costing right now — see SimilarityControl.
+   *
+   * Counted against the SAME pool the grid below draws from, just without the threshold applied,
+   * so the two numbers can never disagree. Only when a query exists: with nothing attached and no
+   * attribute set, the pool is the whole mock and a count of it would describe a question nobody
+   * asked.
+   */
+  const thresholdCost = useMemo(() => {
+    if (searchType !== "PERSON") return null;
+    const hasQuery = !!faceSrc || !!bodySrc || !!gender || apparel.length > 0 || props.length > 0
+      || topColors.length > 0 || bottomColors.length > 0 || shoesColors.length > 0;
+    if (!hasQuery) return null;
+    const pool = (faceSrc || bodySrc)
+      ? buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, target?.gender === "Male" ? "M" : gender === "Male" ? "M" : "F", 20, siteCameras)
+      : filterReidData({ searchType, gender, apparel, props, dateRange, threshold: 0, licensePlate, topColors, bottomColors, shoesColors, siteCameras });
+    if (!pool.length) return null;
+    return { kept: pool.filter(r => r.similarity >= threshold).length, total: pool.length };
+  }, [searchType, faceSrc, bodySrc, gender, apparel, props, topColors, bottomColors, shoesColors, dateRange, licensePlate, threshold, siteCameras, target]);
   // Picking a Recent target or a VIP already names one specific person, so its top candidate row
   // starts selected. That row is not a lookalike: buildTargetResultRows builds it FROM the picked
   // face at 97%, so it is the same photo — clicking it could only ever choose the same person.
@@ -3689,7 +3791,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
 
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
             <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.similarity}</span>
-            <SimilarityControl value={threshold} onChange={setThreshold} height={34} />
+            <SimilarityControl value={threshold} onChange={setThreshold} height={34} cost={thresholdCost} />
           </div>
 
           {!isVehicle && (
