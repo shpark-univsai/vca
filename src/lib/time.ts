@@ -59,7 +59,15 @@ function formatter(locale: string, zone: string, shape: string, options: Intl.Da
 }
 
 // ── Primitives, explicit about their zone ──────────────────────
-function dateKeyIn(d: Date, zone: string): string {
+/**
+ * Y-M-D key for `d` in an arbitrary zone.
+ *
+ * Exported for the same reason zoneHour is: Portal has a specific project in hand and so knows
+ * better than siteTimeZone(), which answers "the site the monitoring app is pointed at" — a
+ * different selection from the one the console is showing. sgtDateKey() on a Portal screen
+ * prints the app's day over the console's project.
+ */
+export function dateKeyIn(d: Date, zone: string): string {
   return formatter("en-CA", zone, "dateKey", { year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 }
 function hourIn(d: Date, zone: string): number {
@@ -72,7 +80,8 @@ function minuteIn(d: Date, zone: string): number {
 function clockIn(d: Date, zone: string): string {
   return formatter("en-GB", zone, "clock", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(d);
 }
-function clockMinutesIn(d: Date, zone: string): string {
+/** HH:MM for `d` in an arbitrary zone. Exported alongside dateKeyIn, same reason. */
+export function clockMinutesIn(d: Date, zone: string): string {
   return formatter("en-GB", zone, "clockMin", { hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
 }
 

@@ -663,6 +663,9 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t = T[lang];
+  // Post-mount, like every other clock read in Portal — see TempPasswordBadge.
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
   // Non-null from the start when an existing setup code is being looked up again rather than
   // issued — the result step is the whole point of that visit, so it opens straight into it.
   const [password, setPassword] = useState<string | null>(initialCode ?? null);
@@ -724,8 +727,12 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
         // temporary password, a code cannot sign in, so the clock is information, not a hazard.
         // HANDOFF NOTE: the backend has to enforce the same number.
         showExpiry: false,
+        // nowMs, not codeDaysRemaining's Date.now() default — the same post-mount clock the
+        // badge below reads. Until it is known this prints the full TTL, which is what a code
+        // issued this second has left.
         expiryLabel: t.setupExpires(
-          codeDaysRemaining(user.setupCodeIssuedAt, SETUP_CODE_TTL_DAYS) ?? SETUP_CODE_TTL_DAYS,
+          (nowMs === null ? null : codeDaysRemaining(user.setupCodeIssuedAt, SETUP_CODE_TTL_DAYS, nowMs))
+            ?? SETUP_CODE_TTL_DAYS,
         ),
       };
 
@@ -1661,6 +1668,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
    * is what the numbers were being read for.
    */
   const [statusFilter, setStatusFilter] = useState<"invited" | "suspended" | "roster" | null>(null);
+  // The page's clock, read after mount. See projectRosterAll.
+  const [pageNowMs, setPageNowMs] = useState<number | null>(null);
+  useEffect(() => { queueMicrotask(() => setPageNowMs(Date.now())); }, []);
   const q = search.trim().toLowerCase();
   // Split in two: the strip above the table counts everyone on the project, the table shows what is
   // left after the search. Counting the searched set instead would make the summary agree with the
@@ -1679,7 +1689,22 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const accountEmployeeIds = new Set(
     portalUsers.map(u => u.employeeId?.toLowerCase()).filter(Boolean) as string[]
   );
-  const projectRosterAll = withEffectiveStatus(staffRoster.filter(r => r.projectId === projectId));
+  /**
+   * Roster rows with the code TTL applied.
+   *
+   * Through the page's post-mount clock, not withEffectiveStatus's Date.now() default. A row
+   * whose code was issued near the 14-day boundary is "unused" in the server's HTML and
+   * "expired" in the browser's first pass, and React would have rendered one over the other —
+   * which is exactly the hydration hazard every other clock read on this page already avoids.
+   * Before the clock is known the stored status stands, which is the value the server sent.
+   *
+   * rosterWaiting, the tab count and the summary strip all hang off this, so the correction
+   * reaches all three at once.
+   */
+  const projectRoster = staffRoster.filter(r => r.projectId === projectId);
+  const projectRosterAll = pageNowMs === null
+    ? projectRoster
+    : withEffectiveStatus(projectRoster, pageNowMs);
   const rosterWaiting = projectRosterAll
     .filter(r => r.status !== "used" && !accountEmployeeIds.has(r.employeeId.toLowerCase()))
     .filter(r => !q || r.name.toLowerCase().includes(q) || r.employeeId.toLowerCase().includes(q))

@@ -12,6 +12,7 @@ import ProjectSidebar, { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
 import PortalSettingsPage from "./PortalSettingsPage";
 import PortalAccountMenu from "./PortalAccountMenu";
 import { ToastProvider } from "../Toast";
+import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useVcaStore, canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
@@ -113,7 +114,16 @@ export default function PortalShell() {
   const fleetOnline = projectCameras.filter(c => c.status === "online").length;
   const fleetOffline = projectCameras.length - fleetOnline;
   const [tab, setTabState] = useState<DetailTab>(
-    () => (PROJECT_TABS.some(t => t.id === tabParam) ? (tabParam as DetailTab) : "overview"),
+    // A tab the rail does not offer is not a tab you can land on. searchlog is filtered out of
+    // the rail and gated in the body while requireSearchPurpose is off, so ?tab=searchlog used
+    // to draw a "Search log" breadcrumb over an empty column — a link somebody bookmarked
+    // before the feature was scoped out of v1, answered with a blank page.
+    () => {
+      const named = PROJECT_TABS.find(t => t.id === tabParam)?.id;
+      if (!named) return "overview";
+      if (named === "searchlog" && !getComplianceConfig().requireSearchPurpose) return "overview";
+      return named as DetailTab;
+    },
   );
   /**
    * Which screen you are on lives in the address bar as well as in state, so a refresh comes back

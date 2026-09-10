@@ -5,7 +5,7 @@ import { Activity, Clock, Crosshair, Cpu, Link2, Map as MapIcon, MapPin, Network
 import { useVcaStore, type Camera } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { BORDER } from "./PortalShared";
-import { sgtClockMinutes, sgtDateKey } from "@/lib/time";
+import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 
 const T = {
@@ -61,6 +61,9 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
   useEscapeKey(onClose);
   const events = useVcaStore(s => s.events);
   const servers = useVcaStore(s => s.servers);
+  // The camera's own project, not the one the monitoring app happens to have selected — this
+  // modal opens from a Portal screen, and siteTimeZone() answers for the app's selection.
+  const projectZone = useVcaStore(s => s.projects.find(p => p.id === camera.projectId)?.timeZone) ?? PROJECT_TIME_ZONE;
   const [lang] = usePortalLanguage();
   const t = T[lang];
 
@@ -208,7 +211,7 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
               // model are settled when the camera is bought and read once, which is what a detail
               // sheet is for.
               [t.hardware, [camera.maker, camera.model].filter(Boolean).join(" ") || "—", <Cpu key="h" size={11} strokeWidth={2.2} />],
-              [t.lastDetection, lastDetection ? `${sgtDateKey(lastDetection).slice(5)} ${sgtClockMinutes(lastDetection)}` : t.noRecentDetections, <Clock key="t" size={11} strokeWidth={2.2} />],
+              [t.lastDetection, lastDetection ? `${dateKeyIn(lastDetection, projectZone).slice(5)} ${clockMinutesIn(lastDetection, projectZone)}` : t.noRecentDetections, <Clock key="t" size={11} strokeWidth={2.2} />],
               [t.detectionCount, t.detectionCountValue(cameraEvents.length), <Activity key="a" size={11} strokeWidth={2.2} />],
             ] as [string, string, React.ReactNode][]).map(([label, value, icon]) => (
               <div key={label} style={{ minWidth: 0 }}>

@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
 import { canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
-import { PROJECT_TIME_ZONE, formatElapsed, sgtClockMinutes, sgtDateKey, zoneHour } from "@/lib/time";
+import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed, zoneHour } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -247,12 +247,16 @@ function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={3.36} />; }
  * registeredAt is two shapes: a bare day on the seeded rows and a full instant on anything
  * registered through the app. Rather than guess a time for the first kind, this prints what is
  * actually stored.
+ *
+ * The zone comes in from the caller rather than off siteTimeZone(): that resolver answers for
+ * whichever project the monitoring app has selected, which is a different selection from the one
+ * this console is showing.
  */
-function registeredStamp(value: string): string {
+function registeredStamp(value: string, zone: string): string {
   const day = value.slice(0, 10);
   if (!value.includes("T")) return day;
   const at = new Date(value);
-  return Number.isNaN(at.getTime()) ? day : `${day} ${sgtClockMinutes(at)}`;
+  return Number.isNaN(at.getTime()) ? day : `${day} ${clockMinutesIn(at, zone)}`;
 }
 
 /**
@@ -589,7 +593,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const recentVips = [...projectPersons].sort((a, b) => b.registeredAt.localeCompare(a.registeredAt)).slice(0, 3);
   // nowMs-derived, not new Date() directly, so this stays in sync with the same not-yet-mounted ->
   // mounted correction every other clock-reading value on this page already follows.
-  const todayStr = nowMs !== null ? new Date(nowMs).toISOString().slice(0, 10) : null;
+  // The project's calendar day, not UTC's. toISOString() cuts the day at 00:00 UTC, and the
+  // heading eight hundred lines below prints longDate(nowMs, lang, projectZone) — so on a Seoul
+  // site, between midnight and 09:00, this card read "0 today / 1 yesterday" under a heading
+  // naming the day the registration actually happened on. Settings promises the opposite in so
+  // many words: "Days, hours and 'today' on every screen are counted in this zone."
+  const todayStr = nowMs !== null ? dateKeyIn(new Date(nowMs), projectZone) : null;
   // startsWith, not equality: registeredAt is a date on the seeded rows and a full ISO instant on
   // anything registered through Portal now, and "===" quietly counted none of the new ones.
   const todayVipCount = todayStr ? projectPersons.filter(p => p.registeredAt.startsWith(todayStr)).length : 0;
@@ -605,11 +614,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    *   GET /projects/:id/vip-intake?days=2 → [{ daysAgo, registered }]
    * Days are the project's calendar days, like every other bucket.
    */
-  const yesterdayStr = nowMs !== null ? new Date(nowMs - 86_400_000).toISOString().slice(0, 10) : null;
+  const yesterdayStr = nowMs !== null ? dateKeyIn(new Date(nowMs - 86_400_000), projectZone) : null;
   const yesterdayVipCount = yesterdayStr ? projectPersons.filter(p => p.registeredAt.startsWith(yesterdayStr)).length : 0;
   // Registered since the first of this month — the chip's "+12 this month". Same startsWith rule
   // the today figure uses: registeredAt is a date on seeded rows and an instant on new ones.
-  const monthStr = nowMs !== null ? new Date(nowMs).toISOString().slice(0, 7) : null;
+  const monthStr = nowMs !== null ? dateKeyIn(new Date(nowMs), projectZone).slice(0, 7) : null;
   const newVipsThisMonth = monthStr ? projectPersons.filter(p => p.registeredAt.startsWith(monthStr)).length : 0;
   const onlineShare = projectCameras.length ? Math.round((onlineCount / projectCameras.length) * 100) : 0;
 
@@ -1251,7 +1260,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                     >
                       <span style={{ display: "block", fontWeight: 700 }}>
                         {d.total.toLocaleString("en-US")}
-                        {at !== null && <span style={{ fontWeight: 400, color: "var(--gray-400)" }}>{`  ${sgtDateKey(at)}`}</span>}
+                        {at !== null && <span style={{ fontWeight: 400, color: "var(--gray-400)" }}>{`  ${dateKeyIn(at, projectZone)}`}</span>}
                       </span>
                       <span style={{ display: "block", color: "var(--gray-300)" }}>
                         {t.detectionSplit(d.vip, d.vehicle, d.unknown)}
@@ -1274,7 +1283,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 row keeps its height either way so nothing jumps. A weekday on its own is only
                 readable while you still know what today is, so the date leads and the weekday
                 follows it — the date identifies the column, the weekday only colours it in. The
-                date comes off the Singapore calendar key rather than a locale format, so both
+                date comes off the project's own calendar key rather than a locale format, so both
                 languages read the same digits.
               */}
               <div style={{ position: "relative", height: "14px", marginTop: "8px" }}>
@@ -1290,9 +1299,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                         fontSize: "10px", color: "var(--gray-400)", whiteSpace: "nowrap",
                       }}
                     >
-                      {at === null ? "" : `${sgtDateKey(at).slice(5).replace("-", ".")} ${d.daysAgo === 0
+                      {at === null ? "" : `${dateKeyIn(at, projectZone).slice(5).replace("-", ".")} ${d.daysAgo === 0
                         ? t.todaySoFar
-                        : new Intl.DateTimeFormat(lang === "ko" ? "ko-KR" : "en-GB", { timeZone: "Asia/Singapore", weekday: "short" }).format(at)}`}
+                        : new Intl.DateTimeFormat(lang === "ko" ? "ko-KR" : "en-GB", { timeZone: projectZone, weekday: "short" }).format(at)}`}
                     </span>
                   );
                 })}
@@ -1492,7 +1501,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                               printing a time nobody recorded. Formatted through Asia/Singapore
                               rather than the machine's own zone, so the server's first paint and
                               the browser's agree. */}
-                          <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.registeredOn(registeredStamp(p.registeredAt))}</p>
+                          <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.registeredOn(registeredStamp(p.registeredAt, projectZone))}</p>
                         </div>
                         <ChevronRight size={14} strokeWidth={2.4} color="var(--gray-400)" />
                       </button>

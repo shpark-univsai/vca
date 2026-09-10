@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useVcaStore, type SearchAccessRecord } from "@/lib/vcaStore";
+import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import {
   BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR,
@@ -25,7 +26,10 @@ import { Eye, FileDown, ShieldAlert } from "lucide-react";
  * with the export Zoho puts on theirs — what an auditor is handed at the end is a file, not a URL.
  */
 
-const GRID = "150px 1fr 1fr 0.9fr 0.8fr 0.7fr 0.9fr";
+// Eight tracks, matching the eight columns the CSV writes. The table had seven and quietly
+// dropped "Screen" — so the record an auditor reads on this page and the file they are handed
+// disagreed about which fields the log even has.
+const GRID = "150px 1fr 1fr 0.9fr 0.8fr 0.8fr 0.7fr 0.9fr";
 
 type LogSortKey = "at" | "actor" | "purpose" | "target";
 
@@ -80,6 +84,9 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const searchAccessLog = useVcaStore(s => s.searchAccessLog);
+  // The project's zone, not the reviewer's browser and not siteTimeZone() — see the note on the
+  // timestamp cell below.
+  const projectZone = useVcaStore(s => s.projects.find(p => p.id === projectId)?.timeZone) ?? PROJECT_TIME_ZONE;
   const { sort, toggle: toggleSort } = useTableSort<LogSortKey>({ key: "at", direction: "desc" });
   const [purposeFilter, setPurposeFilter] = useState("ALL");
   const [actorFilter, setActorFilter] = useState("ALL");
@@ -203,6 +210,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
             { label: t.colPurpose, key: "purpose" as LogSortKey },
             { label: t.colReference },
             { label: t.colTarget, key: "target" as LogSortKey },
+            { label: t.colSurface },
             { label: t.colResults },
             { label: t.colIp },
           ] as { label: string; key?: LogSortKey }[]).map((h, i) => (
@@ -221,10 +229,14 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
             padding: "10px 16px", alignItems: "center",
             borderBottom: i === visible.length - 1 ? "none" : BORDER,
           }}>
-            {/* The instant, in the project's own zone — a look-up is filed under the day it happened
-                at the site, not the day it was at the reviewer's desk. */}
+            {/* The instant, in the project's own zone — a look-up is filed under the day it
+                happened at the site, not the day it was at the reviewer's desk. This said exactly
+                that and then printed r.at.slice(0, 16), a substring of the stored ISO string with
+                no conversion at all: SearchAccessRecord.at is server-supplied and therefore UTC,
+                so an auditor sampling a Seoul site read every late-evening look-up under the
+                previous day. */}
             <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
-              {r.at.slice(0, 16).replace("T", " ")}
+              {`${dateKeyIn(new Date(r.at), projectZone)} ${clockMinutesIn(new Date(r.at), projectZone)}`}
             </span>
             <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {r.actor}
@@ -234,6 +246,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
                 that is missing, and only the purpose knows which. */}
             {cell(r.reference ?? t.none, !r.reference)}
             {cell(r.target)}
+            {cell(r.surface)}
             {cell(r.resultCount === undefined ? t.none : String(r.resultCount), r.resultCount === undefined)}
             {cell(r.ip ?? t.none, !r.ip)}
           </div>
