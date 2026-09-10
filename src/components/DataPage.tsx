@@ -58,6 +58,17 @@ const T = {
     noSearchPermission: "You do not have permission to search people — ask an administrator",
     allCameras: "All cameras",
     labelType: "Type",
+    associatesCount: (n: number) => `${n} ${n === 1 ? "ASSOCIATE" : "ASSOCIATES"}`,
+    associateNo: (n: string) => `Associate #${n}`,
+    noTiersSelected: "No tiers selected",
+    switchPrimary: "Switch primary target",
+    framesCount: (n: number) => `${n} ${n === 1 ? "FRAME" : "FRAMES"}`,
+    pageRange: (a: number, b: number, n: number) => `${a}–${b} of ${n}`,
+    colCoCaptures: "Co-captures",
+    peakLocationTip: (here: number, total: number) => `${here} of ${total} shared frames were captured here — click to show only those`,
+    peakTimeTip: (here: number, total: number, pct: number, bucket: string) => `${here} of ${total} shared frames (${pct}%) were captured in the ${bucket} — click to show only those`,
+    sortByCoCaptures: (asc: boolean) => `Sort by co-captures, ${asc ? "low to high" : "high to low"}`,
+    primaryBadge: "PRIMARY",
     plate: "Plate",
     labelCamera: "Camera",
     refineSearch: "Refine search",
@@ -184,6 +195,17 @@ const T = {
     noSearchPermission: "인물 검색 권한이 없습니다 — 관리자에게 요청하세요",
     allCameras: "전체 카메라",
     labelType: "종류",
+    associatesCount: (n: number) => `동행 ${n}명`,
+    associateNo: (n: string) => `동행 #${n}`,
+    noTiersSelected: "선택된 단계가 없습니다",
+    switchPrimary: "대상 바꾸기",
+    framesCount: (n: number) => `프레임 ${n}장`,
+    pageRange: (a: number, b: number, n: number) => `${n}건 중 ${a}–${b}`,
+    colCoCaptures: "동반검출",
+    peakLocationTip: (here: number, total: number) => `같이 찍힌 ${total}장 중 ${here}장이 이곳에서 촬영됐습니다 — 누르면 그 장면만 봅니다`,
+    peakTimeTip: (here: number, total: number, pct: number, bucket: string) => `같이 찍힌 ${total}장 중 ${here}장(${pct}%)이 ${bucket}에 촬영됐습니다 — 누르면 그 장면만 봅니다`,
+    sortByCoCaptures: (asc: boolean) => `동반검출 ${asc ? "적은 순" : "많은 순"}으로 정렬`,
+    primaryBadge: "대상",
     plate: "번호판",
     labelCamera: "카메라",
     refineSearch: "조건 다시 설정",
@@ -3691,7 +3713,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
 
       <div style={{ padding:"16px 24px", borderTop:BORDER, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
         <button onClick={reset} style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", cursor:"pointer", fontSize:"12px", fontWeight:600, color:"var(--gray-900)" }}>
-          <ResetIconSm /> Reset filters
+          <ResetIconSm /> {t.resetFilters}
         </button>
         <div style={{ display:"flex", gap:"8px" }}>
           <button onClick={onCancel} style={{ padding:"8px 12px", borderRadius:"8px", border:"1px solid var(--gray-300)", backgroundColor:"white", fontSize:"13px", fontWeight:700, color:"var(--gray-600)", cursor:"pointer" }}>{t.cancel}</button>
@@ -3746,7 +3768,9 @@ function buildRedfaceTiers(seed: number) {
 
 type RedfaceNode = { id:number; face:string; count:number; status:"VIP"|"Suspect"|"Unknown" };
 type TierMeta = {
-  bg:string; labelBg:string; labelColor:string; label:string; sublabel:string;
+  bg:string; labelBg:string; labelColor:string;
+  // Bilingual like TIER_LINK_META below: these are the pyramid's own words, not data.
+  label:Record<AppLanguage, string>; sublabel:Record<AppLanguage, string>;
   nodeSize:number; nodeBorder:number; nodeColor:string; step:number; lineWidth:number;
   dashed?:boolean; dashFlow?:boolean; lineOpacity:number; stagger?:boolean;
 };
@@ -3761,11 +3785,11 @@ type PyramidRow = { key:string; weight:number; nodes:RedfaceNode[]; meta: TierMe
 // The label chips go white in exchange — a danger-100 chip on a danger-100 field was invisible.
 const ZONE_TINT = (token: string) => `color-mix(in srgb, var(${token}) 70%, white)`;
 const PYRAMID_TIER_META: Record<"tier1"|"tier2"|"tier3", TierMeta> = {
-  tier1: { bg:ZONE_TINT("--danger-200"), labelBg:"rgba(255,255,255,0.85)", labelColor:"var(--danger-500)", label:"TIER 1 · RED ZONE", sublabel:">100 CO-CAPTURES",
+  tier1: { bg:ZONE_TINT("--danger-200"), labelBg:"rgba(255,255,255,0.85)", labelColor:"var(--danger-500)", label:{ en:"TIER 1 · RED ZONE", ko:"1단계 · 적색 구간" }, sublabel:{ en:">100 CO-CAPTURES", ko:"동반검출 100건 초과" },
     nodeSize:52, nodeBorder:3, nodeColor:"var(--danger-400)", step:16, lineWidth:1.4, dashFlow:true, lineOpacity:0.85 },
-  tier2: { bg:ZONE_TINT("--warning-200"), labelBg:"rgba(255,255,255,0.85)", labelColor:"var(--warning-500)", label:"TIER 2 · ORANGE ZONE", sublabel:"10-99 CO-CAPTURES",
+  tier2: { bg:ZONE_TINT("--warning-200"), labelBg:"rgba(255,255,255,0.85)", labelColor:"var(--warning-500)", label:{ en:"TIER 2 · ORANGE ZONE", ko:"2단계 · 주황 구간" }, sublabel:{ en:"10-99 CO-CAPTURES", ko:"동반검출 10~99건" },
     nodeSize:52, nodeBorder:2, nodeColor:"var(--warning-400)", step:11, lineWidth:1, dashed:true, lineOpacity:0.7 },
-  tier3: { bg:ZONE_TINT("--gray-200"), labelBg:"rgba(255,255,255,0.85)", labelColor:"var(--gray-700)", label:"TIER 3 · SLATE ZONE", sublabel:"<10 CO-CAPTURES",
+  tier3: { bg:ZONE_TINT("--gray-200"), labelBg:"rgba(255,255,255,0.85)", labelColor:"var(--gray-700)", label:{ en:"TIER 3 · SLATE ZONE", ko:"3단계 · 회색 구간" }, sublabel:{ en:"<10 CO-CAPTURES", ko:"동반검출 10건 미만" },
     // Same 52px as Tier 2. Tier 3 was drawn smaller to signal a weaker link, but the faces here
     // will be low-resolution CCTV crops in practice, and 42px left too little of them to tell
     // people apart — which is the one thing these nodes are for.
@@ -3780,6 +3804,7 @@ function xAt(i: number, count: number, step: number) {
 function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateRange }: { primaryTarget:{ name:string; face:string } | null; rows: PyramidRow[]; onNodeClick:(tier:string, node:RedfaceNode)=>void; selectedNodeId:number|null; dateRange: DateRangeValue }) {
   const cooccurCams = useCooccurCameras();
   const [lang] = useLanguage();
+  const t = T[lang];
   const totalWeight = rows.reduce((s, r) => s + r.weight, 0) || 1;
   const positioned = rows.reduce<{ list: Array<PyramidRow & { top:number; bottom:number; center:number }>; acc:number }>((state, r) => {
     const top = (state.acc / totalWeight) * 100;
@@ -3824,7 +3849,7 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateR
                   — geometry, not information — and the words after it already said what the band
                   holds. The tier bands name a tier because there are three of them to tell apart;
                   there is one of these. */}
-              {r.meta?.label ?? "PRIMARY TARGET"}
+              {r.meta?.label[lang] ?? t.primaryTarget}
             </span>
             <span style={{ fontSize:"10px", fontWeight:800, letterSpacing:"0.4px",
               backgroundColor: r.meta?.labelBg ?? "rgba(255,255,255,0.85)", color: r.meta?.labelColor ?? "var(--primary-400)",
@@ -3832,7 +3857,7 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateR
               {/* Was "CENTRAL TARGET PROFILE", which restated the label opposite it. The tier
                   bands put their co-capture range here, so the parallel fact for this band is how
                   many associates the graph below it found. */}
-              {r.meta?.sublabel ?? `${assocTotal} ASSOCIATES`}
+              {r.meta?.sublabel[lang] ?? t.associatesCount(assocTotal)}
             </span>
           </div>
         ))}
@@ -3859,7 +3884,7 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateR
             boxSizing:"border-box", boxShadow:"0 8px 20px rgba(90,61,251,0.25)" }}>
             <img src={primaryTarget.face} alt="" style={{ width:"100%", height:"100%", borderRadius:"9px", objectFit:"cover", display:"block" }} />
           </div>
-          <span style={{ fontSize:"10px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"2px 8px", borderRadius:"999px", letterSpacing:"0.4px" }}>PRIMARY</span>
+          <span style={{ fontSize:"10px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"2px 8px", borderRadius:"999px", letterSpacing:"0.4px" }}>{t.primaryBadge}</span>
         </div>
       )}
 
@@ -4454,7 +4479,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
           <div style={{ display:"flex", gap:"10px" }}>
             <button className="vca-peak-card" data-on={focus === "location"}
               onClick={() => toggleFocus("location")}
-              title={`${topGroup.events.length} of ${events.length} shared frames were captured here — click to show only those`}
+              title={t.peakLocationTip(topGroup.events.length, events.length)}
               style={{ flex:1, minWidth:0, borderRadius:"8px", padding:"6px 10px", textAlign:"left", cursor:"pointer" }}>
               <p className="vca-peak-label" style={{ margin:0, fontSize:"10px", color:"var(--gray-400)" }}>{t.colPeakLocation}</p>
               {/* The glyph belongs on the value, not the label — a pin next to the words "Peak
@@ -4468,7 +4493,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
             </button>
             <button className="vca-peak-card" data-on={focus === "time"}
               onClick={() => toggleFocus("time")}
-              title={`${bucketCount} of ${events.length} shared frames (${pct}%) were captured in the ${bucket} — click to show only those`}
+              title={t.peakTimeTip(bucketCount, events.length, pct, attr(bucket, lang))}
               style={{ flex:1, minWidth:0, borderRadius:"8px", padding:"6px 10px", textAlign:"left", cursor:"pointer" }}>
               <p className="vca-peak-label" style={{ margin:0, fontSize:"10px", color:"var(--gray-400)" }}>{t.colPeakTime}</p>
               {/* Sun or moon by the bucket itself — a sun beside "night" would be worse than no
@@ -4498,7 +4523,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
                 rewritten for the dashed rules; don't reintroduce it.) */}
             <span style={{ flexShrink:0, fontSize:"9px", fontWeight:800, color:"var(--gray-700)", backgroundColor:"white",
               padding:"2px 8px", borderRadius:"999px", letterSpacing:"0.2px", whiteSpace:"nowrap" }}>
-              {events.length} FRAMES
+              {t.framesCount(events.length)}
             </span>
             <span style={{ flex:1, minWidth:"12px", height:0, borderTop:"1px dashed var(--gray-300)" }} />
             <span style={{ color:"var(--gray-400)", whiteSpace:"nowrap" }}>{t.last} <strong style={{ color:"var(--gray-900)", fontWeight:700 }}>{lastSeen.date} {lastSeen.time.slice(0, 5)}</strong></span>
@@ -4543,7 +4568,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
                 </svg>
               </button>
             )}
-            <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", whiteSpace:"nowrap" }}>{pageStart + 1}–{pageStart + pageRows.length} of {shown.length}</span>
+            <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", whiteSpace:"nowrap" }}>{t.pageRange(pageStart + 1, pageStart + pageRows.length, shown.length)}</span>
           </span>
         </div>
       </div>
@@ -4619,10 +4644,10 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
   );
 }
 
-const TIER_BADGE_META: Record<"tier1"|"tier2"|"tier3", { bg:string; text:string; label:string }> = {
-  tier1: { bg:"var(--danger-100)", text:"var(--danger-400)", label:"Tier 1 (red zone)" },
-  tier2: { bg:"var(--warning-200)", text:"var(--warning-500)", label:"Tier 2 (orange zone)" },
-  tier3: { bg:"var(--gray-100)", text:"var(--gray-600)", label:"Tier 3 (slate zone)" },
+const TIER_BADGE_META: Record<"tier1"|"tier2"|"tier3", { bg:string; text:string; label:Record<AppLanguage, string> }> = {
+  tier1: { bg:"var(--danger-100)", text:"var(--danger-400)", label:{ en:"Tier 1 (red zone)", ko:"1단계 (적색 구간)" } },
+  tier2: { bg:"var(--warning-200)", text:"var(--warning-500)", label:{ en:"Tier 2 (orange zone)", ko:"2단계 (주황 구간)" } },
+  tier3: { bg:"var(--gray-100)", text:"var(--gray-600)", label:{ en:"Tier 3 (slate zone)", ko:"3단계 (회색 구간)" } },
 };
 const COCAPTURE_COLOR: Record<"tier1"|"tier2"|"tier3", string> = {
   tier1:"var(--danger-400)", tier2:"var(--gray-500)", tier3:"var(--gray-500)",
@@ -4665,10 +4690,10 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort, 
             180px and the words "Hierarchy tier & zone" to say it — a coloured number does, and the
             space it gives back pays for the three columns after it. */}
         <span style={{ width:"44px", flexShrink:0 }}>{t.colTier}</span>
-        <button onClick={onToggleSort} title={`Sort by co-captures, ${sortDir === "desc" ? "low to high" : "high to low"}`}
+        <button onClick={onToggleSort} title={t.sortByCoCaptures(sortDir === "desc")}
           style={{ width:"92px", flexShrink:0, display:"flex", alignItems:"center", gap:"4px", padding:0,
             background:"none", border:"none", cursor:"pointer", font:"inherit", color:"var(--primary-400)", textAlign:"left" }}>
-          Co-captures
+          {t.colCoCaptures}
           <span style={{ display:"flex", transform: sortDir === "asc" ? "rotate(180deg)" : "none", transition:"transform 0.15s" }}>
             <ChevronDownIconSm />
           </span>
@@ -4713,10 +4738,10 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort, 
             <span style={{ width:"50px", flexShrink:0, fontSize:"12px", fontWeight:700, color:"var(--gray-500)" }}>{`#${String(i+1).padStart(2,"0")}`}</span>
             <div style={{ flex:1, display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
               <img src={r.node.face} alt="" style={{ width:"28px", height:"28px", borderRadius:"999px", objectFit:"cover", flexShrink:0 }} />
-              <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)", whiteSpace:"nowrap" }}>{`Associate #${String(i+1).padStart(2,"0")}`}</span>
+              <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)", whiteSpace:"nowrap" }}>{t.associateNo(String(i+1).padStart(2,"0"))}</span>
             </div>
             <div style={{ width:"44px", flexShrink:0 }}>
-              <span title={badge.label} style={{ fontSize:"11px", fontWeight:800, color:badge.text, backgroundColor:badge.bg,
+              <span title={badge.label[lang]} style={{ fontSize:"11px", fontWeight:800, color:badge.text, backgroundColor:badge.bg,
                 padding:"2px 8px", borderRadius:"999px", cursor:"help" }}>{r.tier.slice(-1)}</span>
             </div>
             {/* Same rule as the pyramid badge: what the filter left, not the whole history. */}
@@ -4865,7 +4890,7 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
                 </div>
                 <button onClick={onSwitchTarget} style={{ display:"flex", alignItems:"center", gap:"6px", padding:"8px 12px",
                   borderRadius:"6px", backgroundColor:"var(--gray-100)", border:"none", cursor:"pointer", fontSize:"12px", fontWeight:600, color:"var(--gray-600)" }}>
-                  <SwapIconSm /> Switch primary target
+                  <SwapIconSm /> {t.switchPrimary}
                 </button>
               </>
             )}
@@ -4923,7 +4948,7 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
               onNodeClick={toggleSelectedNode} />
           ) : (
             <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--gray-400)", fontSize:"13px", fontWeight:600 }}>
-              No tiers selected
+              {t.noTiersSelected}
             </div>
           )
         ) : (
@@ -4933,7 +4958,7 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
               sortDir={sortDir} onToggleSort={() => setSortDir(d => d === "desc" ? "asc" : "desc")} />
           ) : (
             <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--gray-400)", fontSize:"13px", fontWeight:600 }}>
-              No tiers selected
+              {t.noTiersSelected}
             </div>
           )
         )}
