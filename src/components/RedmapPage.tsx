@@ -7,6 +7,8 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "./Toast";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
 import { camerasInProject, canSearchInApp, judgementFor, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
+import { buildEvidenceManifest, evidenceFilename, saveManifest } from "@/lib/evidence";
+import { siteTimeZone } from "@/lib/time";
 import RemoveImageButton from "./RemoveImageButton";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 
@@ -31,6 +33,10 @@ const T = {
     undoConfirm: "Undo",
     confirmedToast: (place: string) => `Confirmed "${place}" as the same person`,
     unnamedTarget: "Manual search",
+    exportEvidence: "Export evidence",
+    exportEvidenceHint: "Metadata and the operator's call, as a file. The frame is referenced, not enclosed.",
+    exported: (place: string) => `Evidence exported — ${place}`,
+    exportedDesc: "The extraction is recorded in this project's log.",
     modePerson: "PERSON",
     modeVehicle: "VEHICLE",
     licensePlate: "License plate",
@@ -108,6 +114,10 @@ const T = {
     undoConfirm: "되돌리기",
     confirmedToast: (place: string) => `"${place}"${josa(place, "을", "를")} 같은 사람으로 확인했습니다`,
     unnamedTarget: "직접 검색",
+    exportEvidence: "증거 내보내기",
+    exportEvidenceHint: "메타데이터와 관제요원의 판단을 파일로. 프레임은 참조만 하고 담지 않습니다.",
+    exported: (place: string) => `증거를 내보냈습니다 — ${place}`,
+    exportedDesc: "추출 사실이 이 프로젝트 기록에 남았습니다.",
     modePerson: "사람",
     modeVehicle: "차량",
     licensePlate: "차량 번호",
@@ -531,6 +541,14 @@ function RemoveFromTraceIcon() {
   );
 }
 
+function DownloadIconSm() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <path d="M6 1.5V8M6 8L3.5 5.5M6 8L8.5 5.5M2 9.5V10.5H10V9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function CheckIconSm() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -846,6 +864,52 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
   const clearJudgement = useVcaStore(state => state.clearJudgement);
   const verdictOf = (id: string) => judgementFor(detectionJudgements, "redmap", id)?.verdict;
   const isExcluded = (id: string) => verdictOf(id) === "false_positive";
+
+  const recordEvidenceExport = useVcaStore(state => state.recordEvidenceExport);
+  const siteProjectName = useVcaStore(state => state.projects.find(pr => pr.id === state.activeProjectId)?.name ?? "");
+
+  /**
+   * One sighting, out of the console and into a file.
+   *
+   * Assembled from what this row already shows — camera, site clock, score, who was searched for,
+   * and the operator's call if one has been made. The frame is referenced rather than enclosed,
+   * and the manifest hashes itself rather than the image: see src/lib/evidence.ts for why a
+   * browser-computed frame hash would be worse than none.
+   *
+   * `purpose: null` until the app collects one. Written explicitly rather than omitted so the
+   * gap is visible in every file produced before that exists.
+   */
+  const exportEvidence = async (node: { key: string; camera?: string; fullLocation: string; date: string; time: string; faceUrl: string }) => {
+    const judged = judgementFor(detectionJudgements, "redmap", node.key);
+    const hit = results.find(h => h.id === node.key);
+    const at = new Date();
+    const manifest = await buildEvidenceManifest(
+      {
+        surface: "redmap",
+        subjectId: node.key,
+        cameraCode: node.camera,
+        location: node.fullLocation,
+        siteDate: node.date,
+        siteTime: node.time,
+        timeZone: siteTimeZone(),
+        similarity: hit?.score,
+        targetLabel: traceName ?? t.unnamedTarget,
+        frameRef: node.faceUrl,
+        verdict: judged?.verdict,
+        verdictBy: judged?.actor,
+        verdictAt: judged?.at,
+      },
+      { projectName: siteProjectName, operator: portalUsers[0]?.name ?? "", purpose: null },
+      at,
+    );
+    saveManifest(manifest, evidenceFilename(node.key, at));
+    recordEvidenceExport({
+      projectId: siteProjectId, subjectId: node.key, surface: "redmap",
+      targetLabel: traceName ?? t.unnamedTarget,
+      manifestHash: manifest.integrity.manifest_sha256,
+    });
+    showToast({ variant: "success", title: t.exported(node.fullLocation), desc: t.exportedDesc });
+  };
   // Which distinct person(s) the map/route-history panel currently trace — only meaningful (and
   // only shown as chips) when the current results actually contain more than one distinct person.
   const [selectedPersonIds, setSelectedPersonIds] = useState<Set<string>>(new Set());
@@ -2034,9 +2098,34 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                                 evidence, without taking width off the map. It covers the connector
                                 line while open, the same way the circles sit on top of it. */}
                             {openFrameKey === node.key && (
-                              <div style={{ marginLeft: "-48px", borderRadius: "8px", overflow: "hidden", border: "1px solid var(--gray-200)" }}>
-                                <img src={frameImageSrc(node.faceUrl)} alt={`Captured frame — ${node.fullLocation} ${node.date} ${node.time}`}
-                                     style={{ display: "block", width: "100%", aspectRatio: "16 / 9", objectFit: "cover" }} />
+                              <div style={{ marginLeft: "-48px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                                <div style={{ borderRadius: "8px", overflow: "hidden", border: "1px solid var(--gray-200)" }}>
+                                  <img src={frameImageSrc(node.faceUrl)} alt={`Captured frame — ${node.fullLocation} ${node.date} ${node.time}`}
+                                       style={{ display: "block", width: "100%", aspectRatio: "16 / 9", objectFit: "cover" }} />
+                                </div>
+                                {/* Here rather than on the row: this is the moment the frame is
+                                    actually being looked at, and the row already carries two
+                                    absolutely-positioned buttons. Until now the only way to take a
+                                    sighting out of this screen was to photograph it, which loses
+                                    the camera, the site clock, the score and who said it was them. */}
+                                <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", flexWrap: "wrap" }}>
+                                  <button
+                                    onClick={e => { e.stopPropagation(); void exportEvidence(node); }}
+                                    style={{
+                                      display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0,
+                                      height: "28px", padding: "0 11px", borderRadius: "8px",
+                                      border: "1px solid var(--gray-200)", backgroundColor: "white",
+                                      color: "var(--gray-700)", fontSize: "11px", fontWeight: 700,
+                                      cursor: "pointer", fontFamily: "inherit",
+                                    }}
+                                  >
+                                    <DownloadIconSm />
+                                    {t.exportEvidence}
+                                  </button>
+                                  <span style={{ flex: 1, minWidth: "180px", fontSize: "10.5px", lineHeight: 1.55, color: "var(--gray-500)" }}>
+                                    {t.exportEvidenceHint}
+                                  </span>
+                                </div>
                               </div>
                             )}
                             {/* Renders for the newest sighting even with no duration to show. The

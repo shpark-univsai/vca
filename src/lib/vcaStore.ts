@@ -411,6 +411,33 @@ export function judgementFor(
   return list.find(j => j.surface === surface && j.subjectId === subjectId);
 }
 
+/**
+ * One detection taken out of the console.
+ *
+ * The extraction is the audit-worthy act, not the viewing. Somebody reading a screen leaves the
+ * data where it is; somebody exporting has made a copy that the console can no longer see, and
+ * the only question anyone will ask afterwards — "where did this file come from" — is answerable
+ * only if this row exists.
+ *
+ * HANDOFF NOTE: written by the browser here, which makes it a note to ourselves rather than a
+ * record. The real export is a server call that logs before it returns the bytes; a client that
+ * writes its own audit row can also skip writing it.
+ */
+export interface EvidenceExportRecord {
+  id: string;
+  /** The site the sighting belongs to, so the extraction lands in that project's log. */
+  projectId: string;
+  /** The sighting exported — the same id a judgement is filed against. */
+  subjectId: string;
+  surface: "redmap" | "bestframe";
+  /** Who or what the search was about, so the row reads without opening the file. */
+  targetLabel: string;
+  /** Digest of the manifest as written, so a file in hand can be matched to this row. */
+  manifestHash: string;
+  actor: string;
+  at: string;
+}
+
 export interface SearchPurposeSelection {
   purposeId: string;
   /** Case or document reference, when the purpose requires one. */
@@ -600,6 +627,8 @@ interface VcaStoreState {
   searchAccessLog: SearchAccessRecord[];
   /** Operator calls on individual detections — see DetectionJudgement. */
   detectionJudgements: DetectionJudgement[];
+  /** Every detection taken out of the console — see EvidenceExportRecord. */
+  evidenceExports: EvidenceExportRecord[];
   events: VcaEvent[];
   uploads: UploadedMedia[];
   portalUsers: PortalUser[];
@@ -653,6 +682,7 @@ interface VcaStoreState {
   recordJudgement: (j: Pick<DetectionJudgement, "surface" | "subjectId" | "targetLabel" | "verdict">) => void;
   /** Back to "nobody has looked at this". Not the same as marking it a false positive. */
   clearJudgement: (surface: DetectionJudgement["surface"], subjectId: string) => void;
+  recordEvidenceExport: (e: Pick<EvidenceExportRecord, "projectId" | "subjectId" | "surface" | "targetLabel" | "manifestHash">) => void;
   updateProjectMail: (projectId: string, updates: Pick<Project, "mailDomain" | "smtp">) => void;
   setProjectTimeZone: (projectId: string, timeZone: string) => void;
   // null clears the override and falls back to the auto-detected value; true/false pins it.
@@ -2248,6 +2278,7 @@ const AUDIT_LOG: AuditEvent[] = [
 ];
 let auditSeq = AUDIT_LOG.length;
 let judgementSeq = 0;
+let exportSeq = 0;
 
 // Latest seed timestamp — anything at or before this is historical, so the bell starts with
 // nothing unread instead of surfacing all 12 seed VIP hits as "new" on first load.
@@ -2337,6 +2368,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   // No seed. These are events, and an installation that has run no searches has none.
   searchAccessLog: [],
   detectionJudgements: [],
+  evidenceExports: [],
   events: SEED_EVENTS,
   portalUsers: PORTAL_USERS,
   servers: SERVERS,
@@ -2562,6 +2594,30 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         ...state.detectionJudgements.filter(j => !(j.surface === surface && j.subjectId === subjectId)),
       ],
     })),
+  recordEvidenceExport: ({ projectId, subjectId, surface, targetLabel, manifestHash }) =>
+    set(state => {
+      const at = new Date().toISOString();
+      return {
+        // Append, never replace. Exporting the same detection twice is two copies in the world.
+        evidenceExports: [
+          {
+            id: `export-${++exportSeq}`,
+            projectId, subjectId, surface, targetLabel, manifestHash,
+            actor: SIGNED_IN_USER.name, at,
+          },
+          ...state.evidenceExports,
+        ],
+        // And into the log an administrator actually reads. A record nothing displays is a
+        // record nobody checks — the same trap the search access log was in. The manifest digest
+        // goes in the line so a file in somebody's inbox can be matched back to this row.
+        auditLog: [{
+          id: `audit-${++auditSeq}`,
+          projectId,
+          message: `Evidence exported: ${subjectId} (${targetLabel}) · manifest ${manifestHash.slice(0, 12)}`,
+          actor: SIGNED_IN_USER.name, at,
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   clearJudgement: (surface, subjectId) =>
     set(state => ({
       detectionJudgements: state.detectionJudgements.filter(
