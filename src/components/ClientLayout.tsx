@@ -226,6 +226,13 @@ export default function ClientLayout() {
     setActivePage("BEST FRAME");
   };
 
+  // Locked means this account has no app door, and the redirect above is already on its way. Draw
+  // nothing while it goes: the redirect alone decided where to send them and left the whole app
+  // mounted in the meantime — the map, the sidebar's VIP list with names and faces, and the alert
+  // ticker, which does not merely display but writes detections into the shared store on a timer.
+  // A door that is closed cannot also serve the room behind it for a second first.
+  if (locked) return null;
+
   return (
     <ToastProvider>
     <VipAlertTicker onNavigate={handleNotificationNavigate} />

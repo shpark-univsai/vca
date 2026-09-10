@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
-import { useVcaStore } from "@/lib/vcaStore";
-import { INVITE_TOKEN_TTL_DAYS, isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
+import { canEnterPortal, useVcaStore } from "@/lib/vcaStore";
+import { INVITE_TOKEN_TTL_DAYS, isPasswordFormatValid, PASSWORD_RULE_TEXT, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
 import { isCodeExpired } from "@/lib/staffRoster";
 import { getAuthConfig } from "@/lib/authConfig";
 import { useLanguage } from "@/lib/i18n";
@@ -60,6 +60,23 @@ export default function PasswordSetupPage() {
   );
 }
 
+/**
+ * Whether an administrator-issued temporary password has run out.
+ *
+ * Hours, not days, so `isCodeExpired` (a day-granularity check for invitations and paper codes)
+ * cannot answer it. `TEMP_PASSWORD_VALIDITY_HOURS` is the number Portal shows the administrator to
+ * read down the phone, so this screen has to mean the same thing by it — a link that outlives the
+ * spoken expiry makes the screen and the phone call disagree.
+ *
+ * `now` is passed in rather than read here: a null clock (the server-rendered pass, before the
+ * client has a time) treats the password as still valid for that one frame, which the submit
+ * handler's own linkDead check then catches.
+ */
+function isTempPasswordExpired(issuedAt: string | undefined, now: number | null): boolean {
+  if (!issuedAt || now === null) return false;
+  return now - new Date(issuedAt).getTime() > TEMP_PASSWORD_VALIDITY_HOURS * 60 * 60 * 1000;
+}
+
 function PasswordSetupForm() {
   const router = useRouter();
   const [lang] = useLanguage();
@@ -77,6 +94,17 @@ function PasswordSetupForm() {
   // them as a new invitee — they are not setting up an account, they are taking a shared password
   // back into their own hands.
   const forcedByTempPassword = params.get("reason") === "temp";
+  // Read after mount, not during render: the temp-password expiry below is a time-dependent
+  // decision, and a clock read in render differs between the server pass and the client.
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => {
+    // Deferred to the next tick rather than read in the effect body: the first committed render
+    // must not depend on the clock, and setting state synchronously in an effect cascades a
+    // render. The one frame before this lands treats the link as live, which handleSubmit's own
+    // linkDead check then catches.
+    const timer = setTimeout(() => setNowMs(Date.now()), 0);
+    return () => clearTimeout(timer);
+  }, []);
   const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
   const clearTemporaryPassword = useVcaStore(s => s.clearTemporaryPassword);
   const clearSetupCode = useVcaStore(s => s.clearSetupCode);
@@ -93,7 +121,19 @@ function PasswordSetupForm() {
       : portalUsers.find(u => u.inviteToken === token);
   // An invitation nobody accepted is an open door with nobody watching it. Past the window the link
   // stops working rather than staying valid forever.
+  //
+  // The temp-password branch takes an account id, which is short, guessable and printed all over
+  // Portal — the same reason the invite branch stopped taking one. Resolving an id is therefore
+  // not permission to set that person's password: this branch only holds for an account that is
+  // ACTUALLY on an administrator-issued temporary password, and only while that password is still
+  // within the 24 hours Portal tells the administrator to say out loud. Without these two checks
+  // /password-setup?token=user-5&reason=temp set a stranger's password from a logged-out browser.
+  const tempPasswordUnusable = forcedByTempPassword && (
+    !target?.mustChangePassword
+    || isTempPasswordExpired(target.tempPasswordIssuedAt, nowMs)
+  );
   const linkDead = !target
+    || tempPasswordUnusable
     || (!forcedByTempPassword && isCodeExpired(target.inviteTokenIssuedAt, INVITE_TOKEN_TTL_DAYS));
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -109,15 +149,20 @@ function PasswordSetupForm() {
   const formatBroken = newPassword.length > 0 && !formatValid;
 
   const handleSubmit = () => {
-    if (!canSubmit || !target) return;
-    updatePortalUserStatus(target.id, "active");
+    if (!canSubmit || !target || linkDead) return;
+    // Only an invitation ends in an active account. A forced change decides nothing about status:
+    // the account is already whatever an administrator last made it, and a password screen is not
+    // where a suspension gets lifted.
+    if (!forcedByTempPassword) updatePortalUserStatus(target.id, "active");
     // Retires the temporary password: the must-change flag comes off, and Portal's Users table
     // stops flagging this account as one somebody else has the password to.
     clearTemporaryPassword(target.id);
     // Burns the link. Without this the same invitation mail keeps setting this person's password
     // for as long as anyone has it — including whoever the mail was forwarded to.
     clearSetupCode(target.id);
-    router.push(target.permission === "admin" ? "/portal" : "/");
+    // canEnterPortal, not permission === "admin": the console is for owner, admin and the
+    // read-only auditor, and an auditor sent to the app has no app door to come in by.
+    router.push(canEnterPortal(target.permission) ? "/portal" : "/");
   };
 
   /**
