@@ -474,7 +474,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                   page sits under the words naming it; the heaviest one should not be the
                   exception. The word is short because the line above already says which project. */}
               <button className="portal-btn-outline-danger" onClick={() => { setDeleteEcho(""); setConfirmingDelete(true); }}
-                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 12px", marginTop: "10px", borderRadius: "8px", border: "1px solid var(--danger-200)", backgroundColor: "white", color: "var(--danger-500)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 12px", marginTop: "10px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                 <Trash2 size={13} strokeWidth={2.2} />
                 {t.deleteAction}
               </button>

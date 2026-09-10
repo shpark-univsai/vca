@@ -206,12 +206,18 @@
    it the one part that cannot be left out. It was left out in three different ways: gray-100
    written inline with React hover state, portal-btn-outline (gray-50, plus a border-color rule
    that does nothing to a button with no border), and on the Users page nothing at all. */
-/* The outline button in danger colours. portal-btn-outline's hover pulls the border to gray-400,
-   which on a red-bordered button reads as the action going inert under the pointer. */
-.portal-btn-outline-danger { transition: background-color .12s ease, border-color .12s ease; }
+/* A destructive action that is a button at rest and red only under the pointer.
+   
+   Red at rest made the one thing on the settings page you almost never want to do the first
+   thing the eye lands on. Grey at rest with a bordered box and a bin still reads as a control —
+   which was the earlier problem, a word that only became a button on hover — and the colour
+   arrives when the pointer does, which is the moment it means something. The confirm dialog
+   behind it is where the real red belongs. */
+.portal-btn-outline-danger { transition: background-color .12s ease, border-color .12s ease, color .12s ease; }
 .portal-btn-outline-danger:hover:not(:disabled) {
   background-color: var(--danger-100) !important;
-  border-color: var(--danger-400) !important;
+  border-color: var(--danger-200) !important;
+  color: var(--danger-500) !important;
 }
 
 .portal-btn-quiet { transition: background-color .12s ease; }
