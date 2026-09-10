@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Users } from "lucide-react";
+import { ListChecks, Users } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER } from "./PortalShared";
 
@@ -10,7 +10,19 @@ const T = {
     eyebrow: "Projects",
     title: "Deploy AI Monitoring for Any Environment",
     subtitle: "Create your first project, connect a camera stream, and start monitoring in minutes.",
-    newProject: "New Project",
+    // A project is a licensed site, and a licence is implanted by contract at installation —
+    // so there is nothing to press here. See PortalEmptyState's note on provisioning.
+    notProvisionedTitle: "No projects provisioned for this team yet",
+    notProvisionedBody: "A project is a licensed site. Its channels and term come from the contract, so it is set up during installation rather than from this console.",
+    contactManager: "Your account manager",
+    noManager: "Contact whoever handled your installation.",
+    prepTitle: "What you can set up before the site arrives",
+    prepBody: "These belong to the team, not to a project, so none of them are waiting on hardware.",
+    prepCategories: "Watchlist categories",
+    prepCategoriesWhy: "What a listing means here, how long it lasts by default, and whether it needs a written basis.",
+    prepPurposes: "Search purposes",
+    prepPurposesWhy: "The reasons an operator may give for looking somebody up.",
+    prepOpen: "Open settings",
     // Shown when the installation has no team yet. A project has to live in a team, so the first
     // ask is the team — offering "New Project" here would open a wizard with nowhere to file it.
     noTeamTitle: "No teams yet",
@@ -18,69 +30,35 @@ const T = {
     teamNameLabel: "Team name",
     teamNamePlaceholder: "Northgate Education Trust",
     createTeam: "Create team",
-    gallery: {
-      vip: "VIP / watchlist detection",
-      tracking: "Cross-camera tracking",
-      vehicle: "Vehicle recognition",
-      attendance: "Campus attendance (face recognition)",
-      blindSpot: "Blind-spot monitoring",
-      crowd: "Public area crowd monitoring",
-    },
   },
   ko: {
     eyebrow: "프로젝트",
     title: "모든 환경에 AI 모니터링을 적용하세요",
     subtitle: "첫 프로젝트를 생성하고 카메라 스트림을 연결하면 몇 분 안에 모니터링을 시작할 수 있습니다.",
-    newProject: "새 프로젝트",
+    notProvisionedTitle: "이 팀에 배정된 프로젝트가 아직 없습니다",
+    notProvisionedBody: "프로젝트는 라이선스가 걸린 현장입니다. 채널과 기간이 계약에서 나오기 때문에, 이 콘솔이 아니라 설치 과정에서 세팅됩니다.",
+    contactManager: "담당자",
+    noManager: "설치를 담당한 곳으로 문의하세요.",
+    prepTitle: "현장이 들어오기 전에 해둘 수 있는 것",
+    prepBody: "전부 프로젝트가 아니라 팀에 걸린 설정이라, 장비를 기다릴 필요가 없습니다.",
+    prepCategories: "관심인물 분류",
+    prepCategoriesWhy: "여기서 '등록'이 무엇을 뜻하는지, 기본 유효기간은 얼마인지, 근거를 필수로 할지.",
+    prepPurposes: "조회 목적",
+    prepPurposesWhy: "관제요원이 인물을 조회할 때 밝힐 수 있는 사유 목록.",
+    prepOpen: "설정 열기",
     noTeamTitle: "아직 팀이 없습니다",
     noTeamSubtitle: "팀은 이 설치본의 프로젝트, 사용자, 메일 설정을 담습니다. 하나 만들어 시작하세요.",
     teamNameLabel: "팀 이름",
     teamNamePlaceholder: "Northgate Education Trust",
     createTeam: "팀 만들기",
-    gallery: {
-      vip: "VIP / 관심인물 탐지",
-      tracking: "교차 카메라 추적",
-      vehicle: "차량 인식",
-      attendance: "캠퍼스 출결 관리 (얼굴 인식)",
-      blindSpot: "사각지대 모니터링",
-      crowd: "공공장소 인파 모니터링",
-    },
   },
 } as const;
 
-// Drop matching image files into public/portal/gallery/ using these exact filenames — each
-// card wires up automatically once the file exists. Until then the card just shows its label on
-// a plain placeholder background (the <img> hides itself via onError, no broken-image icon).
-const GALLERY_ITEMS: { key: keyof typeof T["en"]["gallery"]; file: string; height: number }[] = [
-  { key: "vip", file: "vip-detection.jpg", height: 150 },
-  { key: "tracking", file: "cross-camera-tracking.jpg", height: 190 },
-  { key: "vehicle", file: "vehicle-recognition.jpg", height: 170 },
-  { key: "attendance", file: "campus-attendance.jpg", height: 210 },
-  { key: "blindSpot", file: "blind-spot-monitoring.jpg", height: 150 },
-  { key: "crowd", file: "crowd-monitoring.jpg", height: 180 },
-];
-
-function GalleryCard({ label, file, height }: { label: string; file: string; height: number }) {
-  return (
-    <div style={{
-      backgroundColor: "white", border: BORDER, borderRadius: "14px", overflow: "hidden",
-      breakInside: "avoid", marginBottom: "16px",
-    }}>
-      <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", textAlign: "center", padding: "10px 12px 8px" }}>{label}</p>
-      <div style={{ height: `${height}px`, backgroundColor: "var(--gray-100)" }}>
-        <img
-          src={`/portal/gallery/${file}`}
-          alt={label}
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-          onError={e => { e.currentTarget.style.display = "none"; }}
-        />
-      </div>
-    </div>
-  );
-}
-
 interface PortalEmptyStateProps {
-  onNewProject: () => void;
+  /** The team's account manager, shown instead of a create button. See the note below. */
+  accountManager?: { name: string; email: string };
+  /** Opens Settings, where both team-level policy lists live. */
+  onOpenSettings?: () => void;
   /**
    * No team exists yet in this installation — ask for the team first, on a centred panel with the
    * name field right there.
@@ -95,7 +73,20 @@ interface PortalEmptyStateProps {
   onCreateTeam?: (name: string) => void;
 }
 
-export default function PortalEmptyState({ onNewProject, noTeam = false, onCreateTeam }: PortalEmptyStateProps) {
+/**
+ * Nothing to set up here, and saying so is the screen's job.
+ *
+ * This page used to open a three-field wizard. A project is a licensed site: its channel count
+ * and term come from the contract, `updateProjectLicense` has no caller by design, and the
+ * Licence screen says in so many words that channels and term are changed by contract and not
+ * from here. A self-serve button therefore produced a project nobody could put a camera in —
+ * a contract shell with no contract. And on-premise there is no cost to the vendor doing it
+ * instead: a new site means cameras and servers going in, so an engineer is on site regardless.
+ *
+ * The wizard survives as the provisioning reference (Server & API → API documentation), because
+ * the shape it produces is exactly what the backend has to produce.
+ */
+export default function PortalEmptyState({ accountManager, onOpenSettings, noTeam = false, onCreateTeam }: PortalEmptyStateProps) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const [teamName, setTeamName] = useState("");
@@ -168,19 +159,56 @@ export default function PortalEmptyState({ onNewProject, noTeam = false, onCreat
         <p style={{ fontSize: "14px", color: "var(--gray-500)", marginTop: "12px", lineHeight: "22px" }}>
           {t.subtitle}
         </p>
-        <button className="portal-btn-primary" onClick={onNewProject}
-          style={{
-            display: "flex", alignItems: "center", gap: "6px", marginTop: "24px",
-            padding: "12px 20px", borderRadius: "8px", border: "none",
-            backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer",
-          }}>
-          <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
-          {t.newProject}
-        </button>
+        {/* A named person, not a "contact support" button. Whoever is looking at this screen has
+            bought the product and is waiting for a site; the useful thing is the name of the
+            person who can tell them when it arrives. Plain text rather than a mailto — the same
+            treatment the Licence screen's party block uses. */}
+        <div style={{ marginTop: "24px", padding: "16px 18px", backgroundColor: "white", border: BORDER, borderRadius: "12px", maxWidth: "440px" }}>
+          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.notProvisionedTitle}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.55, marginTop: "6px" }}>{t.notProvisionedBody}</p>
+          <div style={{ borderTop: BORDER, marginTop: "12px", paddingTop: "12px" }}>
+            {accountManager ? (<>
+              <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{t.contactManager.toUpperCase()}</p>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "4px" }}>{accountManager.name}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{accountManager.email}</p>
+            </>) : (
+              <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.noManager}</p>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div style={{ columnCount: 2, columnGap: "16px" }}>
-        {GALLERY_ITEMS.map(item => <GalleryCard key={item.file} label={t.gallery[item.key]} file={item.file} height={item.height} />)}
+      {/* The gallery is gone from this state.
+          It was a pitch for what the product does, shown to somebody who has already bought it
+          and is waiting for their site — the wrong thing to read while waiting. What replaces it
+          is the work that IS available: both of these are the team's policy, so they can be
+          settled before a single camera is mounted, and settling them early is what stops the
+          first month's registrations going in unclassified. */}
+      <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "14px", padding: "20px 22px" }}>
+        <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)" }}>{t.prepTitle}</p>
+        <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.55, marginTop: "6px" }}>{t.prepBody}</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "18px" }}>
+          {[
+            { label: t.prepCategories, why: t.prepCategoriesWhy },
+            { label: t.prepPurposes, why: t.prepPurposesWhy },
+          ].map(item => (
+            <div key={item.label} style={{ display: "flex", gap: "10px" }}>
+              <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "2px" }}>
+                <ListChecks size={15} strokeWidth={1.9} />
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{item.label}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "2px" }}>{item.why}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        {onOpenSettings && (
+          <button className="portal-btn-primary" onClick={onOpenSettings}
+            style={{ marginTop: "20px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {t.prepOpen}
+          </button>
+        )}
       </div>
     </div>
   );

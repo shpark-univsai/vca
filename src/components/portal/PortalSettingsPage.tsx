@@ -6,6 +6,7 @@ import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, TYPE_META, ConfirmModal, usePortalEditAccess } from "./PortalShared";
+import { WatchlistCategoryModal } from "./WatchlistCategories";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "@/components/Toast";
@@ -21,6 +22,10 @@ const T = {
     appYes: "Has the monitoring app",
     appNo: "Portal only",
     team: "Team",
+    categoryTitle: "Watchlist categories",
+    categoryIntro: "What a listing means at your institution — the words are yours. A category can set a default duration and require a written basis. Nothing is set up in advance.",
+    categoryCount: (n: number) => (n === 1 ? "1 category in use" : `${n} categories in use`),
+    categoryManage: "Manage categories",
     projectTitle: "Project",
     projectName: "Name",
     rename: "Rename",
@@ -81,6 +86,10 @@ const T = {
     appYes: "모니터링 앱 사용",
     appNo: "포털만",
     team: "팀",
+    categoryTitle: "관심인물 분류",
+    categoryIntro: "기관에서 '등록'이 무엇을 뜻하는지 직접 정합니다. 분류마다 기본 유효기간을 두고 등록 근거를 필수로 할 수 있습니다. 미리 넣어둔 것은 없습니다.",
+    categoryCount: (n: number) => `사용 중인 분류 ${n}개`,
+    categoryManage: "분류 관리",
     projectTitle: "프로젝트",
     projectName: "이름",
     rename: "이름 변경",
@@ -197,6 +206,8 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   // is signed in and stay open to every role — an auditor still sets their own password and
   // their own interface language.
   const { mayEdit } = usePortalEditAccess();
+  const watchlistCategories = useVcaStore(s => s.watchlistCategories);
+  const [managingCategories, setManagingCategories] = useState(false);
   const project = projects.find(p => p.id === projectId);
   const projectTeam = project ? teams.find(tm => tm.id === project.teamId) : undefined;
   const me = currentPortalUser(portalUsers);
@@ -210,6 +221,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   // stand-in identity belongs to no account list and would otherwise see no list at all.
   const myTeamId = me?.teamId ?? project?.teamId;
   const teamPurposes = searchPurposes.filter(sp => sp.teamId === myTeamId);
+  const teamCategories = watchlistCategories.filter(c => c.teamId === myTeamId);
   const activePurposes = teamPurposes.filter(sp => !sp.archived);
   // Owner only — see canSetPolicy. With no matching account the stand-in identity is treated as
   // the owner it stands in for, the same assumption the rest of Portal makes about it.
@@ -411,6 +423,38 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         in the monitoring app, not in this console. Settings is where the things that govern every
         site live.
       */}
+      {/*
+        Watchlist categories, alongside the purposes for the same reason: both are the team's
+        policy, not a project's. This one was reachable only from inside the VIP registry, so a
+        team waiting for its first site could set up its purposes and not its categories —
+        backwards, because deciding what your institution's categories ARE is exactly the
+        preparation that does not need a camera. The VIP registry still opens the same dialog
+        from its category picker; this is where it lives.
+      */}
+      {myTeamId && (
+        <CardSection heading={t.categoryTitle}>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, marginTop: "10px", maxWidth: "62ch" }}>{t.categoryIntro}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginTop: "14px" }}>
+            <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>
+              {t.categoryCount(teamCategories.filter(c => !c.archived).length)}
+            </span>
+            <button className="portal-btn-quiet" onClick={() => setManagingCategories(true)}
+              style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              {t.categoryManage}
+            </button>
+          </div>
+        </CardSection>
+      )}
+
+      {managingCategories && myTeamId && (
+        <WatchlistCategoryModal
+          teamId={myTeamId}
+          categories={teamCategories}
+          canEdit={maySetPolicy}
+          onClose={() => setManagingCategories(false)}
+        />
+      )}
+
       {/* Hidden entirely when the requirement is off, rather than shown with a line explaining
           that nothing asks for it. A settings section for a feature this release does not have is
           a question the reader has to answer ("do I need to fill this in?") about something that

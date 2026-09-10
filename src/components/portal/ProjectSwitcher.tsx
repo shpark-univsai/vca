@@ -5,7 +5,7 @@ import { useVcaStore, type Project } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH, TABLE_HEADER_COLOR, TYPE_META, SelectedCheckIcon } from "./PortalShared";
-import { Building2, Check, ChevronRight, MapPin } from "lucide-react";
+import { Building2, Check, ChevronRight, Mail, MapPin } from "lucide-react";
 
 interface ProjectSwitcherProps {
   /**
@@ -28,7 +28,8 @@ interface ProjectSwitcherProps {
   onSwitchTeam?: (teamId: string) => void;
   currentProjectId: string;
   onSelect: (projectId: string) => void;
-  onNewProject: () => void;
+  /** Opens the "how do I get another project" notice. Not a create action — see the header. */
+  onRequestProject: () => void;
   /**
    * Changes when the shell wants this picker open again.
    *
@@ -50,7 +51,7 @@ const T = {
   en: {
     selectProject: "Select project",
     selectResource: "Select a resource",
-    newProject: "New Project",
+    requestProject: "Add a project",
     noTeam: "No Team",
     searchPlaceholder: "Search projects and folders",
     tabRecent: "Recent",
@@ -69,7 +70,7 @@ const T = {
   ko: {
     selectProject: "프로젝트 선택",
     selectResource: "리소스 선택",
-    newProject: "새 프로젝트",
+    requestProject: "프로젝트 추가",
     noTeam: "팀 없음",
     searchPlaceholder: "프로젝트 및 폴더 검색",
     tabRecent: "최근",
@@ -117,7 +118,7 @@ function StarIcon({ filled }: { filled: boolean }) {
   );
 }
 
-export default function ProjectSwitcher({ dark, compact, teamId, currentProjectId, onSelect, onNewProject, onSwitchTeam, reopenSignal }: ProjectSwitcherProps) {
+export default function ProjectSwitcher({ dark, compact, teamId, currentProjectId, onSelect, onRequestProject, onSwitchTeam, reopenSignal }: ProjectSwitcherProps) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const TAB_LABELS: Record<Tab, string> = { recent: t.tabRecent, starred: t.tabStarred, all: t.tabAll };
@@ -286,12 +287,19 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
             {/* Header */}
             <div style={{ padding: "20px 20px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.selectResource}</p>
+              {/* Not "New Project" any more, and not because of permissions.
+                  A project is a licensed site: its channels and term come from the contract, the
+                  Licence screen says so in as many words, and updateProjectLicense has no caller
+                  by design. A create button here produced a project nobody could put a camera
+                  in. On-premise there is nothing lost by the vendor doing it instead — a new
+                  site means hardware going in, so an engineer is on site anyway. */}
               <button
-                onClick={() => { setOpen(false); onNewProject(); }}
-                style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", cursor: "pointer", color: "var(--primary-400)", fontSize: "12px", fontWeight: 700 }}
+                className="portal-btn-quiet"
+                onClick={() => { setOpen(false); onRequestProject(); }}
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 8px", borderRadius: "6px", background: "none", border: "none", cursor: "pointer", color: "var(--gray-500)", fontSize: "12px", fontWeight: 600, fontFamily: "inherit" }}
               >
-                <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="var(--primary-400)" strokeWidth="1.22" strokeLinecap="round"/></svg>
-                {t.newProject}
+                <Mail size={13} strokeWidth={2.2} />
+                {t.requestProject}
               </button>
             </div>
 

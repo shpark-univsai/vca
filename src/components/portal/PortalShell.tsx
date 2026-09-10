@@ -9,23 +9,32 @@ import ProjectSwitcher from "./ProjectSwitcher";
 import PortalNewProjectWizard from "./PortalNewProjectWizard";
 import TeamSwitcher from "./TeamSwitcher";
 import ProjectSidebar, { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 import PortalSettingsPage from "./PortalSettingsPage";
 import PortalAccountMenu from "./PortalAccountMenu";
 import { ToastProvider } from "../Toast";
 import { getComplianceConfig } from "@/lib/complianceConfig";
-import { useVcaStore, canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, type ProjectType } from "@/lib/vcaStore";
+import { useVcaStore, canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, type ProjectType, type Team } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
+import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 
 const T = {
   en: {
     noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar",
-    newProject: "New project", settingsCrumb: "Settings",
+    newProject: "New project", settingsCrumb: "Settings", close: "Close",
+    requestTitle: "Adding another project",
+    requestBody: "A project is a licensed site. Its channels and term come from the contract, so it is set up during installation rather than from this console.",
+    requestManager: "Account manager",
+    requestNoManager: "No account manager is recorded for this team. Contact whoever handled your installation.",
     fleetTitle: (online: number, offline: number) => `${online} cameras online, ${offline} offline — open Input Sources`,
   },
   ko: {
     noTeam: "팀 없음", expand: "사이드바 펼치기", collapse: "사이드바 접기",
-    newProject: "새 프로젝트", settingsCrumb: "설정",
+    newProject: "새 프로젝트", settingsCrumb: "설정", close: "닫기",
+    requestTitle: "프로젝트를 더 추가하려면",
+    requestBody: "프로젝트는 라이선스가 걸린 현장입니다. 채널과 기간이 계약에서 나오기 때문에, 이 콘솔이 아니라 설치 과정에서 세팅됩니다.",
+    requestManager: "담당자",
+    requestNoManager: "이 팀에 등록된 담당자가 없습니다. 설치를 담당한 곳으로 문의하세요.",
     fleetTitle: (online: number, offline: number) => `카메라 ${online}대 온라인, ${offline}대 오프라인 — 입력 소스 열기`,
   },
 } as const;
@@ -42,6 +51,48 @@ function BreadcrumbChevron() {
 // Project switching/creation stays header-only (GCP's "Select a resource" pattern). Once inside
 // a project, its own tools (Overview/Cameras/VIP Registry/License/Users & Permissions) live in a
 // collapsible left sidebar — matching GCP's per-project nav rail — toggled by the header hamburger.
+/**
+ * Where another project comes from, said to the person asking for one.
+ *
+ * A named person rather than a form: Portal cannot create the thing being asked for, so a
+ * "request" that goes nowhere would be worse than the create button it replaced. The team's
+ * account manager is who signs the contract that carries the channels.
+ */
+function RequestProjectModal({ team, onClose }: { team: Team; onClose: () => void }) {
+  useEscapeKey(onClose);
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  const m = team.accountManager;
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, zIndex: 400, backgroundColor: "rgba(14,22,42,0.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "440px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+        <div style={{ padding: "20px 20px 0" }}>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.requestTitle}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.55, marginTop: "8px" }}>{t.requestBody}</p>
+        </div>
+        <div style={{ padding: "16px 20px" }}>
+          <div style={{ padding: "14px 16px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px" }}>
+            {m ? (<>
+              <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{t.requestManager.toUpperCase()}</p>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "4px" }}>{m.name}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{m.email}</p>
+            </>) : (
+              <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7 }}>{t.requestNoManager}</p>
+            )}
+          </div>
+        </div>
+        <div style={{ padding: "0 20px 20px", display: "flex", justifyContent: "flex-end" }}>
+          <button className="portal-btn-outline" onClick={onClose}
+            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {t.close}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PortalShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -70,6 +121,8 @@ export default function PortalShell() {
    * behind it to go back to, and the landing page is itself the place to be.
    */
   const [switcherReopen, setSwitcherReopen] = useState(0);
+  /** The "how do I get another project" notice, opened from the switcher. */
+  const [showRequest, setShowRequest] = useState(false);
   // A fresh installation can arrive with no team at all — one company may run several teams here,
   // so the supplier does not necessarily create one during handover. The landing page then asks
   // for the team instead of the project, and this holds that modal.
@@ -191,13 +244,12 @@ export default function PortalShell() {
   // The current team lives in the URL, so switching is a navigation. That also means the back
   // button returns to the team you came from, and a link to a particular team is shareable —
   // both of which a piece of component state would have thrown away.
-  // Creating the first team goes straight on to the project wizard: the team is not the goal, it is
-  // the container the project needs. Stopping at an empty team would leave the admin on the same
-  // landing page they just acted on.
+  // Creating the first team lands on that team's empty state, which now names the person who
+  // provisions its first project rather than offering a wizard. The team is still the thing the
+  // customer creates; the project is not. See PortalEmptyState.
   const createFirstTeam = (name: string) => {
     const teamId = addTeam({ name, region: "" });
     router.replace(`/portal?teamId=${teamId}`);
-    setShowWizard(true);
   };
 
   // The rail is the project navigation, so it exists once there is a project. Creating one no
@@ -248,7 +300,7 @@ export default function PortalShell() {
           onToggleCollapse={() => setSidebarCollapsed(v => !v)}
           toggleLabel={sidebarCollapsed ? t.expand : t.collapse}
           team={<TeamSwitcher dark compact={sidebarCollapsed} currentTeamId={currentOrgId} onSelect={switchTeam} />}
-          project={<ProjectSwitcher dark compact={sidebarCollapsed} teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} onSwitchTeam={switchTeam} reopenSignal={switcherReopen} />}
+          project={<ProjectSwitcher dark compact={sidebarCollapsed} teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onRequestProject={() => setShowRequest(true)} onSwitchTeam={switchTeam} reopenSignal={switcherReopen} />}
           /* Counts for the rail's badges — the two tabs that hold a list of things you count.
              Not accounts: the number of people who may sign in is not a size you check in passing,
              and the tab it labels is where the figure is broken down by role anyway. Not the
@@ -393,7 +445,7 @@ export default function PortalShell() {
           <>
             <TeamSwitcher currentTeamId={currentOrgId} onSelect={switchTeam} />
             <BreadcrumbChevron />
-            <ProjectSwitcher teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} onSwitchTeam={switchTeam} reopenSignal={switcherReopen} />
+            <ProjectSwitcher teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onRequestProject={() => setShowRequest(true)} onSwitchTeam={switchTeam} reopenSignal={switcherReopen} />
           </>
         )}
 
@@ -441,7 +493,8 @@ export default function PortalShell() {
               ? <PortalSettingsPage projectId={currentProjectId} />
               : teamProjects.length === 0
               ? <PortalEmptyState
-                  onNewProject={() => setShowWizard(true)}
+                  accountManager={currentOrg?.accountManager}
+                  onOpenSettings={() => setShowAccount(true)}
                   noTeam={teams.length === 0}
                   onCreateTeam={createFirstTeam}
                 />
@@ -450,8 +503,19 @@ export default function PortalShell() {
       }
       </div>
 
-      {/* Over the console, and always cancellable — including from an empty team, where the
-          landing page behind it is somewhere to be. See the note in the wizard. */}
+      {showRequest && currentOrg && (
+        <RequestProjectModal team={currentOrg} onClose={() => { setShowRequest(false); setSwitcherReopen(n => n + 1); }} />
+      )}
+
+      {/*
+        The provisioning reference, and no longer a route anybody takes by accident.
+
+        Nothing in the UI links here; it opens on ?newProject=1 and from the API documentation
+        under Server & API. A project is a licensed site and Portal does not sell licences, so
+        the customer-facing paths ask for one instead (RequestProjectModal above). The wizard
+        stays because the shape it produces — team, type, name, first channel — is exactly what
+        provisioning has to produce, and a screen is a clearer specification than a paragraph.
+      */}
       {showWizard && (
         <PortalNewProjectWizard
           teamId={currentOrgId}
