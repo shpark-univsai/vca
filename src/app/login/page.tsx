@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { BadgeCheck, Timer, Cctv } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
@@ -130,6 +130,7 @@ function LoginForm() {
   // shifts on shared workstations, so "keep me logged in" would hand the next person the previous
   // person's account — the saving it offers is one field, the cost is an unattended session.
   const [rememberId, setRememberId] = useState(false);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   // Restored after mount rather than during render: the server has no localStorage, so seeding
   // useState from it would make the server and client markup disagree. queueMicrotask keeps the
@@ -141,6 +142,11 @@ function LoginForm() {
         if (saved) {
           setIdentifier(saved);
           setRememberId(true);
+          // React's autoFocus only applies at mount, and at mount this value has not been read
+          // yet — so the promise below ("password is the field with something left to do") never
+          // happened and focus always sat on the identifier. Moved here, where the answer is
+          // actually known.
+          passwordRef.current?.focus();
         }
       } catch {
         // Private windows and locked-down browser policies throw on access. Nothing to recover —
@@ -274,7 +280,10 @@ function LoginForm() {
                   "info" for a state only an administrator can change. */}
               {notice && (
                 <div
-                  role="status"
+                  // role="alert", not "status": these say why a sign-in did not happen, which a
+                  // screen reader has to hear when it appears rather than whenever it gets round
+                  // to the polite queue.
+                  role="alert"
                   style={{
                     display: "flex", gap: "10px", alignItems: "flex-start", width: "100%",
                     padding: "14px 16px", borderRadius: "10px", marginBottom: "4px",
@@ -325,10 +334,10 @@ function LoginForm() {
                     onChange={e => { setIdentifier(e.target.value); setNotice(null); }}
                     placeholder={authConfig.employeeIdLogin ? "EMP-2041 or user@email.com" : "user@email.com"}
                     autoComplete="username"
-                    // Focused unless the identifier was remembered, in which case the password is
-                    // the field with something left to do. Landing focus on a filled field means
-                    // one more keystroke every shift.
-                    autoFocus={identifier.length === 0}
+                    // Focused at mount. If an identifier turns out to have been remembered, the
+                    // restore above moves focus to the password — the field with something left
+                    // to do — as soon as it knows that.
+                    autoFocus
                     style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                   />
                 </div>
@@ -358,7 +367,7 @@ function LoginForm() {
                     onBlur={() => setCapsLock(false)}
                     placeholder="••••••••"
                     autoComplete="current-password"
-                    autoFocus={identifier.length > 0}
+                    ref={passwordRef}
                     style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                   />
                   <button type="button" onClick={() => setShowPassword(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>

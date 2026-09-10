@@ -43,6 +43,8 @@ const T = {
     passwordTitle: "Set your password",
     passwordSub: (name: string) => `You are setting up the account for ${name}`,
     password: "Password",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
     confirmPassword: "Confirm password",
     mismatch: "Passwords don’t match",
     createAccount: "Create account",
@@ -75,6 +77,8 @@ const T = {
     passwordTitle: "비밀번호를 설정해주세요",
     passwordSub: (name: string) => `${name} 님의 계정을 설정하고 있습니다`,
     password: "비밀번호",
+    showPassword: "비밀번호 표시",
+    hidePassword: "비밀번호 숨기기",
     confirmPassword: "비밀번호 확인",
     mismatch: "비밀번호가 일치하지 않습니다",
     createAccount: "계정 만들기",
@@ -331,11 +335,14 @@ function RegisterFlow() {
           onFocus={() => setFocusedField(key)}
           onBlur={() => setFocusedField(null)}
           onKeyDown={e => { if (e.key === "Enter") onEnter?.(); }}
+          autoComplete="new-password"
           placeholder="••••••••"
           autoFocus={key === "password"}
           style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
         />
-        <button onClick={toggle} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
+        <button type="button" onClick={toggle}
+          aria-label={shown ? t.hidePassword : t.showPassword}
+          style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
           {shown ? <EyeIcon /> : <EyeOffIcon />}
         </button>
       </div>

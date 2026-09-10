@@ -17,7 +17,6 @@ const T = {
     adminTitle: "Contact your administrator",
     adminSub: "This system can’t send reset emails",
     whoToContact: "WHO TO CONTACT",
-    securityTeam: "Your security operations team",
     adminRemedies: "They’ll give you a temporary password or a setup code.",
     backToLogin: "Back to log in",
     haveCode: "Already have a code?",
@@ -50,6 +49,8 @@ const T = {
     passwordTitle: "Set a new password",
     passwordSub: "Choose one you haven’t used before",
     newPassword: "New password",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
     confirmPassword: "Confirm password",
     mismatch: "Passwords don’t match",
     changePassword: "Change password",
@@ -62,7 +63,6 @@ const T = {
     adminTitle: "관리자에게 문의해주세요",
     adminSub: "이 시스템은 재설정 메일을 보낼 수 없습니다",
     whoToContact: "문의할 곳",
-    securityTeam: "보안 관제 담당자",
     adminRemedies: "임시 비밀번호나 설정 코드를 받게 됩니다.",
     backToLogin: "로그인으로 돌아가기",
     haveCode: "이미 코드를 받으셨나요?",
@@ -95,6 +95,8 @@ const T = {
     passwordTitle: "새 비밀번호를 설정해주세요",
     passwordSub: "이전에 쓰지 않은 비밀번호로 정해주세요",
     newPassword: "새 비밀번호",
+    showPassword: "비밀번호 표시",
+    hidePassword: "비밀번호 숨기기",
     confirmPassword: "비밀번호 확인",
     mismatch: "비밀번호가 일치하지 않습니다",
     changePassword: "비밀번호 변경",
@@ -281,6 +283,10 @@ function ForgotPasswordFlow() {
     if (resends + 1 > MAX_RESENDS) {
       setDigits(Array(RESET_CODE_LENGTH).fill(""));
       setCodeFailure("resendLimit");
+      // Held down as well as refused. Without a cooldown the link stayed live under the notice
+      // that had just said no, so it could be pressed again and again with nothing happening —
+      // which reads as a broken link rather than a limit.
+      setCooldown(RESEND_COOLDOWN_SEC);
       return;
     }
     setResends(n => n + 1);
@@ -582,11 +588,15 @@ function ForgotPasswordFlow() {
                         onChange={e => setNewPassword(e.target.value)}
                         onFocus={() => setFocusedField("new")}
                         onBlur={() => setFocusedField(null)}
+                        onKeyDown={e => { if (e.key === "Enter") savePassword(); }}
+                        autoComplete="new-password"
                         placeholder="••••••••"
                         autoFocus
                         style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
                       />
-                      <button onClick={() => setShowNew(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
+                      <button type="button" onClick={() => setShowNew(s => !s)}
+                        aria-label={showNew ? t.hidePassword : t.showPassword}
+                        style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                         {showNew ? <EyeIcon /> : <EyeOffIcon />}
                       </button>
                     </div>
@@ -601,10 +611,13 @@ function ForgotPasswordFlow() {
                         onFocus={() => setFocusedField("confirm")}
                         onBlur={() => setFocusedField(null)}
                         onKeyDown={e => { if (e.key === "Enter") savePassword(); }}
+                        autoComplete="new-password"
                         placeholder="••••••••"
                         style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
                       />
-                      <button onClick={() => setShowConfirm(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
+                      <button type="button" onClick={() => setShowConfirm(s => !s)}
+                        aria-label={showConfirm ? t.hidePassword : t.showPassword}
+                        style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                         {showConfirm ? <EyeIcon /> : <EyeOffIcon />}
                       </button>
                     </div>

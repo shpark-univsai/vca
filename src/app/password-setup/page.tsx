@@ -27,6 +27,8 @@ const T = {
     newPassword: "New password",
     confirmPassword: "Confirm password",
     mismatch: "Passwords don’t match",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
     submit: "Set Password",
   },
   ko: {
@@ -44,6 +46,8 @@ const T = {
     newPassword: "새 비밀번호",
     confirmPassword: "비밀번호 확인",
     mismatch: "비밀번호가 일치하지 않습니다",
+    showPassword: "비밀번호 표시",
+    hidePassword: "비밀번호 숨기기",
     submit: "비밀번호 설정",
   },
 } as const;
@@ -274,10 +278,14 @@ function PasswordSetupForm() {
                     onChange={e => setNewPassword(e.target.value)}
                     onFocus={() => setFocusedField("new")}
                     onBlur={() => setFocusedField(null)}
+                    onKeyDown={e => { if (e.key === "Enter" && canSubmit) handleSubmit(); }}
+                    autoComplete="new-password"
                     placeholder="••••••••"
                     style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
                   />
-                  <button onClick={() => setShowNew(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
+                  <button type="button" onClick={() => setShowNew(s => !s)}
+                    aria-label={showNew ? t.hidePassword : t.showPassword}
+                    style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                     {showNew ? <EyeIcon /> : <EyeOffIcon />}
                   </button>
                 </div>
@@ -292,10 +300,14 @@ function PasswordSetupForm() {
                     onChange={e => setConfirmPassword(e.target.value)}
                     onFocus={() => setFocusedField("confirm")}
                     onBlur={() => setFocusedField(null)}
+                    onKeyDown={e => { if (e.key === "Enter" && canSubmit) handleSubmit(); }}
+                    autoComplete="new-password"
                     placeholder="••••••••"
                     style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
                   />
-                  <button onClick={() => setShowConfirm(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
+                  <button type="button" onClick={() => setShowConfirm(s => !s)}
+                    aria-label={showConfirm ? t.hidePassword : t.showPassword}
+                    style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                     {showConfirm ? <EyeIcon /> : <EyeOffIcon />}
                   </button>
                 </div>
