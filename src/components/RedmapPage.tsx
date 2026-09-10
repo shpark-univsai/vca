@@ -10,7 +10,7 @@ import { camerasInProject, canSearchInApp, useActiveProjectId, useProjectCameras
 import RemoveImageButton from "./RemoveImageButton";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 
-import { useLanguage, type AppLanguage } from "@/lib/i18n";
+import { josa, useLanguage, type AppLanguage } from "@/lib/i18n";
 
 // See the per-file pattern note in lib/i18n.ts. Site names, camera codes, plate numbers and the
 // seeded match labels are data and stay as they are.
@@ -73,6 +73,10 @@ const T = {
     promptPerson: "Upload a face or body image",
     promptPersonAnd: "above and click",
     promptVehicle: "Enter a license plate and click",
+    // The sentence's tail. In English the verb comes before the button's name, so the assembled
+    // line finishes on its own; in Korean the verb comes last, and without this the prompt broke
+    // off at "위에서 인물 검색" with nothing telling the reader to press it.
+    promptTail: "",
     showResults: "Show search results",
     hideResults: "Hide search results",
     newestFirst: "Newest first",
@@ -141,13 +145,14 @@ const T = {
     promptPerson: "얼굴 또는 전신 이미지를 올린 뒤",
     promptPersonAnd: "위에서",
     promptVehicle: "차량 번호를 입력한 뒤",
+    promptTail: "을 눌러주세요",
     showResults: "검색 결과 보기",
     hideResults: "검색 결과 숨기기",
     newestFirst: "최신순",
     oldestFirst: "오래된 순",
     hideFrame: "검출 프레임 숨기기",
     showFrame: "검출 프레임 보기",
-    removedFromTrace: (place: string) => `이 경로에서 "${place}"를 제외했습니다`,
+    removedFromTrace: (place: string) => `이 경로에서 "${place}"${josa(place, "을", "를")} 제외했습니다`,
     undo: "되돌리기",
     notSamePerson: "같은 사람이 아닙니다 — 이 경로에서 제외",
   },
@@ -1534,8 +1539,8 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                 </svg>
                 <p style={{ fontSize: "12px", textAlign: "center", lineHeight: 1.7, color: "var(--gray-400)" }}>
                   {mode === "person"
-                    ? <>{t.promptPerson}<br />{t.promptPersonAnd} <strong style={{ color: "var(--gray-700)" }}>{t.searchPersons}</strong></>
-                    : <>{t.promptVehicle}<br /><strong style={{ color: "var(--gray-700)" }}>{t.searchVehicle}</strong></>
+                    ? <>{t.promptPerson}<br />{t.promptPersonAnd} <strong style={{ color: "var(--gray-700)" }}>{t.searchPersons}</strong>{t.promptTail}</>
+                    : <>{t.promptVehicle}<br /><strong style={{ color: "var(--gray-700)" }}>{t.searchVehicle}</strong>{t.promptTail}</>
                   }
                 </p>
               </div>

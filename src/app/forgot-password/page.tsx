@@ -7,7 +7,7 @@ import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import VerificationCodeInput from "@/components/VerificationCodeInput";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT, RESET_CODE_LENGTH, RESET_CODE_TTL_MIN } from "@/lib/password";
 import { getAuthConfig } from "@/lib/authConfig";
-import { useLanguage, type AppLanguage } from "@/lib/i18n";
+import { josa, useLanguage, type AppLanguage } from "@/lib/i18n";
 
 // See the per-file pattern note in lib/i18n.ts.
 const T = {
@@ -80,7 +80,7 @@ const T = {
     throttledSub: "코드 입력이 잠시 차단되었습니다",
     throttledBody: "몇 분 뒤에 다시 시도하시거나 관리자에게 문의해주세요.",
     codeTitle: "인증 코드를 입력해주세요",
-    codeSentTo: (address: string) => `${address}으로 코드를 보냈습니다`,
+    codeSentTo: (address: string) => `${address}${josa(address, "으로", "로")} 코드를 보냈습니다`,
     codeSentToAccount: "계정에 등록된 이메일로 코드를 보냈습니다",
     expiresIn: (min: number) => `${min}분 후 만료됩니다`,
     sendNewCode: "새 코드 보내기",

@@ -7,7 +7,7 @@ import {
   DISTRICT_ALERT_THRESHOLD_KEY, DISTRICT_MODERATE_THRESHOLD_KEY,
   DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD,
 } from "@/lib/mockData";
-import { SIGNED_IN_USER } from "@/lib/vcaStore";
+import { canEnterPortal, canUseAppNow, currentPortalUser, SIGNED_IN_USER, useVcaStore } from "@/lib/vcaStore";
 import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
@@ -562,6 +562,16 @@ function ThresholdModal({ initialAlert, initialModerate, onSave, onClose }: { in
 
 export default function MyPage() {
   const router = useRouter();
+  // This page draws the app's own header, four tabs included, so it is behind the app's door like
+  // the app is. It had no guard: an account with no app access saw the header, pressed a tab and
+  // was bounced back from "/" — the door was one screen further in than it looked.
+  const me = useVcaStore(s => currentPortalUser(s.portalUsers));
+  const locked = !!me && !canUseAppNow(me);
+  const canGoToPortal = !!me && canEnterPortal(me.permission);
+  useEffect(() => {
+    if (!locked) return;
+    router.replace(canGoToPortal ? "/portal" : "/login");
+  }, [locked, canGoToPortal, router]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordJustChanged, setPasswordJustChanged] = useState(false);
   const [showThresholdModal, setShowThresholdModal] = useState(false);
@@ -599,6 +609,9 @@ export default function MyPage() {
     localStorage.setItem(DISTRICT_ALERT_THRESHOLD_KEY, String(alert));
     localStorage.setItem(DISTRICT_MODERATE_THRESHOLD_KEY, String(moderate));
   };
+
+  // Draw nothing while the redirect above is on its way — see ClientLayout for the same rule.
+  if (locked) return null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>

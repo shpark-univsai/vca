@@ -90,3 +90,33 @@ export const usePortalLanguage = makeLanguageHook(PORTAL_LANGUAGE_KEY, APP_LANGU
  * that came from the customer's own install stay exactly as entered — translating them would make
  * the UI disagree with the device list and the roster the operator is holding.
  */
+
+
+/**
+ * Picks the Korean particle that agrees with the preceding word.
+ *
+ * Korean object and instrumental particles change with the final letter: "노베나를" but
+ * "클라크퀘이를"… and, crucially, "…ai로" not "…ai으로". Several strings had one form hardcoded,
+ * so any value ending the other way read as a typo to a Korean speaker — and one of them is an
+ * email address, which the user typed themselves moments earlier.
+ *
+ * Only the final syllable matters. A Hangul syllable has a trailing consonant when
+ * (code - 0xAC00) % 28 !== 0; a Latin letter or digit is judged by whether it is usually read as
+ * ending in a consonant sound. Unknown scripts fall back to the no-final form, which is the safer
+ * of the two to be wrong about.
+ */
+export function josa(word: string, withFinal: string, withoutFinal: string): string {
+  const last = word.trim().slice(-1);
+  if (!last) return withoutFinal;
+  const code = last.charCodeAt(0);
+  if (code >= 0xac00 && code <= 0xd7a3) {
+    return (code - 0xac00) % 28 !== 0 ? withFinal : withoutFinal;
+  }
+  // Latin letters and digits read aloud in Korean: vowels and the "n/l/m/r"-sounding letters end
+  // without a consonant the particle has to bridge; everything else takes the consonant form.
+  const lower = last.toLowerCase();
+  if (/[aeiouwy]/.test(lower)) return withoutFinal;
+  if (/[lmnr]/.test(lower)) return withFinal;
+  if (/[0-9]/.test(lower)) return "2459".includes(lower) ? withoutFinal : withFinal;
+  return withFinal;
+}
