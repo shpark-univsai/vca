@@ -1284,12 +1284,22 @@ function LiveSearchSidebar({
             who to ask, not conclude the product cannot do it. */}
         <button
           onClick={() => { if (searchAllowed) onSearch(); }}
-          disabled={!searchAllowed}
+          // Not `disabled`: a disabled button takes no focus, so the one place that says WHY —
+          // the tooltip — could not be reached by keyboard, screen reader or touch, which is
+          // every way of using this screen except a mouse. aria-disabled states the same fact
+          // to assistive tech while leaving the control reachable, and the sentence below says
+          // it in text for everyone else.
+          aria-disabled={!searchAllowed}
           title={searchAllowed ? undefined : t.noSearchPermission}
           style={{ flex:1, height:"38px", borderRadius:"8px", border:"none", backgroundColor: searchAllowed ? "var(--gray-900)" : "var(--gray-100)", color: searchAllowed ? "white" : "var(--gray-400)", fontSize:"13px", fontWeight:700, cursor: searchAllowed ? "pointer" : "not-allowed" }}>
           {t.search}
         </button>
       </div>
+      {!searchAllowed && (
+        <p style={{ margin:"8px 0 0", fontSize:"11px", fontWeight:600, color:"var(--gray-500)", lineHeight:1.6 }}>
+          {t.noSearchPermission}
+        </p>
+      )}
     </div>
   );
 }
