@@ -88,7 +88,7 @@ const T = {
     expiringSoon: "Expiring soon",
     perpetual: "Perpetual",
     notRecorded: "No expiry on record",
-    expiryNotice: (n: number) => `This licence expires in ${n} day${n === 1 ? "" : "s"}. Renewing is a contract change, so start it with whoever signs — cameras stop being processed on the expiry date.`,
+    expiryNotice: (n: number) => `This licence expires in ${n} day${n === 1 ? "" : "s"}. Renewing is a contract change, so start it with whoever signs.`,
     smartSchoolOnly: "Smart School only",
     analysisComingSoon: "readings not available yet",
     perChannelPerYear: (price: number) => `$${price}/channel/yr`,
@@ -121,7 +121,7 @@ const T = {
     expiringSoon: "만료 임박",
     perpetual: "무기한",
     notRecorded: "만료일 미기록",
-    expiryNotice: (n: number) => `라이선스가 ${n}일 뒤 만료됩니다. 갱신은 계약 변경이라 결재선을 타야 하니 미리 시작하세요 — 만료일부터 카메라 분석이 멈춥니다.`,
+    expiryNotice: (n: number) => `라이선스가 ${n}일 뒤 만료됩니다. 갱신은 계약 변경이라 결재선을 타야 하니 미리 시작하세요.`,
     smartSchoolOnly: "Smart School 전용",
     analysisComingSoon: "판독 결과는 아직 없음",
     perChannelPerYear: (price: number) => `채널당 연 $${price}`,
@@ -333,6 +333,22 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           {overLimit ? t.overLimit(used, limit ?? 0) : atLimit ? t.atLimit : t.nearLimit(available!)}
         </p>
       )}
+      {/* No consequence clause.
+   
+          This said "cameras stop being processed on the expiry date" until 2026-09-10, and
+          nothing in the product does that — there is no enforcement anywhere, and the licence
+          value it would key off is a plain mutable field. So the screen was threatening an
+          operator with something we had not built.
+   
+          It is also the wrong thing to promise. Deciding what expiry does is open (see the
+          vendor-admin review), and the argument there runs the other way for a public-safety
+          product: the loss from under-enforcing is a late invoice, the loss from over-enforcing
+          is a surveillance system dark during an incident at a school or a station. Whatever is
+          settled, a renewal banner is not where it should first appear.
+   
+          HANDOFF NOTE: when the backend defines expiry behaviour, the sentence to add here is
+          what actually happens — and if the answer is "nothing stops", this banner is already
+          correct as written. */}
       {expiringSoon && daysRemaining !== null && (
         <p style={{
           display: "block", padding: "10px 14px", borderRadius: "10px", marginBottom: "12px",
