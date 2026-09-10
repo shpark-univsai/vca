@@ -466,7 +466,7 @@ export default function PortalShell() {
       {showNewTeam && (
         <NewTeamModal
           onClose={() => setShowNewTeam(false)}
-          onCreated={teamId => { router.replace(`/portal?teamId=${teamId}`); }}
+          onCreated={teamId => { setShowNewTeam(false); router.replace(`/portal?teamId=${teamId}`); }}
         />
       )}
     </div>

@@ -321,11 +321,23 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
         )}
       </div>
 
+      {/* Both of these are reached from inside the dropdown, which closes to make way for them.
+          Backing out therefore has to put the dropdown back — otherwise cancelling one step
+          costs the reader two, and they land on a console with the list they were choosing from
+          shut. Creating is the case that does NOT reopen it: the job is done and the switcher
+          has already moved to the new team. */}
       {showNewTeam && (
-        <NewTeamModal onClose={() => setShowNewTeam(false)} onCreated={onSelect} />
+        <NewTeamModal
+          onClose={() => { setShowNewTeam(false); setOpen(true); }}
+          onCreated={teamId => { setShowNewTeam(false); setOpen(false); onSelect(teamId); }}
+        />
       )}
       {managingTeam && current && (
-        <ManageTeamModal team={current} onClose={() => setManagingTeam(false)} />
+        <ManageTeamModal
+          team={current}
+          onClose={() => { setManagingTeam(false); setOpen(true); }}
+          onDeleted={() => { setManagingTeam(false); setOpen(false); }}
+        />
       )}
     </>
   );
@@ -359,7 +371,14 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
  * instead. Cascading would delete several sites from a dropdown in one gesture; each project is
  * deleted from its own Settings screen, where what goes with it is counted first.
  */
-function ManageTeamModal({ team, onClose }: { team: Team; onClose: () => void }) {
+function ManageTeamModal({ team, onClose, onDeleted }: {
+  team: Team;
+  /** Backed out without changing anything, or saved a rename. */
+  onClose: () => void;
+  /** The team is gone. Distinct from onClose because the caller puts its dropdown back on
+   *  onClose, and that dropdown would then be listing a team that no longer exists. */
+  onDeleted: () => void;
+}) {
   useEscapeKey(onClose);
   const renameTeam = useVcaStore(s => s.renameTeam);
   const removeTeam = useVcaStore(s => s.removeTeam);
@@ -442,7 +461,7 @@ function ManageTeamModal({ team, onClose }: { team: Team; onClose: () => void })
             const label = team.name;
             removeTeam(team.id);
             setConfirming(false);
-            onClose();
+            onDeleted();
             showToast({ variant: "warning", title: t.deletedToast, desc: label });
           }}
         />
@@ -468,9 +487,10 @@ export function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCr
     // kinds: the seeded City of Singapore team has a Smart City project and a Smart School one, so
     // any single answer at team level would have been contradicted by its own data. The field is
     // gone from Team altogether now, along with the signup step that set it.
-    const id = addTeam({ name: name.trim(), region: "" });
-    onClose();
-    onCreated(id);
+    // onCreated only. It used to call onClose() first as well, which now means two different
+    // things — cancel puts the dropdown back, creating must not — and the caller is the only
+    // one that knows which. Every caller closes the dialog inside onCreated.
+    onCreated(addTeam({ name: name.trim(), region: "" }));
   };
 
   return (
