@@ -1219,10 +1219,21 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
  *
  * Ordered as the funnel runs, so the value doubles as a sort key.
  */
+/**
+ * The tools that are not this page's one primary action.
+ *
+ * No border and no fill: what makes a control loud is the box, not the letters, so this row of
+ * five recedes by losing its boxes rather than by shrinking its type — which was tried first and
+ * only made them hard to read while leaving them just as visible. Same treatment as Input Sources,
+ * same reference (Zapier's borderless table tools).
+ *
+ * The roster tab drops a fill on top of this for its own primary, which is why the fill lives at
+ * the call site rather than here.
+ */
 const SECONDARY_BTN: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "8px",
-  border: BORDER, backgroundColor: "white", color: "var(--gray-600)",
-  fontSize: "10px", fontWeight: 700, cursor: "pointer", flexShrink: 0,
+  display: "flex", alignItems: "center", gap: "6px", padding: "10px", borderRadius: "8px",
+  border: "none", backgroundColor: "transparent", color: "var(--gray-600)",
+  fontSize: "12px", fontWeight: 600, cursor: "pointer", flexShrink: 0,
 };
 
 const STAGES = ["rosterListed", "codeIssued", "codeExpired", "invited", "active", "suspended"] as const;
@@ -1643,7 +1654,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           onClick={() => manageAccess && setShowInvite(true)}
           disabled={!manageAccess}
           title={manageAccess ? undefined : t.reasonNotOwner}
-          style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: manageAccess ? "var(--primary-400)" : "var(--gray-100)", color: manageAccess ? "white" : "var(--gray-400)", fontSize: "10px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed", flexShrink: 0 }}>
+          style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: manageAccess ? "var(--primary-400)" : "var(--gray-100)", color: manageAccess ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed", flexShrink: 0 }}>
           <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke={manageAccess ? "white" : "var(--gray-400)"} strokeWidth="1.22" strokeLinecap="round"/></svg>
           {t.inviteUser}
         </button>
@@ -1663,7 +1674,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         <button
           onClick={() => setRosterEditorFor({ entry: null })}
           style={peopleTab === "roster"
-            ? { ...SECONDARY_BTN, backgroundColor: "var(--primary-400)", border: "none", color: "white" }
+            ? { ...SECONDARY_BTN, padding: "10px 16px", backgroundColor: "var(--primary-400)", border: "none", color: "white", fontWeight: 700 }
             : SECONDARY_BTN}
         >
           <ClipboardPlus size={14} strokeWidth={2.4} />
