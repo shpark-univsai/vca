@@ -1663,23 +1663,27 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             neighbours put a mark on every action these five read as unfinished — and a row of five
             identical grey pills is a row you have to read word by word. 14px at stroke 2.4 is the
             1.4px Portal draws (see ICON_STROKE_PX). */}
-        {/* Filled on the roster tab, outlined on the combined one. Every page in Portal has one
-            coloured action, and on this tab the invite button — the coloured one — is hidden,
-            which left five grey pills and no answer to "what is the thing to do here". Adding a
-            name to the roster is that thing. */}
-        {/* On both tabs. The note above says the two ways of adding a person stay together on the
-            combined tab, and the condition said the opposite — `!== "accounts"` hid it exactly
-            there, leaving that tab with one button and no way to put a name on the roster without
-            switching tabs first. Adding a person is the page's subject on either tab. */}
+        {/*
+          Roster tab only, and the coloured action there.
+
+          It sat on both tabs for a while, on the reasoning that adding a person is the page's
+          subject either way. In practice the Accounts tab then offered two ways to add somebody
+          side by side — invite by mail, and put a name on the roster — which are the same goal by
+          two delivery mechanisms, and the labels do not carry that difference. The reader has to
+          stop and work out which one they want before doing either.
+
+          Accounts is about accounts: the one action there is inviting somebody to make one. The
+          roster is one tab away and its own tab's primary.
+        */}
+        {peopleTab === "roster" && (
         <button
           onClick={() => setRosterEditorFor({ entry: null })}
-          style={peopleTab === "roster"
-            ? { ...SECONDARY_BTN, padding: "10px 16px", backgroundColor: "var(--primary-400)", border: "none", color: "white", fontWeight: 700 }
-            : SECONDARY_BTN}
+          style={{ ...SECONDARY_BTN, padding: "10px 16px", backgroundColor: "var(--primary-400)", border: "none", color: "white", fontWeight: 700 }}
         >
           <ClipboardPlus size={14} strokeWidth={2.4} />
           {t.addToRoster}
         </button>
+        )}
         {peopleTab === "roster" && (<>
         <button onClick={() => setShowRosterImport(true)} style={SECONDARY_BTN}>
           <Upload size={14} strokeWidth={2.4} />
