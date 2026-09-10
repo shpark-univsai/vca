@@ -167,7 +167,13 @@ function bindHitsToCameras(shapes: HitShape[], cams: Camera[]): HitResult[] {
   // so consecutive entries are neighbours and a trail built from cams[0..2] was three cameras on
   // one street rather than a path across the site.
   const stride = Math.max(1, Math.floor(cams.length / Math.max(shapes.length, 1)));
-  return shapes.map((shape, i) => {
+  // Oldest first. The timeline numbers these by their position in the array and calls the number a
+  // chronological step, so the array has to actually be in that order — the lookalike set was
+  // written l1/l2/l3/l4 with l3 sitting between l2's and l4's timestamps, which made step 02 later
+  // than step 03. Nothing downstream sorted it.
+  return [...shapes]
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+    .map((shape, i) => {
     const cam = cams[(i * stride) % cams.length];
     return {
       ...shape,

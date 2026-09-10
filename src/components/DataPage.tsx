@@ -5055,12 +5055,18 @@ export default function DataPage({ onGoRedmap, onGoAnalyzeFrame }: { onGoRedmap?
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<DataTab>(
-    () => DATA_TAB_BY_SLUG[searchParams.get("sub") ?? ""] ?? "Live Monitoring",
-  );
+  const [activeTab, setActiveTab] = useState<DataTab>(() => {
+    // A slug this screen does not render is not a destination. "Smart Search" still exists as a
+    // DataTab — it is the signal that opens Live Monitoring's own search panel — but it has no
+    // tab of its own since that screen was merged, so ?sub=search used to select a tab that
+    // renders nothing: three inactive tab buttons over a blank body, and the URL was left alone
+    // because the mirror effect below saw it as already correct.
+    const fromSlug = DATA_TAB_BY_SLUG[searchParams.get("sub") ?? ""];
+    return fromSlug && DATA_TABS.includes(fromSlug) ? fromSlug : "Live Monitoring";
+  });
   // Mirrored into the URL from an effect rather than from inside the setter: one caller runs
-  // DURING render (the command palette's deep link uses a compare-during-render), and a
-  // router.replace() from there is a side effect in the wrong phase. The guard means this only
+  // DURING render (a seeded card's tab jump compares during render), and a router.replace() from
+  // there is a side effect in the wrong phase. The guard means this only
   // fires when the two actually disagree, so it can't loop on its own href change.
   useEffect(() => {
     const slug = DATA_TAB_SLUGS[activeTab];

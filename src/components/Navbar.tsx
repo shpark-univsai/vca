@@ -36,8 +36,8 @@ export const TABS: { id: NavTab; label: { en: string; ko: string }; icon: string
 const T = {
   en: {
     goToDashboard: "Go to Dashboard",
-    running: (n: number | string) => `${n} cameras running`,
-    stopped: (n: number | string) => `${n} cameras stopped`,
+    running: (n: number | string) => `${n} ${n === 1 ? "camera" : "cameras"} running`,
+    stopped: (n: number | string) => `${n} ${n === 1 ? "camera" : "cameras"} stopped`,
     vipDetections: "VIP detections",
     noneInWindow: "No VIP detections in the last hour",
     notifWindow: "last hour",
@@ -77,7 +77,6 @@ interface NavbarProps {
   onNotificationSelect?: (event: LiveEvent) => void;
   sidebarPosition?: "left" | "right";
   onSidebarPositionChange?: (position: "left" | "right") => void;
-  /** Opens the global command palette (also reachable via Cmd/Ctrl+K from anywhere). */
 }
 
 export default function Navbar({ activeTab: externalTab, onTabChange, onNotificationSelect, sidebarPosition, onSidebarPositionChange }: NavbarProps) {

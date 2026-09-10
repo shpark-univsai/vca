@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Search, Crown } from "lucide-react";
-import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, FACE_PHOTOS, getFacePhoto, formatTimeAgo, nearestDistrict } from "@/lib/mockData";
+import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, getFacePhoto, formatTimeAgo, nearestDistrict } from "@/lib/mockData";
 import {
   useVcaStore, vcaEventsToLiveEvents, todaysDetectionHits,
   useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras,
@@ -214,10 +214,18 @@ function LocationPinIcon({ color = "var(--gray-700)" }: { color?: string }) {
   );
 }
 
-function AvatarStack() {
+/**
+ * The faces of up to three people actually on this site's watchlist.
+ *
+ * It used to draw three photos from a stock pool with no connection to the registry at all, so a
+ * site with nobody enrolled showed three faces beside the number 0. A face is not decoration:
+ * anyone reading it takes it for somebody who is being watched here.
+ */
+function AvatarStack({ faces }: { faces: string[] }) {
+  if (faces.length === 0) return null;
   return (
     <div style={{ display:"flex", alignItems:"center" }}>
-      {FACE_PHOTOS.slice(0,3).map((url, i) => (
+      {faces.slice(0, 3).map((url, i) => (
         <div key={i} style={{ marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i, width:24, height:24, borderRadius:"50%", border:"1px solid white", overflow:"hidden", flexShrink:0 }}>
           <img src={url} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} alt="" />
         </div>
@@ -289,12 +297,13 @@ function describeArc(cx: number, cy: number, r: number, startAngle: number, endA
 // half-circle). The previous version drew 3 fixed decorative paths that never changed shape
 // regardless of `pct` — the gauge looked identical whether availability was 19% or 90%, which is
 // why it always read as "not filling in."
-function AvailabilityDonut({ pct, size = 92 }: { pct: number; size?: number }) {
+function AvailabilityDonut({ pct, size = 92, hasCameras }: { pct: number; size?: number; hasCameras: boolean }) {
   const height = size * (40 / 92);
   // Neutral gray by default; only shift to a semantic signal color when availability is
   // genuinely low (matches the red/green convention already used elsewhere in this file for
-  // LIVE/OUT status).
-  const ringColor = pct < 50 ? "var(--danger-400)" : "var(--gray-400)";
+  // LIVE/OUT status). A site with no cameras registered is not a site at 0% — nothing is down
+  // there, there is nothing there — so it reads as a dash in gray rather than an alarm.
+  const ringColor = hasCameras && pct < 50 ? "var(--danger-400)" : "var(--gray-400)";
   const cx = 46, cy = 40, r = 34, strokeWidth = 10;
   const sweep = 180 * (Math.max(0, Math.min(100, pct)) / 100);
   const trackPath = describeArc(cx, cy, r, 270, 450);
@@ -304,7 +313,7 @@ function AvailabilityDonut({ pct, size = 92 }: { pct: number; size?: number }) {
       <svg width={size} height={height} viewBox="0 0 92 40" fill="none">
         <path d={trackPath} stroke={ringColor} strokeOpacity={0.15} strokeWidth={strokeWidth} strokeLinecap="round" fill="none"/>
         {fillPath && <path d={fillPath} stroke={ringColor} strokeWidth={strokeWidth} strokeLinecap="round" fill="none"/>}
-        <text x="46" y="33" textAnchor="middle" fontSize="13" fontWeight="800" fill={ringColor} fontFamily="SUIT, sans-serif">{pct}%</text>
+        <text x="46" y="33" textAnchor="middle" fontSize="13" fontWeight="800" fill={ringColor} fontFamily="SUIT, sans-serif">{hasCameras ? `${pct}%` : "—"}</text>
       </svg>
     </div>
   );
@@ -477,13 +486,19 @@ function EventsSummary({ onPersonSelect, onToggleDetectionChart }: { onPersonSel
   const [lang] = useLanguage();
   const t = T[lang];
   const { vipTargets, watchlistMatch, eventsToday } = useEventCounts();
+  // Real enrolled faces from this site's registry — see AvatarStack. A person imported from a CSV
+  // has no photo, so they contribute no avatar rather than a placeholder one.
+  const vipFaces = useProjectPersons()
+    .filter(p => p.type === "VIP" && !!p.photoUrl)
+    .slice(0, 3)
+    .map(p => p.photoUrl!);
   const [showVipList, setShowVipList] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isDetectionsHovered, setIsDetectionsHovered] = useState(false);
   return (
     <div style={{ padding:"16px 20px 0", flexShrink:0 }}>
       <div style={{ display:"flex", alignItems:"center", gap:"6px", marginBottom:"16px" }}>
-        <AvatarStack />
+        <AvatarStack faces={vipFaces} />
         <button
           onClick={() => setShowVipList(true)}
           onMouseEnter={() => setIsHovered(true)}
@@ -1099,7 +1114,7 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
               <AvailabilityIcon />
               <span style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-600)" }}>{t.availability}</span>
             </div>
-            <AvailabilityDonut pct={availability} />
+            <AvailabilityDonut pct={availability} hasCameras={devices.length > 0} />
           </div>
         </div>
       </div>
@@ -1314,14 +1329,20 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
           </>
         ) : (
           // Same neutral-by-default rule as AvailabilityDonut: gray unless availability is
-          // genuinely low (<50%), not a fixed purple regardless of value.
-          <div style={{
-            width:"38px", height:"38px", borderRadius:"10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-            backgroundColor: availability < 50 ? "var(--danger-100)" : "var(--gray-100)", border: availability < 50 ? "1px solid var(--danger-200)" : "1px solid var(--gray-200)",
-          }}>
-            <span style={{ fontSize:"10px", fontWeight:600, color: availability < 50 ? "var(--danger-400)" : "var(--gray-400)", letterSpacing:"0.3px" }}>{t.avail}</span>
-            <span style={{ fontSize:"13px", fontWeight:700, color: availability < 50 ? "var(--danger-400)" : "var(--gray-400)", lineHeight:1 }}>{availability}%</span>
-          </div>
+          // genuinely low (<50%), not a fixed purple regardless of value — and no alarm at a site
+          // with no cameras registered, where nothing is down because nothing is there.
+          (() => {
+            const low = cameras.length > 0 && availability < 50;
+            return (
+              <div style={{
+                width:"38px", height:"38px", borderRadius:"10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                backgroundColor: low ? "var(--danger-100)" : "var(--gray-100)", border: low ? "1px solid var(--danger-200)" : "1px solid var(--gray-200)",
+              }}>
+                <span style={{ fontSize:"10px", fontWeight:600, color: low ? "var(--danger-400)" : "var(--gray-400)", letterSpacing:"0.3px" }}>{t.avail}</span>
+                <span style={{ fontSize:"13px", fontWeight:700, color: low ? "var(--danger-400)" : "var(--gray-400)", lineHeight:1 }}>{cameras.length > 0 ? `${availability}%` : "—"}</span>
+              </div>
+            );
+          })()
         )}
       </div>
 
