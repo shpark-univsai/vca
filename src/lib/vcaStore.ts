@@ -678,6 +678,28 @@ interface VcaStoreState {
    * Channels, plan and term arrive with the licence and are read-only to everything in here.
    * Removed 2026-09-10; see the licence-as-signed-file question in the vendor-admin review.
    */
+  /**
+   * Installs a licence file the vendor issued. This is the "arrive with the licence" above.
+   *
+   * Not the removed mutator under another name, and the difference is the whole point: that one
+   * took three numbers an administrator typed, this one takes an artifact somebody else signed and
+   * copies out what it says. The console still cannot choose a channel count — it can only accept
+   * one. Which is why this is the only writer of those three fields in the product, and why the
+   * screen shows what would change before it calls.
+   *
+   * HANDOFF NOTE: the server verifies the signature and is the authority on whether a file is
+   * genuine — the public key is compiled into the server binary, not configured, so that a
+   * customer cannot point it at a key of their own. This action stands in for applying whatever
+   * the server accepted (POST /v1/projects/{id}/licence; shape in lib/licenseFile.ts). When that
+   * endpoint exists, the values written here come from its response, not from the browser's parse.
+   */
+  installLicenseFile: (projectId: string, licence: {
+    licenseId: string;
+    plan: string;
+    channelLimit: number;
+    /** A date, or UNLIMITED_EXPIRY for a perpetual term. */
+    expiresAt: string;
+  }) => void;
   /** One call per subject: recording again replaces the previous verdict rather than stacking. */
   recordJudgement: (j: Pick<DetectionJudgement, "surface" | "subjectId" | "targetLabel" | "verdict">) => void;
   /** Back to "nobody has looked at this". Not the same as marking it a false positive. */
@@ -2503,6 +2525,36 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         auditLog: [{
           id: `audit-${++auditSeq}`, projectId,
           message: `Project renamed: ${project.name} → ${name}`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  installLicenseFile: (projectId, licence) =>
+    set(state => {
+      const project = state.projects.find(p => p.id === projectId);
+      if (!project) return state;
+      /**
+       * The audit line names the file, not just the numbers.
+       *
+       * "Channels changed to 100" is the sentence the removed mutator would have written, and it
+       * is missing the only part that matters here — who said so. A licence id is traceable back
+       * to the vendor's issuance record, so a year later this line answers "on what authority"
+       * rather than just "what". The old values ride along for the same reason a rename carries
+       * both names.
+       */
+      const before = project.licenseChannelLimit === undefined
+        ? "none recorded"
+        : `${project.licensePlan ?? "—"}, ${project.licenseChannelLimit}ch, ${project.licenseExpiresAt ?? "—"}`;
+      return {
+        projects: state.projects.map(p => (p.id === projectId ? {
+          ...p,
+          licensePlan: licence.plan,
+          licenseChannelLimit: licence.channelLimit,
+          licenseExpiresAt: licence.expiresAt,
+        } : p)),
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId,
+          message: `Licence ${licence.licenseId} installed (${before} → ${licence.plan}, ${licence.channelLimit}ch, ${licence.expiresAt})`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };

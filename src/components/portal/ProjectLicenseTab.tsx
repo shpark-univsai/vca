@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Gem, Layers, Sprout } from "lucide-react";
 import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META, useTypeLabel } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TYPE_META, useTypeLabel, usePortalEditAccess } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
+import { useToast } from "../Toast";
+import {
+  parseLicenseFile, diffLicense, licenseAlreadyExpired,
+  type ParsedLicense, type LicenseParseError,
+} from "@/lib/licenseFile";
 
 // Cumulative — each tier includes everything the tier before it unlocks.
 /**
@@ -109,6 +114,39 @@ const T = {
     inUseNow: (used: number, avail: number) => `${used} in use · ${avail} free`,
     scopeExcluded: "Not covered",
     channelsCostPerYear: (cost: string) => `$${cost}/yr`,
+
+    // ── Licence file ───────────────────────────────────────────
+    fileHeading: "Licence file",
+    fileLead: "Channels, term and plan above come from a file Univs.ai signs and issues. Install a new one here when your contract changes.",
+    fileOnRecord: (id: string) => `Installed: ${id}`,
+    fileNoneOnRecord: "No licence file has been installed on this site.",
+    fileNoneHint: "The figures above were configured before licence files existed. Installing a file replaces them with what the file says.",
+    fileInstall: "Install a licence file",
+    fileCancel: "Cancel",
+    fileDropLabel: "Drop the .lic file here, or paste its text",
+    filePastePlaceholder: "-----BEGIN VCA LICENSE-----",
+    fileChoose: "Choose file",
+    fileReview: "Review",
+    fileApply: "Install this licence",
+    fileApplied: (id: string) => `Licence ${id} installed`,
+    fileWhatChanges: "What this changes",
+    fileNoChange: "unchanged",
+    fileFieldPlan: "Plan",
+    fileFieldChannels: "Channels",
+    fileFieldExpiry: "Expiry",
+    fileIssuedTo: "Issued to",
+    fileLicenceId: "Licence",
+    fileKeyId: "Signing key",
+    fileHeaderNote: "The lines above the signed block are a human-readable label. The server reads only the signed part — editing the label changes nothing.",
+    fileServerVerifies: "This preview is what the file appears to contain. Whether it is genuine is decided by the server, which holds the key.",
+    fileWarnExpired: "This licence's term has already ended. Installing it will not extend anything — ask for a reissued file. (If this site's clock is wrong, that would also produce this message.)",
+    fileErrEmpty: "Nothing to read. Drop a file or paste its text.",
+    fileErrNoArmor: "This looks like part of a licence file. Copy the whole thing, including the BEGIN and END lines.",
+    fileErrNotJws: "This is not a licence file. A licence is one long line of three dot-separated parts between the BEGIN and END lines.",
+    fileErrBadBase64: "The signed part of this file is damaged — it did not survive being copied. Ask for the file itself rather than pasted text.",
+    fileErrBadJson: "The signed part of this file could not be read. Ask for it to be reissued.",
+    fileErrMissing: (fields: string) => `This file is missing what a licence has to say: ${fields}. Ask for it to be reissued.`,
+    fileErrSchema: (n: number) => `This licence was written for a newer version of VCA (format ${n}). Upgrade this installation, or ask for a file in the current format.`,
   },
   ko: {
     notSet: "미설정",
@@ -140,6 +178,39 @@ const T = {
     inUseNow: (used: number, avail: number) => `현재 ${used} 사용 · ${avail} 여유`,
     scopeExcluded: "미포함",
     channelsCostPerYear: (cost: string) => `연 $${cost}`,
+
+    // ── 라이선스 파일 ──────────────────────────────────────────
+    fileHeading: "라이선스 파일",
+    fileLead: "위의 채널 수와 기간, 플랜은 Univs.ai가 서명해 발급한 파일에서 나옵니다. 계약이 바뀌면 새 파일을 여기서 설치합니다.",
+    fileOnRecord: (id: string) => `설치됨: ${id}`,
+    fileNoneOnRecord: "이 사이트에 설치된 라이선스 파일이 없습니다.",
+    fileNoneHint: "위 값들은 라이선스 파일이 생기기 전에 설정된 것입니다. 파일을 설치하면 파일에 적힌 값으로 대체됩니다.",
+    fileInstall: "라이선스 파일 설치",
+    fileCancel: "취소",
+    fileDropLabel: ".lic 파일을 여기에 놓거나, 내용을 붙여넣으세요",
+    filePastePlaceholder: "-----BEGIN VCA LICENSE-----",
+    fileChoose: "파일 선택",
+    fileReview: "확인",
+    fileApply: "이 라이선스를 설치",
+    fileApplied: (id: string) => `라이선스 ${id}를 설치했습니다`,
+    fileWhatChanges: "무엇이 바뀌는가",
+    fileNoChange: "그대로",
+    fileFieldPlan: "플랜",
+    fileFieldChannels: "채널",
+    fileFieldExpiry: "만료",
+    fileIssuedTo: "발급 대상",
+    fileLicenceId: "라이선스",
+    fileKeyId: "서명 키",
+    fileHeaderNote: "서명된 블록 위의 줄들은 사람이 읽으라고 붙인 설명입니다. 서버는 서명된 부분만 읽습니다 — 설명을 고쳐도 아무것도 바뀌지 않습니다.",
+    fileServerVerifies: "이 미리보기는 파일이 담고 있다고 말하는 내용입니다. 진짜인지는 키를 가진 서버가 판단합니다.",
+    fileWarnExpired: "이 라이선스의 기간은 이미 끝났습니다. 설치해도 아무것도 연장되지 않으니 재발급을 요청하세요. (이 사이트의 시계가 틀려도 같은 문구가 나옵니다.)",
+    fileErrEmpty: "읽을 것이 없습니다. 파일을 놓거나 내용을 붙여넣으세요.",
+    fileErrNoArmor: "라이선스 파일의 일부로 보입니다. BEGIN과 END 줄을 포함해서 전체를 복사해주세요.",
+    fileErrNotJws: "라이선스 파일이 아닙니다. 라이선스는 BEGIN과 END 줄 사이에 점으로 나뉜 세 부분이 한 줄로 들어 있습니다.",
+    fileErrBadBase64: "이 파일의 서명된 부분이 손상됐습니다 — 복사되는 과정에서 깨졌습니다. 붙여넣기 대신 파일 자체를 받아주세요.",
+    fileErrBadJson: "이 파일의 서명된 부분을 읽지 못했습니다. 재발급을 요청하세요.",
+    fileErrMissing: (fields: string) => `라이선스가 반드시 담아야 할 것이 빠져 있습니다: ${fields}. 재발급을 요청하세요.`,
+    fileErrSchema: (n: number) => `이 라이선스는 더 새로운 버전의 VCA용으로 만들어졌습니다(형식 ${n}). 이 설치를 업그레이드하거나, 현재 형식의 파일을 요청하세요.`,
   },
 } as const;
 
@@ -540,7 +611,263 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, maxWidth: "300px", textAlign: "right" }}>{t.contractNote}</p>
         </div>
       </div>
+
+      {/* Outside the document, deliberately.
+          The card above is the agreement — what was bought, printed the way a contract prints. The
+          file is the instrument that delivers it, and putting a drop zone inside a document makes
+          the document look editable, which is the one thing this page has spent its whole design
+          saying it is not. */}
+      <LicenseFileSection projectId={projectId} t={t} />
     </div>
+  );
+}
+
+/**
+ * Where a licence file comes in.
+ *
+ * The counterpart to the vendor's issuer: they sign a file, somebody carries it here, this takes
+ * it. Until this existed the channel count on a site had no way of arriving at all — a project
+ * created today gets no limit, and a site with no limit cannot connect a camera, so the first day
+ * of every installation was a dead end. That is the hole this closes.
+ *
+ * Three states in one place rather than a wizard: what is installed, what you are about to
+ * install, and what that would change. A licence is one artifact and one decision, and the reader
+ * needs the before and after side by side at the moment they decide — a step-by-step flow puts the
+ * old values on a screen they have already left.
+ */
+function LicenseFileSection({ projectId, t }: {
+  projectId: string;
+  t: (typeof T)["en"] | (typeof T)["ko"];
+}) {
+  const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
+  const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
+  const installLicenseFile = useVcaStore(s => s.installLicenseFile);
+  const { showToast } = useToast();
+
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [parsed, setParsed] = useState<ParsedLicense | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  // Same reason as the tab above: the clock is not a pure input. Only used to warn about a licence
+  // that is already past its term, so a first frame without it simply omits the warning.
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
+
+  if (!project) return null;
+
+  const describeError = (e: LicenseParseError): string => {
+    switch (e.kind) {
+      case "empty": return t.fileErrEmpty;
+      case "noArmor": return t.fileErrNoArmor;
+      case "notJws": return t.fileErrNotJws;
+      case "badBase64": return t.fileErrBadBase64;
+      case "badJson": return t.fileErrBadJson;
+      case "missingClaims": return t.fileErrMissing(e.fields.join(", "));
+      case "unsupportedSchema": return t.fileErrSchema(e.schema);
+    }
+  };
+
+  const read = (value: string) => {
+    setText(value);
+    if (!value.trim()) { setParsed(null); setError(null); return; }
+    const result = parseLicenseFile(value);
+    if (result.ok) { setParsed(result.license); setError(null); }
+    else { setParsed(null); setError(describeError(result.error)); }
+  };
+
+  const readFile = (file: File) => {
+    file.text().then(read).catch(() => setError(t.fileErrBadJson));
+  };
+
+  const close = () => { setOpen(false); setText(""); setParsed(null); setError(null); };
+
+  const apply = () => {
+    if (!parsed) return;
+    const p = parsed.payload;
+    installLicenseFile(projectId, {
+      licenseId: p.licenseId,
+      plan: p.plan,
+      channelLimit: p.limits.channels,
+      expiresAt: p.term.perpetual || !p.term.expiresAt ? UNLIMITED_EXPIRY : p.term.expiresAt,
+    });
+    showToast({ variant: "success", title: t.fileApplied(p.licenseId) });
+    close();
+  };
+
+  const diff = parsed
+    ? diffLicense(parsed.payload, {
+        plan: project.licensePlan,
+        channels: project.licenseChannelLimit,
+        expiresAt: project.licenseExpiresAt,
+      }, t.unlimited)
+    : null;
+  const expiredOnArrival = parsed && nowMs !== null && licenseAlreadyExpired(parsed.payload, nowMs);
+
+  const fieldLabel = { plan: t.fileFieldPlan, channels: t.fileFieldChannels, expiry: t.fileFieldExpiry };
+
+  return (
+    <section style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, marginTop: "16px", padding: "24px 32px" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "20px", flexWrap: "wrap" }}>
+        <div style={{ minWidth: 0 }}>
+          <h3 style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", margin: 0 }}>{t.fileHeading}</h3>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, margin: "6px 0 0", maxWidth: "62ch" }}>{t.fileLead}</p>
+          {/* What is on record today. A site configured before licence files existed has numbers
+              with no file behind them, and saying so is more useful than an empty line — it tells
+              the reader why installing a file will change figures they thought were settled. */}
+          <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.7, margin: "10px 0 0" }}>
+            {project.licenseChannelLimit === undefined ? t.fileNoneOnRecord : t.fileNoneHint}
+          </p>
+        </div>
+        {!open && (
+          <button
+            className="portal-btn-outline"
+            onClick={() => setOpen(true)}
+            disabled={!mayEdit}
+            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, fontFamily: "inherit", flexShrink: 0, cursor: mayEdit ? "pointer" : "not-allowed" }}
+          >
+            {t.fileInstall}
+          </button>
+        )}
+      </div>
+
+      {/* Refusal as readable text, not a tooltip on a disabled control — the same call the row
+          menus make, for the same reason: a tooltip on a disabled control is unreliable across
+          browsers and this sentence has to be read. */}
+      {!mayEdit && !open && (
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, margin: "12px 0 0" }}>{readOnlyReason}</p>
+      )}
+
+      {open && (
+        <div style={{ marginTop: "20px", borderTop: BORDER, paddingTop: "20px" }}>
+          <div
+            onDragOver={e => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={e => {
+              e.preventDefault();
+              setDragging(false);
+              const file = e.dataTransfer.files[0];
+              if (file) readFile(file);
+            }}
+            style={{
+              border: `1px dashed ${dragging ? "var(--gray-900)" : "var(--gray-300)"}`,
+              borderRadius: "12px",
+              backgroundColor: dragging ? "var(--gray-50)" : "transparent",
+              padding: "16px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBottom: "10px" }}>
+              <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", margin: 0 }}>{t.fileDropLabel}</p>
+              <button
+                className="portal-btn-quiet"
+                onClick={() => fileInput.current?.click()}
+                style={{ height: "28px", padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}
+              >
+                {t.fileChoose}
+              </button>
+              <input
+                ref={fileInput}
+                type="file"
+                accept=".lic,.txt,text/plain"
+                onChange={e => { const f = e.target.files?.[0]; if (f) readFile(f); }}
+                style={{ display: "none" }}
+              />
+            </div>
+            {/* Paste is the primary path, not a fallback. At an internet-isolated site the file may
+                not be allowed to cross the boundary at all, and what arrives is text read out of an
+                internal mailbox or off another screen. */}
+            <textarea
+              value={text}
+              onChange={e => read(e.target.value)}
+              placeholder={t.filePastePlaceholder}
+              spellCheck={false}
+              style={{
+                width: "100%", boxSizing: "border-box", minHeight: "96px", resize: "vertical",
+                border: BORDER, borderRadius: "8px", padding: "10px 12px",
+                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "11px",
+                lineHeight: 1.6, color: "var(--gray-700)", backgroundColor: "white",
+              }}
+            />
+          </div>
+
+          {error && (
+            <p style={{ fontSize: "12px", color: "var(--danger-500)", lineHeight: 1.7, margin: "12px 0 0", maxWidth: "70ch" }}>{error}</p>
+          )}
+
+          {parsed && diff && (
+            <div style={{ marginTop: "16px" }}>
+              <dl style={{ display: "grid", gridTemplateColumns: "minmax(0, 120px) minmax(0, 1fr)", gap: "6px 16px", margin: 0, fontSize: "12px" }}>
+                <dt style={{ color: "var(--gray-500)" }}>{t.fileLicenceId}</dt>
+                <dd style={{ margin: 0, color: "var(--gray-900)", fontWeight: 600, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{parsed.payload.licenseId}</dd>
+                <dt style={{ color: "var(--gray-500)" }}>{t.fileIssuedTo}</dt>
+                <dd style={{ margin: 0, color: "var(--gray-700)" }}>{parsed.payload.customer.name}</dd>
+                {parsed.keyId && (<>
+                  <dt style={{ color: "var(--gray-500)" }}>{t.fileKeyId}</dt>
+                  <dd style={{ margin: 0, color: "var(--gray-700)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{parsed.keyId}</dd>
+                </>)}
+              </dl>
+
+              <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px", textTransform: "uppercase", margin: "18px 0 8px" }}>{t.fileWhatChanges}</p>
+              <div style={{ border: BORDER, borderRadius: "8px", overflow: "hidden" }}>
+                {diff.map((row, i) => (
+                  <div
+                    key={row.field}
+                    style={{
+                      display: "grid", gridTemplateColumns: "minmax(0, 120px) minmax(0, 1fr) 16px minmax(0, 1fr)",
+                      gap: "12px", alignItems: "baseline", padding: "10px 14px",
+                      borderBottom: i === diff.length - 1 ? "none" : BORDER,
+                      backgroundColor: row.changed ? "var(--warning-100)" : "transparent",
+                    }}
+                  >
+                    <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{fieldLabel[row.field]}</span>
+                    <span style={{ fontSize: "12px", color: "var(--gray-500)", fontVariantNumeric: "tabular-nums" }}>{row.before ?? "—"}</span>
+                    <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{row.changed ? "→" : ""}</span>
+                    <span style={{ fontSize: "12px", fontWeight: row.changed ? 700 : 400, color: row.changed ? "var(--gray-900)" : "var(--gray-400)", fontVariantNumeric: "tabular-nums" }}>
+                      {row.changed ? row.after : t.fileNoChange}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {expiredOnArrival && (
+                <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.7, margin: "12px 0 0", maxWidth: "70ch" }}>{t.fileWarnExpired}</p>
+              )}
+
+              {Object.keys(parsed.header).length > 0 && (
+                <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, margin: "12px 0 0", maxWidth: "70ch" }}>{t.fileHeaderNote}</p>
+              )}
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, margin: "6px 0 0", maxWidth: "70ch" }}>{t.fileServerVerifies}</p>
+            </div>
+          )}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "20px" }}>
+            <button
+              className="portal-btn-outline"
+              onClick={close}
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}
+            >
+              {t.fileCancel}
+            </button>
+            <button
+              className="portal-btn-primary"
+              onClick={apply}
+              disabled={!parsed}
+              style={{
+                height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none",
+                backgroundColor: parsed ? "var(--primary-400)" : "var(--gray-200)",
+                color: parsed ? "white" : "var(--gray-400)",
+                fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+                cursor: parsed ? "pointer" : "not-allowed",
+              }}
+            >
+              {t.fileApply}
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
