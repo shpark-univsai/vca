@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
-import { canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
+import { canEnterApp, canEnterPortal, canManageAccess, currentPortalUser, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed, zoneHour } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, usePortalEditAccess } from "./PortalShared";
 import { useToast } from "../Toast";
@@ -35,6 +35,7 @@ const T = {
     statAvailable: (n: number) => `${n} available`,
     statOnlineShare: (pct: number) => `${pct}% online`,
     approveAccessRequests: "Approve Access Requests",
+    reasonNotOwner: "Only an owner can change access.",
     cameraConnectivity: "Camera connectivity",
     connectedSuffix: (n: number) => `/ ${n} connected`,
     online: "Online",
@@ -128,6 +129,7 @@ const T = {
     statAvailable: (n: number) => `${n} 여유`,
     statOnlineShare: (pct: number) => `온라인 ${pct}%`,
     approveAccessRequests: "접근 요청 승인",
+    reasonNotOwner: "접근 권한 변경은 최고관리자만 할 수 있습니다.",
     cameraConnectivity: "카메라 연결 상태",
     connectedSuffix: (n: number) => `/ ${n}대 연결됨`,
     online: "온라인",
@@ -657,11 +659,17 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     ...(projectPersons.length === 0 ? [{ key: "novips", text: t.attnNoVips, color: "var(--gray-400)", tab: "vip" as DetailTab }] : []),
   ];
 
+  // Owner only, the same as the copy of this panel on Users & Permissions. An approval mints an
+  // account with a working sign-in link; the Overview being a summary screen does not make the
+  // button on it a lighter action.
+  const manageAccess = meUser ? canManageAccess(meUser.permission) : true;
   const approveRequest = (id: string, name: string) => {
+    if (!manageAccess) return;
     approveAccessRequests([id]);
     showToast({ variant: "success", title: t.toastApprovedTitle, desc: name });
   };
   const dismissRequest = (id: string, name: string) => {
+    if (!manageAccess) return;
     dismissAccessRequest(id);
     showToast({ variant: "warning", title: t.toastDismissedTitle, desc: name });
   };
@@ -1495,12 +1503,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                         <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{r.name}</p>
                         {r.reason && <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>&quot;{r.reason}&quot;</p>}
                         <div style={{ display: "flex", gap: "8px" }}>
-                          <button onClick={() => approveRequest(r.id, r.name)}
-                            style={{ flex: 1, padding: "6px 10px", borderRadius: "8px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                          <button onClick={() => approveRequest(r.id, r.name)} disabled={!manageAccess} title={manageAccess ? undefined : t.reasonNotOwner}
+                            style={{ flex: 1, padding: "6px 10px", borderRadius: "8px", border: manageAccess ? "1px solid var(--gray-900)" : BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-900)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
                             {t.approve}
                           </button>
                           <button className="portal-btn-outline" onClick={() => dismissRequest(r.id, r.name)}
-                            style={{ flex: 1, padding: "6px 10px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                            disabled={!manageAccess} title={manageAccess ? undefined : t.reasonNotOwner}
+                            style={{ flex: 1, padding: "6px 10px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-600)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
                             {t.dismiss}
                           </button>
                         </div>

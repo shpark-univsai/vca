@@ -6,7 +6,7 @@ import { useVcaStore, type Camera, type CameraStatus, type UploadedMedia, type U
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { CARD_BORDER, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess } from "./PortalShared";
+import { CARD_BORDER, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -21,6 +21,8 @@ const T = {
     statusError: "Error",
     offlineSuffix: (n: number) => `${n} offline`,
     onlineCountLabel: (n: number) => `${n} online`,
+    confirmDeleteCamTitle: (name: string) => `Remove ${name}?`,
+    confirmDeleteCamBody: "The camera comes off this project along with its zone, its server assignment and its place on the map. Recorded detections stay.",
     healthConnected: "connected",
     healthConnectedWhy: "Answered the last connection attempt. It says the stream is reachable, not that anything is looking at it.",
     healthOfFleet: (total: number) => `of ${total}`,
@@ -159,6 +161,8 @@ const T = {
     statusError: "오류",
     offlineSuffix: (n: number) => `${n} 오프라인`,
     onlineCountLabel: (n: number) => `온라인 ${n}`,
+    confirmDeleteCamTitle: (name: string) => `${name}을(를) 삭제할까요?`,
+    confirmDeleteCamBody: "이 프로젝트에서 카메라가 빠지고, 존·서버 배정·지도 위 위치도 함께 사라집니다. 기록된 탐지는 남습니다.",
     healthConnected: "연결됨",
     healthConnectedWhy: "마지막 연결 시도에 응답했습니다. 스트림에 닿는다는 뜻이지, 누가 보고 있다는 뜻은 아닙니다.",
     healthOfFleet: (total: number) => `/ ${total}대`,
@@ -889,9 +893,17 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     showToast({ variant: next === "online" ? "success" : "default", title: next === "online" ? t.toastReconnectedTitle : t.toastDisconnectedTitle, desc: cam.name });
   };
 
-  const handleDelete = (cam: Camera) => {
-    removeCamera(cam.id);
-    showToast({ variant: "warning", title: t.toastCameraRemovedTitle, desc: cam.name });
+  // Confirmed, like the bulk delete beside it. One route to an irreversible action should not
+  // be safer than another route to the same action — ticking a row and pressing Delete asked
+  // you to confirm, and the row's own ⋯ → Remove did it on the first click.
+  const [confirmingDeleteCam, setConfirmingDeleteCam] = useState<Camera | null>(null);
+  const handleDelete = (cam: Camera) => setConfirmingDeleteCam(cam);
+  const confirmDeleteCam = () => {
+    if (!confirmingDeleteCam) return;
+    const name = confirmingDeleteCam.name;
+    removeCamera(confirmingDeleteCam.id);
+    setConfirmingDeleteCam(null);
+    showToast({ variant: "warning", title: t.toastCameraRemovedTitle, desc: name });
   };
 
   /**
@@ -1679,6 +1691,17 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       )}
       {inspectingCameraId && cameras.find(c => c.id === inspectingCameraId) && (
         <CameraStreamModal camera={cameras.find(c => c.id === inspectingCameraId) as Camera} onClose={() => setInspectingCameraId(null)} />
+      )}
+      {confirmingDeleteCam && (
+        <ConfirmModal
+          title={t.confirmDeleteCamTitle(confirmingDeleteCam.name)}
+          body={t.confirmDeleteCamBody}
+          confirmLabel={t.removeAction}
+          cancelLabel={t.cancel}
+          danger
+          onConfirm={confirmDeleteCam}
+          onClose={() => setConfirmingDeleteCam(null)}
+        />
       )}
       {confirmingStatusCam && (
         <ConfirmStatusModal

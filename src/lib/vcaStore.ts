@@ -2915,6 +2915,15 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       // decision anybody should be able to take in one gesture — each project is deleted from
       // its own Settings screen, where what is about to go is listed.
       if (state.projects.some(p => p.teamId === teamId)) return state;
+      // And never at the cost of the last owner. updatePortalUserStatus, updatePortalUserPermission,
+      // updatePortalUserAccess and removePortalUser all refuse exactly this outcome because there
+      // is no recovery path from an installation nobody can grant permissions in — and this
+      // action reached it by the side door, by deleting the container the account sits in.
+      const survivors = state.portalUsers.filter(u => u.teamId !== teamId);
+      const ownersLeft = survivors.filter(u => u.permission === "owner" && u.status === "active").length;
+      if (ownersLeft === 0 && state.portalUsers.some(u => u.teamId === teamId && u.permission === "owner" && u.status === "active")) {
+        return state;
+      }
       return {
         teams: state.teams.filter(o => o.id !== teamId),
         // Accounts filed under a team with no projects have nothing left to open. Removed with
@@ -2929,12 +2938,46 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
+  /*
+   * Infrastructure changes are audited, like everything else that changes a deployment.
+   * These three were the only mutations in the store that wrote nothing at all, so the Activity
+   * log — the screen an auditor opens to find out what changed — never showed a server being
+   * added, re-pointed or removed.
+   */
   addServer: (server) =>
-    set(state => ({ servers: [...state.servers, { ...server, id: `srv-${++serverSeq}` }] })),
+    set(state => ({
+      servers: [...state.servers, { ...server, id: `srv-${++serverSeq}` }],
+      auditLog: [{ id: `audit-${++auditSeq}`, projectId: server.projectId, message: `Server ${server.name} added`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    })),
   updateServer: (serverId, updates) =>
-    set(state => ({ servers: state.servers.map(s => (s.id === serverId ? { ...s, ...updates } : s)) })),
+    set(state => {
+      const server = state.servers.find(s => s.id === serverId);
+      if (!server) return state;
+      return {
+        servers: state.servers.map(s => (s.id === serverId ? { ...s, ...updates } : s)),
+        auditLog: [{ id: `audit-${++auditSeq}`, projectId: server.projectId, message: `Server ${updates.name ?? server.name} updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   removeServer: (serverId) =>
-    set(state => ({ servers: state.servers.filter(s => s.id !== serverId) })),
+    set(state => {
+      const server = state.servers.find(s => s.id === serverId);
+      if (!server) return state;
+      // Cameras that pointed at it are unassigned, not left holding a dead id. They were: the
+      // table then printed an em dash in the "assigned" colour, and re-opening the camera's
+      // edit form and saving wrote the dangling id straight back.
+      const orphaned = state.cameras.filter(c => c.serverId === serverId).length;
+      return {
+        servers: state.servers.filter(s => s.id !== serverId),
+        cameras: state.cameras.map(c => (c.serverId === serverId ? { ...c, serverId: undefined } : c)),
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId: server.projectId,
+          message: orphaned > 0
+            ? `Server ${server.name} removed — ${orphaned} camera${orphaned === 1 ? "" : "s"} left unassigned`
+            : `Server ${server.name} removed`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   // Only ever touches rows that (a) were asked for and (b) don't already have a code — reissuing
   // one is a separate, explicit action, not something a repeated bulk-issue click should do.
   issueRegistrationCodes: (employeeIds) =>

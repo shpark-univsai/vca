@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Asterisk, ClipboardList, MailQuestion, Users2, UserX, ClipboardPlus, Download, KeyRound, Printer, Upload} from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
@@ -238,6 +238,9 @@ const T = {
     mailNoteReachable: "Invite will be sent by external email.",
     cancel: "Cancel",
     save: "Save",
+    errEmail: "That is not an email address.",
+    errDuplicate: "An account already uses this address.",
+    errDomain: (d: string) => `Accounts must be on @${d} — mail to anything else is not deliverable from this installation.`,
     editProjects: "Projects…",
     projectsModalTitle: "Projects",
     projectsModalIntro: (name: string) => `Which of this team's projects ${name} may open. A project they are not given stops appearing in their app.`,
@@ -463,6 +466,9 @@ const T = {
     mailNoteReachable: "초대장이 외부 이메일로 발송됩니다.",
     cancel: "취소",
     save: "저장",
+    errEmail: "이메일 주소 형식이 아닙니다.",
+    errDuplicate: "이미 이 주소를 쓰는 계정이 있습니다.",
+    errDomain: (d: string) => `계정은 @${d} 주소여야 합니다 — 이 설치본에서 다른 주소로는 메일이 나가지 않습니다.`,
     editProjects: "프로젝트…",
     projectsModalTitle: "프로젝트",
     projectsModalIntro: (name: string) => `${name} 님이 열 수 있는 이 팀의 프로젝트입니다. 주지 않은 프로젝트는 앱에서 보이지 않습니다.`,
@@ -488,6 +494,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   useEscapeKey(onClose);
   const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
+  const allUsers = useVcaStore(s => s.portalUsers);
   const addPortalUser = useVcaStore(s => s.addPortalUser);
   const issueInviteToken = useVcaStore(s => s.issueInviteToken);
   const { showToast } = useToast();
@@ -535,7 +542,26 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
         ? t.mailNoteIsolated
         : t.mailNoteReachable;
 
-  const canInvite = name.trim() !== "" && email.trim() !== "" && teamId !== "" && projectIds.length > 0;
+  /*
+   * The same three checks /request-access already makes, for the reason resolveMailConfig's own
+   * note predicted: "the invite modal would refuse an address the request form accepted." It was
+   * the other way round — the request form validated and this one took anything.
+   *
+   * Duplicate matters more than it looks. currentPortalUser resolves the signed-in identity BY
+   * EMAIL, so a second account on an existing address silently shadows the first one's role.
+   */
+  const typed = email.trim();
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed);
+  const { mailDomain } = resolveMailConfig(projectIds[0] ?? "", projects, teams);
+  const undeliverable = emailValid && !isMailDeliverable(typed, mailDomain);
+  const duplicate = typed !== "" && allUsers.some(u => u.email.toLowerCase() === typed.toLowerCase());
+  const emailError = typed === "" ? ""
+    : !emailValid ? t.errEmail
+    : duplicate ? t.errDuplicate
+    : undeliverable && mailDomain ? t.errDomain(mailDomain)
+    : "";
+  const canInvite = name.trim() !== "" && emailValid && !duplicate && !undeliverable
+    && teamId !== "" && projectIds.length > 0;
   const submit = () => {
     // A project is required, the same as it is when the assignment is changed later: an account
     // invited with nothing ticked signs into an empty app and reads it as a broken product.
@@ -572,6 +598,12 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.emailLabel}</label>
             <TextField value={email} onChange={setEmail} placeholder="name@univs.ai" type="email" />
+            {/* Under the field, not on submit. The three ways this address can be wrong are all
+                knowable while it is being typed, and finding out after pressing Send is finding
+                out after an account was nearly created. */}
+            {emailError && (
+              <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.5, marginTop: "6px" }}>{emailError}</p>
+            )}
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.teamLabel}</label>
@@ -1137,8 +1169,15 @@ function RecoveryModeNotice({ supportContact }: { supportContact: string | null 
  * that way in — with it off (the on-premise default, see authConfig's accessRequest) no request can
  * ever arrive, and an empty queue titled "Access Requests" implies a door that is not there.
  */
+/**
+ * Approving one of these creates an account with a working sign-in link, which is the same
+ * power as inviting somebody — and it sat directly under an Invite button disabled with "Only
+ * an owner can change access", fully live for an admin or an auditor. Dismiss destroyed a
+ * pending request with no gate and no confirmation.
+ */
 function AccessRequestsPanel({ projectId }: { projectId: string }) {
   const accessRequests = useVcaStore(s => s.accessRequests);
+  const portalUsers = useVcaStore(s => s.portalUsers);
   const approveAccessRequests = useVcaStore(s => s.approveAccessRequests);
   const issueInviteToken = useVcaStore(s => s.issueInviteToken);
   const dismissAccessRequest = useVcaStore(s => s.dismissAccessRequest);
@@ -1159,10 +1198,15 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
   if (requests.length === 0) return null;
 
   const toggle = (id: string) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  // Same gate as Invite, because it is the same act: an approval mints an account and hands out
+  // a /password-setup link. Fails open with no session, like every other gate in Portal.
+  const me = currentPortalUser(portalUsers);
+  const manageAccess = me ? canManageAccess(me.permission) : true;
   const allSelected = requests.length > 0 && requests.every(r => selected.includes(r.id));
   const toggleAll = () => setSelected(allSelected ? [] : requests.map(r => r.id));
 
   const approve = (ids: string[]) => {
+    if (!manageAccess) return;
     const newUserIds = approveAccessRequests(ids);
     setSelected(prev => prev.filter(id => !ids.includes(id)));
     if (newUserIds.length === 1) {
@@ -1183,7 +1227,8 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
         </div>
         {selected.length > 0 && (
           <button onClick={() => approve(selected)}
-            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+            disabled={!manageAccess} title={manageAccess ? undefined : t.reasonNotOwner}
+            style={{ padding: "8px 14px", borderRadius: "8px", border: manageAccess ? "1px solid var(--gray-900)" : BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-900)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
             {t.approveSelected(selected.length)}
           </button>
         )}
@@ -1204,12 +1249,14 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
               </p>
             </div>
             <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-              <button className="portal-btn-outline" onClick={() => dismissAccessRequest(r.id)}
-                style={{ padding: "8px 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+              <button className="portal-btn-outline" onClick={() => manageAccess && dismissAccessRequest(r.id)}
+                disabled={!manageAccess} title={manageAccess ? undefined : t.reasonNotOwner}
+                style={{ padding: "8px 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-600)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
                 {t.dismiss}
               </button>
               <button onClick={() => approve([r.id])}
-                style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--gray-900)", backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                disabled={!manageAccess} title={manageAccess ? undefined : t.reasonNotOwner}
+                style={{ padding: "8px 12px", borderRadius: "8px", border: manageAccess ? "1px solid var(--gray-900)" : BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-900)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
                 {t.approve}
               </button>
             </div>
@@ -1744,8 +1791,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       {/* Stays up until a second administrator exists. Not dismissible: it is not a tip, it is a
           single point of failure with no recovery path — the supplier has no account here, so
           losing the one administrator ends the customer's ability to grant anything. Counted across
-          all users, not the filtered view. */}
-      {portalUsers.filter(u => u.permission === "admin" && u.status === "active").length <= 1 && (
+          all users, not the filtered view.
+
+          Counted through canManageAccess, not `permission === "admin"`. The power the sentence
+          describes — granting permissions — is the owner's, which is what isLastActiveAdmin
+          guards against losing. Counting admins made the banner wrong in both directions: it
+          disappeared when a second ADMIN was promoted (still one owner, still no recovery) and
+          it stayed up when a second OWNER was, which is exactly the fix it was asking for. */}
+      {portalUsers.filter(u => canManageAccess(u.permission) && u.status === "active").length <= 1 && (
         <div style={{
           display: "flex", gap: "12px", alignItems: "flex-start",
           padding: "14px 16px", borderRadius: "12px", marginBottom: "16px",
@@ -2207,13 +2260,18 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <StageBadge stage={stage} t={t} />
               </div>
+              {/* Gated, like the toolbar directly above this table. It was not, and issuing a
+                  code is not a small thing to leave open: the code is a live credential that
+                  /register turns into an account, so a read-only auditor could mint a way in. */}
               <RowActionsMenu actions={[
-                { label: rt.editEntry, onClick: () => setRosterEditorFor({ entry }) },
+                { label: rt.editEntry, onClick: () => setRosterEditorFor({ entry }), disabled: !mayEdit, reason: readOnlyReason },
                 {
                   label: entry.code ? rt.reissueConfirm : rt.issueConfirm,
                   onClick: () => setIssuingEntry(entry),
+                  disabled: !mayEdit,
+                  reason: readOnlyReason,
                 },
-                { label: rt.remove, onClick: () => setRemovingEntry(entry), danger: true },
+                { label: rt.remove, onClick: () => setRemovingEntry(entry), danger: true, disabled: !mayEdit, reason: readOnlyReason },
               ]} />
             </div>
           );

@@ -6,7 +6,7 @@ import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type Se
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
-import { SummaryStrip, CARD_BORDER, TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch, usePortalEditAccess } from "./PortalShared";
+import { SummaryStrip, CARD_BORDER, TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch, usePortalEditAccess, ConfirmModal } from "./PortalShared";
 
 const SERVER_TYPES: ServerType[] = ["AI Camera", "Normal Camera", "Face Recognition", "Image Store", "Database"];
 
@@ -601,6 +601,9 @@ function MailField({ label, value, onChange, placeholder, hint, error }: {
 const MAIN_T = {
   en: {
     subTabInfra: "Infrastructure", subTabMail: "Mail & Network", subTabApi: "API Documentation",
+    confirmDeleteTitle: (name: string) => `Remove ${name}?`,
+    confirmDeleteBody: "The server comes off this project. Any camera assigned to it is left unassigned — nothing stops processing that was not already stopped, but nobody is told where those cameras run next.",
+    confirmDeleteCameras: (n: number) => (n === 1 ? "1 camera is assigned to it." : `${n} cameras are assigned to it.`),
     gapError: "connection failing",
     gapErrorWhy: "Portal cannot reach the server. Everything assigned to it stops being processed, whatever the cameras themselves say.",
     gapNoCameras: "no cameras assigned",
@@ -616,7 +619,7 @@ const MAIN_T = {
     emptyNoServers: "No servers configured for this project yet.",
     emptyNoMatch: "No servers match these filters.",
     colStatus: "Status", colName: "Server Name", colIp: "Server IP", colType: "Server Type", colSpec: "Specification",
-    edit: "Edit", remove: "Remove",
+    edit: "Edit", remove: "Remove", cancel: "Cancel",
     showingEntries: (start: number, end: number, total: number) => `Showing ${start} to ${end} of ${total} entries`,
     rowsPerPage: "Rows per page:",
     addServerTitle: "Add server", editServerTitle: "Edit server",
@@ -624,6 +627,9 @@ const MAIN_T = {
   },
   ko: {
     subTabInfra: "인프라", subTabMail: "메일 및 네트워크", subTabApi: "API 문서",
+    confirmDeleteTitle: (name: string) => `${name}을(를) 삭제할까요?`,
+    confirmDeleteBody: "이 프로젝트에서 서버가 빠집니다. 여기 배정돼 있던 카메라는 미배정 상태가 됩니다 — 이미 멈춰 있던 것 말고 새로 멈추는 건 없지만, 그 카메라들이 이제 어디서 도는지는 아무도 모릅니다.",
+    confirmDeleteCameras: (n: number) => `배정된 카메라 ${n}대.`,
     gapError: "연결 실패",
     gapErrorWhy: "포털에서 서버에 닿지 않습니다. 카메라 쪽 표시와 무관하게, 이 서버에 붙은 것은 전부 처리가 멈춥니다.",
     gapNoCameras: "카메라 미할당",
@@ -639,7 +645,7 @@ const MAIN_T = {
     emptyNoServers: "이 프로젝트에 아직 설정된 서버가 없습니다.",
     emptyNoMatch: "필터와 일치하는 서버가 없습니다.",
     colStatus: "상태", colName: "서버 이름", colIp: "서버 IP", colType: "서버 유형", colSpec: "사양",
-    edit: "수정", remove: "삭제",
+    edit: "수정", remove: "삭제", cancel: "취소",
     showingEntries: (start: number, end: number, total: number) => `전체 ${total}건 중 ${start}–${end}건 표시`,
     rowsPerPage: "페이지당 행 수:",
     addServerTitle: "서버 추가", editServerTitle: "서버 수정",
@@ -763,9 +769,16 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
     showToast({ variant: "success", title: t.toastUpdated, desc: values.name.trim() });
   };
 
-  const handleDelete = (server: Server) => {
-    removeServer(server.id);
-    showToast({ variant: "warning", title: t.toastRemoved, desc: server.name });
+  // Confirmed, and it says what goes with it. Removing a server orphans every camera assigned
+  // to it, which is not visible from this table at all.
+  const [confirmingDelete, setConfirmingDelete] = useState<Server | null>(null);
+  const handleDelete = (server: Server) => setConfirmingDelete(server);
+  const confirmDelete = () => {
+    if (!confirmingDelete) return;
+    const name = confirmingDelete.name;
+    removeServer(confirmingDelete.id);
+    setConfirmingDelete(null);
+    showToast({ variant: "warning", title: t.toastRemoved, desc: name });
   };
 
   return (
@@ -938,6 +951,23 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
         </>
       )}
 
+      {confirmingDelete && (
+        <ConfirmModal
+          title={t.confirmDeleteTitle(confirmingDelete.name)}
+          body={t.confirmDeleteBody}
+          confirmLabel={t.remove}
+          cancelLabel={t.cancel}
+          danger
+          onConfirm={confirmDelete}
+          onClose={() => setConfirmingDelete(null)}
+        >
+          {/* The count the table does not show. A server row says nothing about what runs on it,
+              so "are you sure" with no number is a question nobody can answer. */}
+          <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginTop: "12px" }}>
+            {t.confirmDeleteCameras(projectCameras.filter(c => c.serverId === confirmingDelete.id).length)}
+          </p>
+        </ConfirmModal>
+      )}
       {showAdd && (
         <ServerFormModal title={t.addServerTitle} initial={EMPTY_FORM} onClose={() => setShowAdd(false)} onSubmit={createServer} />
       )}
