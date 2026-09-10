@@ -22,17 +22,25 @@
  * Decorative: the caller marks it aria-hidden, so a screen reader lands on the form.
  */
 
-/** Camera positions. Four, because the fourth saw nobody — coverage without a sighting is the
- *  ordinary case, and a picture where every camera has a hit would be the flattering lie. */
-const CAMERAS: { x: number; y: number; seen: boolean }[] = [
-  { x: 132, y: 386, seen: true },
-  { x: 268, y: 250, seen: true },
-  { x: 424, y: 318, seen: true },
-  { x: 388, y: 132, seen: false },
+/**
+ * The sightings, in the order the cameras saw them.
+ *
+ * There was a fifth mark here — a hollow ring, a camera watching with nothing to report. The
+ * reasoning was sound (coverage without a sighting is the ordinary case) and it still came out
+ * wrong: the caption below the drawing does not mention it, so the first person to see it asked
+ * what it was. An unexplained mark is not a second idea, it is noise. One drawing, one thing.
+ *
+ * Four rather than three, spread across the frame — with the ring gone the top half was empty
+ * grid and the trail sat in a corner.
+ */
+const CAMERAS: { x: number; y: number }[] = [
+  { x: 108, y: 392 },
+  { x: 232, y: 268 },
+  { x: 368, y: 312 },
+  { x: 462, y: 168 },
 ];
 
-/** The trail, through the three that saw the same person, in the order they saw them. */
-const TRAIL = CAMERAS.filter(c => c.seen);
+const TRAIL = CAMERAS;
 
 /** Plan grid. 40px fine, every fifth line heavier — the convention any floor plan or site plan
  *  uses, which is exactly why it reads as "a space" without naming one. */
@@ -76,24 +84,33 @@ export default function AuthTrailArt({ className }: { className?: string }) {
       <path d={`M${ax - 6} ${ay + 5} L${ax} ${ay - 6} L${ax + 6} ${ay + 5} Z`}
             fill="var(--primary-300)" transform={`rotate(${angle} ${ax} ${ay})`} />
 
-      {/* Camera positions. The three with a sighting carry the halo; the fourth is a hollow ring —
-          a camera that is watching and has nothing to report. */}
-      {CAMERAS.map((c, i) => (
-        <g key={i}>
-          {c.seen ? (
-            <>
-              <circle cx={c.x} cy={c.y} r={i === 1 ? 24 : 17} fill="var(--primary-400)" opacity="0.12" />
-              <circle cx={c.x} cy={c.y} r={i === 1 ? 8 : 6} fill="var(--primary-400)" />
-              <circle cx={c.x} cy={c.y} r={i === 1 ? 8 : 6} stroke="var(--gray-0)" strokeWidth="2.5" />
-            </>
-          ) : (
-            <>
-              <circle cx={c.x} cy={c.y} r="6" fill="var(--gray-0)" />
-              <circle cx={c.x} cy={c.y} r="6" stroke="var(--gray-400)" strokeWidth="2" />
-            </>
-          )}
-        </g>
-      ))}
+      {/* The sightings, each marked with a camera rather than a dot.
+          Plain dots joined by a rising line read as a chart — points on a grid trending upward is
+          the most familiar graph there is, and that is the wrong sentence for this product. A
+          camera on each node says what the marks are before the caption gets a chance to.
+          The last one is larger: it is the most recent sighting, which is the one an operator is
+          looking for, and it is how Redmap already draws the end of a route. */}
+      {CAMERAS.map((c, i) => {
+        const last = i === CAMERAS.length - 1;
+        const r = last ? 19 : 15;
+        const k = (last ? 19 : 15) / 11;   // glyph drawn in an 11-unit box, scaled to the disc
+        return (
+          <g key={i}>
+            <circle cx={c.x} cy={c.y} r={last ? 32 : 26} fill="var(--primary-400)" opacity="0.10" />
+            <circle cx={c.x} cy={c.y} r={r} fill="var(--primary-400)" />
+            <circle cx={c.x} cy={c.y} r={r} stroke="var(--gray-0)" strokeWidth="2" />
+            {/* A bullet camera on a bracket, filled rather than stroked — at this size strokes
+                turn to mush and a silhouette holds. Drawn around the origin so one transform
+                places and scales it. */}
+            <g transform={`translate(${c.x} ${c.y}) scale(${k})`} fill="var(--gray-0)">
+              <path d="M-5.2 -1.9 L3.1 -3.6 a1.5 1.5 0 0 1 1.9 1.45 l0 2.1 a1.5 1.5 0 0 1 -1.9 1.45 L-5.2 1.7 a1.8 1.8 0 0 1 0 -3.6 Z" />
+              <rect x="-0.7" y="1.9" width="1.4" height="2.2" rx="0.4" />
+              <rect x="-2.9" y="4.1" width="5.8" height="1.3" rx="0.65" />
+              <circle cx="-3.1" cy="-0.1" r="1.15" fill="var(--primary-400)" />
+            </g>
+          </g>
+        );
+      })}
 
       <rect x="0" y="0" width="560" height="560" fill="url(#vca-auth-fade)" />
     </svg>
