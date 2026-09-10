@@ -110,8 +110,11 @@ export default function AuthTrailArt({ className }: { className?: string }) {
       <rect x="0" y="0" width="560" height="560" fill="url(#vca-auth-fade)" />
 
       {/* The trail. Dashed because it is inferred, not recorded — the system did not follow anyone,
-          it matched four sightings after the fact, and a solid line would claim more than that. */}
-      <path d={path} stroke="var(--primary-300)" strokeWidth="2.5" strokeDasharray="9 8"
+          it matched four sightings after the fact, and a solid line would claim more than that.
+          Flowing, with the app's own class rather than a second animation: .vca-route-line is what
+          Redmap draws a tracking route with, and it owns the dash pattern too, so no dasharray is
+          set here — one definition of what a route looks like in motion. */}
+      <path className="vca-route-line" d={path} stroke="var(--primary-300)" strokeWidth="2.5"
             strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
       <path d={`M${ax - 6} ${ay + 5} L${ax} ${ay - 6} L${ax + 6} ${ay + 5} Z`}
             fill="var(--primary-300)" transform={`rotate(${angle} ${ax} ${ay})`} />

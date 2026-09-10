@@ -215,7 +215,7 @@ function PasswordSetupForm() {
                     onFocus={() => setFocusedField("new")}
                     onBlur={() => setFocusedField(null)}
                     placeholder="••••••••"
-                    style={{ flex: 1, border: "none", outline: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                    style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
                   />
                   <button onClick={() => setShowNew(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                     {showNew ? <EyeIcon /> : <EyeOffIcon />}
@@ -234,7 +234,7 @@ function PasswordSetupForm() {
                     onFocus={() => setFocusedField("confirm")}
                     onBlur={() => setFocusedField(null)}
                     placeholder="••••••••"
-                    style={{ flex: 1, border: "none", outline: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                    style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
                   />
                   <button onClick={() => setShowConfirm(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                     {showConfirm ? <EyeIcon /> : <EyeOffIcon />}

@@ -314,7 +314,7 @@ function LoginForm() {
                     // the field with something left to do. Landing focus on a filled field means
                     // one more keystroke every shift.
                     autoFocus={identifier.length === 0}
-                    style={{ flex: 1, border: "none", outline: "none", fontSize: "15px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
+                    style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                   />
                 </div>
               </div>
@@ -345,7 +345,7 @@ function LoginForm() {
                     placeholder="••••••••"
                     autoComplete="current-password"
                     autoFocus={identifier.length > 0}
-                    style={{ flex: 1, border: "none", outline: "none", fontSize: "15px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
+                    style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                   />
                   <button type="button" onClick={() => setShowPassword(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                     {showPassword ? <EyeIcon /> : <EyeOffIcon />}

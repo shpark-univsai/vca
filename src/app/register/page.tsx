@@ -334,7 +334,7 @@ function RegisterFlow() {
           onKeyDown={e => { if (e.key === "Enter") onEnter?.(); }}
           placeholder="••••••••"
           autoFocus={key === "password"}
-          style={{ flex: 1, border: "none", outline: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+          style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
         />
         <button onClick={toggle} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
           {shown ? <EyeIcon /> : <EyeOffIcon />}

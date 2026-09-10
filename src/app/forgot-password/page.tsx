@@ -424,7 +424,7 @@ function ForgotPasswordFlow() {
                       onKeyDown={e => { if (e.key === "Enter") sendCode(); }}
                       placeholder={authConfig.employeeIdLogin ? "EMP-2041 or user@email.com" : "user@email.com"}
                       autoFocus
-                      style={{ flex: 1, border: "none", outline: "none", fontSize: "15px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
+                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                     />
                   </div>
                   {identifierError ? (
@@ -578,7 +578,7 @@ function ForgotPasswordFlow() {
                         onBlur={() => setFocusedField(null)}
                         placeholder="••••••••"
                         autoFocus
-                        style={{ flex: 1, border: "none", outline: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                        style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
                       />
                       <button onClick={() => setShowNew(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                         {showNew ? <EyeIcon /> : <EyeOffIcon />}
@@ -597,7 +597,7 @@ function ForgotPasswordFlow() {
                         onBlur={() => setFocusedField(null)}
                         onKeyDown={e => { if (e.key === "Enter") savePassword(); }}
                         placeholder="••••••••"
-                        style={{ flex: 1, border: "none", outline: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                        style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
                       />
                       <button onClick={() => setShowConfirm(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                         {showConfirm ? <EyeIcon /> : <EyeOffIcon />}

@@ -237,6 +237,10 @@
   outline-offset: 0;
   box-shadow: 0 0 0 3px var(--gray-100);
 }
+/* NOTE for anything opting out: this sets TWO properties. A screen that draws its own focus
+   treatment has to clear `box-shadow` as well as `outline` — the auth fields killed only the
+   outline and the halo went on drawing a grey rectangle inside the field, around the input's own
+   strip, which read as a second box appearing on click. They now set both to none inline. */
 
 html,
 body {
@@ -467,6 +471,12 @@ body {
   /* Must equal one full dash cycle (dash + gap). Anything else and the loop restarts mid-dash,
      which shows up as a visible stutter every 0.9s. */
   to { stroke-dashoffset: -9; }
+}
+/* The route still reads as a route without the motion — the dashes say "inferred" on their own.
+   Someone who has asked their system for less movement should not have to watch a line loop on
+   every screen that draws one, and the login panel now draws one too. */
+@media (prefers-reduced-motion: reduce) {
+  .vca-route-line { animation: none; }
 }
 
 /* ── Skeleton loading dashboard ──────────────────────────── */
