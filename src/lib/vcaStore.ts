@@ -573,6 +573,16 @@ interface VcaStoreState {
   addPerson: (person: Omit<Person, "id">) => void;
   removePerson: (personId: string) => void;
   /**
+   * A CSV import, as one act.
+   *
+   * Not addPerson in a loop. Every mutation trims the audit log to AUDIT_LOG_LIMIT, so importing
+   * two hundred names evicted every entry before it — camera removals, permission changes,
+   * project renames — and the Activity log's note about older history being "on the server" was
+   * not true of any of it, because nothing had been sent anywhere. One entry naming the file,
+   * the way removeCameras and setCamerasZone already collapse a bulk action.
+   */
+  addPersons: (persons: Omit<Person, "id">[], source: string) => number;
+  /**
    * Edit a registered face — name, tag, priority, note, photo.
    *
    * There was no way to change any of it. A VIP could be registered and removed and nothing in
@@ -693,6 +703,9 @@ interface VcaStoreState {
    * the roster's matching key, so a duplicate would make a code resolve to two people.
    */
   addRosterEntry: (entry: Omit<RosterEntry, "status" | "code" | "issuedAt">) => boolean;
+  /** A roster import, as one act and one audit entry. See addPersons. Returns the employeeIds
+   *  it refused as duplicates, in the order given. */
+  addRosterEntries: (entries: Omit<RosterEntry, "status" | "code" | "issuedAt">[], source: string) => string[];
   /** Edit a roster row in place. The employee number is the key, so it is passed separately from
    *  the fields being changed and cannot itself be edited (remove and re-add instead). */
   updateRosterEntry: (employeeId: string, updates: Partial<Omit<RosterEntry, "employeeId" | "status" | "code" | "issuedAt">>) => void;
@@ -2418,6 +2431,18 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       persons: [...state.persons, { registeredBy: SIGNED_IN_USER.name, ...person, id: `person-${++personSeq}` }],
       auditLog: [{ id: `audit-${++auditSeq}`, projectId: person.projectId, message: `VIP ${person.name} registered`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
+  addPersons: (persons, source) => {
+    if (persons.length === 0) return 0;
+    set(state => ({
+      persons: [...state.persons, ...persons.map(pp => ({ registeredBy: SIGNED_IN_USER.name, ...pp, id: `person-${++personSeq}` }))],
+      auditLog: [{
+        id: `audit-${++auditSeq}`, projectId: persons[0].projectId,
+        message: `${persons.length} ${persons.length === 1 ? "person" : "people"} imported from ${source}`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    }));
+    return persons.length;
+  },
   removePerson: (personId) =>
     set(state => {
       const person = state.persons.find(p => p.id === personId);
@@ -3082,6 +3107,30 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return true;
+  },
+  addRosterEntries: (entries, source) => {
+    const rejected: string[] = [];
+    const taken = new Set(get().staffRoster.map(r => r.employeeId.toLowerCase()));
+    const accepted: RosterEntry[] = [];
+    entries.forEach(e => {
+      const key = e.employeeId.toLowerCase();
+      // The same duplicate rule addRosterEntry applies, and it has to see rows accepted moments
+      // ago in this very call — which is why `taken` grows as we go.
+      if (taken.has(key)) { rejected.push(e.employeeId); return; }
+      taken.add(key);
+      accepted.push({ ...e, status: "not-issued" as const });
+    });
+    if (accepted.length > 0) {
+      set(state => ({
+        staffRoster: [...state.staffRoster, ...accepted],
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId: accepted[0].projectId,
+          message: `${accepted.length} roster ${accepted.length === 1 ? "entry" : "entries"} imported from ${source}`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      }));
+    }
+    return rejected;
   },
   updateRosterEntry: (employeeId, updates) =>
     set(state => {

@@ -229,6 +229,9 @@ export default function PortalShell() {
 
   const selectFromSwitcher = (projectId: string) => {
     setPickedProjectId(projectId);
+    // Leave Settings too. setTab writes the address bar without `view=account`, so staying on
+    // Settings left the URL claiming Overview — and a refresh then silently moved you there.
+    setShowAccount(false);
     setTab("overview");
     setShowWizard(false);
   };
@@ -263,6 +266,9 @@ export default function PortalShell() {
 
   const switchTeam = (teamId: string) => {
     setShowWizard(false);
+    // Same reason as selectFromSwitcher: the pushed URL carries no `view`, so Settings staying
+    // open would disagree with the address it was pushed under.
+    setShowAccount(false);
     setTab("overview");
     router.push(`/portal?teamId=${teamId}`);
   };

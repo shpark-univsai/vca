@@ -528,7 +528,7 @@ interface RegisterValues {
  * and until now only the bulk CSV import could write it — a note could exist on a row that nobody
  * was able to type.
  */
-function RegisterVipModal({ t, person, photoUnreadable, groups, categories, projectId, onClose, onSubmit, onManageCategories }: {
+function RegisterVipModal({ t, person, photoUnreadable, groups, categories, projectId, onClose, onSubmit, onManageCategories, escapeSuspended }: {
   t: VipDict;
   /** Absent = registering. Present = editing that person. */
   person?: Person;
@@ -541,6 +541,15 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
   onClose: () => void;
   onSubmit: (values: RegisterValues) => void;
   onManageCategories: () => void;
+  /*
+   * True while the category manager is stacked on top of this form.
+   *
+   * useEscapeKey attaches a bare document listener, so with both dialogs mounted one Escape
+   * fired both handlers: the manager and the half-filled registration closed together, and the
+   * typed name, the basis and the uploaded photo went with them. The hook takes an `enabled`
+   * flag for exactly this — the top-most dialog swallows the key.
+   */
+  escapeSuspended?: boolean;
 }) {
   const editing = person !== undefined;
   const [name, setName] = useState(person?.name ?? "");
@@ -577,7 +586,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
    */
   const [newGroupName, setNewGroupName] = useState<string | null>(null);
   const addPersonGroup = useVcaStore(s => s.addPersonGroup);
-  useEscapeKey(onClose);
+  useEscapeKey(onClose, !escapeSuspended);
 
   const createGroup = () => {
     const trimmed = (newGroupName ?? "").trim();
@@ -1111,6 +1120,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const removePersonGroup = useVcaStore(s => s.removePersonGroup);
   const setPersonGroup = useVcaStore(s => s.setPersonGroup);
   const addPerson = useVcaStore(s => s.addPerson);
+  const addPersons = useVcaStore(s => s.addPersons);
   const removePerson = useVcaStore(s => s.removePerson);
   const updatePerson = useVcaStore(s => s.updatePerson);
   const { showToast } = useToast();
@@ -1360,23 +1370,24 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       const rows = text.split("\n").map(r => r.trim()).filter(Boolean);
       // Tolerate an optional "name,description" header row from spreadsheet exports.
       const dataRows = rows[0]?.toLowerCase().startsWith("name") ? rows.slice(1) : rows;
-      let count = 0;
-      dataRows.forEach(row => {
-        const [name, description] = row.split(",").map(v => v?.trim());
-        if (!name) return;
-        addPerson({
+      const at = new Date().toISOString();
+      const incoming = dataRows
+        .map(row => row.split(",").map(v => v?.trim()))
+        .filter(([name]) => !!name)
+        .map(([name, description]) => ({
           // No photoUrl. A CSV of names contains no faces, and the import used to hand each row a
           // stock portrait from the mock pool — which made every bulk-imported person look
           // registered and matchable when in fact nothing had been enrolled. Those rows are what
           // the "no photo" figure above the list counts, and the count is only true if the rows
           // are.
-          name, type: "VIP",
-          registeredAt: new Date().toISOString(),
+          name, type: "VIP" as const,
+          registeredAt: at,
           description: description || undefined,
           projectId,
-        });
-        count++;
-      });
+        }));
+      // One store call, so the import is one line in the Activity log instead of two hundred
+      // that evict everything before them. See addPersons.
+      const count = addPersons(incoming, file.name);
       showToast({
         variant: count > 0 ? "success" : "warning",
         title: count > 0 ? t.bulkSuccessTitle : t.bulkEmptyTitle,
@@ -1943,11 +1954,11 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      {showRegister && <RegisterVipModal t={t} groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} projectId={projectId} onClose={() => setShowRegister(false)} onSubmit={register} />}
+      {showRegister && <RegisterVipModal t={t} groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} escapeSuspended={managingCategories} projectId={projectId} onClose={() => setShowRegister(false)} onSubmit={register} />}
       {editingPerson && (
         <RegisterVipModal t={t} person={editingPerson}
           photoUnreadable={healthIds.embeddingFailed.has(editingPerson.id) || healthIds.reenrolling.has(editingPerson.id)}
-          groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} projectId={projectId} onClose={() => setEditingPerson(null)} onSubmit={saveEdit} />
+          groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} escapeSuspended={managingCategories} projectId={projectId} onClose={() => setEditingPerson(null)} onSubmit={saveEdit} />
       )}
       {confirmingRemove && (
         <RemoveVipConfirmModal t={t} person={confirmingRemove} onClose={() => setConfirmingRemove(null)} onConfirm={confirmRemove} />
@@ -1961,8 +1972,13 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           body={t.releaseBody}
           confirmLabel={t.releaseConfirm}
           cancelLabel={t.cancel}
+          // The confirm stays shut until a reason is typed. It used to fall back to the
+          // placeholder, so an empty field wrote the EXAMPLE text into the record: the row read
+          // "released — Found · Arrested · Listed in error", and so did the audit entry and the
+          // CSV. Language-dependent too, which is user data coming out of the UI dictionary.
+          confirmDisabled={releaseReason.trim() === ""}
           onConfirm={() => {
-            releasePerson(releasing.id, releaseReason.trim() || t.releaseReasonPlaceholder);
+            releasePerson(releasing.id, releaseReason.trim());
             showToast({ variant: "success", title: t.releasedToast, desc: releasing.name });
             setReleasing(null);
             setReleaseReason("");
@@ -1981,8 +1997,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           body={t.reinstateBody}
           confirmLabel={t.reinstateConfirm}
           cancelLabel={t.cancel}
+          confirmDisabled={reinstateReason.trim() === ""}
           onConfirm={() => {
-            reinstatePerson(reinstating.id, reinstateReason.trim() || t.reinstateReasonPlaceholder);
+            reinstatePerson(reinstating.id, reinstateReason.trim());
             showToast({ variant: "success", title: t.reinstatedToast, desc: reinstating.name });
             setReinstating(null);
             setReinstateReason("");

@@ -197,9 +197,23 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const persons = useVcaStore(s => s.persons);
   const staffRoster = useVcaStore(s => s.staffRoster);
   const { showToast } = useToast();
-  /** null when not renaming; the draft name while the field is open. */
-  const [renaming, setRenaming] = useState<string | null>(null);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  /*
+   * The rename draft, tagged with the project it was typed for.
+   *
+   * This screen is not remounted by the project switcher, so a plain string stayed on screen
+   * after picking a different project — and Save then renamed THAT one, writing
+   * "Project renamed: <the other site> → <what you typed for this one>" into the audit log.
+   *
+   * Tagged rather than cleared in an effect: an effect shows the stale value for one frame
+   * before wiping it, and this way the draft simply is not this project's, which is the truth.
+   */
+  const [renameDraft, setRenameDraft] = useState<{ projectId: string; value: string } | null>(null);
+  const renaming = renameDraft && renameDraft.projectId === projectId ? renameDraft.value : null;
+  const setRenaming = (value: string | null) =>
+    setRenameDraft(value === null ? null : { projectId, value });
+  const [confirmingDeleteFor, setConfirmingDeleteFor] = useState<string | null>(null);
+  const confirmingDelete = confirmingDeleteFor === projectId;
+  const setConfirmingDelete = (open: boolean) => setConfirmingDeleteFor(open ? projectId : null);
   /** Typed back before the delete button arms. See the dialog. */
   const [deleteEcho, setDeleteEcho] = useState("");
   // The project card's one editable pair. Account and display settings below belong to whoever

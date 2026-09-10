@@ -147,7 +147,7 @@ interface FileError { title: string; body: string }
 
 export default function RosterImportModal({ projectId, onClose }: { projectId: string; onClose: () => void }) {
   const staffRoster = useVcaStore(s => s.staffRoster);
-  const addRosterEntry = useVcaStore(s => s.addRosterEntry);
+  const addRosterEntries = useVcaStore(s => s.addRosterEntries);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t: Dict = T[lang];
@@ -156,7 +156,7 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [fileError, setFileError] = useState<FileError | null>(null);
-  const [parsed, setParsed] = useState<{ rows: ParsedRow[]; unmapped: string[] } | null>(null);
+  const [parsed, setParsed] = useState<{ rows: ParsedRow[]; unmapped: string[]; fileName: string } | null>(null);
   const [result, setResult] = useState<{ added: number; skipped: SkippedRow[] } | null>(null);
 
   const issueText = (issue: ImportIssue | "rejected") => t.issue[issue] ?? issue;
@@ -184,7 +184,7 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
       setFileError({ title: t.emptyFileTitle, body: t.emptyFileBody });
       return;
     }
-    setParsed({ rows, unmapped: unmappedHeaders });
+    setParsed({ rows, unmapped: unmappedHeaders, fileName: file.name });
   };
 
   const onPick = (files: FileList | null) => {
@@ -199,23 +199,27 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
 
   const commit = () => {
     if (!parsed) return;
-    let added = 0;
     const skipped: SkippedRow[] = [];
-    for (const row of parsed.rows) {
-      if (row.issues.length > 0) {
-        skipped.push({ row, reasons: row.issues.map(issueText) });
-        continue;
-      }
-      // addRosterEntry is the same duplicate check the preview ran, but it is the one that counts —
-      // it sees the rows added moments ago in this very loop. Its false is recorded rather than
-      // ignored so the result always adds up to the file's row count.
-      const ok = addRosterEntry({
+    const clean = parsed.rows.filter(row => {
+      if (row.issues.length === 0) return true;
+      skipped.push({ row, reasons: row.issues.map(issueText) });
+      return false;
+    });
+    // One store call rather than one per row: each addRosterEntry trimmed the audit log, so a
+    // file of two hundred names wiped every entry before it. addRosterEntries applies the same
+    // duplicate rule — including against rows accepted moments earlier in the same call — and
+    // hands back the ids it refused, so the result still adds up to the file's row count.
+    const rejected = new Set(addRosterEntries(
+      clean.map(row => ({
         name: row.name, employeeId: row.employeeId, department: row.department,
         email: row.email, projectId, permission: row.permission,
-      });
-      if (ok) added++;
-      else skipped.push({ row, reasons: [issueText("rejected")] });
-    }
+      })),
+      parsed.fileName,
+    ));
+    clean.forEach(row => {
+      if (rejected.has(row.employeeId)) skipped.push({ row, reasons: [issueText("rejected")] });
+    });
+    const added = clean.length - rejected.size;
     setResult({ added, skipped });
     showToast({
       variant: added > 0 ? "success" : "warning",
