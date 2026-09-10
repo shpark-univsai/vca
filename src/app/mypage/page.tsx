@@ -380,7 +380,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.currentPassword}</label>
-                  <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "current"), borderRadius: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", height: "48px", padding: "0 18px", border: fieldBorder(focusedField === "current"), borderRadius: "8px" }}>
                     <input
                       type={showCurrent ? "text" : "password"}
                       value={currentPassword}
@@ -417,7 +417,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.newPassword}</label>
-                  <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", height: "48px", padding: "0 18px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
                     <input
                       type={showNew ? "text" : "password"}
                       value={newPassword}
@@ -436,7 +436,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.confirmPassword}</label>
-                  <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", height: "48px", padding: "0 18px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
                     <input
                       type={showConfirm ? "text" : "password"}
                       value={confirmPassword}

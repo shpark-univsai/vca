@@ -414,7 +414,7 @@ function ForgotPasswordFlow() {
                   <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>
                     {authConfig.employeeIdLogin ? t.identifierWithId : t.identifierEmailOnly}
                   </label>
-                  <div style={{ display: "flex", alignItems: "center", height: "56px", padding: "0 18px",
+                  <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px",
                     border: identifierError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: "8px" }}>
                     <input
                       value={identifier}
@@ -567,7 +567,7 @@ function ForgotPasswordFlow() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "24px", width: "100%" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                     <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.newPassword}</label>
-                    <div style={{ display: "flex", alignItems: "center", height: "56px", padding: "0 18px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
                       <input
                         type={showNew ? "text" : "password"}
                         value={newPassword}
@@ -585,7 +585,7 @@ function ForgotPasswordFlow() {
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                     <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.confirmPassword}</label>
-                    <div style={{ display: "flex", alignItems: "center", height: "56px", padding: "0 18px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
                       <input
                         type={showConfirm ? "text" : "password"}
                         value={confirmPassword}
