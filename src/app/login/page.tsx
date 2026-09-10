@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
-import AuthMapArt from "@/components/AuthMapArt";
+import AuthTrailArt from "@/components/AuthTrailArt";
 import { getAuthConfig } from "@/lib/authConfig";
 import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { LOGIN_NOTICES, parseLoginNotice, type LoginFailure } from "@/lib/authErrors";
@@ -403,10 +403,10 @@ function LoginForm() {
         </div>
         </div>
 
-        {/* Decorative, so aria-hidden — a screen reader should reach the form, not a picture of a
-            city. Sized in globals.css. */}
+        {/* Decorative, so aria-hidden — a screen reader should reach the form, not a drawing.
+            Sized in globals.css. */}
         <div className="vca-auth-brand" aria-hidden>
-          <AuthMapArt className="vca-auth-brand-art" />
+          <AuthTrailArt className="vca-auth-brand-art" />
         </div>
       </div>
     </div>
