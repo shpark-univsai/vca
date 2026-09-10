@@ -745,7 +745,10 @@ export function ActiveFilterCount({ count, onClear, label }: { count: number; on
         display: "flex", alignItems: "center", gap: "6px", flexShrink: 0,
         height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", cursor: "pointer",
         border: "none", backgroundColor: hovered ? "var(--gray-200)" : "var(--gray-100)",
-        fontSize: "10px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit",
+        /* 12px, matching the table below and the buttons beside it. A filter keeps its border —
+           it is an input, and an input with no edge does not read as somewhere you can type or
+           choose — but it should not be the smallest text on the screen while doing it. */
+        fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit",
       }}
     >
       {label}

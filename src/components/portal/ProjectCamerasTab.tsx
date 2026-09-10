@@ -1185,15 +1185,28 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               {polledMinsAgo < 1 ? t.checkedJustNow : t.checkedMinsAgo(polledMinsAgo)}
             </span>
           )}
+          {/*
+            Secondary actions carry no box.
+
+            They were bordered buttons at 10px, which was the wrong fix for the right complaint:
+            the toolbar felt loud, so the type was shrunk — but what draws the eye on a control is
+            the border and the fill, not the letters, so the row stayed loud and only got harder to
+            read. Take the box away and the action recedes on its own; then the label can be the
+            same size as the table it sits above.
+
+            Zapier's table footer is the reference — New record / Import / Export / Download as
+            borderless icon-and-text, with the one filled button kept for the action that makes
+            something. Hover brings a tint back, so the target is still findable by pointing.
+          */}
           <button onClick={() => setLastPolledAt(Date.now())} title={t.refresh} aria-label={t.refresh}
             onMouseEnter={() => setHoveredAction("refresh")} onMouseLeave={() => setHoveredAction(null)}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "refresh" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "10px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: hoveredAction === "refresh" ? "var(--gray-100)" : "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
             <RotateCw size={14} strokeWidth={2.4} />
             {t.refresh}
           </button>
           <button onClick={exportCsv}
             onMouseEnter={() => setHoveredAction("export")} onMouseLeave={() => setHoveredAction(null)}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: hoveredAction === "export" ? "var(--gray-50)" : "white", color: "var(--gray-600)", fontSize: "10px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: hoveredAction === "export" ? "var(--gray-100)" : "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1.75V9.33M7 9.33 4.08 6.42M7 9.33 9.92 6.42M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
               {t.exportCsv}
             </button>
@@ -1203,7 +1216,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           <div ref={addMenuRef} style={{ position: "relative", flexShrink: 0 }}>
             <button className="portal-btn-primary" onClick={() => setAddMenuOpen(o => !o)}
               onMouseEnter={() => setHoveredAction("add")} onMouseLeave={() => setHoveredAction(null)}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "10px", fontWeight: 700, cursor: "pointer", filter: hoveredAction === "add" ? "brightness(0.92)" : "none" }}>
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", filter: hoveredAction === "add" ? "brightness(0.92)" : "none" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
               {t.addSource}
             </button>
