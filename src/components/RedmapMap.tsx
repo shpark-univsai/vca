@@ -120,6 +120,29 @@ export default function RedmapMap({
     };
   }, []);
 
+  // ── Frame the sightings ───────────────────────────────────────
+  // The view used to open on a fixed city centre at zoom 12 and stay there. A site's cameras can
+  // be a school campus a few hundred metres across, ten kilometres from that centre — its trail
+  // drew correctly and sat off the edge of the screen. Fits to wherever the hits actually are;
+  // with no hits the default view is left alone.
+  //
+  // Keyed on the coordinates rather than the `hits` array so an unrelated re-render (a hover, a
+  // language change) doesn't yank the map back from wherever the operator has panned to.
+  const positionsKey = hits.filter(h => !h.hidden).map(h => `${h.lat},${h.lng}`).join("|");
+  useEffect(() => {
+    if (!mapReady || !positionsKey) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const map = mapInstanceRef.current as any;
+    if (!map) return;
+    const coords = positionsKey.split("|")
+      .map(pair => pair.split(",").map(Number) as [number, number]);
+    import("leaflet").then(({ default: L }) => {
+      // maxZoom: two sightings from the same camera share one coordinate, and fitting a
+      // zero-area bounds would otherwise zoom to the tile server's limit on a single point.
+      map.fitBounds(L.latLngBounds(coords), { padding: [80, 80], maxZoom: 16 });
+    });
+  }, [positionsKey, mapReady]);
+
   // ── Draw overlays ─────────────────────────────────────────────
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

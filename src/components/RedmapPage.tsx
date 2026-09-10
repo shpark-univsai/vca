@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import RedmapMap from "./RedmapMap";
 import type { RedmapMode as Mode, SimilarityLimit, HitResult, DateRange } from "@/types/redmap";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "./Toast";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
-import { canSearchInApp, useVcaStore } from "@/lib/vcaStore";
+import { camerasInProject, canSearchInApp, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
 import RemoveImageButton from "./RemoveImageButton";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 
@@ -138,61 +138,81 @@ const DEFAULT_DATE_RANGE: DateRange = {
   end: recentSgtStamp(0).date,
 };
 
-// Unlike BestFramePage's camera list (now sourced from the shared VIP_SIMULATION_CAMERAS pool —
-// see vcaStore.ts), these hits are intentionally hand-authored narrative content (specific face/
-// body photos, elapsed-time framing, isUnregistered flag) rather than a checkable camera list, so
-// there's no real payoff in re-keying them onto shared camera ids the way BestFrame's bulk filler
-// was. `location` is the place ("Clarke Quay Riverside"), `camera` the unit that saw them
-// ("CQ1"), `mapLabel` a short form for a map pin ("Clarke Quay") — three separate jobs, not
-// three spellings of one string as they used to be. None of them corresponds to a real camera id in
-// CAMERAS/VIP_SIMULATION_CAMERAS today — that's fine as long as nothing cross-navigates from a
-// Redmap hit to another page by name (nothing currently does). If a "View Live"/"Open in Best
-// Frame" action ever gets added here, it'll hit the same silent-match-failure bug the Dashboard's
-// device popup had (see BestFramePage.tsx's focusLocation handling) unless these are re-keyed
-// onto real camera ids first.
-export const MOCK_RESULTS: HitResult[] = [
+/**
+ * A sighting minus the camera that saw it.
+ *
+ * What is hand-authored here is the narrative — the face and body crops, the scores, how long
+ * ago, whether the person was enrolled. WHERE it happened is not ours to invent: it comes from
+ * the camera register, so a hit names a camera that exists at the site on screen, sits at that
+ * camera's real coordinates, and reads the same place name every other screen uses for it.
+ *
+ * These used to carry `camera: "NC 1"`, `location: "Novena"` and hand-typed lat/lng — codes and
+ * places that existed nowhere else in the app. Two things followed from that: switching site in
+ * the header left Redmap tracing a person across a city the operator is not watching, and any
+ * future "View live"/"Open in Best Frame" action from a hit would have had nothing to match on.
+ */
+type HitShape = Omit<HitResult, "camera" | "location" | "mapLabel" | "lat" | "lng">;
+
+/**
+ * Puts each sighting on one of the site's cameras, in order, so a trail moves from camera to
+ * camera the way a person walking through the site would.
+ *
+ * A site with no cameras registered has no sightings — not a trail on cameras borrowed from
+ * somewhere else. Sites with fewer cameras than the trail has stops will revisit a camera, which
+ * is what actually happens when someone doubles back past one.
+ */
+function bindHitsToCameras(shapes: HitShape[], cams: Camera[]): HitResult[] {
+  if (cams.length === 0) return [];
+  // Spread across the roster instead of taking the first N: the register is ordered by district,
+  // so consecutive entries are neighbours and a trail built from cams[0..2] was three cameras on
+  // one street rather than a path across the site.
+  const stride = Math.max(1, Math.floor(cams.length / Math.max(shapes.length, 1)));
+  return shapes.map((shape, i) => {
+    const cam = cams[(i * stride) % cams.length];
+    return {
+      ...shape,
+      camera: cam.code,
+      location: cam.location,
+      // The short form for a map pin. `zone` is what the register keeps for it; the full location
+      // is too long to sit next to a circle on the map.
+      mapLabel: cam.zone || cam.name,
+      lat: cam.lat,
+      lng: cam.lng,
+    };
+  });
+}
+
+const HIT_SET_TRAIL: HitShape[] = [
   {
     id: "hit-1",
-    camera: "NC 1",
-    location: "Novena",
     ...recentSgtStamp(3004, 57),
     score: "99.7%",
     bodyScore: "85.0%",
     isUnregistered: false,
     faceUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
-    mapLabel: "Novena",
-    lat: 1.3200, lng: 103.8440,
     elapsed: "20m 12s",
     personId: "p1", personLabel: "Match 1",
   },
   {
     id: "hit-2",
-    camera: "NC 3",
-    location: "Geylang",
     ...recentSgtStamp(2974, 25),
     score: "99.4%",
     bodyScore: "78.2%",
     isUnregistered: false,
     faceUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
-    mapLabel: "Geylang",
-    lat: 1.3131, lng: 103.8600,
     elapsed: "30m 32s",
     personId: "p1", personLabel: "Match 1",
   },
   {
     id: "hit-3",
-    camera: "NC 2",
-    location: "Marine Parade",
     ...recentSgtStamp(1495),
     score: "82.3%",
     bodyScore: "70.1%",
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
-    mapLabel: "Marine Parade",
-    lat: 1.3015, lng: 103.9070,
     personId: "p1", personLabel: "Match 1",
   },
 ];
@@ -200,54 +220,41 @@ export const MOCK_RESULTS: HitResult[] = [
 // A real search doesn't always come back with a full 3-camera trail — sometimes the person only
 // shows up once or twice, sometimes not at all. These extra sets let a search "miss" or come back
 // thin instead of always returning the same rich trace, which was the whole trace feature reading
-// as fake. `RESULT_SETS` is what searches actually pick from; `MOCK_RESULTS` stays as its own
-// export (unchanged) since `lib/api/redmap.ts` already imports it as the future-backend stub's
-// default payload.
-const RESULT_SET_MODERATE: HitResult[] = [
+// as fake. `HIT_SHAPE_SETS` is what searches actually pick from, once bound to the site's own
+// cameras.
+const HIT_SET_MODERATE: HitShape[] = [
   {
     id: "hit-m1",
-    camera: "JR1",
-    location: "Jurong Gateway Mall",
     ...recentSgtStamp(1595, 35),
     score: "81.2%",
     bodyScore: "73.5%",
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
-    mapLabel: "Jurong",
-    lat: 1.3329, lng: 103.7436,
     elapsed: "1h 40m",
     personId: "p1", personLabel: "Match 1",
   },
   {
     id: "hit-m2",
-    camera: "CQ1",
-    location: "Clarke Quay Riverside",
     ...recentSgtStamp(1495),
     score: "79.8%",
     bodyScore: "71.0%",
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
-    mapLabel: "Clarke Quay",
-    lat: 1.2884, lng: 103.8460,
     personId: "p1", personLabel: "Match 1",
   },
 ];
 
-const RESULT_SET_SPARSE: HitResult[] = [
+const HIT_SET_SPARSE: HitShape[] = [
   {
     id: "hit-s1",
-    camera: "TH1",
-    location: "Tampines Concourse",
     ...recentSgtStamp(1495),
     score: "76.4%",
     bodyScore: "68.0%",
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
-    mapLabel: "Tampines",
-    lat: 1.3530, lng: 103.9440,
     personId: "p1", personLabel: "Match 1",
   },
 ];
@@ -255,68 +262,63 @@ const RESULT_SET_SPARSE: HitResult[] = [
 // A low-similarity search can genuinely surface more than one distinct person, not just several
 // sightings of the same one — this set demonstrates that so the person-filter chips (see
 // distinctPersons below) have something real to group/color-code. Two people, two sightings each.
-const RESULT_SET_LOOKALIKES: HitResult[] = [
+const HIT_SET_LOOKALIKES: HitShape[] = [
   {
     id: "hit-l1",
-    camera: "BM1",
-    location: "Bugis MRT Station",
     ...recentSgtStamp(1565, 7),
     score: "58.3%",
     bodyScore: "52.0%",
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
-    mapLabel: "Bugis",
-    lat: 1.3006, lng: 103.8559,
     personId: "p1", personLabel: "Match 1",
   },
   {
     id: "hit-l2",
-    camera: "CH2",
-    location: "City Hall Link",
     ...recentSgtStamp(1519, 31),
     score: "55.1%",
     bodyScore: "49.8%",
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
-    mapLabel: "City Hall",
-    lat: 1.2930, lng: 103.8520,
     personId: "p1", personLabel: "Match 1",
   },
   {
     id: "hit-l3",
-    camera: "SS1",
-    location: "Somerset Skywalk",
     ...recentSgtStamp(1540, 16),
     score: "56.7%",
     bodyScore: "50.2%",
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=150&h=200&q=80",
-    mapLabel: "Somerset",
-    lat: 1.3006, lng: 103.8390,
     personId: "p2", personLabel: "Match 2",
   },
   {
     id: "hit-l4",
-    camera: "DG3",
-    location: "Dhoby Ghaut Xchange",
     ...recentSgtStamp(1495),
     score: "54.4%",
     bodyScore: "48.1%",
     isUnregistered: true,
     faceUrl: "https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=150&h=200&q=80",
-    mapLabel: "Dhoby Ghaut",
-    lat: 1.2988, lng: 103.8455,
     personId: "p2", personLabel: "Match 2",
   },
 ];
 
-const RESULT_SET_EMPTY: HitResult[] = [];
+const HIT_SET_EMPTY: HitShape[] = [];
 
-const RESULT_SETS: HitResult[][] = [MOCK_RESULTS, RESULT_SET_MODERATE, RESULT_SET_SPARSE, RESULT_SET_EMPTY, RESULT_SET_LOOKALIKES];
+const HIT_SHAPE_SETS: HitShape[][] = [HIT_SET_TRAIL, HIT_SET_MODERATE, HIT_SET_SPARSE, HIT_SET_EMPTY, HIT_SET_LOOKALIKES];
+
+/**
+ * The result sets a search can land on, bound to one site's cameras.
+ *
+ * Also the payload for `lib/api/redmap.ts`'s stub, which is why this takes a project id rather
+ * than reading a hook: that seam is called from outside React.
+ */
+export function hitResultSetsForProject(projectId: string): HitResult[][] {
+  const cams = camerasInProject(useVcaStore.getState().cameras, projectId);
+  return HIT_SHAPE_SETS.map(shapes => bindHitsToCameras(shapes, cams));
+}
 
 // Deterministic (not random) so re-running the exact same search — same uploaded file, same
 // license plate — always lands on the same result set instead of flickering between runs.
@@ -734,7 +736,19 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
   // `handleSearch` below.
   const [faceFileKey, setFaceFileKey] = useState<string | null>(null);
   const [bodyFileKey, setBodyFileKey] = useState<string | null>(null);
-  const [results, setResults] = useState<HitResult[]>(MOCK_RESULTS);
+  // Every sighting on this screen has to have been captured by a camera registered at the site
+  // the header points at. The register is read live, so a camera the Portal adds, renames or
+  // moves shows up here.
+  const siteProjectId = useActiveProjectId();
+  const siteCameras = useProjectCameras();
+  const resultSets = useMemo(
+    () => HIT_SHAPE_SETS.map(shapes => bindHitsToCameras(shapes, siteCameras)),
+    [siteCameras],
+  );
+  // What the screen shows before anyone has searched: the full trail, as an example of what a
+  // search comes back with.
+  const defaultResults = resultSets[0];
+  const [results, setResults] = useState<HitResult[]>(defaultResults);
   const [hasSearched, setHasSearched] = useState(false);
   const [activeHit, setActiveHit] = useState<number | null>(null);
   const [activeNode, setActiveNode] = useState<number | null>(null);
@@ -807,11 +821,11 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
   if (initialSearchName != null && initialSearchName !== consumedSearchName) {
     setConsumedSearchName(initialSearchName);
     setMode("person");
-    setResults(MOCK_RESULTS);
+    setResults(defaultResults);
     setHasSearched(true);
     setActiveHit(null);
     setActiveNode(null);
-    setSelectedPersonIds(new Set([MOCK_RESULTS[MOCK_RESULTS.length - 1].personId]));
+    setSelectedPersonIds(defaultResults.length ? new Set([defaultResults[defaultResults.length - 1].personId]) : new Set());
     setTraceName(initialSearchName);
   }
 
@@ -823,7 +837,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
 
   // A body-only search has only build and clothing to go on, which matches far more loosely than a
   // face does — the same 70% a face search treats as solid confidence lets in the kind of
-  // lookalike-heavy results RESULT_SET_LOOKALIKES demonstrates. That used to be enforced: the
+  // lookalike-heavy results HIT_SET_LOOKALIKES demonstrates. That used to be enforced: the
   // threshold was pushed to 75% on a body-only upload and the lower presets were disabled. It is
   // now advice, not a rule — the operator, not the UI, decides how wide to cast the net, and a
   // deliberately loose pass over body-only footage is a legitimate thing to want. The warning
@@ -882,8 +896,8 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
   };
 
   const handleSearch = () => {
-    // An empty query used to still run — hashing down to whichever RESULT_SET the empty key
-    // landed on (often RESULT_SET_EMPTY) — and land on "No matching sightings found," reading as
+    // An empty query used to still run — hashing down to whichever hit set the empty key
+    // landed on (often HIT_SET_EMPTY) — and land on "No matching sightings found," reading as
     // a real search that failed rather than a search that was never actually given anything to
     // look for. Block it before it runs and say so instead.
     const hasQuery = mode === "car" ? licensePlate.trim().length > 0 : !!faceFileKey || !!bodyFileKey;
@@ -900,7 +914,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
     const searchKey = mode === "car"
       ? `car:${licensePlate.trim().toUpperCase()}`
       : `person:${faceFileKey ?? ""}|${bodyFileKey ?? ""}`;
-    const picked = RESULT_SETS[hashStr(searchKey) % RESULT_SETS.length];
+    const picked = resultSets[hashStr(searchKey) % resultSets.length];
     // dateRange was collected in the toolbar but never actually consulted here — picking a range
     // that excludes every mock hit's date still returned the exact same results as picking
     // nothing at all. Both fields are already "YYYY-MM-DD" strings, so this is a plain string
@@ -963,15 +977,27 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
   // Everything describing the OUTCOME of a search, as opposed to the query settings
   // (mode / similarity / date range) which are the user's own configuration and survive.
   // Shared by Reset and by detaching the last attached image.
-  const clearSearchOutcome = () => {
-    setResults(MOCK_RESULTS);
+  // useCallback so the site-change effect below can depend on it honestly instead of silencing
+  // the dependency check: rebuilt only when the site's own default results change.
+  const clearSearchOutcome = useCallback(() => {
+    setResults(defaultResults);
     setHasSearched(false);
     setActiveHit(null);
     setActiveNode(null);
     setSelectedPersonIds(new Set());
     setTraceName(null);
     setExcludedHitIds(new Set());
-  };
+    setEmptyReason(null);
+  }, [defaultResults]);
+
+  // The header switched site. A trail across the previous site's cameras is not a trail through
+  // this one, so the outcome goes — while the query itself (mode, similarity, dates, the attached
+  // photo) is the operator's own work and survives, ready to run again here.
+  const firstSiteRef = useRef(true);
+  useEffect(() => {
+    if (firstSiteRef.current) { firstSiteRef.current = false; return; }
+    clearSearchOutcome();
+  }, [siteProjectId, clearSearchOutcome]);
 
   const handleReset = () => {
     setMode("person");
@@ -1692,7 +1718,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                     ];
                     const ordered = timelineNewestFirst ? [...nodes].reverse() : nodes;
                     return ordered.map((node, i) => {
-                      // Position in the original chronological array (origin=-1..MOCK_RESULTS.length-1),
+                      // Position in the original chronological array (origin=-1..results.length-1),
                       // independent of which direction we're currently displaying it in.
                       const index = timelineNewestFirst ? nodes.length - 1 - i : i;
                       const num = index + 1; // chronological step number — stable regardless of sort direction
