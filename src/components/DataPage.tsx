@@ -1228,6 +1228,23 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   const [licensePlate, setLicensePlate]         = useState("");
   const [searchCamera, setSearchCamera]         = useState("");
 
+  // The search outcome goes when the header switches site, for the same reason the wall is
+  // re-seeded above — declared here rather than beside that effect only because these states are
+  // declared below it.
+  const firstSearchSiteRef = useRef(true);
+  useEffect(() => {
+    if (firstSearchSiteRef.current) { firstSearchSiteRef.current = false; return; }
+    // The results too, not just the wall. Results are derived from the target and this site's
+    // cameras, so leaving the screen in its searched state re-answered the previous site's
+    // question with this site's cameras: the same person, suddenly "seen" twenty times at a
+    // school he has never been to. The query itself (target, attributes, dates) is the
+    // operator's own and survives, ready to be run again here — same rule as Redmap.
+    setSearched(false);
+    setSearchDetailId(null);
+    // A camera code belongs to one site, so this one cannot mean anything here.
+    setSearchCamera("");
+  }, [scopedProjectId]);
+
   const toggleTopColor    = (c: string) => setTopColors(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c]);
   const toggleBottomColor = (c: string) => setBottomColors(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c]);
   const toggleShoesColor  = (c: string) => setShoesColors(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c]);
@@ -2355,6 +2372,10 @@ const SUSPECT_2 = REID_DATA[1]; // gender M, matches REID_GENDER_CYCLE[1]
  * and switching site in the header left them on screen unchanged.
  */
 function buildSeedClusters(cams: string[]): ReidCluster[] {
+  // A site with no cameras registered has nothing to have recognized anyone with. Returning the
+  // two shells anyway put a card on screen with another site's face as its thumbnail, hardcoded
+  // metadata and zero sightings — and its RedFace button handed that person on as a target.
+  if (cams.length === 0) return [];
   return [
   {
     id: "c1",
@@ -2776,6 +2797,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   const [lang] = useLanguage();
   const t = T[lang];
   const [expanded, setExpanded]         = useState(false);
+  const siteProjectId = useActiveProjectId();
   const siteCameras = useSiteCameraCodes();
   // Same collapsible tabbed sidebar as Live Monitoring's Photo/Filter/VIP/Car search (see
   // LiveSearchSidebar) — was its own separate SearchPanel layout before, which meant the two
@@ -2815,6 +2837,14 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
     if (firstClusterRef.current) { firstClusterRef.current = false; return; }
     setLiveClusters(buildSeedClusters(siteCameras));
   }, [siteCameras]);
+  // And the search outcome, for the reason given in Live Monitoring's effect above: a completed
+  // search left on screen through a site switch gets re-answered with the new site's cameras.
+  const firstReidSiteRef = useRef(true);
+  useEffect(() => {
+    if (firstReidSiteRef.current) { firstReidSiteRef.current = false; return; }
+    setHasSearched(false);
+    setDetailId(null);
+  }, [siteProjectId]);
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const scheduleNext = () => {
@@ -2919,12 +2949,21 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
         .filter(r => r.similarity >= threshold)
     : null;
   const targetMatches = targetRows?.map(reidToMatchItem) ?? null;
-  const searchResultCluster: ReidCluster | null = hasSearched ? {
+  // The attribute-only search's own rows, computed here rather than inline below so the cluster's
+  // `subject` can come from them. It used to fall back to REID_DATA[0] whenever there was no row
+  // to take — which is a person from whichever site happens to come first in the mock, put on
+  // screen as the subject of a search that found nobody, and handed to RedFace as the target if
+  // that button was pressed. A search that found nobody has no subject.
+  const attributeRows = targetRows
+    ? null
+    : filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange, threshold, licensePlate, camera, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras }).slice(0, 20);
+  const subject = targetRows?.[0] ?? attributeRows?.[0] ?? null;
+  const searchResultCluster: ReidCluster | null = hasSearched && subject ? {
     id: "search-result",
     // Top row of the same generated set, so this cluster's RedFace button hands over the person
-    // that was searched for rather than switching tabs empty-handed. Falls back to the first mock
-    // row for an attribute-only search, where there is no one specific person to carry over.
-    subject: targetRows?.[0] ?? REID_DATA[0],
+    // that was searched for rather than switching tabs empty-handed. For an attribute-only
+    // search that is the best-scoring row it actually returned.
+    subject,
     thumbnail: searchType === "VEHICLE" ? carSvgDataUri(VEHICLE_COLOR_CYCLE[0]) : (searchTarget?.face ?? MATCH_DATA[0].face),
     title: searchType === "VEHICLE" ? "Vehicle search result" : searchTarget && "label" in searchTarget ? searchTarget.label : searchTarget ? searchTarget.name : "Search result",
     meta: targetMatches ? [
@@ -2949,8 +2988,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
       { label:"Similarity", value:`${threshold}%` },
     ],
     action: "RedFace",
-    matches: targetMatches ?? filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange, threshold, licensePlate, camera, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras }).slice(0, 20)
-      .map(p => ({ ...reidToMatchItem(p), similarity: p.similarity })),
+    matches: targetMatches ?? (attributeRows ?? []).map(p => ({ ...reidToMatchItem(p), similarity: p.similarity })),
   } : null;
   const clusters = hasSearched ? (searchResultCluster ? [searchResultCluster] : []) : liveClusters;
   const detailItem = detailId !== null ? clusters.flatMap(c => c.matches).find(m => m.id === detailId) ?? null : null;
@@ -4920,6 +4958,17 @@ export default function DataPage({ onGoRedmap, onGoAnalyzeFrame }: { onGoRedmap?
   const [reidCam, setReidCamRaw] = useState<string>("");
   const setLiveCam = (v: string) => { setLiveCamRaw(v); if (v === ALL_CAMERAS_ID) setReidCamRaw(""); };
   const setReidCam = (v: string) => { setReidCamRaw(v); if (v === "") setLiveCamRaw(ALL_CAMERAS_ID); };
+  // Back to "every camera" when the header switches site. A code names a camera at one site, so
+  // the code held here after a switch names nothing: the picker went on showing CAM-NOV-001 as
+  // the open feed while the ONLINE badge, the IP line and every card were gone, with nothing on
+  // screen to say why.
+  const siteProjectId = useActiveProjectId();
+  const firstCamSiteRef = useRef(true);
+  useEffect(() => {
+    if (firstCamSiteRef.current) { firstCamSiteRef.current = false; return; }
+    setLiveCamRaw(ALL_CAMERAS_ID);
+    setReidCamRaw("");
+  }, [siteProjectId]);
 
 
 
