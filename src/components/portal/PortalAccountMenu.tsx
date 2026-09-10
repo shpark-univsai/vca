@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Headset, LogOut, User } from "lucide-react";
-import { useLanguage } from "@/lib/i18n";
+import { usePortalLanguage } from "@/lib/i18n";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { BORDER, SupportContactModal } from "./PortalShared";
 import { SUPPORT_CONTACT } from "@/lib/vcaStore";
@@ -44,7 +44,7 @@ export default function PortalAccountMenu({ admin, appAccess, onSettings }: {
   appAccess: boolean;
   onSettings: () => void;
 }) {
-  const [lang] = useLanguage();
+  const [lang] = usePortalLanguage();
   const t = T[lang];
   const router = useRouter();
   const [open, setOpen] = useState(false);

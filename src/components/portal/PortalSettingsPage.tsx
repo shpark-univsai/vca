@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Building2, Clock, Globe, KeyRound, Languages, LayoutGrid, LogIn, Mail, MapPin, Shield, User } from "lucide-react";
-import { useLanguage, type AppLanguage } from "@/lib/i18n";
+import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, TYPE_META } from "./PortalShared";
@@ -45,7 +45,8 @@ const T = {
     purposeCancel: "Cancel",
     purposeOwnerOnly: "Only the owner can change this list.",
     displayTitle: "Display",
-    language: "Interface language",
+    language: "Portal language",
+    languageNote: "Portal only. The monitoring app keeps its own, set from My Page there.",
     password: "Password",
     passwordSetAgo: "Set 3 months ago",
     changePassword: "Change password",
@@ -92,7 +93,8 @@ const T = {
     purposeCancel: "취소",
     purposeOwnerOnly: "이 목록은 최고관리자만 바꿀 수 있습니다.",
     displayTitle: "표시",
-    language: "화면 언어",
+    language: "포털 화면 언어",
+    languageNote: "포털에만 적용됩니다. 모니터링 앱은 별도이고, 앱의 마이페이지에서 정합니다.",
     password: "비밀번호",
     passwordSetAgo: "3개월 전 설정",
     changePassword: "비밀번호 변경",
@@ -147,7 +149,7 @@ const LANGUAGE_OPTIONS: { value: AppLanguage; label: string }[] = [
  * them, so there is nothing to explain.
  */
 export default function PortalSettingsPage({ projectId }: { projectId: string }) {
-  const [lang, setLang] = useLanguage();
+  const [lang, setLang] = usePortalLanguage();
   const [changingPassword, setChangingPassword] = useState(false);
   const searchPurposes = useVcaStore(s => s.searchPurposes);
   const requirePurpose = getComplianceConfig().requireSearchPurpose;
@@ -306,6 +308,10 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             />
           </PairItem>
         </PairGrid>
+        {/* Said out loud, because the two halves now disagree on purpose. Without it, somebody who
+            switches here and walks into the app reads the same words in English and concludes the
+            setting is broken. */}
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "12px" }}>{t.languageNote}</p>
       </CardSection>
       </div>
     </div>
