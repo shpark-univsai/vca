@@ -7,9 +7,6 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "./Toast";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
 import { canSearchInApp, useVcaStore } from "@/lib/vcaStore";
-import {
-  SearchPurposeGate, SearchPurposeBar, SearchPurposeUndefinedNotice, usePurposeGate,
-} from "@/components/SearchPurposeGate";
 import RemoveImageButton from "./RemoveImageButton";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 
@@ -726,9 +723,6 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
   // screen is gated rather than its button. See PortalUser.appSearch.
   const portalUsers = useVcaStore(state => state.portalUsers);
   const searchAllowed = canSearchInApp(portalUsers);
-  // Why the search is being run, declared once per sitting — see SearchPurposeGate. Checked after
-  // permission: someone who may not search at all is not asked their reasons for it.
-  const purposeGate = usePurposeGate();
   const [mode, setMode] = useState<Mode>("person");
   const [similarity, setSimilarity] = useState<SimilarityLimit>(70);
   const [dateRange, setDateRange] = useState<DateRange>(DEFAULT_DATE_RANGE);
@@ -1054,17 +1048,8 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
     );
   }
 
-  // Held before the screen, not over it. Redmap shows nothing until a search runs anyway, so
-  // there is no map behind this to peek at — and a purpose that can be dismissed is one nobody
-  // states.
-  if (purposeGate.blocked) {
-    return <SearchPurposeGate purposes={purposeGate.purposes} />;
-  }
-
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, position: "relative" }}>
-      <SearchPurposeUndefinedNotice />
-      <SearchPurposeBar />
 
       <input ref={uploadInputRef} type="file" accept="image/*" onChange={handleUploadFile} style={{ display: "none" }} />
 
