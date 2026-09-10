@@ -7,7 +7,7 @@ import AuthHeader from "@/components/AuthHeader";
 import AuthTrailArt from "@/components/AuthTrailArt";
 import AuthTrailList from "@/components/AuthTrailList";
 import { getAuthConfig } from "@/lib/authConfig";
-import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
+import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { LOGIN_NOTICES, parseLoginNotice, type LoginFailure } from "@/lib/authErrors";
 import { canEnterPortal, useVcaStore } from "@/lib/vcaStore";
 import { useLanguage } from "@/lib/i18n";
@@ -231,8 +231,14 @@ function LoginForm() {
         <div className="vca-auth-scroll" style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
         <div style={{
           width: "480px", maxWidth: "480px", backgroundColor: "white",
-          borderRadius: "28px", padding: "20px 36px 36px", margin: "auto 0",
-          display: "flex", flexDirection: "column", gap: "24px", alignItems: "center",
+          // 20px of top padding is left over from when the illustration sat above the title
+          // inside this card. It is gone, and the card has no visible edge to sit in from — it is
+          // white on white — so the padding was only pushing the title down for nothing.
+          borderRadius: "28px", padding: "0 36px 36px", margin: "auto 0",
+          // 40, not 24. The card centres as one block, so widening the gap between the title and
+          // the form lifts the title and drops the form in one move — and the form needs the
+          // separation more than it needs to sit close to a greeting.
+          display: "flex", flexDirection: "column", gap: "40px", alignItems: "center",
         }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
             <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>{t.title}</h1>
@@ -303,8 +309,7 @@ function LoginForm() {
                 <label style={FIELD_LABEL}>
                   {authConfig.employeeIdLogin ? t.identifierWithId : t.identifierEmailOnly}
                 </label>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", height: "52px", padding: "0 16px", border: FIELD_BORDER, borderRadius: "8px" }}>
-                  <PersonFieldIcon />
+                <div style={{ display: "flex", alignItems: "center", height: "56px", padding: "0 18px", border: FIELD_BORDER, borderRadius: "8px" }}>
                   <input
                     value={identifier}
                     onChange={e => { setIdentifier(e.target.value); setNotice(null); }}
@@ -314,7 +319,7 @@ function LoginForm() {
                     // the field with something left to do. Landing focus on a filled field means
                     // one more keystroke every shift.
                     autoFocus={identifier.length === 0}
-                    style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
+                    style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                   />
                 </div>
               </div>
@@ -334,8 +339,7 @@ function LoginForm() {
                     {t.forgot}
                   </button>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", height: "52px", padding: "0 16px", border: FIELD_BORDER, borderRadius: "8px" }}>
-                  <LockFieldIcon />
+                <div style={{ display: "flex", alignItems: "center", height: "56px", padding: "0 18px", border: FIELD_BORDER, borderRadius: "8px" }}>
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
@@ -345,7 +349,7 @@ function LoginForm() {
                     placeholder="••••••••"
                     autoComplete="current-password"
                     autoFocus={identifier.length > 0}
-                    style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
+                    style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                   />
                   <button type="button" onClick={() => setShowPassword(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                     {showPassword ? <EyeIcon /> : <EyeOffIcon />}

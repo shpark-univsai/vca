@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
-import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
+import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import VerificationCodeInput from "@/components/VerificationCodeInput";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT, RESET_CODE_LENGTH, RESET_CODE_TTL_MIN } from "@/lib/password";
 import { getAuthConfig } from "@/lib/authConfig";
@@ -414,9 +414,8 @@ function ForgotPasswordFlow() {
                   <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>
                     {authConfig.employeeIdLogin ? t.identifierWithId : t.identifierEmailOnly}
                   </label>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", height: "52px", padding: "0 16px",
+                  <div style={{ display: "flex", alignItems: "center", height: "56px", padding: "0 18px",
                     border: identifierError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: "8px" }}>
-                    <PersonFieldIcon />
                     <input
                       value={identifier}
                       onChange={e => setIdentifier(e.target.value)}
@@ -424,7 +423,7 @@ function ForgotPasswordFlow() {
                       onKeyDown={e => { if (e.key === "Enter") sendCode(); }}
                       placeholder={authConfig.employeeIdLogin ? "EMP-2041 or user@email.com" : "user@email.com"}
                       autoFocus
-                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
+                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                     />
                   </div>
                   {identifierError ? (
@@ -568,8 +567,7 @@ function ForgotPasswordFlow() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "24px", width: "100%" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                     <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.newPassword}</label>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", height: "52px", padding: "0 16px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
-                      <LockFieldIcon />
+                    <div style={{ display: "flex", alignItems: "center", height: "56px", padding: "0 18px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
                       <input
                         type={showNew ? "text" : "password"}
                         value={newPassword}
@@ -578,7 +576,7 @@ function ForgotPasswordFlow() {
                         onBlur={() => setFocusedField(null)}
                         placeholder="••••••••"
                         autoFocus
-                        style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                        style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
                       />
                       <button onClick={() => setShowNew(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                         {showNew ? <EyeIcon /> : <EyeOffIcon />}
@@ -587,8 +585,7 @@ function ForgotPasswordFlow() {
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                     <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.confirmPassword}</label>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", height: "52px", padding: "0 16px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
-                      <LockFieldIcon />
+                    <div style={{ display: "flex", alignItems: "center", height: "56px", padding: "0 18px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
                       <input
                         type={showConfirm ? "text" : "password"}
                         value={confirmPassword}
@@ -597,7 +594,7 @@ function ForgotPasswordFlow() {
                         onBlur={() => setFocusedField(null)}
                         onKeyDown={e => { if (e.key === "Enter") savePassword(); }}
                         placeholder="••••••••"
-                        style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                        style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
                       />
                       <button onClick={() => setShowConfirm(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                         {showConfirm ? <EyeIcon /> : <EyeOffIcon />}

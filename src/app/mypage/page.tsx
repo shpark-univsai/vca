@@ -8,7 +8,7 @@ import {
   DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD,
 } from "@/lib/mockData";
 import { SIGNED_IN_USER } from "@/lib/vcaStore";
-import { LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
+import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useLanguage } from "@/lib/i18n";
@@ -380,8 +380,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.currentPassword}</label>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", height: "48px", padding: "0 16px", border: fieldBorder(focusedField === "current"), borderRadius: "8px" }}>
-                    <LockFieldIcon />
+                  <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "current"), borderRadius: "8px" }}>
                     <input
                       type={showCurrent ? "text" : "password"}
                       value={currentPassword}
@@ -391,7 +390,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                       onKeyDown={e => { if (e.key === "Enter") handleVerifyCurrent(); }}
                       placeholder="••••••••"
                       autoFocus
-                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
                     />
                     <button onClick={() => setShowCurrent(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                       {showCurrent ? <EyeIcon /> : <EyeOffIcon />}
@@ -418,8 +417,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.newPassword}</label>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", height: "48px", padding: "0 16px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
-                    <LockFieldIcon />
+                  <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
                     <input
                       type={showNew ? "text" : "password"}
                       value={newPassword}
@@ -428,7 +426,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                       onBlur={() => setFocusedField(null)}
                       placeholder="••••••••"
                       autoFocus
-                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
                     />
                     <button onClick={() => setShowNew(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                       {showNew ? <EyeIcon /> : <EyeOffIcon />}
@@ -438,8 +436,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.confirmPassword}</label>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", height: "48px", padding: "0 16px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
-                    <LockFieldIcon />
+                  <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
                     <input
                       type={showConfirm ? "text" : "password"}
                       value={confirmPassword}
@@ -447,7 +444,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                       onFocus={() => setFocusedField("confirm")}
                       onBlur={() => setFocusedField(null)}
                       placeholder="••••••••"
-                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
                     />
                     <button onClick={() => setShowConfirm(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                       {showConfirm ? <EyeIcon /> : <EyeOffIcon />}

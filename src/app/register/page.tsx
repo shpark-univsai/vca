@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import VerificationCodeInput from "@/components/VerificationCodeInput";
-import { LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
+import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { getAuthConfig } from "@/lib/authConfig";
 import {
@@ -323,8 +323,7 @@ function RegisterFlow() {
   ) => (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
       <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{label}</label>
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", height: "52px", padding: "0 16px", border: fieldBorder(focusedField === key), borderRadius: "8px" }}>
-        <LockFieldIcon />
+      <div style={{ display: "flex", alignItems: "center", height: "56px", padding: "0 18px", border: fieldBorder(focusedField === key), borderRadius: "8px" }}>
         <input
           type={shown ? "text" : "password"}
           value={value}
@@ -334,7 +333,7 @@ function RegisterFlow() {
           onKeyDown={e => { if (e.key === "Enter") onEnter?.(); }}
           placeholder="••••••••"
           autoFocus={key === "password"}
-          style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "15px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+          style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
         />
         <button onClick={toggle} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
           {shown ? <EyeIcon /> : <EyeOffIcon />}
