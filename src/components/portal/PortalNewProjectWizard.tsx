@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { useVcaStore, type ProjectType } from "@/lib/vcaStore";
+import { useVcaStore, canManageAccess, currentPortalUser, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, CONTROL_HEIGHT } from "./PortalShared";
 
@@ -29,6 +29,8 @@ const T = {
     firstCameraName: "Channel 1",
     deploy: "Create project",
     cancel: "Cancel",
+    refusedTitle: "Not available on this account",
+    refusedBody: "Projects are provisioned during installation. This screen is the provisioning reference and is limited to the owner account.",
   },
   ko: {
     badge: "새 프로젝트 설정",
@@ -47,6 +49,8 @@ const T = {
     firstCameraName: "채널 1",
     deploy: "프로젝트 만들기",
     cancel: "취소",
+    refusedTitle: "이 계정에서는 열 수 없습니다",
+    refusedBody: "프로젝트는 설치 과정에서 배정됩니다. 이 화면은 프로비저닝 참조용이고 최고관리자 계정으로 제한됩니다.",
   },
 } as const;
 
@@ -71,6 +75,18 @@ interface PortalNewProjectWizardProps {
 
 export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, defaultType = "smart_city" }: PortalNewProjectWizardProps) {
   useEscapeKey(() => onCancel?.());
+  /*
+   * Owner only, even though nothing in the UI links here.
+   *
+   * An unlisted address is a door nobody has been told about, not a locked one — anybody who
+   * learns the URL can open it, and this screen creates a project. The gate travels with the
+   * component rather than sitting at the one call site, so a future entry point cannot forget
+   * it. Fails open with no matching identity, the same convention every other gate in Portal
+   * follows: a lock keyed on "we could not identify you" shuts the demo out of its own console.
+   */
+  const portalUsers = useVcaStore(s => s.portalUsers);
+  const me = currentPortalUser(portalUsers);
+  const mayProvision = me ? canManageAccess(me.permission) : true;
   const addProject = useVcaStore(s => s.addProject);
   const addCamera = useVcaStore(s => s.addCamera);
   const [selectedType, setSelectedType] = useState<ProjectType>(defaultType);
@@ -108,6 +124,26 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
     onDeployed(created?.id ?? "");
   };
 
+  if (!mayProvision) {
+    return (
+      <div onClick={e => { if (e.target === e.currentTarget) onCancel?.(); }}
+        style={{
+          position: "fixed", inset: 0, zIndex: 400, backgroundColor: "rgba(14,22,42,0.4)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
+        }}>
+        <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "400px", width: "100%", padding: "22px", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+          <p style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)" }}>{t.refusedTitle}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.55, marginTop: "8px" }}>{t.refusedBody}</p>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "18px" }}>
+            <button className="portal-btn-outline" onClick={() => onCancel?.()}
+              style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              {t.cancel}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     /*
       A dialog over the console, not a page that replaces it.
