@@ -32,6 +32,20 @@ const T = {
     face: "Face",
     body: "Body",
     searchByImage: (what: string) => `${what} — search by image`,
+    clearRange: "Clear",
+    reset: "Reset",
+    detach: "Detach",
+    loaded: "Loaded",
+    searchByImageShort: "Search by image",
+    chooseImage: "Choose image",
+    fileTypes: "JPG, PNG, GIF, TIFF, HEIC, WebP · up to 50MB",
+    tracing: (name: string) => `Tracing: ${name}`,
+    routeHistory: "Route history",
+    lastSeen: "LAST SEEN",
+    elapsedLabel: "elapsed",
+    rangeOf: (n: number) => `1–${n} of ${n}`,
+    faceScore: (v: string) => `Face ${v}`,
+    bodyScore: (v: string) => `Body ${v}`,
     removeImage: (what: string) => `Remove ${what} image`,
     similarity: "Similarity",
     bodyOnlyHint: "Body-only search: matching on build and clothing alone is looser than a face match, so a low threshold here returns many false positives.",
@@ -86,6 +100,20 @@ const T = {
     face: "얼굴",
     body: "전신",
     searchByImage: (what: string) => `${what} — 이미지로 검색`,
+    clearRange: "지우기",
+    reset: "초기화",
+    detach: "떼어내기",
+    loaded: "첨부됨",
+    searchByImageShort: "이미지로 검색",
+    chooseImage: "이미지 선택",
+    fileTypes: "JPG, PNG, GIF, TIFF, HEIC, WebP · 최대 50MB",
+    tracing: (name: string) => `${name} 동선 추적 중`,
+    routeHistory: "이동 경로",
+    lastSeen: "마지막 검출",
+    elapsedLabel: "만큼 지남",
+    rangeOf: (n: number) => `${n}건 중 1–${n}`,
+    faceScore: (v: string) => `얼굴 ${v}`,
+    bodyScore: (v: string) => `전신 ${v}`,
     removeImage: (what: string) => `${what} 이미지 삭제`,
     similarity: "유사도",
     bodyOnlyHint: "전신만으로 검색하면 체형과 옷차림만 비교하므로 얼굴 대조보다 느슨합니다. 기준을 낮추면 다른 사람이 많이 섞입니다.",
@@ -711,7 +739,7 @@ function DateRangePicker({ value, onChange }: { value: DateRange; onChange: (v: 
                   onClick={() => { onChange({ start: null, end: null }); setStep("start"); }}
                   style={{ background: "none", border: "none", cursor: "pointer", fontSize: "10px", color: "var(--gray-400)", fontWeight: 600 }}
                 >
-                  Clear
+                  {t.clearRange}
                 </button>
               </div>
             )}
@@ -1124,7 +1152,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", textAlign: "center" }}>
                 <span style={{ fontSize: "16px", fontWeight: 700, color: "var(--primary-400)" }}>{t.dragAndDrop}</span>
                 <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>
-                  File types supported: JPG, PNG, GIF, TIFF, HEIC, WebP. Max size 50MB
+                  {t.fileTypes}
                 </span>
               </div>
               <button
@@ -1135,7 +1163,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                   boxShadow: "0 4px 4px rgba(29,41,59,0.1)",
                 }}
               >
-                Choose image
+                {t.chooseImage}
               </button>
             </div>
           </div>
@@ -1272,11 +1300,11 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                       </span>
                       {active ? (
                         <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--primary-400)", whiteSpace: "nowrap" }}>
-                          <CheckIconSm /> Loaded
+                          <CheckIconSm /> {t.loaded}
                         </span>
                       ) : (
                         <span className="vca-tb-hint" style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", whiteSpace: "nowrap" }}>
-                          Search by image
+                          {t.searchByImageShort}
                         </span>
                       )}
                     </button>
@@ -1299,7 +1327,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                         <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
                           <path d="M2 2L9 9M9 2L2 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                         </svg>
-                        delete
+                        {t.detach}
                       </button>
                     )}
                   </div>
@@ -1351,7 +1379,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
               fontFamily: "'SUIT', sans-serif", flexShrink: 0,
             }}
           >
-            <ResetIconSm /> Reset
+            <ResetIconSm /> {t.reset}
           </button>
           <button
             onClick={handleSearch}
@@ -1436,7 +1464,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                               sits in the corner rather than competing for the same hit area. */}
                           {image && hoverUpload === key && (
                             <RemoveImageButton
-                              label={`Remove ${key} image`}
+                              label={t.removeImage(key === "face" ? t.face : t.body)}
                               onRemove={() => clearUpload(key)}
                             />
                           )}
@@ -1468,7 +1496,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                   fontSize: "12px", fontWeight: 700, color: "var(--primary-400)", backgroundColor: "var(--primary-100)",
                   borderRadius: "999px", padding: "3px 10px", whiteSpace: "nowrap",
                 }}>
-                  Tracing: {traceName}
+                  {t.tracing(traceName)}
                 </span>
               )}
             </div>
@@ -1515,7 +1543,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "24px 0" }}>
                 <div className="vca-skeleton-pulse" style={{ width: "28px", height: "28px", borderRadius: "999px", backgroundColor: "var(--primary-200)" }} />
                 <p style={{ fontSize: "12px", textAlign: "center", lineHeight: 1.7, color: "var(--gray-500)", fontWeight: 700 }}>
-                  Searching…
+                  {t.searching}
                 </p>
               </div>
             ) : results.length === 0 ? (
@@ -1583,12 +1611,12 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                     </div>
                     <div style={{ backgroundColor: "var(--gray-100)", borderRadius: "6px", padding: "4px 6px", overflow: "hidden" }}>
                       <span style={{ display: "block", fontSize: "10px", color: "var(--gray-700)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        Face <span style={{ fontWeight: 800, color: "var(--primary-400)" }}>{hit.score}</span>
+                        {t.face} <span style={{ fontWeight: 800, color: "var(--primary-400)" }}>{hit.score}</span>
                         {/* No body image was searched → bodyScore has nothing real behind it and
                             reads as "0%", not an actual (low) match — show Face alone rather than
                             a body score that isn't measuring anything. */}
                         {parseFloat(hit.bodyScore) > 0 && (
-                          <> · Body <span style={{ fontWeight: 800, color: "var(--primary-400)" }}>{hit.bodyScore}</span></>
+                          <> · {t.body} <span style={{ fontWeight: 800, color: "var(--primary-400)" }}>{hit.bodyScore}</span></>
                         )}
                       </span>
                     </div>
@@ -1620,7 +1648,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
 
           {hasSearched && results.length > 0 && (
             <div style={{ padding: "10px 20px", borderTop: BORDER, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-              <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-800)" }}>1–{results.length} of {results.length}</span>
+              <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-800)" }}>{t.rangeOf(results.length)}</span>
             </div>
           )}
         </div>
@@ -1683,7 +1711,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
             display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0,
           }}>
             <h3 style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>
-              Route history
+              {t.routeHistory}
             </h3>
             <button onClick={() => setTimelineNewestFirst(v => !v)} style={{
               display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none",
@@ -1943,11 +1971,11 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                                       {elapsedText}
                                     </span>
                                     <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)" }}>
-                                      elapsed
+                                      {t.elapsedLabel}
                                     </span>
                                   </span>
                                 ) : <span />}
-                                {isLatest && <span style={{ fontSize: "10px", fontWeight: 800, color: "var(--primary-400)" }}>LAST SEEN</span>}
+                                {isLatest && <span style={{ fontSize: "10px", fontWeight: 800, color: "var(--primary-400)" }}>{t.lastSeen}</span>}
                               </div>
                             )}
                           </div>
