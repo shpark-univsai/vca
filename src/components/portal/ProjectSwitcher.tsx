@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useVcaStore, type Project } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -46,6 +46,56 @@ interface ProjectSwitcherProps {
 
 type Tab = "recent" | "starred" | "all";
 const TAB_IDS: Tab[] = ["recent", "starred", "all"];
+
+/**
+ * What this picker remembers between visits: which projects are starred, and when each was
+ * last opened.
+ *
+ * Both were missing and both were visible as bugs. Stars were plain component state, so they
+ * vanished on refresh — the Starred tab said "No starred projects yet" about projects starred
+ * a minute earlier. And nothing recorded recency at all, so "Recent" and "All" rendered
+ * byte-identical lists: a tab that is a copy of the tab beside it.
+ *
+ * Per browser, not per account, and deliberately so: this is which sites THIS person keeps
+ * coming back to on THIS machine, which is a convenience and not a setting anybody else should
+ * inherit. Every read and write is guarded — a private window, cleared site data or a browser
+ * set to block storage all throw here, and none of them should break a switcher.
+ */
+const SWITCHER_MEMORY_KEY = "vca:portalSwitcher";
+
+interface SwitcherMemory {
+  starred: string[];
+  /** projectId -> epoch ms of the last time it was picked from this list. */
+  opened: Record<string, number>;
+}
+
+function readMemory(): SwitcherMemory {
+  try {
+    const raw = window.localStorage.getItem(SWITCHER_MEMORY_KEY);
+    if (!raw) return { starred: [], opened: {} };
+    const parsed = JSON.parse(raw) as Partial<SwitcherMemory>;
+    return {
+      starred: Array.isArray(parsed.starred) ? parsed.starred.filter(v => typeof v === "string") : [],
+      opened: parsed.opened && typeof parsed.opened === "object" ? parsed.opened : {},
+    };
+  } catch {
+    return { starred: [], opened: {} };
+  }
+}
+
+/** Wall-clock, read at the moment of a click. Out here rather than inline in the handler so
+ *  the component body stays free of impure calls. */
+function stamp(): number {
+  return Date.now();
+}
+
+function writeMemory(memory: SwitcherMemory): void {
+  try {
+    window.localStorage.setItem(SWITCHER_MEMORY_KEY, JSON.stringify(memory));
+  } catch {
+    // Nothing to do and nothing to say: a switcher that cannot remember still switches.
+  }
+}
 
 const T = {
   en: {
@@ -128,7 +178,15 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [tab, setTab] = useState<Tab>("all");
-  const [starred, setStarred] = useState<Set<string>>(new Set());
+  /*
+   * Read after mount, never during render: localStorage is not available on the server, and a
+   * first paint that disagreed with the second is the hydration mismatch this codebase avoids
+   * everywhere else. Until it is read the list behaves as if nothing is remembered, which is
+   * the same thing a first-time visitor sees.
+   */
+  const [memory, setMemory] = useState<SwitcherMemory>({ starred: [], opened: {} });
+  useEffect(() => { queueMicrotask(() => setMemory(readMemory())); }, []);
+  const starred = useMemo(() => new Set(memory.starred), [memory.starred]);
   const [teamMenuOpen, setTeamMenuOpen] = useState(false);
   const teamMenuRef = useRef<HTMLDivElement>(null);
   // Not on mount — only when the shell raises the signal. See reopenSignal.
@@ -164,19 +222,27 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
   const visibleProjects = projects
     .filter(p => p.teamId === team?.id)
     .filter(p => p.name.toLowerCase().includes(q))
-    .filter(p => tab !== "starred" || starred.has(p.id));
+    .filter(p => tab !== "starred" || starred.has(p.id))
+    // Recent means recently opened FROM HERE, so a project never picked is not in it. That
+    // makes the tab empty on a first visit, which is the truth — it used to be a duplicate of
+    // All, which was not.
+    .filter(p => tab !== "recent" || memory.opened[p.id] !== undefined)
+    .sort((a, b) => (tab === "recent" ? (memory.opened[b.id] ?? 0) - (memory.opened[a.id] ?? 0) : 0));
   const showTeamRow = tab !== "starred" && team && team.name.toLowerCase().includes(q);
+
+  const remember = (next: SwitcherMemory) => { setMemory(next); writeMemory(next); };
 
   const toggleStar = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setStarred(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
+    remember({
+      ...memory,
+      starred: memory.starred.includes(id) ? memory.starred.filter(x => x !== id) : [...memory.starred, id],
     });
   };
 
   const selectProject = (p: Project) => {
+    // Recording the pick is what makes the Recent tab a real answer rather than a copy of All.
+    remember({ ...memory, opened: { ...memory.opened, [p.id]: stamp() } });
     onSelect(p.id);
     setOpen(false);
     setQuery("");

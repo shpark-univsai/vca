@@ -446,9 +446,35 @@ const EMPTY_FORM: CameraFormValues = {
 // Camera codes are an internal identifier (shown in the table, used in mock RTSP paths) — the
 // reference popup this modal now matches doesn't surface a code field, so it's derived from the
 // name instead of typed in by the operator.
-function generateCameraCode(name: string, existingCount: number): string {
-  const prefix = name.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase() || "CAM";
-  return `CAM-${prefix}-${String(existingCount + 1).padStart(3, "0")}`;
+function generateCameraCode(name: string, existing: string[]): string {
+  /*
+   * No Latin letters in the name means no prefix at all — "CAM-001", not "CAM-CAM-001".
+   * The fallback used to be the literal string "CAM", so a Korean-named fleet came out as
+   * CAM-CAM-001, CAM-CAM-002 … and the segment that exists to tell cameras apart told you
+   * nothing about any of them.
+   */
+  const letters = name.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
+  const prefix = letters || null;
+  /*
+   * The sequence comes from the codes that exist, not from how many cameras there are.
+   *
+   * Counting produced collisions the moment anything had been deleted: five cameras, add
+   * "Alpha Gate" -> CAM-ALP-006, delete an older one, add "Alpine Road" -> CAM-ALP-006 again.
+   * Two cameras sharing the code that the table, the CSV export and every audit message
+   * identify them by.
+   *
+   * Scoped to the prefix, so the numbers stay short and readable per family rather than being
+   * one global counter.
+   */
+  const stem = prefix ? `CAM-${prefix}-` : "CAM-";
+  const used = new Set(existing);
+  let n = existing.filter(c => c.startsWith(stem)).length + 1;
+  let code = `${stem}${String(n).padStart(3, "0")}`;
+  while (used.has(code)) {
+    n += 1;
+    code = `${stem}${String(n).padStart(3, "0")}`;
+  }
+  return code;
 }
 
 function CameraFormModal({
@@ -863,7 +889,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   // else the form collects is stored.
   const createCamera = (values: CameraFormValues) => {
     addCamera({
-      projectId, name: values.name.trim(), code: generateCameraCode(values.name.trim(), projectCameras.length), rtspUrl: values.rtspUrl.trim(),
+      projectId, name: values.name.trim(), code: generateCameraCode(values.name.trim(), cameras.map(c => c.code)), rtspUrl: values.rtspUrl.trim(),
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
       maker: values.maker, model: values.model.trim() || undefined, resolution: values.resolution,
       username: values.username.trim() || undefined, serverId: values.serverId || undefined,

@@ -2257,7 +2257,25 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       auditLog: [{ id: `audit-${++auditSeq}`, projectId: camera.projectId, message: `Camera ${camera.name} added`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   updateCamera: (cameraId, updates) =>
-    set(state => ({ cameras: state.cameras.map(c => (c.id === cameraId ? { ...c, ...updates } : c)) })),
+    set(state => {
+      const cam = state.cameras.find(c => c.id === cameraId);
+      if (!cam) return state;
+      // Adding and removing a camera both logged; editing one did not — and re-pointing a
+      // camera at a different stream is exactly the change an investigation asks about. The
+      // seeded log even carries "Camera CAM-NOV-001 RTSP URL updated", so the customer learns
+      // to expect a line that was never written.
+      const streamChanged = updates.rtspUrl !== undefined && updates.rtspUrl !== cam.rtspUrl;
+      return {
+        cameras: state.cameras.map(c => (c.id === cameraId ? { ...c, ...updates } : c)),
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId: cam.projectId,
+          message: streamChanged
+            ? `Camera ${updates.name ?? cam.name} stream address changed`
+            : `Camera ${updates.name ?? cam.name} updated`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   removeCamera: (cameraId) =>
     set(state => {
       const cam = state.cameras.find(c => c.id === cameraId);
@@ -2401,9 +2419,12 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       // Audited: which day a detection is filed under, when a report covers, and what "today"
       // means on every screen all move when this changes.
       auditLog: [
-        { id: `audit-${Date.now()}`, projectId, message: `Project timezone set to ${timeZone}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() },
+        // ++auditSeq, not Date.now(): two changes inside one millisecond produced duplicate
+        // React keys. And sliced like every other writer — this was the one that could grow the
+        // log past the ceiling the Activity screen prints.
+        { id: `audit-${++auditSeq}`, projectId, message: `Project timezone set to ${timeZone}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() },
         ...state.auditLog,
-      ],
+      ].slice(0, AUDIT_LOG_LIMIT),
     })),
 
   updateProjectMail: (projectId, updates) =>

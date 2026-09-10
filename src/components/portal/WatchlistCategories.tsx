@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useVcaStore, WATCHLIST_CATEGORY_COLORS, type WatchlistCategory, type WatchlistCategoryColor } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { BORDER, CONTROL_HEIGHT, TextField } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, ConfirmModal, TextField } from "./PortalShared";
 
 /**
  * Watchlist categories are a TEAM's policy, not a project's.
@@ -39,6 +39,9 @@ const T: Record<"en" | "ko", CategoryDict> = {
     catValidDays: "Default duration (days)",
     catValidDaysNone: "No default end date",
     close: "Close",
+    catRetireTitle: (label: string) => `Retire "${label}"?`,
+    catRetireBody: "It stops being offered when somebody is registered. People already listed under it keep the label, and nothing on this screen brings it back.",
+    catRetireCount: (n: number) => (n === 1 ? "1 person is listed under it." : `${n} people are listed under it.`),
   },
   ko: {
     basisLabel: "등록 근거",
@@ -61,6 +64,9 @@ const T: Record<"en" | "ko", CategoryDict> = {
     catValidDays: "기본 유효기간 (일)",
     catValidDaysNone: "기본 만료일 없음",
     close: "닫기",
+    catRetireTitle: (label: string) => `"${label}"을(를) 중지할까요?`,
+    catRetireBody: "앞으로 등록할 때 이 분류가 목록에 뜨지 않습니다. 이미 등록된 사람의 표시는 그대로 남고, 이 화면에서 되돌릴 방법은 없습니다.",
+    catRetireCount: (n: number) => `이 분류로 등록된 사람 ${n}명.`,
   },
 };
 
@@ -70,6 +76,9 @@ interface CategoryDict {
   catLabelField: string; catLabelPlaceholder: string; catModalIntro: string; catModalTitle: string;
   catNew: string; catOwnerOnly: string; catRequiresBasis: string; catSave: string;
   catValidDays: string; catValidDaysNone: string; close: string;
+  catRetireTitle: (label: string) => string;
+  catRetireBody: string;
+  catRetireCount: (n: number) => string;
 }
 
 /**
@@ -92,6 +101,7 @@ export function WatchlistCategoryModal({ teamId, categories, canEdit, onClose }:
 }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
+  const persons = useVcaStore(s => s.persons);
   const addWatchlistCategory = useVcaStore(s => s.addWatchlistCategory);
   const updateWatchlistCategory = useVcaStore(s => s.updateWatchlistCategory);
   const archiveWatchlistCategory = useVcaStore(s => s.archiveWatchlistCategory);
@@ -104,6 +114,9 @@ export function WatchlistCategoryModal({ teamId, categories, canEdit, onClose }:
    * and the only way out was to retire the row and make another one beside it.
    */
   const [editing, setEditing] = useState<string | null>(null);
+  /** Confirmed, because the comment on the button says it cannot be undone from this screen —
+   *  and there is nothing anywhere that un-retires a category. */
+  const [retiring, setRetiring] = useState<WatchlistCategory | null>(null);
   const [label, setLabel] = useState("");
   const [validDays, setValidDays] = useState("");
   const [requiresBasis, setRequiresBasis] = useState(true);
@@ -168,7 +181,7 @@ export function WatchlistCategoryModal({ teamId, categories, canEdit, onClose }:
                 </button>
                 {/* Retiring keeps its box. It is the one action here that cannot be undone from
                     this screen, and it should not read as the same weight as renaming. */}
-                <button className="portal-btn-outline" onClick={() => archiveWatchlistCategory(c.id)}
+                <button className="portal-btn-outline" onClick={() => setRetiring(c)}
                   style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                   {t.catArchive}
                 </button>
@@ -241,6 +254,24 @@ export function WatchlistCategoryModal({ teamId, categories, canEdit, onClose }:
           </button>
         </div>
       </div>
+
+      {retiring && (
+        <ConfirmModal
+          title={t.catRetireTitle(retiring.label)}
+          body={t.catRetireBody}
+          confirmLabel={t.catArchive}
+          cancelLabel={t.cancel}
+          danger
+          onConfirm={() => { archiveWatchlistCategory(retiring.id); setRetiring(null); }}
+          onClose={() => setRetiring(null)}
+        >
+          {/* How many rows keep pointing at it. Retiring a category nobody uses and retiring the
+              one half the registry is filed under are the same click and different decisions. */}
+          <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginTop: "12px" }}>
+            {t.catRetireCount(persons.filter(pp => pp.categoryId === retiring.id).length)}
+          </p>
+        </ConfirmModal>
+      )}
     </div>
   );
 }

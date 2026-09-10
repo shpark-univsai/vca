@@ -88,6 +88,8 @@ const T = {
     colStatus: "Status",
     emptySearch: "No users match this search.",
     emptyNoUsers: "No users have access to this project yet.",
+    emptyFiltered: "Nothing matches the current filter.",
+    emptyClear: "Clear filters",
 
     // Permission / status / MFA display labels
     permOwner: "Owner",
@@ -325,6 +327,8 @@ const T = {
     colStatus: "상태",
     emptySearch: "검색 결과와 일치하는 사용자가 없습니다.",
     emptyNoUsers: "이 프로젝트에 접근 권한이 있는 사용자가 아직 없습니다.",
+    emptyFiltered: "지금 조건에 맞는 항목이 없습니다.",
+    emptyClear: "조건 해제",
 
     // Permission / status / MFA display labels
     permOwner: "최고관리자",
@@ -1725,6 +1729,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
    * is what the numbers were being read for.
    */
   const [statusFilter, setStatusFilter] = useState<"invited" | "suspended" | "roster" | null>(null);
+  /** True when the list is empty only because something is filtering it. The two empty states
+   *  send the reader to different places, and one message for both sends half of them wrong. */
+  const narrowed = statusFilter !== null || search.trim() !== "";
   // The page's clock, read after mount. See projectRosterAll.
   const [pageNowMs, setPageNowMs] = useState<number | null>(null);
   useEffect(() => { queueMicrotask(() => setPageNowMs(Date.now())); }, []);
@@ -1771,7 +1778,27 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
    * summary strip read: a summary that shrinks when you filter to part of it has stopped being a
    * summary (the note above filteredUsers makes the same point about accounts).
    */
-  const visibleRoster = rosterWaiting.filter(() => statusFilter === null || statusFilter === "roster");
+  /*
+   * Sorted by whatever heading was clicked, which the headings have always drawn an arrow for
+   * and never actually done — visibleRoster came straight off rosterWaiting's fixed stage-then-
+   * name order, so the arrow moved and the rows did not.
+   *
+   * Stage order stays the tiebreaker under every key, because the funnel is what the tab is for.
+   */
+  const visibleRoster = sortRows(
+    rosterWaiting.filter(() => statusFilter === null || statusFilter === "roster"),
+    sort,
+    (r, key) => {
+      switch (key) {
+        case "name": return r.name.toLowerCase();
+        case "permission": return r.permission;
+        case "status": return STAGES.indexOf(stageOfRosterEntry(r.status));
+        // The roster has no last-login column; the shared sort state can still carry the key
+        // from the accounts tab, and falling back to the funnel is the honest answer.
+        default: return STAGES.indexOf(stageOfRosterEntry(r.status));
+      }
+    },
+  );
   const notIssuedIds = rosterWaiting.filter(r => r.status === "not-issued").map(r => r.employeeId);
   const printableEntries = rosterWaiting.filter(r => r.status === "unused" && r.code);
 
@@ -1937,7 +1964,17 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
 
       {!mailAvailable && <RecoveryModeNotice supportContact={authConfig.supportContact} />}
 
-      <UserCountStrip users={projectUsers} rosterWaiting={rosterWaiting.length} statusFilter={statusFilter} onFilter={setStatusFilter} onShowGuide={() => setShowGuide(true)} />
+      {/* The strip drives the tab as well as the filter. Picking "on the roster" from the
+          Accounts tab used to set a filter no account's status can equal: the table emptied and
+          printed "No users have access to this project yet" with six accounts one click away.
+          The mirror case did the same on the other tab. A cell now shows what it counts. */}
+      <UserCountStrip users={projectUsers} rosterWaiting={rosterWaiting.length} statusFilter={statusFilter}
+        onFilter={next => {
+          setStatusFilter(next);
+          if (next === "roster") setPeopleTab("roster");
+          else if (next !== null) setPeopleTab("accounts");
+        }}
+        onShowGuide={() => setShowGuide(true)} />
 
       <AccessRequestsPanel projectId={projectId} />
 
@@ -2008,9 +2045,17 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         {/* Per tab: each half answers for itself, and neither can speak for the other's rows. */}
         {(peopleTab === "accounts" ? scopedUsers.length : visibleRoster.length) === 0 && (
           <div style={{ padding: "32px 16px", textAlign: "center", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}>
+            {/* "Nothing matches what you asked for" and "there is nothing here" send the reader
+                to two different places, and one message for both sends half of them wrong. */}
             <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
-              {q ? t.emptySearch : peopleTab === "accounts" ? t.emptyNoUsers : t.rosterEmpty}
+              {narrowed ? t.emptyFiltered : peopleTab === "accounts" ? t.emptyNoUsers : t.rosterEmpty}
             </p>
+            {narrowed && (
+              <button className="portal-btn-quiet" onClick={() => { setStatusFilter(null); setSearch(""); }}
+                style={{ marginTop: "10px", padding: "6px 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                {t.emptyClear}
+              </button>
+            )}
           </div>
         )}
         {(peopleTab === "accounts" ? scopedUsers : []).map((u, i) => {
