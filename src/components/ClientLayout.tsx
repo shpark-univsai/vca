@@ -17,7 +17,7 @@ import SidebarToggleIcon from "./SidebarToggleIcon";
 import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
 import {
-  useVcaStore, canEnterApp, canEnterPortal, currentPortalUser,
+  useVcaStore, canUseAppNow, canEnterPortal, currentPortalUser,
   camerasInProject, getActiveProjectId, useActiveProjectId, watchedPersonsInProject,
   type Camera,
 } from "@/lib/vcaStore";
@@ -171,7 +171,7 @@ export default function ClientLayout() {
   // HANDOFF NOTE: fail-open on purpose, same as Portal's. `currentPortalUser` answers undefined
   // for an address in no account list, and then nothing is locked. The real door is the server.
   const me = useVcaStore(s => currentPortalUser(s.portalUsers));
-  const locked = !!me && !canEnterApp(me);
+  const locked = !!me && !canUseAppNow(me);
   const canGoToPortal = !!me && canEnterPortal(me.permission);
   useEffect(() => {
     if (!locked) return;

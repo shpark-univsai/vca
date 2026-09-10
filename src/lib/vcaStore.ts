@@ -1003,13 +1003,29 @@ export function canEnterPortal(permission: PortalPermission): boolean {
 }
 
 /**
- * May sign into the monitoring app.
+ * Whether the account is GRANTED the monitoring app — the permission, not today's answer.
  *
  * Takes the user rather than a permission because it is no longer derivable from the role — that
- * is the entire point of the split.
+ * is the entire point of the split. Portal shows this: it is what an administrator granted, and it
+ * stays true of a suspended account, whose access was not revoked but paused.
  */
 export function canEnterApp(user: Pick<PortalUser, "appAccess">): boolean {
   return user.appAccess;
+}
+
+/**
+ * Whether the account may open the app RIGHT NOW: granted, and in a state that can sign in.
+ *
+ * The app's door used to read canEnterApp alone, so `status: "suspended", appAccess: true` — the
+ * exact combination one seeded account carries — was turned away by login and let straight in
+ * here. An administrator suspending an account mid-shift expects the screen to go, not to keep
+ * serving whoever is already in front of it. Separate from canEnterApp because Portal is
+ * reporting a grant while the door is deciding an entry, and the two are not the same question.
+ *
+ * HANDOFF NOTE: the door that matters is the session on the server. This is the screen's copy.
+ */
+export function canUseAppNow(user: Pick<PortalUser, "appAccess" | "status">): boolean {
+  return canEnterApp(user) && user.status === "active";
 }
 
 /**

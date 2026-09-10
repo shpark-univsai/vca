@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import { ErrorCircleIcon } from "@/components/AuthIcons";
 import { isMailDeliverable, resolveMailConfig, useVcaStore } from "@/lib/vcaStore";
+import { getAuthConfig } from "@/lib/authConfig";
+import { redirect } from "next/navigation";
 import { useLanguage } from "@/lib/i18n";
 
 
@@ -75,8 +77,17 @@ const FIELD_BORDER = "1px solid var(--gray-300)";
  * Nothing routes here yet. Reaching it requires a route guard noticing "no permission", and no
  * route in the app is gated at all until the session model lands (see the handoff note in
  * src/app/login/page.tsx). The screen is built now so that wiring is the only step left.
+ *
+ * Closed by authConfig.accessRequest, like /signup is by selfSignup. Login only hid the link,
+ * which left the route open: typing the URL rendered the form, submitting it wrote a real record
+ * into the master's approval queue through a flow the product decided not to have — and the email
+ * field answered "this address already has access to this project" to anyone who typed one, which
+ * is exactly the account-existence question /login and /forgot-password refuse to answer.
+ *
+ * HANDOFF NOTE: this closes the screen, not the hole. The backend must refuse the same call.
  */
 export default function RequestAccessPage() {
+  if (!getAuthConfig().accessRequest) redirect("/login");
   return (
     <Suspense fallback={null}>
       <RequestAccessForm />
