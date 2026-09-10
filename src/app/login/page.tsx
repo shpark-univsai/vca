@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
 import AuthTrailArt from "@/components/AuthTrailArt";
+import AuthTrailList from "@/components/AuthTrailList";
 import { getAuthConfig } from "@/lib/authConfig";
 import { PersonFieldIcon, LockFieldIcon, EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { LOGIN_NOTICES, parseLoginNotice, type LoginFailure } from "@/lib/authErrors";
@@ -417,8 +418,15 @@ function LoginForm() {
             aria-hidden covers the whole panel: a screen reader should land on the form, and the
             heading here is a caption for a picture it cannot see. */}
         <div className="vca-auth-brand" aria-hidden>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "28px", maxWidth: "460px" }}>
-            <AuthTrailArt className="vca-auth-brand-art" />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "28px", maxWidth: "640px" }}>
+            {/* The trail and the list are the same four cameras, numbered the same — one shows
+                where, the other in what order and how long between. The list is the first thing
+                dropped when the panel narrows: the drawing carries the idea alone, a list of
+                elapsed gaps beside nothing does not. */}
+            <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+              <AuthTrailArt className="vca-auth-brand-art" />
+              <AuthTrailList className="vca-auth-brand-list" />
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", textAlign: "center" }}>
               <p style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--gray-800)", letterSpacing: "-0.32px", lineHeight: 1.5 }}>
                 {t.panelHeading}

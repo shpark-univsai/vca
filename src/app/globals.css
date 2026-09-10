@@ -557,6 +557,14 @@ body {
   aspect-ratio: 1;
   flex-shrink: 0;
 }
+/* The sighting list beside the drawing needs its own room, so it arrives later than the panel
+   itself. Under this the drawing carries the idea alone — a column of elapsed gaps next to
+   nothing explains nothing. */
+.vca-auth-brand-list { display: none; }
+@media (min-width: 1180px) {
+  .vca-auth-brand-list { display: flex; }
+}
+
 @media (min-width: 900px) {
   .vca-auth-brand {
     display: flex;
