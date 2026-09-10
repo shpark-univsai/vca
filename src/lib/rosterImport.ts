@@ -12,7 +12,6 @@
  * is the caller's job, one addRosterEntry at a time.
  */
 
-import type { RosterEntry } from "@/lib/staffRoster";
 
 /** Why a row cannot be imported. A row can collect several. */
 export type ImportIssue =
@@ -249,16 +248,3 @@ export function buildImportRows(
   return { rows, missingColumns: [], unmappedHeaders };
 }
 
-/** The importable rows, in the shape addRosterEntry takes. */
-export function toRosterEntries(rows: ParsedRow[], projectId: string): Omit<RosterEntry, "status" | "code" | "issuedAt">[] {
-  return rows
-    .filter(r => r.issues.length === 0)
-    .map(r => ({
-      name: r.name,
-      employeeId: r.employeeId,
-      department: r.department,
-      email: r.email,
-      projectId,
-      permission: r.permission,
-    }));
-}

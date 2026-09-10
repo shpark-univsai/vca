@@ -6,13 +6,7 @@ import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib
 import { BORDER, CARD_BORDER, PANEL_SHADOW, TYPE_META } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 
-// Cumulative — each tier includes everything the tier before it unlocks. "Attendance / Reports"
-// is additionally gated by project type below (Smart School only), independent of plan tier.
-// These English strings double as lookup keys/identifiers (object keys, .includes() comparisons,
-// SCHOOL_ONLY_FEATURE / ALWAYS_LOCKED_FEATURES membership) as well as the plan tier itself
-// (project.licensePlan is one of these same strings) — so they stay in English here. Only the
-// rendered label goes through FEATURE_LABELS/T below; the tier name itself is left untranslated
-// since it's a data value shared with other screens that don't yet localize it.
+// Cumulative — each tier includes everything the tier before it unlocks.
 /**
  * The capability catalogue, reconciled against what the product actually has (2026-09-04).
  *
@@ -95,25 +89,12 @@ const T = {
     perpetual: "Perpetual",
     notRecorded: "No expiry on record",
     expiryNotice: (n: number) => `This licence expires in ${n} days. Renewing is a contract change, so start it with whoever signs — cameras stop being processed on the expiry date.`,
-    includedFeatures: "Included Features",
-    pendingHeading: "Coming soon",
     smartSchoolOnly: "Smart School only",
     analysisComingSoon: "readings not available yet",
     perChannelPerYear: (price: number) => `$${price}/channel/yr`,
     noLimitSet: "No limit set",
     overLimit: (used: number, limit: number) => `Over licensed limit (${used} / ${limit})`,
-    camerasRegistered: "Cameras registered",
-    channelsHeading: "Channels",
-    termHeading: "Term",
-    contractHeading: "Contract",
-    accountManagerLabel: "Account manager",
     expiredOn: "expired",
-    // "Available" said what the number was, not what it lets you do. This column exists to answer
-    // "can I install another camera", so it answers it.
-    channelsAvailable: "Can add",
-    channelsInUse: "licensed channels in use",
-    perChannelLabel: "Per channel",
-    yearlyTotalLabel: "Per year",
     atLimit: "Every licensed channel is in use — no further camera can be connected until the limit is raised.",
     nearLimit: (n: number) => `${n} channel(s) left before this project reaches its licensed limit.`,
     contractNote: "Channels and term are changed by contract, not here.",
@@ -127,9 +108,6 @@ const T = {
     channelsUnitN: (n: number) => `${n} channels`,
     inUseNow: (used: number, avail: number) => `${used} in use · ${avail} free`,
     scopeExcluded: "Not covered",
-    bannerContract: "Contract",
-    canAddN: (n: number) => `${n} can be added`,
-    channelsUnlimited: "No limit set — channels are not capped for this project",
     channelsCostPerYear: (cost: string) => `$${cost}/yr`,
   },
   ko: {
@@ -144,23 +122,12 @@ const T = {
     perpetual: "무기한",
     notRecorded: "만료일 미기록",
     expiryNotice: (n: number) => `라이선스가 ${n}일 뒤 만료됩니다. 갱신은 계약 변경이라 결재선을 타야 하니 미리 시작하세요 — 만료일부터 카메라 분석이 멈춥니다.`,
-    includedFeatures: "포함된 기능",
-    pendingHeading: "출시 예정",
     smartSchoolOnly: "Smart School 전용",
     analysisComingSoon: "판독 결과는 아직 없음",
     perChannelPerYear: (price: number) => `채널당 연 $${price}`,
     noLimitSet: "한도 미설정",
     overLimit: (used: number, limit: number) => `라이선스 한도 초과 (${used} / ${limit})`,
-    camerasRegistered: "등록된 카메라",
-    channelsHeading: "채널",
-    termHeading: "기간",
-    contractHeading: "계약",
-    accountManagerLabel: "담당자",
     expiredOn: "만료됨",
-    channelsAvailable: "추가 가능",
-    channelsInUse: "라이선스 채널 사용 중",
-    perChannelLabel: "채널당",
-    yearlyTotalLabel: "연간",
     atLimit: "라이선스 채널을 모두 쓰고 있습니다 — 한도를 올리기 전까지 카메라를 더 연결할 수 없습니다.",
     nearLimit: (n: number) => `라이선스 한도까지 ${n}채널 남았습니다.`,
     contractNote: "채널과 기간은 계약으로 변경되며 이 화면에서는 바꿀 수 없습니다.",
@@ -172,9 +139,6 @@ const T = {
     channelsUnitN: (n: number) => `${n}채널`,
     inUseNow: (used: number, avail: number) => `현재 ${used} 사용 · ${avail} 여유`,
     scopeExcluded: "미포함",
-    bannerContract: "계약 문의",
-    canAddN: (n: number) => `${n}채널 추가 가능`,
-    channelsUnlimited: "한도 미설정 — 이 프로젝트는 채널 수 제한이 없습니다",
     channelsCostPerYear: (cost: string) => `연 $${cost}`,
   },
 } as const;
@@ -252,7 +216,11 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
    *
    * Ninety days because renewing a licence is a purchase order, not a click: it goes through
    * whoever signs, and a fortnight's notice is not notice. Thirty is when it stops being a note
-   * and starts being a problem — that is where the counter switches to days.
+   * and starts being a problem, which is the amber-to-red line below.
+   *
+   * The counter switches to days at sixty, one step earlier: "2 months" and "2 months" are the
+   * same words for eight weeks and nine, and inside a quarter the number of days is the thing
+   * being planned against.
    */
   const daysRemaining = !isUnlimitedExpiry && !isExpired && project.licenseExpiresAt && nowMs !== null
     ? Math.ceil((new Date(project.licenseExpiresAt).getTime() - nowMs) / 86_400_000)

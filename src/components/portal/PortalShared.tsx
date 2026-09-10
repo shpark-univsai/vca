@@ -947,19 +947,9 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
   );
 }
 
-/** A dot-and-label pair for a metric card's footer — "56 online", "3 offline". */
-export function SubStat({ color, label }: { color: string; label: string }) {
-  return (
-    <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color }}>
-      <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: color, flexShrink: 0 }} />
-      {label}
-    </span>
-  );
-}
-
 // ── Sortable table headings ──────────────────────────────────────────────────
 
-export type SortDirection = "asc" | "desc";
+type SortDirection = "asc" | "desc";
 export interface SortState<K extends string> {
   key: K;
   direction: SortDirection;

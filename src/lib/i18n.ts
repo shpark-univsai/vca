@@ -68,7 +68,6 @@ export const useLanguage = makeLanguageHook(APP_LANGUAGE_KEY);
 
 /** Portal's own language, independent of the app's. Set from Settings -> Interface language. */
 export const usePortalLanguage = makeLanguageHook(PORTAL_LANGUAGE_KEY, APP_LANGUAGE_KEY);
-export type PortalLanguage = AppLanguage;
 
 /**
  * Per-file translation pattern used across the codebase (established here, followed everywhere
@@ -81,11 +80,11 @@ export type PortalLanguage = AppLanguage;
  *
  * — then inside the component: `const [lang] = useLanguage(); const t = T[lang];` and
  * reference `t.title` etc. in JSX. Kept per-file rather than one giant central dictionary because
- * this codebase already colocates screen-specific constants with their screen (e.g. `AI_FEATURES`
- * in ProjectCamerasTab.tsx, `PLAN_FEATURES` in ProjectLicenseTab.tsx) — a shared dictionary would
- * be a new, inconsistent pattern for strings that are almost all screen-specific anyway. Only
- * truly cross-screen strings (nav labels, the language switcher itself) belong in a shared spot
- * (see `PROJECT_TABS` in ProjectSidebar.tsx, `LanguageSwitcher` in PortalShared.tsx).
+ * this codebase already colocates screen-specific constants with their screen (e.g.
+ * `PLAN_FEATURES` in ProjectLicenseTab.tsx, `WATCHLIST_CATEGORY_COLORS`' labels in
+ * ProjectVipTab.tsx) — a shared dictionary would be a new, inconsistent pattern for strings that
+ * are almost all screen-specific anyway. Only truly cross-screen strings, nav labels above all,
+ * belong in a shared spot (see `PROJECT_TABS` in ProjectSidebar.tsx).
  *
  * Data is not translated. Camera codes, zone names, VIP names, department names and anything else
  * that came from the customer's own install stay exactly as entered — translating them would make

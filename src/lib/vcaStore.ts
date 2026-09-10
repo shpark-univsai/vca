@@ -867,7 +867,7 @@ const UPLOADS: UploadedMedia[] = [
 export type PortalPermission = "owner" | "admin" | "auditor" | "none";
 
 /** Roles that may open Portal at all. `none` is routed to the app by login. */
-export const PORTAL_CONSOLE_ROLES: PortalPermission[] = ["owner", "admin", "auditor"];
+const PORTAL_CONSOLE_ROLES: PortalPermission[] = ["owner", "admin", "auditor"];
 
 /** May change settings (cameras, VIP, roster, license, server). Auditor may not. */
 export function canEditPortal(permission: PortalPermission): boolean {
@@ -2308,6 +2308,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         `Search purpose "${state.searchPurposes.find(p => p.id === purposeId)?.label ?? purposeId}" retired`,
       ), ...state.auditLog].slice(0, 200),
     })),
+  // Not called from anywhere in src/ yet — the app's purpose gate is deferred to v2, the same
+  // as recordSearchAccess (see the note in ProjectSearchLogTab). Kept, not deleted: the store
+  // side of that feature is finished and re-deriving it later is the waste.
   setSearchPurpose: (selection) => set({ searchPurpose: selection }),
   recordSearchAccess: (record) =>
     set(state => ({
