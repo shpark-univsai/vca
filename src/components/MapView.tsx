@@ -5,7 +5,7 @@ import { LiveEvent, Device, TrackingHop, nearestDistrict, getFacePhoto, formatTi
   DISTRICT_ALERT_THRESHOLD_KEY, DISTRICT_MODERATE_THRESHOLD_KEY,
   DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD } from "@/lib/mockData";
 import {
-  vcaEventsToLiveEvents, VIP_SIMULATION_CAMERAS,
+  vcaEventsToLiveEvents,
   useProjectEvents, useProjectCameras, type Camera,
 } from "@/lib/vcaStore";
 import { useCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
@@ -632,10 +632,9 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         const now = new Date();
         districts.forEach((district) => {
           const camerasInDistrict = cameras.filter(c => nearestDistrict(c.lat, c.lng).id === district.id);
-          // The dashed pill means "this district's camera(s) are offline right now" — not "there's
-          // no camera here" (every district has at least one registered camera; some just happen
-          // to be down). Checking `.status === "online"` rather than just array length is what
-          // actually captures that.
+          // The dashed pill means "this district's cameras are all down right now" — a coverage
+          // gap, which is worth a pin even with nothing to report. Checking run state rather than
+          // array length is what captures that.
           const hasOnlineCamera = camerasInDistrict.some(c => cameraStatus.byId(c.id) === "running");
           const count = recentEvents.filter(ev =>
             ev.type === "VIP" &&
@@ -647,6 +646,12 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // via Mobbin) only ever put a pin where there's actually something to report, never a
           // "$0"/"0 results" pin. An offline district is a different, still-worth-seeing signal (a
           // coverage gap, not "quiet"), so that dashed pill stays regardless of count.
+          // A district with a working camera but zero detections is pure noise ("nothing happened
+          // here"). So is a district this site has no cameras in at all: when the header points at
+          // a school campus, whose cameras sit inside one district, the other sixteen were drawing
+          // "no camera" pins across a city nobody here watches — a coverage gap where there is no
+          // coverage to expect, and the one district actually covered was the only pin missing.
+          if (camerasInDistrict.length === 0 && count === 0) return;
           if (hasOnlineCamera && count === 0) return;
 
           const icon = L.divIcon({
@@ -675,14 +680,12 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         // plain quiet marker everywhere else so the map still reads as "here's where the
         // cameras are," not just "here's where something happened."
         //
-        // Iterates VIP_SIMULATION_CAMERAS, NOT the store's `cameras` — those are two separately
-        // generated coordinate pools (see VIP_SIMULATION_CAMERAS's own comment in vcaStore.ts):
-        // `cameras` is the small ~50-60 camera set the System device list uses, while the VIP
-        // ticker (ClientLayout.tsx) stamps every simulated event's lat/lng from THIS ~1,000-camera
-        // pool instead. Matching pings against `cameras` meant the coordinates almost never lined
-        // up (different jitter, different pool entirely) — the ping would show at the wrong spot
-        // or not at all. This pool is also what makes "every camera's location" actually mean the
-        // full ~1,000-camera deployment, not just the small device list.
+        // The site's registered cameras — the same list the device table, the district pills and
+        // the availability figure read. This used to iterate a separate ~1,000-entry simulation
+        // pool, which put another site's cameras on the map (every entry in it belongs to the
+        // smart-city project) and made the zoomed-in map disagree with every other count on
+        // screen. The VIP ticker now stamps its detections onto register cameras too, so ping
+        // coordinates line up here without a second pool to match against.
         const RECENT_VIP_WINDOW_MS = 60 * 60 * 1000;
         const nowMs = Date.now();
         const recentVipKeys = new Set<string>();
@@ -692,7 +695,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           recentVipKeys.add(`${ev.lat.toFixed(4)},${ev.lng.toFixed(4)}`);
         });
 
-        VIP_SIMULATION_CAMERAS.forEach(cam => {
+        cameras.forEach(cam => {
           const key = `${cam.lat.toFixed(4)},${cam.lng.toFixed(4)}`;
           const icon = L.divIcon({
             html: recentVipKeys.has(key) ? recentPingHtml(VIP_PING_COLOR) : quietCameraDotHtml(),

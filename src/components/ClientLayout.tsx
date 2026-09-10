@@ -17,7 +17,7 @@ import SidebarToggleIcon from "./SidebarToggleIcon";
 import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
 import {
-  useVcaStore, VIP_SIMULATION_CAMERAS, canEnterApp, canEnterPortal, currentPortalUser,
+  useVcaStore, canEnterApp, canEnterPortal, currentPortalUser,
   camerasInProject, getActiveProjectId, watchedPersonsInProject,
   type Camera,
 } from "@/lib/vcaStore";
@@ -35,10 +35,17 @@ const SIDEBAR_POSITION_KEY = "vca-sidebar-position";
 // dismiss-after-a-few-seconds toast banner. The banner never auto-jumps the map — only its
 // "View on Map" action (via onNavigate) does, so an operator isn't yanked away from what they're
 // currently looking at just because a detection came in.
-// Drawn from the ~1,000-camera simulation pool (VIP_SIMULATION_CAMERAS), not the store's `cameras`
-// state — that pool is deliberately kept small for other features' performance. Computed once
-// since the pool is static; no reason to re-filter it on every tick.
-const VIP_SIM_ONLINE_CAMERAS = VIP_SIMULATION_CAMERAS.filter(c => runStateOf(c.status) === "running");
+// The cameras a simulated detection can land on: the site's own register, the running ones.
+//
+// This used to draw from a separate ~1,000-camera simulation pool. A detection stamped onto a
+// camera from that pool named a camera the operator cannot open, cannot see in the device list and
+// cannot check in Portal — and the map's ping matched positions against that pool while the device
+// list counted the register, so the same site had two camera populations with two different
+// counts. One register (decided 2026-09-10).
+function simulationCameras(projectId: string) {
+  return camerasInProject(useVcaStore.getState().cameras, projectId)
+    .filter(c => runStateOf(c.status) === "running");
+}
 
 function hashStringToIndex(s: string, mod: number): number {
   let h = 0;
@@ -84,7 +91,7 @@ function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void
         // detection onto a camera from another one would move the bug rather than fix it.
         const projectId = getActiveProjectId();
         const persons = watchedPersonsInProject(useVcaStore.getState().persons, projectId, Date.now());
-        const onlineCameras = camerasInProject(VIP_SIM_ONLINE_CAMERAS, projectId);
+        const onlineCameras = simulationCameras(projectId);
         if (persons.length > 0 && onlineCameras.length > 0) {
           const person = persons[Math.floor(Math.random() * persons.length)];
           const regulars = regularCamerasForPerson(person.id, onlineCameras);

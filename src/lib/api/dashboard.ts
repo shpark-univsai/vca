@@ -2,26 +2,28 @@
 // Currently returns the static mock data from lib/mockData.ts.
 // Swap the body of each function for a real fetch(`${API_BASE_URL}/...`) call later.
 
-import { dashboardStats, liveEvents, devices, mapMarkers, DISTRICTS, hourlyDetections, formatTimeAgo, type Device, type HourlyDetection } from "@/lib/mockData";
+import { dashboardStats, liveEvents, mapMarkers, DISTRICTS, hourlyDetections, formatTimeAgo, type Device, type HourlyDetection } from "@/lib/mockData";
 import { useVcaStore, camerasInProject, type Camera } from "@/lib/vcaStore";
 import { runStateOf } from "@/lib/realtime/cameraStatus";
 import { mockDelay } from "./client";
 
 /**
- * Portal is the system of record for cameras, so the app's device list has to read what Portal
- * writes. It did not: this module returned `devices` from mockData — a separate 1,000-entry array
- * — while Portal added, removed and took cameras offline in the store. Two raw sources for one
- * thing, which is why a camera registered in Portal never appeared in the app's System tab, and
- * why the camera-id mismatch kept resurfacing.
+ * Portal is the system of record for cameras, so the app's device list reads what Portal writes —
+ * and nothing else.
  *
- * Now there is one owner and one filler. Every camera the store holds is projected here; the mock
- * array supplies only the remainder, so the deployment still reads at its real ~1,000-camera scale
- * for the table, the stats and the pagination. When the backend owns the list, the store's half
- * becomes the fetch and the filler is deleted — nothing else has to move.
+ * There used to be a second half: a thousand mock rows padding the list out to a smart-city scale.
+ * That made three different answers to "how many cameras does this site have" — the map's district
+ * pills counted the register (59), this list counted register plus filler (1,040), and the map's
+ * zoomed-in dots counted a separate simulation pool (1,029) — all three on screen at once, each
+ * calling itself the site's camera count. Worse, the padding rows exist in no register, so the
+ * eighty-odd of them reading OFFLINE named nothing anybody could go and fix.
+ *
+ * One register, one count. Decided 2026-09-10: the demo does not need to read as a
+ * thousand-camera deployment.
  *
  * `useVcaStore.getState()` rather than a hook: this is a module function standing in for a
- * request, same as reading the mock array was. The screens that call it pass the store's cameras
- * as a dependency, so a change in Portal re-runs the "request".
+ * request. The screens that call it pass the store's cameras as a dependency, so a change in
+ * Portal re-runs the "request".
  */
 function cameraToDevice(camera: Camera): Device {
   return {
@@ -36,28 +38,14 @@ function cameraToDevice(camera: Camera): Device {
     ip: camera.ip,
     lat: camera.lat,
     lng: camera.lng,
-    // English to match the filler rows, which are pre-formatted strings. The whole column is
-    // English today — translating half of it would just make the list disagree with itself.
+    // English, like the rest of this column today.
     lastSeen: camera.lastSeenAt ? formatTimeAgo(camera.lastSeenAt) : "—",
   };
 }
 
-/**
- * The mock filler stands for cameras nobody has registered in Portal yet, and it is a thousand
- * Singapore-district positions — so it belongs to the smart-city site and to no other. Without
- * naming that, filtering by site either hid the whole deployment or handed a school campus a
- * thousand cameras it does not have.
- *
- * Delete this along with the filler when the backend owns the list.
- */
-const FILLER_PROJECT_ID = "proj-sg";
-
 function deploymentDevices(projectId?: string): Device[] {
   const all = useVcaStore.getState().cameras;
-  const registered = (projectId ? camerasInProject(all, projectId) : all).map(cameraToDevice);
-  if (projectId && projectId !== FILLER_PROJECT_ID) return registered;
-  const registeredIds = new Set(registered.map(d => d.id));
-  return [...registered, ...devices.filter(d => !registeredIds.has(d.id))];
+  return (projectId ? camerasInProject(all, projectId) : all).map(cameraToDevice);
 }
 
 export async function getDashboardStats(projectId?: string) {
