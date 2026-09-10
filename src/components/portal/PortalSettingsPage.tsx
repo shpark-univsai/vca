@@ -58,6 +58,10 @@ const T = {
     projectRegion: "Region",
     projectTimeZone: "Time zone",
     timeZoneNote: "Days, hours and \"today\" on every screen are counted in this zone — for everyone who opens this project, wherever they are.",
+    retention: "Recording retention",
+    retentionUnset: "Not decided",
+    retentionDaysLabel: (n: number) => `${n} days`,
+    retentionNote: "Recorded here, deleted elsewhere. Nothing in this console removes footage — the recorder and the server do, on the number stated here. Until that is wired, setting this states the policy rather than enforcing it. Every change is written to the activity log with the value it replaced.",
     purposeTitle: "Search purposes",
     purposeEmpty: "No purposes defined.",
     purposeRequirementOn: "Searches are supposed to record a purpose, and there is nothing to choose. Until one exists, operators search without giving a reason.",
@@ -136,6 +140,10 @@ const T = {
     projectRegion: "지역",
     projectTimeZone: "시간대",
     timeZoneNote: "모든 화면의 날짜와 시각, \"오늘\"의 기준이 이 시간대로 계산됩니다 — 어디서 열든, 누가 열든 이 프로젝트에 대해서는 같습니다.",
+    retention: "영상 보관기간",
+    retentionUnset: "미정",
+    retentionDaysLabel: (n: number) => `${n}일`,
+    retentionNote: "여기서 정하고, 지우는 것은 다른 곳입니다. 이 콘솔은 영상을 삭제하지 않습니다 — 여기 적힌 숫자로 레코더와 서버가 지웁니다. 그 연결이 되기 전까지 이 값을 정하는 것은 정책을 밝히는 것이지 집행하는 것이 아닙니다. 변경은 이전 값과 함께 변경 기록에 남습니다.",
     purposeTitle: "조회 목적",
     purposeEmpty: "정의된 사유가 없습니다.",
     purposeRequirementOn: "조회할 때 목적을 기록하도록 되어 있는데 고를 것이 없습니다. 하나라도 만들기 전까지는 사유 없이 조회가 실행됩니다.",
@@ -181,6 +189,20 @@ const T = {
  * Add to this list rather than switching to a full picker; a wrong timezone here is silently wrong
  * data everywhere, so a short list of the right answers beats a long list of all of them.
  */
+/**
+ * Retention choices, with "not decided" first and selected by default for a site nobody has
+ * configured.
+ *
+ * No preselected number. 30 days is the figure everyone reaches for and it is a guess — a
+ * guessed retention is either an over-hold the customer cannot justify or a deletion nobody
+ * agreed to. The steps are the ones that appear in practice; anything else is a contract term
+ * and reaches the site through whoever writes the contract, not through a dropdown.
+ */
+const RETENTION_OPTIONS = (t: (typeof T)["en"] | (typeof T)["ko"]) => [
+  { value: "", label: t.retentionUnset },
+  ...[7, 14, 30, 60, 90, 180, 365].map(d => ({ value: String(d), label: t.retentionDaysLabel(d) })),
+];
+
 const TIME_ZONE_OPTIONS = [
   { value: "Asia/Singapore", label: "Singapore (UTC+8)" },
   { value: "Asia/Seoul", label: "Seoul (UTC+9)" },
@@ -219,6 +241,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const setProjectTimeZone = useVcaStore(s => s.setProjectTimeZone);
+  const setProjectRetention = useVcaStore(s => s.setProjectRetention);
   const renameProject = useVcaStore(s => s.renameProject);
   const removeProject = useVcaStore(s => s.removeProject);
   const cameras = useVcaStore(s => s.cameras);
@@ -462,8 +485,28 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                   ?? (project.timeZone ?? PROJECT_TIME_ZONE)
               )}
             </PairItem>
+            {/* The number that ends up in an ordinance, a contract and a privacy notice — and
+                until now the product had nowhere to put it, so it lived in whoever set up the
+                recorder. Beside the timezone because it is the same kind of value: it belongs to
+                the site rather than to the person looking, and changing it is audited.
+
+                Owner only. This is closer to a policy than a preference — the same gate the
+                search purposes and watchlist categories sit behind. */}
+            <PairItem label={t.retention}>
+              {maySetPolicy ? (
+                <FilterSelect
+                  value={project.retentionDays === undefined ? "" : String(project.retentionDays)}
+                  onChange={v => setProjectRetention(project.id, v === "" ? null : Number(v))}
+                  options={RETENTION_OPTIONS(t)}
+                  fitContent
+                />
+              ) : (
+                project.retentionDays === undefined ? t.retentionUnset : t.retentionDaysLabel(project.retentionDays)
+              )}
+            </PairItem>
           </PairGrid>
           <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "14px" }}>{t.timeZoneNote}</p>
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "8px" }}>{t.retentionNote}</p>
 
           {/* Deleting a site is not a setting, so it does not sit among them: its own row at the
               foot of the card, after everything you might come here to read. Owner only — this is

@@ -102,6 +102,26 @@ export interface Project {
    * project predates the field, and a missing timezone must not become "UTC" by accident.
    */
   timeZone?: string;
+  /**
+   * How long recordings are kept at this site, in days.
+   *
+   * A number that ends up in an ordinance, a contract and a privacy notice, and until now the
+   * product had nowhere to put it — so it lived in whoever set up the recorder. The audit log
+   * seed even carried "Retention period changed from 30 to 60 days" for a control that did not
+   * exist; that line was removed as a fabrication, and this is the control it was pretending to
+   * describe.
+   *
+   * Optional and unset by default. There is no safe default to pick: 30 days is a guess, and a
+   * guessed retention is either an illegal over-hold or a deletion nobody agreed to. Unset reads
+   * as "not decided" on screen, which is the truth for a site nobody has configured.
+   *
+   * HANDOFF NOTE: recording the policy is NOT enforcing it. Nothing in this front end deletes a
+   * frame, and it never will — the recorder and the server own expiry. What this value has to do
+   * is reach them: the console is where a customer states the number, and the deletion job is
+   * where it takes effect. Until that call exists, the screen says so out loud rather than
+   * letting "saved" read as "footage is now being deleted on this schedule".
+   */
+  retentionDays?: number;
   licenseChannelLimit?: number;
   licensePlan?: string;
   // A date string, or the literal "Unlimited" for a plan with no expiry.
@@ -707,6 +727,8 @@ interface VcaStoreState {
   recordEvidenceExport: (e: Pick<EvidenceExportRecord, "projectId" | "subjectId" | "surface" | "targetLabel" | "manifestHash">) => void;
   updateProjectMail: (projectId: string, updates: Pick<Project, "mailDomain" | "smtp">) => void;
   setProjectTimeZone: (projectId: string, timeZone: string) => void;
+  /** null clears it back to "not decided". See Project.retentionDays. */
+  setProjectRetention: (projectId: string, days: number | null) => void;
   // null clears the override and falls back to the auto-detected value; true/false pins it.
   setNetworkIsolationOverride: (projectId: string, override: boolean | null) => void;
   updateTeamMail: (teamId: string, updates: Pick<Team, "mailDomain" | "smtp">) => void;
@@ -2676,6 +2698,25 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         j => !(j.surface === surface && j.subjectId === subjectId),
       ),
     })),
+  setProjectRetention: (projectId, days) =>
+    set(state => {
+      const project = state.projects.find(p => p.id === projectId);
+      if (!project) return state;
+      const before = project.retentionDays;
+      if (before === (days ?? undefined)) return state;
+      return {
+        projects: state.projects.map(p => (p.id === projectId ? { ...p, retentionDays: days ?? undefined } : p)),
+        // Audited, and the old value goes in the line. "Changed to 60" cannot answer "what were
+        // we keeping in March", which is the question a complaint or a court asks.
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId,
+          message: days === null
+            ? `Retention period cleared (was ${before ?? "unset"} days)`
+            : `Retention period changed from ${before ?? "unset"} to ${days} days`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   updateProjectMail: (projectId, updates) =>
     set(state => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)),
