@@ -665,6 +665,19 @@ interface VcaStoreState {
 // admin most needs a record of (camera status/roster changes, license updates, VIP registrations,
 // user permission changes) call `logAudit`, matching what the Figma "최근 관리자 작업 이력" reference
 // tracks. `projectId` is optional because a user-permission change isn't tied to one project.
+/**
+ * How many audit entries the console keeps in memory.
+ *
+ * Named rather than repeated as a literal at every mutation, because the Activity screen prints
+ * this number to the reader — a capped list that does not say it is capped reads as a complete
+ * history, and its oldest row reads as the beginning.
+ *
+ * HANDOFF NOTE: this is a client-side ceiling on a list held in memory, not a retention policy.
+ * The server keeps the real history; see ProjectActivityTab for the query the screen's filters
+ * are shaped to become.
+ */
+export const AUDIT_LOG_LIMIT = 200;
+
 export interface AuditEvent {
   id: string;
   projectId?: string;
@@ -2123,13 +2136,13 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const auditEntry: AuditEvent = { id: `audit-${++auditSeq}`, projectId: cam?.projectId, message: `Camera ${cam?.code ?? cameraId} marked ${status}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() };
       return {
         cameras: state.cameras.map(c => (c.id === cameraId ? { ...c, status } : c)),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   addCamera: (camera) =>
     set(state => ({
       cameras: [...state.cameras, { ...camera, id: `cam-${++cameraSeq}` }],
-      auditLog: [{ id: `audit-${++auditSeq}`, projectId: camera.projectId, message: `Camera ${camera.name} added`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+      auditLog: [{ id: `audit-${++auditSeq}`, projectId: camera.projectId, message: `Camera ${camera.name} added`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   updateCamera: (cameraId, updates) =>
     set(state => ({ cameras: state.cameras.map(c => (c.id === cameraId ? { ...c, ...updates } : c)) })),
@@ -2139,7 +2152,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const auditEntry: AuditEvent = { id: `audit-${++auditSeq}`, projectId: cam?.projectId, message: `Camera ${cam?.name ?? cameraId} removed`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() };
       return {
         cameras: state.cameras.filter(c => c.id !== cameraId),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   removeCameras: (cameraIds) =>
@@ -2156,7 +2169,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
       return {
         cameras: state.cameras.filter(c => !ids.has(c.id)),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   setCamerasZone: (cameraIds, zone) =>
@@ -2171,7 +2184,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
       return {
         cameras: state.cameras.map(c => (ids.has(c.id) ? { ...c, zone } : c)),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   addUpload: (upload) => {
@@ -2189,7 +2202,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     };
     set(state => ({
       uploads: [entry, ...state.uploads],
-      auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return id;
   },
@@ -2203,7 +2216,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
       return {
         uploads: state.uploads.filter(u => u.id !== uploadId),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   addProject: (project) =>
@@ -2211,7 +2224,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   updateProjectLicense: (projectId, updates) =>
     set(state => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)),
-      auditLog: [{ id: `audit-${++auditSeq}`, projectId, message: `License updated to ${updates.licensePlan} (${updates.licenseChannelLimit} channels)`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+      auditLog: [{ id: `audit-${++auditSeq}`, projectId, message: `License updated to ${updates.licensePlan} (${updates.licenseChannelLimit} channels)`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   // Mail settings write to the audit log the way license changes do — an admin changing where
   // invites are sent is exactly the kind of thing someone has to be able to trace later.
@@ -2229,7 +2242,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   updateProjectMail: (projectId, updates) =>
     set(state => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)),
-      auditLog: [{ id: `audit-${++auditSeq}`, projectId, message: `Project mail settings updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+      auditLog: [{ id: `audit-${++auditSeq}`, projectId, message: `Project mail settings updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   // This flips which mailbox invites/resets go through, same audit-worthy weight as updateProjectMail.
   setNetworkIsolationOverride: (projectId, override) =>
@@ -2239,17 +2252,17 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         id: `audit-${++auditSeq}`, projectId,
         message: override === null ? "Network reachability reset to auto-detection" : `Network reachability manually set to ${override ? "internet-isolated" : "internet-connected"}`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
-      }, ...state.auditLog].slice(0, 200),
+      }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   updateTeamMail: (teamId, updates) =>
     set(state => ({
       teams: state.teams.map(o => (o.id === teamId ? { ...o, ...updates } : o)),
-      auditLog: [{ id: `audit-${++auditSeq}`, message: `Team mail settings updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+      auditLog: [{ id: `audit-${++auditSeq}`, message: `Team mail settings updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   addPerson: (person) =>
     set(state => ({
       persons: [...state.persons, { registeredBy: SIGNED_IN_USER.name, ...person, id: `person-${++personSeq}` }],
-      auditLog: [{ id: `audit-${++auditSeq}`, projectId: person.projectId, message: `VIP ${person.name} registered`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+      auditLog: [{ id: `audit-${++auditSeq}`, projectId: person.projectId, message: `VIP ${person.name} registered`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   removePerson: (personId) =>
     set(state => {
@@ -2267,7 +2280,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
       return {
         persons: state.persons.filter(p => p.id !== personId),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   releasePerson: (personId, reason) =>
@@ -2281,14 +2294,14 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           id: `audit-${++auditSeq}`, projectId: person.projectId,
           message: `VIP ${person.name} released — ${reason}`,
           actor: SIGNED_IN_USER.name, at,
-        }, ...state.auditLog].slice(0, 200),
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   addSearchPurpose: (purpose) => {
     const id = `spurpose-${++searchPurposeSeq}`;
     set(state => ({
       searchPurposes: [...state.searchPurposes, { ...purpose, id, archived: false }],
-      auditLog: [policyAudit(purpose.teamId, `Search purpose "${purpose.label}" created`), ...state.auditLog].slice(0, 200),
+      auditLog: [policyAudit(purpose.teamId, `Search purpose "${purpose.label}" created`), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return id;
   },
@@ -2298,7 +2311,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       auditLog: [policyAudit(
         state.searchPurposes.find(p => p.id === purposeId)?.teamId,
         `Search purpose "${updates.label ?? state.searchPurposes.find(p => p.id === purposeId)?.label ?? purposeId}" changed`,
-      ), ...state.auditLog].slice(0, 200),
+      ), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   archiveSearchPurpose: (purposeId) =>
     set(state => ({
@@ -2306,7 +2319,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       auditLog: [policyAudit(
         state.searchPurposes.find(p => p.id === purposeId)?.teamId,
         `Search purpose "${state.searchPurposes.find(p => p.id === purposeId)?.label ?? purposeId}" retired`,
-      ), ...state.auditLog].slice(0, 200),
+      ), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   // Not called from anywhere in src/ yet — the app's purpose gate is deferred to v2, the same
   // as recordSearchAccess (see the note in ProjectSearchLogTab). Kept, not deleted: the store
@@ -2323,7 +2336,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     const id = `wcat-${++watchlistCategorySeq}`;
     set(state => ({
       watchlistCategories: [...state.watchlistCategories, { ...category, id, archived: false }],
-      auditLog: [policyAudit(category.teamId, `Watchlist category "${category.label}" created`), ...state.auditLog].slice(0, 200),
+      auditLog: [policyAudit(category.teamId, `Watchlist category "${category.label}" created`), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return id;
   },
@@ -2333,7 +2346,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       if (!before) return {};
       return {
         watchlistCategories: state.watchlistCategories.map(c => (c.id === categoryId ? { ...c, ...updates } : c)),
-        auditLog: [policyAudit(before.teamId, `Watchlist category "${updates.label ?? before.label}" changed`), ...state.auditLog].slice(0, 200),
+        auditLog: [policyAudit(before.teamId, `Watchlist category "${updates.label ?? before.label}" changed`), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   archiveWatchlistCategory: (categoryId) =>
@@ -2342,7 +2355,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       if (!before) return {};
       return {
         watchlistCategories: state.watchlistCategories.map(c => (c.id === categoryId ? { ...c, archived: true } : c)),
-        auditLog: [policyAudit(before.teamId, `Watchlist category "${before.label}" retired`), ...state.auditLog].slice(0, 200),
+        auditLog: [policyAudit(before.teamId, `Watchlist category "${before.label}" retired`), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   updatePerson: (personId, updates) =>
@@ -2356,14 +2369,14 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
       return {
         persons: state.persons.map(p => (p.id === personId ? { ...p, ...updates } : p)),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   addPersonGroup: (group) => {
     const id = `pgroup-${++personGroupSeq}`;
     set(state => ({
       personGroups: [...state.personGroups, { ...group, id }],
-      auditLog: [{ id: `audit-${++auditSeq}`, projectId: group.projectId, message: `VIP group created: ${group.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+      auditLog: [{ id: `audit-${++auditSeq}`, projectId: group.projectId, message: `VIP group created: ${group.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return id;
   },
@@ -2373,7 +2386,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       if (!group) return {};
       return {
         personGroups: state.personGroups.map(g => (g.id === groupId ? { ...g, ...updates } : g)),
-        auditLog: [{ id: `audit-${++auditSeq}`, projectId: group.projectId, message: `VIP group updated: ${updates.name ?? group.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
+        auditLog: [{ id: `audit-${++auditSeq}`, projectId: group.projectId, message: `VIP group updated: ${updates.name ?? group.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   removePersonGroup: (groupId, options) =>
@@ -2395,7 +2408,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           message: `VIP group removed: ${group?.name ?? groupId}`
             + (affected === 0 ? "" : deleteMembers ? ` — ${affected} member(s) deleted with it` : ` — ${affected} member(s) kept as individuals`),
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
-        }, ...state.auditLog].slice(0, 200),
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   setPersonGroup: (personId, groupId) =>
@@ -2412,7 +2425,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
       return {
         persons: state.persons.map(p => (p.id === personId ? { ...p, groupId } : p)),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   addEvent: (event) =>
@@ -2486,7 +2499,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const auditEntry: AuditEvent = { id: `audit-${++auditSeq}`, projectId: user?.projectIds[0], message: `${user?.name ?? userId}'s permission changed to ${permission}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() };
       return {
         portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, permission } : u)),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   updatePortalUserAccess: (userId, permission, appAccess) =>
@@ -2506,7 +2519,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
       return {
         portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, permission, appAccess } : u)),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   setActiveProjectId: (projectId) => set({ activeProjectId: projectId }),
@@ -2520,7 +2533,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
       return {
         portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, appSearch: allowed } : u)),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   updatePortalUserProjects: (userId, projectIds) =>
@@ -2544,7 +2557,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
       return {
         portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, projectIds } : u)),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   updatePortalUserStatus: (userId, status) =>
@@ -2576,7 +2589,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           ? { ...u, tempPasswordIssuedAt: new Date().toISOString(), mustChangePassword: true }
           : u
       ),
-      auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return password;
   },
@@ -2629,7 +2642,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           ? { ...u, setupCode: code, setupCodeIssuedAt: new Date().toISOString() }
           : u
       ),
-      auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return code;
   },
@@ -2650,7 +2663,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const auditEntry: AuditEvent = { id: `audit-${++auditSeq}`, projectId: user?.projectIds[0], message: `User ${user?.name ?? userId} removed`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() };
       return {
         portalUsers: state.portalUsers.filter(u => u.id !== userId),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   requestAccess: (request) =>
@@ -2681,7 +2694,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     set(s => ({
       portalUsers: [...s.portalUsers, ...newUsers],
       accessRequests: s.accessRequests.filter(r => !requestIds.includes(r.id)),
-      auditLog: [...auditEntries, ...s.auditLog].slice(0, 200),
+      auditLog: [...auditEntries, ...s.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return newUsers.map(u => u.id);
   },
@@ -2714,7 +2727,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         });
         return { ...r, code, issuedAt: new Date().toISOString(), status: "unused" as const };
       });
-      return { staffRoster, auditLog: [...auditEntries, ...state.auditLog].slice(0, 200) };
+      return { staffRoster, auditLog: [...auditEntries, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT) };
     }),
   // For a lost sheet of paper — the old code must stop working immediately, which a fresh
   // generateRegistrationCode() call already guarantees just by overwriting `code`.
@@ -2732,7 +2745,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         // A fresh issuedAt restarts the clock: the point of a reissue is that the person still has
         // not registered, so handing them a code that expires on the old one's schedule is no use.
         staffRoster: state.staffRoster.map(r => (r.employeeId === employeeId ? { ...r, code, issuedAt: new Date().toISOString(), status: "unused" as const } : r)),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   /**
@@ -2780,7 +2793,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     set(s2 => ({
       portalUsers: [...s2.portalUsers, user],
       staffRoster: s2.staffRoster.map(r => (r.employeeId === employeeId ? { ...r, status: "used" as const } : r)),
-      auditLog: [auditEntry, ...s2.auditLog].slice(0, 200),
+      auditLog: [auditEntry, ...s2.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return id;
   },
@@ -2799,7 +2812,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     // adding someone to the list is not the same as handing them a way in.
     set(state => ({
       staffRoster: [...state.staffRoster, { ...entry, status: "not-issued" as const }],
-      auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return true;
   },
@@ -2814,7 +2827,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
       return {
         staffRoster: state.staffRoster.map(r => (r.employeeId === employeeId ? { ...r, ...updates } : r)),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   removeRosterEntry: (employeeId) =>
@@ -2827,7 +2840,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
       return {
         staffRoster: state.staffRoster.filter(r => r.employeeId !== employeeId),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   // No roster mutation here — this is purely a "who looked at this code" trail, called when an
@@ -2840,7 +2853,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         id: `audit-${++auditSeq}`, projectId: entry.projectId,
         message: `Registration code viewed for ${entry.name} (${entry.employeeId})`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       };
-      return { auditLog: [auditEntry, ...state.auditLog].slice(0, 200) };
+      return { auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT) };
     }),
 }));
 

@@ -8,7 +8,6 @@ import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed, zoneHour }
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, usePortalEditAccess } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { getAuthConfig } from "@/lib/authConfig";
 import type { DetailTab } from "./ProjectSidebar";
 import ProjectCamerasTab from "./ProjectCamerasTab";
@@ -16,6 +15,7 @@ import ProjectVipTab from "./ProjectVipTab";
 import ProjectLicenseTab from "./ProjectLicenseTab";
 import ProjectServerTab from "./ProjectServerTab";
 import PortalUsersPage from "./PortalUsersPage";
+import ProjectActivityTab from "./ProjectActivityTab";
 import ProjectSearchLogTab from "./ProjectSearchLogTab";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 
@@ -269,58 +269,6 @@ function registeredStamp(value: string, zone: string): string {
  * the card edge four shouted words lined up in a column and were the loudest thing in the row.
  * Caps also did nothing to the Korean strings, so the two languages were drawing different chips.
  */
-/**
- * Every admin action on this project, newest first.
- *
- * Same rows as the Overview's panel, in a box that scrolls — deliberately not a richer screen with
- * filters and a date range, because the data behind it is a list held in memory. Building a search
- * over something that does not survive a reload would be building the wrong thing convincingly.
- */
-function ActivityLogModal({ entries, nowMs, t, onClose }: {
-  entries: { id: string; message: string; actor: string; at: string }[];
-  nowMs: number | null;
-  t: { activityLogTitle: string; activityLogEmpty: string; close: string; agoSuffix: string };
-  onClose: () => void;
-}) {
-  useEscapeKey(onClose, true);
-  return (
-    <div
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}
-    >
-      <div style={{
-        backgroundColor: "white", border: BORDER, borderRadius: "16px", width: "560px", maxWidth: "100%",
-        maxHeight: "78vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(14,22,42,0.18)", overflow: "hidden",
-      }}>
-        <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexShrink: 0 }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.activityLogTitle}</p>
-          <button className="portal-icon-btn" onClick={onClose} title={t.close}
-            style={{ display: "flex", border: "none", background: "none", padding: "4px", cursor: "pointer", color: "var(--gray-400)" }}>
-            <X size={16} strokeWidth={2.2} />
-          </button>
-        </div>
-        {entries.length === 0 ? (
-          <p style={{ fontSize: "13px", color: "var(--gray-400)", padding: "28px 20px", textAlign: "center" }}>{t.activityLogEmpty}</p>
-        ) : (
-          <div style={{ overflowY: "auto", padding: "8px 20px 16px" }}>
-            {entries.map((a, i) => (
-              <div key={a.id} style={{ display: "flex", gap: "10px", paddingTop: i === 0 ? "12px" : "10px" }}>
-                <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--gray-300)", marginTop: "6px", flexShrink: 0 }} />
-                <div style={{ minWidth: 0, paddingBottom: "10px", borderBottom: i === entries.length - 1 ? "none" : BORDER, flex: 1 }}>
-                  <p style={{ fontSize: "12px", lineHeight: "18px", fontWeight: 600, color: "var(--gray-900)" }}>{a.message}</p>
-                  <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "2px" }}>
-                    {a.actor}{nowMs !== null ? ` · ${formatElapsed(nowMs - new Date(a.at).getTime())}${t.agoSuffix}` : ""}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function StateChip({ text, color }: { text: string; color: string }) {
   return (
     <span style={{ fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap", color }}>
@@ -503,7 +451,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const [hoverDay, setHoverDay] = useState<number | null>(null);
   /** The full admin-activity log, in a modal — Portal has no page for it (see the note on the
    *  panel's footer). */
-  const [showActivityLog, setShowActivityLog] = useState(false);
   // Session-only, deliberately: see the banner's note. Nothing here is resolved by closing it.
   const [attentionDismissed, setAttentionDismissed] = useState(false);
   // Read after mount, not during render: the clock is not a pure input, and license expiry is
@@ -1574,7 +1521,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <SectionHead
                     title={t.recentAdminActivity}
                     subtitle={t.activitySubtitle}
-                    action={{ icon: <ArrowUpRight size={15} strokeWidth={2.4} />, label: t.seeAllActivity(projectActivity.length), onClick: () => setShowActivityLog(true) }}
+                    /* Opens the Activity log screen, not a modal. The modal listed everything
+                       with no date range, no actor filter, no search and no export — which is
+                       the whole of what the auditor role opens Portal for. */
+                    action={{ icon: <ArrowUpRight size={15} strokeWidth={2.4} />, label: t.seeAllActivity(projectActivity.length), onClick: () => onTabChange("activity") }}
                   />
                 </div>
                 {recentActivity.length === 0 ? (
@@ -1624,7 +1574,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             smallest honest answer: the card shows five, this shows every one the session knows
             about, and when the server owns the log this becomes a page and the modal goes.
           */}
-          {showActivityLog && <ActivityLogModal entries={projectActivity} nowMs={nowMs} t={t} onClose={() => setShowActivityLog(false)} />}
 
         </>
       )}
@@ -1633,6 +1582,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
       {tab === "license" && <ProjectLicenseTab projectId={projectId} />}
       {tab === "server" && <ProjectServerTab projectId={projectId} />}
       {tab === "users" && <PortalUsersPage projectId={projectId} />}
+      {tab === "activity" && <ProjectActivityTab projectId={projectId} />}
       {/* Gated as well as hidden from the rail: the tab lives in the URL, and a link to
           ?tab=searchlog saved before the requirement was switched off should land somewhere
           honest rather than on a screen the release does not have. */}

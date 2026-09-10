@@ -5,7 +5,7 @@ import { Crown } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 
-export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "searchlog";
+export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "activity" | "searchlog";
 
 interface IconProps {
   color: string;
@@ -94,6 +94,16 @@ function SearchLogIcon({ color }: IconProps) {
   );
 }
 
+function ActivityIcon({ color }: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M8 3.6V8l2.8 1.7" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M2.4 8a5.6 5.6 0 1 0 1.7-4" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M2.2 2.6v2.6h2.6" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 function UsersIcon({ color }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -136,6 +146,10 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
   // Between the people and the licence: the search log is read on a review cycle — weekly, or when
   // somebody asks — which puts it below the two things an administrator opens on their own account
   // and above the one they open when the bill arrives.
+  // Directly under the people, because "who did this" and "who may do it" are read together —
+  // an access review starts on one and finishes on the other. It was five rows on the Overview
+  // and a modal behind them, which is not a screen an auditor can be sent to.
+  { id: "activity", group: "manage", label: { en: "Activity log", ko: "변경 기록" }, icon: ActivityIcon },
   { id: "searchlog", group: "manage", label: { en: "Search log", ko: "조회 기록" }, icon: SearchLogIcon },
   // Licence last. The four under MANAGE are read from most-touched to least: servers get changed
   // when the site changes, people get added and removed all year, and a licence is signed once and
