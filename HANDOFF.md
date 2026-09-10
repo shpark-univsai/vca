@@ -143,12 +143,30 @@ API 주소가 거기서 나옵니다.
 | `src/lib/authConfig.ts` | 배포별 인증 스위치 (비밀번호 복구 방식 등) |
 | `src/lib/complianceConfig.ts` | 조회 사유 요구 여부 등 기관별 준수 항목 |
 
-## 8. 아는 어긋남 하나
+## 8. 이 스냅샷과 모노레포 `frontend/` 의 관계
 
-2026-09-09 회신 3번이 "앱 대시보드는 브라우저가 EMQX WebSocket을 직접 구독하고
-기존 `mqttClient`가 재접속을 처리한다"고 되어 있는데, **이 Next.js 앱에는 mqtt /
-websocket 클라이언트가 없습니다** (자리를 표시한 주석 한 줄뿐). 모노레포의 예전
-Vite SPA(`frontend/`)를 가리키는 것으로 보입니다.
+이 저장소는 모노레포의 `frontend/` 와 **다른 앱**입니다.
 
-**어느 프론트를 기준으로 이야기하고 있는지 먼저 맞춰야 합니다.** 카메라가 죽은 것을
-몇 초 안에 아는지가 여기에 달려 있습니다.
+| | 이 스냅샷 | `main:frontend/` |
+|---|---|---|
+| 빌드 | Next.js 16 | Vite + react-router |
+| 데이터 | 목업 store (zustand) | orval 생성 훅 + axios + MSW |
+| 실시간 | 없음 | `mqtt` ^5.15.2 |
+
+`import/*` 브랜치는 main 과 조상을 공유하지 않으므로 섞이지 않습니다. 화면을 **있는
+그대로** 넘기는 원본이고, 최종적으로 화면 코드가 살 곳은 `frontend/src/features` ·
+`components` 입니다 (CODEOWNERS 기준 기획자 소유).
+
+`docs/checklist-frontend-import.md` 의 이식 비용 판정은 **DASHBOARD / BEST FRAME /
+DATA / REDMAP 네 화면**을 기준으로 매겨진 것입니다. 이번 스냅샷은 그보다 넓습니다 —
+Portal 관리 콘솔 전체와 인증 화면 전부가 들어 있습니다.
+
+### 회신 3번에 대한 정정
+
+2026-09-09 회신 3번이 "앱 대시보드는 브라우저가 EMQX WebSocket을 직접 구독하고 기존
+`mqttClient` 가 재접속을 처리한다"고 되어 있는데, **그것은 이 앱이 아니라
+`main:frontend/` 입니다** — `mqtt` 의존성이 거기 있고, 이 Next.js 앱에는 mqtt /
+websocket 클라이언트가 없습니다(자리를 표시한 주석 한 줄뿐).
+
+카메라가 죽은 것을 몇 초 안에 아는지가 여기 달려 있으므로, **어느 프론트 기준으로
+이야기하는지** 부터 맞춰 주세요.
