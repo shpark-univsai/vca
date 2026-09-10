@@ -21,6 +21,8 @@ const T = {
     statusError: "Error",
     atLimitReason: (limit: number) => `All ${limit} licensed channels are in use. Raising the limit is a contract change — see the Licence screen.`,
     atLimitBanner: (limit: number) => `All ${limit} licensed channels are in use. No further source can be connected until the limit is raised.`,
+    noLicenceReason: "No channel count is recorded for this project, so there is nothing to connect against. A channel count arrives with the licence.",
+    noLicenceBanner: "This project has no licensed channel count recorded. Sources cannot be connected until it does — the count comes from the contract, not from this console.",
     errIp: "That does not look like an address.",
     errRtsp: "A stream address starts with rtsp://",
     errLat: "Latitude runs from -90 to 90.",
@@ -167,6 +169,8 @@ const T = {
     statusError: "오류",
     atLimitReason: (limit: number) => `라이선스 채널 ${limit}개를 모두 쓰고 있습니다. 한도를 올리는 것은 계약 변경입니다 — 라이선스 화면을 보세요.`,
     atLimitBanner: (limit: number) => `라이선스 채널 ${limit}개를 모두 쓰고 있습니다. 한도를 올리기 전에는 소스를 더 연결할 수 없습니다.`,
+    noLicenceReason: "이 프로젝트에 기록된 채널 수가 없어서, 연결의 근거가 될 값이 없습니다. 채널 수는 라이선스와 함께 들어옵니다.",
+    noLicenceBanner: "이 프로젝트에는 라이선스 채널 수가 기록되어 있지 않습니다. 기록되기 전에는 소스를 연결할 수 없습니다 — 그 수는 계약에서 나오지, 이 콘솔에서 정해지지 않습니다.",
     errIp: "주소 형식이 아닙니다.",
     errRtsp: "스트림 주소는 rtsp:// 로 시작합니다.",
     errLat: "위도는 -90에서 90 사이입니다.",
@@ -791,7 +795,25 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    */
   const channelLimit = project ? projectChannelLimit(project) : undefined;
   const channelsUsed = projectCameras.length;
-  const atChannelLimit = channelLimit !== undefined && channelsUsed >= channelLimit;
+  /**
+   * No recorded limit is "not licensed", not "unlimited".
+   *
+   * `channelLimit !== undefined && ...` read an absent licence as permission for any number of
+   * cameras, and the wizard that creates projects (`addProject`) writes no licence fields at
+   * all — so every site made from it accepted an unbounded fleet. The four seeded projects all
+   * carry a limit, which is why this never showed.
+   *
+   * The product already argues the other way everywhere else: a project is a licensed site, and
+   * PortalEmptyState says in as many words that a self-serve project is "a contract shell with
+   * no contract" that nobody could put a camera in. This makes the code agree with that.
+   *
+   * HANDOFF NOTE: the front end refusing is the polite half. The provisioning call has to refuse
+   * too — a client that never opens Portal is otherwise unbounded, and whether the count belongs
+   * to the installation or to each project is still open.
+   */
+  const channelLimitUnrecorded = channelLimit === undefined;
+  const atChannelLimit = !channelLimitUnrecorded && channelsUsed >= channelLimit;
+  const cannotAddSource = channelLimitUnrecorded || atChannelLimit;
   const projectUploads = uploads.filter(u => u.projectId === projectId);
   const projectServers = servers.filter(sv => sv.projectId === projectId);
 
@@ -949,7 +971,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   // else the form collects is stored.
   const createCamera = (values: CameraFormValues) => {
     // Refused here as well as disabled above: the button is the UI, this is the rule.
-    if (atChannelLimit) return;
+    if (cannotAddSource) return;
     addCamera({
       projectId, name: values.name.trim(), code: generateCameraCode(values.name.trim(), cameras.map(c => c.code)), rtspUrl: values.rtspUrl.trim(),
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
@@ -1194,7 +1216,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       {/* Above the strip, because it changes what the numbers below it mean: at the ceiling the
           fleet count stops being "how many we have" and becomes "how many we may have". A
           disabled button whose tooltip nobody hovers is the same silence as no rule at all. */}
-      {atChannelLimit && channelLimit !== undefined && (
+      {(atChannelLimit || channelLimitUnrecorded) && (
         <div style={{
           display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "12px",
           padding: "12px 14px", borderRadius: "10px",
@@ -1204,7 +1226,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             <CircleAlert size={15} strokeWidth={2.2} />
           </span>
           <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--warning-500)", lineHeight: 1.6 }}>
-            {t.atLimitBanner(channelLimit)}
+            {channelLimitUnrecorded ? t.noLicenceBanner : t.atLimitBanner(channelLimit)}
           </p>
         </div>
       )}
@@ -1353,9 +1375,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             {/* Export stays. A read-only account still needs the fleet list as a file — that is
                 most of what the role is for. Adding is what goes. */}
             <button className="portal-btn-primary" onClick={() => setAddMenuOpen(o => !o)}
-              disabled={!mayEdit || atChannelLimit}
-              title={!mayEdit ? readOnlyReason : atChannelLimit ? t.atLimitReason(channelLimit ?? 0) : undefined}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: (mayEdit && !atChannelLimit) ? "var(--primary-400)" : "var(--gray-200)", color: (mayEdit && !atChannelLimit) ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: (mayEdit && !atChannelLimit) ? "pointer" : "not-allowed" }}>
+              disabled={!mayEdit || cannotAddSource}
+              title={!mayEdit ? readOnlyReason : channelLimitUnrecorded ? t.noLicenceReason : atChannelLimit ? t.atLimitReason(channelLimit ?? 0) : undefined}
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: (mayEdit && !cannotAddSource) ? "var(--primary-400)" : "var(--gray-200)", color: (mayEdit && !cannotAddSource) ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: (mayEdit && !cannotAddSource) ? "pointer" : "not-allowed" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
               {t.addSource}
             </button>
