@@ -477,7 +477,10 @@ function LoginForm() {
                 product and there is nothing to upsell them. What does carry weight in public
                 procurement is what the system is certified for and what it runs on, and both are
                 checkable rather than persuasive.
-                Grey, not primary: the purple on this panel belongs to the cameras. */}
+                The figures carry the primary colour; the icon and the label beside them stay
+                grey. Three short strings is a small enough share that the cameras keep being the
+                loudest purple on the panel, and it puts the emphasis on the part that is
+                checkable — 99.97%, not the word "accuracy". */}
             {/* One row, never two. Sitting inside the caption's 360px measure it wrapped the
                 third figure onto its own line, which read as an afterthought rather than as one
                 set of three. Out here it takes the panel's width and the labels are short enough
@@ -490,7 +493,7 @@ function LoginForm() {
                   {/* Above the figure, and grey — it says which kind of fact this is at a glance
                       without competing with the number, which is the thing worth reading. */}
                   <Icon size={15} strokeWidth={2} color="var(--gray-400)" />
-                  <span style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-700)", letterSpacing: "-0.3px" }}>
+                  <span style={{ fontSize: "15px", fontWeight: 800, color: "var(--primary-400)", letterSpacing: "-0.3px" }}>
                     {fact.value}
                   </span>
                   <span style={{ fontSize: "10.5px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.21px" }}>
