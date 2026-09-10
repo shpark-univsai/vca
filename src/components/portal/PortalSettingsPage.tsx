@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Clock, Globe, KeyRound, Languages, LayoutGrid, LogIn, Mail, MapPin, Shield, User } from "lucide-react";
+import { Building2, Clock, Globe, KeyRound, Languages, LayoutGrid, LogIn, Mail, MapPin, Pencil, Shield, Trash2, User } from "lucide-react";
 import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
@@ -23,7 +23,7 @@ const T = {
     appNo: "Portal only",
     team: "Team",
     teamMailTitle: "Team mail",
-    teamMailIntro: "Where invitations and password resets are sent from, for every project in this team. A project can override it, and most do not — so this is the address staff actually receive mail from.",
+    teamMailIntro: "A project can override this from its Server tab, and most do not — so this is the address staff actually receive mail from.",
     teamMailDomain: "Mail domain",
     teamMailDomainHint: "Accounts must have an address on this domain. Requests and invites to anything else are refused.",
     teamMailHost: "SMTP host",
@@ -35,7 +35,6 @@ const T = {
     teamMailFromMismatch: (d: string) => `The from address has to be on @${d}, or the receiving server rejects it.`,
     teamMailUnverified: "Saved, not tested. Nothing here connects to the relay, so a wrong host means invitations vanish with no sign on this screen — send one invite and confirm it arrives.",
     categoryTitle: "Watchlist categories",
-    categoryIntro: "What a listing means at your institution — the words are yours. A category can set a default duration and require a written basis. Nothing is set up in advance.",
     categoryCount: (n: number) => (n === 1 ? "1 category in use" : `${n} categories in use`),
     categoryManage: "Manage categories",
     projectTitle: "Project",
@@ -45,6 +44,7 @@ const T = {
     renameCancel: "Cancel",
     renamedToast: "Project renamed",
     deleteProject: "Delete this project",
+    deleteAction: "Delete",
     deleteProjectHint: "The project and everything filed under it. The activity log survives, re-filed under the team.",
     deleteConfirmTitle: (name: string) => `Delete ${name}?`,
     deleteConfirmBody: "This cannot be undone. Type the project's name to confirm.",
@@ -59,7 +59,6 @@ const T = {
     projectTimeZone: "Time zone",
     timeZoneNote: "Days, hours and \"today\" on every screen are counted in this zone — for everyone who opens this project, wherever they are.",
     purposeTitle: "Search purposes",
-    purposeIntro: "The reasons an operator may give for looking someone up. Your own wording — nothing is set up in advance.",
     purposeEmpty: "No purposes defined.",
     purposeRequirementOn: "Searches are supposed to record a purpose, and there is nothing to choose. Until one exists, operators search without giving a reason.",
     purposeNew: "New purpose",
@@ -99,7 +98,7 @@ const T = {
     appNo: "포털만",
     team: "팀",
     teamMailTitle: "팀 메일",
-    teamMailIntro: "이 팀의 모든 프로젝트에서 초대장과 비밀번호 재설정이 나가는 곳입니다. 프로젝트별로 덮어쓸 수 있지만 대개 그러지 않으므로, 직원이 실제로 받는 주소가 여기입니다.",
+    teamMailIntro: "프로젝트의 서버 탭에서 덮어쓸 수 있지만 대개 그러지 않으므로, 직원이 실제로 받는 주소가 여기입니다.",
     teamMailDomain: "메일 도메인",
     teamMailDomainHint: "계정은 반드시 이 도메인의 주소여야 합니다. 그 외 주소로의 요청과 초대는 거부됩니다.",
     teamMailHost: "SMTP 호스트",
@@ -111,7 +110,6 @@ const T = {
     teamMailFromMismatch: (d: string) => `발신 주소는 @${d} 도메인이어야 합니다. 아니면 받는 쪽 서버가 거부합니다.`,
     teamMailUnverified: "저장했을 뿐 테스트하지 않았습니다. 여기서 릴레이에 접속하지 않으므로 호스트가 틀리면 초대장이 이 화면에 아무 표시 없이 사라집니다 — 초대를 한 통 보내 도착하는지 확인하세요.",
     categoryTitle: "관심인물 분류",
-    categoryIntro: "기관에서 '등록'이 무엇을 뜻하는지 직접 정합니다. 분류마다 기본 유효기간을 두고 등록 근거를 필수로 할 수 있습니다. 미리 넣어둔 것은 없습니다.",
     categoryCount: (n: number) => `사용 중인 분류 ${n}개`,
     categoryManage: "분류 관리",
     projectTitle: "프로젝트",
@@ -121,6 +119,7 @@ const T = {
     renameCancel: "취소",
     renamedToast: "프로젝트 이름이 바뀌었습니다",
     deleteProject: "이 프로젝트 삭제",
+    deleteAction: "삭제",
     deleteProjectHint: "프로젝트와 그 아래 모든 것이 지워집니다. 변경 기록은 팀 밑으로 옮겨져 남습니다.",
     deleteConfirmTitle: (name: string) => `${name}을(를) 삭제할까요?`,
     deleteConfirmBody: "되돌릴 수 없습니다. 확인을 위해 프로젝트 이름을 입력하세요.",
@@ -135,7 +134,6 @@ const T = {
     projectTimeZone: "시간대",
     timeZoneNote: "모든 화면의 날짜와 시각, \"오늘\"의 기준이 이 시간대로 계산됩니다 — 어디서 열든, 누가 열든 이 프로젝트에 대해서는 같습니다.",
     purposeTitle: "조회 목적",
-    purposeIntro: "관제요원이 인물을 조회할 때 댈 수 있는 사유입니다. 기관이 쓰는 말 그대로 — 미리 넣어둔 것은 없습니다.",
     purposeEmpty: "정의된 사유가 없습니다.",
     purposeRequirementOn: "조회할 때 목적을 기록하도록 되어 있는데 고를 것이 없습니다. 하나라도 만들기 전까지는 사유 없이 조회가 실행됩니다.",
     purposeNew: "사유 만들기",
@@ -414,11 +412,22 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                   </button>
                 </span>
               ) : (
-                <span style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                  {project.name}
+                <span style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                  {/* Drawn like the four values under it. As a non-string child, PairItem was
+                      handing this one straight through, so it skipped their 14px/700 and
+                      inherited the card's body text — the one name on the card you can change
+                      was also the only one that looked like prose. */}
+                  <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", wordBreak: "break-word" }}>{project.name}</span>
                   {mayEdit && (
-                    <button className="portal-btn-quiet" onClick={() => setRenaming(project.name)}
-                      style={{ height: "24px", padding: "0 8px", borderRadius: "6px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                    /* Bordered, not quiet. Borderless belongs on a toolbar where six boxes in a
+                       row would compete; here one grey word sat against a value in the same grey
+                       and read as part of it, until the pointer arrived and a tinted box appeared
+                       from nowhere — which is the jump. The border is there before the pointer
+                       is, so hover only changes its fill, and the pencil says what the word does
+                       before the word is read. */
+                    <button className="portal-btn-outline" onClick={() => setRenaming(project.name)}
+                      style={{ display: "inline-flex", alignItems: "center", gap: "5px", flexShrink: 0, height: "24px", padding: "0 9px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      <Pencil size={11} strokeWidth={2.2} />
                       {t.rename}
                     </button>
                   )}
@@ -455,14 +464,19 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
               the heaviest thing anybody can do from the console, and it belongs with granting
               roles rather than with changing a timezone. */}
           {mayDeleteProject && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", borderTop: BORDER, marginTop: "18px", paddingTop: "16px" }}>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.deleteProject}</p>
-                <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "2px" }}>{t.deleteProjectHint}</p>
-              </div>
-              <button className="portal-btn-quiet" onClick={() => { setDeleteEcho(""); setConfirmingDelete(true); }}
-                style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--danger-500)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
-                {t.deleteProject}
+            <div style={{ borderTop: BORDER, marginTop: "18px", paddingTop: "16px" }}>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.deleteProject}</p>
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "2px" }}>{t.deleteProjectHint}</p>
+              {/* Under its own words, flush with them. space-between held the button at the far
+                  edge of the column, so the sentence explaining it and the thing it explains were
+                  half a column apart and the hover tint landed nowhere near the text — read as a
+                  stray control rather than the end of this paragraph. Every other control on this
+                  page sits under the words naming it; the heaviest one should not be the
+                  exception. The word is short because the line above already says which project. */}
+              <button className="portal-btn-outline-danger" onClick={() => { setDeleteEcho(""); setConfirmingDelete(true); }}
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 12px", marginTop: "10px", borderRadius: "8px", border: "1px solid var(--danger-200)", backgroundColor: "white", color: "var(--danger-500)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                <Trash2 size={13} strokeWidth={2.2} />
+                {t.deleteAction}
               </button>
             </div>
           )}
@@ -572,7 +586,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       )}
 
       {myTeamId && (
-        <CardSection heading={t.categoryTitle} desc={t.categoryIntro}>
+        <CardSection heading={t.categoryTitle}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>
               {t.categoryCount(teamCategories.filter(c => !c.archived).length)}
@@ -599,7 +613,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           a question the reader has to answer ("do I need to fill this in?") about something that
           cannot affect them. The flag is the switch — see complianceConfig. */}
       {requirePurpose && myTeamId && (
-        <CardSection heading={t.purposeTitle} desc={t.purposeIntro}>
+        <CardSection heading={t.purposeTitle}>
           {/* What the empty list actually costs, said here rather than only in the app. An
               administrator who has not built this list needs to know that the requirement is on and
               unmet — otherwise the console looks configured and the gate quietly waves everyone
