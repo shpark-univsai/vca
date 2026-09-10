@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useVcaStore, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER } from "./PortalShared";
@@ -73,6 +74,7 @@ interface PortalNewProjectWizardProps {
 }
 
 export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, defaultType = "smart_city" }: PortalNewProjectWizardProps) {
+  useEscapeKey(() => onCancel?.());
   const addProject = useVcaStore(s => s.addProject);
   const addCamera = useVcaStore(s => s.addCamera);
   const [selectedType, setSelectedType] = useState<ProjectType>(defaultType);
@@ -111,27 +113,49 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
   };
 
   return (
-    <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 24px" }}>
-      <span style={{
-        display: "flex", alignItems: "center", gap: "6px",
-        border: "1px solid var(--primary-200)", backgroundColor: "white", borderRadius: "13px",
-        padding: "6px 14px", fontSize: "10px", fontWeight: 600, color: "var(--primary-400)",
+    /*
+      A dialog over the console, not a page that replaces it.
+     
+      It used to swap the whole content area for a full-page wizard — and from an empty team it
+      did so with no way back at all. Looking at how consoles actually do this (Mobbin, ~30
+      create-flows across dev-tools and admin products): the switcher is only ever the entry
+      point — not one app types a name inside the popover — and roughly three in four open a
+      modal from it. A full page shows up when creation carries a weighty, comparable choice:
+      a region, a git provider, a database password, a plan. Three fields, one of them optional,
+      all inside the team you are already in, is not that.
+     
+      Two things the sample was unanimous about and we were not: every page-based wizard among
+      them (Vercel, AWS) keeps a Back or Cancel on every step, and apps ship ONE create surface
+      reused for the first project and the nth — what changes for an empty team is the page
+      behind it, which is PortalEmptyState's job, not this component's.
+    */
+    <div onClick={e => { if (e.target === e.currentTarget) onCancel?.(); }}
+      style={{
+        position: "fixed", inset: 0, zIndex: 400, backgroundColor: "rgba(14,22,42,0.4)",
+        display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "16px", overflowY: "auto",
       }}>
-        ● {t.badge}
-      </span>
-
-      <p style={{ fontSize: "26px", fontWeight: 800, color: "var(--gray-900)", marginTop: "18px", textAlign: "center" }}>
-        {t.title}
-      </p>
-      <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px", textAlign: "center", maxWidth: "560px" }}>
-        {t.subtitle}
-      </p>
-
+      {/* margin auto rather than centring alone: with the scroll on the backdrop, a dialog taller
+          than a short window gets its top cut off under align-items centre. */}
       <div style={{
         backgroundColor: "white", border: BORDER, borderRadius: "20px",
         width: "640px", maxWidth: "100%", boxSizing: "border-box", padding: "24px 32px 32px",
-        marginTop: "28px",
+        margin: "auto", boxShadow: "0 20px 60px rgba(14,22,42,0.18)",
       }}>
+        <div style={{ marginBottom: "22px" }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: "6px",
+            border: "1px solid var(--primary-200)", borderRadius: "13px",
+            padding: "5px 12px", fontSize: "10px", fontWeight: 600, color: "var(--primary-400)",
+          }}>
+            ● {t.badge}
+          </span>
+          <p style={{ fontSize: "20px", fontWeight: 800, color: "var(--gray-900)", marginTop: "12px" }}>
+            {t.title}
+          </p>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "4px", lineHeight: 1.6 }}>
+            {t.subtitle}
+          </p>
+        </div>
         <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "12px" }}>{t.step1}</p>
         <div style={{ display: "flex", gap: "16px" }}>
           {TEMPLATES.map(tpl => {
@@ -232,6 +256,9 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
             up there. Both answers to "am I creating this project?" now sit in one place, with the
             recoverable one quieter: no border, no fill, so it never competes with the action it
             undoes. */}
+        {/* Always offered now. From an empty team this used to be omitted entirely — a wizard
+            with no exit, which nothing in the reference set does. Behind it is either the
+            console or the empty-team landing, and both are somewhere to be. */}
         {onCancel && (
           <button
             className="portal-link"
@@ -245,11 +272,11 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
             {t.cancel}
           </button>
         )}
-      </div>
 
-      <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "24px", textAlign: "center" }}>
-        {t.footer}
-      </p>
+        <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "18px", textAlign: "center", lineHeight: 1.6 }}>
+          {t.footer}
+        </p>
+      </div>
     </div>
   );
 }

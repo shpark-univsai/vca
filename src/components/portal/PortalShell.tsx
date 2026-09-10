@@ -185,9 +185,10 @@ export default function PortalShell() {
     setShowWizard(true);
   };
 
-  // The rail is the project navigation, so it only exists once there is a project and we are not
-  // inside the wizard. The header reads this to decide whether it still has to carry the way out.
-  const sidebarVisible = !showWizard && teamProjects.length > 0;
+  // The rail is the project navigation, so it exists once there is a project. Creating one no
+  // longer takes it away — the wizard is a dialog over the console rather than a page that
+  // replaces it, so the console it is being added to stays visible behind it.
+  const sidebarVisible = teamProjects.length > 0;
   // Portal's account screen. A content mode rather than a route, because /portal is one route
   // whose screen is chosen by state already (the wizard works the same way) — and because it keeps
   // the rail on screen, which is how you get back out of it.
@@ -275,19 +276,16 @@ export default function PortalShell() {
         height: "52px",
         display: "flex", alignItems: "center", padding: "0 24px", flexShrink: 0, gap: "10px",
       }}>
-        {/* The breadcrumb says where you are, and during creation you are not inside any project —
-            so the last crumb becomes the act of creating one. It used to keep naming whichever
-            project happened to be selected, which was false (nothing has been created yet) and
-            worse than false: that crumb is a live switcher, so clicking it navigated away and
-            discarded the half-filled form. Every console that has this flow ends the trail at the
-            creation step the same way — GitLab "… / Projects / New project", Canva "Projects /
-            New course", Copilot "Forms / New form".
+        {/* The trail ends at "New project" only when there is no project to name — an empty
+            team. With the wizard now a dialog over the console, the page behind it is still the
+            project you were on, and a crumb that renamed itself while that page sat visible
+            underneath described neither.
 
-            The team crumb stays, because which team the project is filed under is real information
-            and the wizard genuinely uses it — but it stops being a switcher for the same reason
-            the project crumb did. Switching teams mid-form has no defined answer for what happens
-            to what you typed, and silently dropping it is not one. */}
-        {showWizard ? (
+            The team crumb stays either way, because which team the project is filed under is
+            real information the wizard genuinely uses — but while the dialog is open it stops
+            being a switcher: switching teams mid-form has no defined answer for what happens to
+            what you typed, and silently dropping it is not one. */}
+        {showWizard && teamProjects.length === 0 ? (
           <>
             {/* display:block, not flex. text-overflow only applies to a block box, so with
                 display:flex the name was hard-clipped mid-word with no ellipsis — it read as a
@@ -402,14 +400,7 @@ export default function PortalShell() {
         />
       </div>
 
-      {showWizard ? (
-        <PortalNewProjectWizard
-          teamId={currentOrgId}
-          onDeployed={deployedFromWizard}
-          onCancel={teamProjects.length > 0 ? () => setShowWizard(false) : undefined}
-          defaultType={defaultWizardType}
-        />
-      ) : (
+      {
         // White canvas, dark rail — the arrangement most consoles have settled on. It used to be
         // the other way round for both, which meant every card had to be white to be a card and
         // the page's own surface was doing the outlining.
@@ -441,8 +432,19 @@ export default function PortalShell() {
                 />
               : <PortalProjectDetailPage projectId={currentProjectId} tab={tab} onTabChange={setTab} />}
         </div>
-      )}
+      }
       </div>
+
+      {/* Over the console, and always cancellable — including from an empty team, where the
+          landing page behind it is somewhere to be. See the note in the wizard. */}
+      {showWizard && (
+        <PortalNewProjectWizard
+          teamId={currentOrgId}
+          onDeployed={deployedFromWizard}
+          onCancel={() => setShowWizard(false)}
+          defaultType={defaultWizardType}
+        />
+      )}
 
       {/* The switcher's "New team" still opens the modal — there the page behind it is worth
           preserving. The first-team case does not use it: that landing has the field on it. */}
