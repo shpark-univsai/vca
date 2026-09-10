@@ -37,6 +37,8 @@ const T = {
     exportEvidenceHint: "Metadata and the operator's call, as a file. The frame is referenced, not enclosed.",
     exported: (place: string) => `Evidence exported — ${place}`,
     exportedDesc: "The extraction is recorded in this project's log.",
+    thresholdCost: (kept: number, total: number) => `${kept} of ${total} candidates`,
+    thresholdCostNone: (total: number) => `none of ${total} candidates`,
     modePerson: "PERSON",
     modeVehicle: "VEHICLE",
     licensePlate: "License plate",
@@ -118,6 +120,8 @@ const T = {
     exportEvidenceHint: "메타데이터와 관제요원의 판단을 파일로. 프레임은 참조만 하고 담지 않습니다.",
     exported: (place: string) => `증거를 내보냈습니다 — ${place}`,
     exportedDesc: "추출 사실이 이 프로젝트 기록에 남았습니다.",
+    thresholdCost: (kept: number, total: number) => `후보 ${total}건 중 ${kept}건`,
+    thresholdCostNone: (total: number) => `후보 ${total}건 중 0건`,
     modePerson: "사람",
     modeVehicle: "차량",
     licensePlate: "차량 번호",
@@ -970,6 +974,31 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
   // lives on the label's tooltip instead.
   const bodyOnly = mode === "person" && !!bodyFileKey && !faceFileKey;
 
+  /**
+   * What this threshold costs, while the hand is still on the slider.
+   *
+   * The control decides which matches an operator ever sees, and until now moving it told you
+   * nothing until after you searched — you turned the dial with your eyes shut and found out
+   * afterwards, by which time the number you had before was gone. This counts the candidates
+   * the current setting would keep, against the pool the current query actually has.
+   *
+   * Only with something attached. With no image the pool is whatever the empty search key hashes
+   * to, and a count for a query nobody has made is worse than no count: it looks like a fact.
+   *
+   * HANDOFF NOTE: this counts a mock candidate set. The version worth having is "at this
+   * threshold, yesterday would have produced N alerts" — the backend already serves a daily
+   * detection series per project, so the real preview is a query against that rather than a
+   * count of what one search returned.
+   */
+  const thresholdCost = useMemo(() => {
+    if (mode !== "person") return null;
+    if (!faceFileKey && !bodyFileKey) return null;
+    const pool = resultSets[hashStr(`person:${faceFileKey ?? ""}|${bodyFileKey ?? ""}`) % resultSets.length];
+    if (!pool.length) return null;
+    const kept = pool.filter(hit => parseFloat(bodyOnly ? hit.bodyScore : hit.score) >= similarity).length;
+    return { kept, total: pool.length };
+  }, [mode, faceFileKey, bodyFileKey, bodyOnly, similarity, resultSets]);
+
   const handleUploadFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -1454,7 +1483,21 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                 onChange={e => setSimilarity(Number(e.target.value))}
                 style={{ width: "120px", flexShrink: 0, cursor: "pointer" }}
               />
-              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary-400)", width: "30px", flexShrink: 0 }}>{similarity}%</span>
+              {/* The number and what it costs, stacked. The toolbar has no room for a second
+                  row, and the cost belongs to this control rather than to the toolbar. */}
+              <span style={{ display: "flex", flexDirection: "column", flexShrink: 0, minWidth: thresholdCost ? "84px" : "30px", lineHeight: 1.2 }}>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}>{similarity}%</span>
+                {thresholdCost && (
+                  <span style={{
+                    fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap",
+                    // Amber only when the setting leaves nothing. Colouring every reduction would
+                    // paint the normal case as a problem — dropping weak candidates is the job.
+                    color: thresholdCost.kept === 0 ? "var(--warning-500)" : "var(--gray-500)",
+                  }}>
+                    {thresholdCost.kept === 0 ? t.thresholdCostNone(thresholdCost.total) : t.thresholdCost(thresholdCost.kept, thresholdCost.total)}
+                  </span>
+                )}
+              </span>
             </div>
           </>
         )}
