@@ -27,12 +27,19 @@ const T = {
   },
 } as const;
 
-/** Newest first, the way the real timeline reads — the last sighting is the one being looked for.
- *  Gaps only; no absolute times. */
+/**
+ * Newest first, the way the real timeline reads — the last sighting is the one being looked for.
+ * Gaps only; no absolute times.
+ *
+ * Minutes, not days. The first draft had the newest sighting a day and an hour after the one
+ * before it, which reads as a trail that went cold — someone found out where the person was
+ * yesterday. That is the opposite of what this screen is showing. Four sightings inside twenty
+ * minutes says the search caught up with them, which is the case worth putting on the panel.
+ */
 const ROWS: { n: string; letter: string; gap: string | null }[] = [
-  { n: "04", letter: "D", gap: "1d 55m" },
-  { n: "03", letter: "C", gap: "35m" },
-  { n: "02", letter: "B", gap: "10m" },
+  { n: "04", letter: "D", gap: "6m" },
+  { n: "03", letter: "C", gap: "11m" },
+  { n: "02", letter: "B", gap: "4m" },
   { n: "01", letter: "A", gap: null },
 ];
 

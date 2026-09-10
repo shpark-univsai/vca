@@ -24,14 +24,15 @@
 /**
  * The ground: a plan grid.
  *
- * Back to this after two versions of a street map. Blocks with roads between them look more like
- * a map, which is exactly the problem — the deployments are a city AND a school and the list keeps
- * growing, so a street map is wrong on a campus and will be wrong again on the next kind of site.
- * A plan grid is what any space looks like before you say which space it is.
+ * Three grounds were tried and this is the one that stays. A street map with curved roads and a
+ * road hierarchy does read as a map — that is exactly what makes it wrong here. The deployments
+ * are a city AND a school and the list keeps growing, so a street map is right on one site and
+ * wrong on the next. A plan grid is what any space looks like before you say which space it is,
+ * and it does not compete with the four cameras standing on it.
  *
  * It read as a chart's backdrop once, but that was the grid together with a line climbing left to
- * right. The trail changes direction now and each mark is a camera, so the grid is free to be
- * what it is: a floor for the cameras to stand on.
+ * right. The trail changes direction now and every mark is a camera, so the grid is free to be
+ * what it is: a floor.
  *
  * 40 fine, every fifth heavier — the convention a floor plan or a site plan already uses.
  */
@@ -46,7 +47,6 @@ const HEAVY = [200, 400];
  * walking through a site does not travel in a straight line.
  */
 const CAMERAS: { x: number; y: number }[] = [
-  // On the gaps between blocks, not mid-block — a camera watches a way through, not a roof.
   { x: 215, y: 160 },
   { x: 470, y: 96 },
   { x: 352, y: 350 },
@@ -129,10 +129,16 @@ export default function AuthTrailArt({ className }: { className?: string }) {
                 map answered with a camera barely larger than the others — the same row carried
                 two different weights. Filled here, so whichever half the eye lands on first, the
                 most recent sighting is the one it finds. That is also the one an operator is
-                looking for: where are they now. */}
-            <circle cx={c.x} cy={c.y} r={last ? 44 : 33} fill="var(--gray-50)" />
-            <circle cx={c.x} cy={c.y} r={last ? 44 : 33} fill="var(--primary-400)" opacity={last ? 0.14 : 0.09} />
-            {last && <circle cx={c.x} cy={c.y} r="44" stroke="var(--primary-400)" strokeWidth="1.5" opacity="0.4" />}
+                looking for: where are they now.
+
+                Three discs rather than a stroked ring. A hard outline drew a border around the
+                camera and read as a control — something to click — where the point is only that
+                this one is louder than the others. Rings of tint say the same thing with no edge,
+                and it is what the app's own map does around a live ping. */}
+            {last && <circle cx={c.x} cy={c.y} r="58" fill="var(--gray-50)" />}
+            {last && <circle cx={c.x} cy={c.y} r="58" fill="var(--primary-100)" />}
+            <circle cx={c.x} cy={c.y} r={last ? 42 : 33} fill={last ? "var(--primary-100)" : "var(--gray-50)"} />
+            <circle cx={c.x} cy={c.y} r={last ? 42 : 33} fill="var(--primary-400)" opacity={last ? 0.13 : 0.09} />
             {last && <circle cx={c.x} cy={c.y} r="27" fill="var(--primary-400)" />}
             <CameraGlyph
               x={c.x} y={c.y}
@@ -142,7 +148,7 @@ export default function AuthTrailArt({ className }: { className?: string }) {
             {/* Numbered, so the trail here and the list there are one object rather than two
                 drawings that happen to share a colour. */}
             <text
-              x={c.x + (last ? 34 : 25)} y={c.y - (last ? 28 : 20)}
+              x={c.x + (last ? 44 : 25)} y={c.y - (last ? 38 : 20)}
               fontFamily="'SUIT', system-ui, sans-serif" fontSize={last ? 20 : 16} fontWeight={800}
               fill="var(--primary-400)" opacity={last ? 1 : 0.5}
             >
