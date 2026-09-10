@@ -607,8 +607,9 @@ body {
     align-items: center;
     justify-content: center;
     padding: 24px;
+    /* The change of ground is the whole separation. A hairline on top of it was drawing a border
+       between two areas that were already different colours — one seam stated twice. */
     background-color: var(--gray-50);
-    border-left: 1px solid var(--line);
   }
 }
 /* Only rule left that reads the window's height, and it is about the artwork alone — the form no
