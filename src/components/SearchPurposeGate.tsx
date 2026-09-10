@@ -6,7 +6,7 @@ import { useLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import {
-  SIGNED_IN_USER, currentPortalUser, useVcaStore,
+  SIGNED_IN_USER, resolveActiveProject, useVcaStore,
   type SearchPurpose, type SearchPurposeSelection,
 } from "@/lib/vcaStore";
 
@@ -64,6 +64,20 @@ const T = {
  * has defined no purposes to choose from, or when one is already declared. The middle case
  * matters: a requirement with an empty list is a locked door with no key, and the honest failure
  * is to let the search happen and say the list is empty rather than to strand the operator.
+ *
+ * The list is scoped by the SITE on screen, not by the account.
+ *
+ * It read the signed-in user's team first, which was the wrong axis twice over. The declaration
+ * being made is "why I am about to view this site's footage", so the list that applies belongs to
+ * the institution that owns the site — and the app already knows which site that is, because the
+ * header points at one. Reading it off the account also broke in the mock, where the demo identity
+ * matches no account at all: `me` came back undefined and every team's purposes were offered at
+ * once. Once a real session lands the two answers agree anyway, since an account only ever sees
+ * its own team's projects.
+ *
+ * HANDOFF NOTE: still fail-open, like the other stand-ins in this codebase — with no site
+ * resolved, every purpose is offered rather than none, so the screen stays usable. A real build
+ * scopes this server-side to the session's team and this filter becomes the second line.
  */
 export function usePurposeGate(): {
   blocked: boolean;
@@ -73,13 +87,22 @@ export function usePurposeGate(): {
   const required = getComplianceConfig().requireSearchPurpose;
   const all = useVcaStore(s => s.searchPurposes);
   const selection = useVcaStore(s => s.searchPurpose);
+  const activeProjectId = useVcaStore(s => s.activeProjectId);
   const portalUsers = useVcaStore(s => s.portalUsers);
-  const me = currentPortalUser(portalUsers);
+  const projects = useVcaStore(s => s.projects);
+  const site = resolveActiveProject(activeProjectId, portalUsers, projects);
+  const siteTeamId = site?.teamId;
   const purposes = useMemo(
-    () => all.filter(p => !p.archived && (!me || p.teamId === me.teamId)),
-    [all, me],
+    () => all.filter(p => !p.archived && (!siteTeamId || p.teamId === siteTeamId)),
+    [all, siteTeamId],
   );
-  return { blocked: required && purposes.length > 0 && !selection, purposes, selection };
+  // A declaration only counts while the purpose it names is still on offer here. Switch site in
+  // the header and the previous site's purpose is not in this list — the bar would render nothing
+  // (it cannot resolve the label) while the gate still counted the sitting as declared, which is
+  // searching with no stated purpose and no sign of it. Same when a purpose is archived
+  // mid-sitting. Treated as undeclared, so the gate asks again.
+  const declared = selection && purposes.some(p => p.id === selection.purposeId) ? selection : null;
+  return { blocked: required && purposes.length > 0 && !declared, purposes, selection: declared };
 }
 
 const FIELD_BORDER = "1px solid var(--gray-300)";
