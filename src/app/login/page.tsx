@@ -30,6 +30,8 @@ const T = {
     useProjectLink: "Open the project link you were sent to request access.",
     askForInvite: "Ask your administrator to send you an invitation.",
     restrictedNetwork: "This system runs on a restricted internal network.",
+    panelHeading: "Sightings scattered across cameras, joined into one person.",
+    panelBody: "Start from one photo, or from a few conditions. VCA matches the detections left on separate cameras and lays out where the person passed, in order.",
     contactNamed: (who: string) => <>For an account or access, contact <strong style={{ color: "var(--gray-500)" }}>{who}</strong>.</>,
     contactGeneric: "For an account or access, contact your security operations team.",
   },
@@ -50,6 +52,8 @@ const T = {
     useProjectLink: "받으신 프로젝트 링크를 열어 접근을 요청해주세요.",
     askForInvite: "관리자에게 초대를 요청해주세요.",
     restrictedNetwork: "이 시스템은 외부와 분리된 내부 전용 네트워크에서 운영됩니다.",
+    panelHeading: "여러 카메라에 흩어진 목격을 한 사람으로 잇습니다.",
+    panelBody: "사진 한 장이나 몇 가지 조건에서 시작합니다. 카메라마다 따로 남은 검출을 대조해, 그 사람이 언제 어디를 지났는지 순서대로 펼쳐 보여줍니다.",
     contactNamed: (who: string) => <>계정이나 접근 권한은 <strong style={{ color: "var(--gray-500)" }}>{who}</strong>에게 문의해주세요.</>,
     contactGeneric: "계정이나 접근 권한은 보안 관제 담당자에게 문의해주세요.",
   },
@@ -277,7 +281,7 @@ function LoginForm() {
                 <label style={FIELD_LABEL}>
                   {authConfig.employeeIdLogin ? t.identifierWithId : t.identifierEmailOnly}
                 </label>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", height: "48px", padding: "0 14px", border: FIELD_BORDER, borderRadius: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", height: "52px", padding: "0 16px", border: FIELD_BORDER, borderRadius: "8px" }}>
                   <PersonFieldIcon />
                   <input
                     value={identifier}
@@ -288,7 +292,7 @@ function LoginForm() {
                     // the field with something left to do. Landing focus on a filled field means
                     // one more keystroke every shift.
                     autoFocus={identifier.length === 0}
-                    style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
+                    style={{ flex: 1, border: "none", outline: "none", fontSize: "15px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                   />
                 </div>
               </div>
@@ -308,7 +312,7 @@ function LoginForm() {
                     {t.forgot}
                   </button>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", height: "48px", padding: "0 14px", border: FIELD_BORDER, borderRadius: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", height: "52px", padding: "0 16px", border: FIELD_BORDER, borderRadius: "8px" }}>
                   <LockFieldIcon />
                   <input
                     type={showPassword ? "text" : "password"}
@@ -319,7 +323,7 @@ function LoginForm() {
                     placeholder="••••••••"
                     autoComplete="current-password"
                     autoFocus={identifier.length > 0}
-                    style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
+                    style={{ flex: 1, border: "none", outline: "none", fontSize: "15px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                   />
                   <button type="button" onClick={() => setShowPassword(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                     {showPassword ? <EyeIcon /> : <EyeOffIcon />}
@@ -403,10 +407,29 @@ function LoginForm() {
         </div>
         </div>
 
-        {/* Decorative, so aria-hidden — a screen reader should reach the form, not a drawing.
-            Sized in globals.css. */}
+        {/* The panel says what the drawing is. Left as an image alone it read as decoration
+            parked in leftover space, and an abstract drawing with no caption asks the viewer to
+            guess.
+            The words are descriptive, not promotional — the marketing site's copy is aimed at
+            someone deciding whether to buy this, and the person on this screen already has it and
+            is starting a shift. So it names the mechanism the drawing shows, in the same plain
+            terms the product's own pages use, and claims nothing.
+            aria-hidden covers the whole panel: a screen reader should land on the form, and the
+            heading here is a caption for a picture it cannot see. */}
         <div className="vca-auth-brand" aria-hidden>
-          <AuthTrailArt className="vca-auth-brand-art" />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "28px", maxWidth: "460px" }}>
+            <AuthTrailArt className="vca-auth-brand-art" />
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", textAlign: "center" }}>
+              <p style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--gray-800)", letterSpacing: "-0.32px", lineHeight: 1.5 }}>
+                {t.panelHeading}
+              </p>
+              {/* Grey, not primary. The purple on this panel belongs to the three marks — that is
+                  the whole point of the drawing, and copy in the same colour would take it. */}
+              <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.26px", lineHeight: 1.8 }}>
+                {t.panelBody}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
