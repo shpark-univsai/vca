@@ -1,4 +1,4 @@
-import { sgtClockTime } from "@/lib/time";
+import { dateKeyIn, FALLBACK_TIME_ZONE, sgtClockTime, wallClockToDate, zoneHour } from "@/lib/time";
 
 export const FACE_PHOTOS = [
   "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80",
@@ -161,10 +161,25 @@ interface RawVipHit {
   lng: number;
 }
 
+/**
+ * Today at a wall-clock hour and minute, on the clock the rest of the mock seeds are written on.
+ *
+ * `setHours()` wrote these on the MACHINE's clock while every reader measures them against a site
+ * clock (isTodaySgt, sgtHour). On a machine in another zone the day's hits therefore landed in the
+ * wrong hours and some fell out of "today" entirely: on a UTC machine at 14:00 site time the
+ * sidebar counted 25 detections instead of 72, and the activity chart drew the day's peak
+ * wherever the offset put it — once in the small hours. Two ends of one measurement, read on two
+ * different clocks.
+ *
+ * Pinned to FALLBACK_TIME_ZONE, which is where the rest of the mock stamp loop lives (see the note
+ * in lib/time.ts): these are module-load seeds, written before any site is resolved, so they
+ * cannot be written on the site's clock. What this fixes is that they no longer depend on where
+ * the person looking at the screen happens to be sitting.
+ */
 function todayAt(hour: number, minute: number): string {
-  const d = new Date();
-  d.setHours(hour, minute, 0, 0);
-  return d.toISOString();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const day = dateKeyIn(new Date(), FALLBACK_TIME_ZONE);
+  return wallClockToDate(day, `${pad(hour)}:${pad(minute)}:00`, FALLBACK_TIME_ZONE).toISOString();
 }
 
 // A brand-new, non-overlapping identity pool (not one of the names above) — each tied to exactly
@@ -207,7 +222,9 @@ const HOURLY_VIP_HIT_TARGETS = [
 // them at zero is correct (not a gap to fill); a real deployment fills them in as the day
 // actually progresses, exactly like this will on its own tomorrow.
 function generateDayVipHits(): RawVipHit[] {
-  const nowHour = new Date().getHours();
+  // The same clock todayAt writes on, so "up to the current hour" means the current hour of the
+  // day these hits are stamped in — not of the machine reading them.
+  const nowHour = zoneHour(new Date(), FALLBACK_TIME_ZONE);
   const hits: RawVipHit[] = [];
   for (let hour = 0; hour <= nowHour; hour++) {
     const target = HOURLY_VIP_HIT_TARGETS[hour];
