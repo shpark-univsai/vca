@@ -805,6 +805,12 @@ function VipEventRow({ event, isSelected, photoUrl, onClick, locationFilter }: {
   return (
     <div
       onClick={onClick}
+      // Selecting a detection moves the map to it — the main thing this panel is for, and it was
+      // a div with an onClick, so a keyboard could not reach it at all.
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+      aria-pressed={isSelected}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{

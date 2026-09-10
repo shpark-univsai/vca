@@ -561,9 +561,21 @@ function HoverActionBtn({ label, icon, color, onClick }:
 function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab, onGoRedmap }: { p: (typeof REID_DATA)[number]; onClick: () => void; showCam?: boolean; fill?: boolean; onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number]) => void; onGoRedmap?: () => void }) {
   const [lang] = useLanguage();
   const status = REID_STATUS_STYLE[p.status];
+  // Shown on hover AND on keyboard focus. The three actions on this card were the only way to
+  // send a detection to Re-ID, RedFace or Redmap, and they were rendered only while the pointer
+  // was over the card — so for anyone on a keyboard, or on a touch screen, they did not exist.
+  // The card itself takes focus for the same reason: it was a div with an onClick.
   const [hovered, setHovered] = useState(false);
+  const [focusWithin, setFocusWithin] = useState(false);
+  const showActions = hovered || focusWithin;
   return (
-    <div onClick={onClick} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{
+    <div onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+      onFocus={() => setFocusWithin(true)}
+      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusWithin(false); }}
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{
       position:"relative", height:"254px",
       // Capped flex-grow — absorbs the common case (a trailing row that's nearly full) without
       // letting a row with only 1-2 leftover cards balloon into an oversized full-width photo.
@@ -590,7 +602,7 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
           REDFACE
         </div>
       )}
-      {hovered && (
+      {showActions && (
         <div style={{ position:"absolute", inset:0, backgroundColor:"rgba(14,22,42,0.6)",
           display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"8px", zIndex:20 }}>
           <HoverActionBtn label="Re-ID" icon={<ReidIconSm />} color="var(--primary-400)" onClick={e => { e.stopPropagation(); onNavigateTab?.("Re-ID Analysis", p); }} />
@@ -3264,7 +3276,14 @@ function CandidateCard({ c, selected, onClick }:
   const [lang] = useLanguage();
   const t = T[lang];
   return (
-    <div onClick={onClick} style={{
+    <div onClick={onClick}
+      // Choosing the primary target is what this modal exists to do, and the only other way in
+      // (the VIP chips) does not cover a crop picked out of the grid.
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+      aria-pressed={selected}
+      style={{
       position:"relative", width:"144px", backgroundColor:"white",
       border: selected ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
       borderRadius:"10px", padding:"8px", cursor:"pointer", display:"flex", flexDirection:"column", gap:"8px",
