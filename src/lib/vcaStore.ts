@@ -2252,7 +2252,24 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       auditLog: [{ id: `audit-${++auditSeq}`, projectId: person.projectId, message: `VIP ${person.name} registered`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, 200),
     })),
   removePerson: (personId) =>
-    set(state => ({ persons: state.persons.filter(p => p.id !== personId) })),
+    set(state => {
+      const person = state.persons.find(p => p.id === personId);
+      // The one mutation in this store that wrote no audit entry. Registering, editing, releasing
+      // and grouping all logged; erasing an enrolled face record — the single most consequential
+      // thing that can be done to this registry, and the one an audit is most likely to ask
+      // about — left nothing behind at all.
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: person?.projectId,
+        // The name is snapshotted into the message because the row it names is about to stop
+        // existing — the same reason the group and camera removals word themselves this way.
+        message: `VIP ${person?.name ?? personId} deleted from the watchlist`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        persons: state.persons.filter(p => p.id !== personId),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
   releasePerson: (personId, reason) =>
     set(state => {
       const person = state.persons.find(p => p.id === personId);
@@ -2504,7 +2521,29 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
     }),
   updatePortalUserProjects: (userId, projectIds) =>
-    set(state => ({ portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, projectIds } : u)) })),
+    set(state => {
+      const user = state.portalUsers.find(u => u.id === userId);
+      if (!user) return state;
+      // Named, not counted. "3 projects" a year later says nothing; which site somebody was let
+      // into or out of is the whole question an access review asks.
+      const nameOf = (id: string) => state.projects.find(p => p.id === id)?.name ?? id;
+      const added = projectIds.filter(id => !user.projectIds.includes(id)).map(nameOf);
+      const removed = user.projectIds.filter(id => !projectIds.includes(id)).map(nameOf);
+      if (added.length === 0 && removed.length === 0) return state;
+      const parts = [
+        added.length ? `+${added.join(", ")}` : "",
+        removed.length ? `−${removed.join(", ")}` : "",
+      ].filter(Boolean).join(" ");
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: user.projectIds[0],
+        message: `${user.name}'s projects changed: ${parts}`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, projectIds } : u)),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, 200),
+      };
+    }),
   updatePortalUserStatus: (userId, status) =>
     set(state => {
       // Safety net behind the UI, which already refuses to offer these. Both layers are wanted: the

@@ -237,6 +237,12 @@ const T = {
     mailNoteIsolated: "This project's site is internet-isolated — invite will be sent through its internal mailbox, not external email.",
     mailNoteReachable: "Invite will be sent by external email.",
     cancel: "Cancel",
+    save: "Save",
+    editProjects: "Projects…",
+    projectsModalTitle: "Projects",
+    projectsModalIntro: (name: string) => `Which of this team's projects ${name} may open. A project they are not given stops appearing in their app.`,
+    projectsModalNoneWarning: "At least one project. An account with no projects signs in to an empty app with no sign that anything was taken away — suspend the account instead.",
+    projectsUpdatedTitle: "Projects updated",
     sendInvite: "Send Invite",
     inviteSentTitle: "Invite sent",
 
@@ -456,6 +462,12 @@ const T = {
     mailNoteIsolated: "이 프로젝트의 사이트는 인터넷이 차단되어 있습니다 — 초대장은 외부 이메일이 아닌 내부 메일함으로 발송됩니다.",
     mailNoteReachable: "초대장이 외부 이메일로 발송됩니다.",
     cancel: "취소",
+    save: "저장",
+    editProjects: "프로젝트…",
+    projectsModalTitle: "프로젝트",
+    projectsModalIntro: (name: string) => `${name} 님이 열 수 있는 이 팀의 프로젝트입니다. 주지 않은 프로젝트는 앱에서 보이지 않습니다.`,
+    projectsModalNoneWarning: "최소 한 개는 있어야 합니다. 프로젝트가 없는 계정은 아무것도 없는 앱에 로그인하게 되고, 무엇이 회수됐는지 알 방법이 없습니다. 그럴 땐 계정을 정지하세요.",
+    projectsUpdatedTitle: "프로젝트가 변경되었습니다",
     sendInvite: "초대 보내기",
     inviteSentTitle: "초대장 발송됨",
 
@@ -523,8 +535,11 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
         ? t.mailNoteIsolated
         : t.mailNoteReachable;
 
+  const canInvite = name.trim() !== "" && email.trim() !== "" && teamId !== "" && projectIds.length > 0;
   const submit = () => {
-    if (!name.trim() || !email.trim() || !teamId) return;
+    // A project is required, the same as it is when the assignment is changed later: an account
+    // invited with nothing ticked signs into an empty app and reads it as a broken product.
+    if (!name.trim() || !email.trim() || !teamId || projectIds.length === 0) return;
     const resolved = applyAccessMode(accessMode, permission);
     const id = addPortalUser({
       name: name.trim(), email: email.trim(), teamId, projectIds,
@@ -619,8 +634,8 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
-          <button className="portal-btn-primary" onClick={submit} disabled={!name.trim() || !email.trim()}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: (name.trim() && email.trim()) ? "pointer" : "not-allowed", opacity: (name.trim() && email.trim()) ? 1 : 0.5 }}>
+          <button className="portal-btn-primary" onClick={submit} disabled={!canInvite}
+            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: canInvite ? "pointer" : "not-allowed", opacity: canInvite ? 1 : 0.5 }}>
             {t.sendInvite}
           </button>
         </div>
@@ -1240,6 +1255,79 @@ const SECONDARY_BTN: React.CSSProperties = {
   fontSize: "12px", fontWeight: 600, cursor: "pointer", flexShrink: 0,
 };
 
+/**
+ * Which of the team's projects an existing account may open.
+ *
+ * It was set once, at invite, and never again: updatePortalUserProjects sat in the store with no
+ * caller, and the table's projects cell was plain text whose own comment described "removing them
+ * from here" as the question behind it — an action that did not exist. In a control centre staff
+ * rotate between sites, and the only fix was to delete the account and invite it again, which
+ * loses everything the account is.
+ *
+ * Team is not editable here. A project belongs to exactly one team, so moving somebody between
+ * teams is a different act with different consequences (their whole roster history, their role,
+ * the mail domain their invite came from) and it does not belong behind a checkbox list.
+ */
+function UserProjectsModal({ user, teamProjects, onClose, onSave }: {
+  user: PortalUser;
+  teamProjects: { id: string; name: string }[];
+  onClose: () => void;
+  onSave: (projectIds: string[]) => void;
+}) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  const [picked, setPicked] = useState<string[]>(user.projectIds);
+  useEscapeKey(onClose);
+  const toggle = (id: string) =>
+    setPicked(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  // Zero is refused rather than warned about. An account with no projects signs into an app with
+  // nothing in it and no way to tell that something was taken away — suspending the account is
+  // how you stop somebody, and it says so.
+  const canSave = picked.length > 0;
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+        <div style={{ padding: "20px 20px 0" }}>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.projectsModalTitle}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "6px" }}>{t.projectsModalIntro(user.name)}</p>
+        </div>
+        <div style={{ padding: "16px 20px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+          {teamProjects.map(p => {
+            const active = picked.includes(p.id);
+            return (
+              <button key={p.id} onClick={() => toggle(p.id)}
+                style={{
+                  padding: "6px 10px", borderRadius: "8px", cursor: "pointer",
+                  border: active ? "1px solid var(--gray-900)" : BORDER,
+                  backgroundColor: active ? "var(--gray-100)" : "white",
+                  color: active ? "var(--gray-900)" : "var(--gray-600)",
+                  fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+                }}>
+                {p.name}
+              </button>
+            );
+          })}
+        </div>
+        {!canSave && (
+          <p style={{ padding: "0 20px", fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.6 }}>{t.projectsModalNoneWarning}</p>
+        )}
+        <div style={{ padding: "16px 20px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+          <button className="portal-btn-outline" onClick={onClose}
+            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {t.cancel}
+          </button>
+          <button className="portal-btn-primary" onClick={() => { onSave(picked); onClose(); }} disabled={!canSave}
+            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+            {t.save}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const STAGES = ["rosterListed", "codeIssued", "codeExpired", "invited", "active", "suspended"] as const;
 type Stage = (typeof STAGES)[number];
 
@@ -1466,6 +1554,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const removeRosterEntry = useVcaStore(s => s.removeRosterEntry);
   const logRosterCodeViewed = useVcaStore(s => s.logRosterCodeViewed);
   const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
+  const updatePortalUserProjects = useVcaStore(s => s.updatePortalUserProjects);
   const removePortalUser = useVcaStore(s => s.removePortalUser);
   const setAppSearch = useVcaStore(s => s.setAppSearch);
   const issueInviteToken = useVcaStore(s => s.issueInviteToken);
@@ -1556,6 +1645,11 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   };
 
   const projectName = (id: string) => projects.find(p => p.id === id)?.name ?? id;
+  // The team this page's project belongs to — the only projects an account here may be given.
+  // See UserProjectsModal on why the team itself is not editable from that dialog.
+  const pageTeamId = projects.find(p => p.id === projectId)?.teamId;
+  const teamProjects = projects.filter(p => p.teamId === pageTeamId);
+  const [editingProjectsFor, setEditingProjectsFor] = useState<PortalUser | null>(null);
   const currentProject = projects.find(p => p.id === projectId);
   /**
    * Which of the "on the way in, or stopped" states the table is narrowed to, if any — set by the
@@ -1842,7 +1936,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             </div>
             {/* The project this page is scoped to is on every row by definition, so listing it is
                 a column of the same name repeated. What is not known is whether this person has
-                anywhere else — which is the question behind removing them from here. */}
+                anywhere else — which is the question behind removing them from here, and the
+                row menu's Projects… is where that is answered. */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", minWidth: 0 }}>
               {(() => {
                 const others = u.projectIds.filter(pid => pid !== projectId);
@@ -1936,6 +2031,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 owner's. A non-owner still sees the items with the reason attached — knowing the
                 action exists and who can do it beats a menu that quietly has three fewer rows. */}
             <RowActionsMenu actions={[
+              {
+                // First, because it is the only thing in this menu that changes what the account
+                // is FOR rather than how it gets in.
+                label: t.editProjects,
+                disabled: !manageAccess,
+                reason: manageAccess ? undefined : t.reasonNotOwner,
+                onClick: () => setEditingProjectsFor(u),
+              },
               ...(mailAvailable && u.status === "invited" ? [{
                 label: t.resendInvite,
                 disabled: !manageAccess,
@@ -2120,6 +2223,17 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         />
       )}
       {showInvite && <InviteUserModal defaultProjectId={projectId} onClose={() => setShowInvite(false)} />}
+      {editingProjectsFor && (
+        <UserProjectsModal
+          user={editingProjectsFor}
+          teamProjects={teamProjects}
+          onClose={() => setEditingProjectsFor(null)}
+          onSave={ids => {
+            updatePortalUserProjects(editingProjectsFor.id, ids);
+            showToast({ variant: "success", title: t.projectsUpdatedTitle, desc: editingProjectsFor.name });
+          }}
+        />
+      )}
       {credentialFor && (
         <TempPasswordModal user={credentialFor} mailAvailable={mailAvailable} onClose={() => setCredentialFor(null)} />
       )}

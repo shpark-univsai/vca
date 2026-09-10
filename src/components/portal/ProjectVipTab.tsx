@@ -101,6 +101,7 @@ interface VipDict {
   releaseConfirm: string;
   releasedToast: string;
   catModalTitle: string;
+  catEdit: string;
   catModalIntro: string;
   catEmpty: string;
   catNew: string;
@@ -244,6 +245,7 @@ const T: Record<"en" | "ko", VipDict> = {
     releaseConfirm: "Release",
     releasedToast: "Released from watchlist",
     catModalTitle: "Watchlist categories",
+    catEdit: "Edit",
     catModalIntro: "Your own classification. Nothing is set up in advance — the words are yours, not ours.",
     catEmpty: "No categories yet. People can still be registered; they are listed as unclassified.",
     catNew: "New category",
@@ -386,6 +388,7 @@ const T: Record<"en" | "ko", VipDict> = {
     releaseConfirm: "해제",
     releasedToast: "명단에서 해제했습니다",
     catModalTitle: "관심인물 분류",
+    catEdit: "수정",
     catModalIntro: "기관이 직접 정의합니다. 미리 넣어둔 것은 없습니다 — 쓰는 말은 저희 것이 아니라 기관의 것입니다.",
     catEmpty: "아직 분류가 없습니다. 그래도 등록은 됩니다 — 미분류로 올라갑니다.",
     catNew: "분류 만들기",
@@ -1970,22 +1973,41 @@ function WatchlistCategoryModal({ t, teamId, categories, canEdit, onClose }: {
   const addWatchlistCategory = useVcaStore(s => s.addWatchlistCategory);
   const updateWatchlistCategory = useVcaStore(s => s.updateWatchlistCategory);
   const archiveWatchlistCategory = useVcaStore(s => s.archiveWatchlistCategory);
-  const [creating, setCreating] = useState(false);
+  /**
+   * null when the form is closed, "new" when it is creating, a category id when it is editing.
+   *
+   * One form for both, because they collect exactly the same four things. Editing was the
+   * missing half: updateWatchlistCategory existed in the store, audit entry and all, and nothing
+   * called it — so a category could be created and retired but a typo in its label was permanent
+   * and the only way out was to retire the row and make another one beside it.
+   */
+  const [editing, setEditing] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [validDays, setValidDays] = useState("");
   const [requiresBasis, setRequiresBasis] = useState(true);
   const [color, setColor] = useState<WatchlistCategoryColor>("gray");
   useEscapeKey(onClose);
 
-  const reset = () => { setCreating(false); setLabel(""); setValidDays(""); setRequiresBasis(true); setColor("gray"); };
-  const create = () => {
+  const reset = () => { setEditing(null); setLabel(""); setValidDays(""); setRequiresBasis(true); setColor("gray"); };
+  const startEdit = (c: WatchlistCategory) => {
+    setEditing(c.id);
+    setLabel(c.label);
+    setValidDays(c.defaultValidDays === null ? "" : String(c.defaultValidDays));
+    setRequiresBasis(c.requiresBasis);
+    setColor(c.color);
+  };
+  const submit = () => {
     const trimmed = label.trim();
-    if (!trimmed) return;
-    addWatchlistCategory({
-      teamId, label: trimmed, color, requiresBasis,
-      // Blank means no default, which is a different thing from zero days.
-      defaultValidDays: validDays.trim() === "" ? null : Math.max(1, Number(validDays)),
-    });
+    if (!trimmed || editing === null) return;
+    // Blank means no default, which is a different thing from zero days.
+    const defaultValidDays = validDays.trim() === "" ? null : Math.max(1, Number(validDays));
+    if (editing === "new") {
+      addWatchlistCategory({ teamId, label: trimmed, color, requiresBasis, defaultValidDays });
+    } else {
+      // Only the four fields the form owns. Not `archived` — retiring is its own button, and a
+      // save that quietly un-retired a category would be a surprise.
+      updateWatchlistCategory(editing, { label: trimmed, color, requiresBasis, defaultValidDays });
+    }
     reset();
   };
 
@@ -1999,7 +2021,7 @@ function WatchlistCategoryModal({ t, teamId, categories, canEdit, onClose }: {
         </div>
 
         <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "8px" }}>
-          {categories.length === 0 && !creating && (
+          {categories.length === 0 && editing === null && (
             <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.7, padding: "12px 0" }}>{t.catEmpty}</p>
           )}
           {categories.map(c => (
@@ -2017,12 +2039,18 @@ function WatchlistCategoryModal({ t, teamId, categories, canEdit, onClose }: {
               </span>
               {c.archived ? (
                 <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.catArchived}</span>
-              ) : !canEdit ? null : (
+              ) : !canEdit ? null : (<>
+                <button className="portal-btn-quiet" onClick={() => startEdit(c)}
+                  style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  {t.catEdit}
+                </button>
+                {/* Retiring keeps its box. It is the one action here that cannot be undone from
+                    this screen, and it should not read as the same weight as renaming. */}
                 <button className="portal-btn-outline" onClick={() => archiveWatchlistCategory(c.id)}
                   style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                   {t.catArchive}
                 </button>
-              )}
+              </>)}
             </div>
           ))}
 
@@ -2030,7 +2058,7 @@ function WatchlistCategoryModal({ t, teamId, categories, canEdit, onClose }: {
             /* Said, not hidden — a reader who cannot find the button should learn the list has an
                owner rather than conclude the console is broken. */
             <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.catOwnerOnly}</p>
-          ) : creating ? (
+          ) : editing !== null ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
               <div>
                 <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catLabelField}</label>
@@ -2067,14 +2095,14 @@ function WatchlistCategoryModal({ t, teamId, categories, canEdit, onClose }: {
                   style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                   {t.cancel}
                 </button>
-                <button className="portal-btn-primary" onClick={create} disabled={!label.trim()}
+                <button className="portal-btn-primary" onClick={submit} disabled={!label.trim()}
                   style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: label.trim() ? "var(--primary-400)" : "var(--gray-200)", color: label.trim() ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: label.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-                  {t.catCreate}
+                  {editing === "new" ? t.catCreate : t.catSave}
                 </button>
               </div>
             </div>
           ) : (
-            <button className="portal-btn-outline" onClick={() => setCreating(true)}
+            <button className="portal-btn-outline" onClick={() => setEditing("new")}
               style={{ height: CONTROL_HEIGHT, borderRadius: "10px", border: `1px dashed var(--gray-300)`, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               + {t.catNew}
             </button>
