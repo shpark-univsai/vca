@@ -118,6 +118,30 @@
   --info-200: #d3e0fd;
   --info-500: #0973dc;
 
+  /* Category hues. Two families that mean nothing.
+   *
+   * Every other ramp in this palette is spoken for — danger, warning and success carry
+   * severity, primary is the accent, info is "here is a fact". A watchlist category is none of
+   * those: "Wanted", "Visiting delegation", "Ex-employee" are a taxonomy, and a taxonomy drawn
+   * in a severity ramp stops being tellable apart from severity. On the VIP screen that is not
+   * theoretical — warning-500 there means a face the model could not read.
+   *
+   * Placed in the gaps: teal at 177° sits 33° off info and 35° off success, magenta at 317°
+   * sits 68° off primary and 43° off danger. Nothing in the palette is within 30° of either,
+   * which is what makes five categories tellable apart at chip size.
+   *
+   * FIGMA: these were defined here first, which is backwards — the library is the source of
+   * truth for colour. They need to go into it as `teal` and `magenta` with these exact values
+   * before anything else uses them, or the two definitions drift.
+   */
+  --teal-100: #e6f6f5;
+  --teal-200: #b9e2e0;
+  --teal-500: #0d7f7a;
+
+  --magenta-100: #fdeef8;
+  --magenta-200: #f6cde8;
+  --magenta-500: #b4218a;
+
   /* Secondary — detection type */
   --type-tracking: #6d9300;
   --type-tracking-100: #f3f6eb;

@@ -387,20 +387,23 @@ export interface SearchPurposeSelection {
  * A taxonomy is not a severity scale, and borrowing a severity ramp to draw one is how the two
  * stop being tellable apart.
  *
- * HANDOFF NOTE — DESIGN LIBRARY: three is thin for an institution that wants five or six
- * distinguishable labels, and the honest fix is more hues rather than reusing these. The
- * palette has exactly six families and half of them are spoken for, so a category ramp
- * (2-3 neutral hues, no severity meaning) belongs in the Figma library before this list grows.
- * Until it exists, three colours plus the label's own words is what the console can say truthfully.
+ * Five, because two families were added for exactly this: teal and magenta carry no meaning
+ * anywhere else in the product and sit in the palette's empty arcs (see globals.css). That
+ * gets a taxonomy back to the five distinguishable labels it had before, without any of them
+ * being read as a severity.
+ *
+ * FIGMA: teal and magenta were defined in globals.css first, which is backwards — the library
+ * is the source of truth for colour. They have to be added there with the same values before
+ * anything else picks them up.
  */
-export const WATCHLIST_CATEGORY_COLORS = ["primary", "info", "gray"] as const;
+export const WATCHLIST_CATEGORY_COLORS = ["primary", "info", "teal", "magenta", "gray"] as const;
 
 /**
  * Wider than the list above on purpose. Categories created before the palette was narrowed can
  * still carry a retired name, and a stored value that no longer type-checks is a crash rather
  * than a chip in the wrong colour — categoryTint still resolves all six.
  */
-export type WatchlistCategoryColor = "primary" | "info" | "gray" | "danger" | "warning" | "success";
+export type WatchlistCategoryColor = "primary" | "info" | "teal" | "magenta" | "gray" | "danger" | "warning" | "success";
 
 export interface Person {
   id: string;
