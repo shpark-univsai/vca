@@ -305,7 +305,7 @@ function RegisterFlow() {
       onClick={onClick}
       disabled={!enabled}
       style={{
-        height: "48px", width: "100%", border: "none", borderRadius: "8px",
+        height: "52px", width: "100%", border: "none", borderRadius: "8px",
         backgroundColor: enabled ? "var(--primary-400)" : "var(--gray-100)",
         color: enabled ? "white" : "var(--gray-400)",
         fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px",
@@ -354,7 +354,7 @@ function RegisterFlow() {
       <AuthHeader />
       <div className="vca-auth-scroll" style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
         <div style={{
-          width: "480px", maxWidth: "480px", backgroundColor: "white",
+          width: "420px", maxWidth: "420px", backgroundColor: "white",
           borderRadius: "28px", padding: "36px", margin: "auto 0",
           display: "flex", flexDirection: "column", gap: "40px", alignItems: "center",
         }}>

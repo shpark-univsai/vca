@@ -230,7 +230,7 @@ function LoginForm() {
       <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
         <div className="vca-auth-scroll" style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
         <div style={{
-          width: "480px", maxWidth: "480px", backgroundColor: "white",
+          width: "420px", maxWidth: "420px", backgroundColor: "white",
           // 20px of top padding is left over from when the illustration sat above the title
           // inside this card. It is gone, and the card has no visible edge to sit in from — it is
           // white on white — so the padding was only pushing the title down for nothing.
@@ -241,7 +241,9 @@ function LoginForm() {
           display: "flex", flexDirection: "column", gap: "40px", alignItems: "center",
         }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
-            <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>{t.title}</h1>
+            {/* lineHeight was 40px on a 26px title — 14px of dead space under a single line, which pushed
+                the subtitle away from the word it belongs to. */}
+            <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: 1.2 }}>{t.title}</h1>
             <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.welcome}</p>
           </div>
 
@@ -385,7 +387,7 @@ function LoginForm() {
                 type="submit"
                 disabled={!canSubmit}
                 style={{
-                  height: "48px", width: "100%", border: "none", borderRadius: "8px",
+                  height: "52px", width: "100%", border: "none", borderRadius: "8px",
                   backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-100)",
                   color: canSubmit ? "white" : "var(--gray-400)",
                   fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px",
