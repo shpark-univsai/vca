@@ -23,6 +23,8 @@ const T = {
     atLimitBanner: (limit: number) => `All ${limit} licensed channels are in use. No further source can be connected until the limit is raised.`,
     noLicenceReason: "No channel count is recorded for this project, so there is nothing to connect against. A channel count arrives with the licence.",
     noLicenceBanner: "This project has no licensed channel count recorded. Sources cannot be connected until it does — the count comes from the contract, not from this console.",
+    zeroChannelReason: "This project's licence carries no channels. Connecting a source needs a licence with at least one.",
+    zeroChannelBanner: "This project's licence carries zero channels, so no source can be connected. That is a licence to correct rather than a limit to raise.",
     errIp: "That does not look like an address.",
     errRtsp: "A stream address starts with rtsp://",
     errLat: "Latitude runs from -90 to 90.",
@@ -171,6 +173,8 @@ const T = {
     atLimitBanner: (limit: number) => `라이선스 채널 ${limit}개를 모두 쓰고 있습니다. 한도를 올리기 전에는 소스를 더 연결할 수 없습니다.`,
     noLicenceReason: "이 프로젝트에 기록된 채널 수가 없어서, 연결의 근거가 될 값이 없습니다. 채널 수는 라이선스와 함께 들어옵니다.",
     noLicenceBanner: "이 프로젝트에는 라이선스 채널 수가 기록되어 있지 않습니다. 기록되기 전에는 소스를 연결할 수 없습니다 — 그 수는 계약에서 나오지, 이 콘솔에서 정해지지 않습니다.",
+    zeroChannelReason: "이 프로젝트의 라이선스에 채널이 0개입니다. 소스를 연결하려면 채널이 있는 라이선스가 필요합니다.",
+    zeroChannelBanner: "이 프로젝트의 라이선스에 채널이 0개라 소스를 연결할 수 없습니다. 한도를 올릴 문제가 아니라 라이선스를 바로잡을 문제입니다.",
     errIp: "주소 형식이 아닙니다.",
     errRtsp: "스트림 주소는 rtsp:// 로 시작합니다.",
     errLat: "위도는 -90에서 90 사이입니다.",
@@ -813,6 +817,16 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    */
   const channelLimitUnrecorded = channelLimit === undefined;
   const atChannelLimit = !channelLimitUnrecorded && channelsUsed >= channelLimit;
+  /**
+   * Zero channels is not "the limit is full", even though the arithmetic agrees (0 >= 0).
+   *
+   * A licence that grants nothing produced "all 0 licensed channels are in use", which invites
+   * the wrong fix — nobody can free a channel that was never granted. It should not happen (the
+   * issuer refuses a zero-channel licence), but a screen that reads as nonsense on a value the
+   * screen itself can receive is worth two strings. Flagged by the session that built the
+   * licence-file intake.
+   */
+  const zeroChannelLicence = channelLimit === 0;
   const cannotAddSource = channelLimitUnrecorded || atChannelLimit;
   const projectUploads = uploads.filter(u => u.projectId === projectId);
   const projectServers = servers.filter(sv => sv.projectId === projectId);
@@ -1226,7 +1240,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             <CircleAlert size={15} strokeWidth={2.2} />
           </span>
           <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--warning-500)", lineHeight: 1.6 }}>
-            {channelLimitUnrecorded ? t.noLicenceBanner : t.atLimitBanner(channelLimit)}
+            {channelLimitUnrecorded ? t.noLicenceBanner : zeroChannelLicence ? t.zeroChannelBanner : t.atLimitBanner(channelLimit)}
           </p>
         </div>
       )}
@@ -1376,7 +1390,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                 most of what the role is for. Adding is what goes. */}
             <button className="portal-btn-primary" onClick={() => setAddMenuOpen(o => !o)}
               disabled={!mayEdit || cannotAddSource}
-              title={!mayEdit ? readOnlyReason : channelLimitUnrecorded ? t.noLicenceReason : atChannelLimit ? t.atLimitReason(channelLimit ?? 0) : undefined}
+              title={!mayEdit ? readOnlyReason : channelLimitUnrecorded ? t.noLicenceReason : zeroChannelLicence ? t.zeroChannelReason : atChannelLimit ? t.atLimitReason(channelLimit ?? 0) : undefined}
               style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: (mayEdit && !cannotAddSource) ? "var(--primary-400)" : "var(--gray-200)", color: (mayEdit && !cannotAddSource) ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: (mayEdit && !cannotAddSource) ? "pointer" : "not-allowed" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
               {t.addSource}
