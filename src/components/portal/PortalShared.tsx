@@ -807,14 +807,17 @@ export function CardSection({ heading, desc, first, children }: { heading: strin
  */
 export function PairGrid({ children }: { children: React.ReactNode }) {
   return (
-    /* One column.
+    /* Two columns, at 250px tracks.
    
-       Two fitted, and that was the trouble: at 240px a track is narrower than half the values in
-       it, so "City of Singapore — Smart Infrastructure Office" wrapped to two lines while the
-       pair beside it took one, and the eye had to zigzag between columns to read six facts.
-       Six facts do not need to be dense. One column reads top to bottom, every value gets the
-       full width before it wraps, and the section is a list instead of a grid. */
-    <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+       It went to one column when the page felt dense, and that was treating the symptom: the
+       density was nine icons and a wall of 700-weight values, both now gone. What one column
+       cost was height — six facts became six rows, and the page turned into a scroll for
+       content that fits on a screen.
+   
+       250px rather than the old 220px, so the tracks are wider than the values that used to
+       wrap into two lines at 240. A long team name still wraps; that is one pair wrapping, not
+       a reason to halve the page's density. */
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "18px 20px" }}>
       {children}
     </div>
   );
