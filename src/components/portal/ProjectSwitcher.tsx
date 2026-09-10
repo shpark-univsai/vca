@@ -29,6 +29,18 @@ interface ProjectSwitcherProps {
   currentProjectId: string;
   onSelect: (projectId: string) => void;
   onNewProject: () => void;
+  /**
+   * Changes when the shell wants this picker open again.
+   *
+   * "New project" is reached from inside this dropdown, and the dropdown closes to make way for
+   * the dialog. Cancelling the dialog therefore left the reader nowhere — back on the console
+   * with the list they had been choosing from closed, and a second click needed to get back to
+   * where they already were. Cancel should undo the step it cancels, not two of them.
+   *
+   * A counter rather than a boolean: the same request can be made twice in a row, and a boolean
+   * that is already true does not fire an effect.
+   */
+  reopenSignal?: number;
 }
 
 type Tab = "recent" | "starred" | "all";
@@ -105,7 +117,7 @@ function StarIcon({ filled }: { filled: boolean }) {
   );
 }
 
-export default function ProjectSwitcher({ dark, compact, teamId, currentProjectId, onSelect, onNewProject, onSwitchTeam }: ProjectSwitcherProps) {
+export default function ProjectSwitcher({ dark, compact, teamId, currentProjectId, onSelect, onNewProject, onSwitchTeam, reopenSignal }: ProjectSwitcherProps) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const TAB_LABELS: Record<Tab, string> = { recent: t.tabRecent, starred: t.tabStarred, all: t.tabAll };
@@ -118,6 +130,12 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
   const [starred, setStarred] = useState<Set<string>>(new Set());
   const [teamMenuOpen, setTeamMenuOpen] = useState(false);
   const teamMenuRef = useRef<HTMLDivElement>(null);
+  // Not on mount — only when the shell raises the signal. See reopenSignal.
+  const firstSignal = useRef(true);
+  useEffect(() => {
+    if (firstSignal.current) { firstSignal.current = false; return; }
+    setOpen(true);
+  }, [reopenSignal]);
   // Same outside-click close every other menu in Portal uses.
   useEffect(() => {
     if (!teamMenuOpen) return;

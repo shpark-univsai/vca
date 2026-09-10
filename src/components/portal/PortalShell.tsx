@@ -59,6 +59,17 @@ export default function PortalShell() {
   const tabParam = searchParams.get("tab");
 
   const [showWizard, setShowWizard] = useState(newProjectParam);
+  /**
+   * Raised when the create dialog is cancelled, to put the project picker back on screen.
+   *
+   * "New project" is reached from inside that picker, so cancelling should leave the reader
+   * where the click started — not on a bare console with the list they were choosing from
+   * closed. See ProjectSwitcher.reopenSignal.
+   *
+   * Not raised when the dialog is cancelled from the empty-team landing: there is no picker
+   * behind it to go back to, and the landing page is itself the place to be.
+   */
+  const [switcherReopen, setSwitcherReopen] = useState(0);
   // A fresh installation can arrive with no team at all — one company may run several teams here,
   // so the supplier does not necessarily create one during handover. The landing page then asks
   // for the team instead of the project, and this holds that modal.
@@ -101,6 +112,10 @@ export default function PortalShell() {
   // on screen; now a shell that kept reading the global list would show one team's name over
   // another team's projects.
   const teamProjects = projects.filter(p => p.teamId === currentOrgId);
+  const cancelWizard = () => {
+    setShowWizard(false);
+    if (teamProjects.length > 0) setSwitcherReopen(n => n + 1);
+  };
   // The selection is *derived*, not stored: hold the id the user picked, but fall back to this
   // team's first project whenever that id is not one of them. Keeping it in plain state instead
   // meant a team switch left the previous team's project selected until an effect caught up, and
@@ -233,7 +248,7 @@ export default function PortalShell() {
           onToggleCollapse={() => setSidebarCollapsed(v => !v)}
           toggleLabel={sidebarCollapsed ? t.expand : t.collapse}
           team={<TeamSwitcher dark compact={sidebarCollapsed} currentTeamId={currentOrgId} onSelect={switchTeam} />}
-          project={<ProjectSwitcher dark compact={sidebarCollapsed} teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} onSwitchTeam={switchTeam} />}
+          project={<ProjectSwitcher dark compact={sidebarCollapsed} teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} onSwitchTeam={switchTeam} reopenSignal={switcherReopen} />}
           /* Counts for the rail's badges — the two tabs that hold a list of things you count.
              Not accounts: the number of people who may sign in is not a size you check in passing,
              and the tab it labels is where the figure is broken down by role anyway. Not the
@@ -378,7 +393,7 @@ export default function PortalShell() {
           <>
             <TeamSwitcher currentTeamId={currentOrgId} onSelect={switchTeam} />
             <BreadcrumbChevron />
-            <ProjectSwitcher teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} onSwitchTeam={switchTeam} />
+            <ProjectSwitcher teamId={currentOrgId} currentProjectId={currentProjectId} onSelect={selectFromSwitcher} onNewProject={() => setShowWizard(true)} onSwitchTeam={switchTeam} reopenSignal={switcherReopen} />
           </>
         )}
 
@@ -441,7 +456,7 @@ export default function PortalShell() {
         <PortalNewProjectWizard
           teamId={currentOrgId}
           onDeployed={deployedFromWizard}
-          onCancel={() => setShowWizard(false)}
+          onCancel={cancelWizard}
           defaultType={defaultWizardType}
         />
       )}
