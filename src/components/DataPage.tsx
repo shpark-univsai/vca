@@ -66,6 +66,7 @@ const T = {
     pageRange: (a: number, b: number, n: number) => `${a}–${b} of ${n}`,
     colCoCaptures: "Co-captures",
     analyzeFrame: "Analyze frame",
+    agoOf: (d: string) => `${d} ago`,
     reidObject: (id: string) => `Re-ID object #REC-${id}`,
     attrClassification: "Attribute classification",
     genderAge: "Gender / age",
@@ -215,6 +216,7 @@ const T = {
     pageRange: (a: number, b: number, n: number) => `${n}건 중 ${a}–${b}`,
     colCoCaptures: "동반검출",
     analyzeFrame: "프레임 분석",
+    agoOf: (d: string) => `${d} 전`,
     reidObject: (id: string) => `Re-ID 객체 #REC-${id}`,
     attrClassification: "속성 분류",
     genderAge: "성별 / 나이",
@@ -4785,7 +4787,7 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort, 
                   not a pure input, and a server/client mismatch here would flip the one value on
                   the row that changes by itself. */}
               {nowMs !== null && (
-                <span style={{ color:"var(--gray-400)" }}>({formatElapsed(nowMs - parseSgtStamp(lastSeen.date, lastSeen.time).getTime())} ago)</span>
+                <span style={{ color:"var(--gray-400)" }}>({t.agoOf(formatElapsed(nowMs - parseSgtStamp(lastSeen.date, lastSeen.time).getTime(), lang))})</span>
               )}
             </span>
             {/* "Inspect" named an activity, not a destination — it opens the Co-capture evidence

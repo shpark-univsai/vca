@@ -220,18 +220,33 @@ function zoneOffsetMs(at: Date, zone: string): number {
   return asUtc - at.getTime();
 }
 
-/** Human duration for a gap between sightings: "1d 55m", "2h 05m", "30m 32s", "45s". Two units at
- * most — a seconds figure on a multi-day gap is noise, and the smaller unit is zero-padded so a
- * column of these doesn't jitter as it ticks. */
-export function formatElapsed(ms: number): string {
+/** The unit letters, per language. Korean does not read "2h 05m". */
+const ELAPSED_UNITS = {
+  en: { d: "d", h: "h", m: "m", s: "s" },
+  ko: { d: "일", h: "시간", m: "분", s: "초" },
+} as const;
+
+/** Human duration for a gap between sightings: "1d 55m", "2h 05m", "30m 32s", "45s" — or
+ * "1일 55분", "2시간 05분" in Korean. Two units at most: a seconds figure on a multi-day gap is
+ * noise, and the smaller unit is zero-padded so a column of these doesn't jitter as it ticks.
+ *
+ * Takes the language rather than reading it, like formatTimeAgo: some callers build HTML strings
+ * and have no hook to read it with. Defaults to English so an un-migrated caller keeps working.
+ *
+ * A NEGATIVE gap is not zero. A camera or server clock running ahead of this one produces a
+ * sighting in the future, and clamping that to "0s" dressed a clock-skew problem up as "just
+ * now" — the one reading an operator cannot act on. It says so instead. */
+export function formatElapsed(ms: number, lang: "en" | "ko" = "en"): string {
+  const u = ELAPSED_UNITS[lang];
+  if (ms < -1000) return lang === "ko" ? "시각 어긋남" : "clock ahead";
   const total = Math.max(0, Math.floor(ms / 1000));
   const d = Math.floor(total / 86400);
   const h = Math.floor((total % 86400) / 3600);
   const m = Math.floor((total % 3600) / 60);
   const sec = total % 60;
   const pad = (n: number) => String(n).padStart(2, "0");
-  if (d > 0) return h > 0 ? `${d}d ${pad(h)}h` : `${d}d ${pad(m)}m`;
-  if (h > 0) return `${h}h ${pad(m)}m`;
-  if (m > 0) return `${m}m ${pad(sec)}s`;
-  return `${sec}s`;
+  if (d > 0) return h > 0 ? `${d}${u.d} ${pad(h)}${u.h}` : `${d}${u.d} ${pad(m)}${u.m}`;
+  if (h > 0) return `${h}${u.h} ${pad(m)}${u.m}`;
+  if (m > 0) return `${m}${u.m} ${pad(sec)}${u.s}`;
+  return `${sec}${u.s}`;
 }

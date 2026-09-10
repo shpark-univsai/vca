@@ -1769,7 +1769,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed 
                       // — counted against the real clock, next to LAST SEEN. Falls back to the
                       // recorded gap until the clock starts on the client.
                       const elapsedText = isLatest && nowMs !== null
-                        ? formatElapsed(nowMs - parseSgtStamp(node.date, node.time).getTime())
+                        ? formatElapsed(nowMs - parseSgtStamp(node.date, node.time).getTime(), lang)
                         : isOldest ? undefined : node.elapsed;
                       const isActive = node.hitIndex >= 0 && activeNode === node.hitIndex;
                       return (
