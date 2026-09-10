@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useVcaStore, AUDIT_LOG_LIMIT, type AuditEvent } from "@/lib/vcaStore";
+import { useVcaStore, type AuditEvent } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import {
@@ -23,9 +23,11 @@ import { FileDown, History, UserCog, CalendarClock } from "lucide-react";
  * policy changes, because a watchlist category governs every site the team runs and filing it
  * under one of them would misplace it. See AuditEvent.teamId.
  *
- * HANDOFF NOTE: the console holds the most recent AUDIT_LOG_LIMIT entries in memory and says so
- * at the foot of the table. A real history is the server's, and the filters here are the query
- * it should take:
+ * HANDOFF NOTE: the console holds the most recent AUDIT_LOG_LIMIT entries in memory. The screen
+ * no longer says so — the line was removed 2026-09-10, because on a store-only log there is no
+ * server holding the older history it promised, and a cap is the server's to describe once this
+ * is a real query. A real history is the server's, and the filters here are the query it should
+ * take:
  *   GET /v1/projects/{id}/audit?from=&to=&actor=&q=&cursor=
  * — newest first, `teamId` entries folded in the same way, one page at a time.
  */
@@ -59,7 +61,6 @@ const T = {
     statTotal: "changes", statTotalLabel: "in range",
     statActors: "people", statActorsLabel: "made them",
     statLatest: "latest", statLatestNone: "—",
-    heldNote: (n: number) => `The console holds the most recent ${n} entries. Older history is on the server and is not loaded here.`,
     csvAt: "When", csvActor: "Who", csvMessage: "What changed",
   },
   ko: {
@@ -78,7 +79,6 @@ const T = {
     statTotal: "건", statTotalLabel: "기간 내 변경",
     statActors: "명", statActorsLabel: "변경한 사람",
     statLatest: "마지막", statLatestNone: "—",
-    heldNote: (n: number) => `콘솔은 최근 ${n}건까지만 들고 있습니다. 그 이전 기록은 서버에 있고 여기에 불러오지 않습니다.`,
     csvAt: "시각", csvActor: "담당자", csvMessage: "변경 내용",
   },
 } as const;
@@ -167,10 +167,6 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
 
   return (
     <div>
-      <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, marginBottom: "12px", maxWidth: "70ch" }}>
-        {t.intro}
-      </p>
-
       {/* Counts for what the filters currently select, not for the whole log: the point of the
           strip on a filtered screen is to describe the slice being read. */}
       <SummaryStrip cells={[
@@ -258,10 +254,16 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
         ))}
       </div>
 
-      {/* Said on the screen rather than only in a handoff note: an auditor who scrolls to the end
-          of a capped list and is not told it is capped will read the oldest row as the beginning. */}
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "12px" }}>
-        {t.heldNote(AUDIT_LOG_LIMIT)}
+      {/* Both notes at the foot, in one register.
+
+          The first of them opened the screen — a 12px paragraph above the counts, which put a
+          sentence describing the list between the reader and the list. Nobody arrives at an
+          activity log needing to be told it is an activity log; they arrive looking for one
+          entry. What the sentence says is worth keeping (the log carries institution-wide policy
+          changes too, which is not guessable from the rows), but it is something you check after
+          reading, not before — the same job as the note beside it. */}
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "12px", maxWidth: "80ch" }}>
+        {t.intro}
       </p>
     </div>
   );
