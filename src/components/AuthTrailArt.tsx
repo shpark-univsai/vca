@@ -28,11 +28,13 @@
  * grid that came before read as a chart's backdrop, which is the thing this drawing must not be
  * — and they give the cameras somewhere to be rather than floating in white.
  *
- * The two things that made the earlier version a CITY are gone: the diagonal expressway and the
- * water. Buildings with paths between them is what a site looks like from above whether it is a
- * campus, a plant or a district, and this drawing must not pick one.
+ * Back to the first version's weight and its two landmarks — a road cutting across and water
+ * along one edge. They were pulled out for committing to a city, and the drawing lost more than
+ * it gained: blocks alone read as a diagram, and a diagram is not a place. A main drive and a
+ * water edge exist on a campus and a plant too, so they cost less specificity than they buy.
  *
- * Faint on purpose. It is the floor, and the cameras and the trail are the subject.
+ * It is still the floor. Blocks are opaque but light, the gaps between them are the roads, and
+ * everything here sits under a fade — the cameras and the trail stay the subject.
  */
 const BLOCKS: [number, number, number, number][] = [
   [16, 20, 58, 62], [104, 20, 96, 62], [230, 20, 106, 40], [230, 68, 106, 14],
@@ -100,18 +102,35 @@ export default function AuthTrailArt({ className }: { className?: string }) {
         {/* Fades the ground into the panel so it stops rather than being cut off. Only the ground
             is faded — the cameras and the trail keep their full weight wherever they sit. */}
         <radialGradient id="vca-auth-fade" cx="50%" cy="48%" r="68%">
-          <stop offset="60%" stopColor="var(--gray-50)" stopOpacity="0" />
-          <stop offset="100%" stopColor="var(--gray-50)" stopOpacity="1" />
+          <stop offset="72%" stopColor="var(--gray-50)" stopOpacity="0" />
+          <stop offset="100%" stopColor="var(--gray-50)" stopOpacity="0.92" />
         </radialGradient>
       </defs>
 
+      {/* The ground is the roads: light between filled blocks is how a street map reads, so the
+          grid needs no drawn lines. */}
       <rect x="0" y="0" width="560" height="560" fill="var(--gray-50)" />
       <g>
         {BLOCKS.map(([x, y, w, h], i) => (
           <rect key={i} x={x} y={y} width={w} height={h} rx="3"
-                fill={(x + y) % 3 === 0 ? "var(--gray-200)" : "var(--gray-100)"} />
+                fill={(x + y) % 3 === 0 ? "var(--gray-300)" : "var(--gray-200)"} />
         ))}
       </g>
+
+      {/* A green and water along one edge — the two things a grid of blocks needs so it stops
+          looking like a spreadsheet. Both in grey: the palette has no green, and inventing one
+          here would put a colour on screen that appears nowhere else in the product. */}
+      <rect x="288" y="306" width="48" height="26" rx="10" fill="var(--gray-100)" />
+      <path d="M0 496 C 120 480, 210 520, 330 500 C 430 484, 500 510, 560 496 L560 560 L0 560 Z"
+            fill="var(--gray-300)" />
+      <path d="M0 496 C 120 480, 210 520, 330 500 C 430 484, 500 510, 560 496"
+            stroke="var(--gray-400)" strokeWidth="1.5" opacity="0.45" />
+
+      {/* The one drawn road, because it cuts across blocks rather than running between them — and
+          it is what tells the eye where to enter the picture. */}
+      <line x1="-20" y1="150" x2="580" y2="430" stroke="var(--gray-50)" strokeWidth="16" />
+      <line x1="-20" y1="150" x2="580" y2="430" stroke="var(--gray-300)" strokeWidth="1" />
+
       <rect x="0" y="0" width="560" height="560" fill="url(#vca-auth-fade)" />
 
       {/* The trail. Dashed because it is inferred, not recorded — the system did not follow anyone,
