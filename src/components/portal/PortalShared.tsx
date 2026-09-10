@@ -785,7 +785,7 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
  * job: they mark where a section starts, which is what the eye looks for when it comes back to a
  * settings page for one thing. One rank carries a mark, and it is the rank that leads.
  */
-export function CardSection({ heading, icon, desc, first, children }: { heading: string; icon?: React.ReactNode; desc?: string; first?: boolean; children: React.ReactNode }) {
+export function CardSection({ heading, icon, subheading, desc, first, children }: { heading: string; icon?: React.ReactNode; subheading?: string; desc?: string; first?: boolean; children: React.ReactNode }) {
   return (
     <div className="portal-settings-section" style={{ padding: "22px 24px", borderTop: first ? "none" : BORDER }}>
       <div>
@@ -795,6 +795,13 @@ export function CardSection({ heading, icon, desc, first, children }: { heading:
           {icon && <span style={{ display: "flex", flexShrink: 0, color: "var(--gray-400)" }}>{icon}</span>}
           {heading}
         </p>
+        {/* Whose settings these are, when that is not the same answer as the project on screen.
+            Part of the title block rather than the sentence below it — a reader who mistakes the
+            owner of a setting will not be saved by prose — but on its own line, because a 240px
+            rail turns a 50-character institution name into three lines of 15px/800. */}
+        {subheading && (
+          <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", lineHeight: 1.45, marginTop: "4px" }}>{subheading}</p>
+        )}
         {desc && (
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.65, marginTop: "6px" }}>{desc}</p>
         )}

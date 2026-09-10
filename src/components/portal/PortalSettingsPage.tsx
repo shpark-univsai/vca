@@ -79,6 +79,11 @@ const T = {
     passwordSetAgo: "Set 3 months ago",
     changePassword: "Change password",
     currentPassword: "Current password",
+    verifyStep: "Confirm it is you",
+    verify: "Continue",
+    verified: "Current password confirmed",
+    changeStep: "Choose a new password",
+    back: "Use a different password",
     newPassword: "New password",
     confirmPassword: "Confirm password",
     mismatch: "Passwords do not match. Please try again.",
@@ -154,6 +159,11 @@ const T = {
     passwordSetAgo: "3개월 전 설정",
     changePassword: "비밀번호 변경",
     currentPassword: "현재 비밀번호",
+    verifyStep: "본인 확인",
+    verify: "확인",
+    verified: "현재 비밀번호가 확인되었습니다",
+    changeStep: "새 비밀번호 정하기",
+    back: "현재 비밀번호 다시 입력",
     newPassword: "새 비밀번호",
     confirmPassword: "비밀번호 확인",
     mismatch: "비밀번호가 일치하지 않습니다. 다시 입력해주세요.",
@@ -545,7 +555,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         is why it sits here beside the other two team policies.
       */}
       {myTeam && (
-        <CardSection heading={t.teamMailTitle} icon={<Mail size={15} strokeWidth={2.2} />} desc={t.teamMailIntro}>
+        <CardSection heading={t.teamMailTitle} icon={<Mail size={15} strokeWidth={2.2} />} subheading={myTeam.name} desc={t.teamMailIntro}>
           {/* No maxWidth of its own any more — the section's content column is the cap, and two
               of these grids with two different ones is how columns stop lining up between
               sections. */}
@@ -659,11 +669,24 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
  * rule stated two ways reads as two rules, and a person who has seen it there should recognise it
  * here.
  *
- * HANDOFF NOTE: submits nowhere. The real call posts the current and new password together and the
- * server rejects the pair if the current one is wrong — which is why the current-password field
- * gets no validation of its own here: the front end cannot check it, and a field that says "wrong
- * password" from a guess would be inventing an answer only the server has. Everything the front end
- * *can* judge is judged: the format rule, and the two new entries matching.
+ * Two steps: prove it is you, then choose. All three fields used to sit on one form, so the only
+ * moment you learned the current password was wrong was after composing a new one and typing it
+ * twice — and the answer threw that work away. The check belongs before the writing, not after.
+ *
+ * HANDOFF NOTE: submits nowhere, and neither step is real yet.
+ *
+ *   Step 1  POST /api/portal/account/password/verify  — the ONLY thing that can answer this. The
+ *           front end must never guess: a field that says "wrong password" without asking the
+ *           server is inventing an answer. **It needs login's throttling** — this is a password
+ *           oracle sitting behind an authenticated session, so the same 5-attempts-in-15-minutes
+ *           lockout the backend already applies to sign-in applies here, or this endpoint becomes
+ *           the cheapest way to brute-force a password that sign-in refuses to.
+ *   Step 2  POST .../password — send the verified current password with the new one anyway. A
+ *           server that trusts step 1's say-so trusts the client; and between the two steps the
+ *           session can be revoked, so step 2 re-checks or the revocation did nothing.
+ *
+ * Everything the front end *can* judge is still judged here: the format rule, and the two new
+ * entries matching.
  */
 function ChangePasswordModal({ t, lang, onClose }: {
   t: (typeof T)["en"] | (typeof T)["ko"];
@@ -673,6 +696,7 @@ function ChangePasswordModal({ t, lang, onClose }: {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [step, setStep] = useState<"verify" | "change">("verify");
   const { showToast } = useToast();
   useEscapeKey(onClose, true);
 
@@ -680,7 +704,17 @@ function ChangePasswordModal({ t, lang, onClose }: {
   // Only once something has been typed in the confirm box. A mismatch warning that appears on an
   // empty field is telling somebody off for not having finished.
   const mismatch = confirm.length > 0 && confirm !== next;
-  const canSubmit = current.length > 0 && formatValid && confirm.length > 0 && !mismatch;
+  const canVerify = current.length > 0;
+  const canSubmit = formatValid && confirm.length > 0 && !mismatch;
+
+  /* Advances on any non-empty entry, because there is nothing here that could disagree. That is
+     the mock, not the design — see the HANDOFF NOTE. The screen deliberately says nothing like
+     "correct", only that the step is done, so the day it is wired the wrong-password path is an
+     addition rather than a contradiction. */
+  const verify = () => {
+    if (!canVerify) return;
+    setStep("change");
+  };
 
   const submit = () => {
     if (!canSubmit) return;
@@ -702,28 +736,62 @@ function ChangePasswordModal({ t, lang, onClose }: {
       <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "420px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
         <div style={{ padding: "16px 20px 4px" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.changePassword}</p>
+          {/* Which of the two steps you are on. Named, not numbered: "1 / 2" tells you where you
+              are, "Confirm it is you" tells you what is being asked. */}
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "3px" }}>
+            {step === "verify" ? t.verifyStep : t.changeStep}
+          </p>
         </div>
-        <div style={{ padding: "16px 20px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
-          {field(t.currentPassword, current, setCurrent, "current-password")}
-          {field(t.newPassword, next, setNext, "new-password",
-            /* The rule under the field, not in a tooltip: it should be readable before it is
-               broken rather than after. Amber only once what is typed breaks it. */
-            <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.6, color: next.length > 0 && !formatValid ? "var(--warning-500)" : "var(--gray-400)" }}>
-              {PASSWORD_RULE_TEXT[lang]}
-            </p>)}
-          {field(t.confirmPassword, confirm, setConfirm, "new-password",
-            mismatch ? <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.6, color: "var(--warning-500)" }}>{t.mismatch}</p> : undefined)}
-        </div>
-        <div style={{ padding: "0 20px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose}
-            style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            {t.cancel}
-          </button>
-          <button className="portal-btn-primary" onClick={submit} disabled={!canSubmit}
-            style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-200)", color: canSubmit ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSubmit ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-            {t.updatePassword}
-          </button>
-        </div>
+        {step === "verify" ? (
+          <>
+            <div style={{ padding: "16px 20px 20px" }}>
+              {field(t.currentPassword, current, setCurrent, "current-password")}
+            </div>
+            <div style={{ padding: "0 20px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+              <button className="portal-btn-outline" onClick={onClose}
+                style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                {t.cancel}
+              </button>
+              <button className="portal-btn-primary" onClick={verify} disabled={!canVerify}
+                style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canVerify ? "var(--primary-400)" : "var(--gray-200)", color: canVerify ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canVerify ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+                {t.verify}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ padding: "16px 20px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+              {/* The step behind you, stated rather than left blank — and it stays undoable,
+                  because the one reason to come back is that you typed the wrong one and the
+                  server has not told you yet. */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", padding: "9px 12px", borderRadius: "8px", backgroundColor: "var(--gray-50)", border: BORDER }}>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", flex: 1, minWidth: 0 }}>{t.verified}</span>
+                <button className="portal-btn-quiet" onClick={() => { setStep("verify"); setCurrent(""); }}
+                  style={{ flexShrink: 0, height: "24px", padding: "0 8px", borderRadius: "6px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  {t.back}
+                </button>
+              </div>
+              {field(t.newPassword, next, setNext, "new-password",
+                /* The rule under the field, not in a tooltip: it should be readable before it is
+                   broken rather than after. Amber only once what is typed breaks it. */
+                <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.6, color: next.length > 0 && !formatValid ? "var(--warning-500)" : "var(--gray-400)" }}>
+                  {PASSWORD_RULE_TEXT[lang]}
+                </p>)}
+              {field(t.confirmPassword, confirm, setConfirm, "new-password",
+                mismatch ? <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.6, color: "var(--warning-500)" }}>{t.mismatch}</p> : undefined)}
+            </div>
+            <div style={{ padding: "0 20px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+              <button className="portal-btn-outline" onClick={onClose}
+                style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                {t.cancel}
+              </button>
+              <button className="portal-btn-primary" onClick={submit} disabled={!canSubmit}
+                style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-200)", color: canSubmit ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSubmit ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+                {t.updatePassword}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
