@@ -23,6 +23,7 @@ const T = {
     rememberId: "Remember my employee number",
     rememberEmail: "Remember my email",
     forgot: "Forgot password?",
+    capsLock: "Caps Lock is on",
     haveCode: "Have a registration code?",
     activateAccount: "Activate your account",
     useProjectLink: "Open the project link you were sent to request access.",
@@ -42,6 +43,7 @@ const T = {
     rememberId: "사번 기억하기",
     rememberEmail: "이메일 기억하기",
     forgot: "비밀번호를 잊으셨나요?",
+    capsLock: "Caps Lock이 켜져 있습니다",
     haveCode: "등록 코드가 있으신가요?",
     activateAccount: "계정 활성화하기",
     useProjectLink: "받으신 프로젝트 링크를 열어 접근을 요청해주세요.",
@@ -53,6 +55,9 @@ const T = {
 } as const;
 
 const FIELD_BORDER = "1px solid var(--gray-300)";
+const FIELD_LABEL: React.CSSProperties = {
+  fontSize: "13px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.26px",
+};
 /** Only ever holds the identifier. Never the password, never a session token. */
 const REMEMBERED_ID_KEY = "vca.rememberedId";
 
@@ -90,6 +95,10 @@ function LoginForm() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  // The failure notice deliberately refuses to say which of the two was wrong — telling someone
+  // the account exists confirms it to anyone guessing. Caps Lock is the one hint that can be given
+  // without leaking anything, and on a shared control-room keyboard it is the common cause.
+  const [capsLock, setCapsLock] = useState(false);
   // Remembers the identifier only, never the password, and never the session. A control room runs
   // shifts on shared workstations, so "keep me logged in" would hand the next person the previous
   // person's account — the saving it offers is one field, the cost is an unattended session.
@@ -215,8 +224,19 @@ function LoginForm() {
             <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.welcome}</p>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "32px", width: "100%" }}>
+          {/* A real form, so Enter submits from either field. It did not before: the fields had no
+              key handler and nothing wrapped them, which meant an operator signing in every shift
+              had to reach for the mouse to finish. It also lets a password manager recognise the
+              pair and offer to save it. Every button inside that is not the submit carries
+              type="button" — otherwise it would submit too. */}
+          <form
+            onSubmit={e => { e.preventDefault(); handleSubmit(); }}
+            style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}
+          >
+            {/* 20, not 32. Two fields that belong to one act should read as one block; at 32 the
+                identifier and the password looked like separate sections and the column ran long
+                enough that the illustration had to be hidden on any screen under 820px tall. */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
               {/* Sits above the fields, not under the button: the reason a sign-in failed changes
                   whether retyping is even worth attempting, so it has to be read before the hands
                   go back to the keyboard. "error" for something the operator can act on here,
@@ -244,6 +264,7 @@ function LoginForm() {
                         them where to use it. */}
                     {notice === "notActivated" && authConfig.registrationCode && (
                       <button
+                        type="button"
                         onClick={() => router.push("/register")}
                         style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 0 0", fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
                       >
@@ -260,8 +281,11 @@ function LoginForm() {
               )}
 
               {/* Identifier — email, or an employee number where that is enabled */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
-                <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%" }}>
+                {/* Quieter than the value it labels. At 14/700 the label carried more weight than
+                    what the operator types into it, which is backwards — and every reference login
+                    form keeps the label secondary. */}
+                <label style={FIELD_LABEL}>
                   {authConfig.employeeIdLogin ? t.identifierWithId : t.identifierEmailOnly}
                 </label>
                 <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px", border: FIELD_BORDER, borderRadius: "8px" }}>
@@ -271,55 +295,75 @@ function LoginForm() {
                     onChange={e => { setIdentifier(e.target.value); setNotice(null); }}
                     placeholder={authConfig.employeeIdLogin ? "EMP-2041 or user@email.com" : "user@email.com"}
                     autoComplete="username"
+                    // Focused unless the identifier was remembered, in which case the password is
+                    // the field with something left to do. Landing focus on a filled field means
+                    // one more keystroke every shift.
+                    autoFocus={identifier.length === 0}
                     style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                   />
                 </div>
               </div>
               {/* Password */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
-                <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.password}</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%" }}>
+                {/* "Forgot password?" sits on the label row, not down beside "Remember me". It
+                    belongs where the problem occurs — you discover you have forgotten it while
+                    looking at this field — and moving it up leaves the row below carrying one
+                    thing instead of two competing ones. Stripe and Lyssna both place it here. */}
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", width: "100%" }}>
+                  <label style={FIELD_LABEL}>{t.password}</label>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/forgot-password")}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px" }}
+                  >
+                    {t.forgot}
+                  </button>
+                </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px", border: FIELD_BORDER, borderRadius: "8px" }}>
                   <LockFieldIcon />
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={e => { setPassword(e.target.value); setNotice(null); }}
+                    onKeyUp={e => setCapsLock(e.getModifierState?.("CapsLock") ?? false)}
+                    onBlur={() => setCapsLock(false)}
                     placeholder="••••••••"
+                    autoComplete="current-password"
+                    autoFocus={identifier.length > 0}
                     style={{ flex: 1, border: "none", outline: "none", fontSize: "14px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
                   />
-                  <button onClick={() => setShowPassword(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
+                  <button type="button" onClick={() => setShowPassword(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                     {showPassword ? <EyeIcon /> : <EyeOffIcon />}
                   </button>
                 </div>
+                {capsLock && (
+                  <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 600, color: "var(--warning-500)", letterSpacing: "-0.22px" }}>
+                    <ErrorCircleIcon /> {t.capsLock}
+                  </p>
+                )}
               </div>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "52px", width: "100%" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={rememberId}
-                    onChange={e => setRememberId(e.target.checked)}
-                    style={{ width: "20px", height: "20px", accentColor: "var(--primary-400)", cursor: "pointer" }}
-                  />
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                    {authConfig.employeeIdLogin ? t.rememberId : t.rememberEmail}
-                  </span>
-                </label>
-                {/* /password-setup went straight to the set-a-new-password form, with no proof
-                    the visitor owns the account and nothing mailed to anyone. It now asks for the
-                    address first and leaves the sending to the backend. */}
-                <button
-                  onClick={() => router.push("/forgot-password")}
-                  style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}
-                >
-                  {t.forgot}
-                </button>
-              </div>
+            {/* 52 was arbitrary — it pushed the primary action most of a field-height away from
+                the form it completes. Every reference form keeps this to one step of the scale. */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "24px", width: "100%" }}>
+              {/* One item, so no space-between row around it any more — "Forgot password?" moved
+                  up to the password label. The box is 16, not 20: at 20 it outweighed the 12px
+                  label beside it and read as the most important control on the row. */}
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={rememberId}
+                  onChange={e => setRememberId(e.target.checked)}
+                  style={{ width: "16px", height: "16px", accentColor: "var(--primary-400)", cursor: "pointer" }}
+                />
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
+                  {authConfig.employeeIdLogin ? t.rememberId : t.rememberEmail}
+                </span>
+              </label>
 
               <button
-                onClick={handleSubmit}
+                type="submit"
                 disabled={!canSubmit}
                 style={{
                   height: "48px", width: "100%", border: "none", borderRadius: "8px",
@@ -341,6 +385,7 @@ function LoginForm() {
                   <>
                     {t.haveCode}{" "}
                     <button
+                      type="button"
                       onClick={() => router.push("/register")}
                       style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
                     >
@@ -365,7 +410,7 @@ function LoginForm() {
                 </p>
               </div>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>
