@@ -217,7 +217,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
           nav row).
         */
         backgroundColor: "var(--gray-900)",
-        backgroundImage: "linear-gradient(180deg, rgba(140, 133, 255, 0.12) 0%, rgba(140, 133, 255, 0) 260px)",
+        backgroundImage: "linear-gradient(180deg, color-mix(in srgb, var(--primary-300) 12%, transparent) 0%, color-mix(in srgb, var(--primary-300) 0%, transparent) 260px)",
         /* 6px of top padding, not 16: the wordmark's row is 40px tall, so its centre lands at
            6 + 20 = 26px — exactly the middle of the 52px top bar beside it. The two are the same
            kind of thing (the console's name, the trail into it) and were sitting on different
@@ -370,7 +370,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
                      * quiet. White text and a white icon still, for the same reason as before: a
                      * coloured label on a coloured fill is two things competing.
                      */
-                    backgroundColor: active ? "rgba(140, 133, 255, 0.22)" : undefined,
+                    backgroundColor: active ? "color-mix(in srgb, var(--primary-300) 22%, transparent)" : undefined,
                     color: active ? "white" : "var(--gray-300)",
                     fontSize: "13px", fontWeight: active ? 600 : 500,
                     whiteSpace: "nowrap", width: "100%",

@@ -594,10 +594,13 @@ const MAIN_T = {
   en: {
     subTabInfra: "Infrastructure", subTabMail: "Mail & Network", subTabApi: "API Documentation",
     gapError: "connection failing",
+    gapErrorWhy: "Portal cannot reach the server. Everything assigned to it stops being processed, whatever the cameras themselves say.",
     gapNoCameras: "no cameras assigned",
+    gapNoCamerasWhy: "The server is registered and reachable but has nothing pointed at it — capacity that is paid for and idle.",
     gapServerUnit: "servers",
     gapPerServers: (n: number) => `across ${n} servers`,
     gapLoadLabel: "cameras to process",
+    gapLoadWhy: "Cameras in this project divided across its servers. The figure an argument for another server is made from — it is not a limit, and nothing here enforces one.",
     gapShowOnly: "Show only these",
     gapClear: "Show everything again",
     searchPlaceholder: "Search by server name or IP address",
@@ -614,10 +617,13 @@ const MAIN_T = {
   ko: {
     subTabInfra: "인프라", subTabMail: "메일 및 네트워크", subTabApi: "API 문서",
     gapError: "연결 실패",
+    gapErrorWhy: "포털에서 서버에 닿지 않습니다. 카메라 쪽 표시와 무관하게, 이 서버에 붙은 것은 전부 처리가 멈춥니다.",
     gapNoCameras: "카메라 미할당",
+    gapNoCamerasWhy: "등록되어 있고 연결도 되지만 아무것도 붙어 있지 않습니다. 비용은 나가고 놀고 있는 용량입니다.",
     gapServerUnit: "대",
     gapPerServers: (n: number) => `/ 서버 ${n}대`,
     gapLoadLabel: "처리할 카메라",
+    gapLoadWhy: "이 프로젝트의 카메라를 서버 수로 나눈 값입니다. 서버 증설을 설득할 때 쓰는 숫자이고, 한계치가 아니며 여기서 강제하지도 않습니다.",
     gapShowOnly: "이 항목만 보기",
     gapClear: "전체 다시 보기",
     searchPlaceholder: "서버 이름 또는 IP 주소로 검색",
@@ -782,14 +788,15 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
           */}
           <SummaryStrip cells={[
             ...([
-              { key: "error" as const, servers: erroredServers, label: t.gapError, icon: <ServerCrash size={14} strokeWidth={2.4} /> },
-              { key: "noCameras" as const, servers: unusedServers, label: t.gapNoCameras, icon: <Unplug size={14} strokeWidth={2.4} /> },
+              { key: "error" as const, servers: erroredServers, label: t.gapError, why: t.gapErrorWhy, icon: <ServerCrash size={14} strokeWidth={2.4} /> },
+              { key: "noCameras" as const, servers: unusedServers, label: t.gapNoCameras, why: t.gapNoCamerasWhy, icon: <Unplug size={14} strokeWidth={2.4} /> },
             ].filter(item => item.servers.length > 0).map(item => ({
               key: item.key,
               icon: item.icon,
               figure: item.servers.length,
               unit: t.gapServerUnit,
               label: item.label,
+              explanation: item.why,
               tone: "warning" as const,
               active: gapFilter === item.key,
               title: gapFilter === item.key ? t.gapClear : t.gapShowOnly,
@@ -801,6 +808,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               figure: projectCameras.length,
               unit: t.gapPerServers(projectServers.length),
               label: t.gapLoadLabel,
+              explanation: t.gapLoadWhy,
             },
           ]} />
 
@@ -821,7 +829,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
             {/* The only control on this row without a mark of its own — the select had its chevron
                 and Add Server its plus, so Reset read as a word somebody had left there. lucide
                 rather than a hand-drawn path, at the 1.4 stroke every Portal icon now uses. */}
-            <button className="portal-btn-outline" onClick={resetFilters}
+            <button className="portal-btn-quiet" onClick={resetFilters}
               style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
               <RotateCcw size={14} strokeWidth={2.4} />
               {t.reset}

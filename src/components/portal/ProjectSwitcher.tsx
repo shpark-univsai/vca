@@ -192,7 +192,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                thing the whole rail is scoped to. primary-400 at 18% with a 40% edge reads as a
                lit panel rather than a slightly different grey, and the pin inside it goes
                primary-300 so the colour starts at the mark and not at the border. */
-            backgroundColor: "rgba(140, 133, 255, 0.16)", border: "1px solid rgba(140, 133, 255, 0.34)",
+            backgroundColor: "color-mix(in srgb, var(--primary-300) 16%, transparent)", border: "1px solid color-mix(in srgb, var(--primary-300) 34%, transparent)",
           } : null),
           /* minHeight and alignItems have to be undone here, not just overridden with height and
              gap: the dark branch above sets minHeight 60 and flex-start so the expanded card can

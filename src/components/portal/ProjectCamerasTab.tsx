@@ -22,9 +22,12 @@ const T = {
     offlineSuffix: (n: number) => `${n} offline`,
     onlineCountLabel: (n: number) => `${n} online`,
     healthConnected: "connected",
+    healthConnectedWhy: "Answered the last connection attempt. It says the stream is reachable, not that anything is looking at it.",
     healthOfFleet: (total: number) => `of ${total}`,
     healthOffline: "offline",
+    healthOfflineWhy: "No answer at all — the address is unreachable. Usually power, cable or network rather than the camera itself.",
     healthError: "refusing the connection",
+    healthErrorWhy: "The camera answered and turned us away. Almost always the wrong credentials or a stream path that has changed.",
     healthShowOnly: "Show only these",
     healthClear: "Show everything again",
     searchPlaceholder: "Search by camera name, code, RTSP URL, or IP address",
@@ -157,9 +160,12 @@ const T = {
     offlineSuffix: (n: number) => `${n} 오프라인`,
     onlineCountLabel: (n: number) => `온라인 ${n}`,
     healthConnected: "연결됨",
+    healthConnectedWhy: "마지막 연결 시도에 응답했습니다. 스트림에 닿는다는 뜻이지, 누가 보고 있다는 뜻은 아닙니다.",
     healthOfFleet: (total: number) => `/ ${total}대`,
     healthOffline: "오프라인",
+    healthOfflineWhy: "응답이 아예 없습니다. 주소에 닿지 않는 상태로, 대개 카메라보다 전원·케이블·네트워크 문제입니다.",
     healthError: "연결 거부",
+    healthErrorWhy: "카메라가 응답은 했지만 접속을 거절했습니다. 거의 항상 계정 정보가 틀렸거나 스트림 경로가 바뀐 경우입니다.",
     healthShowOnly: "이 항목만 보기",
     healthClear: "전체 다시 보기",
     searchPlaceholder: "카메라 이름, 코드, RTSP URL, IP 주소로 검색",
@@ -702,7 +708,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const addMenuRef = useRef<HTMLDivElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [hoveredAction, setHoveredAction] = useState<"export" | "add" | "refresh" | null>(null);
 
   const projectCameras = cameras.filter(c => c.projectId === projectId);
   const projectUploads = uploads.filter(u => u.projectId === projectId);
@@ -1075,17 +1080,17 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       */}
       {(kindTab === "ALL" || kindTab === "camera") && <SummaryStrip cells={[
         {
-          key: "online" as const, count: onlineCount, label: t.healthConnected,
+          key: "online" as const, count: onlineCount, label: t.healthConnected, why: t.healthConnectedWhy,
           unit: t.healthOfFleet(projectCameras.length), tone: "neutral" as const,
           icon: <VideoIcon size={14} strokeWidth={2.4} />,
         },
         {
-          key: "offline" as const, count: offlineCount, label: t.healthOffline,
+          key: "offline" as const, count: offlineCount, label: t.healthOffline, why: t.healthOfflineWhy,
           unit: undefined, tone: "warning" as const,
           icon: <VideoOff size={14} strokeWidth={2.4} />,
         },
         {
-          key: "error" as const, count: errorCount, label: t.healthError,
+          key: "error" as const, count: errorCount, label: t.healthError, why: t.healthErrorWhy,
           unit: undefined, tone: "warning" as const,
           icon: <CircleAlert size={14} strokeWidth={2.4} />,
         },
@@ -1100,6 +1105,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           figure: item.count,
           unit: item.unit,
           label: item.label,
+          // Offline and refusing-the-connection are two words apart and two different callouts —
+          // one is an electrician, the other is a password. The underline is where that goes.
+          explanation: item.why,
           tone: item.tone,
           active: statusFilter === item.key,
           title: statusFilter === item.key ? t.healthClear : t.healthShowOnly,
@@ -1198,15 +1206,13 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             borderless icon-and-text, with the one filled button kept for the action that makes
             something. Hover brings a tint back, so the target is still findable by pointing.
           */}
-          <button onClick={() => setLastPolledAt(Date.now())} title={t.refresh} aria-label={t.refresh}
-            onMouseEnter={() => setHoveredAction("refresh")} onMouseLeave={() => setHoveredAction(null)}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: hoveredAction === "refresh" ? "var(--gray-100)" : "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+          <button className="portal-btn-quiet" onClick={() => setLastPolledAt(Date.now())} title={t.refresh} aria-label={t.refresh}
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
             <RotateCw size={14} strokeWidth={2.4} />
             {t.refresh}
           </button>
-          <button onClick={exportCsv}
-            onMouseEnter={() => setHoveredAction("export")} onMouseLeave={() => setHoveredAction(null)}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: hoveredAction === "export" ? "var(--gray-100)" : "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+          <button className="portal-btn-quiet" onClick={exportCsv}
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1.75V9.33M7 9.33 4.08 6.42M7 9.33 9.92 6.42M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
               {t.exportCsv}
             </button>
@@ -1215,8 +1221,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               competes with this one. */}
           <div ref={addMenuRef} style={{ position: "relative", flexShrink: 0 }}>
             <button className="portal-btn-primary" onClick={() => setAddMenuOpen(o => !o)}
-              onMouseEnter={() => setHoveredAction("add")} onMouseLeave={() => setHoveredAction(null)}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", filter: hoveredAction === "add" ? "brightness(0.92)" : "none" }}>
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
               {t.addSource}
             </button>
@@ -1493,9 +1498,13 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     you could see. The address that identifies a camera at a glance is the host, so
                     that is what is printed. The full URL is still searchable and still on the
                     camera's own sheet, where there is room to read it. */}
+                {/* 11px monospace, not 10. These are the only cells on the page read a character
+                    at a time — an address is checked digit by digit against a switch or a label on
+                    a wall — and they were the smallest text in the table. Monospace runs narrow, so
+                    11 here sits at about the width of the 12px column beside it. */}
                 <div style={{ minWidth: 0 }}>
-                  <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.ip}</p>
-                  <p style={{ fontSize: "10px", color: "var(--gray-600)", fontFamily: "monospace" }}>{cam.resolution ?? "—"}</p>
+                  <p style={{ fontSize: "11px", color: "var(--gray-500)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.ip}</p>
+                  <p style={{ fontSize: "11px", color: "var(--gray-600)", fontFamily: "monospace" }}>{cam.resolution ?? "—"}</p>
                 </div>
                 <button onClick={() => setConfirmingStatusCam(cam)} style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                   <span style={{ width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0, backgroundColor: cam.status === "online" ? "var(--success-400)" : cam.status === "error" ? "var(--danger-400)" : "var(--gray-400)" }} />

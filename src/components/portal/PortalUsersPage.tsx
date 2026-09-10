@@ -1229,6 +1229,10 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
  *
  * The roster tab drops a fill on top of this for its own primary, which is why the fill lives at
  * the call site rather than here.
+ *
+ * The hover tint is portal-btn-quiet, added at each call site. A borderless control with no hover
+ * is the one version of this treatment that fails — nothing at rest and nothing on pointing is
+ * not a quiet button, it is text.
  */
 const SECONDARY_BTN: React.CSSProperties = {
   display: "flex", alignItems: "center", gap: "6px", padding: "10px", borderRadius: "8px",
@@ -1685,16 +1689,16 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         </button>
         )}
         {peopleTab === "roster" && (<>
-        <button onClick={() => setShowRosterImport(true)} style={SECONDARY_BTN}>
+        <button className="portal-btn-quiet" onClick={() => setShowRosterImport(true)} style={SECONDARY_BTN}>
           <Upload size={14} strokeWidth={2.4} />
           {t.importRoster}
         </button>
-        <button onClick={bulkIssueCodes} disabled={notIssuedIds.length === 0}
+        <button className="portal-btn-quiet" onClick={bulkIssueCodes} disabled={notIssuedIds.length === 0}
           style={{ ...SECONDARY_BTN, color: notIssuedIds.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: notIssuedIds.length === 0 ? "not-allowed" : "pointer" }}>
           <KeyRound size={14} strokeWidth={2.4} />
           {t.bulkIssue(notIssuedIds.length)}
         </button>
-        <button onClick={() => {
+        <button className="portal-btn-quiet" onClick={() => {
             const n = exportRosterCsv(projectRosterAll, currentProject?.name ?? projectId, rt);
             showToast({ variant: "success", title: t.toastRosterExported(n) });
           }}
@@ -1703,7 +1707,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           <Download size={14} strokeWidth={2.4} />
           {t.exportRoster}
         </button>
-        <button onClick={() => setShowPrintSheet(true)} disabled={printableEntries.length === 0}
+        <button className="portal-btn-quiet" onClick={() => setShowPrintSheet(true)} disabled={printableEntries.length === 0}
           style={{ ...SECONDARY_BTN, color: printableEntries.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: printableEntries.length === 0 ? "not-allowed" : "pointer" }}>
           <Printer size={14} strokeWidth={2.4} />
           {t.printHandout}

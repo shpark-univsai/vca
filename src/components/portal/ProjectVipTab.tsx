@@ -52,8 +52,11 @@ interface VipDict {
   colName: string;
   colPriority: string;
   healthMissingPhoto: string;
+  healthMissingPhotoWhy: string;
   healthEmbeddingFailed: string;
+  healthEmbeddingFailedWhy: string;
   healthDuplicates: string;
+  healthDuplicatesWhy: string;
   healthShowOnly: string;
   healthClear: string;
   healthPeopleUnit: string;
@@ -99,6 +102,7 @@ interface VipDict {
   catSave: string;
   catOwnerOnly: string;
   healthReachLabel: string;
+  healthReachWhy: string;
   healthReachTrend: (prev: number) => string;
   healthReachFlat: string;
   colRegistered: string;
@@ -183,8 +187,11 @@ const T: Record<"en" | "ko", VipDict> = {
     colName: "Name",
     colPriority: "Priority",
     healthMissingPhoto: "no photo",
+    healthMissingPhotoWhy: "On the watchlist with no face attached. A CSV import can add a name without a photo; these people cannot be matched until one is uploaded.",
     healthEmbeddingFailed: "photo unreadable",
+    healthEmbeddingFailedWhy: "A photo is attached, but the model could not read a face out of it — too small, too dark or turned too far. Replacing the photo is what clears it.",
     healthDuplicates: "possible duplicates",
+    healthDuplicatesWhy: "Two or more records that share a name. Usually the same person enrolled twice; the watchlist counts them twice either way.",
     healthShowOnly: "Show only these",
     healthClear: "Show everyone again",
     healthPeopleUnit: "people",
@@ -230,6 +237,7 @@ const T: Record<"en" | "ko", VipDict> = {
     catSave: "Save",
     catOwnerOnly: "Only the owner can change this list.",
     healthReachLabel: "people detected · 7 days",
+    healthReachWhy: "How many people on the watchlist were seen at least once in the last 7 days — people, not detections. One person passing a camera twenty times counts once here.",
     healthReachTrend: (prev: number) => `vs ${prev} people last week`,
     healthReachFlat: "same as last week",
     colRegistered: "Registered",
@@ -313,8 +321,11 @@ const T: Record<"en" | "ko", VipDict> = {
     colName: "이름",
     colPriority: "우선순위",
     healthMissingPhoto: "사진 없음",
+    healthMissingPhotoWhy: "명단에는 있지만 얼굴 사진이 없습니다. CSV로 가져오면 사진 없이 이름만 등록될 수 있고, 사진을 올리기 전까지는 매칭되지 않습니다.",
     healthEmbeddingFailed: "사진 인식 실패",
+    healthEmbeddingFailedWhy: "사진은 있지만 모델이 얼굴을 읽어내지 못했습니다. 너무 작거나 어둡거나 옆을 봤을 때 생깁니다. 사진을 다시 올려야 풀립니다.",
     healthDuplicates: "중복 의심",
+    healthDuplicatesWhy: "이름이 같은 기록이 둘 이상입니다. 대개 같은 사람을 두 번 등록한 경우이고, 어느 쪽이든 명단에서는 두 명으로 셉니다.",
     healthShowOnly: "이 항목만 보기",
     healthClear: "전체 다시 보기",
     healthPeopleUnit: "명",
@@ -360,6 +371,7 @@ const T: Record<"en" | "ko", VipDict> = {
     catSave: "저장",
     catOwnerOnly: "이 목록은 최고관리자만 바꿀 수 있습니다.",
     healthReachLabel: "지난 7일간 탐지된 인원",
+    healthReachWhy: "명단에 있는 사람 중 최근 7일 안에 한 번이라도 잡힌 인원 수입니다. 탐지 건수가 아니라 사람 수라서, 한 사람이 카메라 앞을 스무 번 지나가도 1로 셉니다.",
     healthReachTrend: (prev: number) => `지난주 ${prev}명`,
     healthReachFlat: "지난주와 같음",
     colRegistered: "등록일",
@@ -1300,15 +1312,18 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           those four rows. */}
       {vipTab !== "groups" && <SummaryStrip cells={[
         ...([
-          { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, icon: <ImageOff size={14} strokeWidth={2.4} /> },
-          { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed, icon: <AlertTriangle size={14} strokeWidth={2.4} /> },
-          { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates, icon: <Users size={14} strokeWidth={2.4} /> },
+          { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, why: t.healthMissingPhotoWhy, icon: <ImageOff size={14} strokeWidth={2.4} /> },
+          { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed, why: t.healthEmbeddingFailedWhy, icon: <AlertTriangle size={14} strokeWidth={2.4} /> },
+          { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates, why: t.healthDuplicatesWhy, icon: <Users size={14} strokeWidth={2.4} /> },
         ].filter(item => item.count > 0).map(item => ({
           key: item.key,
           icon: item.icon,
           figure: item.count,
           unit: t.healthPeopleUnit,
           label: item.label,
+          // Every label here names a defect in three words. The dotted underline is where the
+          // fourth to fortieth live — including, for the two that are fixable, what fixes them.
+          explanation: item.why,
           tone: "warning" as const,
           active: healthFilter === item.key,
           title: healthFilter === item.key ? t.healthClear : t.healthShowOnly,
@@ -1321,13 +1336,16 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           unit: t.healthOfTotal(allProjectPersons.length),
           // "People", not detections. The two are wildly different numbers off the same week — one
           // VIP walking past a camera twenty times is 1 here and 20 there — and the backend read
-          // this cell and had to ask which it meant, which is the label's fault, not theirs.: "9 of 104 this week" is a normal week when the
-          // VIPs did not come and a dead fleet when it was 40 last week, and nothing else on the
-          // page separates those. Grey both ways — this is a comparison, not a verdict.
+          // this cell and had to ask which it meant, which is the label's fault, not theirs.
+          //
+          // The trend is what makes the figure readable: "9 of 104 this week" is a normal week
+          // when the VIPs did not come and a dead fleet when it was 40 last week, and nothing else
+          // on the page separates those. Grey both ways — this is a comparison, not a verdict.
           trend: reachDelta === 0
             ? { direction: "flat" as const, text: t.healthReachFlat }
             : { direction: (reachDelta > 0 ? "up" : "down") as "up" | "down", text: t.healthReachTrend(detectedPrevCount) },
           label: t.healthReachLabel,
+          explanation: t.healthReachWhy,
           // Takes a click like its neighbours. It is not a defect, so it stays neutral rather than
           // amber, but "which of them actually came this week" is a question worth an answer and a
           // cell that filters beside two that do not would be the odd one out.
@@ -1394,7 +1412,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             saying the same thing next to it would be two ways to sort one list. */}
         {vipTab !== "groups" && view === "grid" && (
           <button
-            className={gridPriorityFirst ? undefined : "portal-btn-outline"}
+            className={gridPriorityFirst ? undefined : "portal-btn-quiet"}
             onClick={() => setGridPriorityFirst(v => !v)}
             aria-pressed={gridPriorityFirst}
             style={{
@@ -1442,7 +1460,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               {t.addGroup}
             </button>
           ) : (<>
-          <button className="portal-btn-outline" onClick={() => fileInputRef.current?.click()}
+          <button className="portal-btn-quiet" onClick={() => fileInputRef.current?.click()}
             style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 9.33V1.75M7 1.75 4.08 4.67M7 1.75 9.92 4.67M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
             {t.bulkUpload}

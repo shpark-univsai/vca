@@ -303,8 +303,9 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
           {options.map(o => (
             /* The trigger's own type, plus its box: 12 left padding, then 12 right padding + 8 gap
                + 12 chevron on the other side. Same numbers as the button below — if those change,
-               these do. */
-            <div key={o.value} style={{ fontSize: "13px", fontWeight: 600, whiteSpace: "nowrap", padding: "0 32px 0 12px" }}>{o.label}</div>
+               these do. It measured 13/600 while the trigger drew 10/700, so every fitContent
+               select reserved room for a label it was not drawing. */
+            <div key={o.value} style={{ fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", padding: "0 32px 0 12px" }}>{o.label}</div>
           ))}
         </div>
       )}
@@ -332,11 +333,11 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
           ...(open ? FIELD_FOCUS : { border: hovered ? "1px solid var(--gray-400)" : BORDER }),
         }}
       >
-        {/* 10px, the size the action buttons in the same toolbar use. The typed content of a
-            text field stays at 13 — that is the reader's own text and it has to be comfortable —
-            but a select shows a label we wrote, and a toolbar reads as one row of controls only
-            if its words are one size. */}
-        <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis" }}>{selected?.label ?? "Select"}</span>
+        {/* 12px, the size the action buttons in the same toolbar use, and the size of the options
+            this trigger opens — at 10 the control was smaller than its own list. The typed content
+            of a text field stays at 13: that is the reader's own text and it has to be
+            comfortable, but a select shows a label we wrote. */}
+        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis" }}>{selected?.label ?? "Select"}</span>
         <span style={{ display: "flex", color: "var(--gray-600)", flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.87" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </span>
@@ -564,12 +565,6 @@ export interface SummaryCell {
   active?: boolean;
   /** Tooltip — say what pressing it does, since the cell itself is a number. */
   title?: string;
-  /**
-   * Marks the label as carrying an explanation, with the dotted underline Portal uses for that
-   * everywhere else. For cells whose label names a state rather than a thing — "invited",
-   * "suspended", "on the roster" — where the word is the whole question and the tooltip is the
-   * answer. A tooltip nobody knows is there is a tooltip nobody reads.
-   */
   /**
    * A sentence explaining what the label means, shown on hover with the dotted underline that
    * advertises it.

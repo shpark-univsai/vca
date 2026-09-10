@@ -178,12 +178,12 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
           options={[{ value: "ALL", label: t.filterAllActors }, ...actorOptions]} />
         <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
         <span style={{ flex: 1 }} />
-        <button onClick={exportCsv} disabled={visible.length === 0}
+        <button className="portal-btn-quiet" onClick={exportCsv} disabled={visible.length === 0}
           style={{
-            display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px",
-            borderRadius: "8px", border: BORDER, backgroundColor: "white",
+            display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px",
+            borderRadius: "8px", border: "none", backgroundColor: "transparent",
             color: visible.length === 0 ? "var(--gray-300)" : "var(--gray-600)",
-            fontSize: "10px", fontWeight: 700, cursor: visible.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit",
+            fontSize: "12px", fontWeight: 600, cursor: visible.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit",
           }}>
           <FileDown size={14} strokeWidth={2.4} />
           {t.export}
