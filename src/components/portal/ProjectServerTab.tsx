@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Globe, Mail, RotateCcw, ServerCrash, Unplug, Video} from "lucide-react";
 import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
-import { SummaryStrip, CARD_BORDER, TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch, usePortalEditAccess, ConfirmModal } from "./PortalShared";
+import { SummaryStrip, CARD_BORDER, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch, usePortalEditAccess, ConfirmModal } from "./PortalShared";
 
 const SERVER_TYPES: ServerType[] = ["AI Camera", "Normal Camera", "Face Recognition", "Image Store", "Database"];
 
@@ -131,19 +131,45 @@ const API_ENDPOINTS = [
 ];
 
 const API_DOC_T = {
-  en: { baseUrl: "API Base URL", endpoints: "Endpoints" },
-  ko: { baseUrl: "API 기본 URL", endpoints: "엔드포인트" },
+  en: {
+    baseUrl: "API Base URL",
+    endpoints: "Endpoints",
+    baseUrlNote: "This installation's own address. There is no vendor-hosted API — the product is on-premise, so the base URL is whatever host this console is served from.",
+    noKeys: "API keys are not issued or revoked from Portal yet. Until they are, treat these endpoints as documentation rather than as something you can call today.",
+  },
+  ko: {
+    baseUrl: "API 기본 URL",
+    endpoints: "엔드포인트",
+    baseUrlNote: "이 설치본 자신의 주소입니다. 벤더가 호스팅하는 API는 없습니다 — 온프레미스 제품이라, 기본 URL은 이 콘솔이 서비스되는 호스트입니다.",
+    noKeys: "API 키 발급과 폐기는 아직 포털에 없습니다. 생기기 전까지 이 엔드포인트들은 지금 호출할 수 있는 것이 아니라 문서로 보시면 됩니다.",
+  },
 } as const;
 
 function ApiDocumentation({ projectId }: { projectId: string }) {
   const [lang] = usePortalLanguage();
   const t = API_DOC_T[lang];
+  // After mount: window does not exist while this renders on the server, and a guessed host
+  // corrected a frame later is the hydration mismatch the rest of Portal avoids.
+  const [origin, setOrigin] = useState("");
+  useEffect(() => { queueMicrotask(() => setOrigin(window.location.origin)); }, []);
   return (
-    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "20px" }}>
       <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.baseUrl}</p>
-      <p style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", marginTop: "6px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "8px", padding: "8px 10px" }}>
-        https://api.univs.ai/portal/{projectId}
+      {/*
+        The host this console is served from, not a vendor cloud.
+       
+        It printed https://api.univs.ai/portal/{id} — a URL on the supplier's own domain, on a
+        product that is on-premise only (decided 2026-09-02, no cloud hosting) and that on some
+        sites runs on a network with no route to the internet at all. An address the customer's
+        own installation cannot reach is not a base URL, it is a wrong answer.
+       
+        Read at render rather than baked in: this screen cannot know the deployment's hostname,
+        and the browser showing it is by definition sitting on one.
+      */}
+      <p style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", marginTop: "6px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "8px", padding: "8px 10px", overflowX: "auto" }}>
+        {origin}/api/portal/projects/{projectId}
       </p>
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "6px" }}>{t.baseUrlNote}</p>
       <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "20px", marginBottom: "10px" }}>{t.endpoints}</p>
       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
         {API_ENDPOINTS.map(ep => (
@@ -160,6 +186,9 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
           </div>
         ))}
       </div>
+      {/* Said plainly: there is no key issue/revoke anywhere in Portal, so a reader who takes
+          this list as an invitation to integrate finds out later and by failing. */}
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "14px" }}>{t.noKeys}</p>
     </div>
   );
 }
@@ -258,7 +287,7 @@ function NetworkStatus({ projectId }: { projectId: string }) {
   };
 
   return (
-    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "20px" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
           <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><NetworkIcon /></span>
@@ -471,7 +500,7 @@ function MailSettings({ projectId }: { projectId: string }) {
           project with nothing configured anywhere is still a real problem worth surfacing regardless
           of override state, so that case bypasses the override check. */}
       {(override || !inherited.mailDomain) && (
-        <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+        <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "20px" }}>
           <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.inEffect}</p>
           {inherited.mailDomain ? (
             <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -490,7 +519,7 @@ function MailSettings({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "20px" }}>
         <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
           <input type="checkbox" checked={override} onChange={e => setOverride(e.target.checked)}
             style={{ marginTop: "3px", accentColor: "var(--gray-900)", cursor: "pointer" }} />
@@ -554,7 +583,7 @@ function MailSettings({ projectId }: { projectId: string }) {
 
       {/* Named so nobody has to guess what a mail change affects. The two events are the whole list
           on purpose — see the note on this component. */}
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "20px" }}>
         <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.whatVcaSends}</p>
         <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
           <SettingRow label={t.accountInvitation} value={t.accountInvitationValue} />

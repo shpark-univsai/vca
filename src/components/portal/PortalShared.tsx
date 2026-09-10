@@ -62,6 +62,18 @@ const READ_ONLY_REASON = {
 export const BORDER = "1px solid var(--line)";
 /** A card's edge is the same hairline as everything else. One line colour, one weight. */
 export const CARD_BORDER = BORDER;
+/**
+ * A card's corner. One number, because two was the whole problem.
+ *
+ * Content panels and the boxes a table lives in were split between 12 and 16 with nothing
+ * distinguishing them — the VIP registry's table card at 16 and the Users page's request panel
+ * at 12, the VIP grid tile at 16 and the camera grid tile at 12, doing the same job side by
+ * side on screens a reader moves between.
+ *
+ * The summary strip keeps its own 12 deliberately: it is a band of cells, not a card, and it
+ * sits directly above one — a strip as round as the card under it reads as a second card.
+ */
+export const CARD_RADIUS = "16px";
 // Every control that can sit on a toolbar row — search input, FilterSelect, pill buttons, the
 // table/grid segmented toggle — is this tall, so a row of them lines up regardless of padding
 // or font size. Set the height, not the vertical padding.

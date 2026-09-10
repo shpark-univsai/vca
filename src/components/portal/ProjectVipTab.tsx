@@ -54,6 +54,7 @@ interface VipDict {
   filtersActive: (n: number) => string;
   noSearchResults: string;
   noVips: string;
+  noVipsHint: string;
   registered: (date: string) => string;
   viewGrid: string;
   viewTable: string;
@@ -208,6 +209,7 @@ const T: Record<"en" | "ko", VipDict> = {
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     noSearchResults: "No VIPs match this search.",
     noVips: "No VIPs registered for this project yet.",
+    noVipsHint: "Register somebody, or import a list — each person becomes a face the cameras on this project match against.",
     registered: (date: string) => `Registered ${date}`,
     viewGrid: "Grid",
     viewTable: "Table",
@@ -361,6 +363,7 @@ const T: Record<"en" | "ko", VipDict> = {
     filtersActive: (n: number) => `필터 ${n}개`,
     noSearchResults: "검색 결과와 일치하는 VIP가 없습니다.",
     noVips: "이 프로젝트에 등록된 VIP가 아직 없습니다.",
+    noVipsHint: "인물을 등록하거나 명단을 가져오면 됩니다 — 등록된 한 사람이 이 프로젝트의 카메라가 대조하는 얼굴 하나가 됩니다.",
     registered: (date: string) => `등록일 ${date}`,
     viewGrid: "그리드",
     viewTable: "테이블",
@@ -1695,9 +1698,14 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         )
       ) : projectPersons.length === 0 ? (
         <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", padding: "32px", textAlign: "center" }}>
+          {/* An empty registry and a filter that matched nothing are different situations, and
+              the first one deserves to say what would fill it. */}
           <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
             {q ? t.noSearchResults : vipTab === "individuals" ? t.noIndividuals : t.noVips}
           </p>
+          {!q && vipTab !== "individuals" && (
+            <p style={{ fontSize: "12px", color: "var(--gray-300)", lineHeight: 1.55, marginTop: "6px", maxWidth: "46ch", marginInline: "auto" }}>{t.noVipsHint}</p>
+          )}
         </div>
       ) : view === "table" ? (
         <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW }}>

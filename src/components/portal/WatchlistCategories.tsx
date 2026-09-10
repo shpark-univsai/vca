@@ -285,6 +285,10 @@ export function WatchlistCategoryModal({ teamId, categories, canEdit, onClose }:
 export function categoryTint(color: WatchlistCategoryColor): { bg: string; fg: string; dot: string } {
   switch (color) {
     case "primary": return { bg: "var(--primary-100)", fg: "var(--primary-400)", dot: "var(--primary-400)" };
+    case "info":    return { bg: "var(--info-100)",    fg: "var(--info-500)",    dot: "var(--info-500)" };
+    // The three below are no longer offered — see WATCHLIST_CATEGORY_COLORS — but categories
+    // created before that still carry them, and a chip that cannot resolve its colour is worse
+    // than one drawn in a colour we would not pick again.
     case "danger":  return { bg: "var(--danger-100)",  fg: "var(--danger-500)",  dot: "var(--danger-400)" };
     case "warning": return { bg: "var(--warning-100)", fg: "var(--warning-500)", dot: "var(--warning-500)" };
     case "success": return { bg: "var(--success-100)", fg: "var(--success-400)", dot: "var(--success-400)" };

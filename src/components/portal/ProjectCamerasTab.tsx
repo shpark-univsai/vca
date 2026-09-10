@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CircleAlert, Film as FilmIcon, Image as ImageIcon, RotateCw, ShieldCheck, Video as VideoIcon, VideoOff } from "lucide-react";
-import { useVcaStore, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
+import { useVcaStore, projectChannelLimit, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { CARD_BORDER, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal } from "./PortalShared";
+import { CARD_BORDER, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -19,6 +19,8 @@ const T = {
     online: "Online",
     offline: "Offline",
     statusError: "Error",
+    atLimitReason: (limit: number) => `All ${limit} licensed channels are in use. Raising the limit is a contract change — see the Licence screen.`,
+    atLimitBanner: (limit: number) => `All ${limit} licensed channels are in use. No further source can be connected until the limit is raised.`,
     errIp: "That does not look like an address.",
     errRtsp: "A stream address starts with rtsp://",
     errLat: "Latitude runs from -90 to 90.",
@@ -163,6 +165,8 @@ const T = {
     online: "온라인",
     offline: "오프라인",
     statusError: "오류",
+    atLimitReason: (limit: number) => `라이선스 채널 ${limit}개를 모두 쓰고 있습니다. 한도를 올리는 것은 계약 변경입니다 — 라이선스 화면을 보세요.`,
+    atLimitBanner: (limit: number) => `라이선스 채널 ${limit}개를 모두 쓰고 있습니다. 한도를 올리기 전에는 소스를 더 연결할 수 없습니다.`,
     errIp: "주소 형식이 아닙니다.",
     errRtsp: "스트림 주소는 rtsp:// 로 시작합니다.",
     errLat: "위도는 -90에서 90 사이입니다.",
@@ -772,6 +776,22 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const [dragging, setDragging] = useState(false);
 
   const projectCameras = cameras.filter(c => c.projectId === projectId);
+  /*
+   * The licensed ceiling, enforced rather than only drawn.
+   *
+   * The Licence screen states "no further camera can be connected until the limit is raised"
+   * and the Overview's bar turns red past it — and nothing checked. A hundred-channel project
+   * took a hundred and one cameras, so the one number the customer pays per unit of was the
+   * one number the console did not hold.
+   *
+   * Uploads are not channels and are not counted: a channel is a live stream being processed.
+   *
+   * HANDOFF NOTE: this is the UI half. The provisioning call has to refuse it too, or a client
+   * that never opened Portal is unbounded.
+   */
+  const channelLimit = project ? projectChannelLimit(project) : undefined;
+  const channelsUsed = projectCameras.length;
+  const atChannelLimit = channelLimit !== undefined && channelsUsed >= channelLimit;
   const projectUploads = uploads.filter(u => u.projectId === projectId);
   const projectServers = servers.filter(sv => sv.projectId === projectId);
 
@@ -928,6 +948,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   // `password` is read off the form and dropped here on purpose — see CameraFormValues. Everything
   // else the form collects is stored.
   const createCamera = (values: CameraFormValues) => {
+    // Refused here as well as disabled above: the button is the UI, this is the rule.
+    if (atChannelLimit) return;
     addCamera({
       projectId, name: values.name.trim(), code: generateCameraCode(values.name.trim(), cameras.map(c => c.code)), rtspUrl: values.rtspUrl.trim(),
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
@@ -1169,6 +1191,23 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         The cells drive that same filter rather than one of their own, so pressing "8 offline" and
         picking Offline from the dropdown are one state, not two that can disagree.
       */}
+      {/* Above the strip, because it changes what the numbers below it mean: at the ceiling the
+          fleet count stops being "how many we have" and becomes "how many we may have". A
+          disabled button whose tooltip nobody hovers is the same silence as no rule at all. */}
+      {atChannelLimit && channelLimit !== undefined && (
+        <div style={{
+          display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "12px",
+          padding: "12px 14px", borderRadius: "10px",
+          backgroundColor: "var(--warning-100)", border: "1px solid var(--warning-200)",
+        }}>
+          <span style={{ display: "flex", flexShrink: 0, marginTop: "1px", color: "var(--warning-500)" }}>
+            <CircleAlert size={15} strokeWidth={2.2} />
+          </span>
+          <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--warning-500)", lineHeight: 1.6 }}>
+            {t.atLimitBanner(channelLimit)}
+          </p>
+        </div>
+      )}
       {(kindTab === "ALL" || kindTab === "camera") && <SummaryStrip cells={[
         {
           key: "online" as const, count: onlineCount, label: t.healthConnected, why: t.healthConnectedWhy,
@@ -1313,8 +1352,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           <div ref={addMenuRef} style={{ position: "relative", flexShrink: 0 }}>
             {/* Export stays. A read-only account still needs the fleet list as a file — that is
                 most of what the role is for. Adding is what goes. */}
-            <button className="portal-btn-primary" onClick={() => setAddMenuOpen(o => !o)} disabled={!mayEdit} title={readOnlyReason}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-200)", color: mayEdit ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed" }}>
+            <button className="portal-btn-primary" onClick={() => setAddMenuOpen(o => !o)}
+              disabled={!mayEdit || atChannelLimit}
+              title={!mayEdit ? readOnlyReason : atChannelLimit ? t.atLimitReason(channelLimit ?? 0) : undefined}
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: (mayEdit && !atChannelLimit) ? "var(--primary-400)" : "var(--gray-200)", color: (mayEdit && !atChannelLimit) ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: (mayEdit && !atChannelLimit) ? "pointer" : "not-allowed" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
               {t.addSource}
             </button>
@@ -1650,7 +1691,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             // card would cut it off at its own edge. The thumbnail rounds its own top corners
             // instead, which is all that hiding was doing.
             return (
-              <div key={cam.id} style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
+              <div key={cam.id} style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
                 <button onClick={() => setInspectingCameraId(cam.id)} style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", border: "none", padding: 0, cursor: "pointer", display: "block", backgroundColor: "var(--gray-900)", overflow: "hidden", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
                   <img src={cam.thumbnail || DEFAULT_THUMBNAIL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: online ? 1 : 0.4 }} />
                   <span style={{

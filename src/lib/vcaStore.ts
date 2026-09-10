@@ -376,8 +376,31 @@ export interface SearchPurposeSelection {
 }
 
 /** The palette a category may take. Names, not values — see WatchlistCategory.color. */
-export const WATCHLIST_CATEGORY_COLORS = ["primary", "danger", "warning", "success", "gray"] as const;
-export type WatchlistCategoryColor = typeof WATCHLIST_CATEGORY_COLORS[number];
+/**
+ * The colours a watchlist category may be given.
+ *
+ * Three, not six, and the three missing ones are missing on purpose: danger, warning and
+ * success already mean something on the screen these chips appear on. warning-500 is what the
+ * registry-health strip uses for a real defect — "photo unreadable", a face no camera can
+ * match — so an amber chip beside it teaches the reader that a category IS a defect. danger is
+ * the destructive colour every confirmation in Portal uses, and success reads as resolved.
+ * A taxonomy is not a severity scale, and borrowing a severity ramp to draw one is how the two
+ * stop being tellable apart.
+ *
+ * HANDOFF NOTE — DESIGN LIBRARY: three is thin for an institution that wants five or six
+ * distinguishable labels, and the honest fix is more hues rather than reusing these. The
+ * palette has exactly six families and half of them are spoken for, so a category ramp
+ * (2-3 neutral hues, no severity meaning) belongs in the Figma library before this list grows.
+ * Until it exists, three colours plus the label's own words is what the console can say truthfully.
+ */
+export const WATCHLIST_CATEGORY_COLORS = ["primary", "info", "gray"] as const;
+
+/**
+ * Wider than the list above on purpose. Categories created before the palette was narrowed can
+ * still carry a retired name, and a stored value that no longer type-checks is a crash rather
+ * than a chip in the wrong colour — categoryTint still resolves all six.
+ */
+export type WatchlistCategoryColor = "primary" | "info" | "gray" | "danger" | "warning" | "success";
 
 export interface Person {
   id: string;

@@ -88,6 +88,7 @@ const T = {
     colStreamUrl: "Address",
     colStatus: "Status",
     noCamerasYet: "No cameras connected to this project yet.",
+    noCamerasYetHint: "A row appears here for each source registered on Input Sources, with the last time it answered.",
     openCamera: "Open this camera",
     trendTitle: "Detections",
     trendPeriod: "last 7 days",
@@ -104,6 +105,7 @@ const T = {
     recentVipsTitle: "Recently Registered VIPs",
     registerVipLink: "Register VIP",
     noVipsYet: "No VIPs registered yet.",
+    noVipsYetHint: "The three most recent registrations appear here as they are added to the watchlist.",
     accessRequestsTitle: "Access Requests",
     approve: "Approve",
     dismiss: "Dismiss",
@@ -177,6 +179,7 @@ const T = {
     colStreamUrl: "주소",
     colStatus: "상태",
     noCamerasYet: "이 프로젝트에 연결된 카메라가 아직 없습니다.",
+    noCamerasYetHint: "입력 소스에서 등록한 소스가 한 줄씩 올라오고, 마지막으로 응답한 시각이 함께 표시됩니다.",
     openCamera: "이 카메라 열기",
     trendTitle: "탐지",
     trendPeriod: "지난 7일",
@@ -193,6 +196,7 @@ const T = {
     recentVipsTitle: "최근 등록된 VIP",
     registerVipLink: "VIP 등록",
     noVipsYet: "등록된 VIP가 아직 없습니다.",
+    noVipsYetHint: "명단에 사람이 추가되면 최근 세 건이 여기에 올라옵니다.",
     accessRequestsTitle: "접근 요청",
     approve: "승인",
     dismiss: "거절",
@@ -1322,9 +1326,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   />
                 </div>
                 {visibleCameraRows.length === 0 ? (
-                  <p style={{ fontSize: "13px", color: "var(--gray-400)", padding: "24px", textAlign: "center" }}>
-                    {t.noCamerasYet}
-                  </p>
+                  <div style={{ padding: "24px", textAlign: "center" }}>
+                    <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>{t.noCamerasYet}</p>
+                    <p style={{ fontSize: "12px", color: "var(--gray-300)", lineHeight: 1.55, marginTop: "4px" }}>{t.noCamerasYetHint}</p>
+                  </div>
                 ) : (
                   <>
                     <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr 1.2fr 0.8fr 1.2fr 44px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, gap: "8px", flexShrink: 0 }}>
@@ -1452,7 +1457,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   />
                 </div>
                 {recentVips.length === 0 ? (
-                  <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noVipsYet}</p>
+                  <div>
+                    {/* An empty box says nothing about whether it is broken or just early.
+                        The second line says what will fill it, so the reader knows which. */}
+                    <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noVipsYet}</p>
+                    <p style={{ fontSize: "12px", color: "var(--gray-300)", lineHeight: 1.55, marginTop: "4px" }}>{t.noVipsYetHint}</p>
+                  </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minHeight: 0, overflowY: "auto" }}>
                     {/* The whole row opens the registry, and the chevron says so. It was a card

@@ -22,6 +22,18 @@ const T = {
     appYes: "Has the monitoring app",
     appNo: "Portal only",
     team: "Team",
+    teamMailTitle: "Team mail",
+    teamMailIntro: "Where invitations and password resets are sent from, for every project in this team. A project can override it, and most do not — so this is the address staff actually receive mail from.",
+    teamMailDomain: "Mail domain",
+    teamMailDomainHint: "Accounts must have an address on this domain. Requests and invites to anything else are refused.",
+    teamMailHost: "SMTP host",
+    teamMailPort: "Port",
+    teamMailFrom: "From address",
+    teamMailTls: "Use TLS",
+    teamMailSave: "Save mail settings",
+    teamMailSaved: "Team mail settings saved",
+    teamMailFromMismatch: (d: string) => `The from address has to be on @${d}, or the receiving server rejects it.`,
+    teamMailUnverified: "Saved, not tested. Nothing here connects to the relay, so a wrong host means invitations vanish with no sign on this screen — send one invite and confirm it arrives.",
     categoryTitle: "Watchlist categories",
     categoryIntro: "What a listing means at your institution — the words are yours. A category can set a default duration and require a written basis. Nothing is set up in advance.",
     categoryCount: (n: number) => (n === 1 ? "1 category in use" : `${n} categories in use`),
@@ -86,6 +98,18 @@ const T = {
     appYes: "모니터링 앱 사용",
     appNo: "포털만",
     team: "팀",
+    teamMailTitle: "팀 메일",
+    teamMailIntro: "이 팀의 모든 프로젝트에서 초대장과 비밀번호 재설정이 나가는 곳입니다. 프로젝트별로 덮어쓸 수 있지만 대개 그러지 않으므로, 직원이 실제로 받는 주소가 여기입니다.",
+    teamMailDomain: "메일 도메인",
+    teamMailDomainHint: "계정은 반드시 이 도메인의 주소여야 합니다. 그 외 주소로의 요청과 초대는 거부됩니다.",
+    teamMailHost: "SMTP 호스트",
+    teamMailPort: "포트",
+    teamMailFrom: "발신 주소",
+    teamMailTls: "TLS 사용",
+    teamMailSave: "메일 설정 저장",
+    teamMailSaved: "팀 메일 설정이 저장되었습니다",
+    teamMailFromMismatch: (d: string) => `발신 주소는 @${d} 도메인이어야 합니다. 아니면 받는 쪽 서버가 거부합니다.`,
+    teamMailUnverified: "저장했을 뿐 테스트하지 않았습니다. 여기서 릴레이에 접속하지 않으므로 호스트가 틀리면 초대장이 이 화면에 아무 표시 없이 사라집니다 — 초대를 한 통 보내 도착하는지 확인하세요.",
     categoryTitle: "관심인물 분류",
     categoryIntro: "기관에서 '등록'이 무엇을 뜻하는지 직접 정합니다. 분류마다 기본 유효기간을 두고 등록 근거를 필수로 할 수 있습니다. 미리 넣어둔 것은 없습니다.",
     categoryCount: (n: number) => `사용 중인 분류 ${n}개`,
@@ -232,6 +256,47 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const mayDeleteProject = me ? canManageAccess(me.permission) : true;
   const isLastProjectInTeam = project ? projects.filter(p => p.teamId === project.teamId).length === 1 : false;
   const myTeam = me ? teams.find(tm => tm.id === me.teamId) : undefined;
+  /*
+   * The team's mail settings, held as a draft so the form does not write on every keystroke.
+   * Keyed to the team for the same reason the rename draft is keyed to the project — this
+   * screen is not remounted when the team behind it changes.
+   */
+  const updateTeamMail = useVcaStore(s => s.updateTeamMail);
+  const [mailDraft, setMailDraft] = useState<{ teamId: string; domain: string; host: string; port: string; from: string; tls: boolean } | null>(null);
+  const liveMail = mailDraft && mailDraft.teamId === myTeam?.id ? mailDraft : null;
+  const mailDomain = liveMail?.domain ?? myTeam?.mailDomain ?? "";
+  const mailHost = liveMail?.host ?? myTeam?.smtp?.host ?? "";
+  const mailPort = liveMail?.port ?? (myTeam?.smtp?.port ? String(myTeam.smtp.port) : "");
+  const mailFrom = liveMail?.from ?? myTeam?.smtp?.fromAddress ?? "";
+  const mailTls = liveMail?.tls ?? myTeam?.smtp?.useTls ?? true;
+  const editMail = (patch: Partial<{ domain: string; host: string; port: string; from: string; tls: boolean }>) =>
+    setMailDraft({ teamId: myTeam?.id ?? "", domain: mailDomain, host: mailHost, port: mailPort, from: mailFrom, tls: mailTls, ...patch });
+  const setMailDomain = (v: string) => editMail({ domain: v });
+  const setMailHost = (v: string) => editMail({ host: v });
+  const setMailPort = (v: string) => editMail({ port: v });
+  const setMailFrom = (v: string) => editMail({ from: v });
+  const setMailTls = (v: boolean) => editMail({ tls: v });
+  // The from-address has to live on the configured domain or the receiving server rejects it —
+  // the same rule the project screen already applies, stated once per screen rather than once.
+  const mailFromMismatch = mailDomain.trim() !== "" && mailFrom.trim() !== ""
+    && !mailFrom.trim().toLowerCase().endsWith(`@${mailDomain.trim().toLowerCase()}`);
+  const mailPortNum = Number(mailPort);
+  const mailPortValid = mailPort.trim() === "" || (Number.isInteger(mailPortNum) && mailPortNum > 0 && mailPortNum < 65536);
+  const canSaveTeamMail = mayEdit && liveMail !== null && !mailFromMismatch && mailPortValid;
+  const saveTeamMail = () => {
+    if (!canSaveTeamMail || !myTeam) return;
+    updateTeamMail(myTeam.id, {
+      mailDomain: mailDomain.trim() || undefined,
+      smtp: mailHost.trim() === "" ? undefined : {
+        host: mailHost.trim(),
+        port: mailPort.trim() === "" ? 587 : mailPortNum,
+        fromAddress: mailFrom.trim(),
+        useTls: mailTls,
+      },
+    });
+    setMailDraft(null);
+    showToast({ variant: "success", title: t.teamMailSaved, desc: mailDomain.trim() });
+  };
   // The team whose policy this screen edits. Falls back to the open project's team, because the
   // stand-in identity belongs to no account list and would otherwise see no list at all.
   const myTeamId = me?.teamId ?? project?.teamId;
@@ -446,6 +511,54 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         preparation that does not need a camera. The VIP registry still opens the same dialog
         from its category picker; this is where it lives.
       */}
+      {/*
+        Team mail, which had no screen at all.
+       
+        updateTeamMail existed in the store with zero call sites: the project mail screen read
+        the team's values and offered to override them, and nothing anywhere could set them.
+        On an on-premise site the invite mail is how staff get accounts, so this is the setting
+        that decides whether anybody can sign in — and it is a team's, not a project's, which
+        is why it sits here beside the other two team policies.
+      */}
+      {myTeam && (
+        <CardSection heading={t.teamMailTitle}>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, marginTop: "10px", maxWidth: "62ch" }}>{t.teamMailIntro}</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px", marginTop: "16px", maxWidth: "760px" }}>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.teamMailDomain}</label>
+              <TextField value={mailDomain} onChange={setMailDomain} placeholder="company.local" />
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.55, marginTop: "6px" }}>{t.teamMailDomainHint}</p>
+            </div>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.teamMailHost}</label>
+              <TextField value={mailHost} onChange={setMailHost} placeholder="mail.company.local" />
+            </div>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.teamMailPort}</label>
+              <TextField value={mailPort} onChange={v => setMailPort(v.replace(/[^0-9]/g, ""))} placeholder="587" inputMode="numeric" />
+            </div>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.teamMailFrom}</label>
+              <TextField value={mailFrom} onChange={setMailFrom} placeholder="vca-noreply@company.local" />
+              {mailFromMismatch && (
+                <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.55, marginTop: "6px" }}>{t.teamMailFromMismatch(mailDomain.trim())}</p>
+              )}
+            </div>
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "var(--gray-600)", marginTop: "14px" }}>
+            <input type="checkbox" checked={mailTls} onChange={e => setMailTls(e.target.checked)} disabled={!mayEdit} />
+            {t.teamMailTls}
+          </label>
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "12px", maxWidth: "62ch" }}>{t.teamMailUnverified}</p>
+          <div style={{ marginTop: "14px" }}>
+            <button className="portal-btn-primary" onClick={saveTeamMail} disabled={!canSaveTeamMail}
+              style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSaveTeamMail ? "var(--primary-400)" : "var(--gray-200)", color: canSaveTeamMail ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSaveTeamMail ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+              {t.teamMailSave}
+            </button>
+          </div>
+        </CardSection>
+      )}
+
       {myTeamId && (
         <CardSection heading={t.categoryTitle}>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, marginTop: "10px", maxWidth: "62ch" }}>{t.categoryIntro}</p>
