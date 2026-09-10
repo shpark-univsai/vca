@@ -274,7 +274,11 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         in the monitoring app, not in this console. Settings is where the things that govern every
         site live.
       */}
-      {myTeamId && (
+      {/* Hidden entirely when the requirement is off, rather than shown with a line explaining
+          that nothing asks for it. A settings section for a feature this release does not have is
+          a question the reader has to answer ("do I need to fill this in?") about something that
+          cannot affect them. The flag is the switch — see complianceConfig. */}
+      {requirePurpose && myTeamId && (
         <CardSection heading={t.purposeTitle}>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, marginTop: "10px", maxWidth: "62ch" }}>{t.purposeIntro}</p>
           {/* What the empty list actually costs, said here rather than only in the app. An
@@ -287,9 +291,6 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
               backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
               fontSize: "12px", fontWeight: 700, lineHeight: 1.6,
             }}>{t.purposeRequirementOn}</p>
-          )}
-          {!requirePurpose && (
-            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "10px" }}>{t.purposeRequirementOff}</p>
           )}
           <SearchPurposeList t={t} teamId={myTeamId} purposes={teamPurposes} canEdit={maySetPolicy} />
         </CardSection>

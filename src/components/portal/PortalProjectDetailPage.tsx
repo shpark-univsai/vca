@@ -17,6 +17,7 @@ import ProjectLicenseTab from "./ProjectLicenseTab";
 import ProjectServerTab from "./ProjectServerTab";
 import PortalUsersPage from "./PortalUsersPage";
 import ProjectSearchLogTab from "./ProjectSearchLogTab";
+import { getComplianceConfig } from "@/lib/complianceConfig";
 
 const T = {
   en: {
@@ -1607,7 +1608,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
       {tab === "license" && <ProjectLicenseTab projectId={projectId} />}
       {tab === "server" && <ProjectServerTab projectId={projectId} />}
       {tab === "users" && <PortalUsersPage projectId={projectId} />}
-      {tab === "searchlog" && <ProjectSearchLogTab projectId={projectId} />}
+      {/* Gated as well as hidden from the rail: the tab lives in the URL, and a link to
+          ?tab=searchlog saved before the requirement was switched off should land somewhere
+          honest rather than on a screen the release does not have. */}
+      {tab === "searchlog" && getComplianceConfig().requireSearchPurpose && <ProjectSearchLogTab projectId={projectId} />}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import type { ComponentType } from "react";
 import { Crown } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
+import { getComplianceConfig } from "@/lib/complianceConfig";
 
 export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "searchlog";
 
@@ -173,6 +174,9 @@ interface ProjectSidebarProps {
 
 export default function ProjectSidebar({ brand, team, project, onToggleCollapse, toggleLabel, tab, onTabChange, collapsed, settingsOpen, counts }: ProjectSidebarProps) {
   const [lang] = usePortalLanguage();
+  /* The search log only exists where the purpose requirement does — it is the read half of the
+     same feature, and a log that can never fill is a rail entry leading to an empty room. */
+  const searchLogEnabled = getComplianceConfig().requireSearchPurpose;
   return (
     <div
       style={{
@@ -317,7 +321,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
                   color: "var(--gray-500)", padding: "0 14px", marginBottom: "2px",
                 }}>{group.label[lang]}</p>
               )}
-            {PROJECT_TABS.filter(t => t.group === group.id).map(t => {
+            {PROJECT_TABS.filter(t => t.group === group.id).filter(t => t.id !== "searchlog" || searchLogEnabled).map(t => {
               const Icon = t.icon;
               const active = tab === t.id && !settingsOpen;
               return (

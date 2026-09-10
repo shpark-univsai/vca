@@ -31,6 +31,18 @@ export interface ComplianceConfig {
  */
 export function getComplianceConfig(): ComplianceConfig {
   return {
-    requireSearchPurpose: true,
+    /**
+     * Off for the first release (decided 2026-09-10), second release turns it back on.
+     *
+     * Not a change of mind about whether the requirement is right — everything it needs is built
+     * and stays built: the purpose list in Portal's settings, the gate on the app's search
+     * screens, the access log an auditor reads. This one boolean hides all three, which is the
+     * whole reason a deployment switch exists rather than a feature branch.
+     *
+     * The default in the interface comment above still says on, and that is still correct advice
+     * for a deployment that forgot to configure it. This is a scoping decision for our own first
+     * ship, not the recommended value.
+     */
+    requireSearchPurpose: false,
   };
 }
