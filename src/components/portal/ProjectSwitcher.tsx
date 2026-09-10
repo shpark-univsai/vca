@@ -349,8 +349,8 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
               <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.selectProject}</p>
               {/* Not "New Project" any more, and not because of permissions.
                   A project is a licensed site: its channels and term come from the contract, the
-                  Licence screen says so in as many words, and updateProjectLicense has no caller
-                  by design. A create button here produced a project nobody could put a camera
+                  Licence screen says so in as many words, and the store has no writer for a
+                  licence at all. A create button here produced a project nobody could put a camera
                   in. On-premise there is nothing lost by the vendor doing it instead — a new
                   site means hardware going in, so an engineer is on site anyway. */}
               <button

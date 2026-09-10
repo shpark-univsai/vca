@@ -77,7 +77,7 @@ interface PortalEmptyStateProps {
  * Nothing to set up here, and saying so is the screen's job.
  *
  * This page used to open a three-field wizard. A project is a licensed site: its channel count
- * and term come from the contract, `updateProjectLicense` has no caller by design, and the
+ * and term come from the contract, the store has no writer for a licence at all, and the
  * Licence screen says in so many words that channels and term are changed by contract and not
  * from here. A self-serve button therefore produced a project nobody could put a camera in —
  * a contract shell with no contract. And on-premise there is no cost to the vendor doing it

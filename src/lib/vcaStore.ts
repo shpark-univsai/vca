@@ -590,7 +590,18 @@ interface VcaStoreState {
    * from each account's list instead.
    */
   removeProject: (projectId: string) => void;
-  updateProjectLicense: (projectId: string, updates: Pick<Project, "licenseChannelLimit" | "licensePlan" | "licenseExpiresAt">) => void;
+  /**
+   * There is deliberately no updateProjectLicense.
+   *
+   * One existed here with no caller, and two screens cited that absence as proof the design was
+   * intentional — but an action nobody calls is not a design, it is a loaded gun on the table.
+   * The store is the shape the backend mirrors: leaving a "rewrite this site's channel limit and
+   * expiry" mutator in it asks for the endpoint that makes it real, and then the number a
+   * contract is priced on is a field an administrator can type into.
+   *
+   * Channels, plan and term arrive with the licence and are read-only to everything in here.
+   * Removed 2026-09-10; see the licence-as-signed-file question in the vendor-admin review.
+   */
   updateProjectMail: (projectId: string, updates: Pick<Project, "mailDomain" | "smtp">) => void;
   setProjectTimeZone: (projectId: string, timeZone: string) => void;
   // null clears the override and falls back to the auto-detected value; true/false pins it.
@@ -2424,11 +2435,29 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         persons: state.persons.filter(p => p.projectId !== projectId),
         personGroups: state.personGroups.filter(g => g.projectId !== projectId),
         staffRoster: state.staffRoster.filter(r => r.projectId !== projectId),
-        searchAccessLog: state.searchAccessLog.filter(r => r.projectId !== projectId),
         accessRequests: state.accessRequests.filter(r => r.projectId !== projectId),
         // Detections of the people who were on this site's watchlist. personId is optional —
         // an unidentified detection belongs to no person and is left alone.
         events: state.events.filter(e => e.personId === undefined || !personIds.has(e.personId)),
+        // searchAccessLog is NOT in the list above, and that is the point.
+        //
+        // It was, until 2026-09-10 — a project deletion took every "who looked up whom, when, and
+        // on what stated grounds" with it. Fourteen lines down this same function keeps the audit
+        // log on the grounds that "a deletion that erases the record of everything that led up to
+        // it is not a deletion, it is a cover-up". That argument is stronger here, not weaker:
+        // this is a face-recognition product, and these rows are the only record that a named
+        // person was searched for. Closing a site is exactly when someone would want them gone.
+        //
+        // The rows keep their projectId, pointing at a project that no longer exists, and their
+        // teamId — which SearchAccessRecord carries precisely so an auditor can read across the
+        // sites an institution runs.
+        //
+        // HANDOFF NOTE: two things follow for the server. It must not cascade-delete these with
+        // the project either; and no screen reads them once the project is gone, because
+        // ProjectSearchLogTab filters by projectId. A team-level view (or a retention policy that
+        // says out loud how long they are kept) is the missing half — see the deletion-scope
+        // question in the product review.
+        //
         // Accounts belong to the team, not the project. Somebody who worked at one site and two
         // others keeps the other two; somebody who worked only here keeps an account with an
         // empty list, which the Users page shows and an administrator can act on. Deleting
@@ -2448,11 +2477,6 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         ))].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
-  updateProjectLicense: (projectId, updates) =>
-    set(state => ({
-      projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)),
-      auditLog: [{ id: `audit-${++auditSeq}`, projectId, message: `License updated to ${updates.licensePlan} (${updates.licenseChannelLimit} channels)`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
-    })),
   // Mail settings write to the audit log the way license changes do — an admin changing where
   // invites are sent is exactly the kind of thing someone has to be able to trace later.
   setProjectTimeZone: (projectId, timeZone) =>
