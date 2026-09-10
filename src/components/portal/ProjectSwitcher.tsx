@@ -100,7 +100,6 @@ function writeMemory(memory: SwitcherMemory): void {
 const T = {
   en: {
     selectProject: "Select project",
-    selectResource: "Select a resource",
     requestProject: "Add a project",
     noTeam: "No Team",
     searchPlaceholder: "Search projects and folders",
@@ -108,18 +107,14 @@ const T = {
     tabStarred: "Starred",
     tabAll: "All",
     colName: "Name",
-    colType: "Type",
     colId: "ID",
-    typeTeam: "Team",
     switchTeam: "Switch team",
-    typeProject: "Project",
     noStarredProjects: "No starred projects yet.",
     noResultsFor: (query: string) => `No results for "${query}".`,
     cancel: "Cancel",
   },
   ko: {
     selectProject: "프로젝트 선택",
-    selectResource: "리소스 선택",
     requestProject: "프로젝트 추가",
     noTeam: "팀 없음",
     searchPlaceholder: "프로젝트 및 폴더 검색",
@@ -127,11 +122,8 @@ const T = {
     tabStarred: "즐겨찾기",
     tabAll: "전체",
     colName: "이름",
-    colType: "유형",
     colId: "ID",
-    typeTeam: "팀",
     switchTeam: "팀 변경",
-    typeProject: "프로젝트",
     noStarredProjects: "즐겨찾기한 프로젝트가 없습니다.",
     noResultsFor: (query: string) => `"${query}"에 대한 검색 결과가 없습니다.`,
     cancel: "취소",
@@ -229,7 +221,6 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
     // All, which was not.
     .filter(p => tab !== "recent" || memory.opened[p.id] !== undefined)
     .sort((a, b) => (tab === "recent" ? (memory.opened[b.id] ?? 0) - (memory.opened[a.id] ?? 0) : 0));
-  const showTeamRow = tab !== "starred" && team && team.name.toLowerCase().includes(q);
 
   const remember = (next: SwitcherMemory) => { setMemory(next); writeMemory(next); };
 
@@ -353,7 +344,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
           }}>
             {/* Header */}
             <div style={{ padding: "20px 20px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.selectResource}</p>
+              <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.selectProject}</p>
               {/* Not "New Project" any more, and not because of permissions.
                   A project is a licensed site: its channels and term come from the contract, the
                   Licence screen says so in as many words, and updateProjectLicense has no caller
@@ -476,31 +467,33 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
 
             {/* Table */}
             <div style={{ flex: 1, overflowY: "auto" }}>
-              {/* The name takes the width the other two were not using.
-                  Type is one word ("Project" / "Team") and an id is a slug — at 0.9fr and 1.3fr
-                  they each held a column of empty space while "Marina Bay & CBD Surveillance
-                  Network" was cut mid-word two columns to the left. The name is what somebody is
-                  reading this table to find. */}
-              <div style={{ display: "grid", gridTemplateColumns: "28px 2.6fr 0.7fr 0.9fr 32px", padding: "8px 20px", gap: "8px" }}>
+              {/* Name, id, star. No TYPE column: with the team row gone every row is a project,
+                  so the column was the same word repeated down the list.
+
+                  The name takes the width the others were not using — an id is a slug, and at
+                  1.3fr it held a column of empty space while "Marina Bay & CBD Surveillance
+                  Network" was cut mid-word beside it. The name is what somebody is reading this
+                  table to find. */}
+              <div style={{ display: "grid", gridTemplateColumns: "28px 2.6fr 0.9fr 32px", padding: "8px 20px", gap: "8px" }}>
                 <span />
-                {[t.colName, t.colType, t.colId, ""].map((h, i) => (
+                {[t.colName, t.colId, ""].map((h, i) => (
                   <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
                 ))}
               </div>
 
-              {showTeamRow && (
-                <div style={{ display: "grid", gridTemplateColumns: "28px 2.6fr 0.7fr 0.9fr 32px", padding: "8px 20px", gap: "8px", alignItems: "center" }}>
-                  <span />
-                  <span style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
-                    <TeamIcon /> {team?.name}
-                  </span>
-                  <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.typeTeam}</span>
-                  <span style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{team?.id}</span>
-                  <span />
-                </div>
-              )}
-
-              {visibleProjects.length === 0 && !showTeamRow && (
+              {/*
+                No team row.
+               
+                It was a row in a list whose entire purpose is picking one thing — and it was
+                the only row that could not be picked: a plain div with no onClick, no pointer
+                cursor and no hover, drawn identically to the clickable projects under it. That
+                is what made the list feel like two kinds of thing mixed together.
+               
+                Nothing is lost. The team is named in the selector directly above the search
+                box, and switching team is offered there and again in the rail's own team
+                switcher — a third route through an unclickable row was never one of them.
+              */}
+              {visibleProjects.length === 0 && (
                 <p style={{ fontSize: "12px", color: "var(--gray-400)", padding: "20px", textAlign: "center" }}>
                   {tab === "starred" ? t.noStarredProjects : t.noResultsFor(query)}
                 </p>
@@ -514,7 +507,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                     onClick={() => selectProject(p)}
                     className="portal-switcher-row"
                     style={{
-                      display: "grid", gridTemplateColumns: "28px 2.6fr 0.7fr 0.9fr 32px", padding: "8px 20px", gap: "8px",
+                      display: "grid", gridTemplateColumns: "28px 2.6fr 0.9fr 32px", padding: "8px 20px", gap: "8px",
                       alignItems: "center", cursor: "pointer",
                     }}
                   >
@@ -522,7 +515,6 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                     <span style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       <ProjectIcon /> {p.name}
                     </span>
-                    <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.typeProject}</span>
                     <span style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis" }}>{p.id}</span>
                     <button onClick={e => toggleStar(p.id, e)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                       <StarIcon filled={starred.has(p.id)} />
