@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useVcaStore } from "@/lib/vcaStore";
+import { useVcaStore, canManageAccess, currentPortalUser, type Team } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { Building2 } from "lucide-react";
+import { Building2, Settings2 } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH, SelectedCheckIcon } from "./PortalShared";
+import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH, ConfirmModal, SelectedCheckIcon, TextField } from "./PortalShared";
+import { useToast } from "@/components/Toast";
 
 const T = {
   en: {
@@ -21,6 +22,21 @@ const T = {
     namePlaceholder: "Northgate Education Trust",
     cancel: "Cancel",
     create: "Create team",
+
+    // Manage team modal
+    manageTeam: "Team settings",
+    manageTitle: "Team settings",
+    renameLabel: "Team name",
+    save: "Save",
+    renamedToast: "Team renamed",
+    deleteTeam: "Delete this team",
+    deleteHint: "Only a team with no projects can be deleted. Delete each project from its own Settings screen first, where what goes with it is listed.",
+    deleteBlocked: (n: number) => `${n} project(s) still belong to this team.`,
+    deleteConfirmTitle: (name: string) => `Delete ${name}?`,
+    deleteConfirmBody: "The team, its accounts, its watchlist categories and its search purposes. This cannot be undone.",
+    deleteConfirm: "Delete team",
+    deletedToast: "Team deleted",
+    ownerOnly: "Only the owner renames or deletes a team.",
   },
   ko: {
     noTeam: "팀 없음",
@@ -35,6 +51,21 @@ const T = {
     namePlaceholder: "Northgate Education Trust",
     cancel: "취소",
     create: "팀 만들기",
+
+    // Manage team modal
+    manageTeam: "팀 설정",
+    manageTitle: "팀 설정",
+    renameLabel: "팀 이름",
+    save: "저장",
+    renamedToast: "팀 이름이 바뀌었습니다",
+    deleteTeam: "이 팀 삭제",
+    deleteHint: "프로젝트가 없는 팀만 삭제할 수 있습니다. 각 프로젝트는 자기 설정 화면에서 먼저 지우세요 — 무엇이 함께 지워지는지 거기 적혀 있습니다.",
+    deleteBlocked: (n: number) => `아직 이 팀에 프로젝트가 ${n}개 있습니다.`,
+    deleteConfirmTitle: (name: string) => `${name}을(를) 삭제할까요?`,
+    deleteConfirmBody: "팀과 그 계정, 명단 분류, 조회 목적이 함께 지워집니다. 되돌릴 수 없습니다.",
+    deleteConfirm: "팀 삭제",
+    deletedToast: "팀이 삭제되었습니다",
+    ownerOnly: "팀 이름 변경과 삭제는 최고관리자만 할 수 있습니다.",
   },
 } as const;
 
@@ -91,6 +122,13 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
   const [dropUp, setDropUp] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const [showNewTeam, setShowNewTeam] = useState(false);
+  const [managingTeam, setManagingTeam] = useState(false);
+  // Owner only. Renaming a team changes what every screen in the console calls itself, and
+  // deleting one takes its accounts with it — that is role-granting weight. Fails open with no
+  // session, like every other gate here.
+  const portalUsers = useVcaStore(s => s.portalUsers);
+  const me = currentPortalUser(portalUsers);
+  const mayManageTeam = me ? canManageAccess(me.permission) : true;
   const ref = useRef<HTMLDivElement>(null);
   useEscapeKey(() => setOpen(false), open);
 
@@ -257,6 +295,27 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
                 </span>
                 {t.newTeam}
               </button>
+              {/* Renaming and deleting act on the team you are IN, so they are one entry rather
+                  than a kebab on every row — a popover with a menu on each of its own rows is two
+                  menus deep before anything happens. */}
+              {current && mayManageTeam && (
+                <button
+                  onClick={() => { setOpen(false); setManagingTeam(true); }}
+                  onMouseEnter={() => setHovered("__manage")}
+                  onMouseLeave={() => setHovered(null)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "8px", width: "100%", textAlign: "left",
+                    padding: "8px 10px", borderRadius: "6px", border: "none", cursor: "pointer",
+                    backgroundColor: hovered === "__manage" ? "var(--gray-100)" : "transparent",
+                    fontSize: "12px", fontWeight: 600, color: "var(--gray-600)",
+                  }}
+                >
+                  <span style={{ display: "flex", width: "14px", flexShrink: 0, justifyContent: "center" }}>
+                    <Settings2 size={12} strokeWidth={2.4} />
+                  </span>
+                  {t.manageTeam}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -264,6 +323,9 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
 
       {showNewTeam && (
         <NewTeamModal onClose={() => setShowNewTeam(false)} onCreated={onSelect} />
+      )}
+      {managingTeam && current && (
+        <ManageTeamModal team={current} onClose={() => setManagingTeam(false)} />
       )}
     </>
   );
@@ -286,6 +348,109 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
  * On success the shell switches to the new team, which has no projects yet and therefore lands on
  * the empty state inviting the first one. That is the intended next step, not a dead end.
  */
+/**
+ * Rename or delete the team you are in.
+ *
+ * Neither existed. No renameTeam, no removeTeam, nothing in the repo — so a team created with a
+ * typo during a handover kept the typo in the rail, the breadcrumb and every invitation mail for
+ * the life of the installation.
+ *
+ * Deleting is refused while the team still holds projects, and the reason says where to go
+ * instead. Cascading would delete several sites from a dropdown in one gesture; each project is
+ * deleted from its own Settings screen, where what goes with it is counted first.
+ */
+function ManageTeamModal({ team, onClose }: { team: Team; onClose: () => void }) {
+  useEscapeKey(onClose);
+  const renameTeam = useVcaStore(s => s.renameTeam);
+  const removeTeam = useVcaStore(s => s.removeTeam);
+  const projects = useVcaStore(s => s.projects);
+  const { showToast } = useToast();
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  const [name, setName] = useState(team.name);
+  const [confirming, setConfirming] = useState(false);
+
+  const projectCount = projects.filter(p => p.teamId === team.id).length;
+  const canDelete = projectCount === 0;
+  const canSave = name.trim().length > 0 && name.trim() !== team.name;
+
+  return (
+    <>
+      <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+        style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+        <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+          <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.manageTitle}</p>
+            <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+            </button>
+          </div>
+
+          <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.renameLabel}</label>
+              <TextField value={name} onChange={setName} autoFocus />
+            </div>
+
+            <div style={{ borderTop: BORDER, paddingTop: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.deleteTeam}</p>
+                <button onClick={() => canDelete && setConfirming(true)} disabled={!canDelete}
+                  className={canDelete ? "portal-btn-quiet" : undefined}
+                  style={{
+                    height: "30px", padding: "0 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent",
+                    color: canDelete ? "var(--danger-500)" : "var(--gray-300)",
+                    fontSize: "12px", fontWeight: 700, cursor: canDelete ? "pointer" : "not-allowed", fontFamily: "inherit",
+                  }}>
+                  {t.deleteConfirm}
+                </button>
+              </div>
+              {/* The blocker names the number, then the hint says where to go. "Cannot delete"
+                  on its own is a wall; this is a direction. */}
+              <p style={{ fontSize: "11px", color: canDelete ? "var(--gray-400)" : "var(--warning-500)", lineHeight: 1.6, marginTop: "4px" }}>
+                {canDelete ? t.deleteHint : t.deleteBlocked(projectCount)}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+            <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+              {t.cancel}
+            </button>
+            <button className="portal-btn-primary" disabled={!canSave}
+              onClick={() => {
+                renameTeam(team.id, name.trim());
+                showToast({ variant: "success", title: t.renamedToast, desc: name.trim() });
+                onClose();
+              }}
+              style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed" }}>
+              {t.save}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {confirming && (
+        <ConfirmModal
+          title={t.deleteConfirmTitle(team.name)}
+          body={t.deleteConfirmBody}
+          confirmLabel={t.deleteConfirm}
+          cancelLabel={t.cancel}
+          danger
+          onClose={() => setConfirming(false)}
+          onConfirm={() => {
+            const label = team.name;
+            removeTeam(team.id);
+            setConfirming(false);
+            onClose();
+            showToast({ variant: "warning", title: t.deletedToast, desc: label });
+          }}
+        />
+      )}
+    </>
+  );
+}
+
 export function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: (teamId: string) => void }) {
   useEscapeKey(onClose);
   const addTeam = useVcaStore(s => s.addTeam);

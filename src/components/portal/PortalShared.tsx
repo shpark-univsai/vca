@@ -1088,7 +1088,7 @@ export function SortableHeader<K extends string>({ label, sortKey, sort, onToggl
  * Remove) predate it and still carry their own markup — worth folding in here, but not while they
  * are untouched by the change that needed this.
  */
-export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, altAction, onConfirm, onClose, children }: {
+export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, confirmDisabled, altAction, onConfirm, onClose, children }: {
   title: string;
   body: string;
   /**
@@ -1103,6 +1103,14 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, a
   cancelLabel: string;
   /** Red confirm button — for the ones that take access away or cannot be undone from the menu. */
   danger?: boolean;
+  /**
+   * Holds the confirm button shut until the `children` field says otherwise.
+   *
+   * For the one class of dialog where "are you sure" is not enough: deleting a project takes a
+   * city's cameras and a watchlist of named people at once, and a red button is still one click.
+   * The caller decides what unlocks it — typing the name back, in that case.
+   */
+  confirmDisabled?: boolean;
   /**
    * A second answer to the same question, for the dialogs where "yes" has two meanings and neither
    * is safe to guess at — deleting a group of registered faces is the case this exists for: the
@@ -1152,8 +1160,13 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, a
           {/* Non-danger confirms are gray-900, not primary: restoring an account is a normal
               administrative act, and primary-400 here would spend the page's accent on a dialog
               nobody is meant to linger in. */}
-          <button onClick={onConfirm}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: danger ? "var(--danger-400)" : "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={onConfirm} disabled={confirmDisabled}
+            style={{
+              padding: "10px 16px", borderRadius: "8px", border: "none",
+              backgroundColor: confirmDisabled ? "var(--gray-200)" : danger ? "var(--danger-400)" : "var(--gray-900)",
+              color: confirmDisabled ? "var(--gray-400)" : "white",
+              fontSize: "13px", fontWeight: 700, cursor: confirmDisabled ? "not-allowed" : "pointer",
+            }}>
             {confirmLabel}
           </button>
         </div>

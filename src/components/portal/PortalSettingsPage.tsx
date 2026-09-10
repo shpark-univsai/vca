@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { Building2, Clock, Globe, KeyRound, Languages, LayoutGrid, LogIn, Mail, MapPin, Shield, User } from "lucide-react";
 import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
-import { useVcaStore, currentPortalUser, canEnterApp, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
+import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, TYPE_META, usePortalEditAccess } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, TYPE_META, ConfirmModal, usePortalEditAccess } from "./PortalShared";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "@/components/Toast";
@@ -23,6 +23,19 @@ const T = {
     team: "Team",
     projectTitle: "Project",
     projectName: "Name",
+    rename: "Rename",
+    renameSave: "Save",
+    renameCancel: "Cancel",
+    renamedToast: "Project renamed",
+    deleteProject: "Delete this project",
+    deleteProjectHint: "The project and everything filed under it. The activity log survives, re-filed under the team.",
+    deleteConfirmTitle: (name: string) => `Delete ${name}?`,
+    deleteConfirmBody: "This cannot be undone. Type the project's name to confirm.",
+    deleteConfirmCounts: (cameras: number, vips: number, staff: number) =>
+      `${cameras} input source(s), ${vips} watchlist record(s) and ${staff} roster row(s) go with it. Accounts stay — this project is removed from their list.`,
+    deleteConfirmLabel: "Delete project",
+    deletedToast: "Project deleted",
+    deleteLastProject: "This is the team's only project. A team with none shows the setup screen instead.",
     projectType: "Type",
     projectTeam: "Team",
     projectRegion: "Region",
@@ -70,6 +83,19 @@ const T = {
     team: "팀",
     projectTitle: "프로젝트",
     projectName: "이름",
+    rename: "이름 변경",
+    renameSave: "저장",
+    renameCancel: "취소",
+    renamedToast: "프로젝트 이름이 바뀌었습니다",
+    deleteProject: "이 프로젝트 삭제",
+    deleteProjectHint: "프로젝트와 그 아래 모든 것이 지워집니다. 변경 기록은 팀 밑으로 옮겨져 남습니다.",
+    deleteConfirmTitle: (name: string) => `${name}을(를) 삭제할까요?`,
+    deleteConfirmBody: "되돌릴 수 없습니다. 확인을 위해 프로젝트 이름을 입력하세요.",
+    deleteConfirmCounts: (cameras: number, vips: number, staff: number) =>
+      `입력 소스 ${cameras}개, 명단 ${vips}건, 명부 ${staff}행이 함께 지워집니다. 계정은 남고, 이 프로젝트만 목록에서 빠집니다.`,
+    deleteConfirmLabel: "프로젝트 삭제",
+    deletedToast: "프로젝트가 삭제되었습니다",
+    deleteLastProject: "팀의 마지막 프로젝트입니다. 프로젝트가 없는 팀은 설정 화면이 대신 열립니다.",
     projectType: "유형",
     projectTeam: "팀",
     projectRegion: "지역",
@@ -156,6 +182,17 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const setProjectTimeZone = useVcaStore(s => s.setProjectTimeZone);
+  const renameProject = useVcaStore(s => s.renameProject);
+  const removeProject = useVcaStore(s => s.removeProject);
+  const cameras = useVcaStore(s => s.cameras);
+  const persons = useVcaStore(s => s.persons);
+  const staffRoster = useVcaStore(s => s.staffRoster);
+  const { showToast } = useToast();
+  /** null when not renaming; the draft name while the field is open. */
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  /** Typed back before the delete button arms. See the dialog. */
+  const [deleteEcho, setDeleteEcho] = useState("");
   // The project card's one editable pair. Account and display settings below belong to whoever
   // is signed in and stay open to every role — an auditor still sets their own password and
   // their own interface language.
@@ -163,6 +200,11 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const project = projects.find(p => p.id === projectId);
   const projectTeam = project ? teams.find(tm => tm.id === project.teamId) : undefined;
   const me = currentPortalUser(portalUsers);
+  // Owner only, deliberately narrower than mayEdit. Deleting a site takes away every camera,
+  // every listed person and every roster row at once — that is role-granting weight, not
+  // settings weight. See canManageAccess.
+  const mayDeleteProject = me ? canManageAccess(me.permission) : true;
+  const isLastProjectInTeam = project ? projects.filter(p => p.teamId === project.teamId).length === 1 : false;
   const myTeam = me ? teams.find(tm => tm.id === me.teamId) : undefined;
   // The team whose policy this screen edits. Falls back to the open project's team, because the
   // stand-in identity belongs to no account list and would otherwise see no list at all.
@@ -246,7 +288,41 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       {project && (
         <CardSection heading={t.projectTitle}>
           <PairGrid>
-            <PairItem label={t.projectName} icon={<MapPin size={12} strokeWidth={2.2} />}>{project.name}</PairItem>
+            {/* Editable, at last. Every handover starts with a test project and a typo, and
+                there was no renameProject anywhere in the codebase — the first name a project
+                was given was the only one it would ever have. */}
+            <PairItem label={t.projectName} icon={<MapPin size={12} strokeWidth={2.2} />}>
+              {renaming !== null ? (
+                <span style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                  <span style={{ minWidth: "180px", flex: 1 }}>
+                    <TextField value={renaming} onChange={setRenaming} autoFocus />
+                  </span>
+                  <button className="portal-btn-primary" disabled={!renaming.trim()}
+                    onClick={() => {
+                      renameProject(project.id, renaming.trim());
+                      showToast({ variant: "success", title: t.renamedToast, desc: renaming.trim() });
+                      setRenaming(null);
+                    }}
+                    style={{ height: "30px", padding: "0 12px", borderRadius: "8px", border: "none", backgroundColor: renaming.trim() ? "var(--primary-400)" : "var(--gray-200)", color: renaming.trim() ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: renaming.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+                    {t.renameSave}
+                  </button>
+                  <button className="portal-btn-quiet" onClick={() => setRenaming(null)}
+                    style={{ height: "30px", padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                    {t.renameCancel}
+                  </button>
+                </span>
+              ) : (
+                <span style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  {project.name}
+                  {mayEdit && (
+                    <button className="portal-btn-quiet" onClick={() => setRenaming(project.name)}
+                      style={{ height: "24px", padding: "0 8px", borderRadius: "6px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      {t.rename}
+                    </button>
+                  )}
+                </span>
+              )}
+            </PairItem>
             <PairItem label={t.projectType} icon={<LayoutGrid size={12} strokeWidth={2.2} />}>{TYPE_META[project.type].label}</PairItem>
             {projectTeam && <PairItem label={t.projectTeam} icon={<Building2 size={12} strokeWidth={2.2} />}>{projectTeam.name}</PairItem>}
             {projectTeam?.region && <PairItem label={t.projectRegion} icon={<Globe size={12} strokeWidth={2.2} />}>{projectTeam.region}</PairItem>}
@@ -271,7 +347,59 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             </PairItem>
           </PairGrid>
           <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "14px" }}>{t.timeZoneNote}</p>
+
+          {/* Deleting a site is not a setting, so it does not sit among them: its own row at the
+              foot of the card, after everything you might come here to read. Owner only — this is
+              the heaviest thing anybody can do from the console, and it belongs with granting
+              roles rather than with changing a timezone. */}
+          {mayDeleteProject && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", borderTop: BORDER, marginTop: "18px", paddingTop: "16px" }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.deleteProject}</p>
+                <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "2px" }}>{t.deleteProjectHint}</p>
+              </div>
+              <button className="portal-btn-quiet" onClick={() => { setDeleteEcho(""); setConfirmingDelete(true); }}
+                style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--danger-500)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+                {t.deleteProject}
+              </button>
+            </div>
+          )}
         </CardSection>
+      )}
+
+      {confirmingDelete && project && (
+        /* Type the name back. A red button on a dialog is a click; a project holds a city's
+           cameras and a watchlist of named people, and the count of what goes is printed above
+           the field so the number is read before the name is typed. */
+        <ConfirmModal
+          title={t.deleteConfirmTitle(project.name)}
+          body={t.deleteConfirmBody}
+          confirmLabel={t.deleteConfirmLabel}
+          cancelLabel={t.renameCancel}
+          danger
+          confirmDisabled={deleteEcho.trim() !== project.name}
+          onClose={() => setConfirmingDelete(false)}
+          onConfirm={() => {
+            const name = project.name;
+            removeProject(project.id);
+            setConfirmingDelete(false);
+            showToast({ variant: "warning", title: t.deletedToast, desc: name });
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>
+              {t.deleteConfirmCounts(
+                cameras.filter(c => c.projectId === project.id).length,
+                persons.filter(pp => pp.projectId === project.id).length,
+                staffRoster.filter(r => r.projectId === project.id).length,
+              )}
+            </p>
+            {isLastProjectInTeam && (
+              <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.7 }}>{t.deleteLastProject}</p>
+            )}
+            <TextField value={deleteEcho} onChange={setDeleteEcho} placeholder={project.name} autoFocus />
+          </div>
+        </ConfirmModal>
       )}
 
       {/*

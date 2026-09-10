@@ -553,6 +553,17 @@ interface VcaStoreState {
   /** Move several cameras into one zone. Same one-entry-per-action reasoning as removeCameras. */
   setCamerasZone: (cameraIds: string[], zone: string) => void;
   addProject: (project: Omit<Project, "id">) => void;
+  renameProject: (projectId: string, name: string) => void;
+  /**
+   * Deletes a project and everything filed under it.
+   *
+   * Cascading, not orphaning: cameras, uploads, servers, the watchlist and its groups, roster
+   * rows and search-log entries all carry a projectId and mean nothing without it. The audit
+   * entries stay — the record of what was done to a site outlives the site, which is the whole
+   * point of keeping one — and so do accounts, which belong to the team; the project is removed
+   * from each account's list instead.
+   */
+  removeProject: (projectId: string) => void;
   updateProjectLicense: (projectId: string, updates: Pick<Project, "licenseChannelLimit" | "licensePlan" | "licenseExpiresAt">) => void;
   updateProjectMail: (projectId: string, updates: Pick<Project, "mailDomain" | "smtp">) => void;
   setProjectTimeZone: (projectId: string, timeZone: string) => void;
@@ -653,6 +664,9 @@ interface VcaStoreState {
   approveAccessRequests: (requestIds: string[]) => string[];
   dismissAccessRequest: (requestId: string) => void;
   addTeam: (team: Omit<Team, "id">) => string;
+  renameTeam: (teamId: string, name: string) => void;
+  /** Refuses while the team still has projects — see the implementation. */
+  removeTeam: (teamId: string) => void;
   addServer: (server: Omit<Server, "id">) => void;
   updateServer: (serverId: string, updates: Partial<Omit<Server, "id" | "projectId">>) => void;
   removeServer: (serverId: string) => void;
@@ -2247,7 +2261,62 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
     }),
   addProject: (project) =>
-    set(state => ({ projects: [...state.projects, { ...project, id: `proj-${++projectSeq}` }] })),
+    set(state => ({
+      projects: [...state.projects, { ...project, id: `proj-${++projectSeq}` }],
+      auditLog: [{ id: `audit-${++auditSeq}`, teamId: project.teamId, message: `Project created: ${project.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    })),
+  renameProject: (projectId, name) =>
+    set(state => {
+      const project = state.projects.find(p => p.id === projectId);
+      if (!project || project.name === name) return state;
+      return {
+        projects: state.projects.map(p => (p.id === projectId ? { ...p, name } : p)),
+        // Both names in the message. A rename read a year later is unreadable without the old
+        // one — "Project renamed to Bugis North" does not say which project that was.
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId,
+          message: `Project renamed: ${project.name} → ${name}`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  removeProject: (projectId) =>
+    set(state => {
+      const project = state.projects.find(p => p.id === projectId);
+      if (!project) return state;
+      const personIds = new Set(state.persons.filter(p => p.projectId === projectId).map(p => p.id));
+      return {
+        projects: state.projects.filter(p => p.id !== projectId),
+        cameras: state.cameras.filter(c => c.projectId !== projectId),
+        uploads: state.uploads.filter(u => u.projectId !== projectId),
+        servers: state.servers.filter(sv => sv.projectId !== projectId),
+        persons: state.persons.filter(p => p.projectId !== projectId),
+        personGroups: state.personGroups.filter(g => g.projectId !== projectId),
+        staffRoster: state.staffRoster.filter(r => r.projectId !== projectId),
+        searchAccessLog: state.searchAccessLog.filter(r => r.projectId !== projectId),
+        accessRequests: state.accessRequests.filter(r => r.projectId !== projectId),
+        // Detections of the people who were on this site's watchlist. personId is optional —
+        // an unidentified detection belongs to no person and is left alone.
+        events: state.events.filter(e => e.personId === undefined || !personIds.has(e.personId)),
+        // Accounts belong to the team, not the project. Somebody who worked at one site and two
+        // others keeps the other two; somebody who worked only here keeps an account with an
+        // empty list, which the Users page shows and an administrator can act on. Deleting
+        // people because a site closed is not the same decision as closing the site.
+        portalUsers: state.portalUsers.map(u => (
+          u.projectIds.includes(projectId) ? { ...u, projectIds: u.projectIds.filter(id => id !== projectId) } : u
+        )),
+        // The audit entries stay, re-filed under the team so they remain readable somewhere.
+        // A deletion that erases the record of everything that led up to it is not a deletion,
+        // it is a cover-up, and the audit log is the one screen that has to survive this.
+        auditLog: [{
+          id: `audit-${++auditSeq}`, teamId: project.teamId,
+          message: `Project deleted: ${project.name}`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...state.auditLog.map(a => (
+          a.projectId === projectId ? { ...a, projectId: undefined, teamId: project.teamId } : a
+        ))].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   updateProjectLicense: (projectId, updates) =>
     set(state => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)),
@@ -2740,9 +2809,48 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     set(state => ({ accessRequests: state.accessRequests.filter(r => r.id !== requestId) })),
   addTeam: (team) => {
     const id = `team-${++orgSeq}`;
-    set(state => ({ teams: [...state.teams, { ...team, id }] }));
+    set(state => ({
+      teams: [...state.teams, { ...team, id }],
+      auditLog: [{ id: `audit-${++auditSeq}`, teamId: id, message: `Team created: ${team.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    }));
     return id;
   },
+  renameTeam: (teamId, name) =>
+    set(state => {
+      const team = state.teams.find(o => o.id === teamId);
+      if (!team || team.name === name) return state;
+      return {
+        teams: state.teams.map(o => (o.id === teamId ? { ...o, name } : o)),
+        auditLog: [{
+          id: `audit-${++auditSeq}`, teamId,
+          message: `Team renamed: ${team.name} → ${name}`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  removeTeam: (teamId) =>
+    set(state => {
+      const team = state.teams.find(o => o.id === teamId);
+      if (!team) return state;
+      // Refused while it still holds projects, and the UI refuses first with a reason on it.
+      // Cascading a team would delete several sites at once from a dropdown, which is not a
+      // decision anybody should be able to take in one gesture — each project is deleted from
+      // its own Settings screen, where what is about to go is listed.
+      if (state.projects.some(p => p.teamId === teamId)) return state;
+      return {
+        teams: state.teams.filter(o => o.id !== teamId),
+        // Accounts filed under a team with no projects have nothing left to open. Removed with
+        // it rather than left pointing at a team that is gone.
+        portalUsers: state.portalUsers.filter(u => u.teamId !== teamId),
+        watchlistCategories: state.watchlistCategories.filter(c => c.teamId !== teamId),
+        searchPurposes: state.searchPurposes.filter(sp => sp.teamId !== teamId),
+        auditLog: [{
+          id: `audit-${++auditSeq}`,
+          message: `Team deleted: ${team.name}`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   addServer: (server) =>
     set(state => ({ servers: [...state.servers, { ...server, id: `srv-${++serverSeq}` }] })),
   updateServer: (serverId, updates) =>
