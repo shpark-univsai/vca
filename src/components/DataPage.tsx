@@ -1183,6 +1183,9 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   // Re-seed when the header switches site. Without this the wall keeps the previous site's cards
   // — the seed runs once at mount, and nothing else would clear them.
   const scopedProjectId = useActiveProjectId();
+  // Every search on this screen is answerable only from this site's cameras — see
+  // useSiteCameraCodes.
+  const siteCameras = useSiteCameraCodes();
   const firstFeedRef = useRef(true);
   useEffect(() => {
     if (firstFeedRef.current) { firstFeedRef.current = false; return; }
@@ -1306,9 +1309,9 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
     : cardSearchTarget ? { face: cardSearchTarget.face, body: cardSearchTarget.url, gender: cardSearchTarget.gender === "M" ? "Male" : "Female" }
     : null;
   const searchResults = searchType === "PERSON" && searchTarget
-    ? buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20)
+    ? buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20, siteCameras)
         .filter(r => r.similarity >= threshold)
-    : filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange: searchDateRange, threshold, licensePlate, camera: searchCamera, topColors, bottomColors, shoesColors, emotion, ethnicGroup });
+    : filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange: searchDateRange, threshold, licensePlate, camera: searchCamera, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras });
   const searchResultDetailItem = searchDetailId !== null ? searchResults.find(p => p.id===searchDetailId) ?? null : null;
 
 
@@ -2081,11 +2084,20 @@ const REID_STATUS_CYCLE: ReIDStatus[] = [
 const REID_GENDER_CYCLE  = ["F","M","F","F","M","F","M","F","F","M","M","F","F","M","F","M","F","M"];
 const REID_AGE_CYCLE     = ["28yo","28yo","28yo","35yo","28yo","42yo","28yo","28yo","31yo","28yo","35yo","28yo","28yo","29yo","28yo","37yo","28yo","33yo"];
 const REID_SCORE_CYCLE   = [null,null,87.8,null,null,null,87.8,null,null,null,null,87.8,null,null,null,null,87.8,null];
-const REID_CAM_CYCLE     = ["NC-1","NC-2","NC-3","NC-1","NC-4","NC-2","NC-1","NC-3","NC-2","NC-4","NC-1","NC-3","NC-2","NC-1","NC-4","NC-3","NC-1","NC-2"];
-// The real roster, not a private "NC-1".."NC-4" set. Re-ID's rows and its camera filter now name
-// the same cameras Live Monitoring does, so a camera picked in one tab means the same camera in the
-// other, and the filter can actually match.
-const CAMERA_OPTIONS = CAMERA_CODES;
+
+
+/**
+ * The codes of the cameras registered at the site on screen — what every search on this page is
+ * allowed to return, and what its camera picker lists.
+ *
+ * Read live from the store, so a camera the Portal adds or renames shows up here. Memoized
+ * because the array is a useMemo dependency below and a fresh array on every render would re-run
+ * every search that depends on it.
+ */
+function useSiteCameraCodes(): string[] {
+  const cameras = useProjectCameras();
+  return useMemo(() => cameras.map(c => c.code), [cameras]);
+}
 const REID_FACE_POOL     = MATCH_DATA.map(m => m.face);
 // Attribute/date/similarity fields backing the Re-ID / Smart Search filter forms — added so
 // Gender/Apparel/Props/Search Period/Similarity actually narrow the result set instead of the
@@ -2118,7 +2130,12 @@ export const REID_DATA = PERSONS.map((p, i) => ({
   gender:      REID_GENDER_CYCLE[i % REID_GENDER_CYCLE.length],
   age:         REID_AGE_CYCLE[i % REID_AGE_CYCLE.length],
   score:       REID_SCORE_CYCLE[i % REID_SCORE_CYCLE.length],
-  cam:         REID_CAM_CYCLE[i % REID_CAM_CYCLE.length],
+  // Cycled over the whole register, which spans every site — each site then gets the rows its
+  // own cameras captured through the siteCameras filter below. This used to be a private
+  // REID_CAM_CYCLE of "NC-1".."NC-4", a code space that existed nowhere else in the app: the
+  // camera picker beside the grid lists the register's real codes, so picking any camera
+  // compared "NC-2" against a real code and returned nothing at all, every time.
+  cam:         CAMERA_CODES[i % CAMERA_CODES.length],
   face:        REID_FACE_POOL[i % REID_FACE_POOL.length],
   apparel:     REID_APPAREL_CYCLE[i % REID_APPAREL_CYCLE.length],
   prop:        REID_PROP_CYCLE[i % REID_PROP_CYCLE.length],
@@ -2162,7 +2179,7 @@ export const VEHICLE_DATA = VEHICLE_PLATES.map((plate, i) => {
     status: "Unknown" as ReIDStatus,
     gender: "", age: "",
     score: null as number | null,
-    cam: REID_CAM_CYCLE[i % REID_CAM_CYCLE.length],
+    cam: CAMERA_CODES[i % CAMERA_CODES.length],
     apparel: "", prop: null as string | null,
     date: REID_DATE_CYCLE[i % REID_DATE_CYCLE.length],
     similarity: REID_SIMILARITY_CYCLE[i % REID_SIMILARITY_CYCLE.length],
@@ -2179,6 +2196,15 @@ function filterReidData(f: {
   dateRange: DateRangeValue; threshold: number; licensePlate?: string; camera?: string;
   topColors?: string[]; bottomColors?: string[]; shoesColors?: string[];
   emotion?: string; ethnicGroup?: string;
+  /**
+   * The camera codes of the site on screen. Rows captured anywhere else are not results here.
+   *
+   * The header switches sites and the camera picker above the grid lists only that site's
+   * cameras — but the grid was reading the whole mock, so switching site changed the picker and
+   * nothing else. Left undefined the search is unscoped, which is what the seeded module-level
+   * datasets below want.
+   */
+  siteCameras?: string[];
 }): typeof REID_DATA {
   // An untouched date range isn't "any time ever" — it defaults to the last 7 days, same as the
   // trigger's "Last 7 days" placeholder implies.
@@ -2194,6 +2220,7 @@ function filterReidData(f: {
     const plateQuery = (f.licensePlate ?? "").trim().toLowerCase().replace(/\s+/g, "");
     return VEHICLE_DATA
       .filter(v => !plateQuery || (v.plate ?? "").toLowerCase().replace(/\s+/g, "").includes(plateQuery))
+      .filter(v => !f.siteCameras || f.siteCameras.includes(v.cam))
       .filter(v => !f.camera || v.cam === f.camera)
       .filter(v => v.similarity >= f.threshold)
       .filter(v => inDateRange(v.date))
@@ -2208,6 +2235,7 @@ function filterReidData(f: {
     .filter(p => !genderAbbrev || p.gender === genderAbbrev)
     .filter(p => f.apparel.length === 0 || f.apparel.includes(p.apparel))
     .filter(p => f.props.length === 0 || (p.prop !== null && f.props.includes(p.prop)))
+    .filter(p => !f.siteCameras || f.siteCameras.includes(p.cam))
     .filter(p => !f.camera || p.cam === f.camera)
     .filter(p => p.similarity >= f.threshold)
     .filter(p => inDateRange(p.date))
@@ -2254,8 +2282,12 @@ function withMatchVariation(url: string, i: number): string {
 // shots of a single real identity, so each synthesized appearance reuses the target's own photo
 // across different cameras/times — the same convention the derived Tracking trail already uses
 // for one person crossing multiple cameras.
-function buildSuspectMatches(person: (typeof REID_DATA)[number], count: number): MatchItem[] {
+function buildSuspectMatches(person: (typeof REID_DATA)[number], count: number, cams: string[] = CAMERA_CODES): MatchItem[] {
   const base = reidToMatchItem(person);
+  // A person cannot have been captured by a camera that isn't installed at the site being looked
+  // at, so the appearances are spread over that site's cameras — and a site with no cameras
+  // registered has no appearances to show rather than fabricated ones.
+  if (cams.length === 0) return [];
   // Spans 97% down to ~32% across the whole batch (not a fixed 0.8/step, which used to compress
   // every match into a narrow 82-97% band regardless of `count`) — a "Min Similarity: 30%" filter
   // elsewhere in the app only means something if results actually exist down near that floor.
@@ -2265,7 +2297,7 @@ function buildSuspectMatches(person: (typeof REID_DATA)[number], count: number):
     id: person.id * 1000 + i,
     face: withMatchVariation(base.face, i),
     body: withMatchVariation(base.body, i),
-    cam: CAMERA_OPTIONS[i % CAMERA_OPTIONS.length],
+    cam: cams[i % cams.length],
     time: TIMES_P[i % TIMES_P.length],
     similarity: Math.round((97 - i * step) * 10) / 10,
   }));
@@ -2280,7 +2312,10 @@ function buildSuspectMatches(person: (typeof REID_DATA)[number], count: number):
 // independent of what a named target's profile actually is, so a specific gender+apparel+props+
 // date combination can easily have no real overlap at all — the target is a person we already
 // have a photo of, not a filter that might come up empty.
-function buildTargetResultRows(face: string, body: string, genderAbbrev: "M" | "F", count: number): typeof REID_DATA {
+function buildTargetResultRows(face: string, body: string, genderAbbrev: "M" | "F", count: number, cams: string[] = CAMERA_CODES): typeof REID_DATA {
+  // Same rule as buildSuspectMatches: the site's own cameras, and nothing at all from a site with
+  // none registered.
+  if (cams.length === 0) return [];
   // Same reasoning as buildSuspectMatches: span 97% down to ~32% across the batch instead of a
   // fixed 0.8/step that compressed every result into a narrow 82-97% band no matter how low a
   // "Min Similarity" threshold was actually set to.
@@ -2292,7 +2327,7 @@ function buildTargetResultRows(face: string, body: string, genderAbbrev: "M" | "
     time: TIMES_P[i % TIMES_P.length],
     badge: null as number | null,
     status: "Unknown" as ReIDStatus,
-    cam: CAMERA_OPTIONS[i % CAMERA_OPTIONS.length],
+    cam: cams[i % cams.length],
     similarity: Math.round((97 - i * step) * 10) / 10,
     gender: genderAbbrev,
     age: "--",
@@ -2312,7 +2347,15 @@ function buildTargetResultRows(face: string, body: string, genderAbbrev: "M" | "
 const SUSPECT_1 = REID_DATA[0]; // gender F, matches REID_GENDER_CYCLE[0]
 const SUSPECT_2 = REID_DATA[1]; // gender M, matches REID_GENDER_CYCLE[1]
 
-const CLUSTERS: ReidCluster[] = [
+/**
+ * The two clusters the Re-ID landing view starts with, built for one site.
+ *
+ * A function rather than a module constant because every match in them names a camera: built once
+ * at module load they named cameras from whichever site happened to come first in the register,
+ * and switching site in the header left them on screen unchanged.
+ */
+function buildSeedClusters(cams: string[]): ReidCluster[] {
+  return [
   {
     id: "c1",
     thumbnail: SUSPECT_1.url,
@@ -2325,7 +2368,7 @@ const CLUSTERS: ReidCluster[] = [
       { label:"Props", value:"None" },
     ],
     action: "RedFace",
-    matches: buildSuspectMatches(SUSPECT_1, 20),
+    matches: buildSuspectMatches(SUSPECT_1, 20, cams),
   },
   {
     id: "c2",
@@ -2339,9 +2382,10 @@ const CLUSTERS: ReidCluster[] = [
       { label:"Props", value:"Backpack/Bag" },
     ],
     action: "RedFace",
-    matches: buildSuspectMatches(SUSPECT_2, 20),
+    matches: buildSuspectMatches(SUSPECT_2, 20, cams),
   },
-];
+  ];
+}
 
 function MetaField({ label, value }: { label:string; value:string }) {
   return (
@@ -2437,11 +2481,13 @@ export const VIP_QUICK = [
 function randomTargetName(): string {
   return `Target #${Math.floor(1000 + Math.random() * 9000)}`;
 }
-function generateNewRecognition(existingClusters: ReidCluster[]): ReidCluster[] {
+function generateNewRecognition(existingClusters: ReidCluster[], cams: string[] = CAMERA_CODES): ReidCluster[] {
+  // Nothing is recognized at a site with no cameras registered.
+  if (cams.length === 0) return existingClusters;
   const now = new Date();
   const date = formatCapturedDate(now);
   const time = formatCapturedTime(now);
-  const cam = CAMERA_OPTIONS[Math.floor(Math.random() * CAMERA_OPTIONS.length)];
+  const cam = cams[Math.floor(Math.random() * cams.length)];
   const similarity = Math.round((80 + Math.random() * 18) * 10) / 10;
   const matchId = Date.now() + Math.floor(Math.random() * 1000);
 
@@ -2458,7 +2504,7 @@ function generateNewRecognition(existingClusters: ReidCluster[]): ReidCluster[] 
     // one fresh hit — a single photo doesn't read as "this identity has been re-identified
     // across cameras," which is the whole point of a Re-ID cluster (same generator Recent
     // Targets/VIP Quick Select search results already use for exactly this).
-    const historyRows = buildTargetResultRows(vip.face, vip.body, genderAbbrev, 20);
+    const historyRows = buildTargetResultRows(vip.face, vip.body, genderAbbrev, 20, cams);
     const fresh: ReidCluster = {
       id: `vip-${vip.name}`, thumbnail: vip.face, title: vip.name,
       // status forced to VIP: the generator marks its rows Unknown, but this cluster IS a
@@ -2474,7 +2520,7 @@ function generateNewRecognition(existingClusters: ReidCluster[]): ReidCluster[] 
   const age = `${20 + Math.floor(Math.random() * 4) * 10}s`;
   const photo = MATCH_DATA[Math.floor(Math.random() * MATCH_DATA.length)];
   const newMatch: MatchItem = { id:matchId, face:photo.face, body:photo.body, cam, date, time, similarity, gender:genderAbbrev, age, plate:null, status:"Unknown" };
-  const historyRows = buildTargetResultRows(photo.face, photo.body, genderAbbrev, 20);
+  const historyRows = buildTargetResultRows(photo.face, photo.body, genderAbbrev, 20, cams);
   const fresh: ReidCluster = {
     id: `unk-${matchId}`, thumbnail: photo.face, title: randomTargetName(),
     subject: historyRows[0],
@@ -2664,6 +2710,10 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
   const [open, setOpen] = useState(false);
   const cameraStatus = useCameraStatus();
   const statusOf = (code: string) => cameraStatus.byCode(code);
+  // The register, scoped to the site on screen — not the module-level CAMERA_OPTIONS this used to
+  // list. That constant is every camera in the mock, so switching site in the header left the
+  // picker naming another site's cameras and the switch was decoration in this tab.
+  const options = useSiteCameraCodes();
   const label = value || "All Cameras";
   return (
     /* 152px fitted "NC-1"; a real code plus its ON/OFF needs more, and the label was ellipsing. */
@@ -2698,7 +2748,7 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
               panel meant the extra entries were simply unreachable. "All Cameras" stays pinned
               above it — it is the reset, not one of the cameras. */}
           <div className="vca-thin-scrollbar" style={{ overflowY:"auto" }}>
-          {CAMERA_OPTIONS.map(code => (
+          {options.map(code => (
             <button key={code} className="vca-picker-option" data-on={code===value}
               onClick={() => { onChange(code); setOpen(false); }} style={{
               display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer",
@@ -2726,6 +2776,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   const [lang] = useLanguage();
   const t = T[lang];
   const [expanded, setExpanded]         = useState(false);
+  const siteCameras = useSiteCameraCodes();
   // Same collapsible tabbed sidebar as Live Monitoring's Photo/Filter/VIP/Car search (see
   // LiveSearchSidebar) — was its own separate SearchPanel layout before, which meant the two
   // screens' search UIs could drift out of sync every time one of them changed.
@@ -2755,19 +2806,27 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   const [prevSeedCard, setPrevSeedCard] = useState<typeof seedCard | "UNSET">("UNSET");
   // The landing view (before any search) — continuously "recognizes" someone new every so often,
   // newest at top, instead of sitting on two permanently-fixed example clusters forever.
-  const [liveClusters, setLiveClusters] = useState<ReidCluster[]>(CLUSTERS);
+  const [liveClusters, setLiveClusters] = useState<ReidCluster[]>(() => buildSeedClusters(siteCameras));
+  // Re-seed when the header switches site. Every match in a cluster names a camera, so the
+  // clusters left over from the previous site are sightings that did not happen here — the same
+  // reason Live Monitoring re-seeds its wall.
+  const firstClusterRef = useRef(true);
+  useEffect(() => {
+    if (firstClusterRef.current) { firstClusterRef.current = false; return; }
+    setLiveClusters(buildSeedClusters(siteCameras));
+  }, [siteCameras]);
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const scheduleNext = () => {
       const delay = 15000 + Math.random() * 15000;
       timer = setTimeout(() => {
-        setLiveClusters(prev => generateNewRecognition(prev).slice(0, LIVE_RECOGNITION_FEED_CAP));
+        setLiveClusters(prev => generateNewRecognition(prev, siteCameras).slice(0, LIVE_RECOGNITION_FEED_CAP));
         scheduleNext();
       }, delay);
     };
     scheduleNext();
     return () => clearTimeout(timer);
-  }, []);
+  }, [siteCameras]);
 
   const toggleTopColor    = (c: string) => setTopColors(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c]);
   const toggleBottomColor = (c: string) => setBottomColors(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c]);
@@ -2856,7 +2915,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   // a target's picked those stop being real filters — the meta line below only lists what's
   // actually driving the results, same reasoning as Smart Search's results-bar chips.
   const targetRows = searchType === "PERSON" && searchTarget
-    ? buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20)
+    ? buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20, siteCameras)
         .filter(r => r.similarity >= threshold)
     : null;
   const targetMatches = targetRows?.map(reidToMatchItem) ?? null;
@@ -2890,7 +2949,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
       { label:"Similarity", value:`${threshold}%` },
     ],
     action: "RedFace",
-    matches: targetMatches ?? filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange, threshold, licensePlate, camera, topColors, bottomColors, shoesColors, emotion, ethnicGroup }).slice(0, 20)
+    matches: targetMatches ?? filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange, threshold, licensePlate, camera, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras }).slice(0, 20)
       .map(p => ({ ...reidToMatchItem(p), similarity: p.similarity })),
   } : null;
   const clusters = hasSearched ? (searchResultCluster ? [searchResultCluster] : []) : liveClusters;
@@ -2982,6 +3041,7 @@ function candidatesFromFilters(f: {
   dateRange: DateRangeValue; threshold: number; licensePlate?: string; camera?: string;
   topColors?: string[]; bottomColors?: string[]; shoesColors?: string[];
   emotion?: string; ethnicGroup?: string;
+  siteCameras?: string[];
 }): RedfaceCandidate[] {
   return filterReidData(f).slice(0, 12)
     .map(p => ({ id:p.id, url:p.url, cam:p.cam, time:p.time, similarity:p.similarity, plate:p.plate }));
@@ -3044,6 +3104,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   const [lang] = useLanguage();
   const t = T[lang];
   useEscapeKey(onCancel);
+  const siteCameras = useSiteCameraCodes();
   const [searchType, setSearchType]         = useState<"PERSON"|"VEHICLE">("PERSON");
   const [selectedTarget, setSelectedTarget] = useState(-1);
   const [activeVIP, setActiveVIP]           = useState(-1);
@@ -3150,13 +3211,13 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   // fall back to uploadedFace/uploadedBody, so uploading a photo drives results the same way
   // picking a Recent target or VIP does, instead of the upload being purely cosmetic.
   const targetCandidates: RedfaceCandidate[] | null = searchType === "PERSON" && (faceSrc || bodySrc)
-    ? buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, target?.gender === "Male" ? "M" : gender === "Male" ? "M" : "F", 20)
+    ? buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, target?.gender === "Male" ? "M" : gender === "Male" ? "M" : "F", 20, siteCameras)
         .filter(r => r.similarity >= threshold)
         .map(p => ({ id: p.id, url: p.url, cam: p.cam, time: p.time, similarity: p.similarity, plate: p.plate }))
     : null;
   // Live — recomputes on every filter change instead of staying empty until a "Search" click, so
   // the results panel never sits disconnected from the filters actually driving it.
-  const candidates = targetCandidates ?? candidatesFromFilters({ searchType, gender, apparel, props, dateRange, threshold, licensePlate, topColors, bottomColors, shoesColors });
+  const candidates = targetCandidates ?? candidatesFromFilters({ searchType, gender, apparel, props, dateRange, threshold, licensePlate, topColors, bottomColors, shoesColors, siteCameras });
   // Picking a Recent target or a VIP already names one specific person, so its top candidate row
   // starts selected. That row is not a lookalike: buildTargetResultRows builds it FROM the picked
   // face at 97%, so it is the same photo — clicking it could only ever choose the same person.
