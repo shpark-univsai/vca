@@ -66,7 +66,17 @@ function makeLanguageHook(storageKey: string, fallbackKey?: string) {
 /** The monitoring app's language. Set from My Page -> Interface language. */
 export const useLanguage = makeLanguageHook(APP_LANGUAGE_KEY);
 
-/** Portal's own language, independent of the app's. Set from Settings -> Interface language. */
+/**
+ * Portal's own language, independent of the app's. Set from Settings -> Interface language.
+ *
+ * DO NOT "unify" this name with useLanguage. A cleanup list has carried "rename
+ * usePortalLanguage -> useLanguage" as a mechanical tidy-up, and it is not one: these are two
+ * hooks over two different keys ("vca:portalLanguage" and "vca:language"), because the console
+ * and the monitoring app deliberately remember their languages separately — an administrator
+ * reading Korean in Portal and an operator on an English wall are the same installation. No file
+ * aliases one to the other; Portal imports this one, the app imports the other, and that is
+ * already the tidy state. Merging the names merges the settings.
+ */
 export const usePortalLanguage = makeLanguageHook(PORTAL_LANGUAGE_KEY, APP_LANGUAGE_KEY);
 
 /**
