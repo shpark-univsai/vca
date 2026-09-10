@@ -83,7 +83,6 @@ const T = {
     verify: "Continue",
     verified: "Current password confirmed",
     changeStep: "Choose a new password",
-    back: "Use a different password",
     newPassword: "New password",
     confirmPassword: "Confirm password",
     mismatch: "Passwords do not match. Please try again.",
@@ -163,7 +162,6 @@ const T = {
     verify: "확인",
     verified: "현재 비밀번호가 확인되었습니다",
     changeStep: "새 비밀번호 정하기",
-    back: "현재 비밀번호 다시 입력",
     newPassword: "새 비밀번호",
     confirmPassword: "비밀번호 확인",
     mismatch: "비밀번호가 일치하지 않습니다. 다시 입력해주세요.",
@@ -761,15 +759,15 @@ function ChangePasswordModal({ t, lang, onClose }: {
         ) : (
           <>
             <div style={{ padding: "16px 20px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
-              {/* The step behind you, stated rather than left blank — and it stays undoable,
-                  because the one reason to come back is that you typed the wrong one and the
-                  server has not told you yet. */}
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", padding: "9px 12px", borderRadius: "8px", backgroundColor: "var(--gray-50)", border: BORDER }}>
-                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", flex: 1, minWidth: 0 }}>{t.verified}</span>
-                <button className="portal-btn-quiet" onClick={() => { setStep("verify"); setCurrent(""); }}
-                  style={{ flexShrink: 0, height: "24px", padding: "0 8px", borderRadius: "6px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                  {t.back}
-                </button>
+              {/* The step behind you, stated rather than left blank.
+   
+                  No way back from here, and that is not an omission. It briefly had one, on the
+                  reasoning that you might have typed the current password wrong — but once the
+                  server answers step 1, a wrong one never reaches this screen. The button existed
+                  only because the mock lets anything through, and it would have been dead weight
+                  the day this was wired. Cancel is the way out. */}
+              <div style={{ padding: "9px 12px", borderRadius: "8px", backgroundColor: "var(--gray-50)", border: BORDER }}>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{t.verified}</span>
               </div>
               {field(t.newPassword, next, setNext, "new-password",
                 /* The rule under the field, not in a tooltip: it should be readable before it is
