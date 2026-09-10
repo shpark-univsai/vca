@@ -3683,7 +3683,7 @@ function xAt(i: number, count: number, step: number) {
   return 50 - ((count - 1) * step) / 2 + i * step;
 }
 
-function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId }: { primaryTarget:{ name:string; face:string } | null; rows: PyramidRow[]; onNodeClick:(tier:string, node:RedfaceNode)=>void; selectedNodeId:number|null }) {
+function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateRange }: { primaryTarget:{ name:string; face:string } | null; rows: PyramidRow[]; onNodeClick:(tier:string, node:RedfaceNode)=>void; selectedNodeId:number|null; dateRange: DateRangeValue }) {
   const cooccurCams = useCooccurCameras();
   const [lang] = useLanguage();
   const totalWeight = rows.reduce((s, r) => s + r.weight, 0) || 1;
@@ -3774,7 +3774,7 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId }: { p
         const y = nodeY(r, i);
         // Same buildCooccurEvents sample the Joint Evidence panel uses for this node — reused
         // here only for a lightweight last-seen/location tooltip, not to duplicate the panel.
-        const nodeEvents = buildCooccurEvents(n, cooccurCams);
+        const nodeEvents = cooccurEventsInRange(n, cooccurCams, dateRange);
         const nodeTopGroup = groupCooccurEvents(nodeEvents)[0];
         const nodeLastSeen = [...nodeEvents].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).pop()!;
         return (
@@ -3786,7 +3786,10 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId }: { p
               boxShadow: n.id === selectedNodeId ? "0 0 0 3px rgba(90,61,251,0.45), 0 2px 8px rgba(14, 22, 42,0.15)" : "0 2px 8px rgba(14, 22, 42,0.15)" }}>
               <img src={n.face} alt="" style={{ width:"100%", height:"100%", borderRadius:`${10 - r.meta!.nodeBorder}px`, objectFit:"cover", display:"block" }} />
             </div>
-            <span style={{ fontSize:"10px", fontWeight:800, color:"white", backgroundColor:r.meta!.nodeColor, padding:"3px 7px", borderRadius:"999px" }}>{n.count}</span>
+            {/* The co-captures in the range on screen — the same rows the Joint Evidence panel
+                pages through when this node is opened. n.count is the pair's whole history, which
+                is what puts them in this tier but not what the date filter left. */}
+            <span style={{ fontSize:"10px", fontWeight:800, color:"white", backgroundColor:r.meta!.nodeColor, padding:"3px 7px", borderRadius:"999px" }}>{nodeEvents.length}</span>
           </div>
         );
       }))}
@@ -3913,8 +3916,13 @@ type CooccurEvent = {
 // a server pass and the client agree except across a midnight, and only on a default the user can
 // see and change.
 const DEFAULT_REDFACE_RANGE: DateRangeValue = (() => {
-  const end = new Date(); end.setHours(0, 0, 0, 0);
-  const start = new Date(end); start.setDate(start.getDate() - 6);
+  // Anchored on the clock the co-capture dates are WRITTEN on, not the machine's. dateKeyOf reads
+  // a bound's local calendar day, so from the machine's own midnight the end bound named yesterday
+  // on any machine behind the mock clock — and the newest day of co-captures fell out of the very
+  // window the screen opens with, silently.
+  const [y, m, d] = recentSgtStamp(0).date.split("-").map(Number);
+  const end = new Date(y, m - 1, d);
+  const start = new Date(y, m - 1, d - 6);
   return { start, end };
 })();
 
@@ -3949,6 +3957,24 @@ function buildCooccurEvents(node: RedfaceNode, cams: CooccurCamera[]): CooccurEv
     const boxLeft = 22 + ((node.id + i * 13) % 18);
     return { location: cam.location, camCode: cam.code, scene: cam.scene, date, time: `${two(hh)}:${two(mm)}:${two(ss)}`, boxLeft };
   });
+}
+
+/**
+ * A pair's co-captures inside the date range on screen.
+ *
+ * The range used to decide only whether a NODE was drawn at all. Everything inside it — the
+ * timeline, the peak location, the co-capture figure — kept reading the pair's whole history, so
+ * narrowing the range to today left a node claiming 148 co-captures and paging through eight days
+ * of frames to prove it. What a screen reports has to be what it filtered.
+ *
+ * Tier membership is deliberately NOT recomputed from this: the tiers are >100 / 10-99 / <10
+ * co-captures over the whole relationship, which is a property of the pair and not of the window
+ * being looked at.
+ */
+function cooccurEventsInRange(node: RedfaceNode, cams: CooccurCamera[], range: DateRangeValue): CooccurEvent[] {
+  const all = buildCooccurEvents(node, cams);
+  if (!range.start && !range.end) return all;
+  return all.filter(e => dateWithinRange(e.date, range));
 }
 
 function groupCooccurEvents(events: CooccurEvent[]) {
@@ -4172,8 +4198,9 @@ function SharedFrameLightbox({ event, assocLabel, index, total, onStep, onClose,
   );
 }
 
-function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
+function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, dateRange }: {
   primary: { name:string; face:string }; tier: "tier1"|"tier2"|"tier3"; node: RedfaceNode;
+  dateRange: DateRangeValue;
   onClose: () => void;
   onAnalyzeFrame?: (location: string, at: { date: string; time: string }) => void;
 }) {
@@ -4185,7 +4212,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
   // it is there, otherwise the name itself is the identifier.
   const primaryId = primary.name.match(/\(([^)]+)\)/)?.[1] ?? primary.name;
   const cooccurCams = useCooccurCameras();
-  const events = buildCooccurEvents(node, cooccurCams);
+  const events = cooccurEventsInRange(node, cooccurCams, dateRange);
   const groups = groupCooccurEvents(events);
   const topGroup = groups[0];
   const { bucket, count: bucketCount, pct } = dominantTimeBucket(events);
@@ -4302,7 +4329,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame }: {
             {/* Status rides this line now that the analytics block is back to two stat cards —
                 it has nowhere else to sit, and it belongs to the associate, not to the pattern. */}
             <span style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"11px", color:"var(--gray-500)" }}>
-              {meta.label[lang]} · {t.coCaptures(node.count)}
+              {meta.label[lang]} · {t.coCaptures(events.length)}
               <span style={{ fontSize:"9px", fontWeight:800, color:statusBadge.text, backgroundColor:statusBadge.bg,
                 padding:"2px 6px", borderRadius:"4px", letterSpacing:"0.2px" }}>{lang === "ko" ? attr(node.status, lang) : node.status.toUpperCase()}</span>
             </span>
@@ -4507,10 +4534,11 @@ const COCAPTURE_COLOR: Record<"tier1"|"tier2"|"tier3", string> = {
   tier1:"var(--danger-400)", tier2:"var(--gray-500)", tier3:"var(--gray-500)",
 };
 
-function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort }: {
+function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort, dateRange }: {
   rows: Array<{ tier:"tier1"|"tier2"|"tier3"; node:RedfaceNode }>;
   onInspect: (tier:string, node:RedfaceNode) => void;
   selectedNodeId: number|null;
+  dateRange: DateRangeValue;
   /** Sorting lives on the column it sorts. It used to be a "Sort associates by" select in the
    *  filter column, offering the two directions of this one field as if they were a list of
    *  options — which is what a column header already is. */
@@ -4577,7 +4605,7 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort }
         // an unrelated 3-entry JOINT_EVENT_DATES pool (keyed only by node.id % 3) while the panel
         // computed its own independently-seeded sample, so the two views could show different
         // "Last detected" dates for the SAME associate.
-        const events = buildCooccurEvents(r.node, cooccurCams);
+        const events = cooccurEventsInRange(r.node, cooccurCams, dateRange);
         const groups = groupCooccurEvents(events);
         const topGroup = groups[0];
         const sortedByDate = [...events].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
@@ -4597,7 +4625,8 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort }
               <span title={badge.label} style={{ fontSize:"11px", fontWeight:800, color:badge.text, backgroundColor:badge.bg,
                 padding:"2px 8px", borderRadius:"999px", cursor:"help" }}>{r.tier.slice(-1)}</span>
             </div>
-            <span style={{ width:"92px", flexShrink:0, fontSize:"13px", fontWeight:700, color:COCAPTURE_COLOR[r.tier] }}>{r.node.count}</span>
+            {/* Same rule as the pyramid badge: what the filter left, not the whole history. */}
+            <span style={{ width:"92px", flexShrink:0, fontSize:"13px", fontWeight:700, color:COCAPTURE_COLOR[r.tier] }}>{events.length}</span>
             <div style={{ width:"76px", flexShrink:0 }}>
               <span style={{ fontSize:"10px", fontWeight:800, color:statusBadge.text, backgroundColor:statusBadge.bg,
                 padding:"2px 6px", borderRadius:"4px", letterSpacing:"0.2px" }}>{lang === "ko" ? attr(r.node.status, lang) : r.node.status.toUpperCase()}</span>
@@ -4680,10 +4709,7 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
   // Reuses buildCooccurEvents' own dates rather than a separate fabricated "last activity" field —
   // a node passes the filter if ANY of its sampled co-capture events fall inside the range.
   const [dateRange, setDateRange] = useState<DateRangeValue>(DEFAULT_REDFACE_RANGE);
-  const inDateRange = (n: RedfaceNode) => {
-    if (!dateRange.start && !dateRange.end) return true;
-    return buildCooccurEvents(n, cooccurCams).some(e => dateWithinRange(e.date, dateRange));
-  };
+  const inDateRange = (n: RedfaceNode) => cooccurEventsInRange(n, cooccurCams, dateRange).length > 0;
   const sortNodes = (nodes: RedfaceNode[]) => [...nodes].sort((a, b) => sortDir === "desc" ? b.count - a.count : a.count - b.count);
 
   const tier1 = sortNodes(REDFACE_TIER1.filter(n => notExcluded(n) && inDateRange(n)));
@@ -4799,6 +4825,7 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
           hasVisibleTier ? (
             <PyramidCanvas primaryTarget={primaryTarget} rows={visibleRows}
               selectedNodeId={selectedNode?.node.id ?? null}
+              dateRange={dateRange}
               onNodeClick={toggleSelectedNode} />
           ) : (
             <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--gray-400)", fontSize:"13px", fontWeight:600 }}>
@@ -4808,6 +4835,7 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
         ) : (
           hasVisibleTier ? (
             <DataGridView rows={gridRows} selectedNodeId={selectedNode?.node.id ?? null} onInspect={toggleSelectedNode}
+              dateRange={dateRange}
               sortDir={sortDir} onToggleSort={() => setSortDir(d => d === "desc" ? "asc" : "desc")} />
           ) : (
             <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--gray-400)", fontSize:"13px", fontWeight:600 }}>
@@ -4821,6 +4849,7 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
           primaryTarget exists (see visibleRows above), so primaryTarget is guaranteed here too. */}
       {selectedNode && primaryTarget && (
         <JointEvidencePanel primary={primaryTarget} tier={selectedNode.tier} node={selectedNode.node}
+          dateRange={dateRange}
           onAnalyzeFrame={onGoAnalyzeFrame}
           onClose={() => setSelectedNode(null)}
         />
