@@ -206,7 +206,7 @@ function PasswordSetupForm() {
               {/* New password */}
               <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                 <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.newPassword}</label>
-                <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", height: "48px", padding: "0 14px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
                   <LockFieldIcon />
                   <input
                     type={showNew ? "text" : "password"}
@@ -225,7 +225,7 @@ function PasswordSetupForm() {
               {/* Confirm password */}
               <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                 <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.confirmPassword}</label>
-                <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", height: "48px", padding: "0 14px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
                   <LockFieldIcon />
                   <input
                     type={showConfirm ? "text" : "password"}

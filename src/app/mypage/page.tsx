@@ -380,7 +380,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.currentPassword}</label>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "44px", padding: "8px", border: fieldBorder(focusedField === "current"), borderRadius: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", height: "44px", padding: "0 14px", border: fieldBorder(focusedField === "current"), borderRadius: "8px" }}>
                     <LockFieldIcon />
                     <input
                       type={showCurrent ? "text" : "password"}
@@ -418,7 +418,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.newPassword}</label>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "44px", padding: "8px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", height: "44px", padding: "0 14px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
                     <LockFieldIcon />
                     <input
                       type={showNew ? "text" : "password"}
@@ -438,7 +438,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.confirmPassword}</label>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "44px", padding: "8px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", height: "44px", padding: "0 14px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
                     <LockFieldIcon />
                     <input
                       type={showConfirm ? "text" : "password"}

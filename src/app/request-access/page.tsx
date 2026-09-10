@@ -210,7 +210,7 @@ function RequestAccessForm() {
                   {/* Name */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                     <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.name}</label>
-                    <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px",
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", height: "48px", padding: "0 14px",
                       border: nameError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: "8px" }}>
                       <PersonFieldIcon />
                       <input
@@ -228,7 +228,7 @@ function RequestAccessForm() {
                       so under the field rather than letting someone use a throwaway address. */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                     <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.email}</label>
-                    <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px",
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", height: "48px", padding: "0 14px",
                       border: emailError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: "8px" }}>
                       <PersonFieldIcon />
                       <input

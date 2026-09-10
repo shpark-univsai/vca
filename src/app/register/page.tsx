@@ -323,7 +323,7 @@ function RegisterFlow() {
   ) => (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
       <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{label}</label>
-      <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px", border: fieldBorder(focusedField === key), borderRadius: "8px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", height: "48px", padding: "0 14px", border: fieldBorder(focusedField === key), borderRadius: "8px" }}>
         <LockFieldIcon />
         <input
           type={shown ? "text" : "password"}

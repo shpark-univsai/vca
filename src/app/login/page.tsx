@@ -277,7 +277,7 @@ function LoginForm() {
                 <label style={FIELD_LABEL}>
                   {authConfig.employeeIdLogin ? t.identifierWithId : t.identifierEmailOnly}
                 </label>
-                <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px", border: FIELD_BORDER, borderRadius: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", height: "48px", padding: "0 14px", border: FIELD_BORDER, borderRadius: "8px" }}>
                   <PersonFieldIcon />
                   <input
                     value={identifier}
@@ -308,7 +308,7 @@ function LoginForm() {
                     {t.forgot}
                   </button>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "48px", padding: "8px", border: FIELD_BORDER, borderRadius: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", height: "48px", padding: "0 14px", border: FIELD_BORDER, borderRadius: "8px" }}>
                   <LockFieldIcon />
                   <input
                     type={showPassword ? "text" : "password"}
