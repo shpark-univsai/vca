@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MatchItem, ReIDStatus } from "@/types/reid";
 import {
-  CAMERA_CODES, canSearchInApp,
+  CAMERA_CODES, canSearchInApp, judgementFor, type DetectionVerdict,
   useActiveProjectId, useProjectCameras, useVcaStore, type Camera,
 } from "@/lib/vcaStore";
 import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
@@ -58,6 +58,12 @@ const T = {
     noSearchPermission: "You do not have permission to search people — ask an administrator",
     allCameras: "All cameras",
     labelType: "Type",
+    confirmed: "Confirmed",
+    excluded: "Excluded",
+    confirmAssociate: "Same person — confirm this associate",
+    excludeAssociate: "Not the same person — mark as a false positive",
+    undoJudgement: "Undo",
+    judgedBy: (actor: string, at: string) => `${actor} · ${at}`,
     thresholdCost: (kept: number, total: number) => `${kept} of ${total} candidates`,
     thresholdCostNone: (total: number) => `none of ${total} candidates`,
     associatesCount: (n: number) => `${n} ${n === 1 ? "ASSOCIATE" : "ASSOCIATES"}`,
@@ -210,6 +216,12 @@ const T = {
     noSearchPermission: "인물 검색 권한이 없습니다 — 관리자에게 요청하세요",
     allCameras: "전체 카메라",
     labelType: "종류",
+    confirmed: "확인됨",
+    excluded: "제외됨",
+    confirmAssociate: "같은 사람입니다 — 이 동행을 확인",
+    excludeAssociate: "같은 사람이 아닙니다 — 오탐으로 표시",
+    undoJudgement: "되돌리기",
+    judgedBy: (actor: string, at: string) => `${actor} · ${at}`,
     thresholdCost: (kept: number, total: number) => `후보 ${total}건 중 ${kept}건`,
     thresholdCostNone: (total: number) => `후보 ${total}건 중 0건`,
     associatesCount: (n: number) => `동행 ${n}명`,
@@ -3978,6 +3990,7 @@ function xAt(i: number, count: number, step: number) {
 
 function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateRange }: { primaryTarget:{ name:string; face:string } | null; rows: PyramidRow[]; onNodeClick:(tier:string, node:RedfaceNode)=>void; selectedNodeId:number|null; dateRange: DateRangeValue }) {
   const cooccurCams = useCooccurCameras();
+  const verdictOf = useRedfaceVerdicts();
   const [lang] = useLanguage();
   const t = T[lang];
   const totalWeight = rows.reduce((s, r) => s + r.weight, 0) || 1;
@@ -4074,7 +4087,11 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateR
         return (
           <div key={`${r.key}-node-${n.id}`} title={T[lang].lastSeenAt(`${nodeLastSeen.date} ${nodeLastSeen.time}`, nodeTopGroup.location)}
             style={{ position:"absolute", left:`${x}%`, top:`${y}%`, transform:"translate(-50%,-50%)",
-            display:"flex", flexDirection:"column", alignItems:"center", gap:"4px", zIndex: r.key === "tier1" ? 4 : r.key === "tier2" ? 3 : 2 }}>
+            display:"flex", flexDirection:"column", alignItems:"center", gap:"4px", zIndex: r.key === "tier1" ? 4 : r.key === "tier2" ? 3 : 2,
+            // Judged a false positive: still drawn, and dimmed. Removing it would take the
+            // judgement off the screen with it — the next shift would find a graph that simply
+            // never had this person in it, and no way to see that somebody already looked.
+            opacity: verdictOf(n.id) === "false_positive" ? 0.4 : 1 }}>
             <div className="redface-avatar-hover" onClick={() => onNodeClick(r.key, n)} style={{ position:"relative", width:r.meta!.nodeSize, height:r.meta!.nodeSize, borderRadius:"10px",
               border:`${r.meta!.nodeBorder}px solid ${r.meta!.nodeColor}`, backgroundColor:"white", boxSizing:"border-box",
               boxShadow: n.id === selectedNodeId ? "0 0 0 3px rgba(90,61,251,0.45), 0 2px 8px rgba(14, 22, 42,0.15)" : "0 2px 8px rgba(14, 22, 42,0.15)" }}>
@@ -4172,6 +4189,23 @@ function cooccurCamerasForSite(cams: Camera[]): CooccurCamera[] {
     picked.push({ code: cam.code, location: cam.location, scene: CO_SCENES[i] });
   }
   return picked;
+}
+
+/**
+ * This site's operators' calls on RedFace associates, as a lookup.
+ *
+ * Read in three places — the pyramid, the grid and the evidence panel — because a judgement that
+ * only shows on the screen where it was made does not survive a shift change, which is half of
+ * what recording it is for.
+ */
+function useRedfaceVerdicts(): (nodeId: number) => DetectionVerdict | undefined {
+  const judgements = useVcaStore(state => state.detectionJudgements);
+  return useMemo(() => {
+    const byId = new Map(
+      judgements.filter(j => j.surface === "redface").map(j => [j.subjectId, j.verdict] as const),
+    );
+    return (nodeId: number) => byId.get(String(nodeId));
+  }, [judgements]);
 }
 
 /** Memoised so the four RedFace views that need this list all get the same one. */
@@ -4502,6 +4536,22 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
   const t = T[lang];
   const meta = TIER_LINK_META[tier];
   const statusBadge = STATUS_BADGE_META[node.status];
+  /**
+   * The operator's own call on this associate, in the store rather than in this component.
+   *
+   * RedFace had an exclude action once and it was a Set that lived until the primary target
+   * changed — so a judgement disappeared the moment the screen moved on, and was never attributed
+   * to anybody. Both verdicts, because "nobody has looked at this pair yet" and "somebody looked
+   * and they really are together" are different states, and a screen with only an exclude button
+   * cannot tell them apart.
+   *
+   * The subject is the node id: it is seeded and stable, so the same associate keeps its verdict
+   * across searches. Redmap writes the same record for its sightings — see DetectionJudgement.
+   */
+  const judgements = useVcaStore(state => state.detectionJudgements);
+  const recordJudgement = useVcaStore(state => state.recordJudgement);
+  const clearJudgement = useVcaStore(state => state.clearJudgement);
+  const judgement = judgementFor(judgements, "redface", String(node.id));
   // Names arrive either bare ("TS700005", "Mina") or with the id in parentheses; take the id when
   // it is there, otherwise the name itself is the identifier.
   const primaryId = primary.name.match(/\(([^)]+)\)/)?.[1] ?? primary.name;
@@ -4627,6 +4677,48 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
               <span style={{ fontSize:"9px", fontWeight:800, color:statusBadge.text, backgroundColor:statusBadge.bg,
                 padding:"2px 6px", borderRadius:"4px", letterSpacing:"0.2px" }}>{lang === "ko" ? attr(node.status, lang) : node.status.toUpperCase()}</span>
             </span>
+          </div>
+          {/* The call, at the top of the panel that holds the evidence for it — not buried under
+              the frames. Two buttons until somebody decides, then what was decided plus a way
+              back. Who and when come from the record, because "a human checked this" is only a
+              defence if it says which human. */}
+          <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:"6px", flexShrink:0 }}>
+            {judgement ? (
+              <>
+                <span style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:"1px" }}>
+                  <span style={{ fontSize:"10px", fontWeight:800,
+                    color: judgement.verdict === "confirmed" ? "var(--success-400)" : "var(--danger-400)" }}>
+                    {judgement.verdict === "confirmed" ? t.confirmed : t.excluded}
+                  </span>
+                  <span style={{ fontSize:"9px", fontWeight:600, color:"var(--gray-400)", whiteSpace:"nowrap" }}>
+                    {t.judgedBy(judgement.actor, sgtClockTime(new Date(judgement.at)))}
+                  </span>
+                </span>
+                <button onClick={() => clearJudgement("redface", String(node.id))} title={t.undoJudgement}
+                  style={{ background:"none", border:"none", cursor:"pointer", fontSize:"10px", fontWeight:700, color:"var(--gray-500)", padding:"2px 4px" }}>
+                  {t.undoJudgement}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => recordJudgement({ surface:"redface", subjectId:String(node.id), targetLabel:primary.name, verdict:"confirmed" })}
+                  title={t.confirmAssociate}
+                  style={{ display:"flex", alignItems:"center", gap:"4px", padding:"5px 10px", borderRadius:"6px",
+                    border:"1px solid var(--success-400)", backgroundColor:"white", cursor:"pointer",
+                    fontSize:"11px", fontWeight:700, color:"var(--success-400)", whiteSpace:"nowrap" }}>
+                  <CheckIconSm /> {t.confirmed}
+                </button>
+                <button
+                  onClick={() => recordJudgement({ surface:"redface", subjectId:String(node.id), targetLabel:primary.name, verdict:"false_positive" })}
+                  title={t.excludeAssociate}
+                  style={{ display:"flex", alignItems:"center", gap:"4px", padding:"5px 10px", borderRadius:"6px",
+                    border:"1px solid var(--gray-300)", backgroundColor:"white", cursor:"pointer",
+                    fontSize:"11px", fontWeight:700, color:"var(--danger-400)", whiteSpace:"nowrap" }}>
+                  <XCircleIconSm /> {t.excluded}
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -4842,6 +4934,7 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort, 
   const [lang] = useLanguage();
   const t = T[lang];
   const cooccurCams = useCooccurCameras();
+  const verdictOf = useRedfaceVerdicts();
   // Read after mount, not during render: same reason the portal's license countdown does it this
   // way — the clock isn't a pure input, and rendering it during the server pass would mismatch.
   const [nowMs, setNowMs] = useState<number | null>(null);
@@ -4909,11 +5002,23 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort, 
         const { bucket, count: bucketCount } = dominantTimeBucket(events);
         return (
           <div key={`${r.tier}-${r.node.id}`} style={{ backgroundColor: i === 0 ? "var(--primary-100)" : "white", borderTop:BORDER,
+            // Same rule as the pyramid: a false positive stays in the list, dimmed. See the note
+            // there for why it is not removed.
+            opacity: verdictOf(r.node.id) === "false_positive" ? 0.45 : 1,
             padding:"10px 20px", display:"flex", gap:"8px", alignItems:"center" }}>
             <span style={{ width:"50px", flexShrink:0, fontSize:"12px", fontWeight:700, color:"var(--gray-500)" }}>{`#${String(i+1).padStart(2,"0")}`}</span>
             <div style={{ flex:1, display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
               <img src={r.node.face} alt="" style={{ width:"28px", height:"28px", borderRadius:"999px", objectFit:"cover", flexShrink:0 }} />
               <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)", whiteSpace:"nowrap" }}>{t.associateNo(String(i+1).padStart(2,"0"))}</span>
+              {/* Somebody's call, where the row is read — so a shift arriving at this list can see
+                  what has already been decided without opening each pair's evidence. */}
+              {verdictOf(r.node.id) && (
+                <span style={{ fontSize:"9px", fontWeight:800, whiteSpace:"nowrap", padding:"2px 6px", borderRadius:"4px",
+                  color: verdictOf(r.node.id) === "confirmed" ? "var(--success-400)" : "var(--danger-400)",
+                  backgroundColor: verdictOf(r.node.id) === "confirmed" ? "var(--success-100)" : "var(--danger-100)" }}>
+                  {verdictOf(r.node.id) === "confirmed" ? t.confirmed : t.excluded}
+                </span>
+              )}
             </div>
             <div style={{ width:"44px", flexShrink:0 }}>
               <span title={badge.label[lang]} style={{ fontSize:"11px", fontWeight:800, color:badge.text, backgroundColor:badge.bg,
