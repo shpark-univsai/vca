@@ -8,7 +8,7 @@ import BestFrameDetailPage from "./BestFrameDetailPage";
 import { useToast } from "./Toast";
 import type { DetType, MonitorState, Camera, Detection, CamData, HUDState } from "@/types/detection";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { recentSgtClockTime, sgtHour, sgtMinute } from "@/lib/time";
+import { MOCK_STAMP_GRANULARITY_MIN, parseSgtStamp, recentSgtStamp } from "@/lib/time";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 
 import { useLanguage } from "@/lib/i18n";
@@ -168,10 +168,18 @@ const DET_COLOR: Record<DetType, string> = { VIP: "var(--primary-400)", Vehicle:
 // ackedVipCamIds below — so it never lingers past the point someone's actually looked.)
 const VIP_DOT_TIMEOUT_MIN = 2;
 
-function toMinutesSinceMidnight(hhmmss: string): number {
-  const [h, m] = hhmmss.split(":").map(Number);
-  return h * 60 + m;
-}
+/**
+ * The window actually tested, widened by how coarse a mock stamp is.
+ *
+ * Mock stamps are rounded down to ten minutes (hydration safety — see time.ts), so a detection
+ * written as "one minute ago" is really anywhere from one to eleven minutes old. Testing the bare
+ * two minutes against that made the lamp a function of WHICH MINUTE THE PAGE WAS LOADED: light at
+ * 10:21, dark at 10:25, same data either way. Widening it to what the data can support makes the
+ * lamp say the same thing on every load.
+ *
+ * When real detections arrive they carry real instants and this goes back to VIP_DOT_TIMEOUT_MIN.
+ */
+const VIP_DOT_WINDOW_MIN = VIP_DOT_TIMEOUT_MIN + MOCK_STAMP_GRANULARITY_MIN;
 
 const PURPLE_FILTER = "invert(28%) sepia(64%) saturate(3086%) hue-rotate(237deg) brightness(0.92)";
 
@@ -195,10 +203,11 @@ const AVATAR = [
 ];
 const CAR_IMG = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=80&q=80";
 
-// Detection `time` values are computed relative to the actual current time (recentSgtClockTime),
-// not literal hardcoded clock strings — a fixed string like "16:31:50" inevitably drifts into
-// looking like a FUTURE detection as real time passes the current SGT clock (Navbar's header
-// keeps advancing live). Offsets below are chosen so each camera's own cluster keeps roughly the
+// Each detection's date and time come from recentSgtStamp — the DAY as well as the clock, and
+// both relative to the actual current time rather than literal hardcoded strings (a fixed
+// "16:31:50" inevitably drifts into looking like a FUTURE detection as the real clock passes it).
+// The date has to be carried: a detection 94 minutes before a site clock of 00:30 happened
+// yesterday, and the screens showing it cannot recover that from the clock string alone. Offsets below are chosen so each camera's own cluster keeps roughly the
 // same relative spacing/story it always had, just re-anchored to "now" — and each entry is
 // listed newest-first within its camera, matching how CameraCard renders the list (also enforced
 // defensively by a sort in CameraCard itself, in case this ordering ever drifts).
@@ -218,60 +227,60 @@ const CAR_IMG = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?au
  */
 const CAMERA_FEEDS: CamData[] = [
   { camLabel: "CAM_WestGate_BS1", location: "Main Intake Road", bgUrl: BG[0], detections: [
-    { id:"d3", type:"VIP",          name:"Dr. Alex Wong",          group:"VIP group",       confidence:98.4, time:recentSgtClockTime(86), top:"18%", left:"68%", width:"12%", height:"36%" },
-    { id:"d1", type:"VIP",          name:"Sarah Lin",              group:"Staff (Finance)", confidence:98.4, time:recentSgtClockTime(87), top:"15%", left:"10%", width:"12%", height:"38%" },
-    { id:"d4", type:"Unknown", name:"Blue shirts • Man • Bag",group:"Unknown",    confidence:0,    time:recentSgtClockTime(88), top:"25%", left:"32%", width:"11%", height:"35%" },
-    { id:"d2", type:"Vehicle",      name:"Vehicle SGX411",         group:"Navy",            confidence:92.8, time:recentSgtClockTime(89), top:"20%", left:"48%", width:"18%", height:"28%" },
-    { id:"d21", type:"VIP",     name:"Michelle Tan",       group:"VIP group",     confidence:95.7, time:recentSgtClockTime(90), top:"17%", left:"22%", width:"12%", height:"37%" },
-    { id:"d22", type:"Unknown", name:"Red cap • Male",     group:"Unknown",       confidence:0,    time:recentSgtClockTime(91), top:"24%", left:"58%", width:"11%", height:"34%" },
-    { id:"d23", type:"Vehicle", name:"Vehicle YW2281",     group:"Logistics",     confidence:87.4, time:recentSgtClockTime(92), top:"19%", left:"5%",  width:"17%", height:"27%" },
-    { id:"d24", type:"VIP",     name:"James Kwek",         group:"Staff (Security)", confidence:90.1, time:recentSgtClockTime(93), top:"16%", left:"78%", width:"12%", height:"37%" },
-    { id:"d25", type:"Unknown", name:"Grey hoodie • Female", group:"Unknown",     confidence:0,    time:recentSgtClockTime(94), top:"23%", left:"42%", width:"11%", height:"34%" },
+    { id:"d3", type:"VIP",          name:"Dr. Alex Wong",          group:"VIP group",       confidence:98.4, ...recentSgtStamp(86), top:"18%", left:"68%", width:"12%", height:"36%" },
+    { id:"d1", type:"VIP",          name:"Sarah Lin",              group:"Staff (Finance)", confidence:98.4, ...recentSgtStamp(87), top:"15%", left:"10%", width:"12%", height:"38%" },
+    { id:"d4", type:"Unknown", name:"Blue shirts • Man • Bag",group:"Unknown",    confidence:0,    ...recentSgtStamp(88), top:"25%", left:"32%", width:"11%", height:"35%" },
+    { id:"d2", type:"Vehicle",      name:"Vehicle SGX411",         group:"Navy",            confidence:92.8, ...recentSgtStamp(89), top:"20%", left:"48%", width:"18%", height:"28%" },
+    { id:"d21", type:"VIP",     name:"Michelle Tan",       group:"VIP group",     confidence:95.7, ...recentSgtStamp(90), top:"17%", left:"22%", width:"12%", height:"37%" },
+    { id:"d22", type:"Unknown", name:"Red cap • Male",     group:"Unknown",       confidence:0,    ...recentSgtStamp(91), top:"24%", left:"58%", width:"11%", height:"34%" },
+    { id:"d23", type:"Vehicle", name:"Vehicle YW2281",     group:"Logistics",     confidence:87.4, ...recentSgtStamp(92), top:"19%", left:"5%",  width:"17%", height:"27%" },
+    { id:"d24", type:"VIP",     name:"James Kwek",         group:"Staff (Security)", confidence:90.1, ...recentSgtStamp(93), top:"16%", left:"78%", width:"12%", height:"37%" },
+    { id:"d25", type:"Unknown", name:"Grey hoodie • Female", group:"Unknown",     confidence:0,    ...recentSgtStamp(94), top:"23%", left:"42%", width:"11%", height:"34%" },
   ]},
   { camLabel: "CAM_EastGate_BS3", location: "Annex 2F Hall", bgUrl: BG[1], detections: [
-    { id:"d6", type:"Unknown", name:"Unknown Person",group:"Unknown", confidence:0,    time:recentSgtClockTime(0), top:"24%", left:"55%", width:"11%", height:"34%" },
-    { id:"d5", type:"VIP",          name:"hong gildong", group:"VIP group",    confidence:72.6, time:recentSgtClockTime(1), top:"22%", left:"25%", width:"13%", height:"37%" },
+    { id:"d6", type:"Unknown", name:"Unknown Person",group:"Unknown", confidence:0,    ...recentSgtStamp(0), top:"24%", left:"55%", width:"11%", height:"34%" },
+    { id:"d5", type:"VIP",          name:"hong gildong", group:"VIP group",    confidence:72.6, ...recentSgtStamp(1), top:"22%", left:"25%", width:"13%", height:"37%" },
   ]},
   { camLabel: "CAM_NorthGate_BS2", location: "Orchard MRT Gate", bgUrl: BG[0], detections: [
-    { id:"d7", type:"Vehicle", name:"Vehicle XB3291", group:"Logistics", confidence:81.3, time:recentSgtClockTime(1), top:"20%", left:"40%", width:"18%", height:"28%" },
+    { id:"d7", type:"Vehicle", name:"Vehicle XB3291", group:"Logistics", confidence:81.3, ...recentSgtStamp(1), top:"20%", left:"40%", width:"18%", height:"28%" },
   ]},
   { camLabel: "CAM_CentralA_CA2", location: "CA2 Sub Station", bgUrl: BG[1], detections: [
-    { id:"d8", type:"Unknown", name:"Red jacket • Female", group:"Unknown", confidence:0, time:recentSgtClockTime(2), top:"26%", left:"52%", width:"12%", height:"34%" },
+    { id:"d8", type:"Unknown", name:"Red jacket • Female", group:"Unknown", confidence:0, ...recentSgtStamp(2), top:"26%", left:"52%", width:"12%", height:"34%" },
   ]},
   { camLabel: "CAM_WestGate_BS1B", location: "Bugis MRT", bgUrl: BG[0], detections: [
-    { id:"d9",  type:"VIP",     name:"hong gildong", group:"VIP group",  confidence:76.9, time:recentSgtClockTime(1), top:"20%", left:"18%", width:"13%", height:"36%" },
-    { id:"d10", type:"Vehicle", name:"Vehicle XC112", group:"Security",  confidence:64.2, time:recentSgtClockTime(4), top:"22%", left:"60%", width:"16%", height:"26%" },
+    { id:"d9",  type:"VIP",     name:"hong gildong", group:"VIP group",  confidence:76.9, ...recentSgtStamp(1), top:"20%", left:"18%", width:"13%", height:"36%" },
+    { id:"d10", type:"Vehicle", name:"Vehicle XC112", group:"Security",  confidence:64.2, ...recentSgtStamp(4), top:"22%", left:"60%", width:"16%", height:"26%" },
   ]},
   { camLabel: "CAM_HarbourB_HB4", location: "HB4 Terminal",  bgUrl: BG[1], detections: [
-    { id:"d11", type:"Unknown", name:"Blue cap • Male", group:"Unknown", confidence:0, time:recentSgtClockTime(5), top:"22%", left:"36%", width:"12%", height:"36%" },
+    { id:"d11", type:"Unknown", name:"Blue cap • Male", group:"Unknown", confidence:0, ...recentSgtStamp(5), top:"22%", left:"36%", width:"12%", height:"36%" },
   ]},
   { camLabel: "CAM_NorthC_NC1",   location: "NC 1 West",      bgUrl: BG[0], detections: [
-    { id:"d12", type:"VIP", name:"hong gildong", group:"Staff (HR)", confidence:77.8, time:recentSgtClockTime(6), top:"19%", left:"48%", width:"13%", height:"38%" },
+    { id:"d12", type:"VIP", name:"hong gildong", group:"Staff (HR)", confidence:77.8, ...recentSgtStamp(6), top:"19%", left:"48%", width:"13%", height:"38%" },
   ]},
   { camLabel: "CAM_OrchardC_OR2",    location: "Orchard Central",       bgUrl: BG[0], detections: [
-    { id:"d13", type:"VIP", name:"hong gildong", group:"VIP group", confidence:74.2, time:recentSgtClockTime(12), top:"20%", left:"30%", width:"12%", height:"36%" },
+    { id:"d13", type:"VIP", name:"hong gildong", group:"VIP group", confidence:74.2, ...recentSgtStamp(12), top:"20%", left:"30%", width:"12%", height:"36%" },
   ]},
   { camLabel: "CAM_TampinesH_TP1",   location: "Tampines Hub",          bgUrl: BG[1], detections: [
-    { id:"d14", type:"Vehicle", name:"Vehicle TJ8821", group:"Logistics", confidence:88.1, time:recentSgtClockTime(13), top:"22%", left:"45%", width:"16%", height:"26%" },
+    { id:"d14", type:"Vehicle", name:"Vehicle TJ8821", group:"Logistics", confidence:88.1, ...recentSgtStamp(13), top:"22%", left:"45%", width:"16%", height:"26%" },
   ]},
   { camLabel: "CAM_JurongG_JR1",     location: "Jurong Gateway",        bgUrl: BG[0], detections: [
-    { id:"d15", type:"Unknown", name:"Grey hoodie • Male", group:"Unknown", confidence:0, time:recentSgtClockTime(14), top:"24%", left:"38%", width:"11%", height:"34%" },
+    { id:"d15", type:"Unknown", name:"Grey hoodie • Male", group:"Unknown", confidence:0, ...recentSgtStamp(14), top:"24%", left:"38%", width:"11%", height:"34%" },
   ]},
   { camLabel: "CAM_SengkangR_SG1",   location: "Sengkang Riverside",    bgUrl: BG[1], detections: [
-    { id:"d16", type:"VIP", name:"Dr. Alex Wong", group:"VIP group", confidence:91.5, time:recentSgtClockTime(15), top:"18%", left:"55%", width:"12%", height:"37%" },
+    { id:"d16", type:"VIP", name:"Dr. Alex Wong", group:"VIP group", confidence:91.5, ...recentSgtStamp(15), top:"18%", left:"55%", width:"12%", height:"37%" },
   ]},
   { camLabel: "CAM_ClarkeQ_CQ1",     location: "Clarke Quay",           bgUrl: BG[0], detections: [
-    { id:"d17", type:"Vehicle", name:"Vehicle CQ4471", group:"Navy", confidence:79.6, time:recentSgtClockTime(16), top:"20%", left:"40%", width:"17%", height:"27%" },
+    { id:"d17", type:"Vehicle", name:"Vehicle CQ4471", group:"Navy", confidence:79.6, ...recentSgtStamp(16), top:"20%", left:"40%", width:"17%", height:"27%" },
   ]},
   { camLabel: "CAM_WoodlandsCP_WD1", location: "Woodlands Checkpoint",  bgUrl: BG[1], detections: [
-    { id:"d18", type:"Unknown", name:"Unknown", group:"Unknown", confidence:0, time:recentSgtClockTime(17), top:"23%", left:"50%", width:"12%", height:"35%" },
+    { id:"d18", type:"Unknown", name:"Unknown", group:"Unknown", confidence:0, ...recentSgtStamp(17), top:"23%", left:"50%", width:"12%", height:"35%" },
   ]},
   { camLabel: "CAM_AngMoKioH_AK1",   location: "Ang Mo Kio Hub",        bgUrl: BG[0], detections: [
-    { id:"d19", type:"VIP", name:"hong gildong", group:"Staff (HR)", confidence:68.9, time:recentSgtClockTime(18), top:"19%", left:"33%", width:"13%", height:"38%" },
+    { id:"d19", type:"VIP", name:"hong gildong", group:"Staff (HR)", confidence:68.9, ...recentSgtStamp(18), top:"19%", left:"33%", width:"13%", height:"38%" },
   ]},
   { camLabel: "CAM_KallangW_KL1",    location: "Kallang Wave",          bgUrl: BG[1], detections: [] },
   { camLabel: "CAM_PayaLebarS_PY1",  location: "Paya Lebar Square",     bgUrl: BG[0], detections: [
-    { id:"d20", type:"Vehicle", name:"Vehicle PL9012", group:"Logistics", confidence:83.0, time:recentSgtClockTime(20), top:"21%", left:"48%", width:"18%", height:"28%" },
+    { id:"d20", type:"Vehicle", name:"Vehicle PL9012", group:"Logistics", confidence:83.0, ...recentSgtStamp(20), top:"21%", left:"48%", width:"18%", height:"28%" },
   ]},
 ];
 
@@ -284,16 +293,16 @@ const CAMERA_FEEDS: CamData[] = [
  */
 const UPLOAD_DATA: Record<string, CamData> = {
   v1: { camLabel: "CAM_WestGate_BS1_REC1", location: "Main Intake Road", bgUrl: BG[0], detections: [
-    { id:"dv1", type:"VIP", name:"Dr. Alex Wong", group:"VIP group", confidence:95.1, time:recentSgtClockTime(40), top:"18%", left:"40%", width:"12%", height:"36%" },
+    { id:"dv1", type:"VIP", name:"Dr. Alex Wong", group:"VIP group", confidence:95.1, ...recentSgtStamp(40), top:"18%", left:"40%", width:"12%", height:"36%" },
   ]},
   v2: { camLabel: "CAM_WestGate_BS1_REC2", location: "Main Intake Road", bgUrl: BG[0], detections: [
-    { id:"dv2", type:"Vehicle", name:"Vehicle SGX411", group:"Navy", confidence:88.2, time:recentSgtClockTime(50), top:"20%", left:"45%", width:"18%", height:"28%" },
+    { id:"dv2", type:"Vehicle", name:"Vehicle SGX411", group:"Navy", confidence:88.2, ...recentSgtStamp(50), top:"20%", left:"45%", width:"18%", height:"28%" },
   ]},
   v3: { camLabel: "CAM_WestGate_BS1_REC3", location: "Main Intake Road", bgUrl: BG[0], detections: [
-    { id:"dv3", type:"Unknown", name:"Grey hoodie • Male", group:"Unknown", confidence:0, time:recentSgtClockTime(60), top:"24%", left:"38%", width:"11%", height:"34%" },
+    { id:"dv3", type:"Unknown", name:"Grey hoodie • Male", group:"Unknown", confidence:0, ...recentSgtStamp(60), top:"24%", left:"38%", width:"11%", height:"34%" },
   ]},
   i1: { camLabel: "CAM_WestGate_BS1_SNAP1", location: "Main Intake Road", bgUrl: BG[0], sourceType:"image", detections: [
-    { id:"di1", type:"VIP", name:"Sarah Lin", group:"Staff (Finance)", confidence:93.5, time:recentSgtClockTime(70), top:"15%", left:"20%", width:"12%", height:"38%" },
+    { id:"di1", type:"VIP", name:"Sarah Lin", group:"Staff (Finance)", confidence:93.5, ...recentSgtStamp(70), top:"15%", left:"20%", width:"12%", height:"38%" },
   ]},
 };
 export const DEFAULT_DATA: CamData = { camLabel:"CAM_Unknown", location:"Unknown", bgUrl:BG[0], detections:[] };
@@ -949,20 +958,29 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
   // for the timeout half to actually take effect instead of only updating on the next unrelated
   // render.
   const [ackedVipCamIds, setAckedVipCamIds] = useState<Set<string>>(new Set());
-  const [, setVipDotTick] = useState(0);
+  // The clock the lamp is measured against. State, read after mount and re-read every 15s: the
+  // server-rendered pass has no time in it (so nothing time-dependent can mismatch on hydration),
+  // and the timeout half of the rule needs a tick to take effect rather than waiting for some
+  // unrelated re-render.
+  const [nowMs, setNowMs] = useState<number | null>(null);
   useEffect(() => {
-    const interval = setInterval(() => setVipDotTick(t => t + 1), 15000);
-    return () => clearInterval(interval);
+    const first = setTimeout(() => setNowMs(Date.now()), 0);
+    const interval = setInterval(() => setNowMs(Date.now()), 15000);
+    return () => { clearTimeout(first); clearInterval(interval); };
   }, []);
   const hasRecentUnackedVip = (camId: string): boolean => {
+    // No clock yet (the first frame) means nothing can be called recent.
+    if (nowMs === null) return false;
     if (ackedVipCamIds.has(camId)) return false;
     const vipDets = (siteCamData[camId] ?? DEFAULT_DATA).detections.filter(d => d.type === "VIP");
     if (vipDets.length === 0) return false;
-    const latestMin = Math.max(...vipDets.map(d => toMinutesSinceMidnight(d.time)));
-    const now = new Date();
-    const nowMin = sgtHour(now) * 60 + sgtMinute(now);
-    const diff = nowMin - latestMin;
-    return diff >= 0 && diff <= VIP_DOT_TIMEOUT_MIN;
+    // Real instants on both sides, parsed the way the stamp was written. This compared
+    // minutes-since-midnight from two different clocks: the detection's, pinned to the mock's
+    // fallback zone, against sgtHour/sgtMinute, which follow the SITE's zone — so at a site set
+    // to Seoul every gap was an hour bigger and the lamp never lit at all.
+    const latest = Math.max(...vipDets.map(d => parseSgtStamp(d.date, d.time).getTime()));
+    const minutesAgo = (nowMs - latest) / 60000;
+    return minutesAgo >= 0 && minutesAgo <= VIP_DOT_WINDOW_MIN;
   };
   // FLIP animation for grid reordering — CSS Grid can't transition a child moving from one
   // cell to another (row/column assignment isn't an animatable property), so instead: measure

@@ -16,6 +16,15 @@ export interface Detection {
   name: string;
   group: string;
   confidence: number;
+  /**
+   * The day this was captured, "YYYY-MM-DD", in the site's own time zone.
+   *
+   * Carried rather than assumed. `time` is a wall clock with no date in it, and the screens that
+   * show a captured moment used to pair it with TODAY's date — so a detection from 94 minutes ago
+   * read on a site clock of 00:30 was stamped with today's date and yesterday's time, i.e. about
+   * 23 hours into the future, on an evidence screen.
+   */
+  date: string;
   time: string;
   top: string;
   left: string;

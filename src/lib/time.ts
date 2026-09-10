@@ -134,6 +134,14 @@ export function sgtClockTime(d: Date): string {
   return clockIn(d, siteTimeZone());
 }
 
+/**
+ * How coarse a mock stamp is, in minutes.
+ *
+ * Exported because it is a limit on what mock data can be asked: a screen cannot claim "detected
+ * within the last two minutes" from stamps rounded to ten. See coarseNow below for why they are.
+ */
+export const MOCK_STAMP_GRANULARITY_MIN = 10;
+
 /** "Now," rounded down to the nearest 10 minutes. A server-render pass and the client-hydration
  * pass moments later read `Date.now()` at two genuinely different instants — rounding this
  * coarsely means both passes almost always land in the same bucket, avoiding a text hydration
@@ -141,7 +149,7 @@ export function sgtClockTime(d: Date): string {
 function coarseNow(): Date {
   const d = new Date();
   d.setSeconds(0, 0);
-  d.setMinutes(Math.floor(d.getMinutes() / 10) * 10);
+  d.setMinutes(Math.floor(d.getMinutes() / MOCK_STAMP_GRANULARITY_MIN) * MOCK_STAMP_GRANULARITY_MIN);
   return d;
 }
 

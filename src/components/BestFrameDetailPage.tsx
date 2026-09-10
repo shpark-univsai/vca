@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { DetType, Detection, CamData } from "@/types/detection";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { sgtClockTime, sgtDateKey } from "@/lib/time";
+import { sgtDateKey } from "@/lib/time";
 
 import { useLanguage } from "@/lib/i18n";
 
@@ -497,7 +497,7 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
 
         {/* Meta */}
         <div style={{ marginBottom:"14px" }}>
-          {[[t.cameraName, data.location], [t.eventTime, `${sgtDateKey(new Date())} ${det.time}`]].map(([k, v]) => (
+          {[[t.cameraName, data.location], [t.eventTime, `${det.date} ${det.time}`]].map(([k, v]) => (
             <div key={k} style={{ display:"flex", alignItems:"center", padding:"3px 0" }}>
               <span style={{ fontSize:"12px", color:"var(--gray-500)", fontWeight:600, width:"88px", flexShrink:0 }}>{k}</span>
               <span style={{ fontSize:"13px", color:"var(--gray-900)", fontWeight:700 }}>{v}</span>
@@ -635,7 +635,9 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
   const t = T[lang];
   const [selectedPerson, setSelectedPerson] = useState<Detection | null>(autoOpenDetail ? initialDet : null);
   const [focusedDet, setFocusedDet] = useState<Detection>(initialDet);
-  const [trackDate, setTrackDate] = useState(() => initialDate ?? sgtDateKey(new Date()));
+  // The day of the detection being inspected, not today — the strip is scrubbing that frame's
+  // own footage. A caller that names a moment (Dashboard's "Analyze Frame") overrides both.
+  const [trackDate, setTrackDate] = useState(() => initialDate ?? initialDet.date);
   const [dateOpen, setDateOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const [cameraHovered, setCameraHovered] = useState(false);
@@ -649,14 +651,11 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
       const [h, m, sec] = initialTime.split(":").map(Number);
       return h * 3600 + m * 60 + (sec || 0);
     }
-    // Singapore time, not the machine's. Every detection's `time` is an SGT clock string
-    // (recentSgtClockTime), the date button beside this reads sgtDateKey, and the header clock is
-    // SGT — but this one seed used getHours()/getMinutes() on local time. On any machine that
-    // isn't UTC+8 the strip therefore opened hours away from the data it is supposed to be
-    // scrubbing: the timestamps under the thumbnails disagreed with the detection list, and the
-    // VIP crown (a ±1s test against those same detection times) could match on frames it had no
-    // business marking, or never match at all.
-    return hhmmssToSec(sgtClockTime(new Date()));
+    // The moment being inspected. This used to seed from the clock — first the machine's, then
+    // the site's — which opened the strip wherever "now" happened to be rather than on the frame
+    // the operator clicked, and left the VIP crown (a ±1s test against the detection times) to
+    // match whatever was near now instead of the detection itself.
+    return hhmmssToSec(initialDet.time);
   });
   // The thumbnail strip's own center — deliberately separate from selectedSec. Clicking a
   // thumbnail only needs to move the selection onto whatever's already on screen; recomputing
@@ -774,7 +773,10 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                 <circle cx="8" cy="8" r="6" stroke="var(--gray-500)" strokeWidth="1.4"/>
                 <path d="M8 5v3l2 2" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round"/>
               </svg>
-              {sgtDateKey(new Date())}
+              {/* The day of the frame on screen. This was today's date, so a frame captured
+                  before midnight was labelled with the wrong day — and, paired with its own
+                  clock time, read as a moment that has not happened yet. */}
+              {focusedDet.date}
             </div>
           </div>
           <div style={{ padding:"4px 10px", fontSize:"12px", fontWeight:700, color:"var(--gray-500)" }}>
@@ -805,7 +807,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
             <img src={data.bgUrl ?? ""} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", opacity:0.9 }} />
             <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:"linear-gradient(to bottom,rgba(14, 22, 42,0) 50%,rgba(14, 22, 42,0.04) 50%)", backgroundSize:"100% 4px" }} />
             <div style={{ position:"absolute", top:12, right:14, backgroundColor:"rgba(14,22,42,0.65)", padding:"3px 8px", fontSize:"10px", fontWeight:600, color:"rgba(255,255,255,0.8)", letterSpacing:"0.5px" }}>
-              {sgtDateKey(new Date()).split("-").reverse().join("-")} {focusedDet.time}
+              {focusedDet.date.split("-").reverse().join("-")} {focusedDet.time}
             </div>
 
             {data.detections.map((det, i) => {
