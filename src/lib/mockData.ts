@@ -1,4 +1,4 @@
-import { dateKeyIn, FALLBACK_TIME_ZONE, sgtClockTime, wallClockToDate, zoneHour } from "@/lib/time";
+import { dateKeyIn, FALLBACK_TIME_ZONE, isTodaySgt, sgtClockTime, sgtDateKey, wallClockToDate, zoneHour } from "@/lib/time";
 
 export const FACE_PHOTOS = [
   "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80",
@@ -110,19 +110,29 @@ export interface LiveEvent {
   lng: number;
 }
 
+const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
 /** Renders an ISO timestamp as a relative "Xm ago" string for anything under an hour old,
  * computed at render time. Past an hour, a coarse "1h ago"/"2h ago" label stops being useful for
- * "when exactly did this happen" — so it switches to the actual captured clock time instead.
+ * "when exactly did this happen" — so it switches to the actual captured clock time instead, with
+ * the day whenever that is not today.
+ *
+ * The day is not optional. A bare clock on a record from another day reads as today: at a site
+ * clock of 01:00, a sighting from 23:10 the previous night showed "23:10:00" in a list where the
+ * row above it said "5m ago" — twenty-two hours into the future, as far as anyone reading it
+ * could tell.
  *
  * Takes the language rather than reading it: this is called from map popups built as HTML strings
- * and from render paths that are not components, so there is no hook to read it with. The clock
- * time it falls back to needs no translating — digits are digits. */
+ * and from render paths that are not components, so there is no hook to read it with. */
 export function formatTimeAgo(timestamp: string, lang: "en" | "ko" = "en"): string {
-  const diffMs = Date.now() - new Date(timestamp).getTime();
-  const mins = Math.max(0, Math.round(diffMs / 60000));
+  const at = new Date(timestamp);
+  const mins = Math.max(0, Math.round((Date.now() - at.getTime()) / 60000));
   if (mins < 1) return lang === "ko" ? "방금" : "just now";
   if (mins < 60) return lang === "ko" ? `${mins}분 전` : `${mins}m ago`;
-  return sgtClockTime(new Date(timestamp));
+  const clock = sgtClockTime(at);
+  if (isTodaySgt(at)) return clock;
+  const [, m, d] = sgtDateKey(at).split("-").map(Number);
+  return lang === "ko" ? `${m}월 ${d}일 ${clock}` : `${SHORT_MONTHS[m - 1]} ${d} ${clock}`;
 }
 
 function minutesAgo(mins: number): string {

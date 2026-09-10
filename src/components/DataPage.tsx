@@ -7,7 +7,7 @@ import {
   useActiveProjectId, useProjectCameras, useVcaStore, type Camera,
 } from "@/lib/vcaStore";
 import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
-import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
+import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtClockTime, sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import RemoveImageButton from "./RemoveImageButton";
 
@@ -700,17 +700,18 @@ const LIVE_FEED_STATUS_CYCLE: ReIDStatus[] = ["VIP","Unknown","Unknown"];
 // RedFace's cooccurrence dates, Smart Search) — this used to bundle both into one "Aug 06,14:16:29"
 // `time` string while a separate, unrelated `date` field cycled through REID_DATE_CYCLE independently,
 // so showing both together (to match everywhere else) produced a nonsense double date.
+//
+// The SITE's clock, not the machine's. These stamp a live capture, and everything that reads them
+// back measures against the site: cardTimestamp compares the date to the site's today, and the
+// activity chart buckets by the site's hour. Written with getFullYear()/getHours() they were the
+// viewer's own clock, so on this machine (Asia/Seoul) against a Singapore site a frame captured
+// at 00:30 was stamped "Sep 9 16:30" — the wrong day AND the wrong time, on a card that had just
+// appeared.
 function formatCapturedDate(d: Date): string {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  return sgtDateKey(d);
 }
 function formatCapturedTime(d: Date): string {
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  const ss = String(d.getSeconds()).padStart(2, "0");
-  return `${hh}:${mi}:${ss}`;
+  return sgtClockTime(d);
 }
 
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];

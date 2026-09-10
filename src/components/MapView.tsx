@@ -231,7 +231,12 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
           <span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.24px;line-height:1.3">${event.location}${event.cameraLabel ? ` · ${event.cameraLabel}` : ""}</span>
         </div>
         <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;margin-top:1px">
-          <div style="width:6px;height:6px;background:var(--success-400);border-radius:50%"></div>
+          ${/* The green dot means "this is happening now", so it only belongs on a sighting that
+                is. It was hardcoded, which put a live indicator next to a timestamp from hours
+                ago. Under a minute is the only case where "now" is true. */ ""}
+          ${Date.now() - new Date(event.timestamp).getTime() < 60_000
+            ? `<div style="width:6px;height:6px;background:var(--success-400);border-radius:50%"></div>`
+            : ""}
           <span style="font-size:11px;color:var(--gray-500);letter-spacing:-0.22px">${formatTimeAgo(event.timestamp, lang)}</span>
         </div>
       </div>

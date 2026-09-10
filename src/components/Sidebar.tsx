@@ -396,7 +396,11 @@ function useEventCounts() {
   // delta/deltaPct/down (yesterday-comparison fields) come from the future-backend stub rather
   // than importing the mock object directly — see lib/api/dashboard.ts. Falls back to a flat
   // (no change) delta for the brief window before the fetch resolves.
-  const { data: dashboardStats } = useApiData(() => getDashboardStats(), []);
+  // Scoped like everything else here. Only the delta fields are read from it, but an unscoped
+  // request is an unscoped request — the one call in this file that was still asking about every
+  // site at once.
+  const countsProjectId = useActiveProjectId();
+  const { data: dashboardStats } = useApiData(() => getDashboardStats(countsProjectId), [countsProjectId]);
   const flatDelta = { delta: 0, deltaPct: 0, down: false };
   // "Today's detections" opens the Dashboard's detection-activity chart (see EventsSummary's
   // onToggleDetectionChart below), so it needs to count the same way that chart does — every
@@ -1250,11 +1254,15 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
   const t = T[lang];
   const [tab, setTab] = usePersistedSidebarTab();
   const [hovered, setHovered] = useState<{ id: string; top: number; item: LiveEvent | Device } | null>(null);
-  const { vipTargets, watchlistMatch, tracking } = useEventCounts();
+  const { vipTargets, eventsToday } = useEventCounts();
   const activeProjectId = useActiveProjectId();
   const { data: dashboardStats } = useApiData(() => getDashboardStats(activeProjectId), [activeProjectId]);
   const availability = dashboardStats?.availability ?? 0;
-  const todayTotal = watchlistMatch.count + tracking.count;
+  // The same figure the expanded sidebar shows under "today's detections", not a sum of the two
+  // row counts. Those count ROWS, with no date filter at all — a Tracking row is one row and
+  // several hits, and yesterday's rows are still in the list — so the collapsed badge and the
+  // expanded one disagreed under the same word.
+  const todayTotal = eventsToday.count;
   const liveEvents = vcaEventsToLiveEvents(useProjectEvents());
   const cameras = useProjectCameras();
   const { data: devicesData } = useApiData(() => getDevices(activeProjectId), [cameras, activeProjectId]);
