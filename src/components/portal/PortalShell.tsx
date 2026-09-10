@@ -313,7 +313,10 @@ export default function PortalShell() {
              licence (not a count), not the server tab (read as one setting), not Overview. */
           counts={{
             cameras: projectCameras.length,
-            vip: persons.filter(p => p.projectId === currentProjectId).length,
+            // Released people are off the list, so the badge does not count them — "123" has to
+            // mean 123 people this site is watching for, not 123 rows. The registry still shows
+            // them under its own tab; see ProjectVipTab.
+            vip: persons.filter(p => p.projectId === currentProjectId && !p.releasedAt).length,
           }}
           tab={tab}
           onTabChange={next => { setShowAccount(false); setTab(next); }}

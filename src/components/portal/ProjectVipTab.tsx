@@ -169,6 +169,8 @@ interface VipDict {
   tabAllHint: string;
   tabIndividualsHint: string;
   tabGroupsHint: string;
+  tabReleased: string;
+  tabReleasedHint: string;
   addGroup: string;
   colGroup: string;
   colMembers: string;
@@ -322,6 +324,8 @@ const T: Record<"en" | "ko", VipDict> = {
     tabAllHint: "Every person registered for this project, whether or not they belong to a group.",
     tabIndividualsHint: "People registered on their own — nobody in a group.",
     tabGroupsHint: "Parties registered together: a visiting delegation, a protection detail. Removing a group keeps its members registered.",
+    tabReleased: "Released",
+    tabReleasedHint: "Taken off the watchlist, with a record of who did it and why. Cameras no longer match them — and nothing here has been deleted.",
     addGroup: "Add group",
     colGroup: "Group",
     colMembers: "Members",
@@ -476,6 +480,8 @@ const T: Record<"en" | "ko", VipDict> = {
     tabAllHint: "이 프로젝트에 등록된 사람 전부입니다. 그룹에 속했는지와 무관합니다.",
     tabIndividualsHint: "혼자 등록된 사람입니다 — 그룹에 속한 사람은 빠집니다.",
     tabGroupsHint: "함께 등록된 일행입니다: 방문단, 경호 대상. 그룹을 지워도 소속된 사람은 등록된 채로 남습니다.",
+    tabReleased: "해제됨",
+    tabReleasedHint: "명단에서 내려온 사람입니다. 누가 언제 왜 내렸는지가 함께 남습니다. 카메라는 더 이상 대조하지 않고, 삭제된 것은 아무것도 없습니다.",
     addGroup: "그룹 추가",
     colGroup: "그룹",
     colMembers: "인원",
@@ -1157,7 +1163,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
    * people, so the combined tab is a list of people with a Group column — every row fills every
    * column. Individuals is the same list minus anyone in a group; Groups is the parties themselves.
    */
-  const [vipTab, setVipTab] = useState<"all" | "individuals" | "groups">("all");
+  const [vipTab, setVipTab] = useState<"all" | "individuals" | "groups" | "released">("all");
   /**
    * Narrows the people list to one group. Set by clicking a group's member count, which is the
    * question that number raises — "who are those three?" — and until now had no answer short of
@@ -1211,6 +1217,20 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
 
   const q = search.trim().toLowerCase();
   const allProjectPersons = persons.filter(p => p.projectId === projectId);
+  /*
+   * On the list right now, and taken off it.
+   *
+   * A release is not a delete: the row stays so that "who was watched, from when, until when,
+   * and why it ended" survives, which is the question an audit asks and a deleted row cannot
+   * answer. But it does mean the person is no longer being watched — so counting them in
+   * "123 records" made that figure mean neither one thing nor the other.
+   *
+   * Expired rows stay in the active set on purpose. Expiry is a state somebody has to act on
+   * and the registry is where they act, so hiding them would hide the work. Release is a
+   * decision already taken.
+   */
+  const activePersons = allProjectPersons.filter(p => !p.releasedAt);
+  const releasedPersons = allProjectPersons.filter(p => p.releasedAt);
   const projectGroups = personGroups
     .filter(g => g.projectId === projectId)
     .filter(g => !q || g.name.toLowerCase().includes(q));
@@ -1226,7 +1246,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
    * The three defects and the reach figure. Computed from the store's seed — see registryHealth,
    * where the shape is written as the request to the backend.
    */
-  const health = registryHealth(projectId, persons);
+  // Health is about the list being watched. A released person's unreadable photo is not a
+  // defect anybody needs to fix.
+  const health = registryHealth(projectId, persons.filter(p => !p.releasedAt));
   const duplicateIds = new Set(health.duplicates.flat());
   const healthIds = {
     missingPhoto: new Set(health.missingPhoto),
@@ -1241,7 +1263,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const detectedPrevCount = health.detectedPrev7d.length;
   const reachDelta = detectedCount - detectedPrevCount;
 
-  const matchingPersons = allProjectPersons
+  const matchingPersons = (vipTab === "released" ? releasedPersons : activePersons)
     .filter(p => !healthFilter || healthIds[healthFilter].has(p.id))
     .filter(p => vipTab !== "individuals" || !p.groupId)
     .filter(p => !groupFilter || (groupFilter === "__none" ? !p.groupId : p.groupId === groupFilter))
@@ -1420,10 +1442,15 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       {/* All / Individuals / Groups. Same underlined row as Input Sources and Users & Permissions. */}
       <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
         {([
-          { id: "all", label: t.tabAll, count: allProjectPersons.length, hint: t.tabAllHint },
-          { id: "individuals", label: t.tabIndividuals, count: allProjectPersons.filter(p => !p.groupId).length, hint: t.tabIndividualsHint },
+          { id: "all", label: t.tabAll, count: activePersons.length, hint: t.tabAllHint },
+          { id: "individuals", label: t.tabIndividuals, count: activePersons.filter(p => !p.groupId).length, hint: t.tabIndividualsHint },
           { id: "groups", label: t.tabGroups, count: personGroups.filter(g => g.projectId === projectId).length, hint: t.tabGroupsHint },
-        ] as { id: "all" | "individuals" | "groups"; label: string; count: number; hint: string }[]).map(tab => {
+          // Only once there is something in it. A permanently visible "Released 0" invites the
+          // question of whether releasing is something you are supposed to be doing.
+          ...(releasedPersons.length > 0
+            ? [{ id: "released" as const, label: t.tabReleased, count: releasedPersons.length, hint: t.tabReleasedHint }]
+            : []),
+        ] as { id: "all" | "individuals" | "groups" | "released"; label: string; count: number; hint: string }[]).map(tab => {
           const active = vipTab === tab.id;
           return (
             <Tooltip key={tab.id} text={tab.hint}>
@@ -1492,7 +1519,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           key: "reach",
           icon: <Eye size={14} strokeWidth={2.4} />,
           figure: detectedCount,
-          unit: t.healthOfTotal(allProjectPersons.length),
+          unit: t.healthOfTotal(activePersons.length),
           // "People", not detections. The two are wildly different numbers off the same week — one
           // VIP walking past a camera twenty times is 1 here and 20 there — and the backend read
           // this cell and had to ask which it meant, which is the label's fault, not theirs.

@@ -536,7 +536,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // Five on the card, all of them in the modal behind it.
   const recentActivity = projectActivity.slice(0, 5);
 
-  const projectPersons = persons.filter(p => p.projectId === projectId);
+  /*
+   * The people this site is watching for.
+   *
+   * Released rows are excluded here rather than filtered at each figure below, because every
+   * number on this screen means the same thing — "the VIP metric", "+4 this month", "3 high
+   * priority" — and one of them counting differently is worse than all of them being wrong.
+   * The registry keeps the released rows; see ProjectVipTab's Released tab.
+   */
+  const projectPersons = persons.filter(p => p.projectId === projectId && !p.releasedAt);
   const projectGroupCount = personGroups.filter(g => g.projectId === projectId).length;
   // The project's own zone, falling back to the deployment's while projects predate the field.
   const projectZone = project.timeZone ?? PROJECT_TIME_ZONE;
