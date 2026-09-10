@@ -402,7 +402,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                   onClick={handleVerifyCurrent}
                   disabled={!canVerifyCurrent}
                   style={{
-                    height: "44px", width: "100%", border: "none", borderRadius: "8px",
+                    height: "48px", width: "100%", border: "none", borderRadius: "8px",
                     backgroundColor: canVerifyCurrent ? "var(--primary-400)" : "var(--gray-100)",
                     color: canVerifyCurrent ? "white" : "var(--gray-400)",
                     fontSize: "14px", fontWeight: 800, letterSpacing: "-0.28px",
@@ -471,7 +471,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                   onClick={handleSubmit}
                   disabled={!canSubmit}
                   style={{
-                    height: "44px", width: "100%", border: "none", borderRadius: "8px",
+                    height: "48px", width: "100%", border: "none", borderRadius: "8px",
                     backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-100)",
                     color: canSubmit ? "white" : "var(--gray-400)",
                     fontSize: "14px", fontWeight: 800, letterSpacing: "-0.28px",
