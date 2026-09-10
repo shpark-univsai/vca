@@ -835,6 +835,23 @@ interface VcaStoreState {
   updatePortalUserProjects: (userId: string, projectIds: string[]) => void;
   updatePortalUserStatus: (userId: string, status: PortalUserStatus) => void;
   /**
+   * Close several accounts at once — a contractor's people rotating off a site.
+   *
+   * Suspend, never delete. Suspension is reversible and keeps the person on the list, which is
+   * what an administrator doing a clear-out actually wants: the accounts stop working today, and
+   * the ones that turn out to still be needed come back without being re-invited. Deleting in
+   * bulk would also delete the record that they were ever here.
+   *
+   * One call, one audit line, for the reason addRosterEntries and removeCameras exist: twenty
+   * separate entries in the same second bury the fact that this was one decision about twenty
+   * people, which is the thing anyone reading the log later needs.
+   *
+   * The last-active-administrator rule is applied per id, exactly as the single-user path does —
+   * a bulk action must not be the way around a guard the individual action enforces. Ids it
+   * refused come back so the screen can say who is still active and why.
+   */
+  suspendPortalUsers: (userIds: string[]) => string[];
+  /**
    * Issue a temporary password for an account and return the plaintext, once. Returns null when
    * there is no such user, so the caller shows nothing rather than an empty credential box.
    *
@@ -3168,6 +3185,33 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       if (status !== "active" && isLastActiveAdmin(state.portalUsers, userId)) return state;
       return { portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, status } : u)) };
     }),
+  suspendPortalUsers: (userIds) => {
+    const state = get();
+    const refused: string[] = [];
+    // Evaluated against a list that shrinks as we go: suspending four of five administrators must
+    // still leave the fifth, and checking every id against the ORIGINAL list would let all five
+    // through — each one individually "not the last" at the moment it was checked.
+    let projected = state.portalUsers;
+    userIds.forEach(id => {
+      const target = projected.find(u => u.id === id);
+      if (!target || target.status === "suspended") { refused.push(id); return; }
+      if (isLastActiveAdmin(projected, id)) { refused.push(id); return; }
+      projected = projected.map(u => (u.id === id ? { ...u, status: "suspended" as const } : u));
+    });
+    const changed = userIds.filter(id => !refused.includes(id));
+    if (changed.length > 0) {
+      set(st => ({
+        portalUsers: st.portalUsers.map(u => (changed.includes(u.id) ? { ...u, status: "suspended" as const } : u)),
+        auditLog: [{
+          id: `audit-${++auditSeq}`,
+          message: `${changed.length} account${changed.length === 1 ? "" : "s"} suspended in one action`
+            + (refused.length > 0 ? ` (${refused.length} left active)` : ""),
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      }));
+    }
+    return refused;
+  },
   issueTemporaryPassword: (userId) => {
     const user = get().portalUsers.find(u => u.id === userId);
     if (!user) return null;

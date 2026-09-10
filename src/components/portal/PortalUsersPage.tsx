@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip, usePortalEditAccess } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip, usePortalEditAccess } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import RosterImportModal from "./RosterImportModal";
@@ -75,6 +75,13 @@ const T = {
     invitedHint: "Invited but has not set a password yet — they cannot sign in until they do.",
     suspendedHint: "Kept on the list but blocked from signing in.",
     countDormant: "Dormant",
+    bulkSuspendTitle: (n: number) => (n === 1 ? "Suspend 1 account?" : `Suspend these ${n} accounts?`),
+    bulkSuspendBody: "They stop being able to sign in immediately and stay on the list, so any of them can be restored without a new invitation. Nothing is deleted.",
+    bulkSuspendCta: (n: number) => `Suspend ${n}`,
+    bulkSuspendBar: (n: number) => (n === 1 ? "1 account shown" : `${n} accounts shown`),
+    bulkSuspendAction: "Suspend all shown",
+    bulkSuspendKept: (n: number) => `${n} left active — the last administrator cannot be suspended, and neither can your own account from here.`,
+    bulkSuspendedToast: (n: number) => `${n} account${n === 1 ? "" : "s"} suspended`,
     dormantHint: "Active accounts that have not signed in for 90 days, and accounts invited over 90 days ago that never did. On a site whose staff rotate, these are the accounts nobody remembers to close.",
 
     // Toolbar filters
@@ -316,6 +323,13 @@ const T = {
     invitedHint: "초대는 됐지만 아직 비밀번호를 설정하지 않았습니다 — 설정 전까지 로그인할 수 없습니다.",
     suspendedHint: "명단에는 남아 있지만 로그인이 차단된 상태입니다.",
     countDormant: "미접속",
+    bulkSuspendTitle: (n: number) => `계정 ${n}개를 정지할까요?`,
+    bulkSuspendBody: "즉시 로그인이 막히고 명단에는 그대로 남습니다. 그래서 다시 필요해지면 새로 초대하지 않고 되돌릴 수 있습니다. 삭제되는 것은 없습니다.",
+    bulkSuspendCta: (n: number) => `${n}개 정지`,
+    bulkSuspendBar: (n: number) => `표시된 계정 ${n}개`,
+    bulkSuspendAction: "표시된 계정 모두 정지",
+    bulkSuspendKept: (n: number) => `${n}개는 활성으로 남습니다 — 마지막 관리자와 본인 계정은 여기서 정지할 수 없습니다.`,
+    bulkSuspendedToast: (n: number) => `계정 ${n}개를 정지했습니다`,
     dormantHint: "90일 넘게 로그인하지 않은 활성 계정, 그리고 초대된 지 90일이 지나도록 한 번도 들어오지 않은 계정입니다. 인력이 도는 현장에서 아무도 닫는 것을 기억하지 못하는 계정이 이것입니다.",
 
     // Toolbar filters
@@ -1668,6 +1682,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const updatePortalUserStatus = useVcaStore(s => s.updatePortalUserStatus);
   const updatePortalUserProjects = useVcaStore(s => s.updatePortalUserProjects);
   const removePortalUser = useVcaStore(s => s.removePortalUser);
+  const suspendPortalUsers = useVcaStore(s => s.suspendPortalUsers);
+  const [confirmingBulkSuspend, setConfirmingBulkSuspend] = useState(false);
   const setAppSearch = useVcaStore(s => s.setAppSearch);
   const issueInviteToken = useVcaStore(s => s.issueInviteToken);
   const { showToast } = useToast();
@@ -1852,6 +1868,30 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   );
   const notIssuedIds = rosterWaiting.filter(r => r.status === "not-issued").map(r => r.employeeId);
   const printableEntries = rosterWaiting.filter(r => r.status === "unused" && r.code);
+
+  /**
+   * Who a "suspend everything shown" would actually touch.
+   *
+   * Deliberately not a checkbox column. This table's grid is already conditional on which tab is
+   * open, and a selection model would need its own answers (select across a filter? across the
+   * roster tab?) for a job that is really "these people left" — which the filter and the search
+   * box already express. So the action rides on the narrowed set, and the confirm dialog lists
+   * every name as the review step.
+   *
+   * Only offered while something IS narrowing the list. On an unfiltered table this would read
+   * as "suspend everyone", which is not an errand anybody has.
+   */
+  const bulkSuspendTargets = peopleTab === "accounts" && narrowed
+    ? filteredUsers.filter(u => u.status !== "suspended"
+        // Your own account, excluded here rather than refused later: locking yourself out mid
+        // clear-out is a mistake the screen should not offer, and the store cannot know which
+        // session is asking.
+        && u.id !== currentPortalUser(portalUsers)?.id
+        && !isLastActiveAdmin(portalUsers, u.id))
+    : [];
+  const bulkSuspendKept = peopleTab === "accounts" && narrowed
+    ? filteredUsers.filter(u => u.status !== "suspended").length - bulkSuspendTargets.length
+    : 0;
 
   const scopedUsers = sortRows(filteredUsers, sort, (u, key) => {
     switch (key) {
@@ -2056,6 +2096,56 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       </div>
 
       </div>
+
+      {/* Only while the list is narrowed, and only with somebody to act on. An "act on everything
+          shown" control above an unfiltered table is an invitation to a mistake nobody meant to
+          make; above a filtered one it is the whole errand — "these people left". */}
+      {mayEdit && bulkSuspendTargets.length > 0 && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
+          padding: "10px 14px", marginBottom: "10px", borderRadius: "10px",
+          backgroundColor: "var(--gray-50)", border: BORDER,
+        }}>
+          <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
+            {t.bulkSuspendBar(bulkSuspendTargets.length)}
+          </span>
+          {bulkSuspendKept > 0 && (
+            <span style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.bulkSuspendKept(bulkSuspendKept)}</span>
+          )}
+          <button className="portal-btn-outline" onClick={() => setConfirmingBulkSuspend(true)}
+            style={{ marginLeft: "auto", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {t.bulkSuspendAction}
+          </button>
+        </div>
+      )}
+
+      {confirmingBulkSuspend && (
+        /* Every name, not a count. The list IS the review step here — there are no checkboxes to
+           look back at, so the dialog has to be the place where "wait, not that one" happens. */
+        <ConfirmModal
+          title={t.bulkSuspendTitle(bulkSuspendTargets.length)}
+          body={t.bulkSuspendBody}
+          confirmLabel={t.bulkSuspendCta(bulkSuspendTargets.length)}
+          cancelLabel={t.cancel}
+          danger
+          onClose={() => setConfirmingBulkSuspend(false)}
+          onConfirm={() => {
+            const refused = suspendPortalUsers(bulkSuspendTargets.map(u => u.id));
+            const done = bulkSuspendTargets.length - refused.length;
+            setConfirmingBulkSuspend(false);
+            showToast({ variant: done > 0 ? "success" : "warning", title: t.bulkSuspendedToast(done) });
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxHeight: "40vh", overflowY: "auto" }}>
+            {bulkSuspendTargets.map(u => (
+              <div key={u.id} style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{u.name}</span>
+                <span style={{ fontSize: "11px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis" }}>{u.email}</span>
+              </div>
+            ))}
+          </div>
+        </ConfirmModal>
+      )}
 
       {/* No overflow:hidden here — it used to clip the header row's flat corners to match the
           card's rounded ones, but that also clips any row's RowActionsMenu dropdown that opens
