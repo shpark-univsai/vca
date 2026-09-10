@@ -330,12 +330,18 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
      * 880px: a 240px rail, a 520px column and the card's own padding, which is the width the
      * sections actually need rather than a round number.
      *
-     * Flush left, not centred, and that distinction is the whole of the earlier objection to a
-     * 720px version of this: centring pushed the card off the left edge every other tab starts
-     * at, so the page read as a different product. Capped and left-aligned, the first pixel of
-     * this card sits where the first pixel of the Users table sits.
+     * Centred. Left-aligned was tried first, on the reasoning that a card starting where the
+     * Users table starts would not read as a different tab — but a capped column pinned to the
+     * left edge does not read as aligned, it reads as a page that ran out halfway, with the
+     * emptiness collected on one side. Splitting the leftover room puts it either side of the
+     * content instead of all of it in one place, which is what every settings page this was
+     * checked against does (Later, Lindy, Flodesk, Runway).
+     *
+     * The tradeoff is real and known: switching from a table tab to this one now shifts the left
+     * edge. A settings page is entered deliberately and read on its own, so the shift costs less
+     * than the lopsidedness did.
      */
-    <div style={{ maxWidth: "880px" }}>
+    <div style={{ maxWidth: "880px", marginInline: "auto" }}>
       {/* No page title here: the top bar's crumb already names this page, and printing the same
           word again 20px lower was the page introducing itself twice. What stays is the row of
           things you can do on it. */}
