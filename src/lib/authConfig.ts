@@ -79,7 +79,23 @@ export function getAuthConfig(): AuthConfig {
     selfSignup: false,
     registrationCode: true,
     passwordRecovery: "emailCode",
-    supportContact: null,
+    /**
+     * The one field here that a deployment can already set without a rebuild.
+     *
+     * .env.example has documented NEXT_PUBLIC_SUPPORT_CONTACT since the recovery screens were
+     * built, and nothing read it — so an installation that filled it in got the generic line
+     * anyway, on the exact screens where the generic line is the whole recovery path. The other
+     * fields stay hardcoded until each has an agreed variable name; this one had one.
+     *
+     * `|| null` rather than `??`: an empty variable is an unset variable, and "" would print a
+     * blank where a contact should be.
+     *
+     * NOTE: this is the CUSTOMER's own desk — "Security Operations, ext. 1234" — not ours.
+     * Ours is SUPPORT_CONTACT in vcaStore, which is a different contact for a different
+     * question: this one is "nobody can get into the console", that one is "the console cannot
+     * help". Do not merge them.
+     */
+    supportContact: process.env.NEXT_PUBLIC_SUPPORT_CONTACT || null,
     employeeIdLogin: true,
   };
 }

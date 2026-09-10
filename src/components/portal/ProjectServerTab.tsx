@@ -36,7 +36,8 @@ const MODAL_T = {
     serverName: "Server Name *", serverNamePlaceholder: "FR 2",
     serverIp: "Server IP *", serverIpPlaceholder: "192.168.0.36",
     serverPort: "Server Port", serverPortPlaceholder: "8011",
-    serverType: "Server Type", status: "Status",
+    serverType: "Server Type", status: "Status (recorded, not measured)",
+    statusHint: "Nothing here checks the server. This is what an administrator last wrote down, and the error counts on this page are the sum of these answers — not of anything reached over the network.",
     specification: "Specification", specificationPlaceholder: "8 vCPU · 32GB RAM",
     cancel: "Cancel", save: "Save",
   },
@@ -44,7 +45,8 @@ const MODAL_T = {
     serverName: "서버 이름 *", serverNamePlaceholder: "FR 2",
     serverIp: "서버 IP *", serverIpPlaceholder: "192.168.0.36",
     serverPort: "서버 포트", serverPortPlaceholder: "8011",
-    serverType: "서버 유형", status: "상태",
+    serverType: "서버 유형", status: "상태(측정값 아닌 기록)",
+    statusHint: "이 화면은 서버를 확인하지 않습니다. 관리자가 마지막으로 적어둔 값이고, 이 페이지의 오류 건수도 그 답들을 더한 것이지 망 너머에서 얻은 것이 아닙니다.",
     specification: "사양", specificationPlaceholder: "8 vCPU · 32GB RAM",
     cancel: "취소", save: "저장",
   },
@@ -104,6 +106,7 @@ function ServerFormModal({
                 options={[{ value: "success", label: st.success }, { value: "error", label: st.error }]} />
             </div>
           </div>
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "-4px" }}>{t.statusHint}</p>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.specification}</label>
             <TextField value={form.specification} onChange={v => setForm(f => ({ ...f, specification: v }))} placeholder={t.specificationPlaceholder} />
@@ -634,7 +637,7 @@ const MAIN_T = {
     confirmDeleteBody: "The server comes off this project. Any camera assigned to it is left unassigned — nothing stops processing that was not already stopped, but nobody is told where those cameras run next.",
     confirmDeleteCameras: (n: number) => (n === 1 ? "1 camera is assigned to it." : `${n} cameras are assigned to it.`),
     gapError: "connection failing",
-    gapErrorWhy: "Portal cannot reach the server. Everything assigned to it stops being processed, whatever the cameras themselves say.",
+    gapErrorWhy: "Somebody recorded this server as failing. Nothing here tested it — if that is still true, everything assigned to it has stopped being processed, whatever the cameras themselves say.",
     gapNoCameras: "no cameras assigned",
     gapNoCamerasWhy: "The server is registered and reachable but has nothing pointed at it — capacity that is paid for and idle.",
     gapServerUnit: "servers",
@@ -647,7 +650,7 @@ const MAIN_T = {
     allTypes: "All types", reset: "Reset", addServer: "Add server",
     emptyNoServers: "No servers configured for this project yet.",
     emptyNoMatch: "No servers match these filters.",
-    colStatus: "Status", colName: "Server Name", colIp: "Server IP", colType: "Server Type", colSpec: "Specification",
+    colStatus: "Status (recorded)", colName: "Server Name", colIp: "Server IP", colType: "Server Type", colSpec: "Specification",
     edit: "Edit", remove: "Remove", cancel: "Cancel",
     showingEntries: (start: number, end: number, total: number) => `Showing ${start} to ${end} of ${total} entries`,
     rowsPerPage: "Rows per page:",
@@ -660,7 +663,7 @@ const MAIN_T = {
     confirmDeleteBody: "이 프로젝트에서 서버가 빠집니다. 여기 배정돼 있던 카메라는 미배정 상태가 됩니다 — 이미 멈춰 있던 것 말고 새로 멈추는 건 없지만, 그 카메라들이 이제 어디서 도는지는 아무도 모릅니다.",
     confirmDeleteCameras: (n: number) => `배정된 카메라 ${n}대.`,
     gapError: "연결 실패",
-    gapErrorWhy: "포털에서 서버에 닿지 않습니다. 카메라 쪽 표시와 무관하게, 이 서버에 붙은 것은 전부 처리가 멈춥니다.",
+    gapErrorWhy: "누군가 이 서버를 오류로 기록해 두었습니다. 화면이 확인한 것은 아닙니다 — 아직 사실이라면 카메라 쪽 표시와 무관하게 이 서버에 붙은 것은 전부 처리가 멈춰 있습니다.",
     gapNoCameras: "카메라 미할당",
     gapNoCamerasWhy: "등록되어 있고 연결도 되지만 아무것도 붙어 있지 않습니다. 비용은 나가고 놀고 있는 용량입니다.",
     gapServerUnit: "대",
@@ -673,7 +676,7 @@ const MAIN_T = {
     allTypes: "전체 유형", reset: "초기화", addServer: "서버 추가",
     emptyNoServers: "이 프로젝트에 아직 설정된 서버가 없습니다.",
     emptyNoMatch: "필터와 일치하는 서버가 없습니다.",
-    colStatus: "상태", colName: "서버 이름", colIp: "서버 IP", colType: "서버 유형", colSpec: "사양",
+    colStatus: "상태(기록)", colName: "서버 이름", colIp: "서버 IP", colType: "서버 유형", colSpec: "사양",
     edit: "수정", remove: "삭제", cancel: "취소",
     showingEntries: (start: number, end: number, total: number) => `전체 ${total}건 중 ${start}–${end}건 표시`,
     rowsPerPage: "페이지당 행 수:",
