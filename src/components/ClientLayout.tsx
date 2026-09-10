@@ -18,6 +18,7 @@ import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
 import {
   useVcaStore, VIP_SIMULATION_CAMERAS, canEnterApp, canEnterPortal, currentPortalUser,
+  camerasInProject, getActiveProjectId, watchedPersonsInProject,
   type Camera,
 } from "@/lib/vcaStore";
 import { useLanguage } from "@/lib/i18n";
@@ -55,8 +56,7 @@ function hashStringToIndex(s: string, mod: number): number {
 // regular cameras (deterministic from their id, so stable across ticks/reloads) keeps most
 // sightings repeating at the same camera (stays a plain VIP row) and bounds any real trail to at
 // most those 3 cameras, instead of growing unbounded.
-function regularCamerasForPerson(personId: string): Camera[] {
-  const pool = VIP_SIM_ONLINE_CAMERAS;
+function regularCamerasForPerson(personId: string, pool: Camera[]): Camera[] {
   return [
     pool[hashStringToIndex(personId, pool.length)],
     pool[hashStringToIndex(`${personId}-alt1`, pool.length)],
@@ -71,11 +71,23 @@ function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void
     const scheduleNext = () => {
       const delay = 15000 + Math.random() * 15000;
       timer = setTimeout(() => {
-        const { persons, addEvent } = useVcaStore.getState();
-        const onlineCameras = VIP_SIM_ONLINE_CAMERAS;
+        const { addEvent } = useVcaStore.getState();
+        // Scoped to the site on screen, and to the people actually being watched.
+        //
+        // It read the whole `persons` list, so a person registered at the school turned up on a
+        // Singapore camera — the site switch in the header was decoration as far as the alerts
+        // were concerned. And it did not read releasedAt or expiresAt at all, which is the thing
+        // Person.expiresAt's own note warned about: somebody released this morning still raised
+        // an alert this afternoon. watchedPersonsInProject answers both.
+        //
+        // The camera pool is scoped too. Picking the person's site correctly and then stamping the
+        // detection onto a camera from another one would move the bug rather than fix it.
+        const projectId = getActiveProjectId();
+        const persons = watchedPersonsInProject(useVcaStore.getState().persons, projectId, Date.now());
+        const onlineCameras = camerasInProject(VIP_SIM_ONLINE_CAMERAS, projectId);
         if (persons.length > 0 && onlineCameras.length > 0) {
           const person = persons[Math.floor(Math.random() * persons.length)];
-          const regulars = regularCamerasForPerson(person.id);
+          const regulars = regularCamerasForPerson(person.id, onlineCameras);
           const r = Math.random();
           const camera = r < 0.6 ? regulars[0] : r < 0.85 ? regulars[1] : regulars[2];
           const confidence = Math.round((68 + Math.random() * 27) * 10) / 10;

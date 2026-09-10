@@ -56,6 +56,8 @@ const T = {
     reset: "Reset",
     search: "Search",
     noSearchPermission: "You do not have permission to search people — ask an administrator",
+    noRedFaceTitle: "Person search permission required",
+    noRedFaceBody: "RedFace matches a face against the registry and builds an association network from it, so with no search permission there is nothing it can show. An administrator can grant it in the Portal, under Users & Permissions.",
     searchVips: "Search VIPs",
     clearSearch: "Clear search",
     sortRegistered: "Registered",
@@ -161,6 +163,8 @@ const T = {
     reset: "초기화",
     search: "검색",
     noSearchPermission: "인물 검색 권한이 없습니다 — 관리자에게 요청하세요",
+    noRedFaceTitle: "인물 검색 권한이 필요합니다",
+    noRedFaceBody: "RedFace는 얼굴을 등록부와 대조해 동행 관계를 만드는 화면이라, 검색 권한 없이는 보여줄 것이 없습니다. 관리자에게 요청하면 포털의 사용자 및 권한에서 열어 줄 수 있습니다.",
     searchVips: "VIP 검색",
     clearSearch: "검색어 지우기",
     sortRegistered: "등록순",
@@ -4663,6 +4667,17 @@ function RedFaceContent({ seedCard, seedLabel, onSeedConsumed, onGoAnalyzeFrame 
   seedCard?: (typeof REID_DATA)[number] | null; seedLabel?: string | null; onSeedConsumed?: () => void;
   onGoAnalyzeFrame?: (location: string, at?: { date: string; time: string }) => void;
 } = {}) {
+  const [lang] = useLanguage();
+  const t = T[lang];
+  // RedFace is face search, so the whole tab is gated rather than a button inside it.
+  //
+  // The search sidebar checked this and disabled its Search button; this tab never did, and its
+  // target picker opens on mount — so an account with search taken away could still pick a face
+  // here and get an association network out of it. Gating the button was gating one of two doors.
+  // Same reading as Redmap: a screen that only exists to show search results has nothing to show
+  // without the permission.
+  const portalUsers = useVcaStore(state => state.portalUsers);
+  const searchAllowed = canSearchInApp(portalUsers);
   const [primaryTarget, setPrimaryTarget] = useState<{ name:string; face:string } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(true);
   // "UNSET" (not seedCard's own initial value) so the block below still fires on this
@@ -4700,6 +4715,21 @@ function RedFaceContent({ seedCard, seedLabel, onSeedConsumed, onGoAnalyzeFrame 
   useEffect(() => {
     if (seedCard) onSeedConsumed?.();
   }, [seedCard, onSeedConsumed]);
+
+  if (!searchAllowed) {
+    return (
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px", backgroundColor: "var(--gray-50)" }}>
+        <div style={{ maxWidth: "420px", textAlign: "center" }}>
+          <p style={{ margin: 0, fontSize: "18px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.36px" }}>
+            {t.noRedFaceTitle}
+          </p>
+          <p style={{ margin: "10px 0 0", fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", lineHeight: 1.7 }}>
+            {t.noRedFaceBody}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ flex:1, display:"flex", flexDirection:"column", position:"relative", backgroundColor:"var(--gray-50)", overflow:"hidden" }}>
