@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { create } from "zustand";
 import { liveEvents, getFacePhoto, DISTRICTS, type EventType, type LiveEvent, type TrackingHop } from "@/lib/mockData";
 import {
@@ -1046,6 +1046,40 @@ export function personsInProject(persons: Person[], projectId: string): Person[]
   return persons.filter(p => p.projectId === projectId);
 }
 
+/**
+ * The people this site is actually watching for right now.
+ *
+ * personsInProject above answers "whose records belong to this site" — which is what Portal's
+ * registry wants, because a released row and an expired one are exactly what the registry has to
+ * keep showing. Every screen in the monitoring app wants the other question, and asking the
+ * first one there is a fault with consequences: an administrator formally releases somebody in
+ * the morning and the operator is still being alerted on them that afternoon, because the row
+ * only got a `releasedAt` stamp and nothing read it.
+ *
+ * The store's own note on Person.expiresAt calls this out — "an expiry that only greys a row out
+ * is worse than no expiry at all: the operator believes the person was released while the
+ * cameras keep matching them" — and until now that was the actual behaviour on this side of the
+ * product too, not just in the module.
+ *
+ * `releasedAt` needs no clock. `expiresAt` does, so it is passed in rather than read here: a date
+ * comparison made during render disagrees between the server's frame and the browser's first
+ * one. Callers that have no clock yet pass null, and then only the release filter applies —
+ * the narrower answer of the two, never the wider one.
+ *
+ * HANDOFF NOTE: the same rule has to hold on the wire. Released and expired people must drop out
+ * of PUT /v1/provision/vips, or the analysis module keeps matching a face the console says it
+ * has stopped watching. The screen filtering them is not the control; the provisioning call is.
+ */
+export function watchedPersonsInProject(persons: Person[], projectId: string, nowMs: number | null): Person[] {
+  const today = nowMs === null ? null : new Date(nowMs).toISOString().slice(0, 10);
+  return persons.filter(p => {
+    if (p.projectId !== projectId) return false;
+    if (p.releasedAt) return false;
+    if (today !== null && p.expiresAt && p.expiresAt.slice(0, 10) < today) return false;
+    return true;
+  });
+}
+
 /** This site's cameras. */
 export function camerasInProject(cameras: Camera[], projectId: string): Camera[] {
   return cameras.filter(c => c.projectId === projectId);
@@ -1080,10 +1114,21 @@ export function useProjectEvents(): VcaEvent[] {
   return useMemo(() => eventsInProject(events, projectId, cameras), [events, projectId, cameras]);
 }
 
+/**
+ * The app's view of the watchlist: this site's people, minus the ones taken off it.
+ *
+ * Deliberately NOT personsInProject — see watchedPersonsInProject. Portal keeps reading the
+ * unfiltered list, because the record of a release is the point of a release.
+ */
 export function useProjectPersons(): Person[] {
   const persons = useVcaStore(s => s.persons);
   const projectId = useActiveProjectId();
-  return useMemo(() => personsInProject(persons, projectId), [persons, projectId]);
+  // Post-mount, like every other clock read: an expiry compared during render cuts at a
+  // different instant on the server than in the browser, and the two frames then disagree about
+  // who is on the list.
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
+  return useMemo(() => watchedPersonsInProject(persons, projectId, nowMs), [persons, projectId, nowMs]);
 }
 
 /**
