@@ -102,7 +102,6 @@ const T = {
     expiredOn: "expired",
     atLimit: "Every licensed channel is in use — no further camera can be connected until the limit is raised.",
     nearLimit: (n: number) => `${n} channel(s) left before this project reaches its licensed limit.`,
-    contractNote: "Channels and term are changed by contract, not here.",
     clauseChannels: "Licensed channels",
     // Not "Term": a term is a range, and Project carries licenseExpiresAt and no start date, so
     // this clause has one date to show — the day the licence stops.
@@ -120,7 +119,6 @@ const T = {
     fileLead: "Channels, term and plan above come from a file Univs.ai signs and issues. Install a new one here when your contract changes.",
     fileOnRecord: (id: string) => `Installed: ${id}`,
     fileNoneOnRecord: "No licence file has been installed on this site.",
-    fileNoneHint: "The figures above were configured before licence files existed. Installing a file replaces them with what the file says.",
     fileInstall: "Install a licence file",
     fileCancel: "Cancel",
     fileDropLabel: "Drop the .lic file here, or paste its text",
@@ -168,7 +166,6 @@ const T = {
     expiredOn: "만료됨",
     atLimit: "라이선스 채널을 모두 쓰고 있습니다 — 한도를 올리기 전까지 카메라를 더 연결할 수 없습니다.",
     nearLimit: (n: number) => `라이선스 한도까지 ${n}채널 남았습니다.`,
-    contractNote: "채널과 기간은 계약으로 변경되며 이 화면에서는 바꿀 수 없습니다.",
     clauseChannels: "계약 채널",
     clauseTerm: "만료일",
     clauseScope: "포함 범위",
@@ -184,7 +181,6 @@ const T = {
     fileLead: "위의 채널 수와 기간, 플랜은 Univs.ai가 서명해 발급한 파일에서 나옵니다. 계약이 바뀌면 새 파일을 여기서 설치합니다.",
     fileOnRecord: (id: string) => `설치됨: ${id}`,
     fileNoneOnRecord: "이 사이트에 설치된 라이선스 파일이 없습니다.",
-    fileNoneHint: "위 값들은 라이선스 파일이 생기기 전에 설정된 것입니다. 파일을 설치하면 파일에 적힌 값으로 대체됩니다.",
     fileInstall: "라이선스 파일 설치",
     fileCancel: "취소",
     fileDropLabel: ".lic 파일을 여기에 놓거나, 내용을 붙여넣으세요",
@@ -608,7 +604,6 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
               <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-400)", marginTop: "5px" }}>—</p>
             )}
           </div>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, maxWidth: "300px", textAlign: "right" }}>{t.contractNote}</p>
         </div>
       </div>
 
@@ -746,12 +741,15 @@ function LicenseFileSection({ projectId, t }: {
         <div style={{ flex: "1 1 320px", minWidth: 0 }}>
           <h3 style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", margin: 0 }}>{t.fileHeading}</h3>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, margin: "6px 0 0", textWrap: "pretty" }}>{t.fileLead}</p>
-          {/* What is on record today. A site configured before licence files existed has numbers
-              with no file behind them, and saying so is more useful than an empty line — it tells
-              the reader why installing a file will change figures they thought were settled. */}
-          <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.7, margin: "10px 0 0", textWrap: "pretty" }}>
-            {project.licenseChannelLimit === undefined ? t.fileNoneOnRecord : t.fileNoneHint}
-          </p>
+          {/* Only the empty case. "Installing a file replaces these figures" is what the install
+              button says by existing; the sentence that was here restated it. What a reader cannot
+              see is that this site has NO file at all — an empty box does not say whether it is
+              broken or simply not filled in yet. */}
+          {project.licenseChannelLimit === undefined && (
+            <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.7, margin: "10px 0 0", textWrap: "pretty" }}>
+              {t.fileNoneOnRecord}
+            </p>
+          )}
         </div>
         {!open && (
           <button
