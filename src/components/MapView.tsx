@@ -113,19 +113,32 @@ const T = {
  * today and wrong the moment it is not. Resolving a person by name is the path to ban, not just
  * the value to check.
  *
- * A camera is counted only if a hit's coordinates match one on the register. A hit that cannot be
- * matched still counts towards the headcount — somebody was seen — but it cannot vouch for a
- * camera, and guessing which one would be the same silent mis-attribution the mock rules ban.
+ * Cameras are counted from what the hit itself says, never by looking a camera up.
+ *
+ * Two attempts failed first, and both failed the same way — by answering zero where somebody had
+ * plainly been seen.
+ *
+ * Matching hit coordinates against the register's said "1 person on 0 of its cameras". The seeds'
+ * hit coordinates are hand-authored and never land exactly on a camera's (the zoomed-in ping
+ * layer says as much about itself), so equality was never going to hit. Loosening it to "nearest
+ * camera" would credit a sighting to a camera that did not make it, which is the mis-attribution
+ * the mock rules exist to prevent.
+ *
+ * Using `cameraLabel` alone said zero too: it is optional and most seeded events carry none.
+ *
+ * So: the label when the hit has one, and otherwise the hit's own coordinate — which is where the
+ * camera that recorded it stands, because that is what a hit's coordinate IS. It is never absent
+ * (a hit with no coordinate is already filtered out above), so this figure cannot come back zero
+ * while the headcount is not. It also makes the number checkable against the screen: the pins in
+ * this district are grouped by that same coordinate, so "on N cameras" is N pins.
  */
-function districtTally(hits: DetectionHit[], camerasInDistrict: Camera[], districtId: string) {
-  const camKey = (lat: number, lng: number) => `${lat.toFixed(4)},${lng.toFixed(4)}`;
-  const registered = new Set(camerasInDistrict.map(c => camKey(c.lat, c.lng)));
+function districtTally(hits: DetectionHit[], districtId: string) {
   const here = hits.filter(h =>
     h.lat !== undefined && h.lng !== undefined && nearestDistrict(h.lat, h.lng).id === districtId
   );
   const people = new Set(here.map(h => h.person ?? h.id)).size;
   const cameras = new Set(
-    here.map(h => camKey(h.lat as number, h.lng as number)).filter(k => registered.has(k))
+    here.map(h => h.camera ?? `${(h.lat as number).toFixed(4)},${(h.lng as number).toFixed(4)}`)
   ).size;
   return { people, cameras };
 }
@@ -675,11 +688,45 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         // Today, matching what the pill counted. An hour would be the honest window for "recent",
         // but the number that was just clicked says today, and a pill reading 7 that opens onto
         // two pins is a pill that lied.
+        // A TRACKING ROW IS A VIP WHO MOVED, and this used to drop every one of them.
+        //
+        // The filter was `ev.type === "VIP"`, which is the same mistake the zoomed-out pill was
+        // fixed for this morning: once someone is matched across two cameras their sightings
+        // collapse into one "Tracking" row (see addEvent), so `type === "VIP"` keeps only the
+        // people who never moved. Multi-camera sightings — the thing a district pill exists to
+        // surface — were exactly what it excluded. Clicking a pill that counted them opened onto
+        // pins that did not.
+        //
+        // So each hop becomes its own sighting, at its own camera: the same rule
+        // todaysDetectionHits applies, against the same events. A trail through three cameras in
+        // this district is three pins here, not none.
         const now = new Date();
-        const hits = recentEvents
-          .filter(ev => ev.type === "VIP"
-            && isTodaySgt(new Date(ev.timestamp), now)
-            && nearestDistrict(ev.lat, ev.lng).id === districtFilter)
+        const inDistrictToday = (lat: number, lng: number, timestamp: string) =>
+          isTodaySgt(new Date(timestamp), now) && nearestDistrict(lat, lng).id === districtFilter;
+        const hits: LiveEvent[] = recentEvents
+          .flatMap(ev => {
+            if (ev.type === "Tracking" && ev.path?.length) {
+              // The hop's own coordinate (carried since 57b7282). Falling back to the event's
+              // would put an earlier stop at the newest sighting's camera, which is the bug that
+              // fix was for.
+              return ev.path
+                .filter(hop => inDistrictToday(hop.lat ?? ev.lat, hop.lng ?? ev.lng, hop.timestamp))
+                .map(hop => ({
+                  ...ev,
+                  lat: hop.lat ?? ev.lat,
+                  lng: hop.lng ?? ev.lng,
+                  timestamp: hop.timestamp,
+                  location: hop.location,
+                  cameraLabel: hop.cameraLabel,
+                  confidence: hop.confidence ?? ev.confidence,
+                  // The trail is dropped from the per-hop copy on purpose: this pin is ONE
+                  // sighting, and a popup offering "the whole trail" from a single stop is the
+                  // trail view's job, not this one's.
+                  path: undefined,
+                }));
+            }
+            return inDistrictToday(ev.lat, ev.lng, ev.timestamp) ? [ev] : [];
+          })
           .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
         // Several hits at one camera would stack into an unreadable pile of identical pins, so
@@ -702,9 +749,17 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // keeps passing here, the other about a place a lot of people pass. They point at
           // different decisions, so the map must not render them the same.
           //
-          // LiveEvent.id is the person id (vcaEventsToLiveEvents resolves personId into it), so
-          // repeat sightings of one person collapse here the way they should.
-          const people = new Set(spot.map(ev => ev.id)).size;
+          // BY NAME, NOT BY id. The comment here used to say LiveEvent.id was the person id
+          // because vcaEventsToLiveEvents resolves personId into it — and `personId` is not a
+          // person: both writers put the SIGHTING's own id there (see DetectionHit.person). So
+          // `new Set(ev.id)` counted detections, and this badge was rendering the exact number
+          // the paragraph above says it must not: "13 people caught once each" and "one person
+          // caught 13 times" came out identical after all.
+          //
+          // A name is a weaker identity than an id — namesakes merge and the count comes out low
+          // — and it is the only identity an event carries. Same fallback, and the same server
+          // contract, as the district line below.
+          const people = new Set(spot.map(ev => ev.name)).size;
           const badge = people > 1
             ? `<div style="position:absolute;top:-2px;right:-2px;z-index:3;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;
                   border-radius:999px;background:var(--gray-900);border:1.5px solid white;display:flex;align-items:center;justify-content:center;
@@ -743,10 +798,22 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // detections today, and cameras installed here — because that pair is the coverage
           // argument; this line answers the different question ("how many people, on how many of
           // those cameras") instead of overwriting it.
-          const homeTally = districtTally(todaysHits, camerasHere, home.id);
+          const homeTally = districtTally(todaysHits, home.id);
+          // THE SAME DERIVATION THE PILL WAS CLICKED WITH. This read `hits.length` — this
+          // branch's own list — while the collapsed pill counted todaysDetectionHits, so the
+          // number could change the moment you pressed it. It did: the picked pill said "VIP 2건"
+          // beside "카메라 1대에서 3명", and two detections cannot contain three people.
+          //
+          // The figure a person just pressed must not move under them, so all three numbers on
+          // this pill come from one derivation. `hits` still draws the pins, applying the same
+          // unroll rule to the same events — and if those two ever diverge it shows up as a pill
+          // reading N over fewer than N pins, which is visible rather than silent.
+          const homeHits = todaysHits.filter(h =>
+            h.lat !== undefined && h.lng !== undefined && nearestDistrict(h.lat, h.lng).id === home.id
+          ).length;
           const icon = L.divIcon({
             html: districtPillHtml(
-              home.label, hits.length, camerasHere.length,
+              home.label, homeHits, camerasHere.length,
               camerasHere.some(c => cameraStatus.byId(c.id) === "running"),
               alertThreshold, moderateThreshold, t,
               t.districtSummary(homeTally.people, homeTally.cameras),

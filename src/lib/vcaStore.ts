@@ -4005,6 +4005,20 @@ export interface DetectionHit {
    * merging with every other unidentified one.
    */
   person?: string;
+  /**
+   * Which camera saw it — the camera's own label/code, as the event recorded it.
+   *
+   * Carried rather than matched. The first version of the district line counted cameras by
+   * comparing a hit's coordinates against the register's, and reported "1 person on 0 of its
+   * cameras" — somebody was seen, so zero cameras is not a possible answer. The seeds' hit
+   * coordinates are hand-authored and do not land exactly on a camera's (the zoomed-in ping layer
+   * says as much about itself), so coordinate equality was never going to work, and loosening it
+   * to "nearest camera" would attribute a sighting to a camera that did not make it.
+   *
+   * Optional because an older event may carry no label; a caller counting distinct cameras should
+   * skip the ones without, and say so, rather than fold them into one unnamed camera.
+   */
+  camera?: string;
 }
 
 // A "Tracking" row is a VIEW: the same underlying VIP re-identifications, just collapsed into
@@ -4019,14 +4033,14 @@ export function todaysDetectionHits(events: VcaEvent[]): DetectionHit[] {
   const hits: DetectionHit[] = [];
   events.forEach(e => {
     if (e.personType === "VIP" && e.location) {
-      hits.push({ id: e.id, timestamp: e.timestamp, location: e.location, lat: e.lat, lng: e.lng, person: e.personName });
+      hits.push({ id: e.id, timestamp: e.timestamp, location: e.location, lat: e.lat, lng: e.lng, person: e.personName, camera: e.cameraLabel });
     } else if (e.personType === "Tracking" && e.personPath) {
       e.personPath.forEach((hop, i) => {
         // Each hop's own coordinate — a trail crossing three districts is three hits in three
         // places, not three in the last one.
         // Every hop is the same person — that is what makes a trail a trail. Carrying the event's
         // person onto each hop is what lets the pill count a VIP who crossed four cameras as one.
-        if (hop.location) hits.push({ id: `${e.id}-${i}`, timestamp: hop.timestamp, location: hop.location, lat: hop.lat ?? e.lat, lng: hop.lng ?? e.lng, person: e.personName });
+        if (hop.location) hits.push({ id: `${e.id}-${i}`, timestamp: hop.timestamp, location: hop.location, lat: hop.lat ?? e.lat, lng: hop.lng ?? e.lng, person: e.personName, camera: hop.cameraLabel });
       });
     }
   });
