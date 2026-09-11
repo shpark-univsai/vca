@@ -6,7 +6,7 @@ import { LiveEvent, Device, TrackingHop, nearestDistrict, getFacePhoto, formatTi
   DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD } from "@/lib/mockData";
 import {
   vcaEventsToLiveEvents,
-  useProjectEvents, useProjectCameras, todaysDetectionHits, type Camera,
+  useProjectEvents, useProjectCameras, todaysDetectionHits, type Camera, type DetectionHit,
 } from "@/lib/vcaStore";
 import { useCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
 import { useApiData } from "@/hooks/useApiData";
@@ -42,6 +42,21 @@ const T = {
     camerasDown: "all down",
     spotSummary: (people: number, hits: number) =>
       `Here today: ${people} ${people === 1 ? "person" : "people"} · ${hits} detection${hits === 1 ? "" : "s"}`,
+    /**
+     * The picked district's own line: who was seen, and on how many of its cameras.
+     *
+     * Spelt out in words rather than compressed the way the collapsed pill's figures are. This
+     * one is read once, deliberately, after a click — not scanned across seventeen pills — so
+     * the constraint that forced "VIP ×12 · 5 cams" into single characters does not apply, and
+     * the two figures here are exactly the pair that gets misread when unlabelled.
+     *
+     * `cameras` is how many of this district's cameras actually caught somebody, NOT how many
+     * are installed — the opposite of the figure above it, which is why both carry their nouns.
+     */
+    districtSummary: (people: number, cameras: number) =>
+      // "on 1 of its cameras", not "camera" — the "N of its X" construction takes the plural
+      // whatever N is, because X is the set being drawn from, not the thing being counted.
+      `${people} ${people === 1 ? "person" : "people"} on ${cameras} of its cameras`,
     live: "LIVE",
     out: "OUT",
     offline: "OFFLINE",
@@ -62,6 +77,7 @@ const T = {
     noCamera: "카메라 없음",
     camerasDown: "전부 중단",
     spotSummary: (people: number, hits: number) => `이 지점 오늘 ${people}명 · ${hits}건`,
+    districtSummary: (people: number, cameras: number) => `카메라 ${cameras}대에서 ${people}명`,
     live: "정상",
     out: "중단",
     offline: "중단",
@@ -79,6 +95,41 @@ const T = {
 
 // Leaflet popups are raw HTML strings, not React — values dropped into an inline onclick="...('...')"
 // attribute need their quotes escaped so a name/label containing one can't break the attribute.
+/**
+ * How many distinct people a set of hits represents, and how many of a district's cameras
+ * actually caught one.
+ *
+ * Shared by both places that draw a district pill — the zoomed-out layer and the pill that stays
+ * behind after a district is picked — because those two used to compute their figures separately
+ * and had already drifted apart once (one filtered by coordinate, the other by row type).
+ *
+ * An unidentified hit falls back to its own id, so it counts as one person instead of merging
+ * with every other unidentified hit into a single phantom.
+ *
+ * SERVER CONTRACT: a detection must carry a person id. `todaysDetectionHits` falls back to the
+ * person's NAME when the event has no id — which is the mock's usual case — and a name is not an
+ * identity: two people called the same thing merge into one, and the headcount comes out low
+ * while looking perfectly reasonable. The mock's names happen to be distinct, so this is right
+ * today and wrong the moment it is not. Resolving a person by name is the path to ban, not just
+ * the value to check.
+ *
+ * A camera is counted only if a hit's coordinates match one on the register. A hit that cannot be
+ * matched still counts towards the headcount — somebody was seen — but it cannot vouch for a
+ * camera, and guessing which one would be the same silent mis-attribution the mock rules ban.
+ */
+function districtTally(hits: DetectionHit[], camerasInDistrict: Camera[], districtId: string) {
+  const camKey = (lat: number, lng: number) => `${lat.toFixed(4)},${lng.toFixed(4)}`;
+  const registered = new Set(camerasInDistrict.map(c => camKey(c.lat, c.lng)));
+  const here = hits.filter(h =>
+    h.lat !== undefined && h.lng !== undefined && nearestDistrict(h.lat, h.lng).id === districtId
+  );
+  const people = new Set(here.map(h => h.person ?? h.id)).size;
+  const cameras = new Set(
+    here.map(h => camKey(h.lat as number, h.lng as number)).filter(k => registered.has(k))
+  ).size;
+  return { people, cameras };
+}
+
 function escapeAttr(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
@@ -178,6 +229,14 @@ function districtPillHtml(
   alertThreshold: number,
   moderateThreshold: number,
   t: (typeof T)[AppLanguage],
+  /**
+   * A third line, only on the pill that stays after a district is picked.
+   *
+   * The collapsed pills stay two lines: seventeen of them share one map and a third line on each
+   * is what turns a map into a wall of boxes. Once one district is picked there is exactly one of
+   * these on screen, and the figure the operator came for can be spelt out.
+   */
+  detail?: string,
 ): string {
   const isAlert = count >= alertThreshold;
   const isDark = !isAlert && count >= moderateThreshold;
@@ -228,6 +287,17 @@ function districtPillHtml(
       // not touching. Set flush it collided with the number: a 10px × has almost no side bearing
       // and the 14px 800-weight digit starts immediately, so the two glyphs ran together. 2px is
       // the smallest gap that separates them without turning the mark into its own token.
+      //
+      // cameraCount IS THE INSTALLED COUNT, DELIBERATELY. It was nearly changed to "cameras that
+      // actually caught someone", which is a different and much worse pill. Two reasons, both
+      // load-bearing: 29 hits from 3 cameras and 29 from 40 are opposite findings, and this
+      // figure is what a customer takes upstairs to argue for more cameras (see
+      // project_vca_district_vip_count) — that comparison only holds if the denominator is what
+      // is installed. And `isUncovered` is `cameraCount === 0`: fed a detecting count, a district
+      // with six working cameras and a quiet morning would draw itself as "no camera", turning a
+      // coverage gap into something indistinguishable from silence. The people-and-cameras figure
+      // the operator asked for lives on the line below, in the picked-district pill, where there
+      // is room to label both.
       : `<span style="font-size:10px;font-weight:700;opacity:0.82;letter-spacing:0.2px;margin-right:3px">VIP</span>` +
         (t.hitsMark() ? `<span style="font-size:10px;font-weight:600;opacity:0.62;margin-right:2px">${t.hitsMark()}</span>` : "") +
         `<span style="font-size:14px;font-weight:800;letter-spacing:-0.3px">${count}</span>` +
@@ -240,6 +310,7 @@ function districtPillHtml(
       white-space:nowrap;letter-spacing:-0.2px">
     <span style="font-size:11px;font-weight:600;opacity:0.78">${label}</span>
     <span style="display:inline-flex;align-items:baseline">${secondLine}</span>
+    ${detail ? `<span style="font-size:10px;font-weight:600;opacity:0.68;margin-top:1px">${detail}</span>` : ""}
   </div>`;
 }
 
@@ -668,11 +739,17 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         const home = districts?.find(d => d.id === districtFilter);
         if (home) {
           const camerasHere = cameras.filter(c => nearestDistrict(c.lat, c.lng).id === home.id);
+          // The figures the operator pressed this pill to see. The two above stay what they were —
+          // detections today, and cameras installed here — because that pair is the coverage
+          // argument; this line answers the different question ("how many people, on how many of
+          // those cameras") instead of overwriting it.
+          const homeTally = districtTally(todaysHits, camerasHere, home.id);
           const icon = L.divIcon({
             html: districtPillHtml(
               home.label, hits.length, camerasHere.length,
               camerasHere.some(c => cameraStatus.byId(c.id) === "running"),
               alertThreshold, moderateThreshold, t,
+              t.districtSummary(homeTally.people, homeTally.cameras),
             ),
             iconSize: [1, 1],
             iconAnchor: [0, 0],

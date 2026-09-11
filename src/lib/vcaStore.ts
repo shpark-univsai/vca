@@ -3963,6 +3963,33 @@ export interface DetectionHit {
    */
   lat?: number;
   lng?: number;
+  /**
+   * Who this hit was, so a caller can count PEOPLE rather than hits.
+   *
+   * Added for the same district pills as lat/lng, and for the same reason: the number on the pill
+   * was a hit count while the label beside it said VIP, so "VIP 4 · 6 cams" over a district where
+   * two people had been seen four times read as four people. The distinction is the whole point of
+   * this derivation's own comment below — it exists because two screens asked "how many" and meant
+   * different things — and the pill had no way to ask the first question.
+   *
+   * `personName`, NOT `personId` — and that is not a preference.
+   *
+   * `VcaEvent.personId` looks like the right field and is not one: both writers put the SIGHTING's
+   * id in it (`SEED_EVENTS` uses `e.id`, ClientLayout's addEvent uses `liveEvent.id`), so it is
+   * unique per detection. Counting distinct values of it returns the number of detections wearing
+   * the word "people" — the first version of this pill did exactly that and reported "7 people"
+   * over seven sightings of two.
+   *
+   * A name is a weaker identity than an id: two people called the same thing merge into one and
+   * the headcount comes out low while looking entirely reasonable. The mock's names are distinct,
+   * so it is right today. SERVER CONTRACT: a detection must carry a stable per-person id, and the
+   * path to ban is resolving a person by name — not merely the value to check.
+   *
+   * Optional because an older event may carry no name at all; a caller counting distinct people
+   * should fall back to the hit's own id, so an unidentified hit counts as one person rather than
+   * merging with every other unidentified one.
+   */
+  person?: string;
 }
 
 // A "Tracking" row is a VIEW: the same underlying VIP re-identifications, just collapsed into
@@ -3977,12 +4004,14 @@ export function todaysDetectionHits(events: VcaEvent[]): DetectionHit[] {
   const hits: DetectionHit[] = [];
   events.forEach(e => {
     if (e.personType === "VIP" && e.location) {
-      hits.push({ id: e.id, timestamp: e.timestamp, location: e.location, lat: e.lat, lng: e.lng });
+      hits.push({ id: e.id, timestamp: e.timestamp, location: e.location, lat: e.lat, lng: e.lng, person: e.personName });
     } else if (e.personType === "Tracking" && e.personPath) {
       e.personPath.forEach((hop, i) => {
         // Each hop's own coordinate — a trail crossing three districts is three hits in three
         // places, not three in the last one.
-        if (hop.location) hits.push({ id: `${e.id}-${i}`, timestamp: hop.timestamp, location: hop.location, lat: hop.lat ?? e.lat, lng: hop.lng ?? e.lng });
+        // Every hop is the same person — that is what makes a trail a trail. Carrying the event's
+        // person onto each hop is what lets the pill count a VIP who crossed four cameras as one.
+        if (hop.location) hits.push({ id: `${e.id}-${i}`, timestamp: hop.timestamp, location: hop.location, lat: hop.lat ?? e.lat, lng: hop.lng ?? e.lng, person: e.personName });
       });
     }
   });
