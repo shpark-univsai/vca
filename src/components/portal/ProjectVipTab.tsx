@@ -996,15 +996,15 @@ function GroupModal({ t, group, projectId, onClose }: {
  * value carries one. Rows enrolled before Portal recorded instants have only a date, and inventing
  * a time for them would be making up a fact about when somebody was put on a watchlist.
  *
- * Only called from the sheet, which exists after a click, so formatting in the viewer's zone
- * cannot mismatch between server and client render.
+ * The locale is pinned because the day beside it is an ISO slice: a runtime-default locale would
+ * pair 2026-09-11 with whatever clock the viewer's machine happens to prefer.
  */
 function registeredLong(value: string): string {
   const day = value.slice(0, 10);
   if (!value.includes("T")) return day;
   const at = new Date(value);
   if (Number.isNaN(at.getTime())) return day;
-  return `${day} ${at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+  return `${day} ${at.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
 }
 
 function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {

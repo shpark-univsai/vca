@@ -1150,7 +1150,7 @@ function TempPasswordBadge({ issuedAt }: { issuedAt: string }) {
 
   return (
     <span
-      title={t.tempBadgeTitle(new Date(issuedAt).toLocaleString())}
+      title={t.tempBadgeTitle(new Date(issuedAt).toLocaleString(lang === "ko" ? "ko-KR" : "en-US"))}
       style={{
         display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px",
         backgroundColor: tone.bg, color: tone.color, fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap",

@@ -584,7 +584,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
 
         <Clause n={4} label={t.clauseFees} last>
           <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>
-            {limit ? t.channelsCostPerYear(subscriptionYearlyCost.toLocaleString()) : "—"}
+            {limit ? t.channelsCostPerYear(subscriptionYearlyCost.toLocaleString("en-US")) : "—"}
           </p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "3px" }}>{t.perChannelPerYear(PRICE_PER_CHANNEL_PER_YEAR)}</p>
         </Clause>
