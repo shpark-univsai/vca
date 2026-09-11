@@ -145,11 +145,23 @@ function UsersIcon({ color }: IconProps) {
  * English in caps, Korean not: caps do nothing to Hangul, and CSS text-transform would leave the
  * two languages drawing different headings — the same reason MetricCard's label dropped it.
  */
-export type NavGroup = "workspace" | "manage" | "records";
+/**
+ * Two groups, not three.
+ *
+ * There was a RECORDS group, and it held three tabs until two of them were scoped out of the
+ * first release — the search log with requireSearchPurpose, the external-request register with
+ * externalRequests. A heading over a single row is not a group, it is a label with extra spacing,
+ * and it made the rail look like it was missing something rather than like it was complete.
+ *
+ * The activity log moved to MANAGE, which is where it was being read from anyway: an access
+ * review runs on users and permissions and finishes on what actually changed. When either flag
+ * turns on, its tab joins the same group — this is not a placeholder arrangement waiting for the
+ * third group to come back.
+ */
+export type NavGroup = "workspace" | "manage";
 export const NAV_GROUPS: { id: NavGroup; label: { en: string; ko: string } }[] = [
   { id: "workspace", label: { en: "WORKSPACE", ko: "작업 공간" } },
   { id: "manage", label: { en: "MANAGE", ko: "관리" } },
-  { id: "records", label: { en: "RECORDS", ko: "기록" } },
 ];
 
 export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string; ko: string }; icon: ComponentType<IconProps> }[] = [
@@ -168,15 +180,17 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
   { id: "users", group: "manage", label: { en: "Users & Permissions", ko: "사용자 및 권한" }, icon: UsersIcon },
   { id: "license", group: "manage", label: { en: "License", ko: "라이선스" }, icon: LicenseIcon },
 
-  // RECORDS, in the order the four questions get asked. "What changed" and "who looked" are the
-  // two an access review runs on, and they are read together — it starts on one and finishes on
-  // the other. Then the one register of what the outside world asked for. It holds both kinds —
-  // somebody wanting footage of a person, and that person wanting it all gone — because they are
-  // the same errand from opposite directions, and the person handling them arrives asking "what
-  // is open", not "is anything open under each of two tabs".
-  { id: "activity", group: "records", label: { en: "Activity log", ko: "변경 기록" }, icon: ActivityIcon },
-  { id: "searchlog", group: "records", label: { en: "Search log", ko: "조회 기록" }, icon: SearchLogIcon },
-  { id: "requests", group: "records", label: { en: "Requests", ko: "외부 요청" }, icon: RequestsIcon },
+  // The records, after the things that change: you act, then you read what the acting left behind.
+  // "What changed" and "who looked" are the two an access review runs on and they are read
+  // together, so they stay adjacent. Then the one register of what the outside world asked for —
+  // it holds both kinds, somebody wanting footage of a person and that person wanting it all
+  // gone, because they are the same errand from opposite directions and whoever handles them
+  // arrives asking "what is open", not "is anything open under each of two tabs".
+  //
+  // The last two are off in the first release; see complianceConfig.
+  { id: "activity", group: "manage", label: { en: "Activity log", ko: "변경 기록" }, icon: ActivityIcon },
+  { id: "searchlog", group: "manage", label: { en: "Search log", ko: "조회 기록" }, icon: SearchLogIcon },
+  { id: "requests", group: "manage", label: { en: "Requests", ko: "외부 요청" }, icon: RequestsIcon },
 ];
 
 interface ProjectSidebarProps {
