@@ -53,6 +53,16 @@ const T = {
      * `cameras` is how many of this district's cameras actually caught somebody, NOT how many
      * are installed — the opposite of the figure above it, which is why both carry their nouns.
      */
+    /**
+     * The chip under a face pin: how many people were caught at this one camera today.
+     *
+     * It carries its noun, because the figure used to be a bare number on the portrait itself and
+     * a number on a face attaches to that face — it read as "this person, N times", which is the
+     * opposite finding from "N people, here". The face shown is only the newest sighting's, so
+     * that misreading was available every time. Moving it off the photo and giving it a word
+     * fixes both halves.
+     */
+    peopleChip: (n: number) => `${n} people`,
     districtSummary: (people: number, cameras: number) =>
       // "on 1 of its cameras", not "camera" — the "N of its X" construction takes the plural
       // whatever N is, because X is the set being drawn from, not the thing being counted.
@@ -77,6 +87,7 @@ const T = {
     noCamera: "카메라 없음",
     camerasDown: "전부 중단",
     spotSummary: (people: number, hits: number) => `이 지점 오늘 ${people}명 · ${hits}건`,
+    peopleChip: (n: number) => `${n}명`,
     districtSummary: (people: number, cameras: number) => `카메라 ${cameras}대에서 ${people}명`,
     live: "정상",
     out: "중단",
@@ -760,10 +771,19 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // — and it is the only identity an event carries. Same fallback, and the same server
           // contract, as the district line below.
           const people = new Set(spot.map(ev => ev.name)).size;
+          // Under the pin, not on the face. On the photo it was a bare number in the corner of a
+          // portrait, and a number on a face is read as being ABOUT that face — "this person was
+          // caught 3 times". Below the tip it reads as being about the place the pin marks, which
+          // is what it is, and there is room for the noun that settles it.
+          //
+          // Positioned by overflow rather than by growing the icon box: iconSize/iconAnchor keep
+          // the pin's tip on the coordinate, and changing them to make room would move the pin
+          // off the camera it marks.
           const badge = people > 1
-            ? `<div style="position:absolute;top:-2px;right:-2px;z-index:3;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;
-                  border-radius:999px;background:var(--gray-900);border:1.5px solid white;display:flex;align-items:center;justify-content:center;
-                  font-family:'SUIT',sans-serif;font-size:10px;font-weight:800;color:white">${people}</div>`
+            ? `<div style="position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:3;
+                  padding:2px 7px;border-radius:999px;background:var(--gray-900);border:1.5px solid white;
+                  font-family:'SUIT',sans-serif;font-size:10px;font-weight:800;color:white;
+                  white-space:nowrap;letter-spacing:-0.2px">${t.peopleChip(people)}</div>`
             : "";
           const icon = L.divIcon({
             html: `<div style="position:relative;width:42px;height:56px">${getMarkerHTML("VIP", getFacePhoto(newest.id))}${badge}</div>`,
