@@ -134,6 +134,10 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
   // reads the clock through the project's zone (see lib/time.ts), so a header pinned to Singapore
   // put the wall clock twelve hours away from the numbers underneath it on a site set to another
   // zone, with nothing on screen saying which one was the site's.
+  // Figures that tick or sit in a row get tabular (fixed-width) digits. SUIT's proportional "1"
+  // is 284/1000em and its "4" is 607 — so a ticking second recomposed the line and shoved the
+  // bell and settings icons sideways up to 25px, on a header somebody watches for hours.
+  const FIGURES: React.CSSProperties = { fontVariantNumeric: "tabular-nums" };
   const currentDate = sgNow ? sgtDateKey(sgNow) : dashboardStats?.currentDate ?? "";
   const currentTime = sgNow ? sgtClockTime(sgNow) : dashboardStats?.currentTime ?? "";
 
@@ -182,8 +186,10 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
     <>
     <style>{`
       @keyframes live-ping{0%{transform:scale(1);opacity:.8}100%{transform:scale(2.2);opacity:0}}
-      @keyframes run-icon{0%,100%{transform:translateY(-1px) translateX(0) rotate(0deg)}30%{transform:translateY(-3px) translateX(1px) rotate(-4deg)}60%{transform:translateY(0px) translateX(-1px) rotate(2deg)}}
-      @keyframes stop-flicker{0%,100%{opacity:1}15%{opacity:.15}20%{opacity:.85}35%{opacity:.1}40%{opacity:.7}55%{opacity:1}75%{opacity:.2}80%{opacity:.9}}
+      /* run-icon and stop-flicker lived here and drove the two camera-status icons on an endless
+         loop. Removed 2026-09-11: permanent motion in a header teaches an operator to ignore
+         motion there, and the thing they then also ignore is the alert. Nothing animates in this
+         header now except live-ping, which marks a detection that just happened. */
       @keyframes dropdown-in{from{opacity:0;transform:scale(0.96) translateY(-6px)}to{opacity:1;transform:scale(1) translateY(0)}}
       /* Hover lands on the label and icon, not on a background. A tinted block filling the whole
          62px height of the bar was a bigger object than anything else the header highlights, and it
@@ -314,7 +320,10 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
         <div className="navbar-cam-status" style={{ display: "flex", alignItems: "center", gap: "20px", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           {/* Running icon */}
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ flexShrink:0, animation:"run-icon 1.8s ease-in-out infinite" }}>
+          {/* No animation. A permanent loop in the header is a thing the eye learns to filter, and
+              what it learns to filter is "movement here means nothing" — which is the opposite of
+              what an alert has to mean. The icon and the number say it without moving. */}
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ flexShrink:0 }}>
             <path d="M13.9583 10H16.985C17.127 10.0001 17.2666 10.0364 17.3906 10.1056C17.5146 10.1748 17.6189 10.2745 17.6935 10.3953C17.7681 10.5161 17.8107 10.654 17.8171 10.7958C17.8234 10.9377 17.7935 11.0788 17.73 11.2058L16.035 14.5967C15.9707 14.7252 15.8743 14.8348 15.7552 14.9151C15.636 14.9953 15.4981 15.0434 15.3549 15.0546C15.2117 15.0659 15.068 15.0399 14.9377 14.9792C14.8075 14.9185 14.6952 14.8252 14.6117 14.7083L12.8417 12.2333" stroke="var(--gray-900)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M14.255 7.54373C14.4525 7.6426 14.6027 7.81584 14.6726 8.02539C14.7424 8.23493 14.7262 8.46363 14.6275 8.66123L12.0392 13.8371C11.9902 13.935 11.9225 14.0223 11.8398 14.094C11.7571 14.1657 11.661 14.2204 11.5572 14.255C11.4533 14.2896 11.3437 14.3034 11.2345 14.2956C11.1253 14.2878 11.0187 14.2586 10.9209 14.2096L3.00836 10.2496C2.43364 9.96007 1.99699 9.45471 1.79396 8.84407C1.59093 8.23342 1.63806 7.56722 1.92503 6.99123L3.07503 4.66623C3.21836 4.38058 3.41656 4.12597 3.65831 3.91693C3.90006 3.70788 4.18061 3.54851 4.48396 3.44791C4.78731 3.34731 5.1075 3.30746 5.42625 3.33062C5.74501 3.35378 6.05608 3.4395 6.34169 3.5829L14.255 7.54373Z" stroke="var(--gray-900)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M1.66663 15.8333H4.79996C5.11057 15.8355 5.4156 15.7508 5.68064 15.5888C5.94568 15.4269 6.16019 15.1941 6.29996 14.9167L7.49996 12.5" stroke="var(--gray-900)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -323,13 +332,18 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
           </svg>
           {/* Number only: the icon beside it already says which, and the words were costing the
               header the width the project name now needs. The word survives as a tooltip. */}
-          <span title={t.running(camsRunning)} style={{ fontWeight: 800, fontSize: "13px", color: "var(--gray-800)", letterSpacing: "-0.26px", lineHeight: "16px" }}>
+          <span title={t.running(camsRunning)} style={{ fontWeight: 800, fontSize: "13px", color: "var(--gray-800)", letterSpacing: "-0.26px", lineHeight: "16px", ...FIGURES }}>
             {camsRunning}
           </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           {/* Stopped icon */}
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ flexShrink:0, animation:"stop-flicker 3s ease-in-out infinite" }}>
+          {/* Was flickering on a 3s loop, permanently, in every screen's header. In a
+              thousand-camera network a few cameras being down is the normal state, so an operator
+              learns that flicker as background within a week — and then stops seeing every other
+              red on the screen too. Red is the only thing this product has to say "go now" with;
+              it cannot also be the wallpaper. */}
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ flexShrink:0 }}>
             <g clipPath="url(#clip0_253_6684)">
               <path d="M5.83337 15.0007V10.0007C5.83337 8.89558 6.27236 7.83577 7.05376 7.05437C7.83516 6.27297 8.89497 5.83398 10 5.83398C11.1051 5.83398 12.1649 6.27297 12.9463 7.05437C13.7277 7.83577 14.1667 8.89558 14.1667 10.0007V15.0007" stroke="var(--danger-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M4.16669 17.5C4.16669 17.721 4.25448 17.933 4.41076 18.0893C4.56705 18.2455 4.77901 18.3333 5.00002 18.3333H15C15.221 18.3333 15.433 18.2455 15.5893 18.0893C15.7456 17.933 15.8334 17.721 15.8334 17.5V16.6667C15.8334 16.2246 15.6578 15.8007 15.3452 15.4882C15.0326 15.1756 14.6087 15 14.1667 15H5.83335C5.39133 15 4.9674 15.1756 4.65484 15.4882C4.34228 15.8007 4.16669 16.2246 4.16669 16.6667V17.5Z" stroke="var(--danger-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -346,7 +360,9 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
               </clipPath>
             </defs>
           </svg>
-          <span title={t.stopped(camsStopped)} style={{ fontWeight: 800, fontSize: "13px", color: "var(--danger-400)", letterSpacing: "-0.26px", lineHeight: "16px" }}>
+          {/* Red only when there is something to be red about. Zero cameras down is good news, and
+              it was being reported in alarm colour — beside a flickering alarm icon. */}
+          <span title={t.stopped(camsStopped)} style={{ fontWeight: 800, fontSize: "13px", color: typeof camsStopped === "number" && camsStopped > 0 ? "var(--danger-400)" : "var(--gray-800)", letterSpacing: "-0.26px", lineHeight: "16px", ...FIGURES }}>
             {camsStopped}
           </span>
           </div>
@@ -430,7 +446,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
               Singapore has exactly one. If this ever serves a second city, the fix is to make the
               clock itself follow that city (see lib/time.ts, currently Asia/Singapore for every
               date/hour bucket in the app) — not to re-add a label the clock doesn't honor. */}
-          <span style={{ fontWeight: 700, fontSize: "13px", color: "var(--gray-900)", letterSpacing: "-0.26px", lineHeight: 1 }}>{currentTime}</span>
+          <span style={{ fontWeight: 700, fontSize: "13px", color: "var(--gray-900)", letterSpacing: "-0.26px", lineHeight: 1, ...FIGURES }}>{currentTime}</span>
         </div>
 
         {/* Bell + Settings */}

@@ -9,6 +9,7 @@ import {
 import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtClockTime, sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { usePopoverDismiss } from "@/hooks/usePopoverDismiss";
 import RemoveImageButton from "./RemoveImageButton";
 
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
@@ -735,6 +736,10 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
   const [lang] = useLanguage();
   const t = T[lang];
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Escape and click-outside, like the app's other popovers. Without them this one could only be
+  // closed by clicking its trigger again — and its 320px-tall list sits over the camera wall.
+  const pickerRef = useRef<HTMLDivElement>(null);
+  usePopoverDismiss(pickerRef, pickerOpen, () => setPickerOpen(false));
   const cameras = useProjectCameras();
   const camera = cameras.find(c => c.code === camId);
   const isAll = camId === ALL_CAMERAS_ID;
@@ -746,7 +751,7 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
     <div style={{ position:"relative", flex:1, overflow:"hidden" }}>
     <div ref={scrollRef} className="vca-hide-scrollbar" style={{ position:"absolute", inset:0, overflowY:"auto", padding:"20px 24px", backgroundColor:"white", borderRadius:"12px", boxSizing:"border-box" }}>
       <div style={{ display:"flex", alignItems:"center", gap:"12px", marginBottom:"12px" }}>
-        <div style={{ position:"relative", width:"152px" }}>
+        <div ref={pickerRef} style={{ position:"relative", width:"152px" }}>
           <button onClick={() => setPickerOpen(o => !o)} style={{
             display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
             padding:"8px 12px", borderRadius:"8px", backgroundColor:"white", border:"1px solid var(--primary-400)",
@@ -949,8 +954,10 @@ function SimpleSelect({ value, options, onChange }: { value:string; options:stri
   const [lang] = useLanguage();
   const t = T[lang];
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  usePopoverDismiss(ref, open, () => setOpen(false));
   return (
-    <div style={{ position:"relative", width:"100%" }}>
+    <div ref={ref} style={{ position:"relative", width:"100%" }}>
       <style>{`
         .vca-simple-select-trigger:hover { border-color:var(--primary-300) !important; }
         /* The option rows set their own background inline (selected vs not), and an inline
@@ -2978,6 +2985,8 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
   const [lang] = useLanguage();
   const t = T[lang];
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  usePopoverDismiss(ref, open, () => setOpen(false));
   const cameraStatus = useCameraStatus();
   const statusOf = (code: string) => cameraStatus.byCode(code);
   // The register, scoped to the site on screen — not the module-level CAMERA_OPTIONS this used to
@@ -2987,7 +2996,7 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
   const label = value || t.allCameras;
   return (
     /* 152px fitted "NC-1"; a real code plus its ON/OFF needs more, and the label was ellipsing. */
-    <div style={{ position:"relative", width:"186px" }}>
+    <div ref={ref} style={{ position:"relative", width:"186px" }}>
       <button onClick={() => setOpen(o => !o)} style={{
         display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
         padding:"8px 12px", borderRadius:"8px", backgroundColor:"white", border:"1px solid var(--primary-400)",
