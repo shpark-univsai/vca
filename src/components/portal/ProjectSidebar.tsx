@@ -212,6 +212,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
   /* The search log only exists where the purpose requirement does — it is the read half of the
      same feature, and a log that can never fill is a rail entry leading to an empty room. */
   const searchLogEnabled = getComplianceConfig().requireSearchPurpose;
+  const requestsEnabled = getComplianceConfig().externalRequests;
   return (
     <div
       style={{
@@ -356,7 +357,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
                   color: "var(--gray-500)", padding: "0 14px", marginBottom: "2px",
                 }}>{group.label[lang]}</p>
               )}
-            {PROJECT_TABS.filter(t => t.group === group.id).filter(t => t.id !== "searchlog" || searchLogEnabled).map(t => {
+            {PROJECT_TABS.filter(t => t.group === group.id).filter(t => t.id !== "searchlog" || searchLogEnabled).filter(t => t.id !== "requests" || requestsEnabled).map(t => {
               const Icon = t.icon;
               const active = tab === t.id && !settingsOpen;
               return (

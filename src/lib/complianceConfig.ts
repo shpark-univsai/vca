@@ -23,6 +23,16 @@ export interface ComplianceConfig {
    * to configure it should over-record rather than under-record.
    */
   requireSearchPurpose: boolean;
+  /**
+   * Whether the console keeps a register of requests that came from outside the project — footage
+   * handed to a third party, and people asking to be erased.
+   *
+   * On for an institution that has to answer "who did you give this to, and on what grounds"
+   * with a record rather than a memory. Off where those requests are handled on paper or by mail
+   * and the console is not the book of record — writing them here as well would produce a second,
+   * partial copy that disagrees with the real one, which is worse than not keeping it.
+   */
+  externalRequests: boolean;
 }
 
 /**
@@ -44,5 +54,20 @@ export function getComplianceConfig(): ComplianceConfig {
      * ship, not the recommended value.
      */
     requireSearchPurpose: false,
+    /**
+     * Off for the first release (decided 2026-09-11), and for the same shape of reason as the
+     * line above: the screens are built and stay built, and one boolean decides whether this
+     * release carries them.
+     *
+     * The register was built from the product review rather than from anybody asking for it, and
+     * the first deployments handle these requests outside the console. Shipping it now would put
+     * a book of record in front of people who keep the real book somewhere else — two registers
+     * that disagree is the failure this avoids, not a missing feature.
+     *
+     * What it hides is complete: the rail entry, the tab body, and the ?tab=requests route. The
+     * seeded rows stay in the store, so turning it on shows a populated screen rather than an
+     * empty one nobody can judge.
+     */
+    externalRequests: false,
   };
 }

@@ -1644,7 +1644,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
           ?tab=searchlog saved before the requirement was switched off should land somewhere
           honest rather than on a screen the release does not have. */}
       {tab === "searchlog" && getComplianceConfig().requireSearchPurpose && <ProjectSearchLogTab projectId={projectId} />}
-      {tab === "requests" && <ProjectRequestsTab projectId={projectId} />}
+      {/* Gated as well as hidden from the rail, for the same reason as searchlog above: the tab
+          lives in the URL, and a bookmarked ?tab=requests should land somewhere honest rather
+          than on a screen this release does not have. */}
+      {tab === "requests" && getComplianceConfig().externalRequests && <ProjectRequestsTab projectId={projectId} />}
     </div>
   );
 }
