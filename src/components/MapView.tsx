@@ -878,7 +878,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
 
           const circleHtml = isLast
             ? `<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--type-tracking);display:flex;align-items:center;justify-content:center;
-                          font-family:'SUIT',sans-serif;font-size:14px;font-weight:700;color:white;box-shadow:0 0 0 10px rgba(90,61,251,0.15)">${num}</div>`
+                          font-family:'SUIT',sans-serif;font-size:14px;font-weight:700;color:white;box-shadow:0 0 0 10px rgba(109,147,0,0.15)">${num}</div>`
             : `<div style="width:${size}px;height:${size}px;border-radius:50%;background:white;border:2px solid var(--type-tracking);display:flex;align-items:center;justify-content:center;
                           font-family:'SUIT',sans-serif;font-size:13px;font-weight:700;color:var(--type-tracking);box-shadow:0 2px 6px rgba(14, 22, 42,0.12)">${num}</div>`;
 
@@ -888,7 +888,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
             : routeBubbleTailHtml(tailCenterY, "white", "var(--gray-200)");
 
           const cardHtml = isLast
-            ? `<div style="position:relative;font-family:'SUIT',sans-serif;filter:drop-shadow(0 4px 10px rgba(90,61,251,0.25))">
+            ? `<div style="position:relative;font-family:'SUIT',sans-serif;filter:drop-shadow(0 4px 10px rgba(109,147,0,0.25))">
                  ${tailHtml}
                  <div style="position:relative;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;border:1.5px solid var(--type-tracking)">
                    <div style="background:var(--type-tracking);color:white;font-size:11px;font-weight:800;padding:6px 12px;display:flex;align-items:center;gap:4px;white-space:nowrap">
@@ -917,7 +917,13 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           const html = `<div style="display:inline-flex;align-items:flex-start;gap:10px">${circleHtml}${cardHtml}</div>`;
           const icon = L.divIcon({ html, iconSize: [1, 1], iconAnchor: [size / 2, size / 2], className: "" });
           const marker = L.marker([node.lat, node.lng], { icon }).addTo(map);
-          marker.setZIndexOffset(i * 100);
+          // Above the camera dots. Every hop now sits exactly on the camera that captured it
+          // (hops carry their own coordinates since 57b7282 — before that they all shared the
+          // event's, so only one node ever coincided with a dot). The dot is 12px and drawn on
+          // top: it covered the node's step number and turned each stop into a dot inside a ring,
+          // which is the bullseye pattern the quiet dots were redrawn to avoid. The node circle
+          // is opaque and larger, so putting it above hides the dot it is standing on.
+          marker.setZIndexOffset(1000 + i * 100);
           trackingRouteLayersRef.current.push(marker);
         });
         return;
