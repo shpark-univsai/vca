@@ -53,16 +53,6 @@ const T = {
      * `cameras` is how many of this district's cameras actually caught somebody, NOT how many
      * are installed — the opposite of the figure above it, which is why both carry their nouns.
      */
-    /**
-     * The chip under a face pin: how many people were caught at this one camera today.
-     *
-     * It carries its noun, because the figure used to be a bare number on the portrait itself and
-     * a number on a face attaches to that face — it read as "this person, N times", which is the
-     * opposite finding from "N people, here". The face shown is only the newest sighting's, so
-     * that misreading was available every time. Moving it off the photo and giving it a word
-     * fixes both halves.
-     */
-    peopleChip: (n: number) => `${n} people`,
     districtSummary: (people: number, cameras: number) =>
       // "on 1 of its cameras", not "camera" — the "N of its X" construction takes the plural
       // whatever N is, because X is the set being drawn from, not the thing being counted.
@@ -87,7 +77,6 @@ const T = {
     noCamera: "카메라 없음",
     camerasDown: "전부 중단",
     spotSummary: (people: number, hits: number) => `이 지점 오늘 ${people}명 · ${hits}건`,
-    peopleChip: (n: number) => `${n}명`,
     districtSummary: (people: number, cameras: number) => `카메라 ${cameras}대에서 ${people}명`,
     live: "정상",
     out: "중단",
@@ -701,7 +690,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
 
         bySpot.forEach(spot => {
           const newest = spot[0];
-          // The badge counts PEOPLE, not detections.
+          // PEOPLE, not detections — the figure this pin is built around.
           //
           // It used to count detections, and next to a single face that reads as "this person was
           // caught 13 times" — when 13 people caught once each looks identical, because the face
@@ -728,45 +717,58 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // Positioned by overflow rather than by growing the icon box: iconSize/iconAnchor keep
           // the pin's tip on the coordinate, and changing them to make room would move the pin
           // off the camera it marks.
-          // TWO PEOPLE, TWO FACES. A second portrait tucked behind the first says "more than one
-          // person here" without anyone having to read a figure and work out what it counts —
-          // which is the whole difficulty this pin has had. The number said 2; the picture says
-          // two.
+          // THE STACK SHOWS WHAT IT COUNTS.
+          //
+          // A second portrait tucked behind the first says "more than one person here" without
+          // anyone having to read a figure and work out what it counts — which is the whole
+          // difficulty this pin has had. The number said 2; the picture says two.
+          //
+          // Past two, the picture has to stay honest about being partial. It said "4명" under two
+          // faces, and two faces under a 4 is a small arithmetic puzzle the reader did not ask
+          // for. So the remainder joins the stack as its own circle — "+2" beside two faces adds
+          // up in front of you, which is the convention a reader already knows from every stacked
+          // avatar they have seen. Three circles is the cap: the width is bounded and a fourth
+          // portrait at this size is a smudge.
           //
           // The newest sighting per person, so the faces are of different people and each person
           // keeps one face. (getFacePhoto is seeded by the sighting's id, so feeding it two
           // sightings of the SAME person would draw two different strangers — the exact claim
           // this is meant to make, made falsely.)
-          //
-          // Two is the limit. A third portrait at this size is a smudge, and the chip below can
-          // say the total in a word; stacking faces is for telling one person from several, not
-          // for counting.
           const newestPerPerson = [...new Map(spot.map(ev => [ev.name, ev])).values()];
-          const behind = newestPerPerson[1];
+          const FACES_SHOWN = 2;
+          const remainder = people - FACES_SHOWN;
           // Same size and same ring as the front one. Drawn smaller first, and a smaller portrait
-          // reads as a lesser one — these two people are not ranked, they were both just seen
-          // here, and the newest is in front only because something has to be. Equal size says
-          // that; the 2px white halo is what keeps the two circles from merging into one shape
-          // where they overlap, since both rings are the same colour.
-          const behindHtml = behind
-            ? `<div style="position:absolute;top:0;left:-17px;z-index:1;width:40px;height:40px;border-radius:50%;
+          // reads as a lesser one — these people are not ranked, they were all just seen here,
+          // and the newest is in front only because something has to be. Equal size says that;
+          // the 2px white halo keeps the circles from merging into one shape where they overlap,
+          // since the rings are the same colour.
+          const stackCircle = (offset: number, z: number, inner: string) =>
+            `<div style="position:absolute;top:0;left:${offset}px;z-index:${z};width:40px;height:40px;border-radius:50%;
                   border:2.5px solid var(--primary-400);background:var(--gray-100);overflow:hidden;
-                  box-shadow:0 0 0 2px white">
-                 <img src="${getFacePhoto(behind.id)}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />
-               </div>`
+                  box-shadow:0 0 0 2px white;display:flex;align-items:center;justify-content:center">${inner}</div>`;
+          const behind = newestPerPerson[1];
+          const behindHtml = behind
+            ? stackCircle(-17, 1, `<img src="${getFacePhoto(behind.id)}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />`)
             : "";
-          // Only once the faces stop carrying it. Two people are already two portraits; three or
-          // more need the figure, and it goes under the pin rather than on a face — a number on a
-          // portrait is read as being about that portrait ("caught 3 times"), which is the
-          // opposite finding from "3 people, here".
-          const badge = people > 2
-            ? `<div style="position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:3;
-                  padding:2px 7px;border-radius:999px;background:var(--gray-900);border:1.5px solid white;
-                  font-family:'SUIT',sans-serif;font-size:10px;font-weight:800;color:white;
-                  white-space:nowrap;letter-spacing:-0.2px">${t.peopleChip(people)}</div>`
+          // At the END of the stack and on top, which is the only place it can be read.
+          //
+          // It sat at the left end first, and the "+2" came out as a one-pixel speck: each circle
+          // in a stack is covered by the one to its right, so only a ~17px crescent of the
+          // leftmost shows — and the text, centred in its own 40px circle, landed under the cover.
+          // A face survives that (a crescent of a face still reads as a face); a two-character
+          // label does not.
+          //
+          // Overlapping the front portrait's right edge by the same 17px keeps the stack's rhythm,
+          // and the pin's tail stays under the front face, on the camera.
+          const moreHtml = remainder > 0
+            ? stackCircle(28, 3, `<span style="font-family:'SUIT',sans-serif;font-size:12px;font-weight:800;color:var(--primary-400);letter-spacing:-0.3px">+${remainder}</span>`)
             : "";
+          // There is no longer a figure under the pin. It existed to carry a count the picture
+          // could not, and the stack carries it now — keeping both would state the same thing
+          // twice in two notations, one of which the reader has to reconcile with the other. The
+          // words for it live in the popup ("이 지점 오늘 4명 · 13건"), a click away, with room.
           const icon = L.divIcon({
-            html: `<div style="position:relative;width:42px;height:56px">${behindHtml}${getMarkerHTML("VIP", getFacePhoto(newest.id))}${badge}</div>`,
+            html: `<div style="position:relative;width:42px;height:56px">${behindHtml}${getMarkerHTML("VIP", getFacePhoto(newest.id))}${moreHtml}</div>`,
             iconSize: [42, 56],
             iconAnchor: [21, 50],
             className: "",
