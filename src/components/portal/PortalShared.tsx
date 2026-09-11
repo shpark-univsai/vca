@@ -804,7 +804,7 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
  * job: they mark where a section starts, which is what the eye looks for when it comes back to a
  * settings page for one thing. One rank carries a mark, and it is the rank that leads.
  */
-export function CardSection({ heading, icon, subheading, desc, children }: { heading: string; icon?: React.ReactNode; subheading?: string; desc?: string; children: React.ReactNode }) {
+export function CardSection({ heading, icon, subheading, desc, hint, children }: { heading: string; icon?: React.ReactNode; subheading?: string; desc?: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="portal-settings-section" style={{ padding: "26px 28px 28px" }}>
       <div>
@@ -828,6 +828,10 @@ export function CardSection({ heading, icon, subheading, desc, children }: { hea
             }}>{icon}</span>
           )}
           {heading}
+          {/* `hint` rather than `desc` for the explanatory half — the sentence worth having but
+              not worth a line of the page on every visit. `desc` stays for what has to be read
+              without asking: a warning, or a sentence about what the screen does NOT do. */}
+          {hint && <HelpTip text={hint} />}
         </p>
         {/* Indented to the heading's own text, past the icon. Flush left, these ran under the
             icon square and the three lines had no shared edge — a title, a name and a sentence

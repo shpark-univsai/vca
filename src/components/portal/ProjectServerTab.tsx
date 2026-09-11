@@ -106,7 +106,7 @@ function ServerFormModal({
                 options={[{ value: "success", label: st.success }, { value: "error", label: st.error }]} />
             </div>
           </div>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "-4px" }}>{t.statusHint}</p>
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "-4px" }}>{t.statusHint}</p>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.specification}</label>
             <TextField value={form.specification} onChange={v => setForm(f => ({ ...f, specification: v }))} placeholder={t.specificationPlaceholder} />
@@ -172,7 +172,7 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
       <p style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", marginTop: "6px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "8px", padding: "8px 10px", overflowX: "auto" }}>
         {origin}/api/portal/projects/{projectId}
       </p>
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "6px" }}>{t.baseUrlNote}</p>
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.baseUrlNote}</p>
       <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "20px", marginBottom: "10px" }}>{t.endpoints}</p>
       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
         {API_ENDPOINTS.map(ep => (
@@ -191,7 +191,7 @@ function ApiDocumentation({ projectId }: { projectId: string }) {
       </div>
       {/* Said plainly: there is no key issue/revoke anywhere in Portal, so a reader who takes
           this list as an invitation to integrate finds out later and by failing. */}
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "14px" }}>{t.noKeys}</p>
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "14px" }}>{t.noKeys}</p>
     </div>
   );
 }
@@ -331,7 +331,7 @@ function NetworkStatus({ projectId }: { projectId: string }) {
         <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.switchLabel}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px", lineHeight: 1.6 }}>{t.switchDesc}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px", lineHeight: 1.5 }}>{t.switchDesc}</p>
           </div>
           <div style={{ marginTop: "2px" }}>
             <Switch checked={effective} onChange={setOverride} label={t.switchLabel} />
@@ -351,7 +351,7 @@ function NetworkStatus({ projectId }: { projectId: string }) {
             </button>
           )}
         </div>
-        <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px", lineHeight: 1.6 }}>{t.overrideWhy}</p>
+        <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px", lineHeight: 1.5 }}>{t.overrideWhy}</p>
       </div>
     </div>
   );
@@ -515,7 +515,7 @@ function MailSettings({ projectId }: { projectId: string }) {
           ) : (
             /* A project with no mail configured cannot invite anyone, so this says so plainly rather
                than showing empty fields that look merely unfilled. */
-            <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "8px", lineHeight: 1.6 }}>
+            <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "8px", lineHeight: 1.5 }}>
               {t.notConfigured}
             </p>
           )}

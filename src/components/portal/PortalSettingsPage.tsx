@@ -666,7 +666,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         is why it sits here beside the other two team policies.
       */}
       {active === "mail" && myTeam && (
-        <CardSection heading={t.teamMailTitle} icon={<Mail size={15} strokeWidth={2.2} />} subheading={myTeam.name} desc={t.teamMailIntro}>
+        <CardSection heading={t.teamMailTitle} icon={<Mail size={15} strokeWidth={2.2} />} subheading={myTeam.name} hint={t.teamMailIntro}>
           {/* No maxWidth of its own any more — the section's content column is the cap, and two
               of these grids with two different ones is how columns stop lining up between
               sections. */}
@@ -674,7 +674,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             <div>
               <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailDomain}</label>
               <TextField value={mailDomain} onChange={setMailDomain} placeholder="company.local" />
-              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.55, marginTop: "6px" }}>{t.teamMailDomainHint}</p>
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.teamMailDomainHint}</p>
             </div>
             <div>
               <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailHost}</label>
@@ -688,7 +688,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
               <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailFrom}</label>
               <TextField value={mailFrom} onChange={setMailFrom} placeholder="vca-noreply@company.local" />
               {mailFromMismatch && (
-                <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.55, marginTop: "6px" }}>{t.teamMailFromMismatch(mailDomain.trim())}</p>
+                <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.teamMailFromMismatch(mailDomain.trim())}</p>
               )}
             </div>
           </div>
