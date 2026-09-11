@@ -388,7 +388,7 @@ export default function ClientLayout() {
                     display: "flex", alignItems: "center", gap: "8px",
                     backgroundColor: "rgba(255,255,255,0.74)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
                     border: "1px solid rgba(226,232,240,0.6)", borderRadius: "999px", padding: "8px 14px",
-                    boxShadow: "0 8px 32px rgba(14,22,42,0.12)", cursor: "pointer",
+                    boxShadow: "var(--shadow-popover)", cursor: "pointer",
                   }}
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none">

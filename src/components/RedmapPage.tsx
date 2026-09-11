@@ -718,7 +718,7 @@ function DateRangePicker({ value, onChange }: { value: DateRange; onChange: (v: 
         <div style={{
           position: "absolute", top: "42px", left: 0, zIndex: 2000,
           backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: "8px",
-          boxShadow: "0 8px 32px rgba(14, 22, 42,0.12)", display: "flex", overflow: "hidden", width: "560px",
+          boxShadow: "var(--shadow-popover)", display: "flex", overflow: "hidden", width: "560px",
         }}>
           {/* Left: month list */}
           <div ref={listRef} style={{
@@ -1325,13 +1325,13 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
         <div
           onClick={e => { if (e.target === e.currentTarget) setUploadFor(null); }}
           style={{
-            position: "absolute", inset: 0, zIndex: 2000, backgroundColor: "rgba(14,22,42,0.15)",
+            position: "absolute", inset: 0, zIndex: 2000, backgroundColor: "rgba(24,17,39,0.15)",
             display: "flex", justifyContent: "center", alignItems: "flex-start", paddingTop: "24px",
           }}>
           <div style={{
             width: "730px", height: "303px", boxSizing: "border-box", backgroundColor: "white",
             border: "1px solid var(--gray-200)", borderRadius: "8px",
-            boxShadow: "0 2px 12px rgba(14, 22, 42,0.08)",
+            boxShadow: "0 2px 12px rgba(24,17,39,0.08)",
             padding: "12px", display: "flex", flexDirection: "column", gap: "10px",
           }}>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -1414,7 +1414,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                   color: active ? "var(--primary-400)" : "var(--gray-500)",
                   fontWeight: active ? 800 : 600, fontSize: "13px", letterSpacing: "-0.26px",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-                  boxShadow: active ? "0 1px 3px rgba(14, 22, 42,0.08)" : "none",
+                  boxShadow: active ? "var(--shadow-raised)" : "none",
                   transition: "all 0.15s",
                 }}
               >
@@ -1526,7 +1526,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                         aria-label={t.removeImage(label)}
                         style={{
                           position: "absolute", inset: 0, border: "none", cursor: "pointer",
-                          backgroundColor: "rgba(14, 22, 42, 0.55)",
+                          backgroundColor: "var(--scrim-media)",
                           display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
                           fontSize: "12px", fontWeight: 700, color: "white",
                         }}
@@ -1674,7 +1674,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                           {hoverUpload === key && (
                             <div style={{
                               position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                              backgroundColor: image ? "rgba(14,22,42,0.35)" : "transparent",
+                              backgroundColor: image ? "rgba(24,17,39,0.35)" : "transparent",
                             }}>
                               <span style={{ fontSize: "12px", fontWeight: 700, color: image ? "white" : "var(--primary-400)" }}>
                                 {image ? t.clickToChange : t.clickToUpload}
@@ -1832,7 +1832,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                     <div style={{ display: "flex", gap: "4px" }}>
                       <div style={{ position: "relative", width: "63px", height: "62px", borderRadius: "8px", overflow: "hidden", flexShrink: 0 }}>
                         <img src={hit.faceUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} alt="" />
-                        <span style={{ position: "absolute", top: "4px", left: "4px", backgroundColor: "rgba(14, 22, 42,0.6)", color: "white", fontSize: "10px", fontWeight: 600, padding: "2px 4px", borderRadius: "3px" }}>{t.face}</span>
+                        <span style={{ position: "absolute", top: "4px", left: "4px", backgroundColor: "var(--label-plate)", color: "white", fontSize: "10px", fontWeight: 600, padding: "2px 4px", borderRadius: "3px" }}>{t.face}</span>
                       </div>
                       <div style={{ position: "relative", width: "63px", height: "62px", borderRadius: "8px", overflow: "hidden", flexShrink: 0 }}>
                         <img src={hit.bodyUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} alt="" />
@@ -2080,7 +2080,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                                   {(hoverFrameKey === node.key || openFrameKey === node.key) && (
                                     <span style={{
                                       position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                                      backgroundColor: "rgba(14, 22, 42, 0.55)",
+                                      backgroundColor: "var(--scrim-media)",
                                     }}><ExpandFrameIcon /></span>
                                   )}
                                 </button>

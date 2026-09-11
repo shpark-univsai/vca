@@ -234,7 +234,7 @@ export default function RedmapMap({
                           font-family:'SUIT',sans-serif;font-size:14px;font-weight:700;color:white;box-shadow:0 0 0 10px ${hexToRgba(color, 0.15)}">${num}</div>`
             : `<div style="width:${size}px;height:${size}px;aspect-ratio:1/1;flex:none;border-radius:50%;background:white;border:2px solid ${color};display:flex;align-items:center;justify-content:center;
                           font-family:'SUIT',sans-serif;font-size:13px;font-weight:700;color:${color};
-                          transform:${isActive ? "scale(1.15)" : "scale(1)"};transition:transform 0.2s;box-shadow:0 2px 6px rgba(14, 22, 42,0.12)">${num}</div>`;
+                          transform:${isActive ? "scale(1.15)" : "scale(1)"};transition:transform 0.2s;box-shadow:0 2px 6px rgba(24,17,39,0.12)">${num}</div>`;
 
           if (!showCard) {
             const icon = L.divIcon({ html: circleHtml, iconSize: [size, size], iconAnchor: [size / 2, size / 2], className: "" });
@@ -270,7 +270,7 @@ export default function RedmapMap({
                  </div>
                </div>`
             : `<div class="vca-pin-card" style="position:relative;background:white;border:1px solid var(--gray-200);border-radius:16px;padding:10px 14px;white-space:nowrap;
-                          font-family:'SUIT',sans-serif;box-shadow:0 4px 10px rgba(14, 22, 42,0.08);cursor:${hitIndex >= 0 ? "pointer" : "default"}">
+                          font-family:'SUIT',sans-serif;box-shadow:0 4px 10px rgba(24,17,39,0.08);cursor:${hitIndex >= 0 ? "pointer" : "default"}">
                  ${tailHtml}
                  <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${node.label}</div>
                  <div style="font-size:13px;color:var(--gray-500);margin-top:2px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">${node.date.slice(5)} ${node.time}</div>
