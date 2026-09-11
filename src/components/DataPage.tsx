@@ -364,7 +364,10 @@ function attr(value: string, lang: AppLanguage): string {
   return lang === "ko" ? (ATTR_KO[value] ?? value) : value;
 }
 
-const BORDER = "1px solid var(--gray-200)";
+// The console's one hairline value — see --line in globals.css, which was defined for exactly
+// this and then never reached the app: eight files each declared their own gray-200 rule instead,
+// so Portal and the app drew different lines.
+const BORDER = "1px solid var(--line)";
 /**
  * The Data screen's sub-tabs.
  *

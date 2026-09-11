@@ -13,7 +13,10 @@ import { getDashboardStats } from "@/lib/api/dashboard";
 import { sgtClockTime, sgtDateKey } from "@/lib/time";
 import { useLanguage } from "@/lib/i18n";
 
-const BORDER = "1px solid var(--gray-200)";
+// The console's one hairline value — see --line in globals.css, which was defined for exactly
+// this and then never reached the app: eight files each declared their own gray-200 rule instead,
+// so Portal and the app drew different lines.
+const BORDER = "1px solid var(--line)";
 /** Shared by both forms of the site chip below — the switchable one and the plain label — so the
  *  name reads identically whether or not there is anything to switch to. */
 const PROJECT_NAME_STYLE: React.CSSProperties = {

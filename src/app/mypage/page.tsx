@@ -114,7 +114,10 @@ const LANGUAGE_OPTIONS = [
 /** How long ago the mock says the password was last set. Seeded, like LOGIN_SESSIONS. */
 const PASSWORD_AGE_DAYS = 45;
 
-const CARD_BORDER = "1px solid var(--gray-200)";
+// The console's one hairline value — see --line in globals.css, which was defined for exactly
+// this and then never reached the app: eight files each declared their own gray-200 rule instead,
+// so Portal and the app drew different lines.
+const CARD_BORDER = "1px solid var(--line)";
 
 // This browser only. A real list — other devices, their last activity — comes from the backend's
 // session store, which is also what makes ending one possible: with stateless tokens alone there

@@ -110,7 +110,10 @@ const T = {
   },
 } as const;
 
-const BORDER = "1px solid var(--gray-200)";
+// The console's one hairline value — see --line in globals.css, which was defined for exactly
+// this and then never reached the app: eight files each declared their own gray-200 rule instead,
+// so Portal and the app drew different lines.
+const BORDER = "1px solid var(--line)";
 
 function FilterIcon({ type, color, active, size = 14 }: { type: DetType; color: string; active?: boolean; size?: number }) {
   if (type === "VIP") return active ? (

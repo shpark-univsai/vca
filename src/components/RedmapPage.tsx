@@ -188,7 +188,10 @@ const T = {
   },
 } as const;
 
-const BORDER = "1px solid var(--gray-200)";
+// The console's one hairline value — see --line in globals.css, which was defined for exactly
+// this and then never reached the app: eight files each declared their own gray-200 rule instead,
+// so Portal and the app drew different lines.
+const BORDER = "1px solid var(--line)";
 
 // The search window a screen opens with. An unbounded search — which is what an empty range meant
 // — is rarely what an operator wants and gives no clue why a result set is as large or as empty as
