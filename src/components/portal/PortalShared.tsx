@@ -1114,8 +1114,24 @@ export function useTableSort<K extends string>(initial: SortState<K>) {
 }
 
 /**
- * Sorts by the value `valueOf` returns for each row. Strings compare with localeCompare so Korean
- * and English names both land where a reader expects; everything else compares numerically.
+ * One collator for every sorted table in Portal.
+ *
+ * `"ko"` is pinned, and the locale matters less than the pinning. `localeCompare()` with no
+ * locale asks the runtime for its default — Node takes it from its ICU build, a browser takes it
+ * from the operating system — so the server and the machine that hydrates it can disagree about
+ * the order of the same rows, and React then reconciles a list it rendered in one order against
+ * a list it is being told is in another. The names are what make it real: ASCII dates sort the
+ * same under every locale, which is why this has been quiet, and it activates the first time a
+ * Korean name lands in a table. The roster and camera imports built today are exactly that path.
+ *
+ * `numeric` so CAM-2 comes before CAM-10, which is the order a person reading a camera register
+ * means. `sensitivity: "base"` so case and accents do not split a name away from its neighbours.
+ */
+const TABLE_COLLATOR = new Intl.Collator("ko", { numeric: true, sensitivity: "base" });
+
+/**
+ * Sorts by the value `valueOf` returns for each row. Strings compare through TABLE_COLLATOR so
+ * Korean and English names both land where a reader expects; everything else compares numerically.
  * Undefined always sinks to the bottom regardless of direction — a camera with no last-seen time is
  * missing data, not the oldest one, and letting it win "oldest first" would be a wrong answer.
  */
@@ -1131,7 +1147,7 @@ export function sortRows<T, K extends string>(
     if (av === undefined && bv === undefined) return 0;
     if (av === undefined) return 1;
     if (bv === undefined) return -1;
-    if (typeof av === "string" && typeof bv === "string") return av.localeCompare(bv) * factor;
+    if (typeof av === "string" && typeof bv === "string") return TABLE_COLLATOR.compare(av, bv) * factor;
     return (Number(av) - Number(bv)) * factor;
   });
 }
