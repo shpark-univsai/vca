@@ -294,36 +294,20 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
 
   return (
     <div>
-      {/* Two registers, two peers. The purple used to sit on "footage request" and the grey on
+      {/* One row, not two. The filters and the two register buttons used to sit on separate lines,
+          and once the intro moved behind the mark the upper line had nothing on its left at all —
+          a full row of empty space above the chips. They are the same kind of thing anyway: what
+          you are looking at, and what you can add to it.
+
+          Two registers, two peers. The purple used to sit on "footage request" and the grey on
           "erasure request", which said one of them is the page's main action — this tab exists
           precisely because they are the same act filed from two directions, and neither outranks
-          the other. Both quiet, both marked, and the purple goes back to meaning something.
-
-          The intro moved behind the mark. It is the explanatory half — read once, then a line of
-          vertical space and a line of attention on every later visit. */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
-        <HelpTip text={t.intro} />
-        {mayEdit && (
-          <div style={{ display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap" }}>
-            <button className="portal-btn-outline" onClick={() => setShowErasureForm(true)}
-              style={{ ...REGISTER_BTN }}>
-              <Eraser size={14} strokeWidth={2.4} />
-              {t.newErasure}
-            </button>
-            <button className="portal-btn-outline" onClick={() => setShowFootageForm(true)}
-              style={{ ...REGISTER_BTN }}>
-              <Video size={14} strokeWidth={2.4} />
-              {t.newFootage}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {all.length > 0 && (
-        /* Kind is a filter, not a tab. "What is open" is the question somebody actually arrives
-           with, and it does not care which of the two registers the row came from. */
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "12px" }}>
-          {FILTERS.map(f => {
+          the other. Both quiet, both marked, and the purple goes back to meaning something. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBottom: "12px" }}>
+        {/* Kind is a filter, not a tab. "What is open" is the question somebody actually arrives
+            with, and it does not care which of the two registers the row came from. */}
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+          {all.length > 0 && FILTERS.map(f => {
             const active = filter === f.id;
             return (
               <button key={f.id} onClick={() => setFilter(f.id)}
@@ -339,7 +323,22 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
             );
           })}
         </div>
-      )}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0, flexWrap: "wrap" }}>
+          <HelpTip text={t.intro} />
+          {mayEdit && (<>
+            <button className="portal-btn-outline" onClick={() => setShowErasureForm(true)}
+              style={{ ...REGISTER_BTN }}>
+              <Eraser size={14} strokeWidth={2.4} />
+              {t.newErasure}
+            </button>
+            <button className="portal-btn-outline" onClick={() => setShowFootageForm(true)}
+              style={{ ...REGISTER_BTN }}>
+              <Video size={14} strokeWidth={2.4} />
+              {t.newFootage}
+            </button>
+          </>)}
+        </div>
+      </div>
 
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
         {rows.length === 0 ? (

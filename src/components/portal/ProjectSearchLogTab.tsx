@@ -7,7 +7,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import {
   BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR,
   ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, sortRows, useTableSort, MEASURE } from "./PortalShared";
-import { Eye, FileDown, ShieldAlert } from "lucide-react";
+import { Eye, FileOutput, ShieldAlert } from "lucide-react";
 
 /**
  * Who looked up whom, and why they said they were doing it.
@@ -191,7 +191,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
             color: visible.length === 0 ? "var(--gray-300)" : "var(--gray-600)",
             fontSize: "12px", fontWeight: 600, cursor: visible.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit",
           }}>
-          <FileDown size={14} strokeWidth={2.4} />
+          <FileOutput size={14} strokeWidth={2.4} />
           {t.export}
         </button>
       </div>

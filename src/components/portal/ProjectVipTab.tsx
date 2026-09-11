@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
-import { AlertTriangle, ArrowDownWideNarrow, Eye, ImageOff, RefreshCw, Users } from "lucide-react";
+import { AlertTriangle, ArrowDownWideNarrow, Eye, FileOutput, ImageOff, RefreshCw, Users } from "lucide-react";
 import { canSetPolicy, currentPortalUser, registryHealth, useVcaStore, type Person, type PersonGroup, type WatchlistCategory } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -1655,7 +1655,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           </button>
           <button className="portal-btn-quiet" onClick={exportCsv} disabled={projectPersons.length === 0}
             style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: projectPersons.length === 0 ? "var(--gray-300)" : "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: projectPersons.length === 0 ? "not-allowed" : "pointer" }}>
-            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1.75V9.33M7 9.33 4.08 6.42M7 9.33 9.92 6.42M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <FileOutput size={14} strokeWidth={2.4} />
             {t.exportCsv}
           </button>
           <button className="portal-btn-primary" onClick={() => setShowRegister(true)} disabled={!mayEdit} title={readOnlyReason}
