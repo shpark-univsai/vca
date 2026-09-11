@@ -29,7 +29,7 @@ export default function RemoveImageButton({ onRemove, label, variant = "overlay"
         width: "18px", height: "18px", flexShrink: 0, padding: 0,
         display: "flex", alignItems: "center", justifyContent: "center",
         borderRadius: "50%", border: "none", cursor: "pointer",
-        backgroundColor: overlay ? "rgba(14, 22, 42, 0.55)" : "var(--gray-200)",
+        backgroundColor: overlay ? "var(--label-plate)" : "var(--gray-200)",
         color: overlay ? "white" : "var(--gray-600)",
       }}
     >

@@ -524,9 +524,9 @@ function CameraCard({
               position:"absolute", top:"50%", left:"50%", transform:"translate(-50%, -50%)", zIndex:20,
               display:"flex", alignItems:"center", gap:"6px",
               padding:"10px 20px", borderRadius:"12px", border:"1px solid rgba(255,255,255,0.15)",
-              backgroundColor:"rgba(14,22,42,0.55)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
+              backgroundColor:"var(--scrim-media)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
               color:"white", fontSize:"13px", fontWeight:700,
-              cursor:"pointer", boxShadow:"0 4px 12px rgba(14, 22, 42,0.25)",
+              cursor:"pointer", boxShadow:"0 4px 12px rgba(24, 17, 39,0.25)",
             }}
           >
             <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
@@ -542,10 +542,10 @@ function CameraCard({
             {t.analyzeFrame}
           </button>
         )}
-        <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:"linear-gradient(to bottom,rgba(14, 22, 42,0) 50%,rgba(14, 22, 42,0.04) 50%)", backgroundSize:"100% 4px" }} />
+        <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:"linear-gradient(to bottom,rgba(24, 17, 39,0) 50%,rgba(24, 17, 39,0.04) 50%)", backgroundSize:"100% 4px" }} />
         <div
           className={hasVip ? "vca-cam-label-glow" : undefined}
-          style={{ position:"absolute", top:10, left:10, display:"flex", alignItems:"center", gap:"5px", zIndex:10, backgroundColor:"rgba(14,22,42,0.55)", padding:"4px 8px", border:"1.5px solid transparent" }}
+          style={{ position:"absolute", top:10, left:10, display:"flex", alignItems:"center", gap:"5px", zIndex:10, backgroundColor:"var(--scrim-media)", padding:"4px 8px", border:"1.5px solid transparent" }}
         >
           <div style={{ width:"6px", height:"6px", borderRadius:"50%", backgroundColor:"var(--success-400)", flexShrink:0 }} />
           <span style={{ fontSize:"10px", fontWeight:600, color:"white", letterSpacing:"-0.2px" }}>
@@ -560,7 +560,7 @@ function CameraCard({
       <div style={sidePanelOnHover ? {
         position:"absolute", right:0, top:0, width:"50%", maxHeight:"100%",
         display:"flex", flexDirection:"column", overflow:"hidden", backgroundColor:"white",
-        boxShadow: panelRevealed ? "-4px 4px 16px rgba(14, 22, 42,0.12)" : "none",
+        boxShadow: panelRevealed ? "-4px 4px 16px rgba(24, 17, 39,0.12)" : "none",
         transform: panelRevealed ? "translateX(0)" : "translateX(100%)",
         transition:"transform 0.15s ease",
       } : { flex:"0 0 240px", display:"flex", flexDirection:"column", overflow:"hidden", backgroundColor:"white" }}>
@@ -672,7 +672,7 @@ function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState
     <div onClick={e => e.stopPropagation()} style={{
       position:"fixed", zIndex:200, left:hud.x, top:hud.y,
       width:"320px", backgroundColor:"white", borderRadius:"24px",
-      boxShadow:"-3px 3px 8px rgba(14, 22, 42,0.12)", padding:"20px",
+      boxShadow:"-3px 3px 8px rgba(24, 17, 39,0.12)", padding:"20px",
       display:"flex", flexDirection:"column", gap:"16px",
     }}>
       {/* Header */}

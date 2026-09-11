@@ -32,7 +32,7 @@ function LanguageToggle() {
             style={{
               border: "none", borderRadius: "5px", padding: "4px 9px", cursor: "pointer",
               backgroundColor: active ? "white" : "transparent",
-              boxShadow: active ? "0 1px 2px rgba(14,22,42,0.08)" : "none",
+              boxShadow: active ? "var(--shadow-raised)" : "none",
               fontSize: "11px", fontWeight: active ? 800 : 600,
               color: active ? "var(--gray-800)" : "var(--gray-500)",
               letterSpacing: "-0.22px",

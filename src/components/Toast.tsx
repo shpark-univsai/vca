@@ -109,7 +109,7 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
       display: "flex", alignItems: "center", gap: "10px",
       padding: "10px 12px 10px 14px", borderRadius: "10px", boxSizing: "border-box",
       backgroundColor: "var(--gray-900)", border: "1px solid rgba(255, 255, 255, 0.08)",
-      boxShadow: "0 12px 32px rgba(14, 22, 42, 0.28)",
+      boxShadow: "0 12px 32px rgba(24, 17, 39, 0.28)",
       minWidth: "240px", maxWidth: "420px", flexShrink: 0,
     }}>
       {variant !== "default" && (

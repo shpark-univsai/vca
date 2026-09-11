@@ -195,7 +195,7 @@ export default function DetectionActivityChart({ onHide }: { onHide?: () => void
   return (
     <div className="vca-rise-in" style={{
       backgroundColor: "rgba(255,255,255,0.4)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
-      borderRadius: "11px", border: "1px solid rgba(226,232,240,0.6)", boxShadow: "0 8px 32px rgba(14,22,42,0.12)",
+      borderRadius: "11px", border: "1px solid rgba(226,232,240,0.6)", boxShadow: "var(--shadow-popover)",
       padding: "18px 22px 14px", display: "flex", flexDirection: "column", gap: "12px",
     }}>
       {/* Whole header row is the click target to minimize (except the camera filter, which
@@ -236,7 +236,7 @@ export default function DetectionActivityChart({ onHide }: { onHide?: () => void
             {cameraPickerOpen && (
               <div style={{
                 position: "absolute", top: "calc(100% + 4px)", left: 0, width: "160px", backgroundColor: "white",
-                border: "1px solid var(--gray-200)", borderRadius: "8px", boxShadow: "0 8px 20px rgba(14,22,42,0.12)",
+                border: "1px solid var(--gray-200)", borderRadius: "8px", boxShadow: "var(--shadow-popover)",
                 zIndex: 10, overflow: "hidden",
               }}>
                 {([{ id: null as CameraFilter, name: t.allCameras }, ...cameras.map(c => ({ id: c.id as CameraFilter, name: c.name }))]).map(opt => (

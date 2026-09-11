@@ -399,7 +399,7 @@ function ReelCard({ det, index, isFocused, onClick }: { det: Detection; index: n
           issue at any card width. */}
       <div style={{ position:"relative", width:"100%", aspectRatio:"1/1", borderRadius:"10px", overflow:"hidden", backgroundColor:"var(--gray-900)" }}>
         <img src={photo} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"50% 20%", display:"block", transform:"scale(1.8)", transformOrigin:"50% 20%" }} />
-        <div style={{ position:"absolute", top:6, left:6, backgroundColor:"rgba(14,22,42,0.75)", borderRadius:"4px", padding:"2px 6px", fontSize:"10px", fontWeight:600, color:"white" }}>
+        <div style={{ position:"absolute", top:6, left:6, backgroundColor:"var(--label-plate)", borderRadius:"4px", padding:"2px 6px", fontSize:"10px", fontWeight:600, color:"white" }}>
           P-0{index + 1}
         </div>
       </div>
@@ -835,8 +835,8 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
             }}
           >
             <img src={data.bgUrl ?? ""} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", opacity:0.9 }} />
-            <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:"linear-gradient(to bottom,rgba(14, 22, 42,0) 50%,rgba(14, 22, 42,0.04) 50%)", backgroundSize:"100% 4px" }} />
-            <div style={{ position:"absolute", top:12, right:14, backgroundColor:"rgba(14,22,42,0.65)", padding:"3px 8px", fontSize:"10px", fontWeight:600, color:"rgba(255,255,255,0.8)", letterSpacing:"0.5px" }}>
+            <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:"linear-gradient(to bottom,rgba(24, 17, 39,0) 50%,rgba(24, 17, 39,0.04) 50%)", backgroundSize:"100% 4px" }} />
+            <div style={{ position:"absolute", top:12, right:14, backgroundColor:"var(--label-plate)", padding:"3px 8px", fontSize:"10px", fontWeight:600, color:"rgba(255,255,255,0.8)", letterSpacing:"0.5px" }}>
               {focusedDet.date.split("-").reverse().join("-")} {focusedDet.time}
             </div>
 
@@ -874,7 +874,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     position:"absolute", bottom:"calc(100% + 4px)", left:0,
                     backgroundColor:"white", padding:"3px 8px",
                     display:"flex", alignItems:"center", gap:"5px", whiteSpace:"nowrap",
-                    boxShadow:"0 1px 6px rgba(14,22,42,0.12)",
+                    boxShadow:"0 1px 6px rgba(24, 17, 39,0.12)",
                     opacity: isFocused ? 1 : 0.85,
                   }}>
                     <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)" }}>P-0{i + 1}</span>
@@ -964,7 +964,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   </svg>
                 </button>
                 {dateOpen && (
-                  <div style={{ position:"absolute", right:0, top:"calc(100% + 4px)", backgroundColor:"white", borderRadius:"8px", boxShadow:"0 4px 16px rgba(14, 22, 42,0.12)", border:"1px solid var(--gray-200)", overflow:"hidden", zIndex:50 }}>
+                  <div style={{ position:"absolute", right:0, top:"calc(100% + 4px)", backgroundColor:"white", borderRadius:"8px", boxShadow:"var(--shadow-popover)", border:"1px solid var(--gray-200)", overflow:"hidden", zIndex:50 }}>
                     <TrackDateCalendar selected={trackDate} onPick={(d) => { setTrackDate(d); setDateOpen(false); }} />
                   </div>
                 )}
@@ -1022,7 +1022,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                 {timeOpen && (
                   <div style={{ position:"absolute", right:0, top:"calc(100% + 4px)", zIndex:20, display:"flex",
                     backgroundColor:"white", borderRadius:"8px", border:"1px solid var(--gray-200)",
-                    boxShadow:"0 4px 16px rgba(14, 22, 42,0.12)", overflow:"hidden" }}>
+                    boxShadow:"var(--shadow-popover)", overflow:"hidden" }}>
                     {([
                       { label: t.hour, values: Array.from({ length: HOURS_IN_DAY }, (_, h) => h), current: currentHour,
                         pick: (h: number) => jumpTo(h * 3600 + currentMinute * 60) },
@@ -1107,7 +1107,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                             stand-in, not a real per-frame count. 10+ people gets a red alert dot
                             (top-right) so a crowded frame is spottable without reading every
                             number in the strip. */}
-                        <div style={{ position:"absolute", left:4, bottom:3, display:"flex", alignItems:"center", gap:"3px", backgroundColor:"rgba(14,22,42,0.72)", padding:"1px 6px", borderRadius:"999px" }}>
+                        <div style={{ position:"absolute", left:4, bottom:3, display:"flex", alignItems:"center", gap:"3px", backgroundColor:"var(--label-plate)", padding:"1px 6px", borderRadius:"999px" }}>
                           <PersonCountIcon size={9} />
                           <span style={{ fontSize:"10px", fontWeight:700, color:"white", fontFamily:"monospace" }}>{personCount}</span>
                         </div>

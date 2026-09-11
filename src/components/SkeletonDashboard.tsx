@@ -33,7 +33,7 @@ function SidebarSkeleton() {
       <div style={{ width: "100%", display: "flex", gap: "4px", padding: "3px", backgroundColor: "var(--gray-100)", borderRadius: "999px" }}>
         <div style={{
           flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-          padding: "8px 16px", backgroundColor: "white", borderRadius: "999px", boxShadow: "0px 1px 1px rgba(14, 22, 42,0.03)",
+          padding: "8px 16px", backgroundColor: "white", borderRadius: "999px", boxShadow: "0px 1px 1px rgba(24, 17, 39,0.03)",
         }}>
           <Circle size="12px" color="var(--gray-200)" />
           <Bone w="50px" h="12px" color="var(--gray-200)" radius="3px" />
@@ -102,7 +102,7 @@ function MapSkeleton() {
     <div style={{ flex: 1, position: "relative", backgroundColor: "var(--gray-100)", minWidth: 0 }}>
       <div style={{
         position: "absolute", top: "24px", right: "24px", width: "40px", backgroundColor: "white",
-        borderRadius: "8px", boxShadow: "2px 4px 3px rgba(14, 22, 42,0.05)", display: "flex", flexDirection: "column", alignItems: "center",
+        borderRadius: "8px", boxShadow: "2px 4px 3px rgba(24, 17, 39,0.05)", display: "flex", flexDirection: "column", alignItems: "center",
       }}>
         <div style={{ width: "40px", height: "40px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Bone w="14px" h="3px" color="var(--gray-300)" radius="1px" />

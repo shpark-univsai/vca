@@ -233,7 +233,7 @@ function districtPillHtml(
         `<span style="font-size:14px;font-weight:800;letter-spacing:-0.3px">${count}</span>` +
         `<span style="font-size:11px;font-weight:500;opacity:0.62">${t.hitsUnit()}&nbsp;·&nbsp;${t.camerasShort(cameraCount)}</span>`;
 
-  const shadow = isDark || isAlert ? "0 2px 10px rgba(14, 22, 42,0.2)" : "0 2px 6px rgba(14, 22, 42,0.08)";
+  const shadow = isDark || isAlert ? "0 2px 10px rgba(24, 17, 39,0.2)" : "0 2px 6px rgba(24, 17, 39,0.08)";
   return `<div style="transform:translateX(-50%) translateY(-50%);display:inline-flex;flex-direction:column;
       align-items:center;gap:1px;background:${bg};${border}border-radius:10px;padding:5px 10px;
       font-family:'SUIT',system-ui,sans-serif;color:${textColor};box-shadow:${shadow};
@@ -307,7 +307,7 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
 
       <div style="background:var(--gray-900);border-radius:8px;height:96px;overflow:hidden;position:relative">
         <img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />
-        <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(14,22,42,0.8), rgba(14,22,42,0) 55%)"></div>
+        <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(24, 17, 39,0.8), rgba(24, 17, 39,0) 55%)"></div>
         <span style="position:absolute;bottom:8px;left:10px;font-size:9px;color:rgba(255,255,255,0.85);font-weight:700;letter-spacing:0.5px">${t.capturedFrame}</span>
       </div>
 
@@ -385,7 +385,7 @@ function getDeviceMarkerHTML(name: string, isLive: boolean): string {
   const color = isLive ? "var(--success-400)" : "var(--danger-400)";
   return `
     <div style="display:flex;flex-direction:column;align-items:center">
-      <div style="display:flex;align-items:center;gap:5px;background:var(--gray-900);border-radius:999px;padding:5px 10px;box-shadow:0 2px 10px rgba(14, 22, 42,0.2);white-space:nowrap">
+      <div style="display:flex;align-items:center;gap:5px;background:var(--gray-900);border-radius:999px;padding:5px 10px;box-shadow:0 2px 10px rgba(24, 17, 39,0.2);white-space:nowrap">
         <div style="width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0"></div>
         <span style="font-family:'SUIT',system-ui,sans-serif;font-size:11px;font-weight:800;color:white;letter-spacing:-0.2px">${name}</span>
       </div>
@@ -880,7 +880,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
             ? `<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--type-tracking);display:flex;align-items:center;justify-content:center;
                           font-family:'SUIT',sans-serif;font-size:14px;font-weight:700;color:white;box-shadow:0 0 0 10px rgba(109,147,0,0.15)">${num}</div>`
             : `<div style="width:${size}px;height:${size}px;border-radius:50%;background:white;border:2px solid var(--type-tracking);display:flex;align-items:center;justify-content:center;
-                          font-family:'SUIT',sans-serif;font-size:13px;font-weight:700;color:var(--type-tracking);box-shadow:0 2px 6px rgba(14, 22, 42,0.12)">${num}</div>`;
+                          font-family:'SUIT',sans-serif;font-size:13px;font-weight:700;color:var(--type-tracking);box-shadow:0 2px 6px rgba(24, 17, 39,0.12)">${num}</div>`;
 
           const tailCenterY = size / 2;
           const tailHtml = isLast
@@ -908,7 +908,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                  </div>
                </div>`
             : `<div style="position:relative;background:white;border:1px solid var(--gray-200);border-radius:16px;padding:10px 14px;white-space:nowrap;
-                          font-family:'SUIT',sans-serif;box-shadow:0 4px 10px rgba(14, 22, 42,0.08)">
+                          font-family:'SUIT',sans-serif;box-shadow:0 4px 10px rgba(24, 17, 39,0.08)">
                  ${tailHtml}
                  <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${node.label}</div>
                  <div style="font-size:13px;color:var(--gray-500);margin-top:2px">${node.time}</div>

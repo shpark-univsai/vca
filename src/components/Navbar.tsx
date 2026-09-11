@@ -289,7 +289,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
               <div style={{
                 position: "absolute", top: "calc(100% + 8px)", left: 0, minWidth: "240px",
                 backgroundColor: "white", border: BORDER, borderRadius: "12px",
-                boxShadow: "0 12px 32px rgba(14,22,42,0.14)", padding: "6px", zIndex: 6000,
+                boxShadow: "var(--shadow-popover)", padding: "6px", zIndex: 6000,
               }}>
                 {myProjects.map(p => (
                   <button
@@ -486,7 +486,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                 position: "absolute", top: "calc(100% + 8px)", right: 0,
                 width: "300px", backgroundColor: "white",
                 border: "1px solid var(--gray-200)", borderRadius: "12px",
-                boxShadow: "0 8px 24px rgba(14,22,42,0.12)",
+                boxShadow: "var(--shadow-popover)",
                 animation: "dropdown-in 0.16s cubic-bezier(0.16, 1, 0.3, 1)",
                 transformOrigin: "top right",
                 zIndex: 200,
@@ -575,7 +575,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                 position: "absolute", top: "calc(100% + 8px)", right: 0,
                 width: "200px", backgroundColor: "white",
                 border: "1px solid var(--gray-200)", borderRadius: "12px",
-                boxShadow: "0 8px 24px rgba(14,22,42,0.12)",
+                boxShadow: "var(--shadow-popover)",
                 animation: "dropdown-in 0.16s cubic-bezier(0.16, 1, 0.3, 1)",
                 transformOrigin: "top right",
                 zIndex: 200,
@@ -631,7 +631,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                               style={{
                                 padding: "3px 9px", borderRadius: "5px", border: "none", cursor: "pointer",
                                 backgroundColor: active ? "white" : "transparent",
-                                boxShadow: active ? "0 1px 2px rgba(14,22,42,0.1)" : "none",
+                                boxShadow: active ? "var(--shadow-raised)" : "none",
                                 color: active ? "var(--gray-600)" : "var(--gray-400)",
                                 fontSize: "10px", fontWeight: 600, letterSpacing: "-0.1px",
                                 transition: "background-color 0.15s",

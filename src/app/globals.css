@@ -147,6 +147,57 @@
   --type-tracking-100: #f3f6eb;
   --type-vehicle: #38bdf8;
   --type-unknown: #976400;
+
+  /* Elevation, scrim and label plates.
+   *
+   * ── Why these are tokens ─────────────────────────────────────────────────────────────────────
+   *
+   * `rgba(24, 17, 39,…)` appeared 166 times across 34 files at 42 different alphas. Two things were
+   * wrong with that, and only one of them was tidiness.
+   *
+   * The hue. #0e162a is 218° — the slate this ramp ABANDONED on 2026-09-08, for the reason written
+   * above the greys. Under a 0.18 shadow nobody can see it. Under a 0.65 overlay they can: the dim
+   * goes cold against surfaces that are now 258°. These derive from --gray-900 (#181127 →
+   * 24,17,39), so the darkest thing on screen and the shadow it casts share a hue.
+   *
+   * The count. 42 alphas were never 42 decisions. Read by role there were four, and each one had
+   * drifted into a spread:
+   *
+   *   a modal's backdrop, over a page       0.4                       34 places, already one value
+   *   an overlay over a camera frame        0.55 / 0.6                app side only
+   *   a label's plate, over imagery         0.5 / .65 / .7 / .72 /.75 timestamp pills, corner badges
+   *   a modal's lift                        0 20px 60px / 0.18        33 places, already one value
+   *
+   * The middle two look like the same token and are not. A scrim pushes a whole surface back so a
+   * panel in front of it reads; a label plate is the opposite move — a small opaque-ish shape that
+   * carries white text over a frame whose brightness we do not control. One needs to stay subtle
+   * enough to see the video through; the other needs to stop being video. Collapsing them makes
+   * timestamps unreadable on a bright frame, which is where those six values came from in the
+   * first place — each was somebody fixing one tile.
+   *
+   * ── How to use them ──────────────────────────────────────────────────────────────────────────
+   *
+   *   backgroundColor: "var(--scrim)"          // a modal over a page
+   *   backgroundColor: "var(--scrim-media)"    // an overlay over a camera feed or a still
+   *   backgroundColor: "var(--label-plate)"    // the plate under a label drawn on imagery
+   *   boxShadow: "var(--shadow-modal)"         // a dialog
+   *   boxShadow: "var(--shadow-popover)"       // a dropdown, a tooltip, a map card
+   *   boxShadow: "var(--shadow-raised)"        // a chip or toggle sitting just off the surface
+   *
+   * The shadows carry their offsets, not only a colour, because the offset is what actually drifted
+   * (20/60 vs 8/24 vs 1/3 was the decision; the alpha followed it). Directional shadows — a panel
+   * sliding in from the right throws its shadow left — stay written out; there are four and they
+   * are not a scale.
+   *
+   * FIGMA: these belong in the library as effect and colour styles under these names, the way
+   * --line's note asks for the hairline. Until they are there this file is the draft.
+   */
+  --scrim: rgba(24, 17, 39, 0.4);
+  --scrim-media: rgba(24, 17, 39, 0.55);
+  --label-plate: rgba(24, 17, 39, 0.7);
+  --shadow-modal: 0 20px 60px rgba(24, 17, 39, 0.18);
+  --shadow-popover: 0 8px 24px rgba(24, 17, 39, 0.12);
+  --shadow-raised: 0 1px 3px rgba(24, 17, 39, 0.12);
 }
 
 * {
@@ -330,7 +381,7 @@ body {
 
 .leaflet-control-zoom {
   border: none !important;
-  box-shadow: 4px 4px 3px rgba(14, 22, 42, 0.05) !important;
+  box-shadow: 4px 4px 3px rgba(24, 17, 39, 0.05) !important;
 }
 
 .leaflet-control-zoom-in,
@@ -365,7 +416,7 @@ body {
 .vca-custom-popup .leaflet-popup-content-wrapper {
   padding: 0 !important;
   border-radius: 16px !important;
-  box-shadow: 0 8px 32px rgba(14, 22, 42, 0.18) !important;
+  box-shadow: var(--shadow-popover) !important;
   border: 1px solid var(--gray-200) !important;
   overflow: hidden;
 }
@@ -510,7 +561,7 @@ body {
    lifts a dot off a light basemap, which is the only job that hairline had. */
 .vca-map-dot {
   border: 2px solid #ffffff;
-  box-shadow: 0 1px 3px rgba(14, 22, 42, 0.35);
+  box-shadow: 0 1px 3px rgba(24, 17, 39, 0.35);
 }
 
 /* A camera with nothing to report. Quieter than the ping in three ways at once — thinner casing,
@@ -519,7 +570,7 @@ body {
    just saw somebody, and it cannot stand out if every other dot is drawn as loudly. */
 .vca-map-dot-quiet {
   border: 1.5px solid #ffffff;
-  box-shadow: 0 1px 2px rgba(14, 22, 42, 0.22);
+  box-shadow: 0 1px 2px rgba(24, 17, 39, 0.22);
 }
 
 /* Dashboard map, zoomed-in camera dots — hover grows the visible dot inside its (larger,
@@ -533,7 +584,7 @@ body {
   background: white;
   border: none;
   border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(14,22,42,0.16);
+  box-shadow: var(--shadow-popover);
   padding: 0;
 }
 .leaflet-tooltip.vca-camera-tooltip::before {

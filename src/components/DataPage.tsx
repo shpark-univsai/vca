@@ -448,8 +448,8 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
   useEscapeKey(onClose);
   return (
     <div onClick={e => { if (e.target===e.currentTarget) onClose(); }}
-      style={{ position:"fixed", inset:0, backgroundColor:"rgba(14,22,42,0.4)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:"16px" }}>
-      <div style={{ backgroundColor:"white", borderRadius:"16px", border:BORDER, maxWidth:"560px", width:"100%", display:"flex", flexDirection:"column", maxHeight:"90vh", overflow:"hidden", boxShadow:"0 20px 60px rgba(14,22,42,0.18)" }}>
+      style={{ position:"fixed", inset:0, backgroundColor:"var(--scrim)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:"16px" }}>
+      <div style={{ backgroundColor:"white", borderRadius:"16px", border:BORDER, maxWidth:"560px", width:"100%", display:"flex", flexDirection:"column", maxHeight:"90vh", overflow:"hidden", boxShadow:"var(--shadow-modal)" }}>
 
         {/* Header */}
         <div style={{ padding:"14px 16px", borderBottom:BORDER, backgroundColor:"var(--gray-50)", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -577,7 +577,7 @@ function HoverActionBtn({ label, icon, color, onClick }:
       width:"108px", height:"28px", borderRadius:"999px", cursor:"pointer",
       backgroundColor: hovered ? color : "white", border:`1.5px solid ${color}`, color: hovered ? "white" : color,
       fontSize:"12px", fontWeight:700, letterSpacing:"-0.22px",
-      boxShadow: hovered ? "0 2px 8px rgba(14,22,42,0.28)" : "0 2px 6px rgba(14,22,42,0.18)",
+      boxShadow: hovered ? "0 2px 8px rgba(24, 17, 39,0.28)" : "0 2px 6px rgba(24, 17, 39,0.18)",
       transform: hovered ? "scale(1.04)" : "scale(1)",
       transition:"background-color 0.12s, color 0.12s, transform 0.12s, box-shadow 0.12s",
     }}>
@@ -610,17 +610,17 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
       ...(fill ? { flex:"1 1 136px", maxWidth:"160px" } : { width:"136px", flexShrink:0 }),
       borderRadius:"8px", overflow:"hidden", backgroundColor:"white", cursor:"pointer",
       border:"none", borderBottom:0,
-      boxShadow:"0 3px 8px -2px rgba(14, 22, 42, 0.12)",
+      boxShadow:"0 3px 8px -2px rgba(24, 17, 39, 0.12)",
       transform:"translateZ(0)",
     }}>
       <img src={p.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
       <div style={{ position:"absolute", left:0, right:0, bottom:"46px", height:"72px",
-        background:"linear-gradient(to top, rgba(14,22,42,0.72), rgba(14,22,42,0))", pointerEvents:"none" }} />
+        background:"linear-gradient(to top, rgba(24, 17, 39,0.72), rgba(24, 17, 39,0))", pointerEvents:"none" }} />
       {/* Only shown in the flat "All Cameras" view — grouped-by-camera carousels already
           show the camera name in their section header, so this would be a duplicate there. */}
       {showCam && (
         <div style={{ position:"absolute", top:7, left:8, fontSize:"10px", fontWeight:800, color:"white",
-          backgroundColor:"rgba(14,22,42,0.7)", padding:"4px 6px", borderRadius:"12px", letterSpacing:"-0.2px" }}>
+          backgroundColor:"var(--label-plate)", padding:"4px 6px", borderRadius:"12px", letterSpacing:"-0.2px" }}>
           {p.cam}
         </div>
       )}
@@ -631,7 +631,7 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
         </div>
       )}
       {showActions && (
-        <div style={{ position:"absolute", inset:0, backgroundColor:"rgba(14,22,42,0.6)",
+        <div style={{ position:"absolute", inset:0, backgroundColor:"var(--scrim-media)",
           display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"8px", zIndex:20 }}>
           <HoverActionBtn label="Re-ID" icon={<ReidIconSm />} color="var(--primary-400)" onClick={e => { e.stopPropagation(); onNavigateTab?.("Re-ID Analysis", p); }} />
           <HoverActionBtn label="RedFace" icon={<RedFaceIconSm />} color="var(--warning-500)" onClick={e => { e.stopPropagation(); onNavigateTab?.("RedFace", p); }} />
@@ -724,7 +724,7 @@ function ScrollToTopButton({ containerRef }: { containerRef: React.RefObject<HTM
       title={T[lang].scrollToTop}
       style={{ position:"absolute", right:"20px", bottom:"20px", width:"40px", height:"40px", borderRadius:"50%",
         backgroundColor:"var(--gray-900)", color:"white", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
-        boxShadow:"0 4px 14px rgba(14,22,42,0.3)", zIndex:20 }}
+        boxShadow:"0 4px 14px rgba(24, 17, 39,0.3)", zIndex:20 }}
     >
       <ScrollUpIconSm />
     </button>
@@ -771,7 +771,7 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
           </button>
           {pickerOpen && (
             <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, width:"100%", backgroundColor:"white",
-              border:BORDER, borderRadius:"8px", boxShadow:"0 8px 20px rgba(14,22,42,0.12)", zIndex:10, overflow:"hidden",
+              border:BORDER, borderRadius:"8px", boxShadow:"var(--shadow-popover)", zIndex:10, overflow:"hidden",
               maxHeight:"320px", display:"flex", flexDirection:"column" }}>
               <button className="vca-picker-option" data-on={isAll}
                 onClick={() => { onSwitchCam(ALL_CAMERAS_ID); setPickerOpen(false); }} style={{
@@ -981,7 +981,7 @@ function SimpleSelect({ value, options, onChange }: { value:string; options:stri
       </button>
       {open && (
         <div className="vca-hide-scrollbar" style={{ position:"absolute", top:"100%", left:0, marginTop:"4px", width:"100%", maxHeight:"220px", overflowY:"auto",
-          backgroundColor:"white", border:BORDER, borderRadius:"8px", boxShadow:"0 8px 20px rgba(14,22,42,0.12)", zIndex:10 }}>
+          backgroundColor:"white", border:BORDER, borderRadius:"8px", boxShadow:"var(--shadow-popover)", zIndex:10 }}>
           {["", ...options].map(o => {
             const active = value === o;
             return (
@@ -1755,7 +1755,7 @@ function DateRangePopover({ anchorRef, value, onApply, onClose }: {
     <>
       <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:999 }} />
       <div style={{ position:"fixed", top:pos.top, left:pos.left, zIndex:1000, backgroundColor:"white",
-        border:BORDER, borderRadius:"12px", boxShadow:"0 8px 24px rgba(14,22,42,0.16)",
+        border:BORDER, borderRadius:"12px", boxShadow:"0 8px 24px rgba(24, 17, 39,0.16)",
         padding:"12px", display:"flex", gap:"16px" }}>
         <div style={{ display:"flex", flexDirection:"column", gap:"4px", width:"140px", borderRight:BORDER, paddingRight:"12px" }}>
           {/* Shared by every date filter in the app (Live Monitoring, Re-ID Analysis, RedFace) —
@@ -1942,7 +1942,7 @@ function VipQuickSelectRow({ activeVIP, onSelect, compact = false }: { activeVIP
                 padding:"4px 8px", borderRadius:"999px", border:"none", cursor:"pointer",
                 backgroundColor: active ? "white" : "transparent",
                 color: active ? "var(--gray-900)" : "var(--gray-400)", fontWeight: active ? 700 : 600, fontSize:"10px",
-                boxShadow: active ? "0 1px 3px rgba(14,22,42,0.12)" : "none",
+                boxShadow: active ? "var(--shadow-raised)" : "none",
               }}>{label}</button>
             );
           })}
@@ -2161,9 +2161,9 @@ function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_D
     }}>
       <img src={p.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
       <div style={{ position:"absolute", left:0, right:0, bottom:"64px", height:"80px",
-        background:"linear-gradient(to top, rgba(14,22,42,0.72), rgba(14,22,42,0))", pointerEvents:"none" }} />
+        background:"linear-gradient(to top, rgba(24, 17, 39,0.72), rgba(24, 17, 39,0))", pointerEvents:"none" }} />
       <div style={{ position:"absolute", top:8, left:8, fontSize:"10px", fontWeight:800, color:"white",
-        backgroundColor:"rgba(14,22,42,0.7)", padding:"4px 8px", borderRadius:"12px", letterSpacing:"-0.2px" }}>
+        backgroundColor:"var(--label-plate)", padding:"4px 8px", borderRadius:"12px", letterSpacing:"-0.2px" }}>
         {p.cam}
       </div>
       {/* Similarity is a property of the match itself (how well this result answers the search),
@@ -2172,7 +2172,7 @@ function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_D
           onto the photo, matching the badge ClusterMatchCard/CandidateCard already use for this
           same number. */}
       <div style={{ position:"absolute", top:8, right:8, fontSize:"10px", fontWeight:800, color:"white",
-        backgroundColor:"rgba(14,22,42,0.7)", padding:"4px 8px", borderRadius:"12px", letterSpacing:"-0.2px" }}>
+        backgroundColor:"var(--label-plate)", padding:"4px 8px", borderRadius:"12px", letterSpacing:"-0.2px" }}>
         {p.similarity}%
       </div>
       {/* Same REDFACE badge Live Monitoring's MonitorCard uses — a search shouldn't quietly hide
@@ -3016,7 +3016,7 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
       </button>
       {open && (
         <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, width:"100%", backgroundColor:"white",
-          border:BORDER, borderRadius:"8px", boxShadow:"0 8px 20px rgba(14,22,42,0.12)", zIndex:10, overflow:"hidden",
+          border:BORDER, borderRadius:"8px", boxShadow:"var(--shadow-popover)", zIndex:10, overflow:"hidden",
           maxHeight:"320px", display:"flex", flexDirection:"column" }}>
           <button className="vca-picker-option" data-on={!value} onClick={() => { onChange(""); setOpen(false); }} style={{
             display:"flex", alignItems:"center", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer", flexShrink:0,
@@ -3456,7 +3456,7 @@ function CandidateCard({ c, selected, onClick }:
           backgroundColor:"rgba(255,255,255,0.8)", padding:"2px 6px", borderRadius:"4px" }}>{c.similarity}%</span>
         <span style={{ position:"absolute", bottom:6, left:6, fontSize:"10px", fontWeight:600, color:"white",
           fontFamily: c.plate ? "monospace" : undefined,
-          backgroundColor:"rgba(14,22,42,0.5)", border:"1px solid white", padding:"2px 6px", borderRadius:"4px" }}>{c.plate ?? c.cam}</span>
+          backgroundColor:"var(--label-plate)", border:"1px solid white", padding:"2px 6px", borderRadius:"4px" }}>{c.plate ?? c.cam}</span>
         {selected && (
           <span style={{ position:"absolute", top:6, left:6, display:"flex", alignItems:"center", gap:"3px",
             backgroundColor:"var(--primary-400)", color:"white", fontSize:"10px", fontWeight:800, padding:"2px 6px", borderRadius:"4px" }}>
@@ -3652,7 +3652,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
     || !!dateRange.start || !!dateRange.end || licensePlate.trim() !== "" || threshold !== 70;
 
   return (
-    <div style={{ backgroundColor:"white", border:BORDER, borderRadius:"16px", boxShadow:"0 12px 24px rgba(14, 22, 42,0.1)",
+    <div style={{ backgroundColor:"white", border:BORDER, borderRadius:"16px", boxShadow:"var(--shadow-modal)",
       width:"1092px", maxWidth:"100%", display:"flex", flexDirection:"column", maxHeight:"92vh", overflow:"hidden" }}>
 
       <div style={{ padding:"16px 24px", borderBottom:BORDER, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
@@ -3765,7 +3765,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                         <img src={faceSrc} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                         {!uploadedFace && <div style={{ position:"absolute", inset:0, backgroundColor:"rgba(90,61,251,0.15)" }} />}
                         <div className="vca-dropzone-hint" style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
-                          backgroundColor:"rgba(14,22,42,0.55)", opacity:0 }}>
+                          backgroundColor:"var(--scrim-media)", opacity:0 }}>
                           <span style={{ fontSize:"11px", fontWeight:700, color:"white" }}>{t.clickToChange}</span>
                         </div>
                         {hoverImageBox === "face" && (
@@ -3795,7 +3795,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                         <img src={bodySrc} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                         {!uploadedBody && <div style={{ position:"absolute", inset:0, backgroundColor:"rgba(90,61,251,0.15)" }} />}
                         <div className="vca-dropzone-hint" style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
-                          backgroundColor:"rgba(14,22,42,0.55)", opacity:0 }}>
+                          backgroundColor:"var(--scrim-media)", opacity:0 }}>
                           <span style={{ fontSize:"11px", fontWeight:700, color:"white" }}>{t.clickToChange}</span>
                         </div>
                         {hoverImageBox === "body" && (
@@ -4068,7 +4068,7 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateR
              are placed from those pure weight percentages, so they were drawing up to 30px above
              the band they belong to. Zeroing the basis makes one calculation govern both. */
           <div key={r.key} style={{ flexGrow:r.weight, flexShrink:0, flexBasis:0, position:"relative",
-            backgroundColor: r.meta?.bg ?? ZONE_TINT("--primary-200"), borderBottom: r.key !== tierRows[tierRows.length-1]?.key ? "1px solid rgba(14, 22, 42,0.05)" : "none",
+            backgroundColor: r.meta?.bg ?? ZONE_TINT("--primary-200"), borderBottom: r.key !== tierRows[tierRows.length-1]?.key ? "1px solid rgba(24, 17, 39,0.05)" : "none",
             display:"flex", alignItems:"flex-start", justifyContent:"space-between", padding:"24px 24px 0", boxSizing:"border-box" }}>
             <span style={{ fontSize:"10px", fontWeight:800, letterSpacing:"0.4px",
               backgroundColor: r.meta?.labelBg ?? "rgba(255,255,255,0.85)", color: r.meta?.labelColor ?? "var(--primary-400)",
@@ -4134,7 +4134,7 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateR
             opacity: verdictOf(n.id) === "false_positive" ? 0.4 : 1 }}>
             <div className="redface-avatar-hover" onClick={() => onNodeClick(r.key, n)} style={{ position:"relative", width:r.meta!.nodeSize, height:r.meta!.nodeSize, borderRadius:"10px",
               border:`${r.meta!.nodeBorder}px solid ${r.meta!.nodeColor}`, backgroundColor:"white", boxSizing:"border-box",
-              boxShadow: n.id === selectedNodeId ? "0 0 0 3px rgba(90,61,251,0.45), 0 2px 8px rgba(14, 22, 42,0.15)" : "0 2px 8px rgba(14, 22, 42,0.15)" }}>
+              boxShadow: n.id === selectedNodeId ? "0 0 0 3px rgba(90,61,251,0.45), 0 2px 8px rgba(24, 17, 39,0.15)" : "0 2px 8px rgba(24, 17, 39,0.15)" }}>
               <img src={n.face} alt="" style={{ width:"100%", height:"100%", borderRadius:`${10 - r.meta!.nodeBorder}px`, objectFit:"cover", display:"block" }} />
             </div>
             {/* The co-captures in the range on screen — the same rows the Joint Evidence panel
@@ -4508,7 +4508,7 @@ function SharedFrameLightbox({ event, assocLabel, index, total, onStep, onClose,
   );
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position:"fixed", inset:0, backgroundColor:"rgba(14,22,42,0.55)", zIndex:200,
+      style={{ position:"fixed", inset:0, backgroundColor:"var(--scrim-media)", zIndex:200,
         display:"flex", alignItems:"center", justifyContent:"center", padding:"24px" }}>
       <div style={{ backgroundColor:"white", borderRadius:"16px", border:BORDER, width:"100%", maxWidth:"920px",
         display:"flex", flexDirection:"column", overflow:"hidden" }}>
@@ -4906,14 +4906,14 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
                   an operator reads. Date is trimmed to MM-DD for the same reason. */}
               <span style={{ position:"absolute", top:4, left:4, display:"flex", alignItems:"center", gap:"4px",
                 maxWidth:"calc(100% - 8px)", fontSize:"9px", fontWeight:700, color:"white",
-                backgroundColor:"rgba(14,22,42,0.65)", padding:"2px 5px", borderRadius:"3px",
+                backgroundColor:"var(--label-plate)", padding:"2px 5px", borderRadius:"3px",
                 overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
                 <CameraGlyph size={10} /> {e.location}
               </span>
               {/* Bottom-LEFT now that the legend has moved out to the section heading — the two
                   chips read as one column down the frame's left edge instead of straddling it. */}
               <span style={{ position:"absolute", bottom:4, left:4, fontSize:"9px", fontWeight:700, color:"white",
-                backgroundColor:"rgba(14,22,42,0.65)", padding:"2px 5px", borderRadius:"3px", whiteSpace:"nowrap" }}>
+                backgroundColor:"var(--label-plate)", padding:"2px 5px", borderRadius:"3px", whiteSpace:"nowrap" }}>
                 {e.date.slice(5)} {e.time.slice(0, 5)}
               </span>
               {[
@@ -5387,7 +5387,7 @@ function RedFaceContent({ seedCard, seedLabel, onSeedConsumed, onGoAnalyzeFrame 
         <div
           onClick={e => { if (e.target === e.currentTarget && primaryTarget) setPickerOpen(false); }}
           style={{ position:"absolute", inset:0, zIndex:50, overflow:"auto",
-            backdropFilter:"blur(9px)", backgroundColor:"rgba(14, 22, 42,0.4)" }}
+            backdropFilter:"blur(9px)", backgroundColor:"var(--scrim)" }}
         >
           <div style={{ minHeight:"100%", boxSizing:"border-box", display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"24px", paddingTop:"6vh" }}>
             <PrimaryTargetPickerModal onConfirm={handleConfirm} onCancel={() => primaryTarget && setPickerOpen(false)} />

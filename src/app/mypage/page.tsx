@@ -241,7 +241,7 @@ function DropdownBtn<V extends string>({ value, options, onSelect, disabledValue
         <ChevronDownIcon />
       </button>
       {open && (
-        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 20, backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: "8px", boxShadow: "0 4px 12px rgba(14, 22, 42,0.08)", minWidth: "150px", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 20, backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: "8px", boxShadow: "var(--shadow-popover)", minWidth: "150px", overflow: "hidden" }}>
           {options.map(opt => {
             const unavailable = disabledValues.includes(opt.value);
             const selected = opt.value === value;
@@ -341,13 +341,13 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
     <div
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{
-        position: "fixed", inset: 0, zIndex: 2000, backgroundColor: "rgba(14,22,42,0.35)",
+        position: "fixed", inset: 0, zIndex: 2000, backgroundColor: "var(--scrim)",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}
     >
       <div style={{
         width: "440px", maxWidth: "calc(100vw - 48px)", backgroundColor: "white",
-        borderRadius: "16px", padding: "28px", boxShadow: "0 12px 40px rgba(14,22,42,0.2)",
+        borderRadius: "16px", padding: "28px", boxShadow: "var(--shadow-modal)",
         display: "flex", flexDirection: "column", gap: "20px",
       }}>
         {step === "done" ? (
@@ -515,13 +515,13 @@ function ThresholdModal({ initialAlert, initialModerate, onSave, onClose }: { in
     <div
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{
-        position: "fixed", inset: 0, zIndex: 2000, backgroundColor: "rgba(14,22,42,0.35)",
+        position: "fixed", inset: 0, zIndex: 2000, backgroundColor: "var(--scrim)",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}
     >
       <div style={{
         width: "440px", maxWidth: "calc(100vw - 48px)", backgroundColor: "white",
-        borderRadius: "16px", padding: "28px", boxShadow: "0 12px 40px rgba(14,22,42,0.2)",
+        borderRadius: "16px", padding: "28px", boxShadow: "var(--shadow-modal)",
         display: "flex", flexDirection: "column", gap: "20px",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
