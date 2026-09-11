@@ -978,8 +978,12 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
       if (spots.length > 0) {
         map.flyToBounds(spots.map(h => [h.lat as number, h.lng as number]), {
           maxZoom: DISTRICT_FOCUS_ZOOM,
-          paddingTopLeft: [40, 90],
-          paddingBottomRight: [40, 60],
+          // Asymmetric, because the map has furniture on three sides: the zoom control top-right,
+          // and the "Today's VIP detections" button bottom-left. A marker fitted flush to the
+          // bounds landed under that button — the count pill sits above-right of its dot, so the
+          // bottom needs the most room of all.
+          paddingTopLeft: [48, 90],
+          paddingBottomRight: [48, 120],
           duration: 0.8,
           easeLinearity: 0.5,
         });
