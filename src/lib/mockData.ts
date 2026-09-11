@@ -49,6 +49,28 @@ export const DISTRICTS: District[] = [
 // Shared by MapView.tsx (aggregating the cluster-pill counts) and Sidebar.tsx (filtering the
 // events list to just one district's pins when a pill is clicked) — both need to bucket a given
 // lat/lng into the SAME district, or a pill's count and what clicking it shows would disagree.
+/**
+ * Which district a coordinate belongs to — by NEAREST CENTRE, not by containment.
+ *
+ * Every district figure in this product stands on this function: the map's district pills, the
+ * sidebar's district filter, the counts a customer takes upstairs to argue for more cameras. So
+ * its two approximations are worth stating rather than discovering.
+ *
+ * 1. NEAREST CENTRE IS NOT INSIDE. A camera a street inside Novena but closer to Kallang's centre
+ *    is counted as Kallang's. There are no boundaries here to test against — DISTRICTS holds one
+ *    point per district — so "inside" is not a question this data can answer. Whether the server
+ *    resolves this with real GIS is the one question from the 2026-09-09 backend list that came
+ *    back unanswered; see HANDOFF.md beside contract 4. If a detection ever arrives with a
+ *    district id computed server-side, that id wins over this and this stops being load-bearing.
+ *
+ * 2. IT COMPARES DEGREES, NOT DISTANCE. `Δlat² + Δlng²` treats a degree of longitude as the same
+ *    length as a degree of latitude. At Singapore's ~1.35°N they differ by 0.03% (cos 1.35° =
+ *    0.9997), so this is exact enough to ignore — and that is a fact about the LATITUDE, not
+ *    about the code. This product is deployed per city, on-premise: at Seoul's 37.5°N a degree of
+ *    longitude is 79% of a degree of latitude, and the same call would pull attribution
+ *    east–west. A site outside the tropics needs the cosine factor, or (better) the server's
+ *    answer.
+ */
 export function nearestDistrict(lat: number, lng: number): District {
   let best = DISTRICTS[0];
   let bestDist = Infinity;
