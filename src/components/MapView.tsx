@@ -191,7 +191,11 @@ function districtPillHtml(
   // Offline cameras aren't as urgent a signal as a real, nonzero VIP count — purple is reserved
   // for things that actually need attention, so this stays a neutral gray instead.
   else if (isDashed || isUncovered) { bg = "white"; textColor = "var(--gray-500)"; border = "border:1.5px dashed var(--gray-300);"; }
-  else              { bg = "white";   textColor = "var(--gray-700)"; border = "border:1.5px solid var(--primary-400);"; }
+  // The quiet state is the hairline, not purple. Most of the seventeen districts are quiet at any
+  // moment, so a purple border here meant a map of a dozen purple pills — and purple ended up
+  // meaning "normal", which is the opposite of what the line above reserves it for. Solid vs
+  // dashed still separates "has cameras" from "has none".
+  else              { bg = "white";   textColor = "var(--gray-700)"; border = "border:1.5px solid var(--line);"; }
   const camSvg = (isDashed || isUncovered)
     ? `<svg width="12" height="12" viewBox="0 0 18 18" fill="none" style="flex-shrink:0">
         <path d="M7.99512 4.5H10.5001C10.8979 4.5 11.2795 4.65804 11.5608 4.93934C11.8421 5.22064 12.0001 5.60218 12.0001 6V7.875L15.9361 5.5785C15.9931 5.54524 16.0579 5.52762 16.1238 5.52739C16.1898 5.52717 16.2547 5.54436 16.3119 5.57722C16.3691 5.61009 16.4167 5.65747 16.4497 5.71459C16.4827 5.7717 16.5001 5.83652 16.5001 5.9025V12.0495"
@@ -843,7 +847,11 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         map.flyTo([nodes[nodes.length - 1].lat, nodes[nodes.length - 1].lng], 14, { duration: 0.8, easeLinearity: 0.5 });
 
         const line = L.polyline(nodes.map(n => [n.lat, n.lng]), {
-          color: "var(--primary-400)", weight: 2, opacity: 1, lineJoin: "round", className: "vca-route-line",
+          // The trail is drawn in the Tracking colour, the same one the sidebar list and the map's
+          // own event pins already use for a Tracking row (see typeColor above). It was purple,
+          // so one event was olive in the list and purple on the map — and a long trail painted
+          // the map purple in proportion to how many hops it had.
+          color: "var(--type-tracking)", weight: 2, opacity: 1, lineJoin: "round", className: "vca-route-line",
         }).addTo(map);
         trackingRouteLayersRef.current.push(line);
 
@@ -855,7 +863,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           const arrowLng = a.lng + (b.lng - a.lng) * t;
           const bearing = (Math.atan2(b.lng - a.lng, b.lat - a.lat) * 180) / Math.PI;
           const arrowIcon = L.divIcon({
-            html: `<svg width="14" height="14" viewBox="0 0 14 14" style="display:block;transform:rotate(${bearing}deg)"><path d="M7 1L12.5 12H1.5Z" fill="var(--primary-400)"/></svg>`,
+            html: `<svg width="14" height="14" viewBox="0 0 14 14" style="display:block;transform:rotate(${bearing}deg)"><path d="M7 1L12.5 12H1.5Z" fill="var(--type-tracking)"/></svg>`,
             iconSize: [14, 14], iconAnchor: [7, 7], className: "",
           });
           const arrowMarker = L.marker([arrowLat, arrowLng], { icon: arrowIcon, interactive: false }).addTo(map);
@@ -869,21 +877,21 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           const size = isLast ? 44 : 36;
 
           const circleHtml = isLast
-            ? `<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--primary-400);display:flex;align-items:center;justify-content:center;
+            ? `<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--type-tracking);display:flex;align-items:center;justify-content:center;
                           font-family:'SUIT',sans-serif;font-size:14px;font-weight:700;color:white;box-shadow:0 0 0 10px rgba(90,61,251,0.15)">${num}</div>`
-            : `<div style="width:${size}px;height:${size}px;border-radius:50%;background:white;border:2px solid var(--primary-400);display:flex;align-items:center;justify-content:center;
-                          font-family:'SUIT',sans-serif;font-size:13px;font-weight:700;color:var(--primary-400);box-shadow:0 2px 6px rgba(14, 22, 42,0.12)">${num}</div>`;
+            : `<div style="width:${size}px;height:${size}px;border-radius:50%;background:white;border:2px solid var(--type-tracking);display:flex;align-items:center;justify-content:center;
+                          font-family:'SUIT',sans-serif;font-size:13px;font-weight:700;color:var(--type-tracking);box-shadow:0 2px 6px rgba(14, 22, 42,0.12)">${num}</div>`;
 
           const tailCenterY = size / 2;
           const tailHtml = isLast
-            ? routeBubbleTailHtml(tailCenterY, "var(--primary-400)", "var(--primary-400)")
+            ? routeBubbleTailHtml(tailCenterY, "var(--type-tracking)", "var(--type-tracking)")
             : routeBubbleTailHtml(tailCenterY, "white", "var(--gray-200)");
 
           const cardHtml = isLast
             ? `<div style="position:relative;font-family:'SUIT',sans-serif;filter:drop-shadow(0 4px 10px rgba(90,61,251,0.25))">
                  ${tailHtml}
-                 <div style="position:relative;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;border:1.5px solid var(--primary-400)">
-                   <div style="background:var(--primary-400);color:white;font-size:11px;font-weight:800;padding:6px 12px;display:flex;align-items:center;gap:4px;white-space:nowrap">
+                 <div style="position:relative;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;border:1.5px solid var(--type-tracking)">
+                   <div style="background:var(--type-tracking);color:white;font-size:11px;font-weight:800;padding:6px 12px;display:flex;align-items:center;gap:4px;white-space:nowrap">
                      <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M6 0.5L1.5 6.5H5L4.5 10.5L9.5 4.5H6L6 0.5Z" fill="white"/></svg>
                      ${t.lastSeen}
                    </div>
@@ -892,9 +900,9 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                      <div style="font-size:13px;color:var(--gray-500);margin-top:2px">${node.time}</div>
                      <div onclick="window.__vcaGoRedmapTrace && window.__vcaGoRedmapTrace('${escapeAttr(selectedEvent.name)}')"
                        style="margin-top:6px;padding-top:6px;border-top:1px solid var(--gray-100);display:flex;align-items:center;gap:4px;
-                       font-size:12px;font-weight:700;color:var(--primary-400);cursor:pointer">
+                       font-size:12px;font-weight:700;color:var(--type-tracking);cursor:pointer">
                        ${t.fullTrace}
-                       <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3 2L7 5L3 8" stroke="var(--primary-400)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                       <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3 2L7 5L3 8" stroke="var(--type-tracking)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                      </div>
                    </div>
                  </div>
