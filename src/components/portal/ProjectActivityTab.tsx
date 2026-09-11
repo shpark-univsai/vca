@@ -47,7 +47,7 @@ const T = {
   en: {
     intro: "Every change made to this project from the console, newest first. Policy changes made for the whole institution appear here too.",
     empty: "No activity recorded yet.",
-    emptyHint: "A row appears here each time somebody changes something on this project — a camera, a watchlist entry, a role, a setting.",
+    emptyHint: "A row appears here each time somebody changes something on this project — a camera, a VIP entry, a role, a setting.",
     noMatch: "No activity matches these filters.",
     noMatchHint: "Widen the date range, or clear the operator and search filters.",
     colAt: "When", colActor: "Who", colMessage: "What changed",
@@ -65,7 +65,7 @@ const T = {
   ko: {
     intro: "콘솔에서 이 프로젝트에 가해진 모든 변경입니다. 기관 전체에 적용되는 정책 변경도 함께 나옵니다.",
     empty: "기록된 변경이 없습니다.",
-    emptyHint: "누군가 이 프로젝트에서 무언가를 바꿀 때마다 한 줄씩 쌓입니다 — 카메라, 명단, 역할, 설정.",
+    emptyHint: "누군가 이 프로젝트에서 무언가를 바꿀 때마다 한 줄씩 쌓입니다 — 카메라, VIP, 역할, 설정.",
     noMatch: "조건에 맞는 기록이 없습니다.",
     noMatchHint: "기간을 넓히거나 담당자·검색 조건을 해제해 보세요.",
     colAt: "시각", colActor: "담당자", colMessage: "변경 내용",

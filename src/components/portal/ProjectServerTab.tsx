@@ -128,7 +128,7 @@ function ServerFormModal({
 
 const API_ENDPOINTS = [
   { method: "GET", path: "/v1/cameras", desc: { en: "List cameras registered to this project.", ko: "이 프로젝트에 등록된 카메라 목록을 조회합니다." } },
-  { method: "GET", path: "/v1/persons", desc: { en: "List VIP/watchlist registrations.", ko: "VIP/관심인물 등록 목록을 조회합니다." } },
+  { method: "GET", path: "/v1/persons", desc: { en: "List VIP registrations.", ko: "VIP 등록 목록을 조회합니다." } },
   { method: "POST", path: "/v1/events", desc: { en: "Push a detection event from an edge server.", ko: "엣지 서버에서 탐지 이벤트를 전송합니다." } },
   { method: "GET", path: "/v1/servers", desc: { en: "List infrastructure nodes and their health.", ko: "인프라 노드와 상태를 조회합니다." } },
 ];
