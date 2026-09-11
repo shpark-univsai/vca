@@ -411,13 +411,20 @@ function CheckboxIcon({ checked }: { checked: boolean }) {
   );
 }
 
-function MonitorIcon({ purple }: { purple: boolean }) {
-  if (purple) return (
+/**
+ * The glyph on a camera row: a lit monitor when the camera is in the grid, an empty one when not.
+ *
+ * `active` replaces what was `purple` — the prop was named after its colour, and the colour was
+ * the thing that had to change. Purple is the person signal in this product, not the "you ticked
+ * this" signal, and a full grid of sixteen was spending it sixty-four times.
+ */
+function MonitorIcon({ active }: { active: boolean }) {
+  if (active) return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-      <path d="M10.022 6.29339C10.0874 6.33127 10.1418 6.38571 10.1796 6.45124C10.2174 6.51676 10.2373 6.59108 10.2373 6.66672C10.2373 6.74236 10.2174 6.81667 10.1796 6.8822C10.1418 6.94773 10.0874 7.00217 10.022 7.04005L7.31196 8.60805C7.24652 8.64592 7.17224 8.66585 7.09663 8.66586C7.02102 8.66586 6.94675 8.64592 6.8813 8.60806C6.81585 8.5702 6.76155 8.51575 6.72386 8.4502C6.68617 8.38465 6.66643 8.31033 6.66663 8.23472V5.09872C6.6665 5.02321 6.68625 4.94899 6.72391 4.88354C6.76156 4.81809 6.81579 4.7637 6.88114 4.72586C6.94648 4.68802 7.02064 4.66805 7.09615 4.66797C7.17166 4.66789 7.24587 4.68769 7.31129 4.72539L10.022 6.29339Z" stroke="var(--primary-400)" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M8 11.334V14.0007" stroke="var(--primary-400)" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M5.33337 14H10.6667" stroke="var(--primary-400)" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M13.3334 2H2.66671C1.93033 2 1.33337 2.59695 1.33337 3.33333V10C1.33337 10.7364 1.93033 11.3333 2.66671 11.3333H13.3334C14.0698 11.3333 14.6667 10.7364 14.6667 10V3.33333C14.6667 2.59695 14.0698 2 13.3334 2Z" stroke="var(--primary-400)" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M10.022 6.29339C10.0874 6.33127 10.1418 6.38571 10.1796 6.45124C10.2174 6.51676 10.2373 6.59108 10.2373 6.66672C10.2373 6.74236 10.2174 6.81667 10.1796 6.8822C10.1418 6.94773 10.0874 7.00217 10.022 7.04005L7.31196 8.60805C7.24652 8.64592 7.17224 8.66585 7.09663 8.66586C7.02102 8.66586 6.94675 8.64592 6.8813 8.60806C6.81585 8.5702 6.76155 8.51575 6.72386 8.4502C6.68617 8.38465 6.66643 8.31033 6.66663 8.23472V5.09872C6.6665 5.02321 6.68625 4.94899 6.72391 4.88354C6.76156 4.81809 6.81579 4.7637 6.88114 4.72586C6.94648 4.68802 7.02064 4.66805 7.09615 4.66797C7.17166 4.66789 7.24587 4.68769 7.31129 4.72539L10.022 6.29339Z" stroke="var(--gray-700)" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M8 11.334V14.0007" stroke="var(--gray-700)" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M5.33337 14H10.6667" stroke="var(--gray-700)" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M13.3334 2H2.66671C1.93033 2 1.33337 2.59695 1.33337 3.33333V10C1.33337 10.7364 1.93033 11.3333 2.66671 11.3333H13.3334C14.0698 11.3333 14.6667 10.7364 14.6667 10V3.33333C14.6667 2.59695 14.0698 2 13.3334 2Z" stroke="var(--gray-700)" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
   return (
@@ -794,7 +801,20 @@ function CameraItem({ cam, onToggle, type = "camera", disabled = false, activity
   // unselectable in effect, but the click must still reach toggle() — that's what shows the
   // "offline" / "limit reached" toast instead of the click silently doing nothing.
   const isCapped = disabled && !cam.checked;
-  const iconColor = isChecked ? "var(--primary-400)" : "var(--gray-500)";
+  /**
+   * Selection is grey here, not purple.
+   *
+   * Purple means ONE thing in this product: a person on the watchlist. This row used to spend it
+   * on "you ticked this camera" — in four places at once (fill, label, icon, monitor glyph) — and
+   * the grid takes sixteen cameras, so a full grid painted sixty-four purple signals. The row's
+   * own VIP dot, the one thing here that means "somebody is being detected right now", was the
+   * same purple and lost in it.
+   *
+   * Selection also has a device purple doesn't: the checkbox to the left of this, which already
+   * says it. Grey fill plus that checkbox plus the bolder label is three ways of saying ticked,
+   * which is enough.
+   */
+  const iconColor = isChecked ? "var(--gray-700)" : "var(--gray-500)";
   const [hovered, setHovered] = useState(false);
   // Only a VIP hit gets a dot now — the second color (green, for Vehicle/Unknown) read as a
   // tracking indicator elsewhere in the app and was confusing here, so it's gone; VIP is the one
@@ -806,7 +826,7 @@ function CameraItem({ cam, onToggle, type = "camera", disabled = false, activity
       onClick={onToggle}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ display:"flex", alignItems:"center", gap:"8px", padding:"10px 12px", borderRadius:"10px", width:"100%", border:"none", cursor: isAlert ? "default" : "pointer", backgroundColor: isChecked ? "var(--primary-100)" : hovered && !isAlert && !isCapped ? "var(--gray-50)" : "transparent", flexShrink:0, opacity: isAlert || isCapped ? 0.4 : 1 }}
+      style={{ display:"flex", alignItems:"center", gap:"8px", padding:"10px 12px", borderRadius:"10px", width:"100%", border:"none", cursor: isAlert ? "default" : "pointer", backgroundColor: isChecked ? "var(--gray-100)" : hovered && !isAlert && !isCapped ? "var(--gray-50)" : "transparent", flexShrink:0, opacity: isAlert || isCapped ? 0.4 : 1 }}
     >
       {/* Video/Image rows navigate straight to their analysis screen on click — there's nothing
           for a checkbox to toggle there, so it's replaced with a plain spacer to keep alignment. */}
@@ -821,10 +841,11 @@ function CameraItem({ cam, onToggle, type = "camera", disabled = false, activity
           <div title={t.vipNow} className="vca-vip-dot-pulse" style={{ position:"absolute", top:-2, right:-2, width:"7px", height:"7px", borderRadius:"50%", backgroundColor:"var(--primary-400)", border:"1.5px solid white" }} />
         )}
       </div>
-      <span style={{ flex:1, textAlign:"left", fontSize:"13px", fontWeight: isChecked ? 700 : 400, color: isChecked ? "var(--primary-400)" : "var(--gray-500)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+      <span style={{ flex:1, textAlign:"left", fontSize:"13px", fontWeight: isChecked ? 700 : 400, color: isChecked ? "var(--gray-900)" : "var(--gray-500)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
         {cam.name}
       </span>
-      <MonitorIcon purple={isChecked} />
+      {/* The glyph marks which rows are in the grid; it no longer does it in purple. */}
+      <MonitorIcon active={isChecked} />
     </button>
   );
 }
@@ -853,12 +874,19 @@ function SidebarSection({ label, count, badge, expanded, onToggle, activeLabel }
   );
 }
 
-function CollapsedIcon({ type, badge, purple=false }: { type:"camera"|"video"|"image"|"search"; badge?:number; purple?:boolean }) {
-  const camColor = purple ? "var(--primary-400)" : "var(--gray-500)";
-  const hasBg = type === "search" || type === "camera" || purple;
+/**
+ * A group on the collapsed rail, with how many of it are in the grid.
+ *
+ * `active` was `purple`, and it meant "some of these are selected" — selection again, wearing the
+ * colour that belongs to people. The count in the badge is what carries that state; it does not
+ * need a hue, it needs to not be grey-on-grey. So an active group goes darker rather than purple.
+ */
+function CollapsedIcon({ type, badge, active=false }: { type:"camera"|"video"|"image"|"search"; badge?:number; active?:boolean }) {
+  const camColor = active ? "var(--gray-700)" : "var(--gray-500)";
+  const hasBg = type === "search" || type === "camera" || active;
   return (
     <div style={{ position:"relative" }}>
-      <div style={{ width:"40px", height:"40px", borderRadius:"10px", backgroundColor: hasBg ? (purple ? "var(--primary-100)" : "var(--gray-100)") : "transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ width:"40px", height:"40px", borderRadius:"10px", backgroundColor: hasBg ? "var(--gray-100)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
         {type === "search" && (
           <svg width="18" height="18" viewBox="6.5 6.5 16.5 16.5" fill="none">
             <path d="M21.7501 21.7501L18.4951 18.4951M20.25 14.25C20.25 17.5637 17.5637 20.25 14.25 20.25C10.9363 20.25 8.25 17.5637 8.25 14.25C8.25 10.9363 10.9363 8.25 14.25 8.25C17.5637 8.25 20.25 10.9363 20.25 14.25Z" stroke="var(--gray-500)" strokeWidth="1" strokeLinecap="round"/>
@@ -883,7 +911,7 @@ function CollapsedIcon({ type, badge, purple=false }: { type:"camera"|"video"|"i
         )}
       </div>
       {badge !== undefined && (
-        <div style={{ position:"absolute", top:"-4px", right:"-4px", backgroundColor: purple ? "var(--primary-400)" : "var(--gray-400)", borderRadius:"999px", minWidth:"16px", height:"16px", padding:"0 3px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <div style={{ position:"absolute", top:"-4px", right:"-4px", backgroundColor: active ? "var(--gray-900)" : "var(--gray-400)", borderRadius:"999px", minWidth:"16px", height:"16px", padding:"0 3px", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <span style={{ fontSize:"10px", fontWeight:600, color:"white", lineHeight:"16px" }}>{badge}</span>
         </div>
       )}
@@ -1338,21 +1366,21 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
             aria-label={t.showLiveList}
             style={{ background:"none", border:"none", padding:0, cursor:"pointer", display:"flex" }}
           >
-            <CollapsedIcon type="camera" badge={activeCams.length} purple={activeCams.length > 0} />
+            <CollapsedIcon type="camera" badge={activeCams.length} active={activeCams.length > 0} />
           </button>
           <button
             onClick={() => { setCollapsed(false); setCamTypeFilter("File"); setExpanded(p => ({ ...p, video:true })); }}
             aria-label={t.showVideoList}
             style={{ background:"none", border:"none", padding:0, cursor:"pointer", display:"flex" }}
           >
-            <CollapsedIcon type="video"  badge={checkedVideoCams.length} purple={checkedVideoCams.length > 0} />
+            <CollapsedIcon type="video"  badge={checkedVideoCams.length} active={checkedVideoCams.length > 0} />
           </button>
           <button
             onClick={() => { setCollapsed(false); setCamTypeFilter("File"); setExpanded(p => ({ ...p, image:true })); }}
             aria-label={t.showImageList}
             style={{ background:"none", border:"none", padding:0, cursor:"pointer", display:"flex" }}
           >
-            <CollapsedIcon type="image"  badge={checkedImageCams.length} purple={checkedImageCams.length > 0} />
+            <CollapsedIcon type="image"  badge={checkedImageCams.length} active={checkedImageCams.length > 0} />
           </button>
         </div>
       )}
