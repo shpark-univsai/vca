@@ -70,7 +70,7 @@ const T = {
     appNo: "Portal only",
     team: "Team",
     teamMailTitle: "Team mail",
-    teamMailIntro: "A project can override this in its Server tab. Most do not.",
+    teamMailIntro: "A project can override this in its Server tab.",
     teamMailDomain: "Mail domain",
     teamMailDomainHint: "Accounts must have an address on this domain. Requests and invites to anything else are refused.",
     teamMailHost: "SMTP host",
@@ -80,7 +80,7 @@ const T = {
     teamMailSave: "Save mail settings",
     teamMailSaved: "Team mail settings saved",
     teamMailFromMismatch: (d: string) => `The from address has to be on @${d}, or the receiving server rejects it.`,
-    teamMailUnverified: "Saved, not tested. Nothing here connects to the relay, so a wrong host means invitations vanish with no sign on this screen — send one invite and confirm it arrives.",
+    teamMailUnverified: "Saved, not tested — this screen never reaches the relay. A wrong host loses invitations silently.",
     categoryTitle: "Watchlist categories",
     categoryCount: (n: number) => (n === 1 ? "1 category in use" : `${n} categories in use`),
     categoryManage: "Manage categories",
@@ -124,7 +124,7 @@ const T = {
     purposeCreate: "Create",
     purposeCancel: "Cancel",
     purposeOwnerOnly: "Only the owner can change this list.",
-    displayTitle: "Display",
+    displayTitle: "Language",
     language: "Portal language",
     languageNote: "Portal only. The monitoring app keeps its own, set from My Page there.",
     password: "Password",
@@ -153,7 +153,7 @@ const T = {
     appNo: "포털만",
     team: "팀",
     teamMailTitle: "팀 메일",
-    teamMailIntro: "프로젝트의 서버 탭에서 덮어쓸 수 있습니다. 대개 그러지 않습니다.",
+    teamMailIntro: "프로젝트의 서버 탭에서 덮어쓸 수 있습니다.",
     teamMailDomain: "메일 도메인",
     teamMailDomainHint: "계정은 반드시 이 도메인의 주소여야 합니다. 그 외 주소로의 요청과 초대는 거부됩니다.",
     teamMailHost: "SMTP 호스트",
@@ -163,7 +163,7 @@ const T = {
     teamMailSave: "메일 설정 저장",
     teamMailSaved: "팀 메일 설정이 저장되었습니다",
     teamMailFromMismatch: (d: string) => `발신 주소는 @${d} 도메인이어야 합니다. 아니면 받는 쪽 서버가 거부합니다.`,
-    teamMailUnverified: "저장했을 뿐 테스트하지 않았습니다. 여기서 릴레이에 접속하지 않으므로 호스트가 틀리면 초대장이 이 화면에 아무 표시 없이 사라집니다 — 초대를 한 통 보내 도착하는지 확인하세요.",
+    teamMailUnverified: "저장만 할 뿐 연결을 시험하지는 않습니다. 호스트가 틀리면 초대장이 아무 표시 없이 사라집니다.",
     categoryTitle: "관심인물 분류",
     categoryCount: (n: number) => `사용 중인 분류 ${n}개`,
     categoryManage: "분류 관리",
@@ -207,7 +207,7 @@ const T = {
     purposeCreate: "만들기",
     purposeCancel: "취소",
     purposeOwnerOnly: "이 목록은 최고관리자만 바꿀 수 있습니다.",
-    displayTitle: "표시",
+    displayTitle: "언어",
     language: "포털 화면 언어",
     languageNote: "포털에만 적용됩니다. 모니터링 앱은 별도이고, 앱의 마이페이지에서 정합니다.",
     password: "비밀번호",
@@ -575,8 +575,8 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
               )}
             </PairItem>
           </PairGrid>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "14px" }}>{t.timeZoneNote}</p>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "8px" }}>{t.retentionNote}</p>
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "14px" }}>{t.timeZoneNote}</p>
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "8px" }}>{t.retentionNote}</p>
 
         </CardSection>
       )}
@@ -601,7 +601,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>
+            <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>
               {t.deleteConfirmCounts(
                 cameras.filter(c => c.projectId === project.id).length,
                 persons.filter(pp => pp.projectId === project.id).length,
@@ -609,7 +609,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
               )}
             </p>
             {isLastProjectInTeam && (
-              <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.7 }}>{t.deleteLastProject}</p>
+              <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.deleteLastProject}</p>
             )}
             <TextField value={deleteEcho} onChange={setDeleteEcho} placeholder={project.name} autoFocus />
           </div>
@@ -673,7 +673,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             <input type="checkbox" checked={mailTls} onChange={e => setMailTls(e.target.checked)} disabled={!mayEdit} />
             {t.teamMailTls}
           </label>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "12px" }}>{t.teamMailUnverified}</p>
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "12px" }}>{t.teamMailUnverified}</p>
           <div style={{ marginTop: "14px" }}>
             <button className="portal-btn-primary" onClick={saveTeamMail} disabled={!canSaveTeamMail}
               style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSaveTeamMail ? "var(--primary-400)" : "var(--gray-200)", color: canSaveTeamMail ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSaveTeamMail ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
@@ -720,7 +720,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             <p style={{
               padding: "10px 12px", marginBottom: "12px", borderRadius: "8px", maxWidth: "fit-content",
               backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
-              fontSize: "12px", fontWeight: 700, lineHeight: 1.6,
+              fontSize: "12px", fontWeight: 700, lineHeight: 1.5,
             }}>{t.purposeRequirementOn}</p>
           )}
           <SearchPurposeList t={t} teamId={myTeamId} purposes={teamPurposes} canEdit={maySetPolicy} />
@@ -744,7 +744,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         {/* Said out loud, because the two halves now disagree on purpose. Without it, somebody who
             switches here and walks into the app reads the same words in English and concludes the
             setting is broken. */}
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "12px" }}>{t.languageNote}</p>
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "12px" }}>{t.languageNote}</p>
       </CardSection>
       )}
 
@@ -756,7 +756,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           Owner only: this belongs with granting roles, not with changing a timezone. */}
       {active === "danger" && project && mayDeleteProject && (
         <CardSection heading={t.dangerTitle} icon={<Trash2 size={15} strokeWidth={2.2} />}>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.65 }}>{t.deleteProjectHint}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.deleteProjectHint}</p>
           {/* Under its own words, flush with them. space-between held the button at the far edge
               of the column, so the sentence explaining it and the thing it explains were half a
               column apart and the hover tint landed nowhere near the text — read as a stray
@@ -883,11 +883,11 @@ function ChangePasswordModal({ t, lang, onClose }: {
               {field(t.newPassword, next, setNext, "new-password",
                 /* The rule under the field, not in a tooltip: it should be readable before it is
                    broken rather than after. Amber only once what is typed breaks it. */
-                <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.6, color: next.length > 0 && !formatValid ? "var(--warning-500)" : "var(--gray-400)" }}>
+                <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.5, color: next.length > 0 && !formatValid ? "var(--warning-500)" : "var(--gray-400)" }}>
                   {PASSWORD_RULE_TEXT[lang]}
                 </p>)}
               {field(t.confirmPassword, confirm, setConfirm, "new-password",
-                mismatch ? <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.6, color: "var(--warning-500)" }}>{t.mismatch}</p> : undefined)}
+                mismatch ? <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.5, color: "var(--warning-500)" }}>{t.mismatch}</p> : undefined)}
             </div>
             <div style={{ padding: "0 20px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
               <button className="portal-btn-outline" onClick={onClose}
@@ -939,7 +939,7 @@ function SearchPurposeList({ t, teamId, purposes, canEdit }: {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
       {purposes.length === 0 && !creating && (
-        <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.7 }}>{t.purposeEmpty}</p>
+        <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.purposeEmpty}</p>
       )}
       {purposes.map(sp => (
         <div key={sp.id} style={{
@@ -966,7 +966,7 @@ function SearchPurposeList({ t, teamId, purposes, canEdit }: {
       {!canEdit ? (
         // Said, not hidden. A reader who cannot find the Create button should learn that the list
         // has an owner rather than conclude the console is broken.
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.purposeOwnerOnly}</p>
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.purposeOwnerOnly}</p>
       ) : creating ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
           <div>
@@ -998,7 +998,7 @@ function SearchPurposeList({ t, teamId, purposes, canEdit }: {
         </button>
       )}
       {purposes.some(sp => sp.archived) && (
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.purposeRetireNote}</p>
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.purposeRetireNote}</p>
       )}
     </div>
   );
