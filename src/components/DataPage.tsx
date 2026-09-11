@@ -4,7 +4,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MatchItem, ReIDStatus } from "@/types/reid";
 import {
   CAMERA_CODES, canSearchInApp, judgementFor, type DetectionVerdict,
-  useActiveProjectId, useProjectCameras, useVcaStore, type Camera,
+  useActiveProjectId, useProjectCameras, useVcaStore, getActiveProjectId, personsInProject,
+  type Camera, type Person,
 } from "@/lib/vcaStore";
 import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtClockTime, sgtDateKey } from "@/lib/time";
@@ -659,8 +660,18 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
           <span style={{ fontSize:"12px", fontWeight:800, color:status.text, letterSpacing:"-0.2px" }}>{attr(p.status, lang)}</span>
           {p.status === "VIP" && p.score !== null && <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-600)" }}>{p.score}%</span>}
         </div>
-        <div style={{ display:"flex", gap:"4px", fontSize:"12px", fontWeight:600, color:"var(--gray-900)" }}>
-          <span>{p.gender}</span><span>{p.age}</span>
+        {/* The identity line. A name when the register knows one, and the best available
+            description when it does not — those are answers to the same question, so they share
+            the line rather than sitting on top of each other.
+
+            It used to be gender+age always, which meant a card badged VIP said "M 45yo" where its
+            name belonged: the most important card on the wall omitted the one thing that made it
+            important, while the register had the name all along. */}
+        <div style={{ display:"flex", gap:"4px", fontSize:"12px", fontWeight:600, color:"var(--gray-900)",
+          overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+          {p.personName
+            ? <span style={{ fontWeight:700 }}>{p.personName}</span>
+            : <><span>{p.gender}</span><span>{p.age}</span></>}
         </div>
         <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-600)", letterSpacing:"-0.2px", marginBottom:"6px" }}>{cardTimestamp(p.date, p.time)}</span>
       </div>
@@ -669,11 +680,17 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
         // Only VIP gets a ring (brand purple) — Unknown has nothing to call out, and RedFace
         // already gets its own dedicated "REDFACE" badge on this card (below).
         boxShadow: p.status === "VIP" ? "0 0 0 2px var(--primary-400)" : "none" }}>
-        {/* Zoomed-in crop of the same big photo's face area, not a separate unrelated image —
-            anchored a bit below the very top edge (most head-and-shoulders stock photos frame
-            the face around 15-25% down, not flush at 0%) and zoomed less aggressively than a
-            tight face-only crop so a slightly-off guess still leaves the face in frame. */}
-        <img src={p.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"50% 20%", display:"block", transform:"scale(1.8)", transformOrigin:"50% 20%" }} />
+        {/* THE FACE FIELD, NOT A ZOOM OF THE CAPTURE.
+            This used to take the big photo and blow up its top 20% at 1.8x, on the reasoning that
+            "most head-and-shoulders stock photos frame the face around 15-25% down". That is a
+            fact about stock photos, and the captures are not stock photos. On a real surveillance
+            crop — a whole body somewhere in a street scene, at CCTV resolution — the top 20% is
+            sky, or the person behind them, and enlarging a low-resolution region 1.8x magnifies
+            information that is not there. Rendered against the live server's own snapshots the
+            insets came out as smudges: every card carried what looked like a smear of dirt.
+            `face` is a separate image the data already had (the enrolled photo when the register
+            has one), so there is nothing to guess. */}
+        <img src={p.face} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
       </div>
     </div>
   );
@@ -886,9 +903,27 @@ function cardTimestamp(isoDate: string, time: string): string {
 }
 const LIVE_FEED_CAPTURE_INTERVAL_MS = 45_000;
 
-function makeLiveItem(seed: number, camId: string, index: number): (typeof REID_DATA)[number] {
+/**
+ * One capture on the wall.
+ *
+ * `watchlist` is this site's registered people, and it decides two things the mock used to decide
+ * on its own.
+ *
+ * WHO. A card badged VIP now carries the name of somebody actually on this site's watchlist. It
+ * used to badge "VIP · 87.8%" with no identity at all — the same rule the four search screens
+ * already follow (the mock writes what was found, the register answers who and where), missing
+ * here. The screen was asserting a match against nobody.
+ *
+ * AND WHETHER. A site with an empty watchlist cannot produce a VIP card, because there is nobody
+ * to have matched. That was a real defect left as minor in the 2026-09-10 review: a site with zero
+ * registered people still badged a third of its wall VIP.
+ */
+function makeLiveItem(seed: number, camId: string, index: number, watchlist: Person[]): (typeof REID_DATA)[number] {
   const person = PERSONS[seed % PERSONS.length];
-  const status = LIVE_FEED_STATUS_CYCLE[seed % LIVE_FEED_STATUS_CYCLE.length];
+  const cycled = LIVE_FEED_STATUS_CYCLE[seed % LIVE_FEED_STATUS_CYCLE.length];
+  // Nobody enrolled here, so nothing here can be a match.
+  const matched = cycled === "VIP" && watchlist.length > 0 ? watchlist[seed % watchlist.length] : null;
+  const status = cycled === "VIP" && !matched ? "Unknown" : cycled;
   // Leftmost card in the feed is the most recent capture — later positions step further back in
   // time. date/time both come from this SAME instant now, instead of date cycling independently.
   const capturedAt = new Date(Date.now() - index * LIVE_FEED_CAPTURE_INTERVAL_MS);
@@ -902,7 +937,13 @@ function makeLiveItem(seed: number, camId: string, index: number): (typeof REID_
     age: REID_AGE_CYCLE[seed % REID_AGE_CYCLE.length],
     score: status === "VIP" ? 87.8 : null,
     cam: camId,
-    face: REID_FACE_POOL[seed % REID_FACE_POOL.length],
+    personName: matched?.name,
+    // The ENROLLED face when the register has one, never a crop of the capture — the card's inset
+    // used to zoom the capture itself and guess where a face would be. A registry row can have no
+    // photo (a CSV import carries names, not faces), and then this falls back to the pool so the
+    // card still renders; the honest version of that case is an inset that does not draw at all,
+    // which needs `face` to be optional through REID_DATA and its three other readers.
+    face: matched?.photoUrl ?? REID_FACE_POOL[seed % REID_FACE_POOL.length],
     apparel: REID_APPAREL_CYCLE[seed % REID_APPAREL_CYCLE.length],
     prop: REID_PROP_CYCLE[seed % REID_PROP_CYCLE.length],
     similarity: REID_SIMILARITY_CYCLE[seed % REID_SIMILARITY_CYCLE.length],
@@ -923,8 +964,11 @@ function seedLiveFeed(): Record<string, (typeof REID_DATA)> {
   // them badged "VIP · 87.8%". The picker offers stopped cameras (with an OFF badge), so that
   // wall was one click away, while the "All Cameras" view already excluded them: the two views
   // of the same site disagreed. A camera that is not running captured nothing.
+  // Read at call time, not at module load — this stands in for a request, the same way
+  // lib/api/dashboard.ts reads the store rather than importing the mock array.
+  const watchlist = personsInProject(useVcaStore.getState().persons, getActiveProjectId());
   getCameraStatus().running.forEach((cam, camIndex) => {
-    feed[cam.code] = Array.from({ length: 120 }, (_, i) => makeLiveItem(500000 + camIndex * 1000 + i, cam.code, i));
+    feed[cam.code] = Array.from({ length: 120 }, (_, i) => makeLiveItem(500000 + camIndex * 1000 + i, cam.code, i, watchlist));
   });
   return feed;
 }
@@ -1545,7 +1589,8 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
       if (onlineCams.length === 0) return;
       const batchSize = Math.max(1, Math.round(onlineCams.length / 4));
       const batch = [...onlineCams].sort(() => Math.random() - 0.5).slice(0, batchSize);
-      const newItems = batch.map(cam => ({ cam, item: makeLiveItem(seedRef.current++, cam.code, 0) }));
+      const liveWatchlist = personsInProject(useVcaStore.getState().persons, getActiveProjectId());
+      const newItems = batch.map(cam => ({ cam, item: makeLiveItem(seedRef.current++, cam.code, 0, liveWatchlist) }));
 
       setFeed(prev => {
         const next = { ...prev };
@@ -2399,6 +2444,14 @@ const REID_ETHNIC_GROUP_CYCLE = [...ETHNIC_GROUP_OPTIONS.slice(1), ...ETHNIC_GRO
 
 export const REID_DATA = PERSONS.map((p, i) => ({
   ...p,
+  /**
+   * Who this is, when the register says so — otherwise absent.
+   *
+   * PERSONS is an anonymous photo pool: it has no names and should not. A name belongs to the
+   * site's watchlist, and the live wall fills this in from there (see makeLiveItem). Absent here
+   * so an unidentified capture stays unidentified instead of borrowing somebody's name.
+   */
+  personName:  undefined as string | undefined,
   status:      REID_STATUS_CYCLE[i % REID_STATUS_CYCLE.length] as ReIDStatus,
   gender:      REID_GENDER_CYCLE[i % REID_GENDER_CYCLE.length],
   age:         REID_AGE_CYCLE[i % REID_AGE_CYCLE.length],
@@ -2446,6 +2499,8 @@ export const VEHICLE_DATA = VEHICLE_PLATES.map((plate, i) => {
   const img = carSvgDataUri(color);
   return {
     id: 900000 + i,
+    // A vehicle is not a person; there is no name slot to fill.
+    personName: undefined as string | undefined,
     url: img, face: img,
     time: TIMES_P[i % TIMES_P.length],
     badge: null as number | null,
@@ -2595,6 +2650,8 @@ function buildTargetResultRows(face: string, body: string, genderAbbrev: "M" | "
   const step = count > 1 ? 65 / (count - 1) : 0;
   return Array.from({ length: count }, (_, i) => ({
     id: 700000 + i,
+    // A similarity match is a candidate, not an identification — it has no name by definition.
+    personName: undefined as string | undefined,
     url: withMatchVariation(body, i),
     face: withMatchVariation(face, i),
     time: TIMES_P[i % TIMES_P.length],
