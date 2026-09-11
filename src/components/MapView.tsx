@@ -218,10 +218,12 @@ function districtPillHtml(
       // middot instead of the slash, because the camera count sits beside this figure rather than
       // under it. The figure stays the biggest thing on the pill — you find a district by
       // position and then read its number.
-      // The mark hugs the figure (no space between them) — it is part of reading the number, not
-      // a separate word. "VIP" keeps its own gap in front.
+      // The mark reads with the figure rather than as a separate word, so it stays close — but
+      // not touching. Set flush it collided with the number: a 10px × has almost no side bearing
+      // and the 14px 800-weight digit starts immediately, so the two glyphs ran together. 2px is
+      // the smallest gap that separates them without turning the mark into its own token.
       : `<span style="font-size:10px;font-weight:700;opacity:0.82;letter-spacing:0.2px;margin-right:3px">VIP</span>` +
-        (t.hitsMark() ? `<span style="font-size:11px;font-weight:600;opacity:0.62">${t.hitsMark()}</span>` : "") +
+        (t.hitsMark() ? `<span style="font-size:10px;font-weight:600;opacity:0.62;margin-right:2px">${t.hitsMark()}</span>` : "") +
         `<span style="font-size:14px;font-weight:800;letter-spacing:-0.3px">${count}</span>` +
         `<span style="font-size:11px;font-weight:500;opacity:0.62">${t.hitsUnit()}&nbsp;·&nbsp;${t.camerasShort(cameraCount)}</span>`;
 
