@@ -24,11 +24,19 @@ const T = {
     // The district pill's denominator and its no-coverage wording. Kept short: this is a label on
     // a map, and the full sentence lives in the tooltip below it.
     camerasShort: (n: number) => `${n} cam${n === 1 ? "" : "s"}`,
-    // Empty in English on purpose. Korean's counter is one character and earns its width; the
-    // English word for the same thing ("1 hit") is five, on a pill that seventeen of share one
-    // map — and it crowded the figure it was supposed to be labelling. "VIP 1 · 5 cams" already
-    // says the 1 is about a VIP, and the exact people-vs-detections breakdown is one zoom in, on
-    // the hit pin's own summary.
+    /**
+     * How each language marks this figure as a COUNT OF SIGHTINGS rather than of people.
+     *
+     * It has to be marked. This number is normally larger than the hit pin's, which counts
+     * people — and an unlabelled larger number beside a labelled one ("5 cams") gets read as the
+     * people count. In a control room twelve people and four are different situations.
+     *
+     * One character in each language, because seventeen of these pills share one map and the
+     * English word for it ("12 hits") crowded the very figure it was labelling. English takes the
+     * multiplication sign, which reads as "twelve times"; Korean has a counter for exactly this
+     * and puts it behind the number.
+     */
+    hitsMark: () => "×",
     hitsUnit: () => "",
     noCamera: "no camera",
     camerasDown: "all down",
@@ -49,6 +57,7 @@ const T = {
   },
   ko: {
     camerasShort: (n: number) => `${n}대`,
+    hitsMark: () => "",
     hitsUnit: () => "건",
     noCamera: "카메라 없음",
     camerasDown: "전부 중단",
@@ -209,8 +218,11 @@ function districtPillHtml(
       // middot instead of the slash, because the camera count sits beside this figure rather than
       // under it. The figure stays the biggest thing on the pill — you find a district by
       // position and then read its number.
-      : `<span style="font-size:10px;font-weight:700;opacity:0.82;letter-spacing:0.2px">VIP</span>` +
-        `<span style="font-size:14px;font-weight:800;letter-spacing:-0.3px;margin-left:3px">${count}</span>` +
+      // The mark hugs the figure (no space between them) — it is part of reading the number, not
+      // a separate word. "VIP" keeps its own gap in front.
+      : `<span style="font-size:10px;font-weight:700;opacity:0.82;letter-spacing:0.2px;margin-right:3px">VIP</span>` +
+        (t.hitsMark() ? `<span style="font-size:11px;font-weight:600;opacity:0.62">${t.hitsMark()}</span>` : "") +
+        `<span style="font-size:14px;font-weight:800;letter-spacing:-0.3px">${count}</span>` +
         `<span style="font-size:11px;font-weight:500;opacity:0.62">${t.hitsUnit()}&nbsp;·&nbsp;${t.camerasShort(cameraCount)}</span>`;
 
   const shadow = isDark || isAlert ? "0 2px 10px rgba(14, 22, 42,0.2)" : "0 2px 6px rgba(14, 22, 42,0.08)";
