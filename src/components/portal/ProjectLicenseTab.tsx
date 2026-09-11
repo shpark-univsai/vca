@@ -709,7 +709,19 @@ function LicenseFileSection({ projectId, t }: {
   const fieldLabel = { plan: t.fileFieldPlan, channels: t.fileFieldChannels, expiry: t.fileFieldExpiry };
 
   return (
-    <section style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, marginTop: "16px", padding: "24px 32px" }}>
+    /* Same 820px column as the document above it, and that is the whole of this style rule.
+       Everything else on this tab — the contract card, the limit banner, the expiry banner —
+       is a centred 820px block; this one had no cap and stretched to the shell's full width, so
+       the page ended with one box twice as wide as the thing it belongs to. It read as a
+       different screen stapled to the bottom.
+
+       It stays OUTSIDE the document card, which is the point made where it is rendered: the card
+       is the agreement and this is the instrument that delivers it, and a drop zone inside a
+       document makes the document look editable. Same column, separate object. */
+    <section style={{
+      backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW,
+      marginTop: "16px", padding: "24px 32px", maxWidth: "820px", marginInline: "auto",
+    }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "20px", flexWrap: "wrap" }}>
         <div style={{ minWidth: 0 }}>
           <h3 style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", margin: 0 }}>{t.fileHeading}</h3>
