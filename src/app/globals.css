@@ -491,6 +491,18 @@ body {
    lifts it off dark or busy tiles, a hairline just outside that ring separates it from near-white
    tiles (where a plain white ring would vanish), and a soft shadow keeps it reading as something
    sitting on top of the map rather than printed into it. */
+/* Auth field wrapper — the ring belongs to the whole field, not to the bare input inside it.
+   These fields are an icon + an input + sometimes a button inside one bordered box, and the
+   input suppresses the shared :focus-visible ring (outline AND box-shadow, see the note on that
+   rule) because a ring drawn around the bare input lands INSIDE the border as a second box.
+   Suppressing it left the login screen with no focus indicator at all, which for a keyboard user
+   is a screen with no cursor. So the wrapper takes the ring: same colour as the shared rule,
+   drawn on the box the operator actually sees. */
+.vca-auth-field:focus-within {
+  border-color: var(--primary-300) !important;
+  box-shadow: 0 0 0 3px var(--primary-100);
+}
+
 /* One ring, not two. A 2px white casing with a dark hairline OUTSIDE it made every dot a
    bullseye, and at this zoom there are fifty-nine of them on one map — concentric rings repeated
    that many times stop reading as locations and start reading as a texture, which is unpleasant

@@ -328,7 +328,7 @@ function LoginForm() {
                 <label style={FIELD_LABEL}>
                   {authConfig.employeeIdLogin ? t.identifierWithId : t.identifierEmailOnly}
                 </label>
-                <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: FIELD_BORDER, borderRadius: "8px" }}>
+                <div className="vca-auth-field" style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: FIELD_BORDER, borderRadius: "8px" }}>
                   <input
                     value={identifier}
                     onChange={e => { setIdentifier(e.target.value); setNotice(null); }}
@@ -358,7 +358,7 @@ function LoginForm() {
                     {t.forgot}
                   </button>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: FIELD_BORDER, borderRadius: "8px" }}>
+                <div className="vca-auth-field" style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: FIELD_BORDER, borderRadius: "8px" }}>
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}

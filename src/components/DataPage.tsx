@@ -1985,9 +1985,28 @@ const SHOE_COLORS: { id:string; hex:string }[] = [
   { id:"black",     hex:"#0f172a" },
   { id:"gray",      hex:"#94a3b8" },
 ];
-// A light swatch needs its own outline to stay visible against the white filter-panel
-// background — a colored swatch never does.
-const LIGHT_SWATCH_HEXES = new Set(["var(--gray-0)", "var(--gray-200)"]);
+/**
+ * Whether a swatch needs its own outline to stay visible against the white filter panel.
+ *
+ * Derived from the value, not listed. The list this replaces held design-token strings
+ * ("var(--gray-0)") while the swatches above carry real hex — so `has("#ffffff")` was false,
+ * the outline never applied once, and "white top" / "white shoes" / "light grey shoes" rendered
+ * as invisible circles on a white panel. A list that has to be kept in step with another list
+ * will drift again; a threshold on the colour cannot.
+ *
+ * These stay raw hex on purpose: they are DATA, not theme. A white shirt is white whatever the
+ * palette does, and tokenising them would let a design change repaint the clothing an operator
+ * is searching for.
+ */
+function isLightSwatch(hex: string): boolean {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  // Perceived luminance (Rec. 601), 0..1. Above 0.8 takes white and light grey and leaves tan,
+  // gold and sage alone — those carry their own edge against white.
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.8;
+}
 
 function ColorSwatch({ hex, active, onClick, size = 22 }: { hex:string; active:boolean; onClick:()=>void; size?:number }) {
   return (
@@ -1999,7 +2018,7 @@ function ColorSwatch({ hex, active, onClick, size = 22 }: { hex:string; active:b
         backgroundColor:hex, border:"none",
         boxShadow: active
           ? "0 0 0 2px white, 0 0 0 4px var(--primary-400)"
-          : LIGHT_SWATCH_HEXES.has(hex) ? "inset 0 0 0 1px var(--gray-300)" : "none",
+          : isLightSwatch(hex) ? "inset 0 0 0 1px var(--gray-300)" : "none",
       }}
     />
   );
