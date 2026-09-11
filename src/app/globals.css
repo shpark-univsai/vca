@@ -339,7 +339,9 @@
 .portal-settings-section {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  /* The heading needs air under it, not the 14px that read as the first label belonging to the
+     title rather than to the row beneath it. 22px is a clear break without becoming a gap. */
+  gap: 22px;
 }
 
 :where(input, textarea, select, button, [contenteditable], [tabindex]):focus-visible {

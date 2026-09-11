@@ -804,25 +804,29 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
  * job: they mark where a section starts, which is what the eye looks for when it comes back to a
  * settings page for one thing. One rank carries a mark, and it is the rank that leads.
  */
-export function CardSection({ id, heading, icon, subheading, desc, first, children }: { id?: string; heading: string; icon?: React.ReactNode; subheading?: string; desc?: string; first?: boolean; children: React.ReactNode }) {
+export function CardSection({ heading, icon, subheading, desc, children }: { heading: string; icon?: React.ReactNode; subheading?: string; desc?: string; children: React.ReactNode }) {
   return (
-    <>
-      {/* The rule between sections, inset to where the words start rather than run edge to edge.
-          It was a borderTop on the section itself, so it crossed the card's full width and read as
-          the card being cut in half — a divider that reaches the walls separates containers, and
-          these are parts of one. Starting it under the heading's own left edge makes it belong to
-          the column of text it is dividing. Its own element rather than a border, because a border
-          sits outside the padding by definition and there is no way to inset one. */}
-      {!first && <div aria-hidden="true" style={{ height: "1px", backgroundColor: "var(--line)", marginInline: "24px" }} />}
-      {/* `id` is what the settings rail scrolls to and what its scrollspy observes.
-          scrollMarginTop so a section landed on by a click stops below the page's own top edge
-          rather than flush against it, which reads as having overshot. */}
-      <div id={id} className="portal-settings-section" style={{ padding: "22px 24px", scrollMarginTop: "16px" }}>
+    <div className="portal-settings-section" style={{ padding: "26px 28px 28px" }}>
       <div>
         {/* <p>, not <h2>: nothing in Portal uses heading elements yet, and one lone h2 under no h1
-            is not an outline. Giving Portal a real heading order is its own pass. */}
-        <p style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "20px" }}>
-          {icon && <span style={{ display: "flex", flexShrink: 0, color: "var(--gray-400)" }}>{icon}</span>}
+            is not an outline. Giving Portal a real heading order is its own pass.
+        
+            18px against the 15px values under it. It was 15/800 over 15/600 — two weights of the
+            same size, which is not a rank, and the page read as one long even list with no idea
+            where it began. The heading is now the only thing on the card at this size, which is
+            what makes the rest of it settle into place under it.
+        
+            The icon sits in a tinted square rather than loose beside the words: a 15px glyph next
+            to 18px text is a speck, and the square gives the section a mark the eye can find from
+            the rail it was clicked in. */}
+        <p style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "18px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "24px", letterSpacing: "-0.2px" }}>
+          {icon && (
+            <span style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              width: "28px", height: "28px", borderRadius: "9px",
+              backgroundColor: "var(--gray-50)", border: BORDER, color: "var(--gray-600)",
+            }}>{icon}</span>
+          )}
           {heading}
         </p>
         {/* Whose settings these are, when that is not the same answer as the project on screen.
@@ -837,8 +841,7 @@ export function CardSection({ id, heading, icon, subheading, desc, first, childr
         )}
       </div>
       <div style={{ minWidth: 0 }}>{children}</div>
-      </div>
-    </>
+    </div>
   );
 }
 
@@ -888,9 +891,13 @@ export function PairGrid({ children }: { children: React.ReactNode }) {
 export function PairItem({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ minWidth: 0 }}>
-      <p style={{ fontSize: "12px", lineHeight: "16px", color: "var(--gray-500)" }}>{label}</p>
+      {/* 11px/600 in gray-400 against a 15px/600 value in gray-900. It was 12px gray-500 over
+          14px gray-900 — close enough in both size and colour that a column of them read as one
+          grey texture, and no pair announced itself as a pair. The label is a caption, so it can
+          afford to be small and quiet; what it loses in size it takes back in letter-spacing. */}
+      <p style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.2px", lineHeight: "15px", color: "var(--gray-400)" }}>{label}</p>
       {typeof children === "string"
-        ? <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-900)", marginTop: "3px", wordBreak: "break-word" }}>{children}</p>
+        ? <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--gray-900)", marginTop: "4px", wordBreak: "break-word" }}>{children}</p>
         : (
           /* flex, not a plain block: FilterSelect's trigger is inline-grid, so in a block it sits
              on a text baseline and inherits this column's 24px line height — about twenty pixels

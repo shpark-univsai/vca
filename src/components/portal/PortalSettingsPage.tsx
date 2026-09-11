@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { ClipboardList, Mail, MapPin, Monitor, Pencil, Tag, Trash2, User } from "lucide-react";
 import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
@@ -13,78 +13,44 @@ import { useToast } from "@/components/Toast";
 import { PROJECT_TIME_ZONE } from "@/lib/time";
 
 /**
- * The settings rail: the section titles, listed, with the one you are reading marked.
+ * The settings rail: one section at a time.
  *
- * The page was one tall card and nothing said how much of it there was — you found the language
- * select by scrolling until it appeared, and a section you were not looking for went past unread.
- * A list of the titles answers "what is on this page" before any scrolling happens, and doubles as
- * the way to jump.
+ * It was a scrollspy over a single tall card — the titles listed, the one you had scrolled to
+ * marked. That still made the reader scroll past four sections to reach the fifth, and it made
+ * every section share a page with the ones around it, so nothing on it had a shape of its own.
  *
- * Scrollspy rather than click-state: the mark has to follow the reader, because the page scrolls
- * freely and a mark that only moved on click would be wrong the moment somebody used the wheel.
- *
- * The observer keeps its own map of what is intersecting instead of reading the callback's
- * entries alone — a callback only carries the sections whose state CHANGED, so deciding from it
- * would forget every section that was already on screen and had nothing to report.
- *
- * The band (`rootMargin`) is the upper part of the viewport, not all of it: with the whole
- * viewport, a tall section and the short one under it are both "visible" for most of the scroll,
- * and the mark sits on whichever the sort happens to put first. Reading happens near the top.
+ * These are tabs now (asked for 2026-09-11): clicking one shows that section and only that
+ * section. Settings is not read top to bottom — you arrive knowing which one thing you came to
+ * change — so a table of contents that also hides everything else is the more useful of the two.
+ * It also means the heaviest section on this page, deleting the project, is somewhere you have to
+ * choose to go rather than somewhere scrolling takes you.
  */
-function SettingsNav({ sections }: { sections: { id: string; label: string; icon: React.ReactNode }[] }) {
-  const [active, setActive] = useState<string>(sections[0]?.id ?? "");
-  const ids = sections.map(s => s.id).join(",");
-  const seen = useRef(new Map<string, boolean>());
-
-  useEffect(() => {
-    const list = ids.split(",").filter(Boolean);
-    const els = list.map(id => document.getElementById(id)).filter((e): e is HTMLElement => e !== null);
-    if (els.length === 0) return;
-    const io = new IntersectionObserver(entries => {
-      entries.forEach(e => seen.current.set(e.target.id, e.isIntersecting));
-      // Document order, so when two sections share the band the upper one wins — that is the one
-      // being read. Nothing in the band leaves the mark where it is rather than clearing it: an
-      // empty rail while scrolling through a long section is worse than a slightly stale one.
-      const first = list.find(id => seen.current.get(id));
-      if (first) setActive(first);
-    }, { rootMargin: "-8% 0px -68% 0px", threshold: 0 });
-    els.forEach(el => io.observe(el));
-    return () => io.disconnect();
-  }, [ids]);
-
-  const go = (id: string) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    // Smooth, unless the reader has asked for less motion — a settings page is not the place to
-    // override that.
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-    setActive(id);
-  };
-
+function SettingsNav({ sections, active, onSelect }: {
+  sections: { id: string; label: string; icon: React.ReactNode }[];
+  active: string;
+  onSelect: (id: string) => void;
+}) {
   return (
-    /* Sticky, so the index is still there after two screens of scrolling — an index you have to
-       scroll back up to reach is a table of contents, not a rail. */
-    <nav style={{ position: "sticky", top: "8px", flexShrink: 0, width: "176px", display: "flex", flexDirection: "column", gap: "2px" }}>
+    <nav style={{ flexShrink: 0, width: "180px", display: "flex", flexDirection: "column", gap: "2px" }}>
       {sections.map(sec => {
         const on = sec.id === active;
         return (
           <button
             key={sec.id}
-            onClick={() => go(sec.id)}
-            aria-current={on ? "true" : undefined}
+            onClick={() => onSelect(sec.id)}
+            aria-current={on ? "page" : undefined}
             style={{
-              display: "flex", alignItems: "center", gap: "8px",
-              padding: "7px 10px", borderRadius: "8px", border: "none",
+              display: "flex", alignItems: "center", gap: "9px",
+              padding: "8px 10px", borderRadius: "8px", border: "none",
               // Grey, not purple. Purple is reserved for things that need attention, and "where
               // you are" is not one — see the colour note in globals.css.
               backgroundColor: on ? "var(--gray-100)" : "transparent",
               color: on ? "var(--gray-900)" : "var(--gray-500)",
-              fontSize: "12px", fontWeight: on ? 700 : 600, fontFamily: "inherit",
+              fontSize: "13px", fontWeight: on ? 700 : 600, fontFamily: "inherit",
               textAlign: "left", cursor: "pointer", width: "100%",
             }}
           >
-            <span style={{ display: "flex", flexShrink: 0, color: on ? "var(--gray-600)" : "var(--gray-400)" }}>{sec.icon}</span>
+            <span style={{ display: "flex", flexShrink: 0, color: on ? "var(--gray-700)" : "var(--gray-400)" }}>{sec.icon}</span>
             <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sec.label}</span>
           </button>
         );
@@ -316,6 +282,7 @@ const LANGUAGE_OPTIONS: { value: AppLanguage; label: string }[] = [
  */
 export default function PortalSettingsPage({ projectId }: { projectId: string }) {
   const [lang, setLang] = usePortalLanguage();
+  const [section, setSection] = useState("account");
   const [changingPassword, setChangingPassword] = useState(false);
   const searchPurposes = useVcaStore(s => s.searchPurposes);
   const requirePurpose = getComplianceConfig().requireSearchPurpose;
@@ -427,6 +394,23 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
     ] : []),
   ];
 
+  /* Same conditions as the sections themselves, in the same order. Written out rather than derived
+     from what rendered: a rail offering a section the page does not have would be a click that
+     silently does nothing. */
+  const sections = [
+    { id: "account", label: t.accountTitle, icon: <User size={15} strokeWidth={2.2} /> },
+    ...(project ? [{ id: "project", label: t.projectTitle, icon: <MapPin size={15} strokeWidth={2.2} /> }] : []),
+    ...(myTeam ? [{ id: "mail", label: t.teamMailTitle, icon: <Mail size={15} strokeWidth={2.2} /> }] : []),
+    ...(myTeamId ? [{ id: "categories", label: t.categoryTitle, icon: <Tag size={15} strokeWidth={2.2} /> }] : []),
+    ...(requirePurpose && myTeamId ? [{ id: "purposes", label: t.purposeTitle, icon: <ClipboardList size={15} strokeWidth={2.2} /> }] : []),
+    { id: "display", label: t.displayTitle, icon: <Monitor size={15} strokeWidth={2.2} /> },
+    ...(project && mayDeleteProject ? [{ id: "danger", label: t.dangerTitle, icon: <Trash2 size={15} strokeWidth={2.2} /> }] : []),
+  ];
+  /* Derived, not stored. The conditions above can stop holding while the page is open — a project
+     gets deleted, the search-purpose flag is read again — and a stored id would leave the card
+     blank with the rail marking a tab that no longer exists. */
+  const active = sections.some(sec => sec.id === section) ? section : sections[0].id;
+
   return (
     /**
      * One card, capped, and flush left.
@@ -452,18 +436,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
      * than the lopsidedness did.
      */
     <div style={{ display: "flex", alignItems: "flex-start", gap: "28px", maxWidth: "880px", marginInline: "auto" }}>
-      {/* Same conditions as the sections themselves, in the same order. Written out rather than
-          derived from the DOM: a rail that listed a section the page did not render would scroll
-          to nothing, and the failure would be a click that silently does nothing. */}
-      <SettingsNav sections={[
-        { id: "account", label: t.accountTitle, icon: <User size={14} strokeWidth={2.2} /> },
-        ...(project ? [{ id: "project", label: t.projectTitle, icon: <MapPin size={14} strokeWidth={2.2} /> }] : []),
-        ...(myTeam ? [{ id: "mail", label: t.teamMailTitle, icon: <Mail size={14} strokeWidth={2.2} /> }] : []),
-        ...(myTeamId ? [{ id: "categories", label: t.categoryTitle, icon: <Tag size={14} strokeWidth={2.2} /> }] : []),
-        ...(requirePurpose && myTeamId ? [{ id: "purposes", label: t.purposeTitle, icon: <ClipboardList size={14} strokeWidth={2.2} /> }] : []),
-        { id: "display", label: t.displayTitle, icon: <Monitor size={14} strokeWidth={2.2} /> },
-        ...(project && mayDeleteProject ? [{ id: "danger", label: t.dangerTitle, icon: <Trash2 size={14} strokeWidth={2.2} /> }] : []),
-      ]} />
+      <SettingsNav sections={sections} active={active} onSelect={setSection} />
       {/* No page title here: the top bar's crumb already names this page, and printing the same
           word again 20px lower was the page introducing itself twice. What stays is the row of
           things you can do on it. */}
@@ -475,7 +448,8 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       {/* Which pairs exist depends on whether the signed-in address matches an account: with no
           match there is nothing to say about a role or a door, so those are absent rather than
           filled with a disclaimer. */}
-      <CardSection id="account" heading={t.accountTitle} icon={<User size={15} strokeWidth={2.2} />} first>
+      {active === "account" && (
+      <CardSection heading={t.accountTitle} icon={<User size={15} strokeWidth={2.2} />}>
         <PairGrid>
           {accountPairs.map(r => <PairItem key={r.label} label={r.label}>{r.value}</PairItem>)}
           {/* A pair like the others, whose value is a button rather than a fact: the sentence
@@ -492,6 +466,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           </PairItem>
         </PairGrid>
       </CardSection>
+      )}
 
       {changingPassword && (
         <ChangePasswordModal t={t} lang={lang} onClose={() => setChangingPassword(false)} />
@@ -509,8 +484,8 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         HANDOFF: when a project-settings screen exists (its natural home, alongside retention and
         the licence), this card moves there whole and Settings goes back to being the account only.
       */}
-      {project && (
-        <CardSection id="project" heading={t.projectTitle} icon={<MapPin size={15} strokeWidth={2.2} />}>
+      {active === "project" && project && (
+        <CardSection heading={t.projectTitle} icon={<MapPin size={15} strokeWidth={2.2} />}>
           <PairGrid>
             {/* Editable, at last. Every handover starts with a test project and a typo, and
                 there was no renameProject anywhere in the codebase — the first name a project
@@ -667,8 +642,8 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         that decides whether anybody can sign in — and it is a team's, not a project's, which
         is why it sits here beside the other two team policies.
       */}
-      {myTeam && (
-        <CardSection id="mail" heading={t.teamMailTitle} icon={<Mail size={15} strokeWidth={2.2} />} subheading={myTeam.name} desc={t.teamMailIntro}>
+      {active === "mail" && myTeam && (
+        <CardSection heading={t.teamMailTitle} icon={<Mail size={15} strokeWidth={2.2} />} subheading={myTeam.name} desc={t.teamMailIntro}>
           {/* No maxWidth of its own any more — the section's content column is the cap, and two
               of these grids with two different ones is how columns stop lining up between
               sections. */}
@@ -708,8 +683,8 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         </CardSection>
       )}
 
-      {myTeamId && (
-        <CardSection id="categories" heading={t.categoryTitle} icon={<Tag size={15} strokeWidth={2.2} />}>
+      {active === "categories" && myTeamId && (
+        <CardSection heading={t.categoryTitle} icon={<Tag size={15} strokeWidth={2.2} />}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>
               {t.categoryCount(teamCategories.filter(c => !c.archived).length)}
@@ -735,8 +710,8 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           that nothing asks for it. A settings section for a feature this release does not have is
           a question the reader has to answer ("do I need to fill this in?") about something that
           cannot affect them. The flag is the switch — see complianceConfig. */}
-      {requirePurpose && myTeamId && (
-        <CardSection id="purposes" heading={t.purposeTitle} icon={<ClipboardList size={15} strokeWidth={2.2} />}>
+      {active === "purposes" && requirePurpose && myTeamId && (
+        <CardSection heading={t.purposeTitle} icon={<ClipboardList size={15} strokeWidth={2.2} />}>
           {/* What the empty list actually costs, said here rather than only in the app. An
               administrator who has not built this list needs to know that the requirement is on and
               unmet — otherwise the console looks configured and the gate quietly waves everyone
@@ -752,7 +727,8 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         </CardSection>
       )}
 
-      <CardSection id="display" heading={t.displayTitle} icon={<Monitor size={15} strokeWidth={2.2} />}>
+      {active === "display" && (
+      <CardSection heading={t.displayTitle} icon={<Monitor size={15} strokeWidth={2.2} />}>
         <PairGrid>
           <PairItem label={t.language}>
             {/* Each language named in its own script — the one label a person who cannot read the
@@ -770,6 +746,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             setting is broken. */}
         <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "12px" }}>{t.languageNote}</p>
       </CardSection>
+      )}
 
       {/* Last, and on its own.
           It used to sit at the foot of the Project section, under the timezone and the retention
@@ -777,8 +754,8 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           dropdown somebody opens to fix a clock. Its own section at the end of the rail means you
           arrive here by deciding to, not by scrolling past it on the way to something else.
           Owner only: this belongs with granting roles, not with changing a timezone. */}
-      {project && mayDeleteProject && (
-        <CardSection id="danger" heading={t.dangerTitle} icon={<Trash2 size={15} strokeWidth={2.2} />}>
+      {active === "danger" && project && mayDeleteProject && (
+        <CardSection heading={t.dangerTitle} icon={<Trash2 size={15} strokeWidth={2.2} />}>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.65 }}>{t.deleteProjectHint}</p>
           {/* Under its own words, flush with them. space-between held the button at the far edge
               of the column, so the sentence explaining it and the thing it explains were half a
