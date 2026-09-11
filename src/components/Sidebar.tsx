@@ -567,26 +567,27 @@ function LocationPickerModal({ current, onSelect, onClose }: { current: string |
         <div style={{ flex:1, overflowY:"auto", padding:"8px" }}>
           <button onClick={() => onSelect(null)}
             onMouseEnter={e => { if (current) e.currentTarget.style.backgroundColor = "var(--gray-50)"; }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = !current ? "var(--primary-50)" : "transparent"; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = !current ? "var(--gray-100)" : "transparent"; }}
             style={{
               display:"flex", alignItems:"center", gap:"8px", width:"100%", textAlign:"left",
               padding:"9px 10px", borderRadius:"8px", border:"none", cursor:"pointer",
-              backgroundColor: !current ? "var(--primary-50)" : "transparent",
-              fontSize:"13px", fontWeight:700, color: !current ? "var(--primary-400)" : "var(--gray-700)", transition:"background-color 0.1s",
+              // Chosen, not purple — see the note on the event row above.
+              backgroundColor: !current ? "var(--gray-100)" : "transparent",
+              fontSize:"13px", fontWeight:700, color: !current ? "var(--gray-900)" : "var(--gray-700)", transition:"background-color 0.1s",
             }}>{t.allLocations}</button>
           {locations.map(loc => {
             const active = current === loc;
             return (
               <button key={loc} onClick={() => onSelect(loc)}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.backgroundColor = "var(--gray-50)"; }}
-                onMouseLeave={e => { e.currentTarget.style.backgroundColor = active ? "var(--primary-50)" : "transparent"; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = active ? "var(--gray-100)" : "transparent"; }}
                 style={{
                   display:"flex", alignItems:"center", gap:"8px", width:"100%", textAlign:"left",
                   padding:"9px 10px", borderRadius:"8px", border:"none", cursor:"pointer",
-                  backgroundColor: active ? "var(--primary-50)" : "transparent",
-                  fontSize:"13px", fontWeight: active ? 700 : 600, color: active ? "var(--primary-400)" : "var(--gray-700)", transition:"background-color 0.1s",
+                  backgroundColor: active ? "var(--gray-100)" : "transparent",
+                  fontSize:"13px", fontWeight: active ? 700 : 600, color: active ? "var(--gray-900)" : "var(--gray-700)", transition:"background-color 0.1s",
                 }}>
-                <LocationPinIcon color={active ? "var(--primary-400)" : "var(--gray-500)"} />
+                <LocationPinIcon color={active ? "var(--gray-700)" : "var(--gray-500)"} />
                 {loc}
               </button>
             );
@@ -680,7 +681,11 @@ function TrackingEventRow({ event, isSelected, onClick }: { event: LiveEvent; is
         style={{
           display:"flex", alignItems:"center", justifyContent:"space-between",
           padding:"10px 16px", cursor:"pointer",
-          backgroundColor: isSelected ? "var(--primary-50)" : isHovered ? "var(--gray-50)" : "transparent",
+          // Selection is grey, and a grey that can actually be seen. primary-50 (#fafaff) sat two
+          // channels from gray-50 (#f8fafc), so "selected" and "hovered" were the same colour —
+          // and the purple was spent on a row state either way. See the note in BestFramePage's
+          // CameraItem: purple in this product means a person, not a click.
+          backgroundColor: isSelected ? "var(--gray-100)" : isHovered ? "var(--gray-50)" : "transparent",
           transition:"background-color 0.15s",
         }}
       >
@@ -819,7 +824,7 @@ function VipEventRow({ event, isSelected, photoUrl, onClick, locationFilter }: {
       style={{
         display:"flex", alignItems:"center", justifyContent:"space-between",
         padding:"10px 16px", cursor:"pointer",
-        backgroundColor: isSelected ? "var(--primary-50)" : isHovered ? "var(--gray-50)" : "transparent",
+        backgroundColor: isSelected ? "var(--gray-100)" : isHovered ? "var(--gray-50)" : "transparent",
         transition:"background-color 0.15s",
       }}
     >
@@ -936,14 +941,17 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
             <span style={{ fontSize:"12px", color:"var(--primary-400)", fontWeight:700 }}>✕</span>
           </button>
         )}
+        {/* A district is a place, so the chip below is grey — where the person-filter chip above
+            names a person and keeps the purple. That is the whole rule: purple marks somebody, and
+            everything else on this panel is a filter the operator set. */}
         {districtLabel && (
           <button
             onClick={onDistrictClear}
-            style={{ display:"flex", alignItems:"center", gap:"5px", background:"var(--primary-50)", border:"none", borderRadius:"999px", padding:"5px 10px", cursor:"pointer", marginBottom:"12px" }}
+            style={{ display:"flex", alignItems:"center", gap:"5px", background:"var(--gray-100)", border:"none", borderRadius:"999px", padding:"5px 10px", cursor:"pointer", marginBottom:"12px" }}
           >
-            <LocationPinIcon color="var(--primary-400)" />
-            <span style={{ fontSize:"12px", fontWeight:700, color:"var(--primary-400)" }}>{districtLabel} · {t.vipOnly}</span>
-            <span style={{ fontSize:"12px", color:"var(--primary-400)", fontWeight:700 }}>✕</span>
+            <LocationPinIcon color="var(--gray-600)" />
+            <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-800)" }}>{districtLabel} · {t.vipOnly}</span>
+            <span style={{ fontSize:"12px", color:"var(--gray-600)", fontWeight:700 }}>✕</span>
           </button>
         )}
         <div style={{ display:"flex", gap:"6px" }}>
@@ -1214,7 +1222,7 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
               style={{
                 display:"grid", gridTemplateColumns:"76px 60px 40px 1fr 32px",
                 alignItems:"center", padding:"10px 20px", gap:"4px", cursor:"pointer",
-                backgroundColor: isPinned ? "var(--primary-50)" : "transparent", transition:"background-color 0.1s",
+                backgroundColor: isPinned ? "var(--gray-100)" : "transparent", transition:"background-color 0.1s",
               }}>
               <div style={{ display:"flex", flexDirection:"column", gap:"1px", overflow:"hidden" }}>
                 <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-600)", letterSpacing:"-0.24px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{device.name}</span>
@@ -1366,8 +1374,11 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
                   onMouseEnter={e => handleMouseEnter(e, event.id, event)}
                   onClick={() => onEventSelect?.(isSelected ? null : event)}
                   style={{ width:"40px", height:"40px", borderRadius:"10px", overflow:"hidden", flexShrink:0, cursor:"pointer", position:"relative",
+                    // The purple border says VIP — a fact about the person. The selection ring is
+                    // grey, because a selected Tracking tile used to be indistinguishable from a
+                    // VIP one: the same purple said two different things on the same 40px tile.
                     border: event.type==="VIP" ? "2px solid var(--primary-400)" : "1.5px solid var(--gray-200)",
-                    boxShadow: isSelected ? "0 0 0 2px var(--primary-400)" : "none" }}>
+                    boxShadow: isSelected ? "0 0 0 2px var(--gray-900)" : "none" }}>
                   <img src={photoUrl} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} alt="" />
                   {event.type === "VIP" && (
                     <div style={{ position:"absolute", top:"1px", right:"1px", width:"15px", height:"15px", borderRadius:"50%", backgroundColor:"var(--primary-400)", display:"flex", alignItems:"center", justifyContent:"center" }}>
