@@ -1986,26 +1986,35 @@ const SHOE_COLORS: { id:string; hex:string }[] = [
   { id:"gray",      hex:"#94a3b8" },
 ];
 /**
- * Whether a swatch needs its own outline to stay visible against the white filter panel.
+ * Whether a swatch needs its own outline to stay visible against the filter panel behind it.
  *
- * Derived from the value, not listed. The list this replaces held design-token strings
- * ("var(--gray-0)") while the swatches above carry real hex — so `has("#ffffff")` was false,
- * the outline never applied once, and "white top" / "white shoes" / "light grey shoes" rendered
- * as invisible circles on a white panel. A list that has to be kept in step with another list
- * will drift again; a threshold on the colour cannot.
+ * The test is CONTRAST AGAINST THE PANEL, at 3:1 — the threshold WCAG sets for a non-text
+ * interface component, which is what a colour swatch is. Not "is this colour light": a first
+ * pass here used perceived lightness and caught only white and light grey, while tan (1.89:1),
+ * gold (1.92:1), grey (2.56:1) and orange (2.80:1) stayed outline-less on a white panel. Six of
+ * the eighteen swatches fail, not two.
  *
- * These stay raw hex on purpose: they are DATA, not theme. A white shirt is white whatever the
- * palette does, and tokenising them would let a design change repaint the clothing an operator
- * is searching for.
+ * The list this replaces held design-token strings ("var(--gray-0)") while the swatches carry
+ * real hex, so it never matched anything at all and no swatch was ever outlined.
+ *
+ * The swatch hexes stay raw on purpose: they are DATA, not theme. A white shirt is white whatever
+ * the palette does, and tokenising them would let a design change repaint the clothing an
+ * operator is searching for.
  */
+const SWATCH_PANEL_LUMINANCE = 1; // white — every panel these sit on is --gray-0
 function isLightSwatch(hex: string): boolean {
   const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
   if (!m) return false;
   const n = parseInt(m[1], 16);
-  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  // Perceived luminance (Rec. 601), 0..1. Above 0.8 takes white and light grey and leaves tan,
-  // gold and sage alone — those carry their own edge against white.
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.8;
+  // sRGB relative luminance, per WCAG — not a channel average. The gamma curve is why gold and
+  // orange read as far lighter than their raw numbers suggest.
+  const lin = (c: number) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  const lum = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  const contrast = (SWATCH_PANEL_LUMINANCE + 0.05) / (lum + 0.05);
+  return contrast < 3;
 }
 
 function ColorSwatch({ hex, active, onClick, size = 22 }: { hex:string; active:boolean; onClick:()=>void; size?:number }) {
