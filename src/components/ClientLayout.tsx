@@ -276,7 +276,24 @@ export default function ClientLayout() {
     setRedmapSeedFace({ url, label });
     setActivePage("REDMAP");
   };
+  /**
+   * Acting on an alert — the toast's "View on map", or a row in the notification list.
+   *
+   * Clears the place filters, and that is the point of this function rather than a side effect of
+   * it. Alerts are site-wide on purpose: a district filter narrows the list and the map, never the
+   * toast or the bell, so an operator investigating one district still hears about a VIP anywhere
+   * on the site. But pressing "View on map" while filtered used to leave the filter on, and then
+   * the screen could not show what the press had asked for — the map flew to the detection while
+   * the list beside it still held the old district, so the row for the thing being looked at was
+   * missing from it.
+   *
+   * Whoever presses this has chosen this detection over whatever they were narrowing down to. The
+   * filter is theirs to set again; a view that cannot display what it was just told to show is
+   * not.
+   */
   const handleNotificationNavigate = (event: LiveEvent) => {
+    setLocationFilter(null);
+    setDistrictFilter(null);
     setSelectedEvent(event);
     setActivePage("DASHBOARD");
   };
