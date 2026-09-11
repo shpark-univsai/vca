@@ -24,10 +24,12 @@ const T = {
     // The district pill's denominator and its no-coverage wording. Kept short: this is a label on
     // a map, and the full sentence lives in the tooltip below it.
     camerasShort: (n: number) => `${n} cam${n === 1 ? "" : "s"}`,
-    // The unit for the pill's own figure, which is DETECTIONS and not people — the same
-    // distinction spotSummary already draws one zoom level in ("2 people · 5 detections"). A
-    // suffix rather than a whole phrase so the number stays the big thing on the pill.
-    hitsUnit: (n: number) => ` hit${n === 1 ? "" : "s"}`,
+    // Empty in English on purpose. Korean's counter is one character and earns its width; the
+    // English word for the same thing ("1 hit") is five, on a pill that seventeen of share one
+    // map — and it crowded the figure it was supposed to be labelling. "VIP 1 · 5 cams" already
+    // says the 1 is about a VIP, and the exact people-vs-detections breakdown is one zoom in, on
+    // the hit pin's own summary.
+    hitsUnit: () => "",
     noCamera: "no camera",
     camerasDown: "all down",
     spotSummary: (people: number, hits: number) =>
@@ -209,8 +211,7 @@ function districtPillHtml(
       // position and then read its number.
       : `<span style="font-size:10px;font-weight:700;opacity:0.82;letter-spacing:0.2px">VIP</span>` +
         `<span style="font-size:14px;font-weight:800;letter-spacing:-0.3px;margin-left:3px">${count}</span>` +
-        `<span style="font-size:11px;font-weight:500;opacity:0.62">${t.hitsUnit(count)}</span>` +
-        `<span style="font-size:11px;font-weight:500;opacity:0.62">&nbsp;·&nbsp;${t.camerasShort(cameraCount)}</span>`;
+        `<span style="font-size:11px;font-weight:500;opacity:0.62">${t.hitsUnit()}&nbsp;·&nbsp;${t.camerasShort(cameraCount)}</span>`;
 
   const shadow = isDark || isAlert ? "0 2px 10px rgba(14, 22, 42,0.2)" : "0 2px 6px rgba(14, 22, 42,0.08)";
   return `<div style="transform:translateX(-50%) translateY(-50%);display:inline-flex;flex-direction:column;
