@@ -6,7 +6,7 @@ import { LiveEvent, Device, TrackingHop, nearestDistrict, getFacePhoto, formatTi
   DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD } from "@/lib/mockData";
 import {
   vcaEventsToLiveEvents,
-  useProjectEvents, useProjectCameras, type Camera,
+  useProjectEvents, useProjectCameras, todaysDetectionHits, type Camera,
 } from "@/lib/vcaStore";
 import { useCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
 import { useApiData } from "@/hooks/useApiData";
@@ -484,7 +484,18 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
   // directly (no ref needed there since that effect already re-runs on every change).
   // This site's detections only. A map is the one screen where mixing two sites is worst: the
   // pins would sit in two cities and "respond to this" would point at the wrong one.
-  const recentEvents = vcaEventsToLiveEvents(useProjectEvents());
+  const projectEvents = useProjectEvents();
+  const recentEvents = vcaEventsToLiveEvents(projectEvents);
+  /**
+   * Today's VIP detections at this site, one entry per sighting, with where each happened.
+   *
+   * The same derivation the sidebar's "detections today" and the activity chart already share
+   * (todaysDetectionHits) — the district pills are the third screen asking this question, and
+   * they were answering it themselves by counting `type === "VIP"` rows. That silently dropped
+   * every VIP who had been picked up by two or more cameras, because those collapse into one
+   * "Tracking" row: the most active people in a district counted zero there.
+   */
+  const todaysHits = useMemo(() => todaysDetectionHits(projectEvents), [projectEvents]);
 
   // ── Map initialization ───────────────────────────────────────────
   useEffect(() => {
@@ -653,17 +664,18 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         }
       } else if (zoom <= CLUSTER_ZOOM_BREAKPOINT) {
         // ── Zoomed out: one pill per district ──
-        const now = new Date();
         districts.forEach((district) => {
           const camerasInDistrict = cameras.filter(c => nearestDistrict(c.lat, c.lng).id === district.id);
           // The dashed pill means "this district's cameras are all down right now" — a coverage
           // gap, which is worth a pin even with nothing to report. Checking run state rather than
           // array length is what captures that.
           const hasOnlineCamera = camerasInDistrict.some(c => cameraStatus.byId(c.id) === "running");
-          const count = recentEvents.filter(ev =>
-            ev.type === "VIP" &&
-            isTodaySgt(new Date(ev.timestamp), now) &&
-            nearestDistrict(ev.lat, ev.lng).id === district.id
+          // Already today-only and already VIP-only (Tracking is a VIP view, not a category) —
+          // so this filters on place alone. A hit with no coordinate cannot be placed in a
+          // district and is left out rather than guessed at.
+          const count = todaysHits.filter(h =>
+            h.lat !== undefined && h.lng !== undefined &&
+            nearestDistrict(h.lat, h.lng).id === district.id
           ).length;
           // A district with a working camera but zero detections is pure noise ("nothing happened
           // here") — maps that show location pins/badges (Airbnb, Kayak, Expedia, Zillow — checked
@@ -739,7 +751,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
     });
 
     return () => { cancelled = true; };
-  }, [recentEvents, cameras, zoom, mapReady, alertThreshold, moderateThreshold, districts, lang, districtFilter, cameraStatus, t]);
+  }, [recentEvents, todaysHits, cameras, zoom, mapReady, alertThreshold, moderateThreshold, districts, lang, districtFilter, cameraStatus, t]);
 
   // ── District selection → zoom into that district ───────────────
   // Clicking a pill was a list filter and nothing more: the map stayed at island zoom with every

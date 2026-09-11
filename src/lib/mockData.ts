@@ -85,6 +85,18 @@ export interface TrackingHop {
   location: string;
   cameraLabel?: string;
   timestamp: string;
+  /**
+   * Where this hop happened.
+   *
+   * Carried rather than re-derived. A trail's hops each have their own coordinate at the source
+   * (RawVipHit does), and dropping them meant anything that needed to place a hop on a map had to
+   * work back from `location` through the camera roster — which falls back to the first camera
+   * when a name does not resolve, and silently puts a sighting in a district kilometres away.
+   *
+   * Optional because the seeds predate it and a hop written before this carries none.
+   */
+  lat?: number;
+  lng?: number;
   /** The VIP confidence this specific hit was originally detected at — kept so a hop that later
    * reverts from a Tracking trail back into a plain VIP row (see vcaStore.ts's addEvent/
    * personHitHistory) can show its real confidence instead of a fabricated 0%. */
@@ -307,7 +319,9 @@ function deriveLiveEvents(hits: RawVipHit[]): LiveEvent[] {
         cameraLabel: latest.cameraLabel,
         timestamp: latest.timestamp,
         type: "Tracking",
-        path: sorted.map(h => ({ location: h.location, cameraLabel: h.cameraLabel, timestamp: h.timestamp, confidence: h.confidence })),
+        // Each hop keeps its own coordinate — see TrackingHop.lat. The raw hit has it; the
+        // trail used to throw it away and leave every hop to be placed by name.
+        path: sorted.map(h => ({ location: h.location, cameraLabel: h.cameraLabel, timestamp: h.timestamp, confidence: h.confidence, lat: h.lat, lng: h.lng })),
         lat: latest.lat,
         lng: latest.lng,
       });

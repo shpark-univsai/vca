@@ -2435,7 +2435,11 @@ function personHitHistory(events: VcaEvent[], personName: string, nowMs: number)
   const hits: LiveHit[] = [];
   events.filter(e => e.personName === personName).forEach(e => {
     if (e.personType === "Tracking" && e.personPath) {
-      hits.push(...e.personPath.map(p => ({ location: p.location, cameraLabel: p.cameraLabel, timestamp: p.timestamp, confidence: p.confidence ?? 0, lat: e.lat ?? 0, lng: e.lng ?? 0 })));
+      // The hop's own coordinate, not the event's. `e.lat` is where this person was seen LAST,
+      // so using it for every hop collapsed a trail across three districts onto the newest one.
+      // A hop written before TrackingHop carried coordinates has none; it falls back to the
+      // event's, which is the old behaviour and the best guess available for it.
+      hits.push(...e.personPath.map(p => ({ location: p.location, cameraLabel: p.cameraLabel, timestamp: p.timestamp, confidence: p.confidence ?? 0, lat: p.lat ?? e.lat ?? 0, lng: p.lng ?? e.lng ?? 0 })));
     } else {
       hits.push({ location: e.location ?? "", cameraLabel: e.cameraLabel, timestamp: e.timestamp, confidence: e.confidence ?? 0, lat: e.lat ?? 0, lng: e.lng ?? 0 });
     }
@@ -3073,7 +3077,10 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           lat: latest.lat,
           lng: latest.lng,
           confidence: 0,
-          personPath: history.map(h => ({ location: h.location, cameraLabel: h.cameraLabel, timestamp: h.timestamp, confidence: h.confidence })),
+          // lat/lng included: a hop is a sighting and has its own place. Dropping them here left
+          // the read below to substitute the event's own coordinate for every hop, which put a
+          // whole trail at its newest sighting — see personHitHistory.
+          personPath: history.map(h => ({ location: h.location, cameraLabel: h.cameraLabel, timestamp: h.timestamp, confidence: h.confidence, lat: h.lat, lng: h.lng })),
         }];
       } else {
         // Still only ever seen at one camera — one VIP row per (session-merged) hit.
@@ -3633,6 +3640,18 @@ export interface DetectionHit {
   id: string;
   timestamp: string;
   location: string;
+  /**
+   * Where the hit happened, so a caller can place it without working back from `location`.
+   *
+   * Added for the dashboard map's district pills, which were counting `type === "VIP"` rows and
+   * therefore dropping every VIP who had moved between cameras — those collapse into one
+   * "Tracking" row (see the note below) and vanished from the count. Rather than the map
+   * re-deriving hits a fourth way, the derivation carries what the map needs.
+   *
+   * Optional for the same reason TrackingHop's are: an older event may carry none.
+   */
+  lat?: number;
+  lng?: number;
 }
 
 // A "Tracking" row is a VIEW: the same underlying VIP re-identifications, just collapsed into
@@ -3647,10 +3666,12 @@ export function todaysDetectionHits(events: VcaEvent[]): DetectionHit[] {
   const hits: DetectionHit[] = [];
   events.forEach(e => {
     if (e.personType === "VIP" && e.location) {
-      hits.push({ id: e.id, timestamp: e.timestamp, location: e.location });
+      hits.push({ id: e.id, timestamp: e.timestamp, location: e.location, lat: e.lat, lng: e.lng });
     } else if (e.personType === "Tracking" && e.personPath) {
       e.personPath.forEach((hop, i) => {
-        if (hop.location) hits.push({ id: `${e.id}-${i}`, timestamp: hop.timestamp, location: hop.location });
+        // Each hop's own coordinate — a trail crossing three districts is three hits in three
+        // places, not three in the last one.
+        if (hop.location) hits.push({ id: `${e.id}-${i}`, timestamp: hop.timestamp, location: hop.location, lat: hop.lat ?? e.lat, lng: hop.lng ?? e.lng });
       });
     }
   });
