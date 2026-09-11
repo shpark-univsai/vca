@@ -649,6 +649,8 @@ interface VcaStoreState {
   detectionJudgements: DetectionJudgement[];
   /** Every detection taken out of the console — see EvidenceExportRecord. */
   evidenceExports: EvidenceExportRecord[];
+  /** Outside requests for recorded footage — see FootageRequest. Empty until one is filed. */
+  footageRequests: FootageRequest[];
   events: VcaEvent[];
   uploads: UploadedMedia[];
   portalUsers: PortalUser[];
@@ -742,6 +744,12 @@ interface VcaStoreState {
   /** Back to "nobody has looked at this". Not the same as marking it a false positive. */
   clearJudgement: (surface: DetectionJudgement["surface"], subjectId: string) => void;
   recordEvidenceExport: (e: Pick<EvidenceExportRecord, "projectId" | "subjectId" | "surface" | "targetLabel" | "manifestHash">) => void;
+  /** File a new request. Returns its id. */
+  addFootageRequest: (r: Omit<FootageRequest, "id" | "status" | "receivedAt" | "receivedBy">) => string;
+  /** Approve or refuse. A note is required either way — see decideFootageRequest's own comment. */
+  decideFootageRequest: (id: string, approved: boolean, note: string) => void;
+  /** Record that the file actually left, and on what terms. */
+  releaseFootageRequest: (id: string, release: Pick<FootageRequest, "releaseMethod" | "releasedTo" | "redaction">) => void;
   updateProjectMail: (projectId: string, updates: Pick<Project, "mailDomain" | "smtp">) => void;
   setProjectTimeZone: (projectId: string, timeZone: string) => void;
   /** null clears it back to "not decided". See Project.retentionDays. */
@@ -1594,6 +1602,84 @@ export interface PortalUser {
 // one turns it into an invited PortalUser; there's deliberately no "rejected" state to persist —
 // per the reviewed UX pattern (Miro/MS Teams-style request inboxes), an admin just dismisses it
 // and the requester sees a neutral "no access yet" screen on their next visit, nothing punitive.
+/**
+ * Somebody outside the institution asking for footage.
+ *
+ * Not the same thing as AccessRequest below, which is a person asking for a console account.
+ * This is a police officer with a case number, an insurer, a lawyer, or the person who was
+ * recorded asking for their own footage — and the answer to all of them is a copy of recorded
+ * video leaving the institution.
+ *
+ * WHY THIS SCREEN EXISTS AT ALL. The request arrives whether or not the product has a place for
+ * it, and without one the operator does the obvious thing: plays the footage back and records the
+ * screen, or exports the whole clip with every passer-by's face in it. Both are worse than the
+ * thing this replaces — a system that offers no safe route does not prevent the release, it only
+ * stops being able to describe it afterwards.
+ *
+ * WHAT THE CONSOLE DOES AND DOES NOT DO. It records the request, the decision and the release. It
+ * does NOT redact: blurring the faces of everyone who is not the subject is video processing, and
+ * a browser cannot do it and must not claim to. `redaction` below records who did it and how, as
+ * a statement by the person releasing the file — which is exactly what the register of a paper
+ * process holds, and is honest about being a claim rather than a verified fact.
+ *
+ * NOT THE SAME RECORD AS EvidenceExportRecord, and it must not become one. That one is a single
+ * detection's metadata pulled out of Redmap by an operator; this is a window of recorded video
+ * going to somebody outside. They answer different questions and neither is a subset of the
+ * other — one request can involve several extractions, and most extractions answer no request at
+ * all. If a future version lets a request cite specific detections, the citation is a reference:
+ * the extraction stays the record of what left, and this stays the record of who asked and what
+ * was decided. Writing "who took what, when" in both places is how two logs end up disagreeing,
+ * and an audit reads a disagreement as a missing record. Raised by the session working the app
+ * side while this was being built.
+ *
+ * HANDOFF NOTE: the server owns the rest. Producing the redacted file, storing it against this
+ * record, and enforcing that a release cannot be marked done without one. Until then this is a
+ * register the institution fills in — which is still the difference between a release nobody can
+ * account for and one that has a row.
+ */
+export type FootageRequestStatus = "received" | "approved" | "refused" | "released";
+
+/** What entitles the requester to ask. Named, because "we gave it to the police" is not a basis. */
+export type FootageRequestBasis = "warrant" | "police-request" | "data-subject" | "insurance" | "other";
+
+export interface FootageRequest {
+  id: string;
+  projectId: string;
+  /** Who is asking, and for which organisation. Free text: the console cannot know their register. */
+  requesterName: string;
+  requesterOrg: string;
+  basis: FootageRequestBasis;
+  /** Case, warrant or document number. Required for every basis except a data subject's own. */
+  reference?: string;
+  /** What was asked for — the site's own clock, and the place in the institution's words. */
+  fromAt: string;
+  toAt: string;
+  cameraNote: string;
+  /** Why they say they need it. The requester's words, kept as given. */
+  purpose: string;
+  status: FootageRequestStatus;
+  receivedAt: string;
+  receivedBy: string;
+  /** Set when the decision is made. A refusal without a reason is not a decision anyone can review. */
+  decidedAt?: string;
+  decidedBy?: string;
+  decisionNote?: string;
+  /** Set when the file actually leaves. */
+  releasedAt?: string;
+  releasedBy?: string;
+  /** How it was handed over — encrypted media, secure transfer, collected in person. */
+  releaseMethod?: string;
+  /** Who physically received it, if that is a different person from the requester. */
+  releasedTo?: string;
+  /**
+   * Whether third-party faces were obscured before release, and by what.
+   *
+   * A claim by the releaser, not something this product verified — see the note above. Recorded
+   * because a release with no answer here is the one a regulator asks about first.
+   */
+  redaction?: { done: boolean; method: string };
+}
+
 export interface AccessRequest {
   id: string;
   name: string;
@@ -2370,6 +2456,7 @@ const AUDIT_LOG: AuditEvent[] = [
 let auditSeq = AUDIT_LOG.length;
 let judgementSeq = 0;
 let exportSeq = 0;
+let footageSeq = 0;
 
 // Latest seed timestamp — anything at or before this is historical, so the bell starts with
 // nothing unread instead of surfacing all 12 seed VIP hits as "new" on first load.
@@ -2464,6 +2551,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   searchAccessLog: [],
   detectionJudgements: [],
   evidenceExports: [],
+  // Empty on purpose, like the access requests below it: a seeded release would teach whoever
+  // reads this screen that the product has already handed footage to somebody.
+  footageRequests: [],
   events: SEED_EVENTS,
   portalUsers: PORTAL_USERS,
   servers: SERVERS,
@@ -2754,6 +2844,70 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         ...state.detectionJudgements.filter(j => !(j.surface === surface && j.subjectId === subjectId)),
       ],
     })),
+  addFootageRequest: (r) => {
+    const id = `footage-${++footageSeq}`;
+    const at = new Date().toISOString();
+    set(state => ({
+      footageRequests: [
+        { ...r, id, status: "received" as const, receivedAt: at, receivedBy: SIGNED_IN_USER.name },
+        ...state.footageRequests,
+      ],
+      auditLog: [{
+        id: `audit-${++auditSeq}`, projectId: r.projectId,
+        message: `Footage request received from ${r.requesterName} (${r.requesterOrg})`,
+        actor: SIGNED_IN_USER.name, at,
+      }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    }));
+    return id;
+  },
+  /**
+   * A note is required for both answers, not just refusals.
+   *
+   * An approval with no stated reason is the one a regulator reads as "we hand these out", and it
+   * is also the one the person who approved it cannot defend two years later when they no longer
+   * remember the case. The screen enforces it; this is the layer that means a stray call cannot
+   * write a decision nobody can account for.
+   */
+  decideFootageRequest: (id, approved, note) =>
+    set(state => {
+      const req = state.footageRequests.find(r => r.id === id);
+      if (!req || req.status !== "received" || note.trim() === "") return state;
+      const at = new Date().toISOString();
+      return {
+        footageRequests: state.footageRequests.map(r => (r.id === id ? {
+          ...r,
+          status: (approved ? "approved" : "refused") as FootageRequestStatus,
+          decidedAt: at, decidedBy: SIGNED_IN_USER.name, decisionNote: note.trim(),
+        } : r)),
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId: req.projectId,
+          message: `Footage request ${approved ? "approved" : "refused"}: ${req.requesterName} (${req.requesterOrg})`,
+          actor: SIGNED_IN_USER.name, at,
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  releaseFootageRequest: (id, release) =>
+    set(state => {
+      const req = state.footageRequests.find(r => r.id === id);
+      // Only an approved request can be released. Refused and already-released ones are closed,
+      // and a release with no decision behind it is the thing this register exists to prevent.
+      if (!req || req.status !== "approved") return state;
+      const at = new Date().toISOString();
+      return {
+        footageRequests: state.footageRequests.map(r => (r.id === id ? {
+          ...r, ...release,
+          status: "released" as const, releasedAt: at, releasedBy: SIGNED_IN_USER.name,
+        } : r)),
+        // The redaction claim goes in the log line. "Released" on its own does not answer the
+        // question anybody asks afterwards, which is whose faces were in the file.
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId: req.projectId,
+          message: `Footage released to ${release.releasedTo || req.requesterName}`
+            + ` · ${release.redaction?.done ? `redacted (${release.redaction.method})` : "not redacted"}`,
+          actor: SIGNED_IN_USER.name, at,
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   recordEvidenceExport: ({ projectId, subjectId, surface, targetLabel, manifestHash }) =>
     set(state => {
       const at = new Date().toISOString();

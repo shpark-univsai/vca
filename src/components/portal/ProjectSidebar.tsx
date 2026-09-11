@@ -5,7 +5,7 @@ import { Crown } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 
-export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "activity" | "searchlog";
+export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "activity" | "searchlog" | "footage";
 
 interface IconProps {
   color: string;
@@ -94,6 +94,17 @@ function SearchLogIcon({ color }: IconProps) {
   );
 }
 
+/** A document leaving through a door — the one thing this register records. */
+function FootageIcon({ color }: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M3 2.6C3 2.32 3.22 2.1 3.5 2.1H9L12 5.1V8.2" stroke={color} strokeWidth="1.2" strokeLinejoin="round"/>
+      <path d="M3 9.6v3.8c0 .28.22.5.5.5H6" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M8.4 11.6h5.2M11.4 9.4l2.2 2.2-2.2 2.2" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 function ActivityIcon({ color }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -151,6 +162,10 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
   // and a modal behind them, which is not a screen an auditor can be sent to.
   { id: "activity", group: "manage", label: { en: "Activity log", ko: "변경 기록" }, icon: ActivityIcon },
   { id: "searchlog", group: "manage", label: { en: "Search log", ko: "조회 기록" }, icon: SearchLogIcon },
+  // Beside the two logs, because it is the third question an auditor arrives with. The first two
+  // answer "who looked" and "what changed"; this one answers "what left the building", which is
+  // the one with a person on the other end of it.
+  { id: "footage", group: "manage", label: { en: "Footage requests", ko: "영상 제공" }, icon: FootageIcon },
   // Licence last. The four under MANAGE are read from most-touched to least: servers get changed
   // when the site changes, people get added and removed all year, and a licence is signed once and
   // looked at when somebody asks about the bill or runs out of channels. It sat in the middle,
