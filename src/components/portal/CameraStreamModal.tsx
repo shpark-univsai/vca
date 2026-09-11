@@ -87,8 +87,8 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "640px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "640px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--shadow-modal)" }}>
         {/* No rule under the title. The sheet below it is already a stack of ruled rows, and a
             heavier line above them made the header a section of its own — the name of the camera
             does not need to be fenced off from the camera's own facts. The gap does the work. */}
@@ -117,7 +117,7 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
                 server is streaming. It read "LIVE" over a static thumbnail before, which is the
                 one thing this frame is definitely not. */}
             {online && (
-              <div style={{ position: "absolute", top: "10px", left: "10px", display: "flex", alignItems: "center", gap: "6px", backgroundColor: "rgba(14,22,42,0.7)", padding: "4px 10px", borderRadius: "999px" }}>
+              <div style={{ position: "absolute", top: "10px", left: "10px", display: "flex", alignItems: "center", gap: "6px", backgroundColor: "var(--label-plate)", padding: "4px 10px", borderRadius: "999px" }}>
                 <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: playing ? "var(--success-400)" : "var(--gray-400)" }} />
                 <span style={{ fontSize: "10px", fontWeight: 600, color: "white" }}>{playing ? t.connecting : t.stillFrame}</span>
               </div>
@@ -131,14 +131,14 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
                 aria-label={t.playLive}
                 style={{
                   position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                  border: "none", background: "rgba(14,22,42,0.25)", cursor: "pointer",
+                  border: "none", background: "rgba(24,17,39,0.25)", cursor: "pointer",
                 }}
               >
                 <span style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
                   width: "52px", height: "52px", borderRadius: "50%",
                   backgroundColor: "rgba(255,255,255,0.92)", color: "var(--gray-900)",
-                  boxShadow: "0 8px 24px rgba(14,22,42,0.3)",
+                  boxShadow: "0 8px 24px rgba(24,17,39,0.3)",
                 }}>
                   {/* Nudged right by 2px: a triangle's optical centre is left of its bounding box. */}
                   <Play size={20} strokeWidth={2} fill="currentColor" style={{ marginLeft: "2px" }} />
@@ -148,7 +148,7 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
             {online && playing && (
               <div style={{
                 position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px",
-                backgroundColor: "rgba(14,22,42,0.72)", padding: "16px", textAlign: "center",
+                backgroundColor: "rgba(24,17,39,0.72)", padding: "16px", textAlign: "center",
               }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "white" }}>{t.connectingTitle}</p>
                 <p style={{ fontSize: "11px", color: "var(--gray-300)", fontFamily: "monospace", wordBreak: "break-all" }}>{camera.rtspUrl}</p>

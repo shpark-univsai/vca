@@ -337,12 +337,12 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
       {open && (
         <div
           onClick={e => { if (e.target === e.currentTarget) setOpen(false); }}
-          style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}
+          style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}
         >
           <div style={{
             backgroundColor: "white", border: BORDER, borderRadius: "16px",
             width: "640px", maxWidth: "100%", maxHeight: "80vh", display: "flex", flexDirection: "column",
-            boxShadow: "0 20px 60px rgba(14,22,42,0.18)", overflow: "hidden",
+            boxShadow: "var(--shadow-modal)", overflow: "hidden",
           }}>
             {/* Header */}
             <div style={{ padding: "20px 20px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -400,7 +400,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                   <div style={{
                     position: "absolute", top: "100%", left: 0, marginTop: "4px", zIndex: 20,
                     minWidth: "260px", backgroundColor: "white", border: BORDER, borderRadius: "10px",
-                    boxShadow: "0 12px 28px rgba(14,22,42,0.16)", padding: "4px", overflow: "hidden",
+                    boxShadow: "0 12px 28px rgba(24,17,39,0.16)", padding: "4px", overflow: "hidden",
                   }}>
                     {teams.map(tm => (
                       <button key={tm.id} className="portal-navmenu-item"

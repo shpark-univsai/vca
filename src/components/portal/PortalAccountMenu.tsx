@@ -92,7 +92,7 @@ export default function PortalAccountMenu({ admin, appAccess, onSettings }: {
             position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 200,
             minWidth: "220px",
             backgroundColor: "white", border: BORDER, borderRadius: "12px",
-            boxShadow: "0 8px 24px rgba(14,22,42,0.12)", padding: "6px",
+            boxShadow: "var(--shadow-popover)", padding: "6px",
           }}>
             <div style={{ padding: "8px 10px 10px", minWidth: 0 }}>
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{admin.name}</p>

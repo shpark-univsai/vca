@@ -271,12 +271,12 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div style={{
         backgroundColor: "white", borderRadius: "16px", border: BORDER, width: "100%",
         maxWidth: parsed || result ? "820px" : "460px",
         maxHeight: "86vh", display: "flex", flexDirection: "column",
-        boxShadow: "0 20px 60px rgba(14,22,42,0.18)",
+        boxShadow: "var(--shadow-modal)",
       }}>
         <div style={{ padding: "20px", borderBottom: parsed || result ? BORDER : "none", flexShrink: 0 }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{result ? t.doneTitle : t.title}</p>

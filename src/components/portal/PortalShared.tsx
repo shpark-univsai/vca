@@ -243,7 +243,7 @@ export const BREADCRUMB_PROJECT_MAX_WIDTH = "min(320px, 22vw)";
  * Also picked up by the small raised pills that use this constant — the active segment of the
  * table/grid toggle and of the language switcher, which is exactly the lift those wanted.
  */
-export const PANEL_SHADOW = "0 1px 2px rgba(14,22,42,0.03), 0 1px 3px rgba(14,22,42,0.03)";
+export const PANEL_SHADOW = "0 1px 2px rgba(24,17,39,0.03), 0 1px 3px rgba(24,17,39,0.03)";
 
 /**
  * What kind of project it is, as a chip.
@@ -420,7 +420,7 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
           ...(dropUp ? { bottom: "100%", marginBottom: "4px" } : { top: "100%", marginTop: "4px" }),
           // Same radius and shadow as RowActionsMenu's dropdown — Portal has two menus and they
           // should not be two designs.
-          backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "0 8px 20px rgba(14,22,42,0.12)",
+          backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "var(--shadow-popover)",
           // The trigger's width is the FLOOR, not the width. It was a flat 160px plus whatever the
           // widest option needed, so a full-width field in a form got a list narrower than itself
           // and a narrow filter in a toolbar got one wider — every select in Portal drew a
@@ -528,7 +528,7 @@ export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
       {open && (
         <div style={{
           position: "absolute", top: "100%", right: 0, marginTop: "4px", zIndex: 50,
-          backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "0 8px 20px rgba(14,22,42,0.12)",
+          backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "var(--shadow-popover)",
           // Sized to the longest label rather than to a guess. At 140px every label of more than
           // two words wrapped, and the menu came out as a column of stacked half-sentences that
           // looked like nothing else in the app. maxWidth only bounds the footnote below, which is
@@ -935,7 +935,7 @@ export function Switch({ checked, onChange, label, disabled }: {
       <span style={{
         position: "absolute", top: "3px", left: checked ? "19px" : "3px",
         width: "16px", height: "16px", borderRadius: "999px", backgroundColor: "white",
-        boxShadow: "0 1px 3px rgba(14,22,42,0.3)", transition: "left 0.15s",
+        boxShadow: "0 1px 3px rgba(24,17,39,0.3)", transition: "left 0.15s",
       }} />
     </button>
   );
@@ -1217,8 +1217,8 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
   useEscapeKey(onClose);
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "20px" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{title}</p>
           <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.6 }}>{body}</p>
@@ -1319,7 +1319,7 @@ export function Tooltip({ text, children, placement = "bottom" }: {
             backgroundColor: "var(--gray-900)", color: "white",
             fontSize: "12px", fontWeight: 400, lineHeight: 1.55, textAlign: "left",
             padding: "8px 10px", borderRadius: "8px",
-            boxShadow: "0 8px 24px rgba(14,22,42,0.18)",
+            boxShadow: "var(--shadow-popover)",
             pointerEvents: "none", whiteSpace: "normal",
           }}
         >
@@ -1410,8 +1410,8 @@ export function SupportContactModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(14,22,42,0.4)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", marginBottom: "2px" }}>{t.heading}</p>
           {row(t.email, (

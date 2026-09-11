@@ -1270,7 +1270,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                         backgroundColor: "var(--gray-900)", color: "white",
                         borderRadius: "8px", padding: "6px 8px", whiteSpace: "nowrap",
                         fontSize: "11px", lineHeight: 1.5,
-                        boxShadow: "0 8px 24px rgba(14,22,42,0.18)",
+                        boxShadow: "var(--shadow-popover)",
                       }}
                     >
                       <span style={{ display: "block", fontWeight: 700 }}>

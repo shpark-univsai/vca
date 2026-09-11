@@ -128,10 +128,10 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
     return (
       <div onClick={e => { if (e.target === e.currentTarget) onCancel?.(); }}
         style={{
-          position: "fixed", inset: 0, zIndex: 400, backgroundColor: "rgba(14,22,42,0.4)",
+          position: "fixed", inset: 0, zIndex: 400, backgroundColor: "var(--scrim)",
           display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
         }}>
-        <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "400px", width: "100%", padding: "22px", boxShadow: "0 20px 60px rgba(14,22,42,0.18)" }}>
+        <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "400px", width: "100%", padding: "22px", boxShadow: "var(--shadow-modal)" }}>
           <p style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)" }}>{t.refusedTitle}</p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.55, marginTop: "8px" }}>{t.refusedBody}</p>
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "18px" }}>
@@ -163,7 +163,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
     */
     <div onClick={e => { if (e.target === e.currentTarget) onCancel?.(); }}
       style={{
-        position: "fixed", inset: 0, zIndex: 400, backgroundColor: "rgba(14,22,42,0.4)",
+        position: "fixed", inset: 0, zIndex: 400, backgroundColor: "var(--scrim)",
         display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "16px", overflowY: "auto",
       }}>
       {/* margin auto rather than centring alone: with the scroll on the backdrop, a dialog taller
@@ -171,7 +171,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
       <div style={{
         backgroundColor: "white", border: BORDER, borderRadius: "20px",
         width: "640px", maxWidth: "100%", boxSizing: "border-box", padding: "24px 32px 32px",
-        margin: "auto", boxShadow: "0 20px 60px rgba(14,22,42,0.18)",
+        margin: "auto", boxShadow: "var(--shadow-modal)",
       }}>
         <div style={{ marginBottom: "22px" }}>
           {/* No dot in front. It was a decorative bullet on a label that already has a border
