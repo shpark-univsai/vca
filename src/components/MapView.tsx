@@ -6,7 +6,7 @@ import { LiveEvent, Device, TrackingHop, nearestDistrict, getFacePhoto, formatTi
   DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD } from "@/lib/mockData";
 import {
   vcaEventsToLiveEvents,
-  useProjectEvents, useProjectCameras, todaysDetectionHits, districtTally, type Camera,
+  useProjectEvents, useProjectCameras, todaysDetectionHits, type Camera,
 } from "@/lib/vcaStore";
 import { useCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
 import { useApiData } from "@/hooks/useApiData";
@@ -51,6 +51,14 @@ const T = {
      */
     alsoHere: (n: number) => `${n} more here today`,
     /**
+     * The headcount beside a camera dot, when more than one person was caught there.
+     *
+     * Carries its noun. The figure sat on a portrait before and was read as being about that
+     * face ("caught 3 times"); beside a dot it is about the dot, and the word removes the last
+     * bit of guessing about what is being counted.
+     */
+    peopleAt: (n: number) => `${n} people`,
+    /**
      * The picked district's own line: who was seen, and on how many of its cameras.
      *
      * Spelt out in words rather than compressed the way the collapsed pill's figures are. This
@@ -86,6 +94,7 @@ const T = {
     camerasDown: "전부 중단",
     spotSummary: (people: number, hits: number) => `이 지점 오늘 ${people}명 · ${hits}건`,
     alsoHere: (n: number) => `이 지점의 다른 ${n}명`,
+    peopleAt: (n: number) => `${n}명`,
     districtSummary: (people: number, cameras: number) => `카메라 ${cameras}대에서 ${people}명`,
     live: "정상",
     out: "중단",
@@ -697,110 +706,61 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           if (at) at.push(ev); else bySpot.set(key, [ev]);
         });
 
+        // ── What a picked district draws: CAMERAS, not portraits ──
+        //
+        // This drew a face pin per spot, with a second portrait tucked behind it and a "+2" for
+        // the rest. Every question this screen produced came from that: "does the badge mean this
+        // person was caught several times?", "it says 4 people but shows two", "I clicked a pin
+        // with several people and the popup shows one". A portrait is a claim about a PERSON, and
+        // what a picked district has to answer is about PLACES — which of its cameras caught
+        // anybody, and how many. Two different questions were riding one marker.
+        //
+        // So the marker is the camera dot this map already uses when zoomed in (recentPingHtml /
+        // quietCameraDotHtml), with the headcount beside it. Faces belong to picking a person —
+        // a row in the sidebar list, or this dot's own popup — where the answer really is "this
+        // person".
+        //
+        // The gain is not only fewer questions. Drawing the district's QUIET cameras too makes
+        // the coverage claim checkable: eight dots, three of them ringed, is "3 of its 8 cameras
+        // caught somebody" in a form the eye can count. The old view drew only the three, so
+        // "how many of how many" was not on the map at all.
         bySpot.forEach(spot => {
           const newest = spot[0];
-          // PEOPLE, not detections — the figure this pin is built around.
-          //
-          // It used to count detections, and next to a single face that reads as "this person was
-          // caught 13 times" — when 13 people caught once each looks identical, because the face
-          // shown is only the newest hit's. Those are opposite findings: one is about a person who
-          // keeps passing here, the other about a place a lot of people pass. They point at
-          // different decisions, so the map must not render them the same.
-          //
-          // BY NAME, NOT BY id. The comment here used to say LiveEvent.id was the person id
-          // because vcaEventsToLiveEvents resolves personId into it — and `personId` is not a
-          // person: both writers put the SIGHTING's own id there (see DetectionHit.person). So
-          // `new Set(ev.id)` counted detections, and this badge was rendering the exact number
-          // the paragraph above says it must not: "13 people caught once each" and "one person
-          // caught 13 times" came out identical after all.
-          //
-          // A name is a weaker identity than an id — namesakes merge and the count comes out low
-          // — and it is the only identity an event carries. Same fallback, and the same server
-          // contract, as the district line below.
+          // PEOPLE, not detections. `new Set(ev.id)` would count sightings — LiveEvent.id is
+          // `personId ?? id` and personId holds the SIGHTING's id (see DetectionHit.person), so
+          // "one person seen 13 times" and "13 people seen once" came out identical. A name is a
+          // weaker identity than an id and the only one an event carries; the server contract for
+          // fixing that is in HANDOFF.md.
           const people = new Set(spot.map(ev => ev.name)).size;
-          // Under the pin, not on the face. On the photo it was a bare number in the corner of a
-          // portrait, and a number on a face is read as being ABOUT that face — "this person was
-          // caught 3 times". Below the tip it reads as being about the place the pin marks, which
-          // is what it is, and there is room for the noun that settles it.
+          // FIRST occurrence per name, not `new Map(spot.map(...))`.
           //
-          // Positioned by overflow rather than by growing the icon box: iconSize/iconAnchor keep
-          // the pin's tip on the coordinate, and changing them to make room would move the pin
-          // off the camera it marks.
-          // THE STACK SHOWS WHAT IT COUNTS.
+          // `new Map(entries)` lets a repeated key overwrite the value while keeping the position
+          // of its FIRST appearance. Fed a newest-first list, every person ended up sitting where
+          // their newest sighting was and displaying their OLDEST — so this popup listed
+          // "11분 전 / 20분 전 / 01:47:00 / 29분 전", with a 13-hour-old time wedged between two
+          // recent ones. The times were each real; the row they were attached to was not.
           //
-          // A second portrait tucked behind the first says "more than one person here" without
-          // anyone having to read a figure and work out what it counts — which is the whole
-          // difficulty this pin has had. The number said 2; the picture says two.
-          //
-          // Past two, the picture has to stay honest about being partial. It said "4명" under two
-          // faces, and two faces under a 4 is a small arithmetic puzzle the reader did not ask
-          // for. So the remainder joins the stack as its own circle — "+2" beside two faces adds
-          // up in front of you, which is the convention a reader already knows from every stacked
-          // avatar they have seen. Three circles is the cap: the width is bounded and a fourth
-          // portrait at this size is a smudge.
-          //
-          // The newest sighting per person, so the faces are of different people and each person
-          // keeps one face. (getFacePhoto is seeded by the sighting's id, so feeding it two
-          // sightings of the SAME person would draw two different strangers — the exact claim
-          // this is meant to make, made falsely.)
-          const newestPerPerson = [...new Map(spot.map(ev => [ev.name, ev])).values()];
-          const FACES_SHOWN = 2;
-          const remainder = people - FACES_SHOWN;
-          // Same size and same ring as the front one. Drawn smaller first, and a smaller portrait
-          // reads as a lesser one — these people are not ranked, they were all just seen here,
-          // and the newest is in front only because something has to be. Equal size says that;
-          // the 2px white halo keeps the circles from merging into one shape where they overlap,
-          // since the rings are the same colour.
-          const stackCircle = (offset: number, z: number, inner: string) =>
-            `<div style="position:absolute;top:0;left:${offset}px;z-index:${z};width:40px;height:40px;border-radius:50%;
-                  border:2.5px solid var(--primary-400);background:var(--gray-100);overflow:hidden;
-                  box-shadow:0 0 0 2px white;display:flex;align-items:center;justify-content:center">${inner}</div>`;
-          const behind = newestPerPerson[1];
-          const behindHtml = behind
-            ? stackCircle(-17, 1, `<img src="${getFacePhoto(behind.id)}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />`)
-            : "";
-          // At the END of the stack and on top, which is the only place it can be read.
-          //
-          // It sat at the left end first, and the "+2" came out as a one-pixel speck: each circle
-          // in a stack is covered by the one to its right, so only a ~17px crescent of the
-          // leftmost shows — and the text, centred in its own 40px circle, landed under the cover.
-          // A face survives that (a crescent of a face still reads as a face); a two-character
-          // label does not.
-          //
-          // Overlapping the front portrait's right edge by the same 17px keeps the stack's rhythm,
-          // and the pin's tail stays under the front face, on the camera.
-          const moreHtml = remainder > 0
-            ? stackCircle(28, 3, `<span style="font-family:'SUIT',sans-serif;font-size:12px;font-weight:800;color:var(--primary-400);letter-spacing:-0.3px">+${remainder}</span>`)
-            : "";
-          // There is no longer a figure under the pin. It existed to carry a count the picture
-          // could not, and the stack carries it now — keeping both would state the same thing
-          // twice in two notations, one of which the reader has to reconcile with the other. The
-          // words for it live in the popup ("이 지점 오늘 4명 · 13건"), a click away, with room.
-          const icon = L.divIcon({
-            html: `<div style="position:relative;width:42px;height:56px">${behindHtml}${getMarkerHTML("VIP", getFacePhoto(newest.id))}${moreHtml}</div>`,
-            iconSize: [42, 56],
-            iconAnchor: [21, 50],
-            className: "",
-          });
-          // Both figures in the popup, where there is room for words. The pin can carry one number
-          // and no label; a person reading "3명 · 13건" cannot mistake which is which. Only shown
-          // when there is more than one of anything — a single sighting needs no summary.
-          const spotSummary = spot.length > 1
-            ? `<div style="padding:8px 12px;border-top:1px solid var(--line);font-family:'SUIT',system-ui,sans-serif;
-                  font-size:11px;font-weight:600;color:var(--gray-500);letter-spacing:-0.2px">
-                 ${t.spotSummary(people, spot.length)}
+          // The name is the identity here, and a weak one — see DetectionHit.person and the
+          // server contract in HANDOFF.md.
+          const newestPerPerson = [...spot
+            .reduce((m, ev) => (m.has(ev.name) ? m : m.set(ev.name, ev)), new Map<string, typeof spot[number]>())
+            .values()];
+          // The count rides beside the dot, not on it. It is a number about a place now, so there
+          // is no portrait for it to be misread as being about.
+          const countPill = people > 1
+            ? `<div style="position:absolute;left:13px;top:-11px;padding:1px 6px;border-radius:999px;
+                  background:var(--gray-900);border:1.5px solid white;font-family:'SUIT',sans-serif;
+                  font-size:10px;font-weight:800;color:white;letter-spacing:-0.2px;white-space:nowrap">
+                 ${t.peopleAt(people)}
                </div>`
             : "";
-          // The others, by name and face.
-          //
-          // The pin stacks portraits and says "+2", so by the time this popup opens the map has
-          // already promised more than one person. It answered with a count and a card about one
-          // of them — which reads as "here is the person" over a pin that had just said four, and
-          // leaves the only way to find out who the rest were as un-filtering and hunting the
-          // list. Everything a row needs is already on the event.
-          //
-          // The detailed one is dropped: it is the card directly above this, and repeating it
-          // would make the reader check whether it is the same person or a second sighting.
+          const icon = L.divIcon({
+            html: `<div style="position:relative">${recentPingHtml(VIP_PING_COLOR)}${countPill}</div>`,
+            iconSize: [1, 1],
+            iconAnchor: [0, 0],
+            className: "vca-zone-icon",
+          });
+          // The others, by name and face — the popup is where "who" is a fair question.
           const others = newestPerPerson.slice(1);
           const othersHtml = others.length > 0
             ? `<div style="padding:8px 12px 10px;border-top:1px solid var(--line);font-family:'SUIT',system-ui,sans-serif">
@@ -819,12 +779,49 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                    </div>`).join("")}
                </div>`
             : "";
+          const spotSummary = spot.length > 1
+            ? `<div style="padding:8px 12px;border-top:1px solid var(--line);font-family:'SUIT',system-ui,sans-serif;
+                  font-size:11px;font-weight:600;color:var(--gray-500);letter-spacing:-0.2px">
+                 ${t.spotSummary(people, spot.length)}
+               </div>`
+            : "";
           L.marker([newest.lat, newest.lng], { icon })
             .addTo(group)
             .bindPopup(getPopupHTML(newest, lang) + spotSummary + othersHtml, {
-              offset: [0, -50], className: "vca-custom-popup", closeButton: true, autoPan: false, maxWidth: 280,
+              offset: [0, -14], className: "vca-custom-popup", closeButton: true, autoPan: false, maxWidth: 280,
             });
         });
+
+        // The district's cameras with nothing to report today — the denominator, drawn.
+        //
+        // Skipped where a hit is already drawn, and the test is DISTANCE, not identity. That
+        // looks like the "nearest camera" shortcut this file bans, and it is not: it decides only
+        // whether to add a second marker on top of one already there, never which camera a
+        // sighting belongs to. It has to be a distance because a hand-authored seed hit does not
+        // land exactly on a register camera (the live ticker's do — it writes camera.lat/lng), so
+        // matching by coordinate equality would draw a grey "nothing here" dot on top of a ping.
+        //
+        // And where it is unsure it stays quiet in the other direction: a camera near a hit is
+        // left undrawn rather than asserted to have caught nobody.
+        const SAME_SPOT_DEGREES = 0.0006; // ~65m at this latitude
+        const hitSpots = [...bySpot.values()].map(spot => spot[0]);
+        cameras
+          .filter(c => nearestDistrict(c.lat, c.lng).id === districtFilter)
+          .filter(c => !hitSpots.some(h =>
+            Math.abs(h.lat - c.lat) < SAME_SPOT_DEGREES && Math.abs(h.lng - c.lng) < SAME_SPOT_DEGREES))
+          .forEach(cam => {
+            const icon = L.divIcon({
+              html: quietCameraDotHtml(),
+              iconSize: [1, 1],
+              iconAnchor: [0, 0],
+              className: "vca-zone-icon",
+            });
+            L.marker([cam.lat, cam.lng], { icon })
+              .addTo(group)
+              .bindTooltip(cameraDotTooltipHtml(cam, lang), {
+                direction: "top", offset: [0, -10], className: "vca-camera-tooltip", opacity: 1,
+              });
+          });
 
         // The district's own pill used to stay here, at the district's centre, so the thing you
         // had just pressed was still sitting on the map looking pressable. It was justified as the
