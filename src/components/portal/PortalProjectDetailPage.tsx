@@ -79,20 +79,16 @@ const T = {
     close: "Close",
     colLastSignal: "Last signal",
     registeredOn: (d: string) => `Registered ${d}`,
-    activitySubtitle: "Changes across your workspace",
-    vipsSubtitle: "Latest profiles added to your target database",
     // This card is the page's answer to "is this deployment working". Deliberately not joined by a
     // "last detection" line: every event in this system is a VIP match (EventType is VIP |
     // Tracking, and Tracking is derived from VIP hits across cameras), so days with none are the
     // normal case — an elapsed-time readout would show a healthy site as stale. Whether cameras are
     // streaming is the health question; who walked past is not.
-    cameraStatusSubtitle: "Streaming status for cameras connected to this project",
     colCamera: "Camera",
     colZone: "Zone",
     colStreamUrl: "Address",
     colStatus: "Status",
     noCamerasYet: "No cameras connected to this project yet.",
-    noCamerasYetHint: "A row appears here for each source registered on Input Sources, with the last time it answered.",
     openCamera: "Open this camera",
     trendTitle: "Detections",
     trendPeriod: "last 7 days",
@@ -109,7 +105,6 @@ const T = {
     recentVipsTitle: "Recently Registered VIPs",
     registerVipLink: "Register VIP",
     noVipsYet: "No VIPs registered yet.",
-    noVipsYetHint: "The three most recent registrations appear here as they are added to the watchlist.",
     accessRequestsTitle: "Access Requests",
     approve: "Approve",
     dismiss: "Dismiss",
@@ -178,15 +173,11 @@ const T = {
     close: "닫기",
     colLastSignal: "마지막 신호",
     registeredOn: (d: string) => `${d} 등록`,
-    activitySubtitle: "이 작업 공간에서 일어난 변경",
-    vipsSubtitle: "관심대상 목록에 최근 추가된 인물",
-    cameraStatusSubtitle: "이 프로젝트에 연결된 카메라의 스트리밍 상태",
     colCamera: "카메라",
     colZone: "구역",
     colStreamUrl: "주소",
     colStatus: "상태",
     noCamerasYet: "이 프로젝트에 연결된 카메라가 아직 없습니다.",
-    noCamerasYetHint: "입력 소스에서 등록한 소스가 한 줄씩 올라오고, 마지막으로 응답한 시각이 함께 표시됩니다.",
     openCamera: "이 카메라 열기",
     trendTitle: "탐지",
     trendPeriod: "지난 7일",
@@ -203,7 +194,6 @@ const T = {
     recentVipsTitle: "최근 등록된 VIP",
     registerVipLink: "VIP 등록",
     noVipsYet: "등록된 VIP가 아직 없습니다.",
-    noVipsYetHint: "명단에 사람이 추가되면 최근 세 건이 여기에 올라옵니다.",
     accessRequestsTitle: "접근 요청",
     approve: "승인",
     dismiss: "거절",
@@ -1376,14 +1366,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", padding: "16px 20px 14px", flexShrink: 0 }}>
                   <SectionHead
                     title={t.cameraStatusTitle}
-                    subtitle={t.cameraStatusSubtitle}
                     action={{ icon: <ArrowUpRight size={15} strokeWidth={2.4} />, label: t.viewAllCameras(projectCameras.length), onClick: () => onTabChange("cameras") }}
                   />
                 </div>
                 {visibleCameraRows.length === 0 ? (
                   <div style={{ padding: "24px", textAlign: "center" }}>
                     <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>{t.noCamerasYet}</p>
-                    <p style={{ fontSize: "12px", color: "var(--gray-300)", lineHeight: 1.55, marginTop: "4px" }}>{t.noCamerasYetHint}</p>
                   </div>
                 ) : (
                   <>
@@ -1504,7 +1492,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <div style={{ marginBottom: "14px", flexShrink: 0 }}>
                   <SectionHead
                     title={t.recentVipsTitle}
-                    subtitle={t.vipsSubtitle}
                     // "Register a VIP" for whoever can; "Open the registry" for whoever cannot.
                     action={mayEdit
                       ? { icon: <Plus size={15} strokeWidth={2.4} />, label: t.registerVipLink, onClick: () => onTabChange("vip") }
@@ -1513,10 +1500,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 </div>
                 {recentVips.length === 0 ? (
                   <div>
-                    {/* An empty box says nothing about whether it is broken or just early.
-                        The second line says what will fill it, so the reader knows which. */}
                     <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{t.noVipsYet}</p>
-                    <p style={{ fontSize: "12px", color: "var(--gray-300)", lineHeight: 1.55, marginTop: "4px" }}>{t.noVipsYetHint}</p>
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minHeight: 0, overflowY: "auto" }}>
@@ -1594,7 +1578,6 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                 <div style={{ marginBottom: "14px", flexShrink: 0 }}>
                   <SectionHead
                     title={t.recentAdminActivity}
-                    subtitle={t.activitySubtitle}
                     /* Opens the Activity log screen, not a modal. The modal listed everything
                        with no date range, no actor filter, no search and no export — which is
                        the whole of what the auditor role opens Portal for. */
