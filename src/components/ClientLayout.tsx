@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import AccessGate, { type GateDenial } from "@/components/AccessGate";
 import { useOnValueChange } from "@/hooks/useOnValueChange";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
@@ -189,20 +190,23 @@ export default function ClientLayout() {
   // straight in — Portal had a guard and this side had none, so the two halves of one permission
   // model were enforced on one half.
   //
-  // Sends a console-only account to Portal rather than to login: they have somewhere to be, and
-  // bouncing them to a sign-in screen they are already past reads as a fault. The store refuses an
-  // account with neither door (see hasSomeAccess), but this checks anyway — if that invariant ever
-  // broke, redirecting to Portal would bounce back here and the two guards would loop forever.
+  // Draws the gate rather than redirecting. The redirect that used to be here carried a
+  // console-only account to Portal and everybody else to login, and in both cases the person saw
+  // a screen they had not asked for with nothing saying why — which reads as a fault, not as a
+  // decision. The gate names the closed door, states the grants this account does hold, and offers
+  // the open one as a button, so going to Portal stays one click away instead of being automatic.
   //
   // HANDOFF NOTE: fail-open on purpose, same as Portal's. `currentPortalUser` answers undefined
   // for an address in no account list, and then nothing is locked. The real door is the server.
   const me = useVcaStore(s => currentPortalUser(s.portalUsers));
-  const locked = !!me && !canUseAppNow(me);
-  const canGoToPortal = !!me && canEnterPortal(me.permission);
-  useEffect(() => {
-    if (!locked) return;
-    router.replace(canGoToPortal ? "/portal" : "/login");
-  }, [locked, canGoToPortal, router]);
+  // Which sentence the gate should say, not merely that it should appear: a paused account is a
+  // pause and an ungranted one is a grant somebody has to make, and the two need different
+  // actions from the person reading it.
+  const appDenial: GateDenial | null = !me || canUseAppNow(me) ? null
+    : !me.appAccess && !canEnterPortal(me.permission) ? "noDoor"
+    : !me.appAccess ? "appNotGranted"
+    : "suspended";
+  const locked = appDenial !== null;
   const [selectedEvent, setSelectedEvent] = useState<LiveEvent | null>(null);
   const [locationFilter, setLocationFilter] = useState<string | null>(null);
   // Clicking a district cluster pill (zoomed-out map view) filters the sidebar to just that
@@ -303,12 +307,11 @@ export default function ClientLayout() {
     setActivePage("BEST FRAME");
   };
 
-  // Locked means this account has no app door, and the redirect above is already on its way. Draw
-  // nothing while it goes: the redirect alone decided where to send them and left the whole app
-  // mounted in the meantime — the map, the sidebar's VIP list with names and faces, and the alert
-  // ticker, which does not merely display but writes detections into the shared store on a timer.
-  // A door that is closed cannot also serve the room behind it for a second first.
-  if (locked) return null;
+  // Locked means this account has no app door, so the gate replaces the app entirely rather than
+  // covering it: what sits below this line is the map, the sidebar's VIP list with names and
+  // faces, and the alert ticker, which does not merely display but writes detections into the
+  // shared store on a timer. A door that is closed cannot also serve the room behind it.
+  if (locked) return <AccessGate user={me} denial={appDenial} />;
 
   return (
     <ToastProvider>

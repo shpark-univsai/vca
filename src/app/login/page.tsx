@@ -9,7 +9,8 @@ import AuthTrailList from "@/components/AuthTrailList";
 import { getAuthConfig } from "@/lib/authConfig";
 import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { LOGIN_NOTICES, parseLoginNotice, type LoginFailure } from "@/lib/authErrors";
-import { canEnterPortal, useVcaStore } from "@/lib/vcaStore";
+import { canEnterPortal, canUseAppNow, useVcaStore } from "@/lib/vcaStore";
+import { readGateChoice } from "@/components/AccessGate";
 import { useLanguage } from "@/lib/i18n";
 
 // See the per-file pattern note in lib/i18n.ts. The failure notices are not in here — they live in
@@ -217,8 +218,17 @@ function LoginForm() {
       router.push(`/password-setup?token=${matchedUser.id}&reason=temp`);
       return;
     }
-    // Every console role lands in Portal — owner, admin and the read-only auditor. "operator"
-    // means no console at all, so it goes to the monitoring app.
+    // An account holding BOTH doors is asked which one, at /gate. This line used to answer for
+    // them — every console role landed in Portal, including the administrators who spend the
+    // shift watching cameras and reached the app by noticing a menu item in a console they never
+    // wanted. A remembered choice (the gate's checkbox) skips the question.
+    if (matchedUser && canEnterPortal(matchedUser.permission) && canUseAppNow(matchedUser)) {
+      const remembered = readGateChoice();
+      router.push(remembered === "app" ? "/" : remembered === "portal" ? "/portal" : "/gate");
+      return;
+    }
+    // One door, so there is nothing to ask. A console role with no app goes to Portal; anyone
+    // else goes to the app, which turns them away with the same gate if that door is shut too.
     router.push(matchedUser && canEnterPortal(matchedUser.permission) ? "/portal" : "/");
   };
 

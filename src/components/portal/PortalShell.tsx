@@ -15,6 +15,7 @@ import PortalAccountMenu from "./PortalAccountMenu";
 import { ToastProvider } from "../Toast";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useVcaStore, canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, type ProjectType, type Team } from "@/lib/vcaStore";
+import AccessGate, { type GateDenial } from "@/components/AccessGate";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 
@@ -150,10 +151,19 @@ export default function PortalShell() {
   // default (its address is in no account list) — and a footer meant to say who you are showed
   // nothing at all. Name and address only; the account's role and doors still come from `me`.
   const me = useVcaStore(s => currentPortalUser(s.portalUsers));
-  const locked = !!me && !canEnterPortal(me.permission);
-  useEffect(() => {
-    if (locked) router.replace("/");
-  }, [locked, router]);
+  // Draws the gate rather than redirecting to the app — and rather than what this did before,
+  // which was to fire a redirect and keep rendering Portal underneath it: the roster, the license
+  // and the audit log were all on screen for as long as the navigation took. An account with no
+  // console role is told that, shown what it does hold, and handed the app as a button.
+  //
+  // The reason this door is shut is always the missing console role, whatever state the account is
+  // in — a suspended app-only account would not reach Portal once restored either, so leading with
+  // the suspension would answer a question nobody asked here. The gate's grants table states the
+  // suspension, and withholds the app button while it holds.
+  const portalDenial: GateDenial | null = !me || canEnterPortal(me.permission) ? null
+    : me.appAccess ? "portalNotGranted"
+    : "noDoor";
+  const locked = portalDenial !== null;
   // Resolve ?teamId= against the real list rather than trusting it: an id that matches nothing used
   // to flow straight into the New Project wizard, which would have filed the project under an
   // team that does not exist. Falling back to the first team keeps the header and
@@ -272,6 +282,8 @@ export default function PortalShell() {
     setTab("overview");
     router.push(`/portal?teamId=${teamId}`);
   };
+
+  if (locked) return <AccessGate user={me} denial={portalDenial} />;
 
   return (
     <ToastProvider>
