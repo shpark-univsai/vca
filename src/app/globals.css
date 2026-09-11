@@ -491,9 +491,23 @@ body {
    lifts it off dark or busy tiles, a hairline just outside that ring separates it from near-white
    tiles (where a plain white ring would vanish), and a soft shadow keeps it reading as something
    sitting on top of the map rather than printed into it. */
+/* One ring, not two. A 2px white casing with a dark hairline OUTSIDE it made every dot a
+   bullseye, and at this zoom there are fifty-nine of them on one map — concentric rings repeated
+   that many times stop reading as locations and start reading as a texture, which is unpleasant
+   to look at for anyone and genuinely hard to look at for some people. The soft drop shadow alone
+   lifts a dot off a light basemap, which is the only job that hairline had. */
 .vca-map-dot {
   border: 2px solid #ffffff;
-  box-shadow: 0 0 0 1px rgba(14, 22, 42, 0.25), 0 1px 3px rgba(14, 22, 42, 0.35);
+  box-shadow: 0 1px 3px rgba(14, 22, 42, 0.35);
+}
+
+/* A camera with nothing to report. Quieter than the ping in three ways at once — thinner casing,
+   softer shadow, and (set where it is drawn) a smaller box and a lighter fill. At this zoom the
+   map's job is "here are the cameras"; the one thing that has to stand out is the camera that
+   just saw somebody, and it cannot stand out if every other dot is drawn as loudly. */
+.vca-map-dot-quiet {
+  border: 1.5px solid #ffffff;
+  box-shadow: 0 1px 2px rgba(14, 22, 42, 0.22);
 }
 
 /* Dashboard map, zoomed-in camera dots — hover grows the visible dot inside its (larger,

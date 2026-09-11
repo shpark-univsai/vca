@@ -104,16 +104,18 @@ function recentPingHtml(color: string): string {
     </div>`;
 }
 
-// The box is 14px, not the 10px it reads as: box-sizing is border-box globally, so the 2px white
-// casing eats into the width and the visible fill lands back at 10px. Fill is gray-700 rather than
-// gray-600 — still quiet next to a colour ping, but it survives a light basemap.
-// Same footprint as recentPingHtml (so both anchor identically) but no expanding ring and a
-// muted dark-gray fill — every camera's location still gets marked when zoomed in, but only the
-// ones with a recent VIP hit get the attention-grabbing pulse.
+// Same 22px hit box as recentPingHtml (so both anchor identically), but everything visible is
+// dialled down: no expanding ring, a 12px box against the ping's 14px, a 1.5px casing against
+// 2px, and gray-600 rather than gray-700. box-sizing is border-box globally, so the casing eats
+// into the width and the visible fill lands at 9px.
+//
+// It was drawn at the ping's own weight, with the same double-ring casing, fifty-nine times over.
+// That is louder than a camera with nothing to report should ever be, and a field of identical
+// ringed dots reads as a texture rather than as places — see .vca-map-dot-quiet in globals.css.
 function quietCameraDotHtml(): string {
   return `
     <div class="vca-camera-dot-hit" style="position:relative;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;transform:translateX(-50%) translateY(-50%)">
-      <div class="vca-camera-dot-visual vca-map-dot" style="position:relative;width:14px;height:14px;border-radius:50%;background:var(--gray-700);transition:transform 0.15s ease"></div>
+      <div class="vca-camera-dot-visual vca-map-dot-quiet" style="position:relative;width:12px;height:12px;border-radius:50%;background:var(--gray-600);transition:transform 0.15s ease"></div>
     </div>`;
 }
 
