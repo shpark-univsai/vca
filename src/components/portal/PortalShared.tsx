@@ -904,7 +904,7 @@ export function PairGrid({ children }: { children: React.ReactNode }) {
  * None of the settings pages this was checked against (Later, Airtable, Lindy, Flodesk,
  * Time2book) puts an icon on a field label.
  */
-export function PairItem({ label, children }: { label: string; children: React.ReactNode }) {
+export function PairItem({ label, note, children }: { label: string; note?: string; children: React.ReactNode }) {
   return (
     <div style={{ minWidth: 0 }}>
       {/* 11px/600 in gray-400 against a 15px/600 value in gray-900. It was 12px gray-500 over
@@ -921,6 +921,14 @@ export function PairItem({ label, children }: { label: string; children: React.R
              A flex container has no line box, so the gap is the 6px written here and nothing else. */
           <div style={{ display: "flex", marginTop: "6px" }}>{children}</div>
         )}
+      {/* Under the control it belongs to, not collected at the foot of the section. Two of these
+          stacked below a grid read as one four-line block of small grey text that belongs to
+          nothing in particular — and a reader looking at the timezone select has to work out
+          which of the two sentences is about it. 1.4 because at 11px anything looser puts more
+          space between the lines than inside them. */}
+      {note && (
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.4, marginTop: "7px" }}>{note}</p>
+      )}
     </div>
   );
 }

@@ -545,7 +545,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 it sits with. */}
             {/* A select that opens and then refuses is worse than a value that never looked
                 editable — the same rule the Users table's permission cell follows. */}
-            <PairItem label={t.projectTimeZone}>
+            <PairItem label={t.projectTimeZone} note={t.timeZoneNote}>
               {mayEdit ? (
                 <FilterSelect
                   value={project.timeZone ?? PROJECT_TIME_ZONE}
@@ -565,7 +565,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
 
                 Owner only. This is closer to a policy than a preference — the same gate the
                 search purposes and watchlist categories sit behind. */}
-            <PairItem label={t.retention}>
+            <PairItem label={t.retention} note={t.retentionNote}>
               {maySetPolicy ? (
                 <FilterSelect
                   value={project.retentionDays === undefined ? "" : String(project.retentionDays)}
@@ -578,8 +578,6 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
               )}
             </PairItem>
           </PairGrid>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "14px" }}>{t.timeZoneNote}</p>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "8px" }}>{t.retentionNote}</p>
 
           {/* Deleting the site belongs to the project, so it lives in the project's tab — but at
               the foot of it, behind a rule, after everything anybody actually comes here to change.
