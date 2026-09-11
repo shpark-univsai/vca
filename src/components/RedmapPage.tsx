@@ -407,30 +407,31 @@ function hashStr(s: string): number {
 /**
  * One colour per distinct person in a result set.
  *
- * Three of these were the severity ramp — #f43f5e is --danger-400, #16a34a is --success-400,
- * #f59e0b is --warning-400 — so the third person in a comparison was drawn in the colour this
- * product uses for a threat, and the fourth in the colour it uses for normal. A person is not a
- * severity, and in a control room that reading is not harmless: it is a suggestion about somebody
- * the search has not even confirmed is the same person.
+ * Three of these used to be the severity ramp — danger-400, success-400, warning-400 — so the
+ * third person in a comparison was drawn in the colour this product uses for a threat, and the
+ * fourth in the colour it uses for normal. A person is not a severity, and in a control room that
+ * reading is not harmless: it is a suggestion about somebody the search has not even confirmed is
+ * the same person.
  *
- * teal and magenta were added to the palette on 2026-09-10 for exactly this, and were used
- * nowhere until now. globals.css says why they exist: every other ramp is spoken for, and a
- * taxonomy drawn in a severity ramp stops being tellable apart from severity. Both sit more than
- * 30° from anything else in the palette, so five are still tellable apart at chip size.
+ * teal and magenta were added to the palette on 2026-09-10 for exactly this and were used nowhere
+ * until now. globals.css says why they exist: every other ramp is spoken for, and a taxonomy drawn
+ * in a severity ramp stops being tellable apart from severity. Both sit more than 30° from
+ * anything else in the palette, so five stay tellable apart at chip size.
  *
- * LITERAL HEX, NOT var(), AND THAT IS FORCED. These reach L.polyline's `color` option, and
- * Leaflet writes it as an SVG `stroke` presentation attribute where var() does not resolve — a
- * token reference here would leave every route line unpainted. The token each value comes from is
- * named beside it so the two cannot drift apart quietly.
+ * Fifth is neutral. A five-person comparison is rare and the palette has no further step that
+ * means nothing; inventing one belongs in the library, not here.
+ *
+ * These reach L.polyline's `color`, which Leaflet writes with setAttribute as an SVG `stroke`
+ * presentation attribute — var() resolves there (presentation attributes are parsed as CSS, and
+ * substitution happens at computed-value time). Verified against that exact call path, and the
+ * repo already depends on it in 202 places.
  */
 const PERSON_COLORS = [
-  "#5a3dfb", // --primary-400 — purple, and here it really is a person
-  "#38bdf8", // --type-vehicle
-  "#0d7f7a", // --teal-500    — a hue that means nothing anywhere else
-  "#b4218a", // --magenta-500 — same
-  // Neutral rather than an invented sixth hue. A five-person comparison is rare, and the palette
-  // has no further step that means nothing — inventing one belongs in the library, not here.
-  "#475469", // --gray-600
+  "var(--primary-400)",  // purple, and here it really is a person
+  "var(--type-vehicle)",
+  "var(--teal-500)",     // a hue that means nothing anywhere else
+  "var(--magenta-500)",  // same
+  "var(--gray-600)",
 ];
 
 /* ── SVG Icons ──────────────────────────────────────────────── */
