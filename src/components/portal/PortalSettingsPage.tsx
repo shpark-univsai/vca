@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ClipboardList, Mail, MapPin, Monitor, Pencil, Tag, Trash2, User } from "lucide-react";
 import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
@@ -11,6 +11,87 @@ import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "@/components/Toast";
 import { PROJECT_TIME_ZONE } from "@/lib/time";
+
+/**
+ * The settings rail: the section titles, listed, with the one you are reading marked.
+ *
+ * The page was one tall card and nothing said how much of it there was — you found the language
+ * select by scrolling until it appeared, and a section you were not looking for went past unread.
+ * A list of the titles answers "what is on this page" before any scrolling happens, and doubles as
+ * the way to jump.
+ *
+ * Scrollspy rather than click-state: the mark has to follow the reader, because the page scrolls
+ * freely and a mark that only moved on click would be wrong the moment somebody used the wheel.
+ *
+ * The observer keeps its own map of what is intersecting instead of reading the callback's
+ * entries alone — a callback only carries the sections whose state CHANGED, so deciding from it
+ * would forget every section that was already on screen and had nothing to report.
+ *
+ * The band (`rootMargin`) is the upper part of the viewport, not all of it: with the whole
+ * viewport, a tall section and the short one under it are both "visible" for most of the scroll,
+ * and the mark sits on whichever the sort happens to put first. Reading happens near the top.
+ */
+function SettingsNav({ sections }: { sections: { id: string; label: string; icon: React.ReactNode }[] }) {
+  const [active, setActive] = useState<string>(sections[0]?.id ?? "");
+  const ids = sections.map(s => s.id).join(",");
+  const seen = useRef(new Map<string, boolean>());
+
+  useEffect(() => {
+    const list = ids.split(",").filter(Boolean);
+    const els = list.map(id => document.getElementById(id)).filter((e): e is HTMLElement => e !== null);
+    if (els.length === 0) return;
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => seen.current.set(e.target.id, e.isIntersecting));
+      // Document order, so when two sections share the band the upper one wins — that is the one
+      // being read. Nothing in the band leaves the mark where it is rather than clearing it: an
+      // empty rail while scrolling through a long section is worse than a slightly stale one.
+      const first = list.find(id => seen.current.get(id));
+      if (first) setActive(first);
+    }, { rootMargin: "-8% 0px -68% 0px", threshold: 0 });
+    els.forEach(el => io.observe(el));
+    return () => io.disconnect();
+  }, [ids]);
+
+  const go = (id: string) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    // Smooth, unless the reader has asked for less motion — a settings page is not the place to
+    // override that.
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    setActive(id);
+  };
+
+  return (
+    /* Sticky, so the index is still there after two screens of scrolling — an index you have to
+       scroll back up to reach is a table of contents, not a rail. */
+    <nav style={{ position: "sticky", top: "8px", flexShrink: 0, width: "176px", display: "flex", flexDirection: "column", gap: "2px" }}>
+      {sections.map(sec => {
+        const on = sec.id === active;
+        return (
+          <button
+            key={sec.id}
+            onClick={() => go(sec.id)}
+            aria-current={on ? "true" : undefined}
+            style={{
+              display: "flex", alignItems: "center", gap: "8px",
+              padding: "7px 10px", borderRadius: "8px", border: "none",
+              // Grey, not purple. Purple is reserved for things that need attention, and "where
+              // you are" is not one — see the colour note in globals.css.
+              backgroundColor: on ? "var(--gray-100)" : "transparent",
+              color: on ? "var(--gray-900)" : "var(--gray-500)",
+              fontSize: "12px", fontWeight: on ? 700 : 600, fontFamily: "inherit",
+              textAlign: "left", cursor: "pointer", width: "100%",
+            }}
+          >
+            <span style={{ display: "flex", flexShrink: 0, color: on ? "var(--gray-600)" : "var(--gray-400)" }}>{sec.icon}</span>
+            <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sec.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
 
 const T = {
   en: {
@@ -43,6 +124,7 @@ const T = {
     renameSave: "Save",
     renameCancel: "Cancel",
     renamedToast: "Project renamed",
+    dangerTitle: "Delete project",
     deleteProject: "Delete this project",
     deleteAction: "Delete",
     deleteProjectHint: "The project and everything filed under it. The activity log survives, re-filed under the team.",
@@ -125,6 +207,7 @@ const T = {
     renameSave: "저장",
     renameCancel: "취소",
     renamedToast: "프로젝트 이름이 바뀌었습니다",
+    dangerTitle: "프로젝트 삭제",
     deleteProject: "이 프로젝트 삭제",
     deleteAction: "삭제",
     deleteProjectHint: "프로젝트와 그 아래 모든 것이 지워집니다. 변경 기록은 팀 밑으로 옮겨져 남습니다.",
@@ -368,7 +451,19 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
      * edge. A settings page is entered deliberately and read on its own, so the shift costs less
      * than the lopsidedness did.
      */
-    <div style={{ maxWidth: "880px", marginInline: "auto" }}>
+    <div style={{ display: "flex", alignItems: "flex-start", gap: "28px", maxWidth: "880px", marginInline: "auto" }}>
+      {/* Same conditions as the sections themselves, in the same order. Written out rather than
+          derived from the DOM: a rail that listed a section the page did not render would scroll
+          to nothing, and the failure would be a click that silently does nothing. */}
+      <SettingsNav sections={[
+        { id: "account", label: t.accountTitle, icon: <User size={14} strokeWidth={2.2} /> },
+        ...(project ? [{ id: "project", label: t.projectTitle, icon: <MapPin size={14} strokeWidth={2.2} /> }] : []),
+        ...(myTeam ? [{ id: "mail", label: t.teamMailTitle, icon: <Mail size={14} strokeWidth={2.2} /> }] : []),
+        ...(myTeamId ? [{ id: "categories", label: t.categoryTitle, icon: <Tag size={14} strokeWidth={2.2} /> }] : []),
+        ...(requirePurpose && myTeamId ? [{ id: "purposes", label: t.purposeTitle, icon: <ClipboardList size={14} strokeWidth={2.2} /> }] : []),
+        { id: "display", label: t.displayTitle, icon: <Monitor size={14} strokeWidth={2.2} /> },
+        ...(project && mayDeleteProject ? [{ id: "danger", label: t.dangerTitle, icon: <Trash2 size={14} strokeWidth={2.2} /> }] : []),
+      ]} />
       {/* No page title here: the top bar's crumb already names this page, and printing the same
           word again 20px lower was the page introducing itself twice. What stays is the row of
           things you can do on it. */}
@@ -376,11 +471,11 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           which they never reach — the first section has no top rule and the last no bottom one —
           and it clipped the one thing that has to escape this box: the language select sits in the
           final section, so its list opened straight into the card's bottom edge and was cut off. */}
-      <div className="portal-settings-card" style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, marginBottom: "20px" }}>
+      <div className="portal-settings-card" style={{ flex: 1, minWidth: 0, backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, marginBottom: "20px" }}>
       {/* Which pairs exist depends on whether the signed-in address matches an account: with no
           match there is nothing to say about a role or a door, so those are absent rather than
           filled with a disclaimer. */}
-      <CardSection heading={t.accountTitle} icon={<User size={15} strokeWidth={2.2} />} first>
+      <CardSection id="account" heading={t.accountTitle} icon={<User size={15} strokeWidth={2.2} />} first>
         <PairGrid>
           {accountPairs.map(r => <PairItem key={r.label} label={r.label}>{r.value}</PairItem>)}
           {/* A pair like the others, whose value is a button rather than a fact: the sentence
@@ -415,7 +510,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         the licence), this card moves there whole and Settings goes back to being the account only.
       */}
       {project && (
-        <CardSection heading={t.projectTitle} icon={<MapPin size={15} strokeWidth={2.2} />}>
+        <CardSection id="project" heading={t.projectTitle} icon={<MapPin size={15} strokeWidth={2.2} />}>
           <PairGrid>
             {/* Editable, at last. Every handover starts with a test project and a typo, and
                 there was no renameProject anywhere in the codebase — the first name a project
@@ -508,27 +603,6 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "14px" }}>{t.timeZoneNote}</p>
           <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "8px" }}>{t.retentionNote}</p>
 
-          {/* Deleting a site is not a setting, so it does not sit among them: its own row at the
-              foot of the card, after everything you might come here to read. Owner only — this is
-              the heaviest thing anybody can do from the console, and it belongs with granting
-              roles rather than with changing a timezone. */}
-          {mayDeleteProject && (
-            <div style={{ borderTop: BORDER, marginTop: "18px", paddingTop: "16px" }}>
-              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.deleteProject}</p>
-              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "2px" }}>{t.deleteProjectHint}</p>
-              {/* Under its own words, flush with them. space-between held the button at the far
-                  edge of the column, so the sentence explaining it and the thing it explains were
-                  half a column apart and the hover tint landed nowhere near the text — read as a
-                  stray control rather than the end of this paragraph. Every other control on this
-                  page sits under the words naming it; the heaviest one should not be the
-                  exception. The word is short because the line above already says which project. */}
-              <button className="portal-btn-outline-danger" onClick={() => { setDeleteEcho(""); setConfirmingDelete(true); }}
-                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 12px", marginTop: "10px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                <Trash2 size={13} strokeWidth={2.2} />
-                {t.deleteAction}
-              </button>
-            </div>
-          )}
         </CardSection>
       )}
 
@@ -594,7 +668,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         is why it sits here beside the other two team policies.
       */}
       {myTeam && (
-        <CardSection heading={t.teamMailTitle} icon={<Mail size={15} strokeWidth={2.2} />} subheading={myTeam.name} desc={t.teamMailIntro}>
+        <CardSection id="mail" heading={t.teamMailTitle} icon={<Mail size={15} strokeWidth={2.2} />} subheading={myTeam.name} desc={t.teamMailIntro}>
           {/* No maxWidth of its own any more — the section's content column is the cap, and two
               of these grids with two different ones is how columns stop lining up between
               sections. */}
@@ -635,7 +709,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       )}
 
       {myTeamId && (
-        <CardSection heading={t.categoryTitle} icon={<Tag size={15} strokeWidth={2.2} />}>
+        <CardSection id="categories" heading={t.categoryTitle} icon={<Tag size={15} strokeWidth={2.2} />}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>
               {t.categoryCount(teamCategories.filter(c => !c.archived).length)}
@@ -662,7 +736,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           a question the reader has to answer ("do I need to fill this in?") about something that
           cannot affect them. The flag is the switch — see complianceConfig. */}
       {requirePurpose && myTeamId && (
-        <CardSection heading={t.purposeTitle} icon={<ClipboardList size={15} strokeWidth={2.2} />}>
+        <CardSection id="purposes" heading={t.purposeTitle} icon={<ClipboardList size={15} strokeWidth={2.2} />}>
           {/* What the empty list actually costs, said here rather than only in the app. An
               administrator who has not built this list needs to know that the requirement is on and
               unmet — otherwise the console looks configured and the gate quietly waves everyone
@@ -678,7 +752,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         </CardSection>
       )}
 
-      <CardSection heading={t.displayTitle} icon={<Monitor size={15} strokeWidth={2.2} />}>
+      <CardSection id="display" heading={t.displayTitle} icon={<Monitor size={15} strokeWidth={2.2} />}>
         <PairGrid>
           <PairItem label={t.language}>
             {/* Each language named in its own script — the one label a person who cannot read the
@@ -696,6 +770,27 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             setting is broken. */}
         <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "12px" }}>{t.languageNote}</p>
       </CardSection>
+
+      {/* Last, and on its own.
+          It used to sit at the foot of the Project section, under the timezone and the retention
+          period — which put the heaviest thing anybody can do from this console two lines below a
+          dropdown somebody opens to fix a clock. Its own section at the end of the rail means you
+          arrive here by deciding to, not by scrolling past it on the way to something else.
+          Owner only: this belongs with granting roles, not with changing a timezone. */}
+      {project && mayDeleteProject && (
+        <CardSection id="danger" heading={t.dangerTitle} icon={<Trash2 size={15} strokeWidth={2.2} />}>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.65 }}>{t.deleteProjectHint}</p>
+          {/* Under its own words, flush with them. space-between held the button at the far edge
+              of the column, so the sentence explaining it and the thing it explains were half a
+              column apart and the hover tint landed nowhere near the text — read as a stray
+              control rather than the end of this paragraph. */}
+          <button className="portal-btn-outline-danger" onClick={() => { setDeleteEcho(""); setConfirmingDelete(true); }}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 12px", marginTop: "12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", alignSelf: "flex-start" }}>
+            <Trash2 size={13} strokeWidth={2.2} />
+            {t.deleteProject}
+          </button>
+        </CardSection>
+      )}
       </div>
     </div>
   );

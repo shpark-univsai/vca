@@ -330,15 +330,16 @@
    Container width, not viewport: Portal's sidebar collapses, so the same viewport width means
    two different card widths and a viewport breakpoint guesses wrong at one of them. 620px is
    where the 240px rail stops leaving the controls a usable column. */
-.portal-settings-card { container-type: inline-size; }
+/* Heading above its controls, one column.
+   It was a 240px title rail beside a 520px column, which was right while the card was the whole
+   page. With the section titles now listed in a rail of their own on the left, that inner rail
+   put a second column of headings directly beside the first — two parallel lists of the same
+   words, and the eye cannot tell which one it is meant to be reading. The nav is the index; the
+   section says its own name once, on top of what it controls. */
 .portal-settings-section {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  gap: 16px 40px;
-  align-items: start;
-}
-@container (max-width: 620px) {
-  .portal-settings-section { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 :where(input, textarea, select, button, [contenteditable], [tabindex]):focus-visible {

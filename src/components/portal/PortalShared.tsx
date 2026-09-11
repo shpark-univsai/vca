@@ -804,9 +804,12 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
  * job: they mark where a section starts, which is what the eye looks for when it comes back to a
  * settings page for one thing. One rank carries a mark, and it is the rank that leads.
  */
-export function CardSection({ heading, icon, subheading, desc, first, children }: { heading: string; icon?: React.ReactNode; subheading?: string; desc?: string; first?: boolean; children: React.ReactNode }) {
+export function CardSection({ id, heading, icon, subheading, desc, first, children }: { id?: string; heading: string; icon?: React.ReactNode; subheading?: string; desc?: string; first?: boolean; children: React.ReactNode }) {
   return (
-    <div className="portal-settings-section" style={{ padding: "22px 24px", borderTop: first ? "none" : BORDER }}>
+    // `id` is what the settings rail scrolls to and what its scrollspy observes. scrollMarginTop
+    // so a section landed on by a click stops below the page's own top edge rather than flush
+    // against it, which reads as having overshot.
+    <div id={id} className="portal-settings-section" style={{ padding: "22px 24px", borderTop: first ? "none" : BORDER, scrollMarginTop: "16px" }}>
       <div>
         {/* <p>, not <h2>: nothing in Portal uses heading elements yet, and one lone h2 under no h1
             is not an outline. Giving Portal a real heading order is its own pass. */}
@@ -825,9 +828,7 @@ export function CardSection({ heading, icon, subheading, desc, first, children }
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.65, marginTop: "6px" }}>{desc}</p>
         )}
       </div>
-      {/* 520px, not 1fr. The rail alone would still let a four-column grid of pairs open up on a
-          wide screen — the cap is the half of this that holds at 1600px. */}
-      <div style={{ minWidth: 0, maxWidth: "520px" }}>{children}</div>
+      <div style={{ minWidth: 0 }}>{children}</div>
     </div>
   );
 }
