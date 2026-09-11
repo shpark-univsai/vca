@@ -723,13 +723,18 @@ function LicenseFileSection({ projectId, t }: {
       marginTop: "16px", padding: "24px 32px", maxWidth: "820px", marginInline: "auto",
     }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "20px", flexWrap: "wrap" }}>
-        <div style={{ minWidth: 0 }}>
+        {/* No measure on this column, unlike the paragraphs inside the panel below. The button
+            beside it already sets a right edge, and a second, narrower limit on top of that broke
+            one paragraph two lines early while the one under it ran past — two ragged edges in a
+            block four lines tall. `text-wrap: pretty` instead, which evens the break rather than
+            moving it. */}
+        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
           <h3 style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", margin: 0 }}>{t.fileHeading}</h3>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, margin: "6px 0 0", maxWidth: MEASURE }}>{t.fileLead}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, margin: "6px 0 0", textWrap: "pretty" }}>{t.fileLead}</p>
           {/* What is on record today. A site configured before licence files existed has numbers
               with no file behind them, and saying so is more useful than an empty line — it tells
               the reader why installing a file will change figures they thought were settled. */}
-          <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.7, margin: "10px 0 0" }}>
+          <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.7, margin: "10px 0 0", textWrap: "pretty" }}>
             {project.licenseChannelLimit === undefined ? t.fileNoneOnRecord : t.fileNoneHint}
           </p>
         </div>

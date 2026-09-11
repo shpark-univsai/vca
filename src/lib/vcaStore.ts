@@ -1775,6 +1775,78 @@ export interface FootageRequest {
   redaction?: { done: boolean; method: string };
 }
 
+/**
+ * Five requests on the Marina Bay site, so the register opens with something to read.
+ *
+ * Chosen to cover the states the screen actually behaves differently in rather than to look busy:
+ * one release that went out, one still undecided, one refused; one erasure closed and one that
+ * CANNOT be closed because two categories are still undecided. That last row is the point of the
+ * screen — an erasure request with an open category refuses to close, and a register seeded only
+ * with tidy finished rows would never show it.
+ *
+ * Not translated, like every other seed: these are records an institution wrote, not UI copy.
+ */
+const SEED_FOOTAGE_REQUESTS: FootageRequest[] = [
+  {
+    id: "fr-seed-1", projectId: "proj-sg",
+    requesterName: "Insp. Daniel Koh", requesterOrg: "Police — Central Division",
+    basis: "warrant", reference: "WRT-2026-0918",
+    fromAt: "2026-09-03 22:10", toAt: "2026-09-03 23:40",
+    cameraNote: "Bayfront Ave / Marina Link — entrance cameras",
+    purpose: "Aggravated theft at the Bayfront underpass; suspect left on foot towards Marina Link.",
+    status: "released",
+    receivedAt: "2026-09-04T01:22:00.000Z", receivedBy: "Grace Tan",
+    decidedAt: "2026-09-04T06:40:00.000Z", decidedBy: "Grace Tan",
+    decisionNote: "Warrant checked against the issuing court's reference. Window narrowed to the 90 minutes named in it.",
+    releasedAt: "2026-09-05T02:05:00.000Z", releasedBy: "Aaron Sim",
+    releaseMethod: "Encrypted drive, collected in person",
+    releasedTo: "Sgt. Rahim Yusof (Central Division)",
+    redaction: { done: true, method: "Third-party faces blurred by the recorder's export tool before handover" },
+  },
+  {
+    id: "fr-seed-2", projectId: "proj-sg",
+    requesterName: "Claire Devi", requesterOrg: "Pacific Assurance — Claims",
+    basis: "insurance", reference: "CLM-88214",
+    fromAt: "2026-09-08 07:30", toAt: "2026-09-08 08:15",
+    cameraNote: "Raffles Quay junction, kerbside camera",
+    purpose: "Vehicle damage claim; the policyholder says the collision happened at the kerb outside the office tower.",
+    status: "received",
+    receivedAt: "2026-09-09T08:12:00.000Z", receivedBy: "Aaron Sim",
+  },
+  {
+    id: "fr-seed-3", projectId: "proj-sg",
+    requesterName: "Marcus Tay", requesterOrg: "(individual)",
+    basis: "data-subject",
+    fromAt: "2026-08-29 00:00", toAt: "2026-08-29 23:59",
+    cameraNote: "All CBD cameras",
+    purpose: "Asked for a full day of footage of himself to support a workplace grievance.",
+    status: "refused",
+    receivedAt: "2026-08-31T03:40:00.000Z", receivedBy: "Grace Tan",
+    decidedAt: "2026-09-01T07:15:00.000Z", decidedBy: "Grace Tan",
+    decisionNote: "A whole day across every camera would hand over hundreds of uninvolved people. Offered instead to narrow it to a time and place he can name; no reply yet.",
+  },
+];
+
+const SEED_ERASURE_REQUESTS: ErasureRequest[] = [
+  {
+    id: "er-seed-1", projectId: "proj-sg",
+    subjectName: "Priya Nair", subjectReference: "NRIC last 4: 812J · letter dated 2026-09-02",
+    receivedAt: "2026-09-05T04:30:00.000Z", receivedBy: "Grace Tan",
+    status: "received",
+    dispositions: { ...ERASURE_DEFAULTS },
+    notes: "Says she was added to the watchlist after a dispute at a tenant event and wants everything about her removed.",
+  },
+  {
+    id: "er-seed-2", projectId: "proj-sg",
+    subjectName: "Hafiz Rahman", subjectReference: "Contractor pass CT-4471, ended 2026-07-31",
+    receivedAt: "2026-08-12T02:10:00.000Z", receivedBy: "Aaron Sim",
+    status: "completed",
+    dispositions: { ...ERASURE_DEFAULTS, detections: "erase", judgements: "erase" },
+    closedAt: "2026-08-20T09:05:00.000Z", closedBy: "Grace Tan",
+    closingNote: "Contract ended; no open matter names him. Detections and the verdicts on them erased together — a verdict about a detection cannot outlive it. Search log and release records kept, and he was told why.",
+  },
+];
+
 export interface AccessRequest {
   id: string;
   name: string;
@@ -2649,8 +2721,8 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   evidenceExports: [],
   // Empty on purpose, like the access requests below it: a seeded release would teach whoever
   // reads this screen that the product has already handed footage to somebody.
-  footageRequests: [],
-  erasureRequests: [],
+  footageRequests: SEED_FOOTAGE_REQUESTS,
+  erasureRequests: SEED_ERASURE_REQUESTS,
   events: SEED_EVENTS,
   portalUsers: PORTAL_USERS,
   servers: SERVERS,

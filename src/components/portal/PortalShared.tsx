@@ -1302,6 +1302,46 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
 }
 
 /**
+ * The question mark that carries a sentence the screen does not need to keep saying.
+ *
+ * For the intro paragraph a tab wants available but not permanently in the way — the kind that is
+ * read once, on the first visit, and then costs a line of vertical space and a line of attention
+ * on every visit after. Hiding it behind a mark keeps it reachable without letting it compete with
+ * the controls beside it.
+ *
+ * Not for anything a reader has to see: a warning, or a sentence about what the screen does NOT
+ * do, has to be on the screen. This is for the explanatory half.
+ *
+ * A <button>, not a span with a cursor — it takes keyboard focus, which is what makes Tooltip's
+ * onFocus path reachable at all.
+ */
+export function HelpTip({ text, placement = "bottom" }: { text: string; placement?: "top" | "bottom" }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <Tooltip text={text} placement={placement}>
+      <button
+        type="button"
+        aria-label={text}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        onClick={e => e.preventDefault()}
+        style={{
+          width: "18px", height: "18px", borderRadius: "999px", flexShrink: 0,
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          border: `1px solid ${hover ? "var(--gray-400)" : "var(--gray-300)"}`,
+          backgroundColor: "transparent",
+          color: hover ? "var(--gray-600)" : "var(--gray-400)",
+          fontSize: "11px", fontWeight: 700, fontFamily: "inherit", lineHeight: 1,
+          cursor: "help", padding: 0,
+        }}
+      >
+        ?
+      </button>
+    </Tooltip>
+  );
+}
+
+/**
  * A tooltip that actually appears.
  *
  * The browser's own `title` needs the pointer held still for a second or more and vanishes on the

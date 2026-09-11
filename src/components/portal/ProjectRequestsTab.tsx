@@ -8,7 +8,8 @@ import {
 } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TextField, FilterSelect, ConfirmModal, usePortalEditAccess, MEASURE, MEASURE_TIGHT } from "./PortalShared";
+import { Eraser, Video } from "lucide-react";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TextField, FilterSelect, ConfirmModal, HelpTip, usePortalEditAccess, MEASURE, MEASURE_TIGHT } from "./PortalShared";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 /**
@@ -227,6 +228,16 @@ type Row =
 
 type Filter = "all" | "open" | "footage" | "erasure";
 
+/** The two "file a new request" buttons. Same shape as the secondary tools elsewhere in Portal:
+ *  bordered, marked with an icon. A row of unmarked grey pills on a page whose neighbours put a
+ *  mark on every action reads as unfinished. */
+const REGISTER_BTN: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: "6px",
+  height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER,
+  backgroundColor: "white", color: "var(--gray-700)",
+  fontSize: "12px", fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
+};
+
 export default function ProjectRequestsTab({ projectId }: { projectId: string }) {
   const [lang] = usePortalLanguage();
   const t: Dict = T[lang];
@@ -283,16 +294,25 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "16px", flexWrap: "wrap", marginBottom: "14px" }}>
-        <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, maxWidth: MEASURE, flex: 1, minWidth: "260px" }}>{t.intro}</p>
+      {/* Two registers, two peers. The purple used to sit on "footage request" and the grey on
+          "erasure request", which said one of them is the page's main action — this tab exists
+          precisely because they are the same act filed from two directions, and neither outranks
+          the other. Both quiet, both marked, and the purple goes back to meaning something.
+
+          The intro moved behind the mark. It is the explanatory half — read once, then a line of
+          vertical space and a line of attention on every later visit. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
+        <HelpTip text={t.intro} />
         {mayEdit && (
           <div style={{ display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap" }}>
             <button className="portal-btn-outline" onClick={() => setShowErasureForm(true)}
-              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ ...REGISTER_BTN }}>
+              <Eraser size={14} strokeWidth={2.4} />
               {t.newErasure}
             </button>
-            <button className="portal-btn-primary" onClick={() => setShowFootageForm(true)}
-              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            <button className="portal-btn-outline" onClick={() => setShowFootageForm(true)}
+              style={{ ...REGISTER_BTN }}>
+              <Video size={14} strokeWidth={2.4} />
               {t.newFootage}
             </button>
           </div>
