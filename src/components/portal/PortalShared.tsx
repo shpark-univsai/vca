@@ -829,15 +829,27 @@ export function CardSection({ heading, icon, subheading, desc, children }: { hea
           )}
           {heading}
         </p>
-        {/* Whose settings these are, when that is not the same answer as the project on screen.
-            Part of the title block rather than the sentence below it — a reader who mistakes the
-            owner of a setting will not be saved by prose — but on its own line, because a 240px
-            rail turns a 50-character institution name into three lines of 15px/800. */}
-        {subheading && (
-          <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", lineHeight: 1.45, marginTop: "4px" }}>{subheading}</p>
-        )}
-        {desc && (
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.65, marginTop: "6px" }}>{desc}</p>
+        {/* Indented to the heading's own text, past the icon. Flush left, these ran under the
+            icon square and the three lines had no shared edge — a title, a name and a sentence
+            all starting in different places, which is what made the block read as crowded rather
+            than as one heading with two lines under it. The square now marks the whole block.
+
+            The steps matter as much as the space: 18 / 13 / 12 with 8px and 10px between them.
+            It was 15 / 12 / 12 at 4px and 6px, where the second and third lines were the same
+            size and the two gaps were the same gap, so all three collapsed into one paragraph. */}
+        {(subheading || desc) && (
+          <div style={{ paddingLeft: icon ? "38px" : 0 }}>
+            {/* Whose settings these are, when that is not the same answer as the project on
+                screen. Part of the title block rather than the sentence below it — a reader who
+                mistakes the owner of a setting will not be saved by prose — but on its own line,
+                because a 50-character institution name beside an 18px/800 heading wraps. */}
+            {subheading && (
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", lineHeight: 1.45, marginTop: "8px" }}>{subheading}</p>
+            )}
+            {desc && (
+              <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.65, marginTop: subheading ? "10px" : "8px" }}>{desc}</p>
+            )}
+          </div>
         )}
       </div>
       <div style={{ minWidth: 0 }}>{children}</div>
