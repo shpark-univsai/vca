@@ -888,9 +888,25 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // reads as a broken element. Detections-per-camera is worth showing, but not badly, and
           // this map has no tooltip component to host a sentence. The pill's two figures stand on
           // their own until there is one.
-          L.marker([district.lat, district.lng], { icon })
-            .addTo(group)
-            .on("click", () => onDistrictSelectRef.current?.(district.id));
+          const marker = L.marker([district.lat, district.lng], { icon }).addTo(group);
+          // Seventeen of these on one island overlap, and until now which one covered which was
+          // decided by latitude — Leaflet's default marker stacking. So a southern district's
+          // pill sat on top of a northern one's for no reason connected to the map's job, and the
+          // covered pill was as likely to be the one worth reading as not. Measured on the
+          // overview: each pill paints about 103x51px while its own marker box is 1x1 (the icon
+          // is content-sized by transform), and two of the seven had their centre covered by a
+          // neighbour.
+          //
+          // Stacking by count instead. It does not stop the overlap — that needs the pills to be
+          // placed apart, which is a layout decision, not a z-index — but it settles WHICH pill
+          // loses: the quiet district goes under the busy one, never the reverse. The number a
+          // coverage decision hangs on is then always the readable one.
+          // Scaled, because Leaflet's base z-index for a marker is its PIXEL Y — a few hundred —
+          // and zIndexOffset is added to it. A bare `count` of 15 or 31 is lost in that, which is
+          // how the first attempt at this changed nothing: Geylang (15) still covered Novena (31).
+          // The factor only has to exceed the map's pixel height for the count to be what decides.
+          marker.setZIndexOffset(count * 2000);
+          marker.on("click", () => onDistrictSelectRef.current?.(district.id));
         });
       } else {
         // ── Zoomed in: one dot per camera ──
