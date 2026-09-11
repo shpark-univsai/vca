@@ -806,10 +806,18 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
  */
 export function CardSection({ id, heading, icon, subheading, desc, first, children }: { id?: string; heading: string; icon?: React.ReactNode; subheading?: string; desc?: string; first?: boolean; children: React.ReactNode }) {
   return (
-    // `id` is what the settings rail scrolls to and what its scrollspy observes. scrollMarginTop
-    // so a section landed on by a click stops below the page's own top edge rather than flush
-    // against it, which reads as having overshot.
-    <div id={id} className="portal-settings-section" style={{ padding: "22px 24px", borderTop: first ? "none" : BORDER, scrollMarginTop: "16px" }}>
+    <>
+      {/* The rule between sections, inset to where the words start rather than run edge to edge.
+          It was a borderTop on the section itself, so it crossed the card's full width and read as
+          the card being cut in half — a divider that reaches the walls separates containers, and
+          these are parts of one. Starting it under the heading's own left edge makes it belong to
+          the column of text it is dividing. Its own element rather than a border, because a border
+          sits outside the padding by definition and there is no way to inset one. */}
+      {!first && <div aria-hidden="true" style={{ height: "1px", backgroundColor: "var(--line)", marginInline: "24px" }} />}
+      {/* `id` is what the settings rail scrolls to and what its scrollspy observes.
+          scrollMarginTop so a section landed on by a click stops below the page's own top edge
+          rather than flush against it, which reads as having overshot. */}
+      <div id={id} className="portal-settings-section" style={{ padding: "22px 24px", scrollMarginTop: "16px" }}>
       <div>
         {/* <p>, not <h2>: nothing in Portal uses heading elements yet, and one lone h2 under no h1
             is not an outline. Giving Portal a real heading order is its own pass. */}
@@ -829,31 +837,31 @@ export function CardSection({ id, heading, icon, subheading, desc, first, childr
         )}
       </div>
       <div style={{ minWidth: 0 }}>{children}</div>
-    </div>
+      </div>
+    </>
   );
 }
 
 /**
- * Two columns of label-above-value pairs, the shape the camera sheet uses.
+ * A column of label-above-value pairs, the shape the camera sheet uses.
  *
  * It was one ruled row per fact, label left and value right — five rules in the first card alone,
  * and on a 720px column the value ended up a hand's width from the word naming it. Stacking the
- * pair puts the two together, and two columns halve the height, so the rules have nothing left to
- * separate: whitespace does it.
+ * pair puts the two together, so the rules have nothing left to separate: whitespace does it.
  */
 export function PairGrid({ children }: { children: React.ReactNode }) {
   return (
-    /* Two columns, at 250px tracks.
+    /* One column (2026-09-11).
    
-       It went to one column when the page felt dense, and that was treating the symptom: the
-       density was nine icons and a wall of 700-weight values, both now gone. What one column
-       cost was height — six facts became six rows, and the page turned into a scroll for
-       content that fits on a screen.
+       It was two 250px tracks, which was the right call while the card was the page and height
+       was the scarce thing. It is not any more: the section titles moved to a rail of their own,
+       so the card is narrower and a section is arrived at deliberately rather than scrolled past.
+       Two tracks in that column put the second pair where the eye does not go, and a settings
+       page with six facts was never short of room — it was short of a reading order.
    
-       250px rather than the old 220px, so the tracks are wider than the values that used to
-       wrap into two lines at 240. A long team name still wraps; that is one pair wrapping, not
-       a reason to halve the page's density. */
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "18px 20px" }}>
+       One column gives it one: label, value, next. Height it costs is height the rail already
+       made navigable. */
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "16px" }}>
       {children}
     </div>
   );
