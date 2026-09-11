@@ -651,6 +651,8 @@ interface VcaStoreState {
   evidenceExports: EvidenceExportRecord[];
   /** Outside requests for recorded footage — see FootageRequest. Empty until one is filed. */
   footageRequests: FootageRequest[];
+  /** Requests to be erased — see ErasureRequest. Empty until one is filed. */
+  erasureRequests: ErasureRequest[];
   events: VcaEvent[];
   uploads: UploadedMedia[];
   portalUsers: PortalUser[];
@@ -750,6 +752,12 @@ interface VcaStoreState {
   decideFootageRequest: (id: string, approved: boolean, note: string) => void;
   /** Record that the file actually left, and on what terms. */
   releaseFootageRequest: (id: string, release: Pick<FootageRequest, "releaseMethod" | "releasedTo" | "redaction">) => void;
+  /** File an erasure request. Dispositions start from ERASURE_DEFAULTS. Returns its id. */
+  addErasureRequest: (r: Pick<ErasureRequest, "projectId" | "subjectName" | "subjectReference" | "notes">) => string;
+  /** Take a position on one category for one request. */
+  setErasureDisposition: (id: string, category: ErasureCategory, disposition: ErasureDisposition) => void;
+  /** Close it out. Refused to close while any category is still undecided — see the store note. */
+  closeErasureRequest: (id: string, completed: boolean, note: string) => void;
   updateProjectMail: (projectId: string, updates: Pick<Project, "mailDomain" | "smtp">) => void;
   setProjectTimeZone: (projectId: string, timeZone: string) => void;
   /** null clears it back to "not decided". See Project.retentionDays. */
@@ -1637,6 +1645,93 @@ export interface PortalUser {
  * register the institution fills in — which is still the difference between a release nobody can
  * account for and one that has a row.
  */
+/**
+ * Somebody asking to have their own data removed.
+ *
+ * The hard part is not the workflow, it is that "delete my data" has no single answer here. This
+ * product holds seven different kinds of record about a person and they do not all deserve the
+ * same fate — some must go, some must stay precisely BECAUSE the person asked, and two are
+ * genuinely undecided policy questions that nobody should guess at.
+ *
+ * So this screen does not decide. It lays out every category the product actually holds, states
+ * what is settled and why, and leaves the unsettled ones visibly unsettled. An institution fills
+ * in the rest, and the gap is on screen instead of in somebody's head.
+ *
+ * THE TWO THAT ARE NOT OURS TO ANSWER are marked out-of-reach rather than undecided, which is a
+ * different admission: an evidence file already exported is a copy outside this console, and the
+ * recordings themselves belong to the recorder. The console can say who holds them. It cannot
+ * reach them, and a screen that offered to would be lying.
+ */
+export type ErasureDisposition =
+  /** Removed when this request is carried out. */
+  | "erase"
+  /** Kept on purpose, with a reason the institution can state out loud. */
+  | "retain"
+  /** A policy question nobody has answered. Left visible rather than defaulted. */
+  | "undecided"
+  /** Not the console's to delete. Named so its absence is not read as an oversight. */
+  | "out-of-reach";
+
+export type ErasureCategory =
+  | "watchlist" | "detections" | "searchLog" | "judgements"
+  | "exports" | "footageReleases" | "auditLog" | "recordings";
+
+/**
+ * What the product holds, and where each category stands before anybody decides.
+ *
+ * The defaults are not guesses — each one is a position already taken elsewhere in this codebase,
+ * and the two `undecided` are the ones the product review flagged as genuinely open. Changing a
+ * default here is changing the institution's stance, which is why they are written once, with
+ * their reasons, rather than repeated in a screen.
+ */
+export const ERASURE_DEFAULTS: Record<ErasureCategory, ErasureDisposition> = {
+  // The ask itself, and the console already knows how to do it — releasing someone from the
+  // registry is an existing, audited action.
+  watchlist: "erase",
+  // Open. Deleting them destroys the record of what the system did about this person; keeping
+  // them keeps biometric-derived rows about somebody who asked to be forgotten. Both directions
+  // have a real argument and the product has no standing to pick one.
+  detections: "undecided",
+  // Kept, and kept FOR them. This is the log of who looked this person up and on what stated
+  // grounds — the record that protects the subject. Erasing it on the subject's own request
+  // destroys their evidence, which is why removeProject stopped deleting it too.
+  searchLog: "retain",
+  // Open, and tied to the detections above: a verdict about a detection cannot outlive it.
+  judgements: "undecided",
+  // Already outside. The file left the console; only the row saying who took it remains, and
+  // that row is how anybody knows to go ask for the copy back.
+  exports: "out-of-reach",
+  // Kept. It is the record of video handed to a third party about this person — the one thing a
+  // complaint by this very person would need.
+  footageReleases: "retain",
+  // Kept, for the reason written at removeProject: a deletion that erases the record of
+  // everything leading up to it is not a deletion, it is a cover-up.
+  auditLog: "retain",
+  // The recorder's, not the console's. Governed by the retention period, not by this screen.
+  recordings: "out-of-reach",
+};
+
+export type ErasureRequestStatus = "received" | "completed" | "refused";
+
+export interface ErasureRequest {
+  id: string;
+  projectId: string;
+  /** Who is asking to be erased, as they identified themselves. */
+  subjectName: string;
+  /** How they were identified — an ID document, a case number, a registry entry. */
+  subjectReference: string;
+  receivedAt: string;
+  receivedBy: string;
+  status: ErasureRequestStatus;
+  /** Per-category positions for THIS request. Seeded from ERASURE_DEFAULTS, overridable, and an
+   *  "undecided" left as it is means the request cannot be closed — which is the point. */
+  dispositions: Record<ErasureCategory, ErasureDisposition>;
+  notes?: string;
+  closedAt?: string;
+  closedBy?: string;
+  closingNote?: string;
+}
+
 export type FootageRequestStatus = "received" | "approved" | "refused" | "released";
 
 /** What entitles the requester to ask. Named, because "we gave it to the police" is not a basis. */
@@ -2457,6 +2552,7 @@ let auditSeq = AUDIT_LOG.length;
 let judgementSeq = 0;
 let exportSeq = 0;
 let footageSeq = 0;
+let erasureSeq = 0;
 
 // Latest seed timestamp — anything at or before this is historical, so the bell starts with
 // nothing unread instead of surfacing all 12 seed VIP hits as "new" on first load.
@@ -2554,6 +2650,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   // Empty on purpose, like the access requests below it: a seeded release would teach whoever
   // reads this screen that the product has already handed footage to somebody.
   footageRequests: [],
+  erasureRequests: [],
   events: SEED_EVENTS,
   portalUsers: PORTAL_USERS,
   servers: SERVERS,
@@ -2844,6 +2941,66 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         ...state.detectionJudgements.filter(j => !(j.surface === surface && j.subjectId === subjectId)),
       ],
     })),
+  addErasureRequest: (r) => {
+    const id = `erasure-${++erasureSeq}`;
+    const at = new Date().toISOString();
+    set(state => ({
+      erasureRequests: [
+        { ...r, id, status: "received" as const, receivedAt: at, receivedBy: SIGNED_IN_USER.name,
+          dispositions: { ...ERASURE_DEFAULTS } },
+        ...state.erasureRequests,
+      ],
+      auditLog: [{
+        id: `audit-${++auditSeq}`, projectId: r.projectId,
+        message: `Erasure request received: ${r.subjectName}`,
+        actor: SIGNED_IN_USER.name, at,
+      }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    }));
+    return id;
+  },
+  setErasureDisposition: (id, category, disposition) =>
+    set(state => {
+      const req = state.erasureRequests.find(r => r.id === id);
+      if (!req || req.status !== "received") return state;
+      // Every change is logged, with the category and both positions. The value of this screen is
+      // that an institution can show what it decided and when — a disposition that changed
+      // silently would make the register worth less than the paper it replaced.
+      return {
+        erasureRequests: state.erasureRequests.map(r => (r.id === id
+          ? { ...r, dispositions: { ...r.dispositions, [category]: disposition } }
+          : r)),
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId: req.projectId,
+          message: `Erasure policy set for ${req.subjectName}: ${category} ${req.dispositions[category]} → ${disposition}`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  /**
+   * Cannot be closed while a category is still undecided.
+   *
+   * That refusal IS the feature. A request closed with two open questions is a request somebody
+   * answered by not answering, and the person who asked has no way to know which way it went.
+   * The screen says which categories are blocking; this makes sure a stray call cannot skip it.
+   */
+  closeErasureRequest: (id, completed, note) =>
+    set(state => {
+      const req = state.erasureRequests.find(r => r.id === id);
+      if (!req || req.status !== "received" || note.trim() === "") return state;
+      if (completed && Object.values(req.dispositions).includes("undecided")) return state;
+      const at = new Date().toISOString();
+      return {
+        erasureRequests: state.erasureRequests.map(r => (r.id === id ? {
+          ...r, status: (completed ? "completed" : "refused") as ErasureRequestStatus,
+          closedAt: at, closedBy: SIGNED_IN_USER.name, closingNote: note.trim(),
+        } : r)),
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId: req.projectId,
+          message: `Erasure request ${completed ? "completed" : "refused"}: ${req.subjectName}`,
+          actor: SIGNED_IN_USER.name, at,
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   addFootageRequest: (r) => {
     const id = `footage-${++footageSeq}`;
     const at = new Date().toISOString();

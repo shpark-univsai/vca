@@ -5,7 +5,7 @@ import { Crown } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 
-export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "activity" | "searchlog" | "footage";
+export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "activity" | "searchlog" | "footage" | "erasure";
 
 interface IconProps {
   color: string;
@@ -94,6 +94,17 @@ function SearchLogIcon({ color }: IconProps) {
   );
 }
 
+/** A person, and the line through them. */
+function ErasureIcon({ color }: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <circle cx="7" cy="5.2" r="2.4" stroke={color} strokeWidth="1.2"/>
+      <path d="M2.6 13.4c0-2.4 2-4 4.4-4 .7 0 1.35.13 1.93.37" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M9.8 11.6h4" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 /** A document leaving through a door — the one thing this register records. */
 function FootageIcon({ color }: IconProps) {
   return (
@@ -166,6 +177,9 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
   // answer "who looked" and "what changed"; this one answers "what left the building", which is
   // the one with a person on the other end of it.
   { id: "footage", group: "manage", label: { en: "Footage requests", ko: "영상 제공" }, icon: FootageIcon },
+  // Next to it, because the two are the same errand from opposite directions: one is somebody
+  // asking for footage of a person, the other is that person asking for it all to go away.
+  { id: "erasure", group: "manage", label: { en: "Erasure requests", ko: "삭제 요청" }, icon: ErasureIcon },
   // Licence last. The four under MANAGE are read from most-touched to least: servers get changed
   // when the site changes, people get added and removed all year, and a licence is signed once and
   // looked at when somebody asks about the bill or runs out of channels. It sat in the middle,
