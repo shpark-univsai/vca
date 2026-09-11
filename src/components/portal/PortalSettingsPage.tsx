@@ -404,7 +404,6 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
     ...(myTeamId ? [{ id: "categories", label: t.categoryTitle, icon: <Tag size={15} strokeWidth={2.2} /> }] : []),
     ...(requirePurpose && myTeamId ? [{ id: "purposes", label: t.purposeTitle, icon: <ClipboardList size={15} strokeWidth={2.2} /> }] : []),
     { id: "display", label: t.displayTitle, icon: <Monitor size={15} strokeWidth={2.2} /> },
-    ...(project && mayDeleteProject ? [{ id: "danger", label: t.dangerTitle, icon: <Trash2 size={15} strokeWidth={2.2} /> }] : []),
   ];
   /* Derived, not stored. The conditions above can stop holding while the page is open — a project
      gets deleted, the search-purpose flag is read again — and a stored id would leave the card
@@ -578,6 +577,30 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "14px" }}>{t.timeZoneNote}</p>
           <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "8px" }}>{t.retentionNote}</p>
 
+          {/* Deleting the site belongs to the project, so it lives in the project's tab — but at
+              the foot of it, behind a rule, after everything anybody actually comes here to change.
+              It had its own tab for a while, and that was the wrong kind of quiet: a tab is a
+              standing entry in the rail, so the heaviest thing on this screen was the one item
+              always on display. Down here it is found by whoever is already dealing with the
+              project and passed over by everybody else.
+
+              Owner only. This belongs with granting roles, not with changing a timezone. */}
+          {mayDeleteProject && (
+            <div style={{ marginTop: "26px", paddingTop: "20px", borderTop: BORDER }}>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.dangerTitle}</p>
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "4px" }}>{t.deleteProjectHint}</p>
+              {/* Under its own words, flush with them. space-between held the button at the far
+                  edge of the column, so the sentence explaining it and the thing it explains were
+                  half a column apart and the hover tint landed nowhere near the text — read as a
+                  stray control rather than the end of this paragraph. */}
+              <button className="portal-btn-outline-danger" onClick={() => { setDeleteEcho(""); setConfirmingDelete(true); }}
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 12px", marginTop: "12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                <Trash2 size={13} strokeWidth={2.2} />
+                {t.deleteProject}
+              </button>
+            </div>
+          )}
+
         </CardSection>
       )}
 
@@ -748,26 +771,6 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       </CardSection>
       )}
 
-      {/* Last, and on its own.
-          It used to sit at the foot of the Project section, under the timezone and the retention
-          period — which put the heaviest thing anybody can do from this console two lines below a
-          dropdown somebody opens to fix a clock. Its own section at the end of the rail means you
-          arrive here by deciding to, not by scrolling past it on the way to something else.
-          Owner only: this belongs with granting roles, not with changing a timezone. */}
-      {active === "danger" && project && mayDeleteProject && (
-        <CardSection heading={t.dangerTitle} icon={<Trash2 size={15} strokeWidth={2.2} />}>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.deleteProjectHint}</p>
-          {/* Under its own words, flush with them. space-between held the button at the far edge
-              of the column, so the sentence explaining it and the thing it explains were half a
-              column apart and the hover tint landed nowhere near the text — read as a stray
-              control rather than the end of this paragraph. */}
-          <button className="portal-btn-outline-danger" onClick={() => { setDeleteEcho(""); setConfirmingDelete(true); }}
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 12px", marginTop: "12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", alignSelf: "flex-start" }}>
-            <Trash2 size={13} strokeWidth={2.2} />
-            {t.deleteProject}
-          </button>
-        </CardSection>
-      )}
       </div>
     </div>
   );
