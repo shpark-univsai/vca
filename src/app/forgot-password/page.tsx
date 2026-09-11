@@ -350,7 +350,7 @@ function ForgotPasswordFlow() {
   const heading = (title: string, lines: string[]) => (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
       <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px", textAlign: "center" }}>{title}</h1>
-      <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.6 }}>
+      <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.5 }}>
         {lines.map((line, i) => (
           <span key={i}>{line}{i < lines.length - 1 && <br />}</span>
         ))}
@@ -396,7 +396,7 @@ function ForgotPasswordFlow() {
                   {/* Both of Portal's no-mail options, in the order it offers them. This used to name
                       only the registration code while Portal's own notice named only the temporary
                       password, so the two halves of one conversation described different remedies. */}
-                  <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.26px", lineHeight: 1.7 }}>
+                  <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.26px", lineHeight: 1.5 }}>
                     {t.adminRemedies}
                   </p>
                 </div>
@@ -449,7 +449,7 @@ function ForgotPasswordFlow() {
                     // per-person mail leaves that empty. Saying so here is the only warning that can
                     // be given, because the next screen cannot admit that nothing was sent without
                     // also telling a stranger whether the account exists.
-                    <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", lineHeight: 1.6 }}>
+                    <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", lineHeight: 1.5 }}>
                       {t.noAddressNote}{" "}
                       {authConfig.supportContact ?? t.noAddressFallback}.
                     </p>
@@ -478,7 +478,7 @@ function ForgotPasswordFlow() {
                   display: "flex", flexDirection: "column", gap: "10px",
                   padding: "20px", borderRadius: "12px", backgroundColor: "var(--danger-100)",
                 }}>
-                  <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-700)", letterSpacing: "-0.26px", lineHeight: 1.7 }}>
+                  <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-700)", letterSpacing: "-0.26px", lineHeight: 1.5 }}>
                     {/* OPEN QUESTION for the backend: how long is the lockout, and does the response
                         say? A countdown is kinder than "try again later", but it also tells a
                         guesser exactly when to come back. */}

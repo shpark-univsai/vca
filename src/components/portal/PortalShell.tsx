@@ -70,7 +70,7 @@ function RequestProjectModal({ team, onClose }: { team: Team; onClose: () => voi
       <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "440px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "20px 20px 0" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.requestTitle}</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.55, marginTop: "8px" }}>{t.requestBody}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "8px" }}>{t.requestBody}</p>
         </div>
         <div style={{ padding: "16px 20px" }}>
           <div style={{ padding: "14px 16px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px" }}>
@@ -79,7 +79,7 @@ function RequestProjectModal({ team, onClose }: { team: Team; onClose: () => voi
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "4px" }}>{m.name}</p>
               <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{m.email}</p>
             </>) : (
-              <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7 }}>{t.requestNoManager}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.requestNoManager}</p>
             )}
           </div>
         </div>

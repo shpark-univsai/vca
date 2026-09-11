@@ -150,7 +150,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
 
   return (
     <div>
-      <p style={{ fontSize: "13px", color: "var(--gray-500)", lineHeight: 1.7, marginBottom: "12px", maxWidth: MEASURE }}>{t.intro}</p>
+      <p style={{ fontSize: "13px", color: "var(--gray-500)", lineHeight: 1.5, marginBottom: "12px", maxWidth: MEASURE }}>{t.intro}</p>
 
       {/* The gap between collecting a purpose and keeping it, said where somebody would otherwise
           conclude the log is broken. It goes away when the app calls recordSearchAccess. */}
@@ -159,7 +159,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
           display: "flex", alignItems: "flex-start", gap: "8px", maxWidth: "fit-content",
           padding: "10px 14px", borderRadius: "10px", marginBottom: "12px",
           backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
-          fontSize: "12px", fontWeight: 700, lineHeight: 1.6,
+          fontSize: "12px", fontWeight: 700, lineHeight: 1.5,
         }}>
           <span style={{ display: "flex", flexShrink: 0, marginTop: "2px" }}><ShieldAlert size={14} strokeWidth={2.4} /></span>
           {t.notWired}
@@ -220,7 +220,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
         {visible.length === 0 ? (
           <div style={{ padding: "40px 20px", textAlign: "center" }}>
             <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-500)" }}>{t.empty}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.7, marginTop: "6px" }}>{t.emptyHint}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.emptyHint}</p>
           </div>
         ) : visible.map((r: SearchAccessRecord, i) => (
           <div key={r.id} style={{
@@ -255,7 +255,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
       {/* Who this log is for, stated once. It is not a permission notice — an auditor reading it
           has every right to be here — it is the answer to "is anybody actually looking at this",
           which is the question that decides whether the purpose field does any work at all. */}
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "12px" }}>{t.ownerOnly}</p>
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px" }}>{t.ownerOnly}</p>
     </div>
   );
 }

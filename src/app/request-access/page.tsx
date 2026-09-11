@@ -184,7 +184,7 @@ function RequestAccessForm() {
             <>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
                 <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>{t.sentTitle}</h1>
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.6 }}>
+                <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.5 }}>
                   {t.sentReview}<br />
                   {t.sentInvite} <strong style={{ color: "var(--gray-800)" }}>{email.trim()}</strong>
                 </p>
@@ -279,7 +279,7 @@ function RequestAccessForm() {
                       style={{
                         width: "100%", boxSizing: "border-box", padding: "12px", border: FIELD_BORDER, borderRadius: "8px",
                         outline: "none", resize: "none", fontSize: "14px", color: "var(--gray-900)",
-                        letterSpacing: "-0.32px", fontFamily: "inherit", lineHeight: 1.6,
+                        letterSpacing: "-0.32px", fontFamily: "inherit", lineHeight: 1.5,
                       }}
                     />
                   </div>

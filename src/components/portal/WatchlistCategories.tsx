@@ -152,12 +152,12 @@ export function WatchlistCategoryModal({ teamId, categories, canEdit, onClose }:
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "520px", width: "100%", maxHeight: "86vh", overflowY: "auto", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "20px 20px 0" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.catModalTitle}</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "6px" }}>{t.catModalIntro}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.catModalIntro}</p>
         </div>
 
         <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "8px" }}>
           {categories.length === 0 && editing === null && (
-            <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.7, padding: "12px 0" }}>{t.catEmpty}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5, padding: "12px 0" }}>{t.catEmpty}</p>
           )}
           {categories.map(c => (
             <div key={c.id} style={{
@@ -192,7 +192,7 @@ export function WatchlistCategoryModal({ teamId, categories, canEdit, onClose }:
           {!canEdit ? (
             /* Said, not hidden — a reader who cannot find the button should learn the list has an
                owner rather than conclude the console is broken. */
-            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.catOwnerOnly}</p>
+            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.catOwnerOnly}</p>
           ) : editing !== null ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
               <div>
@@ -243,7 +243,7 @@ export function WatchlistCategoryModal({ teamId, categories, canEdit, onClose }:
             </button>
           )}
           {categories.some(c => c.archived) && (
-            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.catArchiveNote}</p>
+            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.catArchiveNote}</p>
           )}
         </div>
 

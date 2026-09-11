@@ -1308,7 +1308,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           <p style={{ margin: 0, fontSize: "18px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.36px" }}>
             {t.noPermissionTitle}
           </p>
-          <p style={{ margin: "10px 0 0", fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", lineHeight: 1.7 }}>
+          <p style={{ margin: "10px 0 0", fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", lineHeight: 1.5 }}>
             {t.noPermissionBody}
           </p>
         </div>
@@ -1730,7 +1730,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
               /* Said once, above the chips. The chips alone leave the reader to work out why
                  there is more than one — and the wrong answer to that ("these are ranked
                  matches") is the one that produces a route nobody walked. */
-              <p style={{ fontSize: "11px", lineHeight: 1.6, color: "var(--gray-500)", margin: "0 0 8px" }}>
+              <p style={{ fontSize: "11px", lineHeight: 1.45, color: "var(--gray-500)", margin: "0 0 8px" }}>
                 {t.resultTally(results.length, distinctPersons.length)} — {t.peopleNote}
               </p>
             )}
@@ -1762,7 +1762,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                   <circle cx="12" cy="12" r="8" stroke="var(--gray-200)" strokeWidth="2" />
                   <path d="M18 18L25 25" stroke="var(--gray-200)" strokeWidth="2" strokeLinecap="round" />
                 </svg>
-                <p style={{ fontSize: "12px", textAlign: "center", lineHeight: 1.7, color: "var(--gray-400)" }}>
+                <p style={{ fontSize: "12px", textAlign: "center", lineHeight: 1.5, color: "var(--gray-400)" }}>
                   {mode === "person"
                     ? <>{t.promptPerson}<br />{t.promptPersonAnd} <strong style={{ color: "var(--gray-700)" }}>{t.searchPersons}</strong>{t.promptTail}</>
                     : <>{t.promptVehicle}<br /><strong style={{ color: "var(--gray-700)" }}>{t.searchVehicle}</strong>{t.promptTail}</>
@@ -1772,7 +1772,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
             ) : searching ? (
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "24px 0" }}>
                 <div className="vca-skeleton-pulse" style={{ width: "28px", height: "28px", borderRadius: "999px", backgroundColor: "var(--primary-200)" }} />
-                <p style={{ fontSize: "12px", textAlign: "center", lineHeight: 1.7, color: "var(--gray-500)", fontWeight: 700 }}>
+                <p style={{ fontSize: "12px", textAlign: "center", lineHeight: 1.5, color: "var(--gray-500)", fontWeight: 700 }}>
                   {t.searching}
                 </p>
               </div>
@@ -1786,7 +1786,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                 {/* Names the actual cause. "No matching sightings" over a query that DID match but
                     scored under the threshold sends the user back to change the image — the one
                     thing that wasn't the problem. */}
-                <p style={{ fontSize: "12px", textAlign: "center", lineHeight: 1.7, color: "var(--gray-400)" }}>
+                <p style={{ fontSize: "12px", textAlign: "center", lineHeight: 1.5, color: "var(--gray-400)" }}>
                   {emptyReason?.kind === "similarity" ? (
                     <>
                       <strong style={{ color: "var(--gray-700)" }}>
@@ -2259,7 +2259,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                                     <DownloadIconSm />
                                     {t.exportEvidence}
                                   </button>
-                                  <span style={{ flex: 1, minWidth: "180px", fontSize: "10px", lineHeight: 1.6, color: "var(--gray-500)" }}>
+                                  <span style={{ flex: 1, minWidth: "180px", fontSize: "10px", lineHeight: 1.45, color: "var(--gray-500)" }}>
                                     {t.exportEvidenceHint}
                                   </span>
                                 </div>

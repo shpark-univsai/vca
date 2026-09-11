@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList, Mail, MapPin, Monitor, Pencil, Tag, Trash2, User } from "lucide-react";
+import { ClipboardList, Mail, MapPin, Monitor, Pencil, Plus, Tag, Trash2, User } from "lucide-react";
 import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
@@ -84,6 +84,8 @@ const T = {
     categoryTitle: "Watchlist categories",
     categoryCount: (n: number) => (n === 1 ? "1 category in use" : `${n} categories in use`),
     categoryManage: "Manage categories",
+    categoryNone: "No categories yet.",
+    categoryAdd: "Add a category",
     projectTitle: "Project",
     projectName: "Name",
     rename: "Rename",
@@ -105,11 +107,11 @@ const T = {
     projectTeam: "Team",
     projectRegion: "Region",
     projectTimeZone: "Time zone",
-    timeZoneNote: "Whoever opens this project and from wherever, every screen counts \"today\" in this zone.",
+    timeZoneNote: "Every screen uses this zone, whoever opens it and from where.",
     retention: "Recording retention",
     retentionUnset: "Not decided",
     retentionDaysLabel: (n: number) => `${n} days`,
-    retentionNote: "Nothing in this console removes footage — the recorder and the server do, on the number stated here.",
+    retentionNote: "This console deletes nothing. The recorder and the server do, on this number.",
     purposeTitle: "Search purposes",
     purposeEmpty: "No purposes defined.",
     purposeRequirementOn: "Searches are supposed to record a purpose, and there is nothing to choose. Until one exists, operators search without giving a reason.",
@@ -167,6 +169,8 @@ const T = {
     categoryTitle: "관심인물 분류",
     categoryCount: (n: number) => `사용 중인 분류 ${n}개`,
     categoryManage: "분류 관리",
+    categoryNone: "아직 만든 분류가 없습니다.",
+    categoryAdd: "분류 추가",
     projectTitle: "프로젝트",
     projectName: "이름",
     rename: "이름 변경",
@@ -188,11 +192,11 @@ const T = {
     projectTeam: "팀",
     projectRegion: "지역",
     projectTimeZone: "시간대",
-    timeZoneNote: "이 프로젝트를 누가 어디서 열든, 모든 화면의 \"오늘\"은 이 시간대로 계산됩니다.",
+    timeZoneNote: "누가 어디서 열든 모든 화면이 이 시간대를 씁니다.",
     retention: "영상 보관기간",
     retentionUnset: "미정",
     retentionDaysLabel: (n: number) => `${n}일`,
-    retentionNote: "이 콘솔은 영상을 삭제하지 않습니다 — 여기 적힌 숫자로 레코더와 서버가 지웁니다.",
+    retentionNote: "이 콘솔은 영상을 지우지 않습니다. 레코더와 서버가 이 숫자대로 지웁니다.",
     purposeTitle: "조회 목적",
     purposeEmpty: "정의된 사유가 없습니다.",
     purposeRequirementOn: "조회할 때 목적을 기록하도록 되어 있는데 고를 것이 없습니다. 하나라도 만들기 전까지는 사유 없이 조회가 실행됩니다.",
@@ -574,8 +578,8 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
               )}
             </PairItem>
           </PairGrid>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "14px" }}>{t.timeZoneNote}</p>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "8px" }}>{t.retentionNote}</p>
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "14px" }}>{t.timeZoneNote}</p>
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "8px" }}>{t.retentionNote}</p>
 
           {/* Deleting the site belongs to the project, so it lives in the project's tab — but at
               the foot of it, behind a rule, after everything anybody actually comes here to change.
@@ -588,7 +592,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           {mayDeleteProject && (
             <div style={{ marginTop: "26px", paddingTop: "20px", borderTop: BORDER }}>
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.dangerTitle}</p>
-              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "4px" }}>{t.deleteProjectHint}</p>
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "4px" }}>{t.deleteProjectHint}</p>
               {/* Under its own words, flush with them. space-between held the button at the far
                   edge of the column, so the sentence explaining it and the thing it explains were
                   half a column apart and the hover tint landed nowhere near the text — read as a
@@ -674,7 +678,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             <div>
               <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailDomain}</label>
               <TextField value={mailDomain} onChange={setMailDomain} placeholder="company.local" />
-              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.teamMailDomainHint}</p>
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "6px" }}>{t.teamMailDomainHint}</p>
             </div>
             <div>
               <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailHost}</label>
@@ -688,7 +692,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
               <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailFrom}</label>
               <TextField value={mailFrom} onChange={setMailFrom} placeholder="vca-noreply@company.local" />
               {mailFromMismatch && (
-                <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.teamMailFromMismatch(mailDomain.trim())}</p>
+                <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.45, marginTop: "6px" }}>{t.teamMailFromMismatch(mailDomain.trim())}</p>
               )}
             </div>
           </div>
@@ -696,7 +700,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             <input type="checkbox" checked={mailTls} onChange={e => setMailTls(e.target.checked)} disabled={!mayEdit} />
             {t.teamMailTls}
           </label>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "12px" }}>{t.teamMailUnverified}</p>
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px" }}>{t.teamMailUnverified}</p>
           <div style={{ marginTop: "14px" }}>
             <button className="portal-btn-primary" onClick={saveTeamMail} disabled={!canSaveTeamMail}
               style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSaveTeamMail ? "var(--primary-400)" : "var(--gray-200)", color: canSaveTeamMail ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSaveTeamMail ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
@@ -708,15 +712,39 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
 
       {active === "categories" && myTeamId && (
         <CardSection heading={t.categoryTitle} icon={<Tag size={15} strokeWidth={2.2} />}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>
-              {t.categoryCount(teamCategories.filter(c => !c.archived).length)}
-            </span>
-            <button className="portal-btn-quiet" onClick={() => setManagingCategories(true)}
-              style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              {t.categoryManage}
-            </button>
-          </div>
+          {/* Nothing to manage yet, so the word is "add".
+              "Manage categories" beside "0 categories in use" offered to administer an empty list,
+              which reads as a dead end — and the count said the same nothing twice. The dashed box
+              is the shape the rest of Portal uses for "this is empty on purpose, not broken", and
+              the button inside it names the only move there is.
+
+              Both buttons are bordered now. The quiet borderless one sat beside a count and read
+              as part of the sentence rather than as something to press — the same thing that was
+              wrong with the licence install button. */}
+          {teamCategories.filter(c => !c.archived).length === 0 ? (
+            <div style={{
+              display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "12px",
+              padding: "22px", borderRadius: "12px", border: "1px dashed var(--gray-300)",
+            }}>
+              <p style={{ fontSize: "13px", color: "var(--gray-500)" }}>{t.categoryNone}</p>
+              <button className="portal-btn-outline" onClick={() => setManagingCategories(true)}
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                <Plus size={14} strokeWidth={2.4} />
+                {t.categoryAdd}
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>
+                {t.categoryCount(teamCategories.filter(c => !c.archived).length)}
+              </span>
+              <button className="portal-btn-outline" onClick={() => setManagingCategories(true)}
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                <Tag size={13} strokeWidth={2.4} />
+                {t.categoryManage}
+              </button>
+            </div>
+          )}
         </CardSection>
       )}
 
@@ -767,7 +795,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         {/* Said out loud, because the two halves now disagree on purpose. Without it, somebody who
             switches here and walks into the app reads the same words in English and concludes the
             setting is broken. */}
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "12px" }}>{t.languageNote}</p>
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px" }}>{t.languageNote}</p>
       </CardSection>
       )}
 
@@ -886,11 +914,11 @@ function ChangePasswordModal({ t, lang, onClose }: {
               {field(t.newPassword, next, setNext, "new-password",
                 /* The rule under the field, not in a tooltip: it should be readable before it is
                    broken rather than after. Amber only once what is typed breaks it. */
-                <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.5, color: next.length > 0 && !formatValid ? "var(--warning-500)" : "var(--gray-400)" }}>
+                <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.45, color: next.length > 0 && !formatValid ? "var(--warning-500)" : "var(--gray-400)" }}>
                   {PASSWORD_RULE_TEXT[lang]}
                 </p>)}
               {field(t.confirmPassword, confirm, setConfirm, "new-password",
-                mismatch ? <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.5, color: "var(--warning-500)" }}>{t.mismatch}</p> : undefined)}
+                mismatch ? <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.45, color: "var(--warning-500)" }}>{t.mismatch}</p> : undefined)}
             </div>
             <div style={{ padding: "0 20px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
               <button className="portal-btn-outline" onClick={onClose}
@@ -969,7 +997,7 @@ function SearchPurposeList({ t, teamId, purposes, canEdit }: {
       {!canEdit ? (
         // Said, not hidden. A reader who cannot find the Create button should learn that the list
         // has an owner rather than conclude the console is broken.
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.purposeOwnerOnly}</p>
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.purposeOwnerOnly}</p>
       ) : creating ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
           <div>
@@ -1001,7 +1029,7 @@ function SearchPurposeList({ t, teamId, purposes, canEdit }: {
         </button>
       )}
       {purposes.some(sp => sp.archived) && (
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.purposeRetireNote}</p>
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.purposeRetireNote}</p>
       )}
     </div>
   );

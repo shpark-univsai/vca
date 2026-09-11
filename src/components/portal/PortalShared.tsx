@@ -592,7 +592,7 @@ export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
                   <span style={{ flexShrink: 0, display: "flex", color: "var(--gray-400)", marginTop: "1px" }}>
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.87"/><path d="M8 4.6v4.2M8 10.9v.9" stroke="currentColor" strokeWidth="1.87" strokeLinecap="round"/></svg>
                   </span>
-                  <p style={{ margin: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.6 }}>{reason}</p>
+                  <p style={{ margin: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{reason}</p>
                 </div>
               ))}
             </div>
@@ -851,7 +851,7 @@ export function CardSection({ heading, icon, subheading, desc, hint, children }:
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", lineHeight: 1.45, marginTop: "8px" }}>{subheading}</p>
             )}
             {desc && (
-              <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.65, marginTop: subheading ? "10px" : "8px" }}>{desc}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: subheading ? "10px" : "8px" }}>{desc}</p>
             )}
           </div>
         )}
@@ -1288,7 +1288,7 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "20px" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{title}</p>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.6 }}>{body}</p>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.5 }}>{body}</p>
           {children}
         </div>
         {/* No rule above the buttons.
@@ -1531,7 +1531,7 @@ export function SupportContactModal({ onClose }: { onClose: () => void }) {
               reader spends a moment looking for it. */}
           {SUPPORT_CONTACT.phone && row(t.phone, SUPPORT_CONTACT.phone)}
           {SUPPORT_CONTACT.hours && row(t.hours, SUPPORT_CONTACT.hours[lang])}
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "4px" }}>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "4px" }}>
             {t.contractNote}
           </p>
         </div>

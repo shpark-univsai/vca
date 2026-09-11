@@ -694,7 +694,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
             <TextField value={expiresAt} onChange={setExpiresAt} type="date" />
             {/* Said out loud rather than left to an empty field. A blank expiry is the most
                 consequential default on this form and the one nobody notices leaving. */}
-            <p style={{ fontSize: "11px", color: expiresAt ? "var(--gray-400)" : "var(--warning-500)", lineHeight: 1.6, marginTop: "6px" }}>
+            <p style={{ fontSize: "11px", color: expiresAt ? "var(--gray-400)" : "var(--warning-500)", lineHeight: 1.45, marginTop: "6px" }}>
               {expiresAt ? t.expiresNote : t.noExpiryWarning}
             </p>
           </div>
@@ -803,10 +803,10 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
                 perfectly ordinary-looking photograph and no hint of what was wrong with it. The
                 model's complaint belongs against the picture it could not read. */}
             {photoState === "unreadable" && (
-              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.6, marginTop: "6px" }}>{t.photoUnreadableHint}</p>
+              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoUnreadableHint}</p>
             )}
             {photoState === "reenrolling" && (
-              <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "6px" }}>{t.photoReenrollingHint}</p>
+              <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoReenrollingHint}</p>
             )}
           </div>
         </div>
@@ -1731,7 +1731,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             {q ? t.noSearchResults : vipTab === "individuals" ? t.noIndividuals : t.noVips}
           </p>
           {!q && vipTab !== "individuals" && (
-            <p style={{ fontSize: "12px", color: "var(--gray-300)", lineHeight: 1.55, marginTop: "6px", maxWidth: MEASURE_TIGHT, marginInline: "auto" }}>{t.noVipsHint}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-300)", lineHeight: 1.5, marginTop: "6px", maxWidth: MEASURE_TIGHT, marginInline: "auto" }}>{t.noVipsHint}</p>
           )}
         </div>
       ) : view === "table" ? (

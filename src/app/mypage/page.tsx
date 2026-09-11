@@ -738,7 +738,7 @@ export default function MyPage() {
                   {/* The two halves keep separate choices, so each says which one it is setting —
                       a bare "Interface language" in two places reads as one setting that does not
                       stick. Mirrors Portal's own note. */}
-                  <p style={{ margin: 0, fontSize: "11px", fontWeight: 600, color: "var(--gray-400)", lineHeight: 1.6 }}>
+                  <p style={{ margin: 0, fontSize: "11px", fontWeight: 600, color: "var(--gray-400)", lineHeight: 1.45 }}>
                     {t.interfaceLanguageNote}
                   </p>
                 </div>

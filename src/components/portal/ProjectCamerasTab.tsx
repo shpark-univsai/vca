@@ -597,7 +597,7 @@ function CameraFormModal({
             </div>
             {/* Says where the password goes, because an empty box on the edit form otherwise reads
                 as "we lost it" rather than "we never had it". */}
-            <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.6 }}>
+            <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.45 }}>
               {isEdit ? `${t.fieldPasswordEditHint} ${t.passwordNotStoredHint}` : t.passwordNotStoredHint}
             </p>
           </div>
@@ -1244,7 +1244,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           <span style={{ display: "flex", flexShrink: 0, marginTop: "1px", color: "var(--warning-500)" }}>
             <CircleAlert size={15} strokeWidth={2.2} />
           </span>
-          <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--warning-500)", lineHeight: 1.6 }}>
+          <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--warning-500)", lineHeight: 1.5 }}>
             {channelLimitUnrecorded ? t.noLicenceBanner : zeroChannelLicence ? t.zeroChannelBanner : t.atLimitBanner(channelLimit)}
           </p>
         </div>
@@ -1807,7 +1807,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                 </span>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                   <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{t.uploadDrop}</span>
-                  <span style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6 }}>{uploadPurpose === "deepfake" ? t.deepfakeUploadHint : t.uploadHint}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{uploadPurpose === "deepfake" ? t.deepfakeUploadHint : t.uploadHint}</span>
                 </div>
                 <button className="portal-btn-primary" onClick={() => uploadInputRef.current?.click()}
                   style={{ padding: "10px 16px", borderRadius: "8px", border: "none", cursor: "pointer", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700 }}>
@@ -1886,7 +1886,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
           <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)", padding: "20px" }}>
             <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.bulkDeleteConfirm(visibleSelectedIds.length)}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7, marginTop: "8px" }}>{t.bulkDeleteBody}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5, marginTop: "8px" }}>{t.bulkDeleteBody}</p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "20px" }}>
               <button className="portal-btn-outline" onClick={() => setConfirmingBulkDelete(false)}
                 style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>

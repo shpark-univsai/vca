@@ -393,7 +393,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
         <p style={{
           display: "block", padding: "10px 14px", borderRadius: "10px", marginBottom: "12px",
           maxWidth: "820px", marginInline: "auto",
-          backgroundColor: overLimit ? "var(--danger-100)" : "var(--warning-100)", lineHeight: 1.6,
+          backgroundColor: overLimit ? "var(--danger-100)" : "var(--warning-100)", lineHeight: 1.5,
           fontSize: "12px", fontWeight: 700,
           color: overLimit ? "var(--danger-500)" : "var(--warning-500)",
         }}>
@@ -420,7 +420,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
         <p style={{
           display: "block", padding: "10px 14px", borderRadius: "10px", marginBottom: "12px",
           maxWidth: "820px", marginInline: "auto",
-          backgroundColor: expiringUrgently ? "var(--danger-100)" : "var(--warning-100)", lineHeight: 1.6,
+          backgroundColor: expiringUrgently ? "var(--danger-100)" : "var(--warning-100)", lineHeight: 1.5,
           fontSize: "12px", fontWeight: 700,
           color: expiringUrgently ? "var(--danger-500)" : "var(--warning-500)",
         }}>
@@ -571,7 +571,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           {/* What the agreement does NOT cover, named rather than listed with padlocks. A reader
               asking "does this cover plates" needs the answer, and the answer is one line. */}
           {pendingRows.length > 0 && (
-            <p style={{ fontSize: "12px", lineHeight: 1.7, color: "var(--gray-400)", marginTop: "10px" }}>
+            <p style={{ fontSize: "12px", lineHeight: 1.5, color: "var(--gray-400)", marginTop: "10px" }}>
               <span style={{ fontWeight: 700, color: "var(--gray-500)" }}>{t.scopeExcluded}</span>
               {"  "}{pendingRows.map(r => r.label).join(" · ")}
             </p>
@@ -740,13 +740,13 @@ function LicenseFileSection({ projectId, t }: {
             moving it. */}
         <div style={{ flex: "1 1 320px", minWidth: 0 }}>
           <h3 style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", margin: 0 }}>{t.fileHeading}</h3>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, margin: "6px 0 0", textWrap: "pretty" }}>{t.fileLead}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, margin: "6px 0 0", textWrap: "pretty" }}>{t.fileLead}</p>
           {/* Only the empty case. "Installing a file replaces these figures" is what the install
               button says by existing; the sentence that was here restated it. What a reader cannot
               see is that this site has NO file at all — an empty box does not say whether it is
               broken or simply not filled in yet. */}
           {project.licenseChannelLimit === undefined && (
-            <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.7, margin: "10px 0 0", textWrap: "pretty" }}>
+            <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5, margin: "10px 0 0", textWrap: "pretty" }}>
               {t.fileNoneOnRecord}
             </p>
           )}
@@ -768,7 +768,7 @@ function LicenseFileSection({ projectId, t }: {
           menus make, for the same reason: a tooltip on a disabled control is unreliable across
           browsers and this sentence has to be read. */}
       {!mayEdit && !open && (
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, margin: "12px 0 0" }}>{readOnlyReason}</p>
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, margin: "12px 0 0" }}>{readOnlyReason}</p>
       )}
 
       {open && (
@@ -818,13 +818,13 @@ function LicenseFileSection({ projectId, t }: {
                 width: "100%", boxSizing: "border-box", minHeight: "96px", resize: "vertical",
                 border: BORDER, borderRadius: "8px", padding: "10px 12px",
                 fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "11px",
-                lineHeight: 1.6, color: "var(--gray-700)", backgroundColor: "white",
+                lineHeight: 1.45, color: "var(--gray-700)", backgroundColor: "white",
               }}
             />
           </div>
 
           {error && (
-            <p style={{ fontSize: "12px", color: "var(--danger-500)", lineHeight: 1.7, margin: "12px 0 0", maxWidth: MEASURE }}>{error}</p>
+            <p style={{ fontSize: "12px", color: "var(--danger-500)", lineHeight: 1.5, margin: "12px 0 0", maxWidth: MEASURE }}>{error}</p>
           )}
 
           {parsed && diff && (
@@ -863,13 +863,13 @@ function LicenseFileSection({ projectId, t }: {
               </div>
 
               {expiredOnArrival && (
-                <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.7, margin: "12px 0 0", maxWidth: MEASURE }}>{t.fileWarnExpired}</p>
+                <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5, margin: "12px 0 0", maxWidth: MEASURE }}>{t.fileWarnExpired}</p>
               )}
 
               {Object.keys(parsed.header).length > 0 && (
-                <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, margin: "12px 0 0", maxWidth: MEASURE }}>{t.fileHeaderNote}</p>
+                <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, margin: "12px 0 0", maxWidth: MEASURE }}>{t.fileHeaderNote}</p>
               )}
-              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, margin: "6px 0 0", maxWidth: MEASURE }}>{t.fileServerVerifies}</p>
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, margin: "6px 0 0", maxWidth: MEASURE }}>{t.fileServerVerifies}</p>
             </div>
           )}
 

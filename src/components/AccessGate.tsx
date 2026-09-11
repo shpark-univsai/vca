@@ -297,7 +297,7 @@ export default function AccessGate({ user, denial }: {
               {title}
             </h1>
             {body && (
-              <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.6 }}>
+              <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.5 }}>
                 {body}
               </p>
             )}

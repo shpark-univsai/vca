@@ -367,7 +367,7 @@ function RosterEntryModal({ entry, projectId, onClose, t }: {
               })}
             </div>
           </div>
-          {!editing && <p style={{ margin: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.6 }}>{t.addNote}</p>}
+          {!editing && <p style={{ margin: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{t.addNote}</p>}
         </div>
 
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
@@ -405,12 +405,12 @@ function IssueConfirmModal({
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
             {hasCode ? t.reissueTitle : t.issueTitle}
           </p>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.6 }}>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.5 }}>
             {hasCode ? t.reissueBody(entry.name) : t.issueBody(entry.name)}
           </p>
           {/* Said before the code exists, not after: the administrator is about to print this and
               hand it over, and the deadline is only useful while they still have the paper. */}
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.6 }}>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.5 }}>
             {t.codeExpiryNote(REGISTRATION_CODE_TTL_DAYS)}
           </p>
         </div>
@@ -443,7 +443,7 @@ function RemoveConfirmModal({
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "20px" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.removeTitle(entry.name)}</p>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.6 }}>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.5 }}>
             {entry.code && entry.status === "unused" ? t.removeBodyWithCode : t.removeBodyNoCode}
           </p>
         </div>
@@ -504,7 +504,7 @@ function PrintSheet({ entries, projectName, onClose, t }: { entries: RosterEntry
             <p style={{ fontSize: "20px", fontWeight: 800, fontFamily: "monospace", color: "var(--gray-900)", marginTop: "10px", letterSpacing: "1px" }}>
               {formatCode(entry.code ?? "")}
             </p>
-            <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "10px", lineHeight: 1.6 }}>
+            <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "10px", lineHeight: 1.5 }}>
               {t.handoutInstruction}
             </p>
           </div>

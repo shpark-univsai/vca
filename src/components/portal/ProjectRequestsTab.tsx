@@ -344,7 +344,7 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
         {rows.length === 0 ? (
           <div style={{ padding: "36px 24px", textAlign: "center" }}>
             <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.empty}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, marginTop: "6px", maxWidth: MEASURE_TIGHT, marginInline: "auto" }}>{t.emptyHint}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px", maxWidth: MEASURE_TIGHT, marginInline: "auto" }}>{t.emptyHint}</p>
           </div>
         ) : (
           <>
@@ -411,7 +411,7 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
       )}
 
       {!mayDecide && all.length > 0 && (
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "10px" }}>{t.ownerOnly}</p>
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "10px" }}>{t.ownerOnly}</p>
       )}
 
       {showFootageForm && <FootageIntake t={t} projectId={projectId} onClose={() => setShowFootageForm(false)}
@@ -484,7 +484,7 @@ function ErasureDetail({ t, req, mayDecide, undecided, onSet, onClose }: {
   return (
     <Panel>
       <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)" }}>{t.eDetailTitle}</p>
-      <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.65, marginTop: "6px", maxWidth: MEASURE }}>{t.eDetailNote}</p>
+      <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, marginTop: "6px", maxWidth: MEASURE }}>{t.eDetailNote}</p>
       <div style={{ marginTop: "14px" }}>
         {CATEGORIES.map((cat, i) => {
           const d = req.dispositions[cat];
@@ -517,7 +517,7 @@ function ErasureDetail({ t, req, mayDecide, undecided, onSet, onClose }: {
       {mayDecide && req.status === "received" && (
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "16px", paddingTop: "14px", borderTop: BORDER }}>
           {undecided > 0 && (
-            <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--warning-500)", lineHeight: 1.55, flex: 1, minWidth: "200px" }}>{t.blocked(undecided)}</span>
+            <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--warning-500)", lineHeight: 1.45, flex: 1, minWidth: "200px" }}>{t.blocked(undecided)}</span>
           )}
           <button className="portal-btn-outline" onClick={onClose}
             style={{ marginLeft: "auto", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
@@ -534,7 +534,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
     <div>
       <label style={{ display: "block", fontSize: "12px", color: "var(--gray-500)", marginBottom: "6px" }}>{label}</label>
       {children}
-      {hint && <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.55, marginTop: "6px" }}>{hint}</p>}
+      {hint && <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "6px" }}>{hint}</p>}
     </div>
   );
 }
@@ -612,7 +612,7 @@ function FootageIntake({ t, projectId, onClose, onSaved, add }: {
         <Field label={t.fFrom}><TextField value={fromAt} onChange={setFromAt} placeholder="2026-09-03 14:00" /></Field>
         <Field label={t.fTo}><TextField value={toAt} onChange={setToAt} placeholder="2026-09-03 15:30" /></Field>
       </div>
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.55, marginTop: "-6px" }}>{t.fWindowNote}</p>
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "-6px" }}>{t.fWindowNote}</p>
       <Field label={t.fCameras}><TextField value={cameraNote} onChange={setCameraNote} placeholder={t.fCamerasPh} /></Field>
       <Field label={t.fPurpose}><TextField value={purpose} onChange={setPurpose} placeholder={t.fPurposePh} /></Field>
     </Modal>
@@ -659,11 +659,11 @@ function DecisionModal({ t, request, onClose, onDecide }: {
         <button className="portal-btn-outline-danger" disabled={!can} style={btn("ghost", can)} onClick={() => onDecide(false, note)}>{t.refuse}</button>
         <button className="portal-btn-primary" disabled={!can} style={btn("primary", can)} onClick={() => onDecide(true, note)}>{t.approve}</button>
       </>}>
-      <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6 }}>
+      <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>
         {request.requesterName}{request.requesterOrg ? ` · ${request.requesterOrg}` : ""} — {t.fBasis[request.basis]}
         {request.reference ? ` · ${request.reference}` : ""}
       </p>
-      <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>{request.purpose}</p>
+      <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>{request.purpose}</p>
       <Field label={t.decideNote} hint={t.decideNoteHint}>
         <TextField value={note} onChange={setNote} placeholder={t.decideNotePh} autoFocus />
       </Field>
@@ -697,7 +697,7 @@ function ReleaseModal({ t, onClose, onRelease }: {
         <Field label={t.rTo}><TextField value={releasedTo} onChange={setReleasedTo} placeholder={t.rToPh} /></Field>
         {/* Unchecked by default, and a claim either way. Defaulting it to true would put the
             institution's signature on work nobody confirmed happened. */}
-        <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer", fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.55 }}>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer", fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.5 }}>
           <input type="checkbox" checked={redacted} onChange={e => setRedacted(e.target.checked)} style={{ marginTop: "2px" }} />
           {t.rRedacted}
         </label>

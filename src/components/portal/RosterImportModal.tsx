@@ -257,7 +257,7 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
       }}>
         <div style={{ padding: "20px", borderBottom: parsed || result ? BORDER : "none", flexShrink: 0 }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{result ? t.doneTitle : t.title}</p>
-          {!result && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.6 }}>{t.subtitle}</p>}
+          {!result && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.5 }}>{t.subtitle}</p>}
         </div>
 
         {/* ---------- Step 3: what happened ---------- */}
@@ -269,7 +269,7 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
                 <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "2px" }}>{t.doneSkipped(result.skipped.length)}</p>
               )}
               {result.added > 0 && (
-                <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "10px", lineHeight: 1.6 }}>{t.doneNoCodeNote}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.doneNoCodeNote}</p>
               )}
               {result.skipped.length > 0 && (
                 <div style={{ marginTop: "16px" }}>
@@ -393,12 +393,12 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
               {fileError && (
                 <div style={{ marginTop: "12px", padding: "12px", borderRadius: "12px", backgroundColor: "var(--danger-100)" }}>
                   <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{fileError.title}</p>
-                  <p style={{ fontSize: "12px", color: "var(--danger-500)", marginTop: "4px", lineHeight: 1.6 }}>{fileError.body}</p>
+                  <p style={{ fontSize: "12px", color: "var(--danger-500)", marginTop: "4px", lineHeight: 1.5 }}>{fileError.body}</p>
                 </div>
               )}
 
-              <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "14px", lineHeight: 1.6 }}>{t.columnsNote}</p>
-              <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "4px", lineHeight: 1.6 }}>{t.formatNote}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "14px", lineHeight: 1.5 }}>{t.columnsNote}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "4px", lineHeight: 1.5 }}>{t.formatNote}</p>
               <button onClick={downloadTemplate}
                 style={{ marginTop: "10px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
                 {t.downloadTemplate}

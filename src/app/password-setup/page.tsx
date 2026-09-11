@@ -197,7 +197,7 @@ function PasswordSetupForm() {
               <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px", textAlign: "center" }}>
                 {t.deadTitle}
               </h1>
-              <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.7 }}>
+              <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.5 }}>
                 {t.deadBody(INVITE_TOKEN_TTL_DAYS)}
               </p>
             </div>
@@ -259,7 +259,7 @@ function PasswordSetupForm() {
             <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px" }}>
               {forcedByTempPassword ? t.titleTemp : t.titleInvite}
             </h1>
-            <p style={{ margin: 0, fontSize: "16px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.32px", textAlign: "center", lineHeight: 1.6 }}>
+            <p style={{ margin: 0, fontSize: "16px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.32px", textAlign: "center", lineHeight: 1.5 }}>
               {forcedByTempPassword
                 ? t.bodyTemp
                 : t.bodyInvite}

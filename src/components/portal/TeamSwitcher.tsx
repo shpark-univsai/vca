@@ -426,7 +426,7 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
               </div>
               {/* The blocker names the number, then the hint says where to go. "Cannot delete"
                   on its own is a wall; this is a direction. */}
-              <p style={{ fontSize: "11px", color: canDelete ? "var(--gray-400)" : "var(--warning-500)", lineHeight: 1.6, marginTop: "4px" }}>
+              <p style={{ fontSize: "11px", color: canDelete ? "var(--gray-400)" : "var(--warning-500)", lineHeight: 1.45, marginTop: "4px" }}>
                 {canDelete ? t.deleteHint : t.deleteBlocked(projectCount)}
               </p>
             </div>

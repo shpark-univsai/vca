@@ -133,7 +133,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
         }}>
         <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "400px", width: "100%", padding: "22px", boxShadow: "var(--shadow-modal)" }}>
           <p style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)" }}>{t.refusedTitle}</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.55, marginTop: "8px" }}>{t.refusedBody}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "8px" }}>{t.refusedBody}</p>
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "18px" }}>
             <button className="portal-btn-outline" onClick={() => onCancel?.()}
               style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>

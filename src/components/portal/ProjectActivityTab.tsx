@@ -228,7 +228,7 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
             <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-500)" }}>
               {projectEntries.length === 0 ? t.empty : t.noMatch}
             </p>
-            <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.7, marginTop: "6px" }}>
+            <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>
               {projectEntries.length === 0 ? t.emptyHint : t.noMatchHint}
             </p>
           </div>
@@ -246,7 +246,7 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
             </span>
             {/* The message wraps rather than truncating. It is the column the screen exists for,
                 and an entry cut off at the ellipsis is an entry nobody can act on. */}
-            <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.6 }}>
+            <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>
               {a.message}
             </span>
           </div>
@@ -261,7 +261,7 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
           entry. What the sentence says is worth keeping (the log carries institution-wide policy
           changes too, which is not guessable from the rows), but it is something you check after
           reading, not before — the same job as the note beside it. */}
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "12px", maxWidth: MEASURE }}>
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px", maxWidth: MEASURE }}>
         {t.intro}
       </p>
     </div>

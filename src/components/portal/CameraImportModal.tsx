@@ -280,7 +280,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
       }}>
         <div style={{ padding: "20px", borderBottom: parsed || result ? BORDER : "none", flexShrink: 0 }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{result ? t.doneTitle : t.title}</p>
-          {!result && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.6 }}>{t.subtitle}</p>}
+          {!result && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.5 }}>{t.subtitle}</p>}
         </div>
 
         {result ? (
@@ -291,7 +291,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
                 <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "2px" }}>{t.doneSkipped(result.skipped.length)}</p>
               )}
               {result.added > 0 && warnRows.length > 0 && (
-                <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "10px", lineHeight: 1.6 }}>{t.doneNoCoordsNote}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.doneNoCoordsNote}</p>
               )}
               {result.skipped.length > 0 && (
                 <div style={{ marginTop: "16px" }}>
@@ -343,7 +343,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
               {/* The licence, before the button rather than after. A file of 300 rows against 40
                   free channels is the single most likely surprise in this flow. */}
               <span style={{
-                width: "100%", fontSize: "12px", lineHeight: 1.6,
+                width: "100%", fontSize: "12px", lineHeight: 1.5,
                 color: allowance === 0 || okRows.length > allowance ? "var(--warning-500)" : "var(--gray-500)",
               }}>
                 {limit === undefined ? t.allowanceNone
@@ -418,17 +418,17 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
               {fileError && (
                 <div style={{ marginTop: "12px", padding: "12px", borderRadius: "12px", backgroundColor: "var(--danger-100)" }}>
                   <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{fileError.title}</p>
-                  <p style={{ fontSize: "12px", color: "var(--danger-500)", marginTop: "4px", lineHeight: 1.6 }}>{fileError.body}</p>
+                  <p style={{ fontSize: "12px", color: "var(--danger-500)", marginTop: "4px", lineHeight: 1.5 }}>{fileError.body}</p>
                 </div>
               )}
 
               {/* Said before a file is chosen, not after it is parsed: somebody about to export
                   300 rows out of a survey should know the ceiling first. */}
-              <p style={{ fontSize: "12px", marginTop: "14px", lineHeight: 1.6, color: allowance === 0 ? "var(--warning-500)" : "var(--gray-500)" }}>
+              <p style={{ fontSize: "12px", marginTop: "14px", lineHeight: 1.5, color: allowance === 0 ? "var(--warning-500)" : "var(--gray-500)" }}>
                 {limit === undefined ? t.allowanceNone : allowance === 0 ? t.allowanceFull(limit) : t.allowanceLeft(allowance)}
               </p>
-              <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.6 }}>{t.columnsNote}</p>
-              <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "4px", lineHeight: 1.6 }}>{t.formatNote}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.5 }}>{t.columnsNote}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "4px", lineHeight: 1.5 }}>{t.formatNote}</p>
               <button onClick={downloadTemplate}
                 style={{ marginTop: "10px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
                 {t.downloadTemplate}

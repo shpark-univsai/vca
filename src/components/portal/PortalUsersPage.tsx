@@ -836,7 +836,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
         aria-hidden
         style={{ flexShrink: 0, marginTop: "2px", color: "var(--gray-400)" }}
       />
-      <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.6 }}>{text}</span>
+      <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>{text}</span>
     </li>
   );
 
@@ -862,7 +862,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
                 <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{user.email}</p>
               </div>
               {c.intro && (
-                <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7 }}>{c.intro}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>{c.intro}</p>
               )}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -901,7 +901,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
                         {/* What happens if you pick this, on the card itself. Deciding then finding
                             out is how an administrator ends up reading a password down a phone line
                             they meant to avoid. */}
-                        <p style={{ fontSize: "12px", color: opt.unavailable ? "var(--gray-400)" : "var(--gray-700)", marginTop: "5px", lineHeight: 1.6 }}>
+                        <p style={{ fontSize: "12px", color: opt.unavailable ? "var(--gray-400)" : "var(--gray-700)", marginTop: "5px", lineHeight: 1.5 }}>
                           {opt.unavailable ? opt.why : opt.result}
                         </p>
                       </div>
@@ -957,7 +957,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
 
               <div style={{ padding: "12px 14px", borderRadius: "10px", backgroundColor: c.showExpiry ? "var(--warning-100)" : "var(--info-100)" }}>
                 <p style={{ fontSize: "10px", fontWeight: 700, color: c.showExpiry ? "var(--warning-500)" : "var(--info-500)", letterSpacing: "0.4px" }}>{c.handoverTitle}</p>
-                <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.7, marginTop: "4px" }}>{c.handover}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.5, marginTop: "4px" }}>{c.handover}</p>
               </div>
             </div>
             <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
@@ -1176,7 +1176,7 @@ function RecoveryModeNotice({ supportContact }: { supportContact: string | null 
       </span>
       <div>
         <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.recoveryNoticeTitle}</p>
-        <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.7, marginTop: "4px" }}>{t.recoveryNoticeBody}</p>
+        <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5, marginTop: "4px" }}>{t.recoveryNoticeBody}</p>
         <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px", marginTop: "10px" }}>{t.recoveryNoticeContactLabel}</p>
         <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-800)", marginTop: "2px" }}>
           {supportContact ?? t.recoveryNoticeContactFallback}
@@ -1367,7 +1367,7 @@ function UserProjectsModal({ user, teamProjects, onClose, onSave }: {
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "20px 20px 0" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.projectsModalTitle}</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "6px" }}>{t.projectsModalIntro(user.name)}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.projectsModalIntro(user.name)}</p>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
           {teamProjects.map(p => {
@@ -1387,7 +1387,7 @@ function UserProjectsModal({ user, teamProjects, onClose, onSave }: {
           })}
         </div>
         {!canSave && (
-          <p style={{ padding: "0 20px", fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.6 }}>{t.projectsModalNoneWarning}</p>
+          <p style={{ padding: "0 20px", fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.projectsModalNoneWarning}</p>
         )}
         <div style={{ padding: "16px 20px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button className="portal-btn-outline" onClick={onClose}
@@ -1451,7 +1451,7 @@ function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "560px", width: "100%", maxHeight: "86vh", overflowY: "auto", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "20px 20px 0" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.guideTitle}</p>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.6 }}>{t.guideLead}</p>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.5 }}>{t.guideLead}</p>
         </div>
 
         {/* The doors. This is the half people actually get wrong — the roles read fine on their own,
@@ -1490,12 +1490,12 @@ function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko
               </div>
             ))}
           </div>
-          <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "8px", lineHeight: 1.6 }}>{t.guideSameNote}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "8px", lineHeight: 1.5 }}>{t.guideSameNote}</p>
         </div>
 
         <div style={{ padding: "20px 20px 0" }}>
           <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>{t.guideAppHeading}</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6 }}>{t.guideAppSearchNote}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.guideAppSearchNote}</p>
         </div>
 
         <div style={{ padding: "20px", display: "flex", justifyContent: "flex-end" }}>
@@ -1931,7 +1931,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           </span>
           <div>
             <p style={{ fontSize: "13px", fontWeight: 800, color: "var(--gray-900)" }}>{t.soleAdminTitle}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.7, marginTop: "3px" }}>
+            <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.5, marginTop: "3px" }}>
               {t.soleAdminBody}
             </p>
           </div>

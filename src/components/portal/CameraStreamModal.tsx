@@ -153,7 +153,7 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "white" }}>{t.connectingTitle}</p>
                 <p style={{ fontSize: "11px", color: "var(--gray-300)", fontFamily: "monospace", wordBreak: "break-all" }}>{camera.rtspUrl}</p>
                 {/* Says what it is waiting for. A spinner alone would imply the wait ends. */}
-                <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, maxWidth: "320px" }}>{t.connectingHint}</p>
+                <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, maxWidth: "320px" }}>{t.connectingHint}</p>
                 <button
                   onClick={() => setPlaying(false)}
                   style={{ marginTop: "4px", padding: "6px 12px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.3)", background: "none", color: "white", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}

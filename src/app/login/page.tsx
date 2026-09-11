@@ -307,7 +307,7 @@ function LoginForm() {
                     <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-800)", letterSpacing: "-0.26px" }}>
                       {LOGIN_NOTICES[notice].title[lang]}
                     </p>
-                    <p style={{ margin: "3px 0 0", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px", lineHeight: 1.6 }}>
+                    <p style={{ margin: "3px 0 0", fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px", lineHeight: 1.5 }}>
                       {LOGIN_NOTICES[notice].detail[lang]}
                     </p>
                     {/* A dead end otherwise: this person has a code and nowhere on the screen tells
@@ -428,7 +428,7 @@ function LoginForm() {
                   lib/authConfig.ts. Deliberately not called "Sign up": /register does nothing
                   without a code the administrator issued, so it is an activation step, not open
                   registration, and labelling it as sign-up invites people who cannot proceed. */}
-              <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", lineHeight: 1.6 }}>
+              <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", lineHeight: 1.5 }}>
                 {authConfig.registrationCode ? (
                   <>
                     {t.haveCode}{" "}
@@ -450,7 +450,7 @@ function LoginForm() {
                   to read who to call without hunting for it — on a closed network that phone number
                   is the entire account-recovery path. */}
               <div style={{ borderTop: "1px solid var(--gray-200)", paddingTop: "16px", marginTop: "4px" }}>
-                <p style={{ margin: 0, textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.24px", lineHeight: 1.7 }}>
+                <p style={{ margin: 0, textAlign: "center", fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.24px", lineHeight: 1.5 }}>
                   {t.restrictedNetwork}<br />
                   {authConfig.supportContact
                     ? t.contactNamed(authConfig.supportContact)
@@ -491,7 +491,7 @@ function LoginForm() {
                   the whole point of the drawing, and copy in the same colour would take it. */}
               {/* 1.55, not 1.8. At two short lines the wider leading pulled them apart and they
                   stopped reading as one sentence. */}
-              <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.26px", lineHeight: 1.55 }}>
+              <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.26px", lineHeight: 1.5 }}>
                 {t.panelBody}
               </p>
 
