@@ -1890,7 +1890,7 @@ function VipQuickSelectRow({ activeVIP, onSelect, compact = false }: { activeVIP
     // version of this list offers both orders behind a toggle, but this row has no room for one
     // and scanning for a name is the only thing it is used for.
     const compactOrder = VIP_QUICK.map((v, i) => ({ v, i }))
-      .sort((a, b) => a.v.name.localeCompare(b.v.name));
+      .sort((a, b) => NAME_COLLATOR.compare(a.v.name, b.v.name));
     const activeAt = compactOrder.findIndex(o => o.i === activeVIP);
     if (activeAt > 0) compactOrder.unshift(...compactOrder.splice(activeAt, 1));
     return (
@@ -1914,7 +1914,7 @@ function VipQuickSelectRow({ activeVIP, onSelect, compact = false }: { activeVIP
 
   const indexed = VIP_QUICK.map((v, i) => ({ v, i }))
     .filter(({ v }) => v.name.toLowerCase().includes(query.toLowerCase()));
-  if (sortMode === "abc") indexed.sort((a, b) => a.v.name.localeCompare(b.v.name));
+  if (sortMode === "abc") indexed.sort((a, b) => NAME_COLLATOR.compare(a.v.name, b.v.name));
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"8px", width:"100%" }}>
@@ -2734,6 +2734,22 @@ function ClusterCard({ cluster, onNavigateTab, onMatchClick }: { cluster: ReidCl
     </div>
   );
 }
+
+/**
+ * One collator for every name sort on this screen.
+ *
+ * `localeCompare()` with no locale asks the runtime for its default, and the two runtimes that
+ * render this page do not agree: Node takes it from its ICU build, the browser from the OS. So the
+ * server and the client can order the same list differently — a hydration mismatch, and a visible
+ * re-sort on first paint. Pinning the locale makes both sides answer the same question.
+ *
+ * Quiet until now only because these names are all romanised. The roster and bulk camera import
+ * added today are the path by which Korean names arrive, so this is no longer hypothetical.
+ *
+ * Same collator options as the Portal tables' TABLE_COLLATOR (PortalShared.tsx) on purpose — two
+ * lists of the same people should not be in two different orders.
+ */
+const NAME_COLLATOR = new Intl.Collator("ko", { numeric: true, sensitivity: "base" });
 
 export const VIP_QUICK = [
   { name:"Mina", face: MATCH_DATA[0].face, body: MATCH_DATA[0].body, gender:"Female" },
