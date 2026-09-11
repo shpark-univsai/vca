@@ -54,28 +54,38 @@ export const DISTRICTS: District[] = [
  *
  * Every district figure in this product stands on this function: the map's district pills, the
  * sidebar's district filter, the counts a customer takes upstairs to argue for more cameras. So
- * its two approximations are worth stating rather than discovering.
+ * the approximation it still makes is worth stating rather than discovering.
  *
- * 1. NEAREST CENTRE IS NOT INSIDE. A camera a street inside Novena but closer to Kallang's centre
- *    is counted as Kallang's. There are no boundaries here to test against — DISTRICTS holds one
- *    point per district — so "inside" is not a question this data can answer. Whether the server
- *    resolves this with real GIS is the one question from the 2026-09-09 backend list that came
- *    back unanswered; see HANDOFF.md beside contract 4. If a detection ever arrives with a
- *    district id computed server-side, that id wins over this and this stops being load-bearing.
+ * NEAREST CENTRE IS NOT INSIDE. A camera a street inside Novena but closer to Kallang's centre is
+ * counted as Kallang's. There are no boundaries here to test against — DISTRICTS holds one point
+ * per district — so "inside" is not a question this data can answer. The server is expected to
+ * resolve it with real GIS (confirmed as the expectation 2026-09-11; the backend's own answer is
+ * still outstanding, see HANDOFF.md beside contract 4). When a detection arrives carrying a
+ * district id, that id wins and this function stops being load-bearing — it is replaced, not
+ * cross-checked against. Two answers to one question is how the map and the list come to disagree.
  *
- * 2. IT COMPARES DEGREES, NOT DISTANCE. `Δlat² + Δlng²` treats a degree of longitude as the same
- *    length as a degree of latitude. At Singapore's ~1.35°N they differ by 0.03% (cos 1.35° =
- *    0.9997), so this is exact enough to ignore — and that is a fact about the LATITUDE, not
- *    about the code. This product is deployed per city, on-premise: at Seoul's 37.5°N a degree of
- *    longitude is 79% of a degree of latitude, and the same call would pull attribution
- *    east–west. A site outside the tropics needs the cosine factor, or (better) the server's
- *    answer.
+ * Boundary data is per city, not per product: an on-premise Seoul install cannot use Singapore's.
+ *
+ * The second approximation this carried until 2026-09-11 is gone. It compared raw degrees, which
+ * treats a degree of longitude as the same length as a degree of latitude — true enough at
+ * Singapore's ~1.35°N (they differ by 0.03%), and that was a fact about the LATITUDE rather than
+ * about the code. At Seoul's 37.5°N a degree of longitude is 79% of a degree of latitude, so the
+ * same call pulled attribution east–west, and it would have done so silently: the pills would
+ * still have shown confident numbers, in the wrong districts, for the customer deciding where to
+ * install cameras next. The cosine factor below costs one multiplication and removes the trap.
  */
 export function nearestDistrict(lat: number, lng: number): District {
+  // Longitude degrees shrink toward the poles; latitude degrees do not. Scaling Δlng by cos(lat)
+  // makes the two comparable, which is what turns this from a coordinate difference into a
+  // distance. Using the query point's own latitude is exact enough at city scale — the districts
+  // are kilometres apart, not degrees.
+  const lngScale = Math.cos((lat * Math.PI) / 180);
   let best = DISTRICTS[0];
   let bestDist = Infinity;
   for (const d of DISTRICTS) {
-    const dist = (d.lat - lat) ** 2 + (d.lng - lng) ** 2;
+    const dLat = d.lat - lat;
+    const dLng = (d.lng - lng) * lngScale;
+    const dist = dLat ** 2 + dLng ** 2;
     if (dist < bestDist) { bestDist = dist; best = d; }
   }
   return best;
