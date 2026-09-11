@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePopoverDismiss } from "@/hooks/usePopoverDismiss";
 import { todaysDetectionHits, useProjectEvents, useProjectCameras } from "@/lib/vcaStore";
 import { sgtHour, sgtMinute } from "@/lib/time";
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
@@ -121,6 +122,8 @@ export default function DetectionActivityChart({ onHide }: { onHide?: () => void
     ? t.allCameras
     : cameras.find(c => c.id === selectedCameraId)?.name ?? t.allCameras;
   const [cameraPickerOpen, setCameraPickerOpen] = useState(false);
+  const cameraPickerRef = useRef<HTMLDivElement>(null);
+  usePopoverDismiss(cameraPickerRef, cameraPickerOpen, () => setCameraPickerOpen(false));
   // Match on the camera's exact name, not just its site — the 8 hand-authored cameras (bare
   // names like "Novena") are real, individually-attributed devices, but the bulk-generated ones
   // in this dropdown (e.g. "Novena 3") never actually have any hit recorded against them
@@ -211,7 +214,17 @@ export default function DetectionActivityChart({ onHide }: { onHide?: () => void
             {t.title}
           </span>
 
-          <div style={{ position: "relative", flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+          {/* The dismiss ref goes on this container, which holds BOTH the trigger and the panel —
+              on the panel alone, clicking the trigger would count as "outside" and the dropdown
+              would close and immediately reopen.
+
+              This picker needed it more than the others: the header row it sits in is itself the
+              minimize target, and this div stops propagation for the filter's own area only. So
+              with the list open, a click just outside it but still inside the row COLLAPSED THE
+              WHOLE CHART instead of closing the list, and a click elsewhere on the page left the
+              list floating over the dashboard. The only reliable way to close it was to press its
+              own trigger again. */}
+          <div ref={cameraPickerRef} style={{ position: "relative", flexShrink: 0 }} onClick={e => e.stopPropagation()}>
             {/* Camera filter — Figma node 178:14623 ("all camreas") */}
             <button
               onClick={() => setCameraPickerOpen(o => !o)}
