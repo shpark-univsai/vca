@@ -10,6 +10,7 @@ import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cam
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtClockTime, sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePopoverDismiss } from "@/hooks/usePopoverDismiss";
+import { useOnValueChange } from "@/hooks/useOnValueChange";
 import RemoveImageButton from "./RemoveImageButton";
 
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
@@ -1363,11 +1364,7 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   // Every search on this screen is answerable only from this site's cameras — see
   // useSiteCameraCodes.
   const siteCameras = useSiteCameraCodes();
-  const firstFeedRef = useRef(true);
-  useEffect(() => {
-    if (firstFeedRef.current) { firstFeedRef.current = false; return; }
-    setFeed(seedLiveFeed());
-  }, [scopedProjectId]);
+  useOnValueChange(scopedProjectId, () => setFeed(seedLiveFeed()));
 
   // Smart Search used to be its own top-level Data tab, disconnected from the camera view it was
   // actually meant to search from. Every other Data tab keeps its search filters in a collapsible
@@ -1407,19 +1404,17 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   // The search outcome goes when the header switches site, for the same reason the wall is
   // re-seeded above — declared here rather than beside that effect only because these states are
   // declared below it.
-  const firstSearchSiteRef = useRef(true);
-  useEffect(() => {
-    if (firstSearchSiteRef.current) { firstSearchSiteRef.current = false; return; }
-    // The results too, not just the wall. Results are derived from the target and this site's
-    // cameras, so leaving the screen in its searched state re-answered the previous site's
-    // question with this site's cameras: the same person, suddenly "seen" twenty times at a
-    // school he has never been to. The query itself (target, attributes, dates) is the
-    // operator's own and survives, ready to be run again here — same rule as Redmap.
+  // The results too, not just the wall. Results are derived from the target and this site's
+  // cameras, so leaving the screen in its searched state re-answered the previous site's
+  // question with this site's cameras: the same person, suddenly "seen" twenty times at a
+  // school he has never been to. The query itself (target, attributes, dates) is the
+  // operator's own and survives, ready to be run again here — same rule as Redmap.
+  useOnValueChange(scopedProjectId, () => {
     setSearched(false);
     setSearchDetailId(null);
     // A camera code belongs to one site, so this one cannot mean anything here.
     setSearchCamera("");
-  }, [scopedProjectId]);
+  });
 
   const toggleTopColor    = (c: string) => setTopColors(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c]);
   const toggleBottomColor = (c: string) => setBottomColors(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c]);
@@ -3122,19 +3117,13 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   // Re-seed when the header switches site. Every match in a cluster names a camera, so the
   // clusters left over from the previous site are sightings that did not happen here — the same
   // reason Live Monitoring re-seeds its wall.
-  const firstClusterRef = useRef(true);
-  useEffect(() => {
-    if (firstClusterRef.current) { firstClusterRef.current = false; return; }
-    setLiveClusters(buildSeedClusters(siteCameras));
-  }, [siteCameras]);
+  useOnValueChange(siteCameras, () => setLiveClusters(buildSeedClusters(siteCameras)));
   // And the search outcome, for the reason given in Live Monitoring's effect above: a completed
   // search left on screen through a site switch gets re-answered with the new site's cameras.
-  const firstReidSiteRef = useRef(true);
-  useEffect(() => {
-    if (firstReidSiteRef.current) { firstReidSiteRef.current = false; return; }
+  useOnValueChange(siteProjectId, () => {
     setHasSearched(false);
     setDetailId(null);
-  }, [siteProjectId]);
+  });
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const scheduleNext = () => {
@@ -5538,12 +5527,10 @@ export default function DataPage({ onGoRedmap, onGoRedmapFrame, onGoAnalyzeFrame
   // the open feed while the ONLINE badge, the IP line and every card were gone, with nothing on
   // screen to say why.
   const siteProjectId = useActiveProjectId();
-  const firstCamSiteRef = useRef(true);
-  useEffect(() => {
-    if (firstCamSiteRef.current) { firstCamSiteRef.current = false; return; }
+  useOnValueChange(siteProjectId, () => {
     setLiveCamRaw(ALL_CAMERAS_ID);
     setReidCamRaw("");
-  }, [siteProjectId]);
+  });
 
 
 

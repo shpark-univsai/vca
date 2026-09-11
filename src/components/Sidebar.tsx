@@ -9,6 +9,7 @@ import {
   useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras,
 } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { useOnValueChange } from "@/hooks/useOnValueChange";
 import { useApiData } from "@/hooks/useApiData";
 import { getDashboardStats, getDevices, getDistricts } from "@/lib/api/dashboard";
 
@@ -1479,11 +1480,7 @@ export default function Sidebar({ onEventSelect, selectedEventId, locationFilter
   // this site's list by a name that is not in it, so the list read as empty with a purple chip on
   // top explaining why in terms of somebody who was never here.
   const sidebarProjectId = useActiveProjectId();
-  const firstSidebarSiteRef = useRef(true);
-  useEffect(() => {
-    if (firstSidebarSiteRef.current) { firstSidebarSiteRef.current = false; return; }
-    setPersonFilter(null);
-  }, [sidebarProjectId]);
+  useOnValueChange(sidebarProjectId, () => setPersonFilter(null));
 
   if (isCollapsed) return (
     <CollapsedSidebar

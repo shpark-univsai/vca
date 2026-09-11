@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import RedmapMap from "./RedmapMap";
 import type { RedmapMode as Mode, SimilarityLimit, HitResult, DateRange } from "@/types/redmap";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { useOnValueChange } from "@/hooks/useOnValueChange";
 import { useToast } from "./Toast";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
 import { camerasInProject, canSearchInApp, judgementFor, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
@@ -1221,11 +1222,11 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
   // The header switched site. A trail across the previous site's cameras is not a trail through
   // this one, so the outcome goes — while the query itself (mode, similarity, dates, the attached
   // photo) is the operator's own work and survives, ready to run again here.
-  const firstSiteRef = useRef(true);
-  useEffect(() => {
-    if (firstSiteRef.current) { firstSiteRef.current = false; return; }
-    clearSearchOutcome();
-  }, [siteProjectId, clearSearchOutcome]);
+  // Only siteProjectId decides. `clearSearchOutcome` used to sit in the dependency list too, and
+  // it is rebuilt whenever `defaultResults` changes — so a new `siteCameras` identity alone threw
+  // away a finished search the site switch had nothing to do with. The hook keeps the callback in
+  // a ref, which closes that path as well as the StrictMode one.
+  useOnValueChange(siteProjectId, () => clearSearchOutcome());
 
   const handleReset = () => {
     setMode("person");

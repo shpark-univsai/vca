@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { useOnValueChange } from "@/hooks/useOnValueChange";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import MapWrapper from "./MapWrapper";
@@ -216,14 +217,12 @@ export default function ClientLayout() {
   // because the only way to unpin is to click the same row again and that row is not in this
   // site's device list.
   const layoutProjectId = useActiveProjectId();
-  const firstLayoutSiteRef = useRef(true);
-  useEffect(() => {
-    if (firstLayoutSiteRef.current) { firstLayoutSiteRef.current = false; return; }
+  useOnValueChange(layoutProjectId, () => {
     setSelectedEvent(null);
     setLocationFilter(null);
     setDistrictFilter(null);
     setPinnedDevice(null);
-  }, [layoutProjectId]);
+  });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   // Default "left" on the server-rendered pass so hydration never mismatches; a client-only
   // effect then applies whatever the user last chose on this browser.

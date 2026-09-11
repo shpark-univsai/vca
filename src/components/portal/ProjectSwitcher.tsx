@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVcaStore, type Project } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { useOnValueChange } from "@/hooks/useOnValueChange";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH, TABLE_HEADER_COLOR, SelectedCheckIcon, useTypeLabel } from "./PortalShared";
 import { Building2, Check, ChevronRight, Mail, MapPin } from "lucide-react";
@@ -185,11 +186,9 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
   const [teamMenuOpen, setTeamMenuOpen] = useState(false);
   const teamMenuRef = useRef<HTMLDivElement>(null);
   // Not on mount — only when the shell raises the signal. See reopenSignal.
-  const firstSignal = useRef(true);
-  useEffect(() => {
-    if (firstSignal.current) { firstSignal.current = false; return; }
-    setOpen(true);
-  }, [reopenSignal]);
+  // The old "is this the first run" ref fired on mount in development, because a ref survives
+  // StrictMode's simulated remount: the switcher opened by itself on every page load.
+  useOnValueChange(reopenSignal, () => setOpen(true));
   // Same outside-click close every other menu in Portal uses.
   useEffect(() => {
     if (!teamMenuOpen) return;
