@@ -645,8 +645,40 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
       if (cancelled || !mapInstanceRef.current) return;
       const group = L.layerGroup();
 
-      if (districtFilter) {
-        // ── A district was picked: only what was found there ──
+      if (districtFilter && zoom <= CLUSTER_ZOOM_BREAKPOINT) {
+        // ── A district is picked, but the map is pulled back out ──
+        //
+        // The filtered branch used to ignore zoom entirely and draw camera dots at every
+        // distance. Pull back to the whole island and you got three 12px dots on it and no label
+        // anywhere — nothing saying which district you were in or what it held. The unfiltered
+        // map already answers this: boxes when far, dots when close, at the same breakpoint. The
+        // filter had simply opted out of that rule.
+        //
+        // So at this distance the picked district gets its box back, and only its own. Clicking
+        // it clears the filter, the way the collapsed pills work — the sidebar chip does that too,
+        // but a map you are looking at should not require looking away to undo.
+        const home = districts?.find(d => d.id === districtFilter);
+        if (home) {
+          const camerasHere = cameras.filter(c => nearestDistrict(c.lat, c.lng).id === home.id);
+          const count = todaysHits.filter(h =>
+            h.lat !== undefined && h.lng !== undefined && nearestDistrict(h.lat, h.lng).id === home.id
+          ).length;
+          const icon = L.divIcon({
+            html: districtPillHtml(
+              home.label, count, camerasHere.length,
+              camerasHere.some(c => cameraStatus.byId(c.id) === "running"),
+              alertThreshold, moderateThreshold, t,
+            ),
+            iconSize: [1, 1],
+            iconAnchor: [0, 0],
+            className: "vca-zone-icon",
+          });
+          L.marker([home.lat, home.lng], { icon })
+            .addTo(group)
+            .on("click", () => onDistrictSelectRef.current?.(home.id));
+        }
+      } else if (districtFilter) {
+        // ── A district was picked, close enough to see its cameras ──
         // Not the camera layer with a filter on it. That layer marks camera POSITIONS and pings
         // the ones whose coordinates match a recent hit exactly — which the hand-authored seed
         // hits never do, so filtering it would fly you into an empty district. These are the hits
