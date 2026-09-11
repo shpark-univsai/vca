@@ -24,6 +24,10 @@ const T = {
     // The district pill's denominator and its no-coverage wording. Kept short: this is a label on
     // a map, and the full sentence lives in the tooltip below it.
     camerasShort: (n: number) => `${n} cam${n === 1 ? "" : "s"}`,
+    // The unit for the pill's own figure, which is DETECTIONS and not people — the same
+    // distinction spotSummary already draws one zoom level in ("2 people · 5 detections"). A
+    // suffix rather than a whole phrase so the number stays the big thing on the pill.
+    hitsUnit: (n: number) => ` hit${n === 1 ? "" : "s"}`,
     noCamera: "no camera",
     camerasDown: "all down",
     spotSummary: (people: number, hits: number) =>
@@ -43,6 +47,7 @@ const T = {
   },
   ko: {
     camerasShort: (n: number) => `${n}대`,
+    hitsUnit: () => "건",
     noCamera: "카메라 없음",
     camerasDown: "전부 중단",
     spotSummary: (people: number, hits: number) => `이 지점 오늘 ${people}명 · ${hits}건`,
@@ -142,6 +147,11 @@ const OVERVIEW_ZOOM = 12;
  * The count carries weight beyond this screen: customers submit it upward as the evidence for
  * where to install more cameras. So it never travels alone.
  *
+ * What the figure counts is DETECTIONS today, not distinct people — so it carries that unit, and
+ * the word VIP in front of it. Without both, "1 / 5 cams" was a bare number next to a camera
+ * count: nothing on the pill said a person had been detected at all, which is the one thing it
+ * exists to say.
+ *
  * `cameraCount` is beside it because 29 hits from 3 cameras and 29 from 40 are opposite findings,
  * and the raw number reads identically. And a district with no camera at all is called that
  * outright rather than showing 0 — 0 reads as "nothing happens here" when it means "nothing can
@@ -191,8 +201,16 @@ function districtPillHtml(
     ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;opacity:0.85">${camSvg}${t.noCamera}</span>`
     : isDashed
       ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;opacity:0.85">${camSvg}${t.camerasDown}</span>`
-      : `<span style="font-size:14px;font-weight:800;letter-spacing:-0.3px">${count}</span>` +
-        `<span style="font-size:11px;font-weight:500;opacity:0.62">&nbsp;/&nbsp;${t.camerasShort(cameraCount)}</span>`;
+      // Named, and no longer a fraction. It used to read "1 / 5 cams", which says neither what
+      // the 1 is nor what it is 1 of — and a slash between two figures reads as "1 OF 5 cameras",
+      // a different and wrong claim. So: the word VIP in front, the unit behind the number, and a
+      // middot instead of the slash, because the camera count sits beside this figure rather than
+      // under it. The figure stays the biggest thing on the pill — you find a district by
+      // position and then read its number.
+      : `<span style="font-size:10px;font-weight:700;opacity:0.82;letter-spacing:0.2px">VIP</span>` +
+        `<span style="font-size:14px;font-weight:800;letter-spacing:-0.3px;margin-left:3px">${count}</span>` +
+        `<span style="font-size:11px;font-weight:500;opacity:0.62">${t.hitsUnit(count)}</span>` +
+        `<span style="font-size:11px;font-weight:500;opacity:0.62">&nbsp;·&nbsp;${t.camerasShort(cameraCount)}</span>`;
 
   const shadow = isDark || isAlert ? "0 2px 10px rgba(14, 22, 42,0.2)" : "0 2px 6px rgba(14, 22, 42,0.08)";
   return `<div style="transform:translateX(-50%) translateY(-50%);display:inline-flex;flex-direction:column;
