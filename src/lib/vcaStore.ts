@@ -2858,7 +2858,6 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     set(state => {
       const project = state.projects.find(p => p.id === projectId);
       if (!project) return state;
-      const personIds = new Set(state.persons.filter(p => p.projectId === projectId).map(p => p.id));
       return {
         projects: state.projects.filter(p => p.id !== projectId),
         cameras: state.cameras.filter(c => c.projectId !== projectId),
@@ -2868,9 +2867,25 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         personGroups: state.personGroups.filter(g => g.projectId !== projectId),
         staffRoster: state.staffRoster.filter(r => r.projectId !== projectId),
         accessRequests: state.accessRequests.filter(r => r.projectId !== projectId),
-        // Detections of the people who were on this site's watchlist. personId is optional —
-        // an unidentified detection belongs to no person and is left alone.
-        events: state.events.filter(e => e.personId === undefined || !personIds.has(e.personId)),
+        // The detections made BY this site's cameras — the same rule eventsInProject uses to
+        // decide what a screen shows, so what gets deleted and what could still be seen cannot
+        // drift apart. `state.cameras` is read before the line above replaces it.
+        //
+        // This used to match watchlist people instead, and never deleted anything: it compared
+        // `Person.id` against `VcaEvent.personId`, and personId is not a person. Both writers
+        // (SEED_EVENTS, ClientLayout's addEvent) put the SIGHTING's own id there, so the two id
+        // spaces never overlapped, `has()` was always false, and the condition was always true.
+        // A closed site kept every detection it had ever made, invisibly — no screen can render
+        // them once the cameras are gone, so nothing ever looked wrong.
+        //
+        // Scoping by camera also widens what goes, on purpose. A detection is something a camera
+        // recorded about a member of the public; when the site closes, the reason for holding it
+        // is gone, and that is true of the unidentified ones too — arguably most true of them,
+        // since nobody ever established who they were. That is the opposite call from
+        // searchAccessLog below, and the asymmetry is the point: the search log records what an
+        // OPERATOR did and is kept as accountability; these rows record where a PERSON was, and
+        // keeping them past the purpose is the thing this product has to be careful about.
+        events: state.events.filter(e => projectIdForCameraId(e.cameraId, state.cameras) !== projectId),
         // searchAccessLog is NOT in the list above, and that is the point.
         //
         // It was, until 2026-09-10 — a project deletion took every "who looked up whom, when, and
