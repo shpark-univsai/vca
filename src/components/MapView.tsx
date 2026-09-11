@@ -941,17 +941,62 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         // coordinates line up here without a second pool to match against.
         const RECENT_VIP_WINDOW_MS = 60 * 60 * 1000;
         const nowMs = Date.now();
+        const coordKey = (lat: number, lng: number) => `${lat.toFixed(4)},${lng.toFixed(4)}`;
+        // A TRACKING ROW IS A VIP WHO MOVED, and `ev.type !== "VIP"` dropped every one of them —
+        // the third place in this file to have had that filter. A camera that only ever saw people
+        // who went on to another camera never pinged at all. Each hop is its own sighting, at its
+        // own coordinate, which is the rule todaysDetectionHits already applies.
         const recentVipKeys = new Set<string>();
         recentEvents.forEach(ev => {
-          if (ev.type !== "VIP") return;
-          if (nowMs - new Date(ev.timestamp).getTime() > RECENT_VIP_WINDOW_MS) return;
-          recentVipKeys.add(`${ev.lat.toFixed(4)},${ev.lng.toFixed(4)}`);
+          const stamps = ev.type === "Tracking" && ev.path?.length
+            ? ev.path.map(hop => ({ t: hop.timestamp, lat: hop.lat ?? ev.lat, lng: hop.lng ?? ev.lng }))
+            : [{ t: ev.timestamp, lat: ev.lat, lng: ev.lng }];
+          stamps.forEach(({ t: at, lat, lng }) => {
+            if (nowMs - new Date(at).getTime() > RECENT_VIP_WINDOW_MS) return;
+            recentVipKeys.add(coordKey(lat, lng));
+          });
+        });
+
+        /**
+         * Today's headcount per camera — the same figure the picked-district view puts beside its
+         * dots, so one number means one thing on every layer of this map.
+         *
+         * The number is TODAY while the ping is the LAST HOUR, and those do not collide because
+         * they are different channels: the ping is a moving thing and says "just now", the figure
+         * is a written thing and says "today". A second number would collide; an animation does
+         * not. So a camera that was busy this morning and quiet since keeps its figure on a quiet
+         * dot, which is the state the old view could not express at all — it drew that camera
+         * exactly like one that has seen nobody all day.
+         *
+         * Attached by the camera's own label, or by an exact coordinate, and by nothing else. A
+         * seeded hit that carries neither attaches to no camera and is left out of every figure
+         * rather than credited to the nearest one — the live ticker writes both (camera.code and
+         * camera.lat/lng), so real detections attach; the hand-authored seeds are the gap, and a
+         * gap is the honest shape for "we cannot say which camera this was".
+         */
+        const peopleByCamera = new Map<string, Set<string>>();
+        todaysHits.forEach(h => {
+          const keys = [h.camera, h.lat !== undefined && h.lng !== undefined ? coordKey(h.lat, h.lng) : undefined];
+          keys.forEach(k => {
+            if (!k) return;
+            const at = peopleByCamera.get(k) ?? new Set<string>();
+            at.add(h.person ?? h.id);
+            peopleByCamera.set(k, at);
+          });
         });
 
         cameras.forEach(cam => {
-          const key = `${cam.lat.toFixed(4)},${cam.lng.toFixed(4)}`;
+          const key = coordKey(cam.lat, cam.lng);
+          const people = (peopleByCamera.get(cam.code) ?? peopleByCamera.get(key) ?? new Set()).size;
+          const countPill = people > 0
+            ? `<div style="position:absolute;left:13px;top:-11px;padding:1px 6px;border-radius:999px;
+                  background:var(--gray-900);border:1.5px solid white;font-family:'SUIT',sans-serif;
+                  font-size:10px;font-weight:800;color:white;letter-spacing:-0.2px;white-space:nowrap">
+                 ${t.peopleAt(people)}
+               </div>`
+            : "";
           const icon = L.divIcon({
-            html: recentVipKeys.has(key) ? recentPingHtml(VIP_PING_COLOR) : quietCameraDotHtml(),
+            html: `<div style="position:relative">${recentVipKeys.has(key) ? recentPingHtml(VIP_PING_COLOR) : quietCameraDotHtml()}${countPill}</div>`,
             iconSize: [1, 1],
             iconAnchor: [0, 0],
             className: "vca-zone-icon",
