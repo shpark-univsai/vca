@@ -658,14 +658,33 @@ function hopCameraKey(hop: TrackingHop): string {
   return `${hop.location}::${hop.cameraLabel ?? ""}`;
 }
 
-function TrackingEventRow({ event, isSelected, onClick }: { event: LiveEvent; isSelected: boolean; onClick: () => void }) {
+/**
+ * `districtHopFilter` — the district this list is filtered to, or null.
+ *
+ * A trail is in this list if ANY of its hops is in that district, so the newest hop can easily be
+ * somewhere else: "Michael Tan · Jurong East" appeared under a Novena filter, because his trail
+ * passed through Novena and ended in Jurong East. The map draws a pin at the Novena hop, so the
+ * row and the map were describing different sightings of the same person — the mismatch this
+ * list's district filter was just fixed to avoid, coming back as a line of text.
+ *
+ * So while a district is picked, the collapsed line names the newest hop THAT IS IN IT. The
+ * expanded timeline below is unchanged and still shows the whole trail, which is where "he
+ * carried on to Jurong East" belongs.
+ */
+function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null }: { event: LiveEvent; isSelected: boolean; onClick: () => void; districtHopFilter?: string | null }) {
   const photoUrl = getFacePhoto(event.id);
   // event.path is stored oldest-first, but the most-recently-seen camera is what an operator
   // cares about first — reverse once here so both the collapsed route line and the expanded
   // timeline read newest-first (leftmost / topmost = just now), and everything downstream can
   // just take hops[0] as "the latest hop".
   const hops = [...(event.path ?? [])].reverse();
-  const lastHop = hops[0];
+  // Newest-first already, so the first hop inside the picked district IS the newest one there.
+  // Falls back to the trail's own newest when nothing matches — that can happen for a row that
+  // got here by its event coordinate rather than by a hop (a Tracking row whose path is empty),
+  // and a row with no location line at all would be worse than one naming the wrong district.
+  const lastHop = (districtHopFilter
+    ? hops.find(h => nearestDistrict(h.lat ?? event.lat, h.lng ?? event.lng).id === districtHopFilter)
+    : undefined) ?? hops[0];
   // "N cameras" must count DISTINCT cameras, not raw hits — a person re-visiting their same
   // regular camera many times over the day is still a single camera in that count.
   const distinctCameraCount = new Set(hops.map(hopCameraKey)).size;
@@ -1021,7 +1040,8 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
           return (
             <div key={`${event.type}-${event.id}-${i}`}>
               {event.type === "Tracking" ? (
-                <TrackingEventRow event={event} isSelected={isSelected} onClick={() => onEventSelect?.(isSelected ? null : event)} />
+                <TrackingEventRow event={event} isSelected={isSelected} onClick={() => onEventSelect?.(isSelected ? null : event)}
+                  districtHopFilter={districtFilter} />
               ) : (
                 <VipEventRow event={event} isSelected={isSelected} photoUrl={photoUrl} onClick={() => onEventSelect?.(isSelected ? null : event)} locationFilter={locationFilter} />
               )}
