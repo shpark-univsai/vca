@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatTimeAgo, LiveEvent } from "@/lib/mockData";
 import {
-  SIGNED_IN_USER, projectsVisibleInApp, resolveActiveProject, useVcaStore,
+  SIGNED_IN_USER, resolveActiveProject, useVcaStore,
   vcaEventsToLiveEvents, useActiveProjectId, useProjectEvents,
 } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -102,19 +102,14 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
   const scopedProjectId = useActiveProjectId();
   const { data: dashboardStats, error: dashboardStatsError } = useApiData(() => getDashboardStats(scopedProjectId), [scopedProjectId]);
   // Which site this wall is showing. Only the account's own projects are offered — a team's
-  // cameras have no business on another team's screen — so a one-project account sees a plain
-  // label with nothing to open.
+  // cameras have no business on another team's screen. The header names that site and does not
+  // offer to change it — see the label below.
   const projects = useVcaStore(s => s.projects);
   const portalUsers = useVcaStore(s => s.portalUsers);
   const activeProjectId = useVcaStore(s => s.activeProjectId);
-  const setActiveProjectId = useVcaStore(s => s.setActiveProjectId);
-  const myProjects = projectsVisibleInApp(portalUsers, projects);
   // Same resolution every scoped screen uses, so the name in the header and the data underneath
   // can never point at different sites.
   const activeProject = resolveActiveProject(activeProjectId, portalUsers, projects);
-  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
-  const canSwitchProject = myProjects.length > 1;
-  useEscapeKey(() => setProjectMenuOpen(false), projectMenuOpen);
 
   // The camera run state, and the same figures the Dashboard sidebar's SYSTEM panel shows under
   // "연결된 카메라 / 중단된 카메라". This used to read `aiRunning`/`aiStopped` — a fixed 42 and 34
@@ -259,60 +254,26 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
             names are cut rather than wrapped: the header is one line and the full name is a
             hover away. */}
         {activeProject && (
-          <div style={{ position: "relative", flexShrink: 1, minWidth: 0 }}>
-            {/* One project is the common case, and then this is a label, not a control: no
-                chevron, no button element, no hover cursor. A caret over a menu holding the one
-                thing already on screen promises a choice that does not exist. */}
-            {canSwitchProject ? (
-              <button
-                onClick={() => setProjectMenuOpen(o => !o)}
-                title={activeProject.name}
-                aria-haspopup="menu"
-                aria-expanded={projectMenuOpen}
-                style={{
-                  display: "flex", alignItems: "center", gap: "6px", maxWidth: "260px",
-                  background: "none", border: "none", padding: 0, cursor: "pointer",
-                }}
-              >
-                <span style={PROJECT_NAME_STYLE}>{activeProject.name}</span>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
-                  <path d="M3 4.5L6 7.5L9 4.5" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-            ) : (
-              <span title={activeProject.name} style={{ display: "flex", maxWidth: "260px" }}>
-                <span style={PROJECT_NAME_STYLE}>{activeProject.name}</span>
-              </span>
-            )}
-
-            {projectMenuOpen && (
-              <div style={{
-                position: "absolute", top: "calc(100% + 8px)", left: 0, minWidth: "240px",
-                backgroundColor: "white", border: BORDER, borderRadius: "12px",
-                boxShadow: "var(--shadow-popover)", padding: "6px", zIndex: 6000,
-              }}>
-                {myProjects.map(p => (
-                  <button
-                    key={p.id}
-                    className="navbar-dropdown-item"
-                    onClick={() => { setActiveProjectId(p.id); setProjectMenuOpen(false); }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: "8px", width: "100%", textAlign: "left",
-                      padding: "9px 10px", border: "none", borderRadius: "8px", cursor: "pointer",
-                      fontSize: "13px", fontWeight: p.id === activeProject.id ? 800 : 600,
-                    }}
-                  >
-                    <span style={{ display: "flex", width: "12px", flexShrink: 0 }}>
-                      {p.id === activeProject.id && (
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      )}
-                    </span>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          /* A LABEL, NOT A SWITCHER.
+           *
+           * This was a caret over a menu of the sites this account can see. The code already
+           * dropped the caret when there was only one — "a caret over a menu holding the one thing
+           * already on screen promises a choice that does not exist" — and the same objection
+           * turns out to hold with several: the app is where you watch one site, not where you
+           * pick which. Switching sites from here changes what every figure on the screen beneath
+           * it counts, mid-watch, from a control that sits next to those figures.
+           *
+           * Choosing a site belongs to Portal, which is the half of this product that manages
+           * them (and has its own switcher). Portal sets activeProjectId; the app reads it and
+           * says which one it is. That is also the line the permission model already draws —
+           * console role versus app access.
+           *
+           * The scoped screens still react to activeProjectId changing, and they have to: Portal
+           * can be open in another tab.
+           */
+          <span title={activeProject.name} style={{ display: "flex", maxWidth: "260px", flexShrink: 1, minWidth: 0 }}>
+            <span style={PROJECT_NAME_STYLE}>{activeProject.name}</span>
+          </span>
         )}
 
         {/* Camera run state — folded away under 1400px so the site name keeps its room. The same
