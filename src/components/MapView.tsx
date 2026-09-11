@@ -43,6 +43,14 @@ const T = {
     spotSummary: (people: number, hits: number) =>
       `Here today: ${people} ${people === 1 ? "person" : "people"} · ${hits} detection${hits === 1 ? "" : "s"}`,
     /**
+     * Heading for the other people caught at this camera, listed under the newest one's card.
+     *
+     * The pin stacks their faces, so the map already promises more than one person. The popup
+     * used to answer that with a single summary line — a count, and a card about one of them,
+     * which reads as "here is the person" over a pin that had just said there were four.
+     */
+    alsoHere: (n: number) => `${n} more here today`,
+    /**
      * The picked district's own line: who was seen, and on how many of its cameras.
      *
      * Spelt out in words rather than compressed the way the collapsed pill's figures are. This
@@ -77,6 +85,7 @@ const T = {
     noCamera: "카메라 없음",
     camerasDown: "전부 중단",
     spotSummary: (people: number, hits: number) => `이 지점 오늘 ${people}명 · ${hits}건`,
+    alsoHere: (n: number) => `이 지점의 다른 ${n}명`,
     districtSummary: (people: number, cameras: number) => `카메라 ${cameras}대에서 ${people}명`,
     live: "정상",
     out: "중단",
@@ -782,9 +791,37 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                  ${t.spotSummary(people, spot.length)}
                </div>`
             : "";
+          // The others, by name and face.
+          //
+          // The pin stacks portraits and says "+2", so by the time this popup opens the map has
+          // already promised more than one person. It answered with a count and a card about one
+          // of them — which reads as "here is the person" over a pin that had just said four, and
+          // leaves the only way to find out who the rest were as un-filtering and hunting the
+          // list. Everything a row needs is already on the event.
+          //
+          // The detailed one is dropped: it is the card directly above this, and repeating it
+          // would make the reader check whether it is the same person or a second sighting.
+          const others = newestPerPerson.slice(1);
+          const othersHtml = others.length > 0
+            ? `<div style="padding:8px 12px 10px;border-top:1px solid var(--line);font-family:'SUIT',system-ui,sans-serif">
+                 <div style="font-size:10px;font-weight:700;color:var(--gray-400);letter-spacing:-0.2px;margin-bottom:6px">
+                   ${t.alsoHere(others.length)}
+                 </div>
+                 ${others.map(ev => `
+                   <div style="display:flex;align-items:center;gap:8px;padding:3px 0">
+                     <div style="width:26px;height:26px;border-radius:50%;overflow:hidden;background:var(--gray-100);flex-shrink:0">
+                       <img src="${getFacePhoto(ev.id)}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />
+                     </div>
+                     <span style="font-size:12px;font-weight:700;color:var(--gray-900);letter-spacing:-0.24px;
+                                  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${ev.name}</span>
+                     <span style="font-size:11px;font-weight:600;color:var(--gray-500);flex-shrink:0">${ev.confidence}%</span>
+                     <span style="font-size:10px;color:var(--gray-400);flex-shrink:0;white-space:nowrap">${formatTimeAgo(ev.timestamp, lang)}</span>
+                   </div>`).join("")}
+               </div>`
+            : "";
           L.marker([newest.lat, newest.lng], { icon })
             .addTo(group)
-            .bindPopup(getPopupHTML(newest, lang) + spotSummary, {
+            .bindPopup(getPopupHTML(newest, lang) + spotSummary + othersHtml, {
               offset: [0, -50], className: "vca-custom-popup", closeButton: true, autoPan: false, maxWidth: 280,
             });
         });
