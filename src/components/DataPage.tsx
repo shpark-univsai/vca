@@ -153,7 +153,11 @@ const T = {
     colAction: "Action",
     fullBody: "Full-body",
     selectPrimaryTarget: "Select primary target",
-    selectPrimarySub: "Search and select a new target to rebuild RedFace relationship graph",
+    // Shown only when switching, never on the first open: "rebuild" is a promise about a graph
+    // that already exists, and on first entry there is nothing to rebuild. It stays for the
+    // switch case because that IS worth saying — confirming here replaces the view you are
+    // looking at.
+    selectPrimarySub: "Picking a new target rebuilds the association graph",
     searchByImage: "Search by image",
     clickToUpload: "Click to upload",
     labelApparel: "Apparel",
@@ -311,7 +315,7 @@ const T = {
     colAction: "동작",
     fullBody: "전신",
     selectPrimaryTarget: "기준 대상 선택",
-    selectPrimarySub: "새 대상을 검색해 선택하면 RedFace 관계도를 다시 만듭니다",
+    selectPrimarySub: "새 대상을 고르면 관계도를 다시 만듭니다",
     searchByImage: "이미지로 검색",
     clickToUpload: "눌러서 업로드",
     labelApparel: "옷차림",
@@ -3494,10 +3498,21 @@ function TableIconSm() {
 }
 
 function PrimaryTargetPickerModal({ onConfirm, onCancel }:
-  { onConfirm:(c:RedfaceCandidate)=>void; onCancel:()=>void }) {
+  // onCancel is absent on the very first open, when RedFace has no target yet. That is not a
+  // style choice — the landing state behind this picker renders no "switch target" button (that
+  // control lives in the primary-target header, which only exists once there IS one), so closing
+  // with nothing picked would strand the user on empty tier bands with no way back in. The tab bar
+  // above stays clickable, so leaving is still possible; what is not possible is dismissing this.
+  //
+  // It used to be gated the other way round: all three dismiss paths were wrapped in
+  // `primaryTarget && …` while the × was drawn unconditionally, so on first entry the button was
+  // visible, hoverable, clickable — and did nothing. A control that renders and refuses is worse
+  // than no control: the first press reads as a broken screen, and the second as a stuck one.
+  // Absence of the prop now means absence of the button, so the two cannot disagree again.
+  { onConfirm:(c:RedfaceCandidate)=>void; onCancel?:()=>void }) {
   const [lang] = useLanguage();
   const t = T[lang];
-  useEscapeKey(onCancel);
+  useEscapeKey(onCancel ?? (() => {}), !!onCancel);
   const siteCameras = useSiteCameraCodes();
   const [searchType, setSearchType]         = useState<"PERSON"|"VEHICLE">("PERSON");
   const [selectedTarget, setSelectedTarget] = useState(-1);
@@ -3663,12 +3678,17 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
           </div>
           <div>
             <p style={{ fontSize:"16px", fontWeight:800, color:"var(--gray-800)", margin:0, letterSpacing:"-0.32px" }}>{t.selectPrimaryTarget}</p>
-            <p style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-500)", margin:0 }}>{t.selectPrimarySub}</p>
+            {/* onCancel is present exactly when a target already exists (see the note on the
+                props), which is also exactly when "rebuilds" is a true statement. */}
+            {onCancel && <p style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-500)", margin:0 }}>{t.selectPrimarySub}</p>}
           </div>
         </div>
-        <button onClick={onCancel} style={{ background:"none", border:"none", padding:0, cursor:"pointer", display:"flex", flexShrink:0 }}>
-          <XCircleIconSm />
-        </button>
+        {onCancel && (
+          <button onClick={onCancel} aria-label={t.close} title={t.close}
+            style={{ background:"none", border:"none", padding:0, cursor:"pointer", display:"flex", flexShrink:0 }}>
+            <XCircleIconSm />
+          </button>
+        )}
       </div>
 
       <div style={{ flex:1, display:"flex", overflow:"hidden" }}>
@@ -5390,7 +5410,8 @@ function RedFaceContent({ seedCard, seedLabel, onSeedConsumed, onGoAnalyzeFrame 
             backdropFilter:"blur(9px)", backgroundColor:"var(--scrim)" }}
         >
           <div style={{ minHeight:"100%", boxSizing:"border-box", display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"24px", paddingTop:"6vh" }}>
-            <PrimaryTargetPickerModal onConfirm={handleConfirm} onCancel={() => primaryTarget && setPickerOpen(false)} />
+            <PrimaryTargetPickerModal onConfirm={handleConfirm}
+              onCancel={primaryTarget ? () => setPickerOpen(false) : undefined} />
           </div>
         </div>
       )}
