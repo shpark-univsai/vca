@@ -393,7 +393,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                       onKeyDown={e => { if (e.key === "Enter") handleVerifyCurrent(); }}
                       placeholder="••••••••"
                       autoFocus
-                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.32px" }}
                     />
                     <button onClick={() => setShowCurrent(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                       {showCurrent ? <EyeIcon /> : <EyeOffIcon />}
@@ -429,7 +429,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                       onBlur={() => setFocusedField(null)}
                       placeholder="••••••••"
                       autoFocus
-                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.32px" }}
                     />
                     <button onClick={() => setShowNew(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                       {showNew ? <EyeIcon /> : <EyeOffIcon />}
@@ -447,7 +447,7 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                       onFocus={() => setFocusedField("confirm")}
                       onBlur={() => setFocusedField(null)}
                       placeholder="••••••••"
-                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.32px" }}
                     />
                     <button onClick={() => setShowConfirm(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                       {showConfirm ? <EyeIcon /> : <EyeOffIcon />}
@@ -663,7 +663,7 @@ export default function MyPage() {
               <Card>
                 <CardHeader icon={<ShieldIcon />} title={t.security} />
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "0.006px" }}>{t.passwordSettings}</span>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.24px" }}>{t.passwordSettings}</span>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "var(--gray-50)", borderRadius: "10px", padding: "12px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                       <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.28px" }}>{t.passwordChange}</span>
@@ -729,7 +729,7 @@ export default function MyPage() {
                 <CardHeader icon={<SlidersIcon />} title={t.systemPreferences} />
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "0.006px" }}>{t.interfaceLanguage}</span>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.24px" }}>{t.interfaceLanguage}</span>
                     {/* Each language is named in its own script — that is how every language picker
                         lists one, and it is the one label a person who cannot read the current
                         interface still recognises. */}

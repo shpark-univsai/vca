@@ -338,7 +338,7 @@ function RegisterFlow() {
           autoComplete="new-password"
           placeholder="••••••••"
           autoFocus={key === "password"}
-          style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+          style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.32px" }}
         />
         <button type="button" onClick={toggle}
           aria-label={shown ? t.hidePassword : t.showPassword}

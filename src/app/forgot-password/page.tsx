@@ -437,7 +437,7 @@ function ForgotPasswordFlow() {
                       onKeyDown={e => { if (e.key === "Enter") sendCode(); }}
                       placeholder={authConfig.employeeIdLogin ? "EMP-2041 or user@email.com" : "user@email.com"}
                       autoFocus
-                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
+                      style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-900)", letterSpacing: "-0.32px" }}
                     />
                   </div>
                   {identifierError ? (
@@ -592,7 +592,7 @@ function ForgotPasswordFlow() {
                         autoComplete="new-password"
                         placeholder="••••••••"
                         autoFocus
-                        style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                        style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.32px" }}
                       />
                       <button type="button" onClick={() => setShowNew(s => !s)}
                         aria-label={showNew ? t.hidePassword : t.showPassword}
@@ -613,7 +613,7 @@ function ForgotPasswordFlow() {
                         onKeyDown={e => { if (e.key === "Enter") savePassword(); }}
                         autoComplete="new-password"
                         placeholder="••••••••"
-                        style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                        style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.32px" }}
                       />
                       <button type="button" onClick={() => setShowConfirm(s => !s)}
                         aria-label={showConfirm ? t.hidePassword : t.showPassword}

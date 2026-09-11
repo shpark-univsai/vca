@@ -281,7 +281,7 @@ function PasswordSetupForm() {
                     onKeyDown={e => { if (e.key === "Enter" && canSubmit) handleSubmit(); }}
                     autoComplete="new-password"
                     placeholder="••••••••"
-                    style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                    style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.32px" }}
                   />
                   <button type="button" onClick={() => setShowNew(s => !s)}
                     aria-label={showNew ? t.hidePassword : t.showPassword}
@@ -303,7 +303,7 @@ function PasswordSetupForm() {
                     onKeyDown={e => { if (e.key === "Enter" && canSubmit) handleSubmit(); }}
                     autoComplete="new-password"
                     placeholder="••••••••"
-                    style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.35px" }}
+                    style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-700)", letterSpacing: "-0.32px" }}
                   />
                   <button type="button" onClick={() => setShowConfirm(s => !s)}
                     aria-label={showConfirm ? t.hidePassword : t.showPassword}

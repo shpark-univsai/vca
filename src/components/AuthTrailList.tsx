@@ -87,7 +87,7 @@ export default function AuthTrailList({ className }: { className?: string }) {
                 </span>
               )}
               {row.gap && (
-                <span style={{ fontSize: "10.5px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.21px" }}>
+                <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.2px" }}>
                   <span style={{ color: "var(--gray-500)", fontWeight: 700 }}>{row.gap}</span> {t.elapsed}
                 </span>
               )}

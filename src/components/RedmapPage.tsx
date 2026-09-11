@@ -2230,7 +2230,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                                     <DownloadIconSm />
                                     {t.exportEvidence}
                                   </button>
-                                  <span style={{ flex: 1, minWidth: "180px", fontSize: "10.5px", lineHeight: 1.55, color: "var(--gray-500)" }}>
+                                  <span style={{ flex: 1, minWidth: "180px", fontSize: "10px", lineHeight: 1.6, color: "var(--gray-500)" }}>
                                     {t.exportEvidenceHint}
                                   </span>
                                 </div>

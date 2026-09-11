@@ -236,7 +236,7 @@ function RequestAccessForm() {
                         onChange={e => setName(e.target.value)}
                         onBlur={() => setTouched(t => ({ ...t, name: true }))}
                         placeholder={t.namePlaceholder}
-                        style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
+                        style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-900)", letterSpacing: "-0.32px" }}
                       />
                     </div>
                     <FieldError text={nameError} />
@@ -253,7 +253,7 @@ function RequestAccessForm() {
                         onChange={e => setEmail(e.target.value)}
                         onBlur={() => setTouched(t => ({ ...t, email: true }))}
                         placeholder="user@email.com"
-                        style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-900)", letterSpacing: "-0.35px" }}
+                        style={{ flex: 1, border: "none", outline: "none", boxShadow: "none", fontSize: "16px", color: "var(--gray-900)", letterSpacing: "-0.32px" }}
                       />
                     </div>
                     {emailError
@@ -279,7 +279,7 @@ function RequestAccessForm() {
                       style={{
                         width: "100%", boxSizing: "border-box", padding: "12px", border: FIELD_BORDER, borderRadius: "8px",
                         outline: "none", resize: "none", fontSize: "14px", color: "var(--gray-900)",
-                        letterSpacing: "-0.35px", fontFamily: "inherit", lineHeight: 1.6,
+                        letterSpacing: "-0.32px", fontFamily: "inherit", lineHeight: 1.6,
                       }}
                     />
                   </div>

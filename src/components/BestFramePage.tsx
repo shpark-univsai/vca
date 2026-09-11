@@ -1389,7 +1389,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
       {!collapsed && (
         <div style={{ width:"240px", flexShrink:0, backgroundColor:"white", display:"flex", flexDirection:"column", overflow:"hidden" }}>
           <div style={{ padding:"24px 12px 10px" }}>
-            <p style={{ fontSize:"20px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.4px" }}>{t.liveCamera}</p>
+            <p style={{ fontSize:"18px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.36px" }}>{t.liveCamera}</p>
           </div>
           <div style={{ padding:"0 12px 10px" }}>
             <div style={{ display:"flex", alignItems:"center", backgroundColor:"var(--gray-100)", borderRadius:"8px", height:"36px", padding:"0 14px", gap:"8px" }}>
