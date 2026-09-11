@@ -6,8 +6,7 @@ import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import {
   BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR,
-  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TextField, sortRows, useTableSort,
-} from "./PortalShared";
+  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TextField, sortRows, useTableSort, MEASURE } from "./PortalShared";
 import { FileDown, History, UserCog, CalendarClock } from "lucide-react";
 
 /**
@@ -262,7 +261,7 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
           entry. What the sentence says is worth keeping (the log carries institution-wide policy
           changes too, which is not guessable from the rows), but it is something you check after
           reading, not before — the same job as the note beside it. */}
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "12px", maxWidth: "80ch" }}>
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "12px", maxWidth: MEASURE }}>
         {t.intro}
       </p>
     </div>

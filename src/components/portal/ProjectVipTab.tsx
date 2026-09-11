@@ -7,7 +7,7 @@ import { canSetPolicy, currentPortalUser, registryHealth, useVcaStore, type Pers
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, Tooltip, sortRows, useTableSort, usePortalEditAccess } from "./PortalShared";
+import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, Tooltip, sortRows, useTableSort, usePortalEditAccess, MEASURE_TIGHT } from "./PortalShared";
 import { WatchlistCategoryModal, categoryTint } from "./WatchlistCategories";
 
 type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires";
@@ -1731,7 +1731,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             {q ? t.noSearchResults : vipTab === "individuals" ? t.noIndividuals : t.noVips}
           </p>
           {!q && vipTab !== "individuals" && (
-            <p style={{ fontSize: "12px", color: "var(--gray-300)", lineHeight: 1.55, marginTop: "6px", maxWidth: "46ch", marginInline: "auto" }}>{t.noVipsHint}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-300)", lineHeight: 1.55, marginTop: "6px", maxWidth: MEASURE_TIGHT, marginInline: "auto" }}>{t.noVipsHint}</p>
           )}
         </div>
       ) : view === "table" ? (

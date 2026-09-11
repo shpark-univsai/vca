@@ -243,6 +243,25 @@ export const BREADCRUMB_PROJECT_MAX_WIDTH = "min(320px, 22vw)";
  * Also picked up by the small raised pills that use this constant — the active segment of the
  * table/grid toggle and of the language switcher, which is exactly the lift those wanted.
  */
+/**
+ * How wide a paragraph is allowed to get before the eye loses the line.
+ *
+ * In `em`, not `ch`, and that is the whole point. `ch` is the width of "0" — a Latin measure —
+ * so `maxWidth: MEASURE` asks for 62 Latin characters and gets about 31 Korean ones, because a
+ * Hangul syllable is roughly twice that box. Every capped paragraph in Portal was therefore half
+ * as long in Korean as it was meant to be, wrapping early and leaving the space beside it empty.
+ *
+ * `em` lands near the right answer in both: one em is about one Hangul syllable and about 1.8
+ * Latin characters, so 38em reads as ~38 Korean characters or ~68 Latin ones. It also tracks the
+ * element's own font size, which `ch` does too but a px cap would not — an 11px hint and a 13px
+ * lead get the same number of characters rather than the same number of pixels.
+ *
+ * Two values, not seven. The caps in place ranged 46–80ch, and that spread was drift rather than
+ * seven decisions: they are all either a paragraph somebody reads or a note somebody glances at.
+ */
+export const MEASURE = "38em";
+export const MEASURE_TIGHT = "30em";
+
 export const PANEL_SHADOW = "0 1px 2px rgba(24,17,39,0.03), 0 1px 3px rgba(24,17,39,0.03)";
 
 /**

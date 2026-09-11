@@ -6,8 +6,7 @@ import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import {
   BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR,
-  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, sortRows, useTableSort,
-} from "./PortalShared";
+  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, sortRows, useTableSort, MEASURE } from "./PortalShared";
 import { Eye, FileDown, ShieldAlert } from "lucide-react";
 
 /**
@@ -151,7 +150,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
 
   return (
     <div>
-      <p style={{ fontSize: "13px", color: "var(--gray-500)", lineHeight: 1.7, marginBottom: "12px", maxWidth: "64ch" }}>{t.intro}</p>
+      <p style={{ fontSize: "13px", color: "var(--gray-500)", lineHeight: 1.7, marginBottom: "12px", maxWidth: MEASURE }}>{t.intro}</p>
 
       {/* The gap between collecting a purpose and keeping it, said where somebody would otherwise
           conclude the log is broken. It goes away when the app calls recordSearchAccess. */}

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Gem, Layers, Sprout } from "lucide-react";
 import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TYPE_META, useTypeLabel, usePortalEditAccess } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TYPE_META, useTypeLabel, usePortalEditAccess, MEASURE } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
@@ -725,7 +725,7 @@ function LicenseFileSection({ projectId, t }: {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "20px", flexWrap: "wrap" }}>
         <div style={{ minWidth: 0 }}>
           <h3 style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", margin: 0 }}>{t.fileHeading}</h3>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, margin: "6px 0 0", maxWidth: "62ch" }}>{t.fileLead}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, margin: "6px 0 0", maxWidth: MEASURE }}>{t.fileLead}</p>
           {/* What is on record today. A site configured before licence files existed has numbers
               with no file behind them, and saying so is more useful than an empty line — it tells
               the reader why installing a file will change figures they thought were settled. */}
@@ -805,7 +805,7 @@ function LicenseFileSection({ projectId, t }: {
           </div>
 
           {error && (
-            <p style={{ fontSize: "12px", color: "var(--danger-500)", lineHeight: 1.7, margin: "12px 0 0", maxWidth: "70ch" }}>{error}</p>
+            <p style={{ fontSize: "12px", color: "var(--danger-500)", lineHeight: 1.7, margin: "12px 0 0", maxWidth: MEASURE }}>{error}</p>
           )}
 
           {parsed && diff && (
@@ -844,13 +844,13 @@ function LicenseFileSection({ projectId, t }: {
               </div>
 
               {expiredOnArrival && (
-                <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.7, margin: "12px 0 0", maxWidth: "70ch" }}>{t.fileWarnExpired}</p>
+                <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.7, margin: "12px 0 0", maxWidth: MEASURE }}>{t.fileWarnExpired}</p>
               )}
 
               {Object.keys(parsed.header).length > 0 && (
-                <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, margin: "12px 0 0", maxWidth: "70ch" }}>{t.fileHeaderNote}</p>
+                <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, margin: "12px 0 0", maxWidth: MEASURE }}>{t.fileHeaderNote}</p>
               )}
-              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, margin: "6px 0 0", maxWidth: "70ch" }}>{t.fileServerVerifies}</p>
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6, margin: "6px 0 0", maxWidth: MEASURE }}>{t.fileServerVerifies}</p>
             </div>
           )}
 

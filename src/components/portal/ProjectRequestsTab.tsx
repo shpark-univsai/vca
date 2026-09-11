@@ -8,7 +8,7 @@ import {
 } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TextField, FilterSelect, ConfirmModal, usePortalEditAccess } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TextField, FilterSelect, ConfirmModal, usePortalEditAccess, MEASURE, MEASURE_TIGHT } from "./PortalShared";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 /**
@@ -284,7 +284,7 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
   return (
     <div>
       <div style={{ display: "flex", alignItems: "flex-start", gap: "16px", flexWrap: "wrap", marginBottom: "14px" }}>
-        <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, maxWidth: "62ch", flex: 1, minWidth: "260px" }}>{t.intro}</p>
+        <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, maxWidth: MEASURE, flex: 1, minWidth: "260px" }}>{t.intro}</p>
         {mayEdit && (
           <div style={{ display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap" }}>
             <button className="portal-btn-outline" onClick={() => setShowErasureForm(true)}
@@ -325,7 +325,7 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
         {rows.length === 0 ? (
           <div style={{ padding: "36px 24px", textAlign: "center" }}>
             <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.empty}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, marginTop: "6px", maxWidth: "58ch", marginInline: "auto" }}>{t.emptyHint}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.7, marginTop: "6px", maxWidth: MEASURE_TIGHT, marginInline: "auto" }}>{t.emptyHint}</p>
           </div>
         ) : (
           <>
@@ -465,7 +465,7 @@ function ErasureDetail({ t, req, mayDecide, undecided, onSet, onClose }: {
   return (
     <Panel>
       <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)" }}>{t.eDetailTitle}</p>
-      <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.65, marginTop: "6px", maxWidth: "68ch" }}>{t.eDetailNote}</p>
+      <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.65, marginTop: "6px", maxWidth: MEASURE }}>{t.eDetailNote}</p>
       <div style={{ marginTop: "14px" }}>
         {CATEGORIES.map((cat, i) => {
           const d = req.dispositions[cat];
