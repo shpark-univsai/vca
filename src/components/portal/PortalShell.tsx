@@ -350,7 +350,13 @@ export default function PortalShell() {
           is what they are. With the line gone the leftover height read as a gap, so it went too. */}
       <div style={{
         height: "52px",
-        display: "flex", alignItems: "center", padding: "0 24px", flexShrink: 0, gap: "10px",
+        display: "flex", alignItems: "center", padding: "0 32px", flexShrink: 0, gap: "10px",
+        // The same column as the page below it, and for the reason written just above: with no
+        // rule between them the crumb reads as the page's first line. It was not sitting on the
+        // page's left edge — 24px against the content's 32px — so the line that claims to be the
+        // top of the page started 8px outside it. And with no width cap while the content is
+        // capped at 1600px, the two drifted further apart the wider the window got.
+        width: "100%", maxWidth: "1600px", marginInline: "auto",
       }}>
         {/* The trail ends at "New project" only when there is no project to name — an empty
             team. With the wizard now a dialog over the console, the page behind it is still the
