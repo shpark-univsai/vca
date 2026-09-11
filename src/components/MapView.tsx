@@ -743,10 +743,15 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // for counting.
           const newestPerPerson = [...new Map(spot.map(ev => [ev.name, ev])).values()];
           const behind = newestPerPerson[1];
+          // Same size and same ring as the front one. Drawn smaller first, and a smaller portrait
+          // reads as a lesser one — these two people are not ranked, they were both just seen
+          // here, and the newest is in front only because something has to be. Equal size says
+          // that; the 2px white halo is what keeps the two circles from merging into one shape
+          // where they overlap, since both rings are the same colour.
           const behindHtml = behind
-            ? `<div style="position:absolute;top:4px;left:-13px;z-index:1;width:34px;height:34px;border-radius:50%;
-                  border:2.5px solid white;background:var(--gray-100);overflow:hidden;
-                  box-shadow:var(--shadow-raised)">
+            ? `<div style="position:absolute;top:0;left:-17px;z-index:1;width:40px;height:40px;border-radius:50%;
+                  border:2.5px solid var(--primary-400);background:var(--gray-100);overflow:hidden;
+                  box-shadow:0 0 0 2px white">
                  <img src="${getFacePhoto(behind.id)}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />
                </div>`
             : "";
