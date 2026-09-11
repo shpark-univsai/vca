@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Gem, Layers, Sprout } from "lucide-react";
+import { Check, FileUp, Gem, Layers, Sprout } from "lucide-react";
 import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
 import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TYPE_META, useTypeLabel, usePortalEditAccess, MEASURE } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -635,6 +635,21 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
  * needs the before and after side by side at the moment they decide — a step-by-step flow puts the
  * old values on a screen they have already left.
  */
+/**
+ * The bordered look of an outline button, written out.
+ *
+ * `.portal-btn-outline` only carries the hover transition — the border, the fill and the text
+ * colour are the caller's, everywhere else in Portal. The two buttons in this section were passing
+ * the class and no border, so they rendered as bare bold text: the install action read as a label
+ * sitting in the corner rather than something to press.
+ */
+const OUTLINE_BTN: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: "6px",
+  height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px",
+  border: BORDER, backgroundColor: "white", color: "var(--gray-700)",
+  fontSize: "12px", fontWeight: 700, fontFamily: "inherit", flexShrink: 0,
+};
+
 function LicenseFileSection({ projectId, t }: {
   projectId: string;
   t: (typeof T)["en"] | (typeof T)["ko"];
@@ -743,8 +758,9 @@ function LicenseFileSection({ projectId, t }: {
             className="portal-btn-outline"
             onClick={() => setOpen(true)}
             disabled={!mayEdit}
-            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, fontFamily: "inherit", flexShrink: 0, cursor: mayEdit ? "pointer" : "not-allowed" }}
+            style={{ ...OUTLINE_BTN, color: mayEdit ? "var(--gray-700)" : "var(--gray-300)", cursor: mayEdit ? "pointer" : "not-allowed" }}
           >
+            <FileUp size={14} strokeWidth={2.4} />
             {t.fileInstall}
           </button>
         )}
@@ -863,7 +879,7 @@ function LicenseFileSection({ projectId, t }: {
             <button
               className="portal-btn-outline"
               onClick={close}
-              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}
+              style={{ ...OUTLINE_BTN, color: "var(--gray-600)", cursor: "pointer" }}
             >
               {t.fileCancel}
             </button>
