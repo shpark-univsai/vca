@@ -5,7 +5,7 @@ import { Crown } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 
-export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "activity" | "searchlog" | "footage" | "erasure";
+export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "activity" | "searchlog" | "requests";
 
 interface IconProps {
   color: string;
@@ -94,27 +94,16 @@ function SearchLogIcon({ color }: IconProps) {
   );
 }
 
-/** A person, and the line through them. */
-function ErasureIcon({ color }: IconProps) {
+/** A tray with something leaving it — the register of what was asked of this project. */
+function RequestsIcon({ color }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="7" cy="5.2" r="2.4" stroke={color} strokeWidth="1.2"/>
-      <path d="M2.6 13.4c0-2.4 2-4 4.4-4 .7 0 1.35.13 1.93.37" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M9.8 11.6h4" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M2.6 9.4h3l.9 1.6h3l.9-1.6h3" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M2.6 9.4 4.2 3.6c.07-.27.32-.46.6-.46h6.4c.28 0 .53.19.6.46l1.6 5.8v3.1c0 .28-.22.5-.5.5H3.1a.5.5 0 0 1-.5-.5V9.4Z" stroke={color} strokeWidth="1.2" strokeLinejoin="round"/>
     </svg>
   );
 }
 
-/** A document leaving through a door — the one thing this register records. */
-function FootageIcon({ color }: IconProps) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M3 2.6C3 2.32 3.22 2.1 3.5 2.1H9L12 5.1V8.2" stroke={color} strokeWidth="1.2" strokeLinejoin="round"/>
-      <path d="M3 9.6v3.8c0 .28.22.5.5.5H6" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M8.4 11.6h5.2M11.4 9.4l2.2 2.2-2.2 2.2" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
 
 function ActivityIcon({ color }: IconProps) {
   return (
@@ -138,21 +127,29 @@ function UsersIcon({ color }: IconProps) {
 }
 
 /**
- * The two halves of the rail.
+ * The three parts of the rail.
  *
- * Six tabs in one flat list gave no clue that they answer two different questions: three of them
- * are the project's day-to-day (what is watched, what watches, how it is going) and three are the
- * paperwork around it (the servers, the contract, who may sign in). Named groups say that before
- * the labels do — it is the arrangement the reference dashboard uses, and the one every console
- * with more than four destinations arrives at.
+ * It was two, on the reasoning that six flat tabs gave no clue they answered two different
+ * questions — the project's day-to-day against the paperwork around it. That held until MANAGE
+ * reached seven entries, at which point the heading had stopped sorting anything: a contract, a
+ * server, a list of people and four registers do not belong under one word.
+ *
+ * The four that moved are one kind of thing. "What changed", "who looked", "what was handed out"
+ * and "what was asked to be erased" are all answers to the same question — what happened here,
+ * and what left — and they are read by the same person on the same errand, usually when somebody
+ * outside has asked. Splitting them out leaves 3 · 3 · 4, and every heading true again.
+ *
+ * Ordered most-touched to least, the way the tabs inside each group already are: the day-to-day,
+ * then the things changed when the site changes, then the records read on a review cycle.
  *
  * English in caps, Korean not: caps do nothing to Hangul, and CSS text-transform would leave the
  * two languages drawing different headings — the same reason MetricCard's label dropped it.
  */
-export type NavGroup = "workspace" | "manage";
+export type NavGroup = "workspace" | "manage" | "records";
 export const NAV_GROUPS: { id: NavGroup; label: { en: string; ko: string } }[] = [
   { id: "workspace", label: { en: "WORKSPACE", ko: "작업 공간" } },
   { id: "manage", label: { en: "MANAGE", ko: "관리" } },
+  { id: "records", label: { en: "RECORDS", ko: "기록" } },
 ];
 
 export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string; ko: string }; icon: ComponentType<IconProps> }[] = [
@@ -163,28 +160,23 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
   // The id stays "cameras" — it is a route key, and renaming it would only churn every call site.
   // The label changed because the tab now lists uploaded footage alongside cameras.
   { id: "cameras", group: "workspace", label: { en: "Input Sources", ko: "입력 소스" }, icon: CamerasIcon },
+
+  // MANAGE, most-touched to least: servers change when the site changes, people are added and
+  // removed all year, and a licence is signed once and opened when somebody asks about the bill
+  // or runs out of channels.
   { id: "server", group: "manage", label: { en: "Server & API", ko: "서버 및 API" }, icon: ServerIcon },
   { id: "users", group: "manage", label: { en: "Users & Permissions", ko: "사용자 및 권한" }, icon: UsersIcon },
-  // Between the people and the licence: the search log is read on a review cycle — weekly, or when
-  // somebody asks — which puts it below the two things an administrator opens on their own account
-  // and above the one they open when the bill arrives.
-  // Directly under the people, because "who did this" and "who may do it" are read together —
-  // an access review starts on one and finishes on the other. It was five rows on the Overview
-  // and a modal behind them, which is not a screen an auditor can be sent to.
-  { id: "activity", group: "manage", label: { en: "Activity log", ko: "변경 기록" }, icon: ActivityIcon },
-  { id: "searchlog", group: "manage", label: { en: "Search log", ko: "조회 기록" }, icon: SearchLogIcon },
-  // Beside the two logs, because it is the third question an auditor arrives with. The first two
-  // answer "who looked" and "what changed"; this one answers "what left the building", which is
-  // the one with a person on the other end of it.
-  { id: "footage", group: "manage", label: { en: "Footage requests", ko: "영상 제공" }, icon: FootageIcon },
-  // Next to it, because the two are the same errand from opposite directions: one is somebody
-  // asking for footage of a person, the other is that person asking for it all to go away.
-  { id: "erasure", group: "manage", label: { en: "Erasure requests", ko: "삭제 요청" }, icon: ErasureIcon },
-  // Licence last. The four under MANAGE are read from most-touched to least: servers get changed
-  // when the site changes, people get added and removed all year, and a licence is signed once and
-  // looked at when somebody asks about the bill or runs out of channels. It sat in the middle,
-  // between two things somebody opens weekly.
   { id: "license", group: "manage", label: { en: "License", ko: "라이선스" }, icon: LicenseIcon },
+
+  // RECORDS, in the order the four questions get asked. "What changed" and "who looked" are the
+  // two an access review runs on, and they are read together — it starts on one and finishes on
+  // the other. Then the one register of what the outside world asked for. It holds both kinds —
+  // somebody wanting footage of a person, and that person wanting it all gone — because they are
+  // the same errand from opposite directions, and the person handling them arrives asking "what
+  // is open", not "is anything open under each of two tabs".
+  { id: "activity", group: "records", label: { en: "Activity log", ko: "변경 기록" }, icon: ActivityIcon },
+  { id: "searchlog", group: "records", label: { en: "Search log", ko: "조회 기록" }, icon: SearchLogIcon },
+  { id: "requests", group: "records", label: { en: "Requests", ko: "외부 요청" }, icon: RequestsIcon },
 ];
 
 interface ProjectSidebarProps {

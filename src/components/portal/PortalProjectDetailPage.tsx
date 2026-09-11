@@ -17,8 +17,7 @@ import ProjectServerTab from "./ProjectServerTab";
 import PortalUsersPage from "./PortalUsersPage";
 import ProjectActivityTab from "./ProjectActivityTab";
 import ProjectSearchLogTab from "./ProjectSearchLogTab";
-import ProjectFootageRequestsTab from "./ProjectFootageRequestsTab";
-import ProjectErasureTab from "./ProjectErasureTab";
+import ProjectRequestsTab from "./ProjectRequestsTab";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 
 const T = {
@@ -1662,8 +1661,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
           ?tab=searchlog saved before the requirement was switched off should land somewhere
           honest rather than on a screen the release does not have. */}
       {tab === "searchlog" && getComplianceConfig().requireSearchPurpose && <ProjectSearchLogTab projectId={projectId} />}
-      {tab === "footage" && <ProjectFootageRequestsTab projectId={projectId} />}
-      {tab === "erasure" && <ProjectErasureTab projectId={projectId} />}
+      {tab === "requests" && <ProjectRequestsTab projectId={projectId} />}
     </div>
   );
 }
