@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { create } from "zustand";
-import { liveEvents, getFacePhoto, DISTRICTS, type EventType, type LiveEvent, type TrackingHop } from "@/lib/mockData";
+import { liveEvents, getFacePhoto, DISTRICTS, nearestDistrict, type EventType, type LiveEvent, type TrackingHop } from "@/lib/mockData";
 import {
   isTodaySgt, recentSgtStamp, parseSgtStamp,
   setSiteTimeZoneResolver, FALLBACK_TIME_ZONE,
@@ -4045,6 +4045,36 @@ export function todaysDetectionHits(events: VcaEvent[]): DetectionHit[] {
     }
   });
   return hits.filter(h => isTodaySgt(new Date(h.timestamp)));
+}
+
+/**
+ * One district's figures: how many people were seen there today, and on how many cameras.
+ *
+ * Lives beside todaysDetectionHits, and for the same reason that function exists — two screens
+ * ask this and must not answer differently. The map's picked-district pill computed it locally
+ * first; the moment the sidebar needed the same sentence that would have been a second
+ * derivation, and the map and the list disagreeing about one district is exactly the class of bug
+ * this file keeps collecting.
+ *
+ * PEOPLE are counted by `person` (the person's name — see DetectionHit.person for why it is not
+ * `personId`, and what the server has to send instead), falling back to the hit's own id so an
+ * unidentified sighting counts as one person rather than merging with every other one.
+ *
+ * CAMERAS come from what the hit carries: its camera label, or failing that its own coordinate,
+ * which is where the camera that recorded it stands. Never by looking a camera up — matching hit
+ * coordinates against the register answered "1 person on 0 cameras", and relaxing that to
+ * "nearest camera" would credit a sighting to a camera that did not make it.
+ */
+export function districtTally(hits: DetectionHit[], districtId: string): { people: number; cameras: number } {
+  const here = hits.filter(h =>
+    h.lat !== undefined && h.lng !== undefined && nearestDistrict(h.lat, h.lng).id === districtId
+  );
+  return {
+    people: new Set(here.map(h => h.person ?? h.id)).size,
+    cameras: new Set(
+      here.map(h => h.camera ?? `${(h.lat as number).toFixed(4)},${(h.lng as number).toFixed(4)}`)
+    ).size,
+  };
 }
 
 /**

@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Search, Crown } from "lucide-react";
 import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, getFacePhoto, formatTimeAgo, nearestDistrict } from "@/lib/mockData";
 import {
-  useVcaStore, vcaEventsToLiveEvents, todaysDetectionHits,
+  useVcaStore, vcaEventsToLiveEvents, todaysDetectionHits, districtTally,
   useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras,
 } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -33,6 +33,17 @@ const T = {
     liveAnalytics: "Live analytics",
     all: "All",
     vipOnly: "VIP only",
+    /**
+     * The picked district's figures, beside the list they describe.
+     *
+     * Spelt out with both nouns. They are the pair a reader mixes up when unlabelled — a bare
+     * "2 · 2" next to a district name gets read as whichever order the reader expects — and they
+     * are not the same kind of thing: one counts people, the other counts cameras that caught
+     * one (NOT cameras installed there; that figure is on the map's collapsed pill, and the two
+     * are opposite claims).
+     */
+    districtTally: (people: number, cameras: number) =>
+      `${people} ${people === 1 ? "person" : "people"} · ${cameras} camera${cameras === 1 ? "" : "s"}`,
     seenAtCameras: (n: number) => `Seen at ${n} different camera${n === 1 ? "" : "s"}`,
     stopsOnTrail: (n: number) => `${n} stops on this trail`,
     stops: (n: number) => `${n} stops`,
@@ -79,6 +90,7 @@ const T = {
     liveAnalytics: "실시간 분석",
     all: "전체",
     vipOnly: "VIP만",
+    districtTally: (people: number, cameras: number) => `${people}명 · 카메라 ${cameras}대`,
     seenAtCameras: (n: number) => `서로 다른 카메라 ${n}대에서 검출`,
     stopsOnTrail: (n: number) => `이 이동 경로에서 ${n}곳 경유`,
     stops: (n: number) => `${n}곳 경유`,
@@ -878,12 +890,14 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
   const [page, setPage] = useState(1);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const FILTERS: FilterType[] = ["All", "VIP Detection", "Tracking"];
-  const liveEvents = vcaEventsToLiveEvents(useProjectEvents());
+  const districtEvents = useProjectEvents();
+  const liveEvents = vcaEventsToLiveEvents(districtEvents);
   // Routed through the future-backend stub instead of importing the mock array directly — see
   // lib/api/dashboard.ts. Falls back to the raw district id (still a valid, if less pretty,
   // label) for the brief pre-fetch window.
   const { data: districts } = useApiData(() => getDistricts(), []);
   const districtLabel = districtFilter ? districts?.find(d => d.id === districtFilter)?.label ?? districtFilter : null;
+  const districtTallyHere = districtTally(todaysDetectionHits(districtEvents), districtFilter ?? "");
 
   const byType = filter === "All" ? liveEvents
     : liveEvents.filter(e => {
@@ -893,8 +907,16 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
   // A district groups several sites by geographic proximity (map-pill click), so it filters by
   // nearest-district-to-lat/lng rather than locationFilter's plain name-substring match — the
   // two are mutually exclusive (ClientLayout clears one whenever the other is set).
+  // `e.type === "VIP"` used to be part of this and dropped every trail: a VIP matched across two
+  // cameras collapses into one "Tracking" row (see addEvent), so the filter kept only the people
+  // who never moved — and a district pill is largely there to surface the ones who did. A trail
+  // counts if ANY of its hops is in this district, not just its newest: the map draws a pin at
+  // every hop inside the district, and a list that only tested the last one disagreed with it for
+  // anyone who left.
   const byLocation = districtFilter
-    ? byType.filter(e => e.type === "VIP" && nearestDistrict(e.lat, e.lng).id === districtFilter)
+    ? byType.filter(e =>
+        nearestDistrict(e.lat, e.lng).id === districtFilter
+        || !!e.path?.some(hop => nearestDistrict(hop.lat ?? e.lat, hop.lng ?? e.lng).id === districtFilter))
     : locationFilter
       ? byType.filter(e => e.location.toLowerCase().includes(locationFilter.toLowerCase()))
       : byType;
@@ -952,6 +974,13 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
           >
             <LocationPinIcon color="var(--gray-600)" />
             <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-800)" }}>{districtLabel} · {t.vipOnly}</span>
+            {/* The two figures that used to sit on a pill left behind on the map after the click.
+                Here they are beside the list they describe, and they come from districtTally in
+                vcaStore — the same derivation the map uses, so the panel and the map cannot come
+                to disagree about one district. */}
+            <span style={{ fontSize:"11px", fontWeight:600, color:"var(--gray-500)" }}>
+              {t.districtTally(districtTallyHere.people, districtTallyHere.cameras)}
+            </span>
             <span style={{ fontSize:"12px", color:"var(--gray-600)", fontWeight:700 }}>✕</span>
           </button>
         )}
