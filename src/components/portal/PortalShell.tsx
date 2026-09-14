@@ -179,14 +179,42 @@ export default function PortalShell() {
     setShowWizard(false);
     if (teamProjects.length > 0) setSwitcherReopen(n => n + 1);
   };
-  // The selection is *derived*, not stored: hold the id the user picked, but fall back to this
-  // team's first project whenever that id is not one of them. Keeping it in plain state instead
-  // meant a team switch left the previous team's project selected until an effect caught up, and
-  // for one render the detail page rendered a project the breadcrumb no longer claimed.
-  const [pickedProjectId, setPickedProjectId] = useState("");
-  const currentProjectId = teamProjects.some(p => p.id === pickedProjectId)
-    ? pickedProjectId
+  /**
+   * Which site is open — and there is only one answer to that in the product, so it lives in the
+   * store rather than here.
+   *
+   * It was local state (`pickedProjectId`), and the store's `activeProjectId` — the value every
+   * app screen reads through useActiveProjectId — had no writer at all. So Portal switched site
+   * and the app did not: it fell through resolveActiveProject's `visible[0]` and went on showing
+   * the first project's cameras, watchlist and map. Nothing threw, because both halves had a
+   * perfectly good project to render; they just had different ones. Navbar's own comment already
+   * said what was supposed to happen ("Portal sets activeProjectId; the app reads it"), so this
+   * was missing wiring rather than a decision.
+   *
+   * Still *derived* on the way out: hold the stored id, but fall back to this team's first
+   * project whenever that id is not one of them. A team switch would otherwise leave the previous
+   * team's project selected until an effect caught up, and for one render the detail page drew a
+   * project the breadcrumb no longer claimed.
+   */
+  const activeProjectId = useVcaStore(s => s.activeProjectId);
+  const setActiveProjectId = useVcaStore(s => s.setActiveProjectId);
+  const currentProjectId = teamProjects.some(p => p.id === activeProjectId)
+    ? activeProjectId
     : (teamProjects[0]?.id ?? "");
+  /**
+   * And on the way back in, whenever the fallback above had to fire.
+   *
+   * The derivation fixes what THIS screen shows; the app is reading the store directly, so a
+   * fallback that only lived in this component would put the two halves back out of step — which
+   * is the whole bug. Switching team is exactly that case: the stored id still names the team you
+   * left.
+   *
+   * A value comparison, not a mount guard: it is idempotent, so StrictMode's double invocation
+   * costs nothing and the first pass is the one that matters (the store starts at "").
+   */
+  useEffect(() => {
+    if (currentProjectId && currentProjectId !== activeProjectId) setActiveProjectId(currentProjectId);
+  }, [currentProjectId, activeProjectId, setActiveProjectId]);
   // This project's cameras, counted once for the rail's badge and the bar's fleet figure.
   const projectCameras = cameras.filter(c => c.projectId === currentProjectId);
   const fleetOnline = projectCameras.filter(c => c.status === "online").length;
@@ -238,7 +266,7 @@ export default function PortalShell() {
   }, []);
 
   const selectFromSwitcher = (projectId: string) => {
-    setPickedProjectId(projectId);
+    setActiveProjectId(projectId);
     // Leave Settings too. setTab writes the address bar without `view=account`, so staying on
     // Settings left the URL claiming Overview — and a refresh then silently moved you there.
     setShowAccount(false);
@@ -249,7 +277,7 @@ export default function PortalShell() {
   const deployedFromWizard = (projectId: string) => {
     setShowWizard(false);
     if (projectId) {
-      setPickedProjectId(projectId);
+      setActiveProjectId(projectId);
       setTab("overview");
     }
   };
