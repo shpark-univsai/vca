@@ -919,7 +919,7 @@ export function PairItem({ label, hint, children }: { label: string; hint?: stri
             line of 11px grey below the input, which put a second caption in the pair — the name
             above and an explanation below, the same size, doing different jobs. The mark keeps
             the sentence reachable without letting it take a line of the page on every visit. */}
-        {hint && <HelpTip text={hint} />}
+        {hint && <HelpTip text={hint} size={13} />}
       </p>
       {typeof children === "string"
         ? <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--gray-900)", marginTop: "4px", wordBreak: "break-word" }}>{children}</p>
@@ -1356,7 +1356,7 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
  * A <button>, not a span with a cursor — it takes keyboard focus, which is what makes Tooltip's
  * onFocus path reachable at all.
  */
-export function HelpTip({ text, placement = "bottom" }: { text: string; placement?: "top" | "bottom" }) {
+export function HelpTip({ text, placement = "bottom", size = 18 }: { text: string; placement?: "top" | "bottom"; size?: number }) {
   const [hover, setHover] = useState(false);
   return (
     <Tooltip text={text} placement={placement}>
@@ -1367,12 +1367,15 @@ export function HelpTip({ text, placement = "bottom" }: { text: string; placemen
         onMouseLeave={() => setHover(false)}
         onClick={e => e.preventDefault()}
         style={{
-          width: "18px", height: "18px", borderRadius: "999px", flexShrink: 0,
+          // Sized to what it sits beside. 18 beside an 18px heading, 13 beside an 11px field
+          // label — a mark bigger than the words it belongs to stops being a mark and becomes a
+          // control, and the eye goes to it before the label it is annotating.
+          width: `${size}px`, height: `${size}px`, borderRadius: "999px", flexShrink: 0,
           display: "inline-flex", alignItems: "center", justifyContent: "center",
           border: `1px solid ${hover ? "var(--gray-400)" : "var(--gray-300)"}`,
           backgroundColor: "transparent",
           color: hover ? "var(--gray-600)" : "var(--gray-400)",
-          fontSize: "11px", fontWeight: 700, fontFamily: "inherit", lineHeight: 1,
+          fontSize: `${Math.round(size * 0.62)}px`, fontWeight: 700, fontFamily: "inherit", lineHeight: 1,
           cursor: "help", padding: 0,
         }}
       >
