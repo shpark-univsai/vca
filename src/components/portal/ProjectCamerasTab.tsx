@@ -6,8 +6,9 @@ import { CircleAlert, FileOutput, Film as FilmIcon, Image as ImageIcon, RotateCw
 import { useVcaStore, projectChannelLimit, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
+import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { CARD_BORDER, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal } from "./PortalShared";
+import { CARD_BORDER, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -515,6 +516,9 @@ function CameraFormModal({
 }) {
   useEscapeKey(onClose);
   const [form, setForm] = useState<CameraFormValues>(initial);
+  // This modal takes its dictionary as a prop, but the shared format messages are keyed by
+  // language rather than copied into every file's T — so it reads the language itself.
+  const [lang] = usePortalLanguage();
   /*
    * Coordinates and the address are checked, not swallowed.
    *
@@ -529,7 +533,12 @@ function CameraFormModal({
   const lngNum = form.lng.trim() === "" ? null : Number(form.lng);
   const latError = latNum !== null && (!Number.isFinite(latNum) || latNum < -90 || latNum > 90);
   const lngError = lngNum !== null && (!Number.isFinite(lngNum) || lngNum < -180 || lngNum > 180);
-  const ipError = form.ip.trim() !== "" && !/^[0-9a-zA-Z.:_-]+$/.test(form.ip.trim());
+  /* Two questions, because one of them was doing the other's job. The charset test refuses
+     "camera 3" and a pasted sentence; it said nothing at all about "192.168.0.300", which is
+     made only of characters it allows. A malformed address is the likelier typo of the two. */
+  const ipCharsBad = form.ip.trim() !== "" && !/^[0-9a-zA-Z.:_-]+$/.test(form.ip.trim());
+  const ipShape = ipv4Problem(form.ip);
+  const ipError = ipCharsBad || ipShape !== null;
   const rtspError = form.rtspUrl.trim() !== "" && !/^rtsp:\/\/.+/i.test(form.rtspUrl.trim());
   const valid = form.name.trim().length > 0 && form.rtspUrl.trim().length > 0
     && !latError && !lngError && !ipError && !rtspError;
@@ -554,9 +563,7 @@ function CameraFormModal({
       />
       {/* Under the field it belongs to. The submit button greys out either way, but a disabled
           button with no reason is a form that has stopped talking to you. */}
-      {opts?.error && (
-        <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.5, marginTop: "6px" }}>{opts.error}</p>
-      )}
+      {opts?.error && <FieldError>{opts.error}</FieldError>}
     </div>
   );
 
@@ -583,7 +590,9 @@ function CameraFormModal({
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
 
           {field("name", t.fieldDeviceName, t.fieldDeviceNamePlaceholder)}
-          {field("ip", t.fieldIp, t.fieldIpPlaceholder, { error: ipError ? t.errIp : undefined })}
+          {field("ip", t.fieldIp, t.fieldIpPlaceholder, {
+            error: ipShape ? FIELD_CHECK_T[lang][ipShape] : ipCharsBad ? t.errIp : undefined,
+          })}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             {selectField(t.fieldMaker, form.maker, MAKERS.map(m => ({ value: m, label: m })), v => setForm(f => ({ ...f, maker: v })))}

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useVcaStore, canManageAccess, currentPortalUser, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, CONTROL_HEIGHT } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, FieldError } from "./PortalShared";
 
 const TEMPLATES: { type: ProjectType; icon: string }[] = [
   { type: "smart_city", icon: "/icons/portal-smart-city.png" },
@@ -25,6 +25,7 @@ const T = {
     step3: "3. First Video Channel (RTSP)",
     step3Optional: "Optional — you can add every source later from Input Sources.",
     rtspPlaceholder: "Enter your rtsp:// address",
+    rtspError: "A stream address starts with rtsp://.",
     rtspTag: "RTSP 1CH",
     firstCameraName: "Channel 1",
     deploy: "Create project",
@@ -45,6 +46,7 @@ const T = {
     step3: "3. 첫 영상 채널 (RTSP)",
     step3Optional: "선택 사항입니다. 나머지 소스는 입력소스 화면에서 언제든 추가할 수 있습니다.",
     rtspPlaceholder: "rtsp:// 주소를 입력하세요",
+    rtspError: "스트림 주소는 rtsp:// 로 시작합니다.",
     rtspTag: "RTSP 1CH",
     firstCameraName: "채널 1",
     deploy: "프로젝트 만들기",
@@ -94,9 +96,15 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
   const [rtspUrl, setRtspUrl] = useState("");
   const [lang] = usePortalLanguage();
   const t = T[lang];
+  /* Step 3 is optional, and whatever is typed there becomes a camera — hostOf() reads the device's
+     address straight out of it. A line with no scheme is not an address, and it used to be saved
+     as one, so the project's first source arrived with a nonsense ip nobody typed. Same rule the
+     Add Camera form already applies; the two forms create the same object. */
+  const rtspBad = rtspUrl.trim() !== "" && !/^rtsp:\/\/.+/i.test(rtspUrl.trim());
+  const canDeploy = name.trim() !== "" && !rtspBad;
 
   const deploy = () => {
-    if (!name.trim() || !teamId) return;
+    if (!canDeploy || !teamId) return;
     const existingIds = new Set(useVcaStore.getState().projects.map(p => p.id));
     addProject({ name: name.trim(), teamId, type: selectedType });
     const created = useVcaStore.getState().projects.find(p => !existingIds.has(p.id));
@@ -280,13 +288,15 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
           </span>
         </div>
 
+        {rtspBad && <FieldError>{t.rtspError}</FieldError>}
+
         <button className="portal-btn-primary"
           onClick={deploy}
-          disabled={!name.trim()}
+          disabled={!canDeploy}
           style={{
             width: "100%", height: "40px", marginTop: "20px", borderRadius: "8px", border: "none",
-            backgroundColor: name.trim() ? "var(--primary-400)" : "var(--gray-200)", color: name.trim() ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700,
-            cursor: name.trim() ? "pointer" : "not-allowed", 
+            backgroundColor: canDeploy ? "var(--primary-400)" : "var(--gray-200)", color: canDeploy ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700,
+            cursor: canDeploy ? "pointer" : "not-allowed", 
           }}
         >
           {t.deploy}

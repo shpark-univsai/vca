@@ -1451,6 +1451,22 @@ export function Tooltip({ text, children, placement = "bottom" }: {
 
 
 /**
+ * The line under a field that says why what is in it will not do.
+ *
+ * Its own component because the alternative is what was here: the same eleven-pixel red paragraph
+ * written inline in each form that grew one, already at two weights and two reds. A disabled save
+ * button with no line under any field is a form that has stopped talking to you, so wherever a
+ * check can refuse a value, this is what says so.
+ */
+export function FieldError({ children }: { children: React.ReactNode }) {
+  return (
+    <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.5, marginTop: "6px" }}>
+      {children}
+    </p>
+  );
+}
+
+/**
  * A text field with the shared shape and the shared focus ring.
  *
  * A component rather than an exported style object because the ring needs focus state, and every

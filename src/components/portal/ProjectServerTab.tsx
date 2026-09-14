@@ -6,7 +6,8 @@ import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type Se
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
-import { SummaryStrip, CARD_BORDER, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch, usePortalEditAccess, ConfirmModal } from "./PortalShared";
+import { ipv4Problem, portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
+import { SummaryStrip, CARD_BORDER, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch, usePortalEditAccess, ConfirmModal, FieldError } from "./PortalShared";
 
 // Ordered as the deployed Add Server dialog orders them, so an operator who has used that one
 // finds each entry where their hand already goes. Its list opens with "All", which this one does
@@ -62,9 +63,15 @@ function ServerFormModal({
 }) {
   useEscapeKey(onClose);
   const [form, setForm] = useState<ServerFormValues>(initial);
-  const valid = form.name.trim().length > 0 && form.ip.trim().length > 0;
   const [lang] = usePortalLanguage();
   const t = MODAL_T[lang];
+  /* Present is not the same as usable. The form asked only whether the two required boxes had
+     characters in them, so "192.168.0.300" and port 99999 saved as happily as a real address —
+     and the row they made looks exactly like a working one until somebody tries to reach it.
+     Only the two rules that a standard settles are checked here; see fieldChecks.ts. */
+  const ipProblem = ipv4Problem(form.ip);
+  const portIssue = portProblem(form.port);
+  const valid = form.name.trim().length > 0 && form.ip.trim().length > 0 && !ipProblem && !portIssue;
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
@@ -94,10 +101,12 @@ function ServerFormModal({
             <div>
               <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverIp}</label>
               <TextField value={form.ip} onChange={v => setForm(f => ({ ...f, ip: v }))} placeholder={t.serverIpPlaceholder} />
+              {ipProblem && <FieldError>{FIELD_CHECK_T[lang][ipProblem]}</FieldError>}
             </div>
             <div>
               <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverPort}</label>
               <TextField value={form.port} onChange={v => setForm(f => ({ ...f, port: v.replace(/[^0-9]/g, "") }))} placeholder={t.serverPortPlaceholder} />
+              {portIssue && <FieldError>{FIELD_CHECK_T[lang][portIssue]}</FieldError>}
             </div>
           </div>
           <div>
@@ -431,7 +440,7 @@ function MailSettings({ projectId }: { projectId: string }) {
   if (!project) return null;
 
   const portNumber = Number(port);
-  const portValid = Number.isInteger(portNumber) && portNumber > 0 && portNumber < 65536;
+  const portValid = portProblem(port) === null && port.trim() !== "";
   // The From: address has to live on the domain being configured, or the receiving server will
   // reject or spam-file it — worth catching here rather than discovering it when invites stop
   // arriving.

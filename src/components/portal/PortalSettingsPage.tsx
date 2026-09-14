@@ -5,7 +5,8 @@ import { ClipboardList, Mail, MapPin, Monitor, Pencil, Plus, Tag, Trash2, User }
 import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, usePortalEditAccess, useTypeLabel } from "./PortalShared";
+import { portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, usePortalEditAccess, useTypeLabel } from "./PortalShared";
 import { VipCategoryModal } from "./VipCategories";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -402,7 +403,9 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const mailFromMismatch = mailDomain.trim() !== "" && mailFrom.trim() !== ""
     && !mailFrom.trim().toLowerCase().endsWith(`@${mailDomain.trim().toLowerCase()}`);
   const mailPortNum = Number(mailPort);
-  const mailPortValid = mailPort.trim() === "" || (Number.isInteger(mailPortNum) && mailPortNum > 0 && mailPortNum < 65536);
+  // Same rule as the project screen's SMTP port, from the one place it is written.
+  const mailPortIssue = portProblem(mailPort);
+  const mailPortValid = mailPortIssue === null;
   const canSaveTeamMail = mayEdit && liveMail !== null && !mailFromMismatch && mailPortValid;
   const saveTeamMail = () => {
     if (!canSaveTeamMail || !myTeam) return;
@@ -725,6 +728,9 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             <div>
               <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailPort}</label>
               <TextField value={mailPort} onChange={v => setMailPort(v.replace(/[^0-9]/g, ""))} placeholder="587" inputMode="numeric" />
+              {/* Said, not merely enforced. The save button already greyed itself out for a bad
+                  port and gave no reason anywhere on the screen. */}
+              {mailPortIssue && <FieldError>{FIELD_CHECK_T[lang][mailPortIssue]}</FieldError>}
             </div>
             <div>
               <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailFrom}</label>
