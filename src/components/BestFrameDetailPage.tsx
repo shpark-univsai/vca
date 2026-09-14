@@ -1074,7 +1074,9 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                 flex:1 cell, so the row overflows and scrolls instead of shrinking every
                 thumbnail to cram them all in — lets you look forward/back along the strip by
                 scrolling instead of only through the step/jump controls. */}
-            <div className="vca-thin-scrollbar" style={{ position:"relative", height:`${THUMB_STRIP_HEIGHT}px`, zIndex:2, display:"flex", alignItems:"flex-end", gap:"4px", overflowX:"auto" }}>
+            {/* paddingBottom clears the 6px horizontal scrollbar (.vca-thin-scrollbar) — the
+                cells are bottom-aligned, so without it the bar sits on top of the time labels. */}
+            <div className="vca-thin-scrollbar" style={{ position:"relative", height:`${THUMB_STRIP_HEIGHT}px`, boxSizing:"content-box", paddingBottom:"10px", zIndex:2, display:"flex", alignItems:"flex-end", gap:"4px", overflowX:"auto" }}>
               {thumbFrames.map((sec, i) => {
                 const isSelected = i === centerThumbIdx;
                 const personCount = personCountFor(camSeed + sec);
