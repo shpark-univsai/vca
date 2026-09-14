@@ -233,7 +233,10 @@ export interface Server {
   port?: number;
   type: ServerType;
   specification?: string;
-  status: ServerStatus;
+  /** Absent until somebody records one. Nothing on this screen reaches a server, so a node that
+   *  was only just registered has no answer here — and "success" written in by default would be
+   *  the screen inventing the one fact the reader came for. */
+  status?: ServerStatus;
 }
 
 export type EventSeverity = "critical" | "warning" | "info";

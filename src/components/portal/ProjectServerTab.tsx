@@ -8,14 +8,17 @@ import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { SummaryStrip, CARD_BORDER, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch, usePortalEditAccess, ConfirmModal } from "./PortalShared";
 
-const SERVER_TYPES: ServerType[] = ["AI Camera", "Normal Camera", "Face Recognition", "Image Store", "Database"];
+// Ordered as the deployed Add Server dialog orders them, so an operator who has used that one
+// finds each entry where their hand already goes. Its list opens with "All", which this one does
+// not repeat: "All" is a filter, and no server is of type all.
+const SERVER_TYPES: ServerType[] = ["Face Recognition", "Normal Camera", "AI Camera", "Database", "Image Store"];
 
-// Shared between ServerFormModal and the main table (both need the same two status words) —
-// kept as its own tiny dict rather than duplicated, same way SERVER_TYPES/API_ENDPOINTS are
-// shared top-level constants in this file.
+// The three words a status column can say. The form no longer offers them — a server's status is
+// not something an administrator types in — so only the table reads this; kept a top-level dict
+// the same way SERVER_TYPES/API_ENDPOINTS are.
 const STATUS_T = {
-  en: { success: "Success", error: "Error" },
-  ko: { success: "성공", error: "오류" },
+  en: { success: "Success", error: "Error", unchecked: "Not checked" },
+  ko: { success: "성공", error: "오류", unchecked: "확인 안 됨" },
 } as const;
 
 interface ServerFormValues {
@@ -26,18 +29,16 @@ interface ServerFormValues {
   port: string;
   type: ServerType;
   specification: string;
-  status: "success" | "error";
 }
 
-const EMPTY_FORM: ServerFormValues = { name: "", ip: "", port: "", type: SERVER_TYPES[0], specification: "", status: "success" };
+const EMPTY_FORM: ServerFormValues = { name: "", ip: "", port: "", type: SERVER_TYPES[0], specification: "" };
 
 const MODAL_T = {
   en: {
     serverName: "Server Name *", serverNamePlaceholder: "FR 2",
     serverIp: "Server IP *", serverIpPlaceholder: "192.168.0.36",
     serverPort: "Server Port", serverPortPlaceholder: "8011",
-    serverType: "Server Type", status: "Status (recorded, not measured)",
-    statusHint: "Nothing here checks the server. This is what an administrator last wrote down, and the error counts on this page are the sum of these answers — not of anything reached over the network.",
+    serverType: "Server Type",
     specification: "Specification", specificationPlaceholder: "8 vCPU · 32GB RAM",
     cancel: "Cancel", save: "Save",
   },
@@ -45,8 +46,7 @@ const MODAL_T = {
     serverName: "서버 이름 *", serverNamePlaceholder: "FR 2",
     serverIp: "서버 IP *", serverIpPlaceholder: "192.168.0.36",
     serverPort: "서버 포트", serverPortPlaceholder: "8011",
-    serverType: "서버 유형", status: "상태(측정값 아닌 기록)",
-    statusHint: "이 화면은 서버를 확인하지 않습니다. 관리자가 마지막으로 적어둔 값이고, 이 페이지의 오류 건수도 그 답들을 더한 것이지 망 너머에서 얻은 것이 아닙니다.",
+    serverType: "서버 유형",
     specification: "사양", specificationPlaceholder: "8 vCPU · 32GB RAM",
     cancel: "취소", save: "저장",
   },
@@ -65,7 +65,6 @@ function ServerFormModal({
   const valid = form.name.trim().length > 0 && form.ip.trim().length > 0;
   const [lang] = usePortalLanguage();
   const t = MODAL_T[lang];
-  const st = STATUS_T[lang];
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
@@ -82,8 +81,15 @@ function ServerFormModal({
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverName}</label>
             <TextField value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder={t.serverNamePlaceholder} />
           </div>
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverType}</label>
+            <FilterSelect value={form.type} onChange={v => setForm(f => ({ ...f, type: v as ServerType }))}
+              options={SERVER_TYPES.map(ty => ({ value: ty, label: ty }))} />
+          </div>
           {/* Address and port on one row: between them they are one thing, and nothing reaches a
-              server with only half of it. */}
+              server with only half of it. The dialog this mirrors stacks them; keeping them on one
+              line is the only place this form departs from it, and it departs by pairing fields the
+              other one already asks for back to back. */}
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "12px" }}>
             <div>
               <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverIp}</label>
@@ -94,19 +100,6 @@ function ServerFormModal({
               <TextField value={form.port} onChange={v => setForm(f => ({ ...f, port: v.replace(/[^0-9]/g, "") }))} placeholder={t.serverPortPlaceholder} />
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverType}</label>
-              <FilterSelect value={form.type} onChange={v => setForm(f => ({ ...f, type: v as ServerType }))}
-                options={SERVER_TYPES.map(ty => ({ value: ty, label: ty }))} />
-            </div>
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.status}</label>
-              <FilterSelect value={form.status} onChange={v => setForm(f => ({ ...f, status: v as "success" | "error" }))}
-                options={[{ value: "success", label: st.success }, { value: "error", label: st.error }]} />
-            </div>
-          </div>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "-4px" }}>{t.statusHint}</p>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.specification}</label>
             <TextField value={form.specification} onChange={v => setForm(f => ({ ...f, specification: v }))} placeholder={t.specificationPlaceholder} />
@@ -746,7 +739,8 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
     sort,
     (server, key) => {
       switch (key) {
-        case "status": return server.status;
+        // Errors, then successes, then the ones nobody has answered for.
+        case "status": return server.status ?? "unchecked";
         case "name": return server.name.toLowerCase();
         // Padded so 10.20.4.9 sorts after 10.20.4.17 rather than before it — a plain string compare
         // orders addresses by digit, which is the wrong answer for every list of IPs.
@@ -784,7 +778,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
     addServer({
       projectId, name: values.name.trim(), ip: values.ip.trim(),
       port: Number(values.port) || undefined,
-      type: values.type, specification: values.specification.trim() || undefined, status: values.status,
+      type: values.type, specification: values.specification.trim() || undefined,
     });
     setShowAdd(false);
     showToast({ variant: "success", title: t.toastAdded, desc: values.name.trim() });
@@ -795,7 +789,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
     updateServer(editingServer.id, {
       name: values.name.trim(), ip: values.ip.trim(),
       port: Number(values.port) || undefined,
-      type: values.type, specification: values.specification.trim() || undefined, status: values.status,
+      type: values.type, specification: values.specification.trim() || undefined,
     });
     setEditingServer(null);
     showToast({ variant: "success", title: t.toastUpdated, desc: values.name.trim() });
@@ -921,7 +915,10 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                 ))}
               </div>
               {pageServers.map((server, i) => {
-                const ok = server.status === "success";
+                const statusColor = server.status === "success" ? "var(--success-400)"
+                  : server.status === "error" ? "var(--danger-400)" : "var(--gray-400)";
+                const statusLabel = server.status === "success" ? st.success
+                  : server.status === "error" ? st.error : st.unchecked;
                 const isLast = i === pageServers.length - 1;
                 return (
                   <div key={server.id} style={{
@@ -930,8 +927,8 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                     borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: ok ? "var(--success-400)" : "var(--danger-400)", flexShrink: 0 }} />
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: ok ? "var(--success-400)" : "var(--danger-400)" }}>{ok ? st.success : st.error}</span>
+                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: statusColor, flexShrink: 0 }} />
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: statusColor }}>{statusLabel}</span>
                     </div>
                     <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{server.name}</span>
                     <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace" }}>{server.port ? `${server.ip}:${server.port}` : server.ip}</span>
@@ -1009,7 +1006,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
           initial={{
             name: editingServer.name, ip: editingServer.ip, type: editingServer.type,
             port: editingServer.port ? String(editingServer.port) : "",
-            specification: editingServer.specification ?? "", status: editingServer.status,
+            specification: editingServer.specification ?? "",
           }}
           onClose={() => setEditingServer(null)}
           onSubmit={saveEdit}
