@@ -241,17 +241,29 @@
    Every colour here is a defined token. One is missing and it shows: primary-400 is the darkest
    step of the primary ramp, so a filled primary button has nothing to darken TO — hence the
    brightness filter below. A primary-500 belongs in the palette. */
-/* A placeholder that is a SAMPLE of the answer — "192.168.0.36", "FR 2", "8 vCPU · 32GB RAM" —
-   rather than an instruction ("Search by server name"). Lighter than the browser default so it
-   never reads as a value somebody already typed, and heavier so it still reads as a value and not
-   as prose. Opt-in, because the same component draws both kinds: TextField's `example` prop.
+/* Placeholders, everywhere in the product.
+   Nothing styled these before, so every one of them was the browser's default grey at the field's
+   own weight — near enough to a typed value that a reader has to look twice to tell an empty field
+   from a filled one. Lighter so it cannot be mistaken for an answer, heavier so it still reads as
+   a specimen of one ("192.168.0.36", "FR 2") rather than as prose.
 
-   A class rather than an inline style because ::placeholder is a pseudo-element and React's style
-   prop cannot reach one. */
-.portal-placeholder-example::placeholder {
+   An element selector rather than a class: roughly half the fields in Portal are bare <input>s that
+   never went through TextField, and a per-field opt-in is a rule that is true until the next form
+   forgets it. */
+input::placeholder,
+textarea::placeholder {
   color: var(--gray-400);
   font-weight: 600;
   opacity: 1; /* Firefox dims placeholders by default, which would undo the weight. */
+  transition: color .12s ease;
+}
+/* Gone the moment the field is yours. The placeholder answers "what goes here?", and clicking in is
+   the reader saying they know — after that it is a caret sitting on top of text that is not theirs
+   and will not survive the first keystroke. Left to the browser it lingers until that keystroke,
+   which is the half-second this reads wrong in. */
+input:focus::placeholder,
+textarea:focus::placeholder {
+  color: transparent;
 }
 
 .portal-btn-primary { transition: filter .12s ease; }

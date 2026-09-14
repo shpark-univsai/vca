@@ -1457,14 +1457,12 @@ export function Tooltip({ text, children, placement = "bottom" }: {
  * form in Portal was otherwise going to keep its own useState for it — which is how three
  * different treatments got here in the first place.
  */
-export function TextField({ value, onChange, placeholder, example, type, inputMode, autoComplete, autoFocus, disabled, readOnly, style }: {
+export function TextField({ value, onChange, placeholder, type, inputMode, autoComplete, autoFocus, disabled, readOnly, style }: {
   value: string;
   onChange?: (value: string) => void;
+  /** Drawn by globals.css's input::placeholder — light, heavy, and gone on focus. That rule is on
+   *  the element, not on this component, because half of Portal's fields are bare <input>s. */
   placeholder?: string;
-  /** The placeholder is a specimen of the answer ("192.168.0.36"), not an instruction ("Search by
-   *  server name"). Draws it lighter and heavier — see .portal-placeholder-example in globals.css,
-   *  which has to be a class because ::placeholder is out of reach of the style prop. */
-  example?: boolean;
   type?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   autoComplete?: string;
@@ -1478,7 +1476,6 @@ export function TextField({ value, onChange, placeholder, example, type, inputMo
   const inert = disabled || readOnly;
   return (
     <input
-      className={example ? "portal-placeholder-example" : undefined}
       value={value}
       onChange={e => onChange?.(e.target.value)}
       onFocus={() => setFocused(true)}
