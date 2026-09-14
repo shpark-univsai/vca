@@ -241,6 +241,19 @@
    Every colour here is a defined token. One is missing and it shows: primary-400 is the darkest
    step of the primary ramp, so a filled primary button has nothing to darken TO — hence the
    brightness filter below. A primary-500 belongs in the palette. */
+/* A placeholder that is a SAMPLE of the answer — "192.168.0.36", "FR 2", "8 vCPU · 32GB RAM" —
+   rather than an instruction ("Search by server name"). Lighter than the browser default so it
+   never reads as a value somebody already typed, and heavier so it still reads as a value and not
+   as prose. Opt-in, because the same component draws both kinds: TextField's `example` prop.
+
+   A class rather than an inline style because ::placeholder is a pseudo-element and React's style
+   prop cannot reach one. */
+.portal-placeholder-example::placeholder {
+  color: var(--gray-400);
+  font-weight: 600;
+  opacity: 1; /* Firefox dims placeholders by default, which would undo the weight. */
+}
+
 .portal-btn-primary { transition: filter .12s ease; }
 /* brightness, not opacity. Nine of these buttons already set opacity inline to grey themselves out
    while their form is incomplete, and two of them (the signup wizard's) deliberately stay ENABLED

@@ -79,7 +79,7 @@ function ServerFormModal({
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverName}</label>
-            <TextField value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder={t.serverNamePlaceholder} />
+            <TextField value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder={t.serverNamePlaceholder} example />
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverType}</label>
@@ -93,16 +93,16 @@ function ServerFormModal({
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "12px" }}>
             <div>
               <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverIp}</label>
-              <TextField value={form.ip} onChange={v => setForm(f => ({ ...f, ip: v }))} placeholder={t.serverIpPlaceholder} />
+              <TextField value={form.ip} onChange={v => setForm(f => ({ ...f, ip: v }))} placeholder={t.serverIpPlaceholder} example />
             </div>
             <div>
               <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverPort}</label>
-              <TextField value={form.port} onChange={v => setForm(f => ({ ...f, port: v.replace(/[^0-9]/g, "") }))} placeholder={t.serverPortPlaceholder} />
+              <TextField value={form.port} onChange={v => setForm(f => ({ ...f, port: v.replace(/[^0-9]/g, "") }))} placeholder={t.serverPortPlaceholder} example />
             </div>
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.specification}</label>
-            <TextField value={form.specification} onChange={v => setForm(f => ({ ...f, specification: v }))} placeholder={t.specificationPlaceholder} />
+            <TextField value={form.specification} onChange={v => setForm(f => ({ ...f, specification: v }))} placeholder={t.specificationPlaceholder} example />
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
