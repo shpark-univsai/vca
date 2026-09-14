@@ -907,11 +907,13 @@ export function PairGrid({ children }: { children: React.ReactNode }) {
 export function PairItem({ label, note, children }: { label: string; note?: string; children: React.ReactNode }) {
   return (
     <div style={{ minWidth: 0 }}>
-      {/* 11px/600 in gray-400 against a 15px/600 value in gray-900. It was 12px gray-500 over
-          14px gray-900 — close enough in both size and colour that a column of them read as one
-          grey texture, and no pair announced itself as a pair. The label is a caption, so it can
-          afford to be small and quiet; what it loses in size it takes back in letter-spacing. */}
-      <p style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.2px", lineHeight: "15px", color: "var(--gray-400)" }}>{label}</p>
+      {/* Three tones down the pair, not two: gray-500 name, gray-900 value, gray-400 note.
+          The label and the note were both 11px gray-400, sitting above and below the same control
+          — the same size and the same colour doing two different jobs, so neither said which it
+          was. The name of a field is something you read to find the control; the sentence under
+          it is something you read once. Now the name is the darker of the two and carries the
+          weight, and the note is the lightest thing in the pair. */}
+      <p style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.2px", lineHeight: "15px", color: "var(--gray-500)" }}>{label}</p>
       {typeof children === "string"
         ? <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--gray-900)", marginTop: "4px", wordBreak: "break-word" }}>{children}</p>
         : (
