@@ -838,26 +838,33 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             a reload brings it back, because none of these errands go away by being closed.
           */}
           {attentionItems.length > 0 && !attentionDismissed && (
+            /* The colour lives in the mark, not in the band.
+               It was primary-100 filled with a primary-200 border and a primary-400 label, which
+               is a full-width purple field at the top of the page the reader opens first — the
+               Overview then reads as a purple screen with some cards on it, and the one thing on
+               it that is genuinely urgent has nothing left to be louder than. Purple is for what
+               needs attention, so it has to stay scarce enough to mean that.
+               Now: a whisper of tint to say this is not another card, and the whole of the colour
+               spent on a 28px square. */
             <div style={{
               display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
-              backgroundColor: "var(--primary-100)", border: "1px solid var(--primary-200)",
+              backgroundColor: "var(--primary-50)", border: BORDER,
               borderRadius: "12px", padding: "14px 16px", marginBottom: CARD_GAP,
             }}>
               <span style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
                 width: "28px", height: "28px", borderRadius: "8px", flexShrink: 0,
-                // White, not primary-200. primary-200 is a mid-lilac and the icon on it is a
-                // strong violet — two neighbouring purples with little between them, which turned
-                // the square into a smudge. On the band's primary-100 the white square is the one
-                // clean edge in it and the mark reads at full strength.
-                backgroundColor: "white", color: "var(--primary-400)",
+                // primary-100 now, not white: on the old primary-100 band a white square was the
+                // clean edge, but on primary-50 white has nothing to separate from. The square is
+                // the only saturated thing left here, so it carries the tint and the mark.
+                backgroundColor: "var(--primary-100)", color: "var(--primary-400)",
               }}>
                 <Zap size={14} strokeWidth={2.4} />
               </span>
-              {/* primary-400, with the errands themselves left in gray-900. The label names the
-                  band and the mark beside it is already that colour; the things you can click are
-                  what should read as text you act on. */}
-              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--primary-400)", flexShrink: 0 }}>{t.attentionTitle}</p>
+              {/* gray-900. The mark beside it is already the colour, and a purple label next to a
+                  purple mark spends the accent twice on the same word. The errands stay gray-900
+                  too — what you can click is what should read as text you act on. */}
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>{t.attentionTitle}</p>
               {/*
                 Each errand is its own link, and there is no "Review issues" button any more.
 
