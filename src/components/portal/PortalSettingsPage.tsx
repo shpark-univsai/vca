@@ -779,7 +779,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       {active === "display" && (
       <CardSection heading={t.displayTitle} icon={<Monitor size={15} strokeWidth={2.2} />}>
         <PairGrid>
-          <PairItem label={t.language}>
+          <PairItem label={t.language} hint={t.languageNote}>
             {/* Each language named in its own script — the one label a person who cannot read the
                 current interface still recognises. */}
             <FilterSelect
@@ -790,10 +790,6 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             />
           </PairItem>
         </PairGrid>
-        {/* Said out loud, because the two halves now disagree on purpose. Without it, somebody who
-            switches here and walks into the app reads the same words in English and concludes the
-            setting is broken. */}
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px" }}>{t.languageNote}</p>
       </CardSection>
       )}
 
