@@ -10,21 +10,19 @@ import { useLanguage } from "@/lib/i18n";
  * What the real timeline has and this deliberately does not: face thumbnails and calendar dates.
  * A pre-auth screen showing a person's photo beside a camera name and a timestamp is a detection
  * record, and this is a decoration — nobody should have to work out whether it is real. Elapsed
- * gaps carry the idea on their own, and letters stand in for camera names so the drawing names no
- * place. Same reason the trail is not the real geography.
+ * gaps carry the idea on their own. Same reason the trail is not the real geography.
+ *
+ * The names are positions inside a building, not places on a map: a gate, a passage, a hall, an
+ * exit. That keeps the original rule — the drawing names no real site, and no deployment's camera
+ * list is on a screen anyone can reach without signing in — while dropping "Camera A/B/C/D",
+ * which read as a placeholder nobody had filled in yet. It also does the work the letters could
+ * not: four positions in that order are a person crossing a building and leaving by the north
+ * side, which is what the panel is illustrating.
  */
 
 const T = {
-  en: {
-    camera: (n: string) => `Camera ${n}`,
-    elapsed: "elapsed",
-    lastSeen: "LAST SEEN",
-  },
-  ko: {
-    camera: (n: string) => `카메라 ${n}`,
-    elapsed: "경과",
-    lastSeen: "마지막 목격",
-  },
+  en: { elapsed: "elapsed", lastSeen: "LAST SEEN" },
+  ko: { elapsed: "경과",   lastSeen: "마지막 목격" },
 } as const;
 
 /**
@@ -36,11 +34,11 @@ const T = {
  * yesterday. That is the opposite of what this screen is showing. Four sightings inside twenty
  * minutes says the search caught up with them, which is the case worth putting on the panel.
  */
-const ROWS: { n: string; letter: string; gap: string | null }[] = [
-  { n: "04", letter: "D", gap: "6m" },
-  { n: "03", letter: "C", gap: "11m" },
-  { n: "02", letter: "B", gap: "4m" },
-  { n: "01", letter: "A", gap: null },
+const ROWS: { n: string; name: { en: string; ko: string }; gap: string | null }[] = [
+  { n: "04", name: { en: "North Exit",     ko: "북측 출구" },  gap: "6m" },
+  { n: "03", name: { en: "Main Concourse", ko: "중앙 대합실" }, gap: "11m" },
+  { n: "02", name: { en: "Transit Hall",   ko: "환승 통로" },  gap: "4m" },
+  { n: "01", name: { en: "West Gate",      ko: "서문" },       gap: null },
 ];
 
 export default function AuthTrailList({ className }: { className?: string }) {
@@ -75,7 +73,7 @@ export default function AuthTrailList({ className }: { className?: string }) {
                 fontSize: "12px", fontWeight: 700, letterSpacing: "-0.24px",
                 color: first ? "var(--gray-800)" : "var(--gray-500)",
               }}>
-                {t.camera(row.letter)}
+                {row.name[lang]}
               </span>
               {first && (
                 <span style={{
