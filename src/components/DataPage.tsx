@@ -10,6 +10,7 @@ import {
 } from "@/lib/vcaStore";
 import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtClockTime, sgtDateKey } from "@/lib/time";
+import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePopoverDismiss } from "@/hooks/usePopoverDismiss";
 import { useOnValueChange } from "@/hooks/useOnValueChange";
@@ -4786,6 +4787,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
    * across searches. Redmap writes the same record for its sightings — see DetectionJudgement.
    */
   const judgements = useVcaStore(state => state.detectionJudgements);
+  const judgementEnabled = getComplianceConfig().detectionJudgement;
   const recordJudgement = useVcaStore(state => state.recordJudgement);
   const clearJudgement = useVcaStore(state => state.clearJudgement);
   const judgement = judgementFor(judgements, "redface", String(node.id));
@@ -4936,7 +4938,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
                   {t.undoJudgement}
                 </button>
               </>
-            ) : (
+            ) : judgementEnabled ? (
               <>
                 <button
                   onClick={() => recordJudgement({ surface:"redface", subjectId:String(node.id), targetLabel:primary.name, verdict:"confirmed" })}
@@ -4955,7 +4957,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
                   <XCircleIconSm /> {t.excluded}
                 </button>
               </>
-            )}
+            ) : null}
           </div>
         </div>
 

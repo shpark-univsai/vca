@@ -8,6 +8,7 @@ import { useOnValueChange } from "@/hooks/useOnValueChange";
 import { useToast } from "./Toast";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
 import { camerasInProject, canSearchInApp, judgementFor, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
+import { getComplianceConfig } from "@/lib/complianceConfig";
 import { buildEvidenceManifest, evidenceFilename, saveManifest } from "@/lib/evidence";
 import { siteTimeZone } from "@/lib/time";
 import RemoveImageButton from "./RemoveImageButton";
@@ -908,6 +909,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
    * and when. See DetectionJudgement.
    */
   const detectionJudgements = useVcaStore(state => state.detectionJudgements);
+  const judgementEnabled = getComplianceConfig().detectionJudgement;
   const recordJudgement = useVcaStore(state => state.recordJudgement);
   const clearJudgement = useVcaStore(state => state.clearJudgement);
   const verdictOf = (id: string) => judgementFor(detectionJudgements, "redmap", id)?.verdict;
@@ -2131,7 +2133,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                                   a wrong one. Removing pulls it out of THIS route only; it stays in
                                   the left result list (dimmed, restorable) since it's still a real
                                   search hit, just not this person's. */}
-                              {node.hitIndex >= 0 && (
+                              {node.hitIndex >= 0 && judgementEnabled && (
                                 <button
                                   onClick={e => {
                                     e.stopPropagation();
@@ -2181,7 +2183,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
    
                                   Toggles: pressing it again clears the call rather than leaving
                                   the operator with no way to take back a misclick. */}
-                              {node.hitIndex >= 0 && (() => {
+                              {node.hitIndex >= 0 && judgementEnabled && (() => {
                                 const confirmed = verdictOf(node.key) === "confirmed";
                                 return (
                                   <button

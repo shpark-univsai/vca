@@ -57,6 +57,16 @@ export interface ComplianceConfig {
    * customer in one sentence — an unexplained classification is one that gets filled in wrongly.
    */
   vipCategories: boolean;
+  /**
+   * Whether an operator can record a verdict on a detection — "yes, this is them" / "no, wrong
+   * person" — against a sighting in Redmap or an associate in RedFace.
+   *
+   * The point of it is the defence: a route somebody has been through and agreed with looks
+   * exactly like a route nobody has opened, unless the agreement is written down. It needs a
+   * server to be that, though — a verdict has to outlive the tab it was recorded in, and carry
+   * who and when to anyone who asks later.
+   */
+  detectionJudgement: boolean;
 }
 
 /**
@@ -117,5 +127,17 @@ export function getComplianceConfig(): ComplianceConfig {
      * Turning it on restores all of it; the categories and their colours are still in the store.
      */
     vipCategories: false,
+    /**
+     * Off for the first release (decided 2026-09-14), because right now the record does not
+     * survive a refresh — judgements live in the store and nothing persists them. The screen
+     * printed "checked by <name> at <time>" over a fact the next page load forgets, which is
+     * worse than not offering the button: the operator believes the check was kept.
+     *
+     * Turning it on takes a server that accepts a verdict (contract gap, no endpoint yet). What
+     * this hides is the write: the confirm/exclude buttons in Redmap's trace nodes and RedFace's
+     * associate rows. Every verdict display is already conditional on a verdict existing, so with
+     * no way to record one those branches simply never render.
+     */
+    detectionJudgement: false,
   };
 }
