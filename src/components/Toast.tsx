@@ -123,26 +123,30 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
           <div style={{ fontSize: "12px", fontWeight: 400, lineHeight: "16px", color: "var(--gray-300)" }}>{item.desc}</div>
         )}
       </div>
-      {item.actionLabel ? (
-        <button
-          onClick={() => { item.onAction?.(); onDismiss(item.id); }}
-          style={{
-            padding: "5px 10px", fontSize: "12px", fontWeight: 700, letterSpacing: "-0.2px",
-            color: "var(--gray-900)", backgroundColor: "white",
-            border: "none", borderRadius: "8px", cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-          }}
-        >
-          {item.actionLabel}
-        </button>
-      ) : (
+      {/* The close button used to be the alternative to an action, so a toast that offered one
+          (the VIP alert offers "View on map") could only be waited out — and it sits in the
+          corner where it can cover the thing you are trying to look at. Both now, action first. */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+        {item.actionLabel && (
+          <button
+            onClick={() => { item.onAction?.(); onDismiss(item.id); }}
+            style={{
+              padding: "5px 10px", fontSize: "12px", fontWeight: 700, letterSpacing: "-0.2px",
+              color: "var(--gray-900)", backgroundColor: "white",
+              border: "none", borderRadius: "8px", cursor: "pointer", whiteSpace: "nowrap",
+            }}
+          >
+            {item.actionLabel}
+          </button>
+        )}
         <button
           onClick={() => onDismiss(item.id)}
           aria-label={lang === "ko" ? "닫기" : "Dismiss"}
-          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0, display: "flex" }}
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}
         >
           <CloseIcon color="var(--gray-400)" />
         </button>
-      )}
+      </div>
     </div>
   );
 }
