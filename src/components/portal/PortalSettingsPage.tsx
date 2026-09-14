@@ -445,7 +445,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
     { id: "account", label: t.accountTitle, icon: <User size={15} strokeWidth={2.2} /> },
     ...(project ? [{ id: "project", label: t.projectTitle, icon: <MapPin size={15} strokeWidth={2.2} /> }] : []),
     ...(myTeam ? [{ id: "mail", label: t.teamMailTitle, icon: <Mail size={15} strokeWidth={2.2} /> }] : []),
-    ...(myTeamId ? [{ id: "categories", label: t.categoryTitle, icon: <Tag size={15} strokeWidth={2.2} /> }] : []),
+    ...(getComplianceConfig().vipCategories && myTeamId ? [{ id: "categories", label: t.categoryTitle, icon: <Tag size={15} strokeWidth={2.2} /> }] : []),
     ...(requirePurpose && myTeamId ? [{ id: "purposes", label: t.purposeTitle, icon: <ClipboardList size={15} strokeWidth={2.2} /> }] : []),
     { id: "display", label: t.displayTitle, icon: <Monitor size={15} strokeWidth={2.2} /> },
   ];

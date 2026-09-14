@@ -17,6 +17,10 @@ type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires
 const VIP_GRID = "48px 1.2fr 0.8fr 0.6fr 0.7fr 0.7fr 0.8fr 0.8fr 36px";
 /** The All tab adds a Group column; the Individuals tab would print "Individual" on every row. */
 const VIP_GRID_WITH_GROUP = "48px 1.1fr 0.75fr 0.75fr 0.55fr 0.65fr 0.65fr 0.7fr 0.7fr 36px";
+/** Same two, with the category track dropped — see complianceConfig.vipCategories. The freed
+ *  width goes to the name, which is what a reader scans this table by. */
+const VIP_GRID_NO_CAT = "48px 1.6fr 0.6fr 0.7fr 0.7fr 0.8fr 0.8fr 36px";
+const VIP_GRID_WITH_GROUP_NO_CAT = "48px 1.4fr 0.85fr 0.55fr 0.65fr 0.65fr 0.7fr 0.7fr 36px";
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -566,6 +570,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
   const [priorityLabel, setPriorityLabel] = useState<NonNullable<Person["priorityLabel"]>>(person?.priorityLabel ?? "normal");
   const [description, setDescription] = useState(person?.description ?? "");
   const [groupId, setGroupId] = useState(person?.groupId ?? "");
+  const categoriesEnabled = getComplianceConfig().vipCategories;
   const [categoryId, setCategoryId] = useState(person?.categoryId ?? "");
   const [basis, setBasis] = useState(person?.basis ?? "");
   const [expiresAt, setExpiresAt] = useState(person?.expiresAt?.slice(0, 10) ?? "");
@@ -663,10 +668,12 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
             <TextField value={name} onChange={setName} placeholder={t.namePlaceholder} />
           </div>
           {/* Classification, then what backs it, then when it ends — the three questions an audit
-              asks about a vipRegistry row, in the order somebody answers them. Above priority
+              asks about a registry row, in the order somebody answers them. Above priority
               because a category decides whether the basis is required and what the expiry starts
-              at, and a field that changes two others should come before them. */}
-          <div>
+              at, and a field that changes two others should come before them.
+              Behind complianceConfig.vipCategories: with it off the select is gone, `categoryId`
+              stays empty, and the basis below is therefore always optional on its own. */}
+          {categoriesEnabled && <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.categoryLabel}</label>
             <FilterSelect
               value={categoryId}
@@ -680,7 +687,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
               ]}
               footerAction={{ label: t.manageCategories, onClick: onManageCategories }}
             />
-          </div>
+          </div>}
           <div>
             <label style={{ display: "flex", alignItems: "baseline", gap: "6px", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>
               {t.basisLabel}
@@ -1199,6 +1206,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [managingCategories, setManagingCategories] = useState(false);
   const releaseEnabled = getComplianceConfig().personRelease;
+  const categoriesEnabled = getComplianceConfig().vipCategories;
   const [releasing, setReleasing] = useState<Person | null>(null);
   const [reinstating, setReinstating] = useState<Person | null>(null);
   const [reinstateReason, setReinstateReason] = useState("");
@@ -1316,13 +1324,13 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
    */
   const exportCsv = () => {
     const header = [
-      t.colName, t.colGroup, t.colCategory, t.colPriority, t.basisLabel,
+      t.colName, t.colGroup, ...(categoriesEnabled ? [t.colCategory] : []), t.colPriority, t.basisLabel,
       t.colRegistered, t.csvRegisteredBy, t.colExpires, t.colLastDetected, t.csvStatus,
     ];
     const rows = projectPersons.map(person => [
       person.name,
       person.groupId ? groupById.get(person.groupId)?.name ?? "" : "",
-      person.categoryId ? categoryById.get(person.categoryId)?.label ?? "" : t.csvUnclassified,
+      ...(categoriesEnabled ? [person.categoryId ? categoryById.get(person.categoryId)?.label ?? "" : t.csvUnclassified] : []),
       t.priorityText[person.priorityLabel ?? "normal"],
       person.basis ?? "",
       person.registeredAt.slice(0, 10),
@@ -1742,14 +1750,14 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               shell's scroller, at top:0 — no measuring, no fixed positioning, and it works because
               nothing between here and that scroller clips its overflow. zIndex 2 so rows pass
               beneath rather than over, and the gray-50 fill is what makes "beneath" invisible. */}
-          <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "16px", borderTopRightRadius: "16px" }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: categoriesEnabled ? (showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID) : (showGroupColumn ? VIP_GRID_WITH_GROUP_NO_CAT : VIP_GRID_NO_CAT), columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "16px", borderTopRightRadius: "16px" }}>
             {/* The photo and the note carry no sortKey — a face has no order, and a free-text note
                 sorted alphabetically answers nothing. */}
             <span />
             {([
               { label: t.colName, key: "name" },
               ...(showGroupColumn ? [{ label: t.colGroup }] : []),
-              { label: t.colCategory },
+              ...(categoriesEnabled ? [{ label: t.colCategory }] : []),
               { label: t.colPriority, key: "priority", indent: true },
               { label: t.colRegistered, key: "registered" },
               { label: t.colLastDetected, key: "lastDetected" },
@@ -1769,7 +1777,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             const isLast = i === projectPersons.length - 1;
             return (
               <div key={person.id} style={{
-                display: "grid", gridTemplateColumns: showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
+                display: "grid", gridTemplateColumns: categoriesEnabled ? (showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID) : (showGroupColumn ? VIP_GRID_WITH_GROUP_NO_CAT : VIP_GRID_NO_CAT), columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
                 borderBottom: isLast ? "none" : BORDER,
                 borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
               }}>
@@ -1812,7 +1820,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 {/* The category, in the institution's own word and its own colour. Unclassified
                     says so rather than showing a dash: it is a state somebody chose (or has not
                     got round to), not a missing value. */}
-                <span style={{ minWidth: 0 }}>
+                {categoriesEnabled && <span style={{ minWidth: 0 }}>
                   {(() => {
                     const cat = person.categoryId ? categoryById.get(person.categoryId) : undefined;
                     if (!cat) return <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.categoryNone}</span>;
@@ -1826,7 +1834,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                       }}>{cat.label}</span>
                     );
                   })()}
-                </span>
+                </span>}
                 <span>{person.priorityLabel ? <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
                 <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{person.registeredAt.slice(0, 10)}</span>
                 {/* The same em dash every other empty cell in this table uses, in the same grey as

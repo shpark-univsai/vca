@@ -45,6 +45,18 @@ export interface ComplianceConfig {
    * for "take them off" is one more thing to explain for a distinction that site never makes.
    */
   personRelease: boolean;
+  /**
+   * Whether the institution classifies its listings.
+   *
+   * On, every registration picks a category the institution defined — and the category decides how
+   * long the listing lasts by default and whether it must carry a written basis. That is how a
+   * police force keeps wanted persons and missing persons under different rules in one registry.
+   *
+   * Off, a listing is a listing: a name, a reason, an expiry date. Off is the right default for a
+   * site with one kind of listing, and for a product nobody can yet explain the taxonomy of to a
+   * customer in one sentence — an unexplained classification is one that gets filled in wrongly.
+   */
+  vipCategories: boolean;
 }
 
 /**
@@ -92,5 +104,18 @@ export function getComplianceConfig(): ComplianceConfig {
      * switch on shows a populated screen rather than an empty one nobody can judge.
      */
     personRelease: false,
+    /**
+     * Off for the first release (decided 2026-09-14). Not a judgement on the idea: the reason is
+     * that we cannot yet say in one sentence what a category is FOR, and a field the product
+     * cannot explain is a field the customer fills in wrongly.
+     *
+     * What it hides: the category select and the "manage categories" action in the registration
+     * form, the category column in the table and the CSV, and the Settings rail entry. What stays:
+     * the basis field (now always optional — no category is saying it is required) and the expiry
+     * date, which is the one an audit actually asks about.
+     *
+     * Turning it on restores all of it; the categories and their colours are still in the store.
+     */
+    vipCategories: false,
   };
 }
