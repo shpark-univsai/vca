@@ -1118,7 +1118,9 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                             zero: a strip of "0" chips is 58 marks saying nothing. */}
                         {vipCount > 0 && (
                           <div style={{ position:"absolute", left:4, bottom:3, display:"flex", alignItems:"center", gap:"3px", backgroundColor:"var(--label-plate)", padding:"1px 6px", borderRadius:"999px" }}>
-                            <TypeIcon type="VIP" color="white" size={9} />
+                            {/* Solid (active), not the outline the legend uses — at 10px on a
+                                photo the hollow crown was a few hairlines and read as noise. */}
+                            <TypeIcon type="VIP" color="white" size={10} active />
                             <span style={{ fontSize:"10px", fontWeight:700, color:"white", fontFamily:"monospace" }}>{vipCount}</span>
                           </div>
                         )}
