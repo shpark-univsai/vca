@@ -64,17 +64,20 @@ function SettingsNav({ sections, active, onSelect }: {
               // saturated colour at 93-96% against this page's near-white ground has too little
               // room left to be a colour, so it lands as grey with something in it.
               //
-              // The rail sits on the page's tinted ground and the panel beside it is white, so
-              // white is available here as a LIFT rather than a shade — the selected row comes
-              // forward instead of being coloured in, which is what Etsy's settings rail does and
-              // why it stays clean.
+              // No fill on the selected row at all. Three were tried and each failed for its own
+              // reason, which together say the row should not be a surface:
               //
-              // No shadow and no border. White against a tinted ground is already the separation;
-              // a shadow on top of it was elevation this row does not have — the rail is part of
-              // the page, not a thing floating over it — and a bordered pill beside a bordered
-              // card reads as two cards arguing about which one you are in. The bar and the
-              // weight say the rest.
-              backgroundColor: on ? "white" : hovered === sec.id ? "var(--gray-50)" : "transparent",
+              //   gray-100 (slate, 96%)  dusty — at that lightness a hue has no room to be a hue
+              //   --line   (purple, 93%) dusty for the same reason, in the other family
+              //   white                  clean, but it is the panel's colour: a white pill beside
+              //                          a white card reads as the same object in two places
+              //
+              // So the mark carries it instead. This is Pinterest's settings rail: a bar at the
+              // leading edge, the label in full weight and colour, and no plate under either. The
+              // row stops competing with the card for what "a white box" means, and the signal is
+              // if anything stronger — a 3px rule against nothing is more definite than a 3%
+              // difference in ground.
+              backgroundColor: hovered === sec.id && !on ? "var(--gray-50)" : "transparent",
               color: warm ? "var(--gray-900)" : "var(--gray-500)",
               fontSize: "13px", fontWeight: on ? 700 : 600, fontFamily: "inherit",
               textAlign: "left", cursor: "pointer", width: "100%",
