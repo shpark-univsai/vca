@@ -180,7 +180,22 @@ function FilterIcon({ type, color, active, size = 14 }: { type: DetType; color: 
 /* ── Colors ────────────────────────────────────────────────────── */
 // VIP is brand purple everywhere else in the app (Sidebar's VIP badges, watchlist icons) —
 // matches that instead of the sky-blue this page used to use on its own.
-const DET_COLOR: Record<DetType, string> = { VIP: "var(--primary-400)", Vehicle: "var(--type-vehicle)", Unknown: "var(--type-unknown)" };
+/**
+ * The dot, the legend swatch and the HUD accent for a detection's type.
+ *
+ * UNKNOWN IS GREY, AND THAT IS THE POINT. It was --type-unknown (#976400), a dark gold: on a 10px
+ * dot ringed in white it read as a smudge rather than a category, and beside a vivid purple and a
+ * vivid sky it was the one colour that looked like a mistake.
+ *
+ * Grey is also the honest answer. "Unknown" is the ABSENCE of an identification, and it is the
+ * majority of what a camera sees — a saturated colour on the common case spends the map's loudest
+ * signal on "nothing was established here". Purple marks a person the register knows, sky marks a
+ * thing that is not a person, and grey marks neither. Same rule the map's quiet camera dots follow.
+ *
+ * FIGMA: --type-unknown now has no reader. Drop it from the library rather than leaving a variable
+ * nothing points at.
+ */
+const DET_COLOR: Record<DetType, string> = { VIP: "var(--primary-400)", Vehicle: "var(--type-vehicle)", Unknown: "var(--gray-600)" };
 
 // How long the sidebar's "VIP detected now" pulsing dot stays lit after a hit — long enough not
 // to be missed on a glance, short enough that it still means "just now" rather than "at some

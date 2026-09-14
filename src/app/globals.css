@@ -146,6 +146,11 @@
   --type-tracking: #6d9300;
   --type-tracking-100: #f3f6eb;
   --type-vehicle: #38bdf8;
+  /* NO READERS as of 2026-09-14. Best Frame's Unknown dot/legend/HUD moved to --gray-600: this
+     was a dark gold that read as a smudge at 10px, and "unknown" is the absence of an
+     identification — the majority of what a camera sees — so it should not carry a saturated
+     colour at all. Kept here only so the Figma library and this file can be reconciled in one
+     pass; drop it from both. */
   --type-unknown: #976400;
 
   /* Elevation, scrim and label plates.
