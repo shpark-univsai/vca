@@ -13,7 +13,9 @@ import { useLanguage } from "@/lib/i18n";
  * gaps carry the idea on their own. Same reason the trail is not the real geography.
  *
  * The names are positions inside a building, not places on a map: a gate, a passage, a hall, an
- * exit. That keeps the original rule — the drawing names no real site, and no deployment's camera
+ * exit — and not compass points, because the drawing beside this list puts the last sighting at
+ * the bottom left, where "north exit" would be a name arguing with its own picture. That keeps
+ * the original rule — the drawing names no real site, and no deployment's camera
  * list is on a screen anyone can reach without signing in — while dropping "Camera A/B/C/D",
  * which read as a placeholder nobody had filled in yet. It also does the work the letters could
  * not: four positions in that order are a person crossing a building and leaving by the north
@@ -35,7 +37,7 @@ const T = {
  * minutes says the search caught up with them, which is the case worth putting on the panel.
  */
 const ROWS: { n: string; name: { en: string; ko: string }; gap: string | null }[] = [
-  { n: "04", name: { en: "North Exit",     ko: "북측 출구" },  gap: "6m" },
+  { n: "04", name: { en: "Rear Exit",      ko: "후문" },       gap: "6m" },
   { n: "03", name: { en: "Main Concourse", ko: "중앙 대합실" }, gap: "11m" },
   { n: "02", name: { en: "Transit Hall",   ko: "환승 통로" },  gap: "4m" },
   { n: "01", name: { en: "West Gate",      ko: "서문" },       gap: null },

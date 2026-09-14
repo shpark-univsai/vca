@@ -1,3 +1,7 @@
+"use client";
+
+import { useLanguage } from "@/lib/i18n";
+
 /**
  * The login panel's artwork: what this product does, drawn without saying where.
  *
@@ -16,6 +20,13 @@
  * Drawn in the app's own language: the trail is the dashed inferred path Redmap draws (see
  * .vca-route-line in globals.css), and the marks are the purple the map reserves for where the
  * system is looking.
+ *
+ * The person is drawn, and drawn as a drawing. Four cameras and a line between them is a route;
+ * it does not say whose. So the subject stands at the head of it — but as a stroked figure with a
+ * role for a label, never a face and never a name. A photograph beside a place and a time is a
+ * detection record, and this is the screen you see BEFORE signing in; nobody should have to work
+ * out whether the person on it is real. The figure says "one person", the leader line says "this
+ * trail is theirs", and neither says who.
  *
  * Fixed values rather than generated, so a server render and the browser draw the same thing.
  * Decorative: the caller marks it aria-hidden, so a screen reader lands on the form.
@@ -78,7 +89,38 @@ function CameraGlyph({ x, y, size, color = "var(--primary-400)" }: { x: number; 
   );
 }
 
+/**
+ * The subject: head and shoulders, the same stroke weight as the cameras so the two marks read as
+ * one drawing. No fill — a filled silhouette on a tinted disc reads as an account button, which
+ * is a thing to click, and this is a thing to look at.
+ */
+function PersonGlyph({ x, y, size, color = "var(--primary-300)" }: { x: number; y: number; size: number; color?: string }) {
+  const k = size / 20;
+  return (
+    <g
+      transform={`translate(${x - 10 * k} ${y - 10.6 * k}) scale(${k})`}
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    >
+      <circle cx="10" cy="7.1" r="3.3" />
+      <path d="M3.7 17C3.7 13.2 6.5 10.6 10 10.6C13.5 10.6 16.3 13.2 16.3 17" />
+    </g>
+  );
+}
+
+/** Where the subject stands: top centre, above the first sighting it is joined to. */
+const SUBJECT = { x: 280, y: 82 };
+
+const T = {
+  en: { subject: "TRACKING TARGET" },
+  ko: { subject: "추적 대상" },
+} as const;
+
 export default function AuthTrailArt({ className }: { className?: string }) {
+  const [lang] = useLanguage();
   const path = CAMERAS.map((c, i) => `${i === 0 ? "M" : "L"}${c.x} ${c.y}`).join(" ");
   // Arrow partway along the first leg, so it sits on the line rather than under a camera. Same
   // device MapView puts on a tracking route.
@@ -108,6 +150,27 @@ export default function AuthTrailArt({ className }: { className?: string }) {
         {HEAVY.map(v => <line key={`H${v}`} x1="0" y1={v} x2="560" y2={v} />)}
       </g>
       <rect x="0" y="0" width="560" height="560" fill="url(#vca-auth-fade)" />
+
+      {/* The subject, and the leader that ties them to the first sighting.
+          The leader is grey and short-dashed on purpose: the purple flowing dashes are the route
+          between sightings, and this is a callout — "the trail below belongs to this person" —
+          not another leg of it. Drawn before the cameras so 01's disc sits over its end. */}
+      <line
+        x1={SUBJECT.x - 22} y1={SUBJECT.y + 26} x2="236" y2="135"
+        stroke="var(--gray-300)" strokeWidth="1.5" strokeDasharray="3 4" strokeLinecap="round"
+      />
+      <circle cx={SUBJECT.x} cy={SUBJECT.y} r="30" fill="var(--gray-50)" />
+      <circle cx={SUBJECT.x} cy={SUBJECT.y} r="30" fill="var(--primary-400)" opacity="0.07" />
+      <PersonGlyph x={SUBJECT.x} y={SUBJECT.y} size={30} />
+      {/* Above the figure, the way a plan labels a marker — and out of the leader's way. Grey,
+          because the purple on this panel is spent on the cameras and the trail. */}
+      <text
+        x={SUBJECT.x} y={SUBJECT.y - 42} textAnchor="middle"
+        fontFamily="'SUIT', system-ui, sans-serif" fontSize="12" fontWeight={800}
+        letterSpacing="0.08em" fill="var(--gray-500)"
+      >
+        {T[lang].subject}
+      </text>
 
       {/* The trail. Dashed because it is inferred, not recorded — the system did not follow anyone,
           it matched four sightings after the fact, and a solid line would claim more than that.
