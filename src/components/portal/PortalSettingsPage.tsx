@@ -30,27 +30,47 @@ function SettingsNav({ sections, active, onSelect }: {
   active: string;
   onSelect: (id: string) => void;
 }) {
+  const [hovered, setHovered] = useState<string | null>(null);
   return (
     <nav style={{ flexShrink: 0, width: "180px", display: "flex", flexDirection: "column", gap: "2px" }}>
       {sections.map(sec => {
         const on = sec.id === active;
+        const warm = on || hovered === sec.id;
         return (
           <button
             key={sec.id}
             onClick={() => onSelect(sec.id)}
+            onMouseEnter={() => setHovered(sec.id)}
+            onMouseLeave={() => setHovered(null)}
             aria-current={on ? "page" : undefined}
             style={{
+              position: "relative",
               display: "flex", alignItems: "center", gap: "9px",
-              padding: "8px 10px", borderRadius: "8px", border: "none",
+              // Extra left padding leaves room for the bar, and every row carries it so the labels
+              // stay on one line whether or not the bar is drawn.
+              padding: "9px 10px 9px 16px", borderRadius: "8px", border: "none",
               // Grey, not purple. Purple is reserved for things that need attention, and "where
               // you are" is not one — see the colour note in globals.css.
-              backgroundColor: on ? "var(--gray-100)" : "transparent",
-              color: on ? "var(--gray-900)" : "var(--gray-500)",
+              //
+              // A fill alone said it too quietly: gray-100 on the page's near-white ground is
+              // barely a shade, so the only real signal was the weight of the text. The pattern
+              // that carries at a glance is a mark at the leading edge — komoot and Pinterest
+              // both mark the active row that way rather than tinting it harder, and the mark
+              // works at any fill strength because it is a different KIND of difference.
+              backgroundColor: on ? "var(--gray-100)" : hovered === sec.id ? "var(--gray-50)" : "transparent",
+              color: warm ? "var(--gray-900)" : "var(--gray-500)",
               fontSize: "13px", fontWeight: on ? 700 : 600, fontFamily: "inherit",
               textAlign: "left", cursor: "pointer", width: "100%",
+              transition: "background-color .12s ease, color .12s ease",
             }}
           >
-            <span style={{ display: "flex", flexShrink: 0, color: on ? "var(--gray-700)" : "var(--gray-400)" }}>{sec.icon}</span>
+            {on && (
+              <span aria-hidden="true" style={{
+                position: "absolute", left: "5px", top: "50%", transform: "translateY(-50%)",
+                width: "3px", height: "16px", borderRadius: "999px", backgroundColor: "var(--gray-900)",
+              }} />
+            )}
+            <span style={{ display: "flex", flexShrink: 0, color: on ? "var(--gray-900)" : warm ? "var(--gray-600)" : "var(--gray-400)" }}>{sec.icon}</span>
             <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sec.label}</span>
           </button>
         );
