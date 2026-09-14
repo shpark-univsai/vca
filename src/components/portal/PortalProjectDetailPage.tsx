@@ -849,7 +849,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
             <div style={{
               display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
               backgroundColor: "var(--primary-50)", border: BORDER,
-              borderRadius: "12px", padding: "14px 16px", marginBottom: CARD_GAP,
+              // 10px, not 14. The band holds one line of text beside a 28px square, so the
+              // padding was setting its height rather than breathing around content — 56px of
+              // strip for 28px of thing. Horizontal stays wider than vertical, which is what
+              // keeps a single-line bar reading as a bar.
+              borderRadius: "12px", padding: "10px 16px", marginBottom: CARD_GAP,
             }}>
               <span style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
