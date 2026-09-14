@@ -354,20 +354,13 @@ function LoginForm() {
               </div>
               {/* Password */}
               <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%" }}>
-                {/* "Forgot password?" sits on the label row, not down beside "Remember me". It
-                    belongs where the problem occurs — you discover you have forgotten it while
-                    looking at this field — and moving it up leaves the row below carrying one
-                    thing instead of two competing ones. Stripe and Lyssna both place it here. */}
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", width: "100%" }}>
-                  <label style={FIELD_LABEL}>{t.password}</label>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/forgot-password")}
-                    style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px" }}
-                  >
-                    {t.forgot}
-                  </button>
-                </div>
+                {/* Just the label. "Forgot password?" used to sit out to the right of it on the
+                    argument that the link belongs where the problem occurs — but counted against
+                    real forms that is the minority placement: of eight web sign-ins, six put it
+                    below the field and three of those put it on the remember-me row exactly as
+                    it is now (Teachable, SavvyCal, Productboard); only Lyssna and Elicit keep it
+                    up here. Below is what a returning user's eye already expects. */}
+                <label style={FIELD_LABEL}>{t.password}</label>
                 <div className="vca-auth-field" style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: FIELD_BORDER, borderRadius: "8px" }}>
                   <input
                     type={showPassword ? "text" : "password"}
@@ -395,20 +388,31 @@ function LoginForm() {
             {/* 52 was arbitrary — it pushed the primary action most of a field-height away from
                 the form it completes. Every reference form keeps this to one step of the scale. */}
             <div style={{ display: "flex", flexDirection: "column", gap: "24px", width: "100%" }}>
-              {/* One item, so no space-between row around it any more — "Forgot password?" moved
-                  up to the password label. The box is 16, not 20: at 20 it outweighed the 12px
-                  label beside it and read as the most important control on the row. */}
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={rememberId}
-                  onChange={e => setRememberId(e.target.checked)}
-                  style={{ width: "16px", height: "16px", accentColor: "var(--primary-400)", cursor: "pointer" }}
-                />
-                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                  {authConfig.employeeIdLogin ? t.rememberId : t.rememberEmail}
-                </span>
-              </label>
+              {/* The two things you do INSTEAD of typing a password, on one row under the field:
+                  remember me on the left, forgot it on the right. The box is 16, not 20: at 20 it
+                  outweighed the 12px label beside it and read as the most important control on
+                  the row. The link stays grey for the same reason — the only purple on this form
+                  is the button that signs you in. */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", width: "100%" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={rememberId}
+                    onChange={e => setRememberId(e.target.checked)}
+                    style={{ width: "16px", height: "16px", accentColor: "var(--primary-400)", cursor: "pointer" }}
+                  />
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
+                    {authConfig.employeeIdLogin ? t.rememberId : t.rememberEmail}
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => router.push("/forgot-password")}
+                  style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", whiteSpace: "nowrap" }}
+                >
+                  {t.forgot}
+                </button>
+              </div>
 
               <button
                 type="submit"
