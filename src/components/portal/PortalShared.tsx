@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Check } from "lucide-react";
-import { SUPPORT_CONTACT, canEditPortal, currentPortalUser, useVcaStore, type ProjectType } from "@/lib/vcaStore";
+import { SUPPORT_CONTACT, canEditPortal, canSetPolicy, currentPortalUser, useVcaStore, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 
@@ -33,6 +33,25 @@ export function usePortalEditAccess(): { mayEdit: boolean; reason: string | unde
 }
 
 /**
+ * The narrower gate: the handful of things an administrator may look at but not change.
+ *
+ * Separate hook rather than a flag on the one above, because the refusal is a different sentence.
+ * "Auditor accounts are view-only" is wrong on a screen an ADMIN is being turned away from, and a
+ * control that greys out with no reason, or with the wrong one, reads as a bug.
+ */
+export function usePortalPolicyAccess(): { maySetPolicy: boolean; reason: string | undefined } {
+  const portalUsers = useVcaStore(s => s.portalUsers);
+  const [lang] = usePortalLanguage();
+  const me = currentPortalUser(portalUsers);
+  const maySetPolicy = me ? canSetPolicy(me.permission) : true;
+  if (maySetPolicy) return { maySetPolicy, reason: undefined };
+  // An auditor cannot change anything at all, and hearing "owner only" invites them to go and ask
+  // for the owner's help with something they would still not be allowed to do.
+  const auditor = me ? !canEditPortal(me.permission) : false;
+  return { maySetPolicy, reason: auditor ? READ_ONLY_REASON[lang] : OWNER_ONLY_REASON[lang] };
+}
+
+/**
  * The handful of strings the shared components own.
  *
  * They had none: the kebab menu's only label was a hardcoded `title="More actions"` — untranslated
@@ -49,6 +68,12 @@ const SHARED_LABELS = {
 const READ_ONLY_REASON = {
   en: "Auditor accounts have view-only access to this console.",
   ko: "감사자 계정은 이 콘솔을 보기만 할 수 있습니다.",
+} as const;
+
+/** Why an ADMINISTRATOR — who may change almost everything here — is refused this one. */
+const OWNER_ONLY_REASON = {
+  en: "Only the owner can do this. It changes what this installation is contracted to, not how it is configured.",
+  ko: "최고관리자만 할 수 있습니다. 설정이 아니라 이 설치본의 계약 내용을 바꾸는 일입니다.",
 } as const;
 
 /**

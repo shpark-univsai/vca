@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, FileUp, Gem, Layers, Sprout } from "lucide-react";
 import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TYPE_META, useTypeLabel, usePortalEditAccess, MEASURE } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TYPE_META, useTypeLabel, usePortalPolicyAccess, MEASURE } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
@@ -649,7 +649,13 @@ function LicenseFileSection({ projectId, t }: {
   projectId: string;
   t: (typeof T)["en"] | (typeof T)["ko"];
 }) {
-  const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
+  /* Owner only (decided 2026-09-14), not canEditPortal like the rest of this console.
+     The channel limit and the expiry date come out of this file, and those are CONTRACT terms.
+     Under the edit gate, replacing what a site is entitled to sat in the same tray as renaming a
+     camera — and an administrator who installs a smaller file takes cameras off the wall without
+     anyone agreeing to it. Same reasoning as the VIP-category and search-purpose lists: a power
+     whose use changes the limits on the person using it. */
+  const { maySetPolicy: mayInstall, reason: refusalReason } = usePortalPolicyAccess();
   const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
   const installLicenseFile = useVcaStore(s => s.installLicenseFile);
   const { showToast } = useToast();
@@ -755,8 +761,8 @@ function LicenseFileSection({ projectId, t }: {
           <button
             className="portal-btn-outline"
             onClick={() => setOpen(true)}
-            disabled={!mayEdit}
-            style={{ ...OUTLINE_BTN, color: mayEdit ? "var(--gray-700)" : "var(--gray-300)", cursor: mayEdit ? "pointer" : "not-allowed" }}
+            disabled={!mayInstall}
+            style={{ ...OUTLINE_BTN, color: mayInstall ? "var(--gray-700)" : "var(--gray-300)", cursor: mayInstall ? "pointer" : "not-allowed" }}
           >
             <FileUp size={14} strokeWidth={2.4} />
             {t.fileInstall}
@@ -767,8 +773,8 @@ function LicenseFileSection({ projectId, t }: {
       {/* Refusal as readable text, not a tooltip on a disabled control — the same call the row
           menus make, for the same reason: a tooltip on a disabled control is unreliable across
           browsers and this sentence has to be read. */}
-      {!mayEdit && !open && (
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, margin: "12px 0 0" }}>{readOnlyReason}</p>
+      {!mayInstall && !open && (
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, margin: "12px 0 0" }}>{refusalReason}</p>
       )}
 
       {open && (
