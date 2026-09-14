@@ -152,8 +152,6 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
 
   return (
     <div>
-      <p style={{ fontSize: "13px", color: "var(--gray-500)", lineHeight: 1.5, marginBottom: "12px", maxWidth: MEASURE }}>{t.intro}</p>
-
       {/* The gap between collecting a purpose and keeping it, said where somebody would otherwise
           conclude the log is broken. It goes away when the app calls recordSearchAccess. */}
       {projectRecords.length === 0 && (
@@ -255,10 +253,21 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
         ))}
       </div>
 
-      {/* Who this log is for, stated once. It is not a permission notice — an auditor reading it
-          has every right to be here — it is the answer to "is anybody actually looking at this",
-          which is the question that decides whether the purpose field does any work at all. */}
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px" }}>{t.ownerOnly}</p>
+      {/* Both notes at the foot, in one register — the same move the activity log already made.
+
+          The first of them opened the screen, a 13px paragraph in the position a title would hold,
+          with no title above it to be subordinate to. Nobody arrives at a search log needing to be
+          told it is a search log; they arrive looking for one look-up, and three of the sentence's
+          nouns are column headings six inches below it. The half worth keeping is the half the rows
+          cannot show — that these are look-ups run in the MONITORING APP, so an auditor who finds
+          nothing here knows to try the activity log rather than conclude nobody did anything.
+          That is something you check after reading, not before.
+
+          The second is not a permission notice — an auditor reading it has every right to be here —
+          it is the answer to "is anybody actually looking at this", which is the question that
+          decides whether the purpose field does any work at all. */}
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px", maxWidth: MEASURE }}>{t.intro}</p>
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "4px" }}>{t.ownerOnly}</p>
     </div>
   );
 }
