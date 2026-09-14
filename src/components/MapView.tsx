@@ -512,12 +512,25 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
   const [alertThreshold, setAlertThreshold] = useState(DEFAULT_DISTRICT_ALERT_THRESHOLD);
   const [moderateThreshold, setModerateThreshold] = useState(DEFAULT_DISTRICT_MODERATE_THRESHOLD);
   useEffect(() => {
-    queueMicrotask(() => {
-      const savedAlert = Number(localStorage.getItem(DISTRICT_ALERT_THRESHOLD_KEY));
-      const savedModerate = Number(localStorage.getItem(DISTRICT_MODERATE_THRESHOLD_KEY));
-      if (Number.isFinite(savedAlert) && savedAlert > 0) setAlertThreshold(savedAlert);
-      if (Number.isFinite(savedModerate) && savedModerate > 0) setModerateThreshold(savedModerate);
-    });
+    const saved = (key: string, fallback: number) => {
+      const v = Number(localStorage.getItem(key));
+      // Also the path back to the default when the value is cleared, not just when it's absent.
+      return Number.isFinite(v) && v > 0 ? v : fallback;
+    };
+    const apply = () => {
+      setAlertThreshold(saved(DISTRICT_ALERT_THRESHOLD_KEY, DEFAULT_DISTRICT_ALERT_THRESHOLD));
+      setModerateThreshold(saved(DISTRICT_MODERATE_THRESHOLD_KEY, DEFAULT_DISTRICT_MODERATE_THRESHOLD));
+    };
+    queueMicrotask(apply);
+    // Saving on My Page in one tab used to leave a dashboard open in another tab drawing its
+    // pills against the old numbers until someone reloaded it — two windows disagreeing about
+    // what counts as an alert. `storage` fires in every OTHER tab of this origin, which is
+    // exactly the set that needs telling; the saving tab comes back through the route change.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === null || e.key === DISTRICT_ALERT_THRESHOLD_KEY || e.key === DISTRICT_MODERATE_THRESHOLD_KEY) apply();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   // Bridge for clicks inside Leaflet's raw-HTML popups (they aren't React, so they can't call
