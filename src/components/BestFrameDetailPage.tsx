@@ -192,10 +192,6 @@ const THUMB_STEP_SEC = 2;
 const AXIS_SPAN_SEC = THUMB_STEP_SEC * (THUMB_COUNT - 1);
 const HOURS_IN_DAY = 24;
 const MINUTES_IN_HOUR = 60;
-// Just tall enough for a cell (80px thumbnail + 6px gap + 15px time label) plus a little slack.
-// It was 126 while a VIP-crown row hung under every time label; with that gone the extra 20px
-// piled up as dead space above the strip, since the cells are bottom-aligned.
-const THUMB_STRIP_HEIGHT = 105;
 
 function pad2(n: number) { return String(Math.floor(n)).padStart(2, "0"); }
 function secToHHMMSS(sec: number): string {
@@ -714,7 +710,6 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
   // Only explicit navigation (step/arrow keys, Jump to, the hour/minute bars) re-centers the
   // window — see jumpTo() below.
   const [windowCenterSec, setWindowCenterSec] = useState(selectedSec);
-  const [hoveredThumbIdx, setHoveredThumbIdx] = useState<number | null>(null);
   const [hoveredHour, setHoveredHour] = useState<number | null>(null);
   const [hoveredMinute, setHoveredMinute] = useState<number | null>(null);
   const dateDropdownRef = useRef<HTMLDivElement>(null);
@@ -1086,37 +1081,22 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                 flex:1 cell, so the row overflows and scrolls instead of shrinking every
                 thumbnail to cram them all in — lets you look forward/back along the strip by
                 scrolling instead of only through the step/jump controls. */}
-            {/* paddingBottom clears the 6px horizontal scrollbar (.vca-thin-scrollbar) — the
-                cells are bottom-aligned, so without it the bar sits on top of the time labels. */}
-            <div className="vca-thin-scrollbar" style={{ position:"relative", height:`${THUMB_STRIP_HEIGHT}px`, boxSizing:"content-box", paddingBottom:"10px", zIndex:2, display:"flex", alignItems:"flex-end", gap:"4px", overflowX:"auto" }}>
+            {/* No fixed height: the cells set it. A pinned height has to be at least as tall as a
+                cell renders, and when it isn't, alignItems:flex-end pushes the overflow out the
+                TOP of the box, where overflow:auto clips it and no scroll can reach it — the
+                thumbnails simply come out with their tops shaved off.
+                paddingBottom clears the 6px horizontal scrollbar (.vca-thin-scrollbar), which
+                otherwise sits on top of the time labels. */}
+            <div className="vca-thin-scrollbar" style={{ position:"relative", paddingBottom:"10px", zIndex:2, display:"flex", alignItems:"flex-end", gap:"4px", overflowX:"auto" }}>
               {thumbFrames.map((sec, i) => {
                 const isSelected = i === centerThumbIdx;
                 const vipCount = vipByThumb.get(i) ?? 0;
                 return (
                   <div key={i} ref={el => { thumbRefs.current[i] = el; }} onClick={() => setSelectedSec(sec)}
-                    onMouseEnter={() => setHoveredThumbIdx(i)}
-                    onMouseLeave={() => setHoveredThumbIdx(prev => (prev === i ? null : prev))}
                     style={{
                     position:"relative", width:"128px", flexShrink:0,
                     display:"flex", flexDirection:"column", alignItems:"center", gap:"6px", cursor:"pointer",
                   }}>
-                    {isSelected && (
-                      // Positioned out of the flex flow (not conditionally mounted) so toggling
-                      // visibility on hover doesn't shift the thumbnail below it up and down.
-                      // Shows selectedSec (the precise scrub position), not this thumbnail's own
-                      // grid time — otherwise this badge and the step-controls readout could
-                      // disagree by up to half a sample interval.
-                      <div style={{
-                        position:"absolute", bottom:"calc(100% + 6px)", left:"50%", transform:"translateX(-50%)",
-                        display:"flex", flexDirection:"column", alignItems:"center",
-                        opacity: hoveredThumbIdx === i ? 1 : 0, pointerEvents:"none", transition:"opacity 0.12s", zIndex:5,
-                      }}>
-                        <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"4px 10px", borderRadius:"999px", fontFamily:"monospace", whiteSpace:"nowrap" }}>
-                          {secToHHMMSS(selectedSec)}
-                        </span>
-                        <span style={{ width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:"6px solid var(--primary-400)", marginTop:"-2px" }} />
-                      </div>
-                    )}
                     <div style={{
                       width:"100%", aspectRatio:"8/5", boxSizing:"border-box",
                       border: isSelected ? "3px solid var(--primary-400)" : "1.5px solid var(--gray-200)",
