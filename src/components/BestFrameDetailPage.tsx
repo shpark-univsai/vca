@@ -205,27 +205,9 @@ function hhmmssToSec(time: string): number {
   const [h, m, s] = time.split(":").map(Number);
   return h * 3600 + m * 60 + (s || 0);
 }
-// Deterministic pseudo-random in [0,1) — same shape as the seeded-mock-data helpers used
-// elsewhere in the app (e.g. RedFace's associate graph). There's no real per-second detection
-// feed in this mock data model, so the timeline's "AI detection" window is a stable, camera-
-// dependent pattern rather than a fabricated-but-changing-on-every-render one.
-function seededRandom(seed: number): number {
-  const x = Math.sin(seed * 12.9898) * 43758.5453;
-  return x - Math.floor(x);
-}
-function seedFromLabel(label: string): number {
-  let h = 0;
-  for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) % 100000;
-  return h + 1;
-}
-// How many people are visible in a given thumbnail's frame — there's no real per-frame headcount
-// in this mock data model, so this is a deterministic, camera+time-seeded stand-in, in a
-// plausible 4–28 range.
-function personCountFor(seed: number): number {
-  // Squared so the distribution skews toward the low end — most frames are ordinary foot
-  // traffic, with only occasional spikes, rather than a flat 4-28 spread that reads as noise.
-  return Math.round(3 + seededRandom(seed) ** 2 * 27);
-}
+// How many VIPs a frame is worth flagging for. Two known faces in one frame is a different
+// event from one — it is the thing an operator wants pulled out of a 60-frame strip.
+const VIP_CROWD_THRESHOLD = 2;
 
 /* ── Solid type icon ───────────────────────────────────────── */
 function TypeIcon({ type, color, size = 11, active = false }: { type: DetType; color: string; size?: number; active?: boolean }) {
@@ -262,12 +244,15 @@ function TypeIcon({ type, color, size = 11, active = false }: { type: DetType; c
   );
 }
 
-/* ── Person-count glyph, for the thumbnail headcount chip ─────── */
-function PersonCountIcon({ size = 10, color = "white" }: { size?: number; color?: string }) {
+/* ── Crowded-with-VIPs badge, for a frame over VIP_CROWD_THRESHOLD ─ */
+function AlertDot({ size = 15 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 12 12" fill="none" style={{ flexShrink:0 }}>
-      <circle cx="6" cy="4" r="2.25" stroke={color} strokeWidth="1.1"/>
-      <path d="M1.75 10.5C1.75 8.15279 3.65279 6.25 6 6.25C8.34721 6.25 10.25 8.15279 10.25 10.5" stroke={color} strokeWidth="1.1" strokeLinecap="round"/>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      {/* White outline around the red triangle — against a busy/light photo background the red
+          edge alone barely read as a shape. */}
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" fill="var(--danger-400)" stroke="white" strokeWidth="2"/>
+      <path d="M12 9v4" stroke="white" strokeWidth="2"/>
+      <path d="M12 17h.01" stroke="white" strokeWidth="2"/>
     </svg>
   );
 }
@@ -734,7 +719,6 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
   const axisStartSec = windowCenterSec - axisSpanSec / 2;
   const currentHour = Math.floor(selectedSec / 3600) % HOURS_IN_DAY;
   const currentMinute = Math.floor((selectedSec % 3600) / 60);
-  const camSeed = seedFromLabel(data.camLabel);
   // Sample frame points evenly spread across the visible span — the thumbnails ARE these points
   // (each one is "the frame at this instant"). Real per-second timestamps don't exist for every
   // visible span (a camera might have zero real hits in the current window), so this is a
@@ -1091,7 +1075,10 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
             <div className="vca-thin-scrollbar" style={{ position:"relative", height:`${THUMB_STRIP_HEIGHT}px`, boxSizing:"content-box", paddingBottom:"10px", zIndex:2, display:"flex", alignItems:"flex-end", gap:"4px", overflowX:"auto" }}>
               {thumbFrames.map((sec, i) => {
                 const isSelected = i === centerThumbIdx;
-                const personCount = personCountFor(camSeed + sec);
+                // Rounded up so a detection sitting exactly at a slice boundary (a common case,
+                // since sec is itself rounded) isn't dropped by float rounding on the raw half.
+                const halfWindow = Math.ceil(axisSpanSec / THUMB_COUNT / 2);
+                const vipCount = data.detections.filter(d => d.type === "VIP" && Math.abs(hhmmssToSec(d.time) - sec) <= halfWindow).length;
                 return (
                   <div key={i} ref={el => { thumbRefs.current[i] = el; }} onClick={() => setSelectedSec(sec)}
                     onMouseEnter={() => setHoveredThumbIdx(i)}
@@ -1125,14 +1112,21 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       <div style={{ width:"100%", height:"100%", overflow:"hidden", borderRadius: isSelected ? "6px" : "7px", position:"relative", backgroundColor:"var(--gray-800)" }}>
                         <img src={data.bgUrl ?? ""} alt=""
                           style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", filter: isSelected ? "none" : "grayscale(100%)", opacity: isSelected ? 1 : 0.75 }} />
-                        {/* Headcount chip — see personCountFor()'s comment: a deterministic mock
-                            stand-in, not a real per-frame count. A red alert triangle used to
-                            fire here at 10+; it was a danger badge raised by a number no camera
-                            reported, and headcount isn't a VIP hit in the first place. */}
-                        <div style={{ position:"absolute", left:4, bottom:3, display:"flex", alignItems:"center", gap:"3px", backgroundColor:"var(--label-plate)", padding:"1px 6px", borderRadius:"999px" }}>
-                          <PersonCountIcon size={9} />
-                          <span style={{ fontSize:"10px", fontWeight:700, color:"white", fontFamily:"monospace" }}>{personCount}</span>
-                        </div>
+                        {/* How many VIPs this frame caught — the detections' own timestamps, not
+                            a stand-in. This chip used to be a headcount from a seeded mock, which
+                            is a number no camera reported and not a VIP hit either way. Absent at
+                            zero: a strip of "0" chips is 58 marks saying nothing. */}
+                        {vipCount > 0 && (
+                          <div style={{ position:"absolute", left:4, bottom:3, display:"flex", alignItems:"center", gap:"3px", backgroundColor:"var(--label-plate)", padding:"1px 6px", borderRadius:"999px" }}>
+                            <TypeIcon type="VIP" color="white" size={9} />
+                            <span style={{ fontSize:"10px", fontWeight:700, color:"white", fontFamily:"monospace" }}>{vipCount}</span>
+                          </div>
+                        )}
+                        {vipCount >= VIP_CROWD_THRESHOLD && (
+                          <div style={{ position:"absolute", top:3, right:3 }}>
+                            <AlertDot size={15} />
+                          </div>
+                        )}
                       </div>
                     </div>
                     {/* Full absolute HH:MM:SS per thumbnail — clearer than a relative offset
