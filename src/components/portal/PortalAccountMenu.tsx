@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { updateGateChoice } from "@/components/AccessGate";
 import { Headset, LogOut, User } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -113,7 +114,7 @@ export default function PortalAccountMenu({ admin, appAccess, onSettings }: {
               </button>
             )}
             {appAccess && (
-              <button className="portal-navmenu-item" onClick={() => { setOpen(false); router.push("/"); }} style={MENU_ITEM}>
+              <button className="portal-navmenu-item" onClick={() => { setOpen(false); updateGateChoice("app"); router.push("/"); }} style={MENU_ITEM}>
                 <LogOut size={14} strokeWidth={2.4} color="var(--gray-500)" /> {t.toApp}
               </button>
             )}

@@ -28,8 +28,7 @@ import {
  * the decision visible.
  */
 
-/** Remembered so the choice is asked once per browser, not once per shift. Both shells link to
- *  the other half from their account menu, so this closes nothing permanently. */
+/** Remembered so the question is asked once per browser, not once per shift. */
 export const GATE_CHOICE_KEY = "vca:gateChoice";
 export type GateDoor = "portal" | "app";
 
@@ -40,6 +39,24 @@ export function readGateChoice(): GateDoor | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Crossing between the two halves updates what "remembered" means — but only for someone who
+ * asked to be remembered at all.
+ *
+ * The gate stores a choice made on one screen at one moment, and left alone that value freezes:
+ * an administrator who picks Portal once and then spends every shift in the app is returned to
+ * Portal every morning by a decision they made in January. What the setting is meant to hold is
+ * the half they were last in, so the two account-menu links that cross over say so.
+ *
+ * Writes nothing when no choice is stored. An unticked checkbox is "keep asking me", and a
+ * cross-over is not a quiet retraction of it.
+ */
+export function updateGateChoice(door: GateDoor): void {
+  try {
+    if (localStorage.getItem(GATE_CHOICE_KEY)) localStorage.setItem(GATE_CHOICE_KEY, door);
+  } catch { /* private window — nothing was remembered to update */ }
 }
 
 /**
@@ -239,7 +256,11 @@ export default function AccessGate({ user, denial }: {
   const router = useRouter();
   const [lang] = useLanguage();
   const t = T[lang];
-  const [remember, setRemember] = useState(false);
+  // Ticked by default: the question is worth asking once, and asking it every morning for the
+  // life of the account is not what anybody wants from a two-door install. Unticking is how
+  // somebody who genuinely alternates says "keep asking" — and because crossing over updates the
+  // remembered half (see updateGateChoice), leaving it ticked locks nobody in.
+  const [remember, setRemember] = useState(true);
 
   const name = user?.name ?? SIGNED_IN_USER.name;
   const email = user?.email ?? SIGNED_IN_USER.email;

@@ -12,6 +12,7 @@ import { useApiData } from "@/hooks/useApiData";
 import { getDashboardStats } from "@/lib/api/dashboard";
 import { sgtClockTime, sgtDateKey } from "@/lib/time";
 import { useLanguage } from "@/lib/i18n";
+import { updateGateChoice } from "@/components/AccessGate";
 
 // The console's one hairline value — see --line in globals.css, which was defined for exactly
 // this and then never reached the app: eight files each declared their own gray-200 rule instead,
@@ -549,7 +550,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                 <div style={{ height: "1px", backgroundColor: "var(--gray-200)", margin: "0 4px 6px" }} />
                 <button
                   className="navbar-dropdown-item"
-                  onClick={() => { setSettingsOpen(false); router.push("/portal"); }}
+                  onClick={() => { setSettingsOpen(false); updateGateChoice("portal"); router.push("/portal"); }}
                   style={{
                     display: "flex", alignItems: "center", gap: "10px", width: "100%",
                     padding: "9px 8px", borderRadius: "10px", border: "none",
