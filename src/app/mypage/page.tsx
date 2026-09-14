@@ -622,7 +622,7 @@ export default function MyPage() {
           {/* Page heading — on the page, not in a card. A card is a container for content you
               can act on; the crumb and the title are neither, and a white box around them reads
               as the first of the panels below rather than the label on all of them. */}
-          <div style={{ padding: "0 4px" }}>
+          <div style={{ padding: "0 4px 8px" }}>
             <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "8px" }}>
               <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{t.settings}</span>
               <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{">"}</span>
