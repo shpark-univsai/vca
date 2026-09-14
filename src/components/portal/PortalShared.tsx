@@ -904,7 +904,7 @@ export function PairGrid({ children }: { children: React.ReactNode }) {
  * None of the settings pages this was checked against (Later, Airtable, Lindy, Flodesk,
  * Time2book) puts an icon on a field label.
  */
-export function PairItem({ label, note, children }: { label: string; note?: string; children: React.ReactNode }) {
+export function PairItem({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div style={{ minWidth: 0 }}>
       {/* Three tones down the pair, not two: gray-500 name, gray-900 value, gray-400 note.
@@ -913,7 +913,14 @@ export function PairItem({ label, note, children }: { label: string; note?: stri
           was. The name of a field is something you read to find the control; the sentence under
           it is something you read once. Now the name is the darker of the two and carries the
           weight, and the note is the lightest thing in the pair. */}
-      <p style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.2px", lineHeight: "15px", color: "var(--gray-500)" }}>{label}</p>
+      <p style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 600, letterSpacing: "0.2px", lineHeight: "15px", color: "var(--gray-500)" }}>
+        {label}
+        {/* The sentence about this field, on the mark rather than under the control. It was a
+            line of 11px grey below the input, which put a second caption in the pair — the name
+            above and an explanation below, the same size, doing different jobs. The mark keeps
+            the sentence reachable without letting it take a line of the page on every visit. */}
+        {hint && <HelpTip text={hint} />}
+      </p>
       {typeof children === "string"
         ? <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--gray-900)", marginTop: "4px", wordBreak: "break-word" }}>{children}</p>
         : (
@@ -923,14 +930,6 @@ export function PairItem({ label, note, children }: { label: string; note?: stri
              A flex container has no line box, so the gap is the 6px written here and nothing else. */
           <div style={{ display: "flex", marginTop: "6px" }}>{children}</div>
         )}
-      {/* Under the control it belongs to, not collected at the foot of the section. Two of these
-          stacked below a grid read as one four-line block of small grey text that belongs to
-          nothing in particular — and a reader looking at the timezone select has to work out
-          which of the two sentences is about it. 1.4 because at 11px anything looser puts more
-          space between the lines than inside them. */}
-      {note && (
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.4, marginTop: "7px" }}>{note}</p>
-      )}
     </div>
   );
 }

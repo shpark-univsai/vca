@@ -545,7 +545,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 it sits with. */}
             {/* A select that opens and then refuses is worse than a value that never looked
                 editable — the same rule the Users table's permission cell follows. */}
-            <PairItem label={t.projectTimeZone} note={t.timeZoneNote}>
+            <PairItem label={t.projectTimeZone} hint={t.timeZoneNote}>
               {mayEdit ? (
                 <FilterSelect
                   value={project.timeZone ?? PROJECT_TIME_ZONE}
@@ -565,7 +565,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
 
                 Owner only. This is closer to a policy than a preference — the same gate the
                 search purposes and watchlist categories sit behind. */}
-            <PairItem label={t.retention} note={t.retentionNote}>
+            <PairItem label={t.retention} hint={t.retentionNote}>
               {maySetPolicy ? (
                 <FilterSelect
                   value={project.retentionDays === undefined ? "" : String(project.retentionDays)}
