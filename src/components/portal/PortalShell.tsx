@@ -220,14 +220,19 @@ export default function PortalShell() {
   const fleetOnline = projectCameras.filter(c => c.status === "online").length;
   const fleetOffline = projectCameras.length - fleetOnline;
   const [tab, setTabState] = useState<DetailTab>(
-    // A tab the rail does not offer is not a tab you can land on. searchlog is filtered out of
-    // the rail and gated in the body while requireSearchPurpose is off, so ?tab=searchlog used
-    // to draw a "Search log" breadcrumb over an empty column — a link somebody bookmarked
-    // before the feature was scoped out of v1, answered with a blank page.
+    // A tab the rail does not offer is not a tab you can land on, so a bookmarked ?tab= for one
+    // the release does not have lands on the overview rather than drawing a breadcrumb over an
+    // empty column.
+    //
+    // Which flag decides that has to be the flag the rail and the body read. This asked
+    // requireSearchPurpose while ProjectSidebar and PortalProjectDetailPage both ask
+    // searchAccessLog, and the two parted company on 2026-09-14 when the log was switched on and
+    // the purpose gate deliberately left off: the rail then offered Search log, clicking it
+    // worked, and only a LINK to the same screen bounced to the overview.
     () => {
       const named = PROJECT_TABS.find(t => t.id === tabParam)?.id;
       if (!named) return "overview";
-      if (named === "searchlog" && !getComplianceConfig().requireSearchPurpose) return "overview";
+      if (named === "searchlog" && !getComplianceConfig().searchAccessLog) return "overview";
       return named as DetailTab;
     },
   );
