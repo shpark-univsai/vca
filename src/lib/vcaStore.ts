@@ -2651,7 +2651,9 @@ const LATEST_SEED_TIMESTAMP = SEED_EVENTS.reduce((max, e) => (e.timestamp > max 
 // Only a gap LONGER than this counts as the person genuinely leaving and reappearing later, which
 // still logs as a brand-new row (this window is intentionally short — a few minutes apart is a
 // real second visit, not the same dwell).
-const VIP_SESSION_WINDOW_MS = 2 * 60 * 1000;
+/** Exported so the live wall collapses bursts on the same window this uses — one rule, one
+ *  number. Two screens answering "is this the same visit?" differently is how they drift. */
+export const VIP_SESSION_WINDOW_MS = 2 * 60 * 1000;
 
 // A cross-camera match from a day ago shouldn't permanently pin someone as "Tracking" forever —
 // without a recency bound, every registered person eventually gets seen at 2+ distinct cameras

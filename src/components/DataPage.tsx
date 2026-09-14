@@ -5,6 +5,7 @@ import type { MatchItem, ReIDStatus } from "@/types/reid";
 import {
   CAMERA_CODES, canSearchInApp, judgementFor, type DetectionVerdict,
   useActiveProjectId, useProjectCameras, useVcaStore, getActiveProjectId, personsInProject,
+  VIP_SESSION_WINDOW_MS,
   type Camera, type Person,
 } from "@/lib/vcaStore";
 import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
@@ -136,6 +137,16 @@ const T = {
     noCandidatesMatch: "No candidates match the current filters",
     chooseTargetOrFilter: "Choose a target or set a filter to see candidates",
     close: "Close",
+    /**
+     * A burst of frames folded into one card.
+     *
+     * Short form on the card (space is 136px wide), the sentence on hover. It says FRAMES, not
+     * detections or sightings: the camera fired this many times at one person going past, and
+     * calling that "3 detections" would restate the count the wall was just fixed to stop
+     * showing.
+     */
+    framesShort: (n: number) => `${n} frames`,
+    framesFolded: (n: number) => `${n} frames of one passage, folded into this card`,
     prevPage: "Previous page",
     nextPage: "Next page",
     sharedFramesTitle: "Every frame holding both the primary target and this associate",
@@ -298,6 +309,8 @@ const T = {
     noCandidatesMatch: "현재 조건에 맞는 후보가 없습니다",
     chooseTargetOrFilter: "대상을 고르거나 조건을 설정하면 후보가 나타납니다",
     close: "닫기",
+    framesShort: (n: number) => `${n}프레임`,
+    framesFolded: (n: number) => `한 번 지나간 것을 ${n}프레임으로 잡은 것을 한 장으로 묶었습니다`,
     prevPage: "이전 페이지",
     nextPage: "다음 페이지",
     sharedFramesTitle: "기준 대상과 이 동행자가 함께 잡힌 모든 프레임",
@@ -592,8 +605,9 @@ function HoverActionBtn({ label, icon, color, onClick }:
   );
 }
 
-function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab, onGoRedmap, onGoRedmapFrame }: { p: (typeof REID_DATA)[number]; onClick: () => void; showCam?: boolean; fill?: boolean; onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number]) => void; onGoRedmap?: () => void; onGoRedmapFrame?: (url: string, label: string) => void }) {
+function MonitorCard({ p, onClick, showCam = false, fill = false, frameCount = 1, onNavigateTab, onGoRedmap, onGoRedmapFrame }: { p: (typeof REID_DATA)[number]; onClick: () => void; showCam?: boolean; fill?: boolean; frameCount?: number; onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number]) => void; onGoRedmap?: () => void; onGoRedmapFrame?: (url: string, label: string) => void }) {
   const [lang] = useLanguage();
+  const t = T[lang];
   const status = REID_STATUS_STYLE[p.status];
   // Shown on hover AND on keyboard focus. The three actions on this card were the only way to
   // send a detection to Re-ID, RedFace or Redmap, and they were rendered only while the pointer
@@ -673,7 +687,18 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
             ? <span style={{ fontWeight:700 }}>{p.personName}</span>
             : <><span>{p.gender}</span><span>{p.age}</span></>}
         </div>
-        <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-600)", letterSpacing:"-0.2px", marginBottom:"6px" }}>{cardTimestamp(p.date, p.time)}</span>
+        <div style={{ display:"flex", alignItems:"baseline", gap:"4px", marginBottom:"6px", minWidth:0 }}>
+          <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-600)", letterSpacing:"-0.2px" }}>{cardTimestamp(p.date, p.time)}</span>
+          {/* Says that frames were folded together, so a collapsed burst cannot be mistaken for a
+              single capture — and so the count the wall shows still adds up to what the camera
+              recorded. Only when there is something to say: one frame needs no number. */}
+          {frameCount > 1 && (
+            <span title={t.framesFolded(frameCount)} style={{ fontSize:"10px", fontWeight:700, color:"var(--gray-500)",
+              backgroundColor:"var(--gray-100)", borderRadius:"999px", padding:"0 5px", letterSpacing:"-0.2px", flexShrink:0 }}>
+              {t.framesShort(frameCount)}
+            </span>
+          )}
+        </div>
       </div>
       <div style={{ position:"absolute", right:"6px", bottom:"40px", width:"60px", height:"60px",
         borderRadius:"8px", overflow:"hidden", transform:"translateZ(0)",
@@ -844,7 +869,9 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
         </div>
       ) : (
       <div style={{ display:"flex", flexWrap:"wrap", gap:"12px" }}>
-        {items.map(p => <MonitorCard key={p.id} p={p} onClick={() => onCardClick(p.id)} showCam={isAll} fill onNavigateTab={onNavigateTab} onGoRedmap={onGoRedmap} onGoRedmapFrame={onGoRedmapFrame} />)}
+        {items.map(p => <MonitorCard key={p.id} p={p} onClick={() => onCardClick(p.id)} showCam={isAll} fill
+          frameCount={(p as { frameCount?: number }).frameCount ?? 1}
+          onNavigateTab={onNavigateTab} onGoRedmap={onGoRedmap} onGoRedmapFrame={onGoRedmapFrame} />)}
       </div>
       )}
     </div>
@@ -902,6 +929,20 @@ function cardTimestamp(isoDate: string, time: string): string {
   return isoDate === sgtDateKey(new Date()) ? time : `${shortDate(isoDate)} ${time}`;
 }
 const LIVE_FEED_CAPTURE_INTERVAL_MS = 45_000;
+/**
+ * How many consecutive frames one passage produces, and how far apart they are.
+ *
+ * The mock used to space every capture 45s apart, so no two cards on the wall were ever the same
+ * person — and that hid the shape real data actually has. Run against the live server, the wall
+ * filled with near-identical cards seconds apart: 16:24:04, 16:24:04, 16:24:04 is one person
+ * walking past, not three arrivals. A detector fires per frame; a wall that draws per frame shows
+ * one passage as a row of duplicates and pushes the other people off the screen.
+ *
+ * So the seed produces bursts, and collapseBursts below is what the screen does about it. Faking
+ * an interval that never repeats would have kept the screen looking fine and wrong.
+ */
+const BURST_FRAMES = 3;
+const BURST_GAP_MS = 2_000;
 
 /**
  * One capture on the wall.
@@ -918,23 +959,85 @@ const LIVE_FEED_CAPTURE_INTERVAL_MS = 45_000;
  * to have matched. That was a real defect left as minor in the 2026-09-10 review: a site with zero
  * registered people still badged a third of its wall VIP.
  */
+/**
+ * One card per passage, not per frame.
+ *
+ * A detector fires on every frame it sees somebody in, so one person walking past a camera
+ * arrives as several captures seconds apart. Drawn one-per-card that reads as several arrivals,
+ * and it pushes the other people off the screen — the wall spends its space repeating its most
+ * recent subject.
+ *
+ * The window is the one the sidebar already uses for the same question (VIP_SESSION_WINDOW_MS,
+ * 2 minutes): same subject, same camera, inside the window is one visit.
+ *
+ * WHAT COUNTS AS "SAME SUBJECT" IS THE LIMIT HERE. A named match can be collapsed, because the
+ * register says who it is. An unidentified capture cannot — two strangers at one camera a second
+ * apart are two people, and merging them on the strength of "both unidentified" would erase one.
+ * So those are left alone, and the wall still shows bursts of Unknown. That is not a gap in this
+ * function; it is what the data can support, and the honest version of it. It closes when a
+ * detection carries a stable per-subject id (HANDOFF contract 7) rather than only a name.
+ */
+function collapseBursts<T extends { subjectKey?: string; personName?: string; cam: string; date: string; time: string }>(
+  items: T[],
+): (T & { frameCount: number })[] {
+  const out: (T & { frameCount: number })[] = [];
+  const lastOf = new Map<string, T & { frameCount: number }>();
+  items.forEach(item => {
+    // The tracker's subject when there is one, the register's name otherwise. A capture with
+    // neither stays its own card: two strangers at one camera a second apart are two people, and
+    // folding them on the strength of "both unidentified" would erase one of them.
+    const subject = item.subjectKey ?? (item.personName ? `name::${item.personName}` : null);
+    if (!subject) { out.push({ ...item, frameCount: 1 }); return; }
+    const key = `${item.cam}::${subject}`;
+    const prev = lastOf.get(key);
+    const at = new Date(`${item.date}T${item.time}`).getTime();
+    const prevAt = prev ? new Date(`${prev.date}T${prev.time}`).getTime() : NaN;
+    if (prev && Math.abs(prevAt - at) <= VIP_SESSION_WINDOW_MS) { prev.frameCount += 1; return; }
+    const kept = { ...item, frameCount: 1 };
+    lastOf.set(key, kept);
+    out.push(kept);
+  });
+  return out;
+}
+
 function makeLiveItem(seed: number, camId: string, index: number, watchlist: Person[]): (typeof REID_DATA)[number] {
-  const person = PERSONS[seed % PERSONS.length];
-  const cycled = LIVE_FEED_STATUS_CYCLE[seed % LIVE_FEED_STATUS_CYCLE.length];
+  // Everything identifying is keyed to the PASSAGE, not the frame, so a burst is one person seen
+  // three times rather than three strangers who happened to arrive two seconds apart. `seed`
+  // advances per frame; only `id` and the timestamp may use it.
+  const frameInPassage = index % BURST_FRAMES;
+  const passageSeed = seed - frameInPassage;
+  const person = PERSONS[passageSeed % PERSONS.length];
+  const cycled = LIVE_FEED_STATUS_CYCLE[passageSeed % LIVE_FEED_STATUS_CYCLE.length];
   // Nobody enrolled here, so nothing here can be a match.
-  const matched = cycled === "VIP" && watchlist.length > 0 ? watchlist[seed % watchlist.length] : null;
+  const matched = cycled === "VIP" && watchlist.length > 0 ? watchlist[passageSeed % watchlist.length] : null;
   const status = cycled === "VIP" && !matched ? "Unknown" : cycled;
   // Leftmost card in the feed is the most recent capture — later positions step further back in
   // time. date/time both come from this SAME instant now, instead of date cycling independently.
-  const capturedAt = new Date(Date.now() - index * LIVE_FEED_CAPTURE_INTERVAL_MS);
+  // `index` walks frames, not arrivals: every BURST_FRAMES of them are one passage, seconds apart.
+  const passage = Math.floor(index / BURST_FRAMES);
+  const capturedAt = new Date(
+    Date.now() - passage * LIVE_FEED_CAPTURE_INTERVAL_MS - frameInPassage * BURST_GAP_MS,
+  );
   return {
     ...person,
     id: 100000 + seed,
+    /**
+     * Which passage this frame belongs to — the same value for every frame of one person walking
+     * past, and different for the next person.
+     *
+     * STANDS IN FOR A TRACK ID THE API DOES NOT YET HAVE. A detector fires per frame and a
+     * tracker is what says "these frames are one subject"; without it the wall cannot tell three
+     * frames of one person from three strangers a second apart, and must draw all three. The mock
+     * knows because it generated them, so the screen can show what the collapsed wall is supposed
+     * to look like — but the behaviour is only reachable in a real deployment once a detection
+     * carries a per-subject id (see HANDOFF, contract 7).
+     */
+    subjectKey: `${camId}::${passageSeed}`,
     date: formatCapturedDate(capturedAt),
     time: formatCapturedTime(capturedAt),
     status,
-    gender: REID_GENDER_CYCLE[seed % REID_GENDER_CYCLE.length],
-    age: REID_AGE_CYCLE[seed % REID_AGE_CYCLE.length],
+    gender: REID_GENDER_CYCLE[passageSeed % REID_GENDER_CYCLE.length],
+    age: REID_AGE_CYCLE[passageSeed % REID_AGE_CYCLE.length],
     score: status === "VIP" ? 87.8 : null,
     cam: camId,
     personName: matched?.name,
@@ -943,15 +1046,15 @@ function makeLiveItem(seed: number, camId: string, index: number, watchlist: Per
     // photo (a CSV import carries names, not faces), and then this falls back to the pool so the
     // card still renders; the honest version of that case is an inset that does not draw at all,
     // which needs `face` to be optional through REID_DATA and its three other readers.
-    face: matched?.photoUrl ?? REID_FACE_POOL[seed % REID_FACE_POOL.length],
-    apparel: REID_APPAREL_CYCLE[seed % REID_APPAREL_CYCLE.length],
-    prop: REID_PROP_CYCLE[seed % REID_PROP_CYCLE.length],
-    similarity: REID_SIMILARITY_CYCLE[seed % REID_SIMILARITY_CYCLE.length],
-    topColor: REID_TOP_COLOR_CYCLE[seed % REID_TOP_COLOR_CYCLE.length],
-    bottomColor: REID_BOTTOM_COLOR_CYCLE[seed % REID_BOTTOM_COLOR_CYCLE.length],
-    shoesColor: REID_SHOES_COLOR_CYCLE[seed % REID_SHOES_COLOR_CYCLE.length],
-    emotion: REID_EMOTION_CYCLE[seed % REID_EMOTION_CYCLE.length],
-    ethnicGroup: REID_ETHNIC_GROUP_CYCLE[seed % REID_ETHNIC_GROUP_CYCLE.length],
+    face: matched?.photoUrl ?? REID_FACE_POOL[passageSeed % REID_FACE_POOL.length],
+    apparel: REID_APPAREL_CYCLE[passageSeed % REID_APPAREL_CYCLE.length],
+    prop: REID_PROP_CYCLE[passageSeed % REID_PROP_CYCLE.length],
+    similarity: REID_SIMILARITY_CYCLE[passageSeed % REID_SIMILARITY_CYCLE.length],
+    topColor: REID_TOP_COLOR_CYCLE[passageSeed % REID_TOP_COLOR_CYCLE.length],
+    bottomColor: REID_BOTTOM_COLOR_CYCLE[passageSeed % REID_BOTTOM_COLOR_CYCLE.length],
+    shoesColor: REID_SHOES_COLOR_CYCLE[passageSeed % REID_SHOES_COLOR_CYCLE.length],
+    emotion: REID_EMOTION_CYCLE[passageSeed % REID_EMOTION_CYCLE.length],
+    ethnicGroup: REID_ETHNIC_GROUP_CYCLE[passageSeed % REID_ETHNIC_GROUP_CYCLE.length],
     plate: null as string | null,
   };
 }
@@ -1606,9 +1709,9 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   const allItems = Object.values(feed).flat();
   const detailItem = detailId !== null ? allItems.find(p => p.id===detailId) ?? null : null;
   const onlineCameraCodes = useCameraStatus().running.map(c => c.code);
-  const camDetailItems = openCam === ALL_CAMERAS_ID
+  const camDetailItems = collapseBursts(openCam === ALL_CAMERAS_ID
     ? onlineCameraCodes.flatMap(code => feed[code] ?? [])
-    : feed[openCam] ?? [];
+    : feed[openCam] ?? []);
 
   return (
     <div style={{ flex:1, display:"flex", gap:"12px", overflow:"hidden", padding:"20px 24px 12px", backgroundColor:"var(--gray-100)", boxSizing:"border-box" }}>
@@ -2452,6 +2555,8 @@ export const REID_DATA = PERSONS.map((p, i) => ({
    * so an unidentified capture stays unidentified instead of borrowing somebody's name.
    */
   personName:  undefined as string | undefined,
+  /** See makeLiveItem — a passage identifier standing in for a track id. Absent outside the wall. */
+  subjectKey:  undefined as string | undefined,
   status:      REID_STATUS_CYCLE[i % REID_STATUS_CYCLE.length] as ReIDStatus,
   gender:      REID_GENDER_CYCLE[i % REID_GENDER_CYCLE.length],
   age:         REID_AGE_CYCLE[i % REID_AGE_CYCLE.length],
@@ -2499,8 +2604,9 @@ export const VEHICLE_DATA = VEHICLE_PLATES.map((plate, i) => {
   const img = carSvgDataUri(color);
   return {
     id: 900000 + i,
-    // A vehicle is not a person; there is no name slot to fill.
+    // A vehicle is not a person; there is no name slot to fill, and no passage to fold.
     personName: undefined as string | undefined,
+    subjectKey: undefined as string | undefined,
     url: img, face: img,
     time: TIMES_P[i % TIMES_P.length],
     badge: null as number | null,
@@ -2650,8 +2756,10 @@ function buildTargetResultRows(face: string, body: string, genderAbbrev: "M" | "
   const step = count > 1 ? 65 / (count - 1) : 0;
   return Array.from({ length: count }, (_, i) => ({
     id: 700000 + i,
-    // A similarity match is a candidate, not an identification — it has no name by definition.
+    // A similarity match is a candidate, not an identification — it has no name by definition,
+    // and no tracker subject either: these are separate sightings, not frames of one passage.
     personName: undefined as string | undefined,
+    subjectKey: undefined as string | undefined,
     url: withMatchVariation(body, i),
     face: withMatchVariation(face, i),
     time: TIMES_P[i % TIMES_P.length],
