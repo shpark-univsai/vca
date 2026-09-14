@@ -273,7 +273,7 @@ const CAMERA_FEEDS: CamData[] = [
     { id:"d25", type:"Unknown", name:"Grey hoodie • Female", group:"Unknown",     confidence:0,    ...recentSgtStamp(94), top:"23%", left:"42%", width:"11%", height:"34%" },
   ]},
   { camLabel: "CAM_EastGate_BS3", location: "Annex 2F Hall", bgUrl: BG[1], detections: [
-    { id:"d6", type:"Unknown", name:"Unknown Person",group:"Unknown", confidence:0,    ...recentSgtStamp(0), top:"24%", left:"55%", width:"11%", height:"34%" },
+    { id:"d6", type:"Unknown", name:"Beige coat • Female",group:"Unknown", confidence:0,    ...recentSgtStamp(0), top:"24%", left:"55%", width:"11%", height:"34%" },
     { id:"d5", type:"VIP",          name:"hong gildong", group:"VIP group",    confidence:72.6, ...recentSgtStamp(1), top:"22%", left:"25%", width:"13%", height:"37%" },
   ]},
   { camLabel: "CAM_NorthGate_BS2", location: "Orchard MRT Gate", bgUrl: BG[0], detections: [
@@ -308,7 +308,7 @@ const CAMERA_FEEDS: CamData[] = [
     { id:"d17", type:"Vehicle", name:"Vehicle CQ4471", group:"Navy", confidence:79.6, ...recentSgtStamp(16), top:"20%", left:"40%", width:"17%", height:"27%" },
   ]},
   { camLabel: "CAM_WoodlandsCP_WD1", location: "Woodlands Checkpoint",  bgUrl: BG[1], detections: [
-    { id:"d18", type:"Unknown", name:"Unknown", group:"Unknown", confidence:0, ...recentSgtStamp(17), top:"23%", left:"50%", width:"12%", height:"35%" },
+    { id:"d18", type:"Unknown", name:"Navy jacket • Male • Backpack", group:"Unknown", confidence:0, ...recentSgtStamp(17), top:"23%", left:"50%", width:"12%", height:"35%" },
   ]},
   { camLabel: "CAM_AngMoKioH_AK1",   location: "Ang Mo Kio Hub",        bgUrl: BG[0], detections: [
     { id:"d19", type:"VIP", name:"hong gildong", group:"Staff (HR)", confidence:68.9, ...recentSgtStamp(18), top:"19%", left:"33%", width:"13%", height:"38%" },
