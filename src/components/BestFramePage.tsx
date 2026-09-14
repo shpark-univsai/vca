@@ -698,8 +698,16 @@ function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState
       {/* Header */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+          {/* The icon takes the colour of the label it sits with, which is how the reel row draws
+              the same pair. It was the type colour against grey text, so one badge was coloured
+              here and grey three lines away in the list it was opened from — the same icon for
+              the same fact, twice, in two colours.
+
+              The type is not un-signalled by this: the avatar's dot carries it in the reel, and
+              the detail headline below keeps the coloured icon. One coloured moment per surface,
+              spent where the subject is named. */}
           <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
-            <FilterIcon type={det.type} color={c} size={16} />
+            <FilterIcon type={det.type} color="var(--gray-700)" size={16} />
             <span style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-700)" }}>{det.type}</span>
           </div>
           {det.type === "VIP" && (

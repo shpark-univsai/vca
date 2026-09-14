@@ -138,15 +138,15 @@ const T = {
     chooseTargetOrFilter: "Choose a target or set a filter to see candidates",
     close: "Close",
     /**
-     * A burst of frames folded into one card.
+     * A burst of captures folded into one card.
      *
-     * Short form on the card (space is 136px wide), the sentence on hover. It says FRAMES, not
-     * detections or sightings: the camera fired this many times at one person going past, and
-     * calling that "3 detections" would restate the count the wall was just fixed to stop
-     * showing.
+     * "3 frames" was the first wording and nobody could tell what it meant on a card that is
+     * itself one capture — the reader has no reason to know a detector fires per frame. So the
+     * label says what was COUNTED and what DID it: this camera caught this person three times on
+     * one pass. Short form on the card (136px of room), the sentence on hover.
      */
-    framesShort: (n: number) => `${n} frames`,
-    framesFolded: (n: number) => `${n} frames of one passage, folded into this card`,
+    framesShort: (n: number) => `caught ${n}\u00d7`,
+    framesFolded: (n: number) => `This camera caught the same person ${n} times going past. One card, ${n} captures.`,
     prevPage: "Previous page",
     nextPage: "Next page",
     sharedFramesTitle: "Every frame holding both the primary target and this associate",
@@ -309,8 +309,8 @@ const T = {
     noCandidatesMatch: "현재 조건에 맞는 후보가 없습니다",
     chooseTargetOrFilter: "대상을 고르거나 조건을 설정하면 후보가 나타납니다",
     close: "닫기",
-    framesShort: (n: number) => `${n}프레임`,
-    framesFolded: (n: number) => `한 번 지나간 것을 ${n}프레임으로 잡은 것을 한 장으로 묶었습니다`,
+    framesShort: (n: number) => `${n}회 포착`,
+    framesFolded: (n: number) => `이 카메라가 지나가는 같은 사람을 ${n}번 잡았습니다. 카드 한 장, 포착 ${n}회.`,
     prevPage: "이전 페이지",
     nextPage: "다음 페이지",
     sharedFramesTitle: "기준 대상과 이 동행자가 함께 잡힌 모든 프레임",
@@ -667,9 +667,13 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, frameCount = 1
             }} />
         </div>
       )}
-      <div style={{ position:"absolute", left:"-1px", right:"-1px", bottom:"-2px", height:"72px", backgroundColor:"white",
+      {/* 76px with 7/10 padding, not 72 with 7/24. The old box left 41px of content room for three
+          lines that need 55, and flex resolved that by crushing the middle one to zero height —
+          the identity line, the one the name goes in. A card can lose its name to a padding value
+          and still look deliberate, which is why this is measured rather than eyeballed. */}
+      <div style={{ position:"absolute", left:"-1px", right:"-1px", bottom:"-2px", height:"76px", backgroundColor:"white",
         border:"none", borderTop:"none", boxShadow:"none", margin:0, marginBottom:0,
-        padding:"7px 11px 24px", boxSizing:"border-box", display:"flex", flexDirection:"column", gap:"2px" }}>
+        padding:"7px 11px 10px", boxSizing:"border-box", display:"flex", flexDirection:"column", gap:"2px" }}>
         <div style={{ display:"flex", alignItems:"baseline", gap:"3px" }}>
           <span style={{ fontSize:"12px", fontWeight:800, color:status.text, letterSpacing:"-0.2px" }}>{attr(p.status, lang)}</span>
           {p.status === "VIP" && p.score !== null && <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-600)" }}>{p.score}%</span>}
@@ -682,12 +686,15 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, frameCount = 1
             name belonged: the most important card on the wall omitted the one thing that made it
             important, while the register had the name all along. */}
         <div style={{ display:"flex", gap:"4px", fontSize:"12px", fontWeight:600, color:"var(--gray-900)",
-          overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+          overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flexShrink:0 }}>
           {p.personName
             ? <span style={{ fontWeight:700 }}>{p.personName}</span>
             : <><span>{p.gender}</span><span>{p.age}</span></>}
         </div>
-        <div style={{ display:"flex", alignItems:"baseline", gap:"4px", marginBottom:"6px", minWidth:0 }}>
+        {/* Anchored to the bottom of the block rather than following the line above it, so the
+            timestamp sits on the same baseline on every card whether or not the identity line
+            wraps — and so it reads as the card's footer instead of a third sentence. */}
+        <div style={{ display:"flex", alignItems:"baseline", gap:"4px", marginTop:"auto", minWidth:0 }}>
           <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-600)", letterSpacing:"-0.2px" }}>{cardTimestamp(p.date, p.time)}</span>
           {/* Says that frames were folded together, so a collapsed burst cannot be mistaken for a
               single capture — and so the count the wall shows still adds up to what the camera
