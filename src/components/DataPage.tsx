@@ -524,7 +524,7 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
 
         </div>
 
-        {/* Footer — VIP registry registration is a Portal(admin) function, not a VCA operator
+        {/* Footer — VIP registration is a Portal(admin) function, not a VCA operator
             screen action, so it doesn't live here; Analyze Frame (same wording as Best Frame's
             own popup button) deep-links to that camera's Inspection Detail instead. */}
         <div style={{ padding:"12px 16px", borderTop:BORDER, backgroundColor:"var(--gray-50)", display:"flex", justifyContent:"flex-end", gap:"8px", flexShrink:0 }}>
@@ -954,7 +954,7 @@ const BURST_GAP_MS = 2_000;
 /**
  * One capture on the wall.
  *
- * `VIP registry` is this site's registered people, and it decides two things the mock used to decide
+ * `vipRegistry` is this site's registered people, and it decides two things the mock used to decide
  * on its own.
  *
  * WHO. A card badged VIP now carries the name of somebody actually on this site's VIP registry. It

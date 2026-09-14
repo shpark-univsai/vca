@@ -260,7 +260,7 @@ export interface VcaEvent {
   photoUrl?: string;
 }
 
-// Person = the VIP/VIP registry registry. Portal owns registration/CRUD for this (see
+// Person = the VIP registry. Portal owns registration/CRUD for this (see
 // PortalVipRegistryTab) — VCA's own screens only ever read it, never write to it.
 /**
  * A VIP registry category, defined by the institution rather than by us.
@@ -282,7 +282,7 @@ export interface VcaEvent {
  * scoping it per project would make the same person a different kind of case at each site.
  *
  * HANDOFF NOTE: the API request is a CRUD list under the team —
- *   GET/POST /teams/:id/VIP registry-categories, PATCH /VIP registry-categories/:id
+ *   GET/POST /teams/:id/vip-categories, PATCH /vip-categories/:id
  * Archive rather than delete, because registered people reference these by id.
  */
 export interface VipCategory {
@@ -1113,7 +1113,7 @@ const UPLOADS: UploadedMedia[] = [
   { id: "i1", projectId: "proj-sg", fileName: "west_gate_snapshot.jpg", kind: "image", sizeBytes: 2_400_000, resolution: "1920×1080", uploadedAt: auditAt(28 * 60), uploadedBy: "Grace Tan", status: "done", detectionCount: 2 },
 ];
 
-// Portal-managed accounts — separate from `persons` (the VIP/VIP registry registry). A PortalUser is
+// Portal-managed accounts — separate from `persons` (the VIP registry). A PortalUser is
 // someone who can log into this same app; `permission` decides whether they land in the Portal
 // back-office shell or straight into the Smart City/School app (see PortalShell/ClientLayout),
 // and `projectIds` scopes which project(s) an operator can see once inside the app.
@@ -2229,7 +2229,7 @@ export const PERSONS: Person[] = (() => {
   const persons: Person[] = [];
   liveEvents.forEach((e) => {
     // Tracking events are anonymous re-id trails, not identified individuals — they don't
-    // belong in the Person/VIP registry.
+    // belong in the Person registry.
     if (e.type === "Tracking" || seen.has(e.name)) return;
     seen.add(e.name);
     const info = PERSON_REGISTRY_INFO[e.name];

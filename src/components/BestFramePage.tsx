@@ -178,7 +178,7 @@ function FilterIcon({ type, color, active, size = 14 }: { type: DetType; color: 
 }
 
 /* ── Colors ────────────────────────────────────────────────────── */
-// VIP is brand purple everywhere else in the app (Sidebar's VIP badges, VIP registry icons) —
+// VIP is brand purple everywhere else in the app (Sidebar's VIP badges, VIP icons) —
 // matches that instead of the sky-blue this page used to use on its own.
 /**
  * The dot, the legend swatch and the HUD accent for a detection's type.

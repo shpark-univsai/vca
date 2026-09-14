@@ -7,7 +7,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { BORDER, CONTROL_HEIGHT, ConfirmModal, TextField } from "./PortalShared";
 
 /**
- * VIP registry categories are a TEAM's policy, not a project's.
+ * VIP categories are a TEAM's policy, not a project's.
  *
  * They lived inside ProjectVipTab, which meant the one screen that defines what a listing means
  * could only be opened from inside a project — so a team waiting for its first site could set up
@@ -82,7 +82,7 @@ interface CategoryDict {
 }
 
 /**
- * Where an institution defines its own VIP registry categories.
+ * Where an institution defines its own VIP categories.
  *
  * Opens empty, and says so. There is no shipped default and no example row: a seeded "Wanted"
  * would read as the standard and the first thing a customer who is not a police force does is

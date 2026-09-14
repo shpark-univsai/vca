@@ -1306,7 +1306,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
    *
    * Cameras and the staff roster both export; this list — the one a control centre is audited on
    * and the one a shift supervisor is handed on paper — did not, while the seeded audit log
-   * carried a line reading "VIP VIP registry exported to CSV" and taught the customer the button
+   * carried a line reading "VIP registry exported to CSV" and taught the customer the button
    * was there.
    *
    * What is on screen, not the whole registry: the toolbar's filters and search are how somebody
