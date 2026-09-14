@@ -3,15 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateGateChoice } from "@/components/AccessGate";
-import { Headset, LogOut, User } from "lucide-react";
+import { Headset, LogOut, MonitorPlay, User } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { BORDER, SupportContactModal } from "./PortalShared";
 import { SUPPORT_CONTACT } from "@/lib/vcaStore";
 
 const T = {
-  en: { toApp: "Go to app", settings: "Settings", support: "Contact support" },
-  ko: { toApp: "앱으로 이동", settings: "설정", support: "고객 지원" },
+  en: { toApp: "Go to app", settings: "Settings", support: "Contact support", logOut: "Log out" },
+  ko: { toApp: "앱으로 이동", settings: "설정", support: "고객 지원", logOut: "로그아웃" },
 } as const;
 
 const MENU_ITEM: React.CSSProperties = {
@@ -113,11 +113,32 @@ export default function PortalAccountMenu({ admin, appAccess, onSettings }: {
                 <Headset size={14} strokeWidth={2.4} color="var(--gray-500)" /> {t.support}
               </button>
             )}
+            {/* The icon was LogOut, which is the one mark in this menu that means "you are
+                leaving the product". Crossing to the monitoring app is not that — you stay signed
+                in, and the item right below it now is the real way out. Two doors wearing the same
+                mark is how somebody ends a shift by accident. */}
             {appAccess && (
               <button className="portal-navmenu-item" onClick={() => { setOpen(false); updateGateChoice("app"); router.push("/"); }} style={MENU_ITEM}>
-                <LogOut size={14} strokeWidth={2.4} color="var(--gray-500)" /> {t.toApp}
+                <MonitorPlay size={14} strokeWidth={2.4} color="var(--gray-500)" /> {t.toApp}
               </button>
             )}
+            {/* Portal had no way out at all — the top bar is the only place that could hold one,
+                and this menu is the only thing in it that belongs to the person rather than to the
+                project. Same treatment as the app's Navbar menu: below a rule, in the danger
+                colour, because it ends what everything above it was doing.
+
+                It navigates and nothing more, which is the honest amount for now: there is no
+                session to end (the gate runs on a mock identity — see the note on the /portal
+                guard). The gate choice is deliberately left alone; signing out is not a statement
+                about which half you want next time.
+
+                HANDOFF: when sessions are real this has to call the server's sign-out and clear
+                the token, not only route to /login. */}
+            <div style={{ height: "1px", backgroundColor: "var(--line)", margin: "6px 4px" }} />
+            <button className="portal-navmenu-item" onClick={() => { setOpen(false); router.push("/login"); }}
+              style={{ ...MENU_ITEM, color: "var(--danger-400)" }}>
+              <LogOut size={14} strokeWidth={2.4} color="var(--danger-400)" /> {t.logOut}
+            </button>
           </div>
         )}
       </div>
