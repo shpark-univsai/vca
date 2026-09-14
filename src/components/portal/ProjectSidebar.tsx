@@ -149,7 +149,7 @@ function UsersIcon({ color }: IconProps) {
  * Two groups, not three.
  *
  * There was a RECORDS group, and it held three tabs until two of them were scoped out of the
- * first release — the search log with requireSearchPurpose, the external-request register with
+ * first release — the external-request register with
  * externalRequests. A heading over a single row is not a group, it is a label with extra spacing,
  * and it made the rail look like it was missing something rather than like it was complete.
  *
@@ -225,7 +225,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
   const [lang] = usePortalLanguage();
   /* The search log only exists where the purpose requirement does — it is the read half of the
      same feature, and a log that can never fill is a rail entry leading to an empty room. */
-  const searchLogEnabled = getComplianceConfig().requireSearchPurpose;
+  const searchLogEnabled = getComplianceConfig().searchAccessLog;
   const requestsEnabled = getComplianceConfig().externalRequests;
   return (
     <div

@@ -24,6 +24,17 @@ export interface ComplianceConfig {
    */
   requireSearchPurpose: boolean;
   /**
+   * Whether the console keeps a record of person look-ups — who searched for whom, and when.
+   *
+   * Separate from requireSearchPurpose on purpose, because they are two questions and the answers
+   * come apart: an institution can want the record without wanting to stop an operator mid-search
+   * to type a reason. Asking is friction the operator feels on every look-up; recording costs them
+   * nothing and is what an audit actually opens with.
+   *
+   * On without the purpose gate, entries simply carry no purpose — see SearchAccessRecord.
+   */
+  searchAccessLog: boolean;
+  /**
    * Whether the console keeps a register of requests that came from outside the project — footage
    * handed to a third party, and people asking to be erased.
    *
@@ -88,6 +99,17 @@ export function getComplianceConfig(): ComplianceConfig {
      * ship, not the recommended value.
      */
     requireSearchPurpose: false,
+    /**
+     * On (decided 2026-09-14). The record is the half of the requirement that carries its weight,
+     * and the server side already exists — the backend built the look-up audit with a year of
+     * retention and stores only a hash of a searched image, not the image. Leaving our end silent
+     * meant a register nobody was writing in.
+     *
+     * The purpose gate above stays off: asking every operator to state a reason before every
+     * search is friction we are not confident the first deployments want. Recording without
+     * asking answers "who looked somebody up" and leaves "why" for when a customer asks for it.
+     */
+    searchAccessLog: true,
     /**
      * Off for the first release (decided 2026-09-11), and for the same shape of reason as the
      * line above: the screens are built and stay built, and one boolean decides whether this

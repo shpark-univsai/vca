@@ -373,9 +373,17 @@ export interface SearchAccessRecord {
   at: string;
   /** The account that ran it. */
   actor: string;
-  purposeId: string;
+  /**
+   * The stated purpose, when the installation asks for one.
+   *
+   * Optional, and that is a policy setting rather than a gap: with complianceConfig's
+   * requireSearchPurpose off nobody was asked, so there is no purpose to record and writing one
+   * in would be inventing a claim the operator never made. The log still answers the question an
+   * audit opens with — who looked somebody up, and when.
+   */
+  purposeId?: string;
   /** The purpose's wording at the time — see the note above. */
-  purposeLabel: string;
+  purposeLabel?: string;
   /** Case or document reference, when the purpose required one. */
   reference?: string;
   note?: string;
@@ -810,7 +818,7 @@ interface VcaStoreState {
    * Takes the purpose's label rather than resolving it, so the record keeps the wording that was
    * on screen at the time — see SearchAccessRecord.
    */
-  recordSearchAccess: (record: Omit<SearchAccessRecord, "id">) => void;
+  recordSearchAccess: (record: Omit<SearchAccessRecord, "id" | "at" | "actor" | "teamId">) => void;
   addVipCategory: (category: Omit<VipCategory, "id" | "archived">) => string;
   updateVipCategory: (categoryId: string, updates: Partial<Omit<VipCategory, "id" | "teamId">>) => void;
   /**
@@ -3339,7 +3347,17 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       // Newest first, and no cap here. The audit log is trimmed to 200 because it is a convenience
       // feed; this one is the record somebody is answerable for, and silently dropping the oldest
       // entries is how a log stops being evidence. Retention belongs to the server.
-      searchAccessLog: [{ ...record, id: `saccess-${++searchAccessSeq}` }, ...state.searchAccessLog],
+      //
+      // The caller passes what only it knows — what was searched for, on which screen, how many
+      // came back. When, who and which institution are filled here: four call sites assembling
+      // the same three fields is four chances to assemble them differently.
+      searchAccessLog: [{
+        ...record,
+        id: `saccess-${++searchAccessSeq}`,
+        at: new Date().toISOString(),
+        actor: SIGNED_IN_USER.name,
+        teamId: state.projects.find(p => p.id === record.projectId)?.teamId ?? "",
+      }, ...state.searchAccessLog],
     })),
   addVipCategory: (category) => {
     const id = `wcat-${++vipCategorySeq}`;

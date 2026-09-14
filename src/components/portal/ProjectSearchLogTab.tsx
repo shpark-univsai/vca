@@ -97,9 +97,11 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
 
   /* Built from what is in the log rather than from the purpose list: a retired purpose still has
      records under it, and an auditor filtering for it must be able to find them. */
+  /* Records with no purpose do not appear here — an installation that never asked has nothing to
+     filter by, and the control disappears rather than offering one empty choice. */
   const purposeOptions = useMemo(() => {
     const seen = new Map<string, string>();
-    projectRecords.forEach(r => seen.set(r.purposeId, r.purposeLabel));
+    projectRecords.forEach(r => { if (r.purposeId && r.purposeLabel) seen.set(r.purposeId, r.purposeLabel); });
     return [...seen].map(([value, label]) => ({ value, label }));
   }, [projectRecords]);
   const actorOptions = useMemo(
@@ -114,7 +116,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
     switch (key) {
       case "at": return r.at;
       case "actor": return r.actor.toLowerCase();
-      case "purpose": return r.purposeLabel.toLowerCase();
+      case "purpose": return (r.purposeLabel ?? "").toLowerCase();
       case "target": return r.target.toLowerCase();
     }
   });
@@ -130,7 +132,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
   const exportCsv = () => {
     const header = [t.csvAt, t.csvActor, t.csvPurpose, t.csvReference, t.csvTarget, t.csvSurface, t.csvResults, t.csvIp];
     const body = visible.map(r => [
-      r.at, r.actor, r.purposeLabel, r.reference ?? "", r.target, r.surface,
+      r.at, r.actor, r.purposeLabel ?? "", r.reference ?? "", r.target, r.surface,
       r.resultCount === undefined ? "" : String(r.resultCount), r.ip ?? "",
     ]);
     const csv = [header, ...body].map(row => row.map(csvEscape).join(",")).join("\n");
@@ -240,7 +242,8 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
             <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {r.actor}
             </span>
-            {cell(r.purposeLabel)}
+            {/* Absent because nobody was asked — see SearchAccessRecord.purposeId. */}
+            {cell(r.purposeLabel ?? t.none, !r.purposeLabel)}
             {/* Absent, not blank: a reference that was never required reads differently from one
                 that is missing, and only the purpose knows which. */}
             {cell(r.reference ?? t.none, !r.reference)}

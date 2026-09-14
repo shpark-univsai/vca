@@ -61,6 +61,8 @@ const T = {
     reset: "Reset",
     search: "Search",
     noSearchPermission: "You do not have permission to search people — ask an administrator",
+    /** What goes in the look-up log as the target, by which tab the search ran on. */
+    logTarget: { Photo: "Photo", Filter: "Attributes", VIP: "VIP registry", Car: "Vehicle" } as Record<string, string>,
     allCameras: "All cameras",
     labelType: "Type",
     confirmed: "Confirmed",
@@ -233,6 +235,7 @@ const T = {
     reset: "초기화",
     search: "검색",
     noSearchPermission: "인물 검색 권한이 없습니다 — 관리자에게 요청하세요",
+    logTarget: { Photo: "사진", Filter: "속성", VIP: "VIP 명단", Car: "차량" } as Record<string, string>,
     allCameras: "전체 카메라",
     labelType: "종류",
     confirmed: "확인됨",
@@ -1515,6 +1518,9 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   const seedRef = useRef(1);
   // Re-seed when the header switches site. Without this the wall keeps the previous site's cards
   // — the seed runs once at mount, and nothing else would clear them.
+  const [lang] = useLanguage();
+  const t = T[lang];
+  const recordSearchAccess = useVcaStore(state => state.recordSearchAccess);
   const scopedProjectId = useActiveProjectId();
   // Every search on this screen is answerable only from this site's cameras — see
   // useSiteCameraCodes.
@@ -1736,7 +1742,13 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
             backpackFilter={backpackFilter} onBackpackChange={setBackpackFilter}
             emotion={emotion} onEmotionChange={setEmotion}
             ethnicGroup={ethnicGroup} onEthnicGroupChange={setEthnicGroup}
-            onSearch={() => setSearched(true)} onCollapse={() => setSearchExpanded(false)}
+            onSearch={() => {
+              setSearched(true);
+              // Recorded even though Live Monitoring was never the screen the purpose gate
+              // stopped: recording costs the operator nothing, which is the whole argument for
+              // keeping the log while leaving the gate off. No purpose — nobody was asked.
+              recordSearchAccess({ projectId: scopedProjectId, target: t.logTarget[searchTab], surface: "live" });
+            }} onCollapse={() => setSearchExpanded(false)}
           />
         }
       />
@@ -3252,6 +3264,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   // without the Search button ever being pressed. One door was locked and the other stood open.
   const portalUsers = useVcaStore(state => state.portalUsers);
   const searchAllowed = canSearchInApp(portalUsers);
+  const recordSearchAccess = useVcaStore(state => state.recordSearchAccess);
   const siteProjectId = useActiveProjectId();
   const siteCameras = useSiteCameraCodes();
   // Same collapsible tabbed sidebar as Live Monitoring's Photo/Filter/VIP/Car search (see
@@ -3538,7 +3551,10 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
             backpackFilter={backpackFilter} onBackpackChange={setBackpackFilter}
             emotion={emotion} onEmotionChange={setEmotion}
             ethnicGroup={ethnicGroup} onEthnicGroupChange={setEthnicGroup}
-            onSearch={() => setHasSearched(true)} onCollapse={() => setExpanded(false)}
+            onSearch={() => {
+              setHasSearched(true);
+              recordSearchAccess({ projectId: siteProjectId, target: t.logTarget[searchTab], surface: "reid" });
+            }} onCollapse={() => setExpanded(false)}
           />
         }
       />

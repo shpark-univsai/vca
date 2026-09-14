@@ -20,6 +20,8 @@ import { josa, useLanguage, type AppLanguage } from "@/lib/i18n";
 // seeded match labels are data and stay as they are.
 const T = {
   en: {
+    logFaceImage: "Face image",
+    logBodyImage: "Body image",
     noPermissionTitle: "Person search permission required",
     noPermissionBody: "Redmap only shows results from a search, so with no search permission there is nothing to show. An administrator can grant it in the Portal, under Users & Permissions.",
     close: "Close",
@@ -106,6 +108,8 @@ const T = {
     notSamePerson: "Not the same person — remove from this trace",
   },
   ko: {
+    logFaceImage: "얼굴 이미지",
+    logBodyImage: "전신 이미지",
     noPermissionTitle: "인물 검색 권한이 필요합니다",
     noPermissionBody: "Redmap은 검색으로만 결과를 보여주는 화면이라, 검색 권한 없이는 보여줄 것이 없습니다. 관리자에게 요청하면 Portal의 사용자 및 권한에서 열어 줄 수 있습니다.",
     close: "닫기",
@@ -910,6 +914,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
    */
   const detectionJudgements = useVcaStore(state => state.detectionJudgements);
   const judgementEnabled = getComplianceConfig().detectionJudgement;
+  const recordSearchAccess = useVcaStore(state => state.recordSearchAccess);
   const recordJudgement = useVcaStore(state => state.recordJudgement);
   const clearJudgement = useVcaStore(state => state.clearJudgement);
   const verdictOf = (id: string) => judgementFor(detectionJudgements, "redmap", id)?.verdict;
@@ -1000,6 +1005,10 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
     setMode("person");
     setResults(defaultResults);
     setHasSearched(true);
+    // Arriving with a name and landing on results IS a look-up — the operator did not fill the
+    // form, but the system searched for a named person on their behalf. A log that only counted
+    // searches typed on this screen would miss every trace opened from Best Frame or the map.
+    recordSearchAccess({ projectId: siteProjectId, target: initialSearchName, surface: "redmap", resultCount: defaultResults.length });
     setActiveHit(null);
     setActiveNode(null);
     setSelectedPersonIds(defaultResults.length ? new Set([defaultResults[defaultResults.length - 1].personId]) : new Set());
@@ -1180,6 +1189,18 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
             desc: t.widenDates });
     }
     setResults(filtered);
+    // One line to the look-up log. No purpose is attached: complianceConfig.requireSearchPurpose
+    // is off, so nobody was asked for one and inventing one would put a claim in the record that
+    // the operator never made. What the log answers is who searched for what, and when.
+    recordSearchAccess({
+      projectId: siteProjectId,
+      // What the operator actually gave us: a plate they typed, or an image they uploaded. The
+      // image itself is not recorded — the server keeps a hash, and the browser has no business
+      // writing one (a hash of the copy it received proves the copy, not the capture).
+      target: mode === "car" ? licensePlate.trim() : bodyOnly ? t.logBodyImage : t.logFaceImage,
+      surface: "redmap",
+      resultCount: filtered.length,
+    });
     // Judgements are NOT cleared here. They used to be, on the reasoning that they described this
     // search's outcome; they describe a sighting instead, and re-running a query is not a reason
     // to make somebody decide the same false positive twice.

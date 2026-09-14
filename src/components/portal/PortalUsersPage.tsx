@@ -118,6 +118,7 @@ const T = {
     accessAppOnlyDesc: "Signs straight into the monitoring app. No Portal.",
     accessPortalOnlyDesc: "Settings console only — no monitoring app.",
     accessGainsRoleNote: (role: string) => `Given the ${role} role, which changes nothing until you raise it.`,
+    reasonNoApp: "This account has no app access — person search has no screen to run on.",
     reasonNotOwner: "Only an owner can change access.",
     appSearchOn: "On",
     appSearchGrant: "Allow person search in the app",
@@ -364,6 +365,7 @@ const T = {
     accessAppOnlyDesc: "로그인하면 바로 관제 앱. Portal은 못 봅니다.",
     accessPortalOnlyDesc: "설정 콘솔만 — 관제 앱은 못 씁니다.",
     accessGainsRoleNote: (role: string) => `${role} 역할로 들어갑니다. 올리기 전까지는 바꾸는 게 없습니다.`,
+    reasonNoApp: "앱 접근이 없는 계정입니다 — 인물 검색을 쓸 화면이 없습니다.",
     reasonNotOwner: "권한 변경은 최고관리자만 할 수 있습니다.",
     appSearchOn: "허용",
     appSearchGrant: "앱에서 인물 검색 허용",
@@ -2351,9 +2353,15 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 reason: manageAccess ? undefined : t.reasonNotOwner,
               }] : []),
               {
+                // Granting needs the app: person search is a grant on a surface, and an account
+                // with no app cannot reach it. Revoking stays available whatever the app state —
+                // taking a grant away is never the thing to block. (The other direction is
+                // already handled: updatePortalUserAccess drops appSearch when the app goes.)
                 label: u.appSearch ? t.appSearchRevoke : t.appSearchGrant,
-                disabled: !manageAccess,
-                reason: manageAccess ? undefined : t.reasonNotOwner,
+                disabled: !manageAccess || (!u.appSearch && !u.appAccess),
+                reason: !manageAccess ? t.reasonNotOwner
+                  : (!u.appSearch && !u.appAccess) ? t.reasonNoApp
+                  : undefined,
                 onClick: () => {
                   const next = !u.appSearch;
                   setConfirming({
