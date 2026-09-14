@@ -181,7 +181,10 @@ const REGISTERED: Record<DetType, string | null> = {
 // instead of a Zoom preset toggle — you pick an hour, then a minute within it, rather than
 // zooming a single axis in and out. The thumbnail strip below always shows a fixed, tight
 // 2-second-per-frame span around wherever that lands, for precise second-level scrubbing.
-const THUMB_COUNT = 60; // more than fits on screen at once — the strip scrolls to reveal the rest
+// Odd, so the window's centre — the instant you are inspecting — is itself one of the samples.
+// With an even count the samples straddle the centre (…c-1, c+1…) and the frame you selected had
+// no thumbnail of its own: its detections landed a second either side of every sample.
+const THUMB_COUNT = 61; // more than fits on screen at once — the strip scrolls to reveal the rest
 const THUMB_STEP_SEC = 2;
 // (COUNT - 1), not COUNT — the thumbnails sit edge-to-edge at fractions i/(COUNT-1), so there
 // are only COUNT-1 gaps between them. Using COUNT here made 40/19 the real gap size, which
@@ -732,6 +735,16 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
     const frac = i / (THUMB_COUNT - 1);
     return Math.round(axisStartSec + frac * axisSpanSec);
   });
+  // Each VIP detection marks exactly one thumbnail — the nearest sample. A per-thumbnail
+  // "within half a step" test double-counted: one detection at :00 is a second from both the
+  // :59 and the :01 thumbnail, so the same person was drawn as two sightings.
+  const vipByThumb = new Map<number, number>();
+  for (const d of data.detections) {
+    if (d.type !== "VIP") continue;
+    const i = Math.round((hhmmssToSec(d.time) - axisStartSec) / THUMB_STEP_SEC);
+    if (i < 0 || i >= THUMB_COUNT) continue;
+    vipByThumb.set(i, (vipByThumb.get(i) ?? 0) + 1);
+  }
   const centerThumbIdx = thumbFrames.reduce(
     (bestI, t, i) => (Math.abs(t - selectedSec) < Math.abs(thumbFrames[bestI] - selectedSec) ? i : bestI), 0,
   );
@@ -1078,10 +1091,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
             <div className="vca-thin-scrollbar" style={{ position:"relative", height:`${THUMB_STRIP_HEIGHT}px`, boxSizing:"content-box", paddingBottom:"10px", zIndex:2, display:"flex", alignItems:"flex-end", gap:"4px", overflowX:"auto" }}>
               {thumbFrames.map((sec, i) => {
                 const isSelected = i === centerThumbIdx;
-                // Rounded up so a detection sitting exactly at a slice boundary (a common case,
-                // since sec is itself rounded) isn't dropped by float rounding on the raw half.
-                const halfWindow = Math.ceil(axisSpanSec / THUMB_COUNT / 2);
-                const vipCount = data.detections.filter(d => d.type === "VIP" && Math.abs(hhmmssToSec(d.time) - sec) <= halfWindow).length;
+                const vipCount = vipByThumb.get(i) ?? 0;
                 return (
                   <div key={i} ref={el => { thumbRefs.current[i] = el; }} onClick={() => setSelectedSec(sec)}
                     onMouseEnter={() => setHoveredThumbIdx(i)}

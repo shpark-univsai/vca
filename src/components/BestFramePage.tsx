@@ -246,6 +246,12 @@ const CAR_IMG = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?au
 // same relative spacing/story it always had, just re-anchored to "now" — and each entry is
 // listed newest-first within its camera, matching how CameraCard renders the list (also enforced
 // defensively by a sort in CameraCard itself, in case this ordering ever drifts).
+//
+// ONE CAMERA'S DETECTIONS SHARE ONE STAMP, because they are one frame. The reel calls them
+// "objects captured in current frame" and the detail screen draws all of them at once over a
+// single still — but they used to be written a minute apart, so the same image claimed nine
+// different capture times depending on which box you focused, and the timeline could only ever
+// find one VIP in a frame that plainly holds four.
 /**
  * The curated feeds, as an ordered list rather than a map keyed by camera id.
  *
@@ -263,18 +269,18 @@ const CAR_IMG = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?au
 const CAMERA_FEEDS: CamData[] = [
   { camLabel: "CAM_WestGate_BS1", location: "Main Intake Road", bgUrl: BG[0], detections: [
     { id:"d3", type:"VIP",          name:"Dr. Alex Wong",          group:"VIP group",       confidence:98.4, ...recentSgtStamp(86), top:"18%", left:"68%", width:"12%", height:"36%" },
-    { id:"d1", type:"VIP",          name:"Sarah Lin",              group:"Staff (Finance)", confidence:98.4, ...recentSgtStamp(87), top:"15%", left:"10%", width:"12%", height:"38%" },
-    { id:"d4", type:"Unknown", name:"Blue shirts • Man • Bag",group:"Unknown",    confidence:0,    ...recentSgtStamp(88), top:"25%", left:"32%", width:"11%", height:"35%" },
-    { id:"d2", type:"Vehicle",      name:"Vehicle SGX411",         group:"Navy",            confidence:92.8, ...recentSgtStamp(89), top:"20%", left:"48%", width:"18%", height:"28%" },
-    { id:"d21", type:"VIP",     name:"Michelle Tan",       group:"VIP group",     confidence:95.7, ...recentSgtStamp(90), top:"17%", left:"22%", width:"12%", height:"37%" },
-    { id:"d22", type:"Unknown", name:"Red cap • Male",     group:"Unknown",       confidence:0,    ...recentSgtStamp(91), top:"24%", left:"58%", width:"11%", height:"34%" },
-    { id:"d23", type:"Vehicle", name:"Vehicle YW2281",     group:"Logistics",     confidence:87.4, ...recentSgtStamp(92), top:"19%", left:"5%",  width:"17%", height:"27%" },
-    { id:"d24", type:"VIP",     name:"James Kwek",         group:"Staff (Security)", confidence:90.1, ...recentSgtStamp(93), top:"16%", left:"78%", width:"12%", height:"37%" },
-    { id:"d25", type:"Unknown", name:"Grey hoodie • Female", group:"Unknown",     confidence:0,    ...recentSgtStamp(94), top:"23%", left:"42%", width:"11%", height:"34%" },
+    { id:"d1", type:"VIP",          name:"Sarah Lin",              group:"Staff (Finance)", confidence:98.4, ...recentSgtStamp(86), top:"15%", left:"10%", width:"12%", height:"38%" },
+    { id:"d4", type:"Unknown", name:"Blue shirts • Man • Bag",group:"Unknown",    confidence:0,    ...recentSgtStamp(86), top:"25%", left:"32%", width:"11%", height:"35%" },
+    { id:"d2", type:"Vehicle",      name:"Vehicle SGX411",         group:"Navy",            confidence:92.8, ...recentSgtStamp(86), top:"20%", left:"48%", width:"18%", height:"28%" },
+    { id:"d21", type:"VIP",     name:"Michelle Tan",       group:"VIP group",     confidence:95.7, ...recentSgtStamp(86), top:"17%", left:"22%", width:"12%", height:"37%" },
+    { id:"d22", type:"Unknown", name:"Red cap • Male",     group:"Unknown",       confidence:0,    ...recentSgtStamp(86), top:"24%", left:"58%", width:"11%", height:"34%" },
+    { id:"d23", type:"Vehicle", name:"Vehicle YW2281",     group:"Logistics",     confidence:87.4, ...recentSgtStamp(86), top:"19%", left:"5%",  width:"17%", height:"27%" },
+    { id:"d24", type:"VIP",     name:"James Kwek",         group:"Staff (Security)", confidence:90.1, ...recentSgtStamp(86), top:"16%", left:"78%", width:"12%", height:"37%" },
+    { id:"d25", type:"Unknown", name:"Grey hoodie • Female", group:"Unknown",     confidence:0,    ...recentSgtStamp(86), top:"23%", left:"42%", width:"11%", height:"34%" },
   ]},
   { camLabel: "CAM_EastGate_BS3", location: "Annex 2F Hall", bgUrl: BG[1], detections: [
     { id:"d6", type:"Unknown", name:"Beige coat • Female",group:"Unknown", confidence:0,    ...recentSgtStamp(0), top:"24%", left:"55%", width:"11%", height:"34%" },
-    { id:"d5", type:"VIP",          name:"hong gildong", group:"VIP group",    confidence:72.6, ...recentSgtStamp(1), top:"22%", left:"25%", width:"13%", height:"37%" },
+    { id:"d5", type:"VIP",          name:"hong gildong", group:"VIP group",    confidence:72.6, ...recentSgtStamp(0), top:"22%", left:"25%", width:"13%", height:"37%" },
   ]},
   { camLabel: "CAM_NorthGate_BS2", location: "Orchard MRT Gate", bgUrl: BG[0], detections: [
     { id:"d7", type:"Vehicle", name:"Vehicle XB3291", group:"Logistics", confidence:81.3, ...recentSgtStamp(1), top:"20%", left:"40%", width:"18%", height:"28%" },
@@ -284,7 +290,7 @@ const CAMERA_FEEDS: CamData[] = [
   ]},
   { camLabel: "CAM_WestGate_BS1B", location: "Bugis MRT", bgUrl: BG[0], detections: [
     { id:"d9",  type:"VIP",     name:"hong gildong", group:"VIP group",  confidence:76.9, ...recentSgtStamp(1), top:"20%", left:"18%", width:"13%", height:"36%" },
-    { id:"d10", type:"Vehicle", name:"Vehicle XC112", group:"Security",  confidence:64.2, ...recentSgtStamp(4), top:"22%", left:"60%", width:"16%", height:"26%" },
+    { id:"d10", type:"Vehicle", name:"Vehicle XC112", group:"Security",  confidence:64.2, ...recentSgtStamp(1), top:"22%", left:"60%", width:"16%", height:"26%" },
   ]},
   { camLabel: "CAM_HarbourB_HB4", location: "HB4 Terminal",  bgUrl: BG[1], detections: [
     { id:"d11", type:"Unknown", name:"Blue cap • Male", group:"Unknown", confidence:0, ...recentSgtStamp(5), top:"22%", left:"36%", width:"12%", height:"36%" },
