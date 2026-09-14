@@ -189,9 +189,10 @@ const THUMB_STEP_SEC = 2;
 const AXIS_SPAN_SEC = THUMB_STEP_SEC * (THUMB_COUNT - 1);
 const HOURS_IN_DAY = 24;
 const MINUTES_IN_HOUR = 60;
-// Shared by the thumbnail strip and the guide-line's height so the line stops exactly at the
-// strip's top edge instead of running down through the thumbnail images themselves.
-const THUMB_STRIP_HEIGHT = 126;
+// Just tall enough for a cell (80px thumbnail + 6px gap + 15px time label) plus a little slack.
+// It was 126 while a VIP-crown row hung under every time label; with that gone the extra 20px
+// piled up as dead space above the strip, since the cells are bottom-aligned.
+const THUMB_STRIP_HEIGHT = 105;
 
 function pad2(n: number) { return String(Math.floor(n)).padStart(2, "0"); }
 function secToHHMMSS(sec: number): string {
@@ -222,9 +223,7 @@ function seedFromLabel(label: string): number {
 // plausible 4–28 range.
 function personCountFor(seed: number): number {
   // Squared so the distribution skews toward the low end — most frames are ordinary foot
-  // traffic, with only occasional crowded spikes. A flat 4–28 range put ~75% of frames over the
-  // 10-person "crowded" alert threshold, which made the alert dot fire on almost every thumbnail
-  // and stop meaning anything.
+  // traffic, with only occasional spikes, rather than a flat 4-28 spread that reads as noise.
   return Math.round(3 + seededRandom(seed) ** 2 * 27);
 }
 
@@ -273,19 +272,6 @@ function PersonCountIcon({ size = 10, color = "white" }: { size?: number; color?
   );
 }
 
-/* ── Small alert badge — a crowded frame (10+ people) worth flagging at a glance ─ */
-function AlertDot({ size = 15 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-      {/* White outline around the red triangle — against a busy/light photo background the red
-          edge alone barely read as a shape. */}
-      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" fill="var(--danger-400)" stroke="white" strokeWidth="2"/>
-      <path d="M12 9v4" stroke="white" strokeWidth="2"/>
-      <path d="M12 17h.01" stroke="white" strokeWidth="2"/>
-    </svg>
-  );
-}
-
 /* ── Reel filter chips ────────────────────────────────────────── */
 type ReelFilter = DetType | "All";
 
@@ -307,7 +293,16 @@ function ReelFilterIcon({ type, color, active = false }: { type: DetType; color:
   return <TypeIcon type={type} color={color} size={14} active={active} />;
 }
 
-function ReelFilterBar({ filter, onChange }: { filter: ReelFilter; onChange: (f: ReelFilter) => void }) {
+// The count beside each label — what the frame holds, without having to click each filter to
+// find out. Tabular figures so the chips don't jitter in width as the numbers change.
+function FilterCount({ n, active }: { n: number; active: boolean }) {
+  return (
+    <span style={{ fontSize:"11px", fontWeight:700, fontVariantNumeric:"tabular-nums",
+      color: active ? "rgba(255,255,255,0.75)" : "var(--gray-400)" }}>{n}</span>
+  );
+}
+
+function ReelFilterBar({ filter, onChange, counts }: { filter: ReelFilter; onChange: (f: ReelFilter) => void; counts: Record<ReelFilter, number> }) {
   const [lang] = useLanguage();
   const t = T[lang];
   // "VIP" is the same word in both languages; the other three get translated.
@@ -321,27 +316,38 @@ function ReelFilterBar({ filter, onChange }: { filter: ReelFilter; onChange: (f:
     <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
       {REEL_FILTER_CFG.map(f => {
         const active = filter === f.id;
+        // A zero chip still shows its count — "no vehicles in this frame" is the answer, not a
+        // missing one — but there's nothing behind it to filter to, so it doesn't take a click.
+        const n = counts[f.id];
+        const empty = n === 0;
         if (f.id === "All") {
           return (
-            <button key="All" onClick={() => onChange("All")} style={{
-              padding:"6px 14px", borderRadius:"999px", cursor:"pointer",
+            <button key="All" onClick={() => onChange("All")} disabled={empty} style={{
+              display:"flex", alignItems:"center", gap:"5px",
+              padding:"6px 14px", borderRadius:"999px", cursor: empty ? "default" : "pointer",
               border: active ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)",
               backgroundColor: active ? "var(--gray-900)" : "white",
               color: active ? "white" : "var(--gray-700)", fontSize:"12px", fontWeight: active ? 700 : 600,
-            }}>{f.label}</button>
+              opacity: empty ? 0.45 : 1,
+            }}>
+              {f.label}
+              <FilterCount n={n} active={active} />
+            </button>
           );
         }
         const c = f.color!;
         return (
-          <button key={f.id} onClick={() => onChange(f.id)} style={{
+          <button key={f.id} onClick={() => onChange(f.id)} disabled={empty} style={{
             display:"flex", alignItems:"center", gap:"5px",
-            padding:"6px 10px", borderRadius:"999px", cursor:"pointer",
+            padding:"6px 10px", borderRadius:"999px", cursor: empty ? "default" : "pointer",
             border: active ? `1px solid ${c}` : "1px solid var(--gray-300)",
             backgroundColor: active ? c : "white",
             color: active ? "white" : "var(--gray-700)", fontSize:"12px", fontWeight: active ? 700 : 600,
+            opacity: empty ? 0.45 : 1,
           }}>
             <ReelFilterIcon type={f.id as DetType} color={c} active={active} />
             {f.label}
+            <FilterCount n={n} active={active} />
           </button>
         );
       })}
@@ -462,6 +468,12 @@ function BestFrameReel({ data, focusedId, onFocus, onSelect, filter, onFilterCha
   const [lang] = useLanguage();
   const t = T[lang];
   const dets = filter === "All" ? data.detections : data.detections.filter(d => d.type === filter);
+  const counts: Record<ReelFilter, number> = {
+    All:     data.detections.length,
+    VIP:     data.detections.filter(d => d.type === "VIP").length,
+    Vehicle: data.detections.filter(d => d.type === "Vehicle").length,
+    Unknown: data.detections.filter(d => d.type === "Unknown").length,
+  };
   return (
     <div style={{ width:"380px", flexShrink:0, backgroundColor:"white", borderLeft:BORDER, display:"flex", flexDirection:"column", overflow:"hidden" }}>
       <div style={{ padding:"16px 16px 12px", flexShrink:0, display:"flex", flexDirection:"column", gap:"12px" }}>
@@ -469,7 +481,7 @@ function BestFrameReel({ data, focusedId, onFocus, onSelect, filter, onFilterCha
           <p style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.28px" }}>{t.reelTitle}</p>
           <p style={{ fontSize:"11px", color:"var(--gray-400)", marginTop:"2px" }}>{t.reelSub}</p>
         </div>
-        <ReelFilterBar filter={filter} onChange={onFilterChange} />
+        <ReelFilterBar filter={filter} onChange={onFilterChange} counts={counts} />
       </div>
       {/* alignItems:"start" — grid's default "stretch" was forcing every card to match the
           tallest card in its row, which showed up as a huge blank gap inside whichever card
@@ -1080,7 +1092,6 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
               {thumbFrames.map((sec, i) => {
                 const isSelected = i === centerThumbIdx;
                 const personCount = personCountFor(camSeed + sec);
-                const crowded = personCount >= 10;
                 return (
                   <div key={i} ref={el => { thumbRefs.current[i] = el; }} onClick={() => setSelectedSec(sec)}
                     onMouseEnter={() => setHoveredThumbIdx(i)}
@@ -1115,18 +1126,13 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                         <img src={data.bgUrl ?? ""} alt=""
                           style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", filter: isSelected ? "none" : "grayscale(100%)", opacity: isSelected ? 1 : 0.75 }} />
                         {/* Headcount chip — see personCountFor()'s comment: a deterministic mock
-                            stand-in, not a real per-frame count. 10+ people gets a red alert dot
-                            (top-right) so a crowded frame is spottable without reading every
-                            number in the strip. */}
+                            stand-in, not a real per-frame count. A red alert triangle used to
+                            fire here at 10+; it was a danger badge raised by a number no camera
+                            reported, and headcount isn't a VIP hit in the first place. */}
                         <div style={{ position:"absolute", left:4, bottom:3, display:"flex", alignItems:"center", gap:"3px", backgroundColor:"var(--label-plate)", padding:"1px 6px", borderRadius:"999px" }}>
                           <PersonCountIcon size={9} />
                           <span style={{ fontSize:"10px", fontWeight:700, color:"white", fontFamily:"monospace" }}>{personCount}</span>
                         </div>
-                        {crowded && (
-                          <div style={{ position:"absolute", top:3, right:3 }}>
-                            <AlertDot size={15} />
-                          </div>
-                        )}
                       </div>
                     </div>
                     {/* Full absolute HH:MM:SS per thumbnail — clearer than a relative offset
