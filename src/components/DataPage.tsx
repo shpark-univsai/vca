@@ -524,7 +524,7 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
 
         </div>
 
-        {/* Footer — Watchlist registration is a Portal(admin) function, not a VCA operator
+        {/* Footer — VIP registry registration is a Portal(admin) function, not a VCA operator
             screen action, so it doesn't live here; Analyze Frame (same wording as Best Frame's
             own popup button) deep-links to that camera's Inspection Detail instead. */}
         <div style={{ padding:"12px 16px", borderTop:BORDER, backgroundColor:"var(--gray-50)", display:"flex", justifyContent:"flex-end", gap:"8px", flexShrink:0 }}>
@@ -954,15 +954,15 @@ const BURST_GAP_MS = 2_000;
 /**
  * One capture on the wall.
  *
- * `watchlist` is this site's registered people, and it decides two things the mock used to decide
+ * `VIP registry` is this site's registered people, and it decides two things the mock used to decide
  * on its own.
  *
- * WHO. A card badged VIP now carries the name of somebody actually on this site's watchlist. It
+ * WHO. A card badged VIP now carries the name of somebody actually on this site's VIP registry. It
  * used to badge "VIP · 87.8%" with no identity at all — the same rule the four search screens
  * already follow (the mock writes what was found, the register answers who and where), missing
  * here. The screen was asserting a match against nobody.
  *
- * AND WHETHER. A site with an empty watchlist cannot produce a VIP card, because there is nobody
+ * AND WHETHER. A site with an empty VIP registry cannot produce a VIP card, because there is nobody
  * to have matched. That was a real defect left as minor in the 2026-09-10 review: a site with zero
  * registered people still badged a third of its wall VIP.
  */
@@ -1007,7 +1007,7 @@ function collapseBursts<T extends { subjectKey?: string; personName?: string; ca
   return out;
 }
 
-function makeLiveItem(seed: number, camId: string, index: number, watchlist: Person[]): (typeof REID_DATA)[number] {
+function makeLiveItem(seed: number, camId: string, index: number, vipRegistry: Person[]): (typeof REID_DATA)[number] {
   // Everything identifying is keyed to the PASSAGE, not the frame, so a burst is one person seen
   // three times rather than three strangers who happened to arrive two seconds apart. `seed`
   // advances per frame; only `id` and the timestamp may use it.
@@ -1016,7 +1016,7 @@ function makeLiveItem(seed: number, camId: string, index: number, watchlist: Per
   const person = PERSONS[passageSeed % PERSONS.length];
   const cycled = LIVE_FEED_STATUS_CYCLE[passageSeed % LIVE_FEED_STATUS_CYCLE.length];
   // Nobody enrolled here, so nothing here can be a match.
-  const matched = cycled === "VIP" && watchlist.length > 0 ? watchlist[passageSeed % watchlist.length] : null;
+  const matched = cycled === "VIP" && vipRegistry.length > 0 ? vipRegistry[passageSeed % vipRegistry.length] : null;
   const status = cycled === "VIP" && !matched ? "Unknown" : cycled;
   // Leftmost card in the feed is the most recent capture — later positions step further back in
   // time. date/time both come from this SAME instant now, instead of date cycling independently.
@@ -1076,9 +1076,9 @@ function seedLiveFeed(): Record<string, (typeof REID_DATA)> {
   // of the same site disagreed. A camera that is not running captured nothing.
   // Read at call time, not at module load — this stands in for a request, the same way
   // lib/api/dashboard.ts reads the store rather than importing the mock array.
-  const watchlist = personsInProject(useVcaStore.getState().persons, getActiveProjectId());
+  const vipRegistry = personsInProject(useVcaStore.getState().persons, getActiveProjectId());
   getCameraStatus().running.forEach((cam, camIndex) => {
-    feed[cam.code] = Array.from({ length: 120 }, (_, i) => makeLiveItem(500000 + camIndex * 1000 + i, cam.code, i, watchlist));
+    feed[cam.code] = Array.from({ length: 120 }, (_, i) => makeLiveItem(500000 + camIndex * 1000 + i, cam.code, i, vipRegistry));
   });
   return feed;
 }
@@ -1699,8 +1699,8 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
       if (onlineCams.length === 0) return;
       const batchSize = Math.max(1, Math.round(onlineCams.length / 4));
       const batch = [...onlineCams].sort(() => Math.random() - 0.5).slice(0, batchSize);
-      const liveWatchlist = personsInProject(useVcaStore.getState().persons, getActiveProjectId());
-      const newItems = batch.map(cam => ({ cam, item: makeLiveItem(seedRef.current++, cam.code, 0, liveWatchlist) }));
+      const liveVipRegistry = personsInProject(useVcaStore.getState().persons, getActiveProjectId());
+      const newItems = batch.map(cam => ({ cam, item: makeLiveItem(seedRef.current++, cam.code, 0, liveVipRegistry) }));
 
       setFeed(prev => {
         const next = { ...prev };
@@ -2558,7 +2558,7 @@ export const REID_DATA = PERSONS.map((p, i) => ({
    * Who this is, when the register says so — otherwise absent.
    *
    * PERSONS is an anonymous photo pool: it has no names and should not. A name belongs to the
-   * site's watchlist, and the live wall fills this in from there (see makeLiveItem). Absent here
+   * site's VIP registry, and the live wall fills this in from there (see makeLiveItem). Absent here
    * so an unidentified capture stays unidentified instead of borrowing somebody's name.
    */
   personName:  undefined as string | undefined,
@@ -4181,7 +4181,7 @@ function buildRedfaceTiers(seed: number) {
     .sort((a, b) => b - a);
   const tier3Counts = Array.from({ length: 15 }, (_, i) => Math.round(1 + redfaceSeededRandom(seed * 3.1 + i) * 9))
     .sort((a, b) => b - a);
-  // Status is a coarse mock watchlist read: mostly Unknown, a handful of VIP/Suspect, matching how
+  // Status is a coarse mock VIP registry read: mostly Unknown, a handful of VIP/Suspect, matching how
   // registered/flagged people are actually a minority of any associate list.
   const statusAt = (r: number): RedfaceNode["status"] => r > 0.88 ? "VIP" : r > 0.7 ? "Suspect" : "Unknown";
   const tier1 = tier1Counts.map((count, i) => ({ id: i, face: faceAt(Math.floor(redfaceSeededRandom(seed * 4 + i) * REDFACE_FACES.length)), count, status: statusAt(redfaceSeededRandom(seed * 10 + i)) }));
@@ -5203,7 +5203,7 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort, 
             <ChevronDownIconSm />
           </span>
         </button>
-        {/* The associate's own watchlist standing. It decides which row an operator opens first,
+        {/* The associate's own vipRegistry standing. It decides which row an operator opens first,
             and it was only visible after opening one. */}
         <span style={{ width:"76px", flexShrink:0 }}>{t.colStatus}</span>
         {/* How many distinct cameras the pair was ever framed at. The most discriminating fact

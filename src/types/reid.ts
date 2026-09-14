@@ -1,4 +1,4 @@
-// DataPage domain — Re-ID matching and RedFace watchlist.
+// DataPage domain — Re-ID matching and RedFace VIP registry.
 
 export type ReIDStatus = "VIP" | "Unknown" | "RedFace";
 export type GenderFilter = "All" | "F" | "M";

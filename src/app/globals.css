@@ -121,7 +121,7 @@
   /* Category hues. Two families that mean nothing.
    *
    * Every other ramp in this palette is spoken for — danger, warning and success carry
-   * severity, primary is the accent, info is "here is a fact". A watchlist category is none of
+   * severity, primary is the accent, info is "here is a fact". A VIP registry category is none of
    * those: "Wanted", "Visiting delegation", "Ex-employee" are a taxonomy, and a taxonomy drawn
    * in a severity ramp stops being tellable apart from severity. On the VIP screen that is not
    * theoretical — warning-500 there means a face the model could not read.

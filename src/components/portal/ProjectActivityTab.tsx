@@ -14,12 +14,12 @@ import { FileOutput, History, UserCog, CalendarClock } from "lucide-react";
  *
  * This existed as five rows on the Overview and a modal behind them that listed everything with
  * no date range, no actor filter, no search and no export. The Auditor role exists to read this
- * and nothing else, and a police station asked "who deleted that watchlist entry in March" had a
+ * and nothing else, and a police station asked "who deleted that VIP registry entry in March" had a
  * scrolling box. Meanwhile the search log — a feature switched off for v1 — already had filters
  * and a CSV. The one that ships was the worse-equipped of the two.
  *
  * Scope matches the Overview card exactly: this project's own entries plus the institution's
- * policy changes, because a watchlist category governs every site the team runs and filing it
+ * policy changes, because a VIP registry category governs every site the team runs and filing it
  * under one of them would misplace it. See AuditEvent.teamId.
  *
  * HANDOFF NOTE: the console holds the most recent AUDIT_LOG_LIMIT entries in memory. The screen

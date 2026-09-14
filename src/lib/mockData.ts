@@ -385,7 +385,7 @@ export const liveEvents: LiveEvent[] = deriveLiveEvents(RAW_VIP_HITS);
 // is what keeps "Events today" here, the Data tab's list length and RedFace associate counts all
 // reporting the same number for the same underlying data.
 const eventsTodayCount = liveEvents.length;
-const watchlistMatchCount = liveEvents.filter((e) => e.type === "VIP").length;
+const vipMatchCount = liveEvents.filter((e) => e.type === "VIP").length;
 const trackingCount = liveEvents.filter((e) => e.type === "Tracking").length;
 
 // delta/deltaPct/down are all compared against the same time yesterday.
@@ -396,7 +396,7 @@ export const dashboardStats = {
   // the two figures summed to 76, which matched neither the camera list nor the device list. They
   // were the camera run state all along, which `linkedCams`/`offlineCams` below already hold, so
   // the header reads those instead of a second pair that could disagree with them.
-  watchlistMatch:  { count: watchlistMatchCount, delta: 4,  deltaPct: 1.5, down: true },
+  vipMatch:  { count: vipMatchCount, delta: 4,  deltaPct: 1.5, down: true },
   tracking:        { count: trackingCount,       delta: 4,  deltaPct: 1.5, down: true },
   eventsToday:     { count: eventsTodayCount,    delta: 3,  deltaPct: 2.1, down: false },
   // count is overwritten by getDashboardStats() from the actual device list — the 48/48 that used

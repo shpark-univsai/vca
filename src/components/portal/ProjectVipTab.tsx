@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
 import { AlertTriangle, ArrowDownWideNarrow, Eye, FileOutput, ImageOff, RefreshCw, Users } from "lucide-react";
-import { canSetPolicy, currentPortalUser, registryHealth, useVcaStore, type Person, type PersonGroup, type WatchlistCategory } from "@/lib/vcaStore";
+import { canSetPolicy, currentPortalUser, registryHealth, useVcaStore, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
+import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, Tooltip, sortRows, useTableSort, usePortalEditAccess, MEASURE_TIGHT } from "./PortalShared";
-import { WatchlistCategoryModal, categoryTint } from "./WatchlistCategories";
+import { VipCategoryModal, categoryTint } from "./VipCategories";
 
 type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires";
 
@@ -40,7 +41,7 @@ const PRIORITY_COLOR: Record<NonNullable<Person["priorityLabel"]>, { bg: string;
 // There was a "Role" beside it — Regular / Lead / Captain / Health / Special, asked for on the
 // register form and printed in a table column. Nothing read it: no filter, no alert, no camera
 // behaviour, and it had already come off the cards. Its vocabulary was not this product's either
-// ("Captain" and "Health" are a team's roles, not a watchlist's). A field an administrator is
+// ("Captain" and "Health" are a team's roles, not a VIP registry's). A field an administrator is
 // asked to fill and nothing acts on is a question with no answer, so it is gone — group and
 // priority are what classify a face here.
 interface VipDict {
@@ -223,7 +224,7 @@ const T: Record<"en" | "ko", VipDict> = {
     csvUnclassified: "unclassified",
     csvStatusActive: "active",
     toastVipExportTitle: "Export complete",
-    toastVipExportDesc: (n: number) => `${n} watchlist record(s) exported to CSV.`,
+    toastVipExportDesc: (n: number) => `${n} vipRegistry record(s) exported to CSV.`,
     colPriority: "Priority",
     healthMissingPhoto: "no photo",
     healthMissingPhotoWhy: "On the VIP list with no face attached. A CSV import can add a name without a photo; these people cannot be matched until one is uploaded.",
@@ -258,7 +259,7 @@ const T: Record<"en" | "ko", VipDict> = {
     noExpiry: "No end date",
     releaseAction: "Release from VIP",
     reinstateAction: "Put back on the VIP list",
-    reinstateTitle: (name: string) => `Put ${name} back on the watchlist?`,
+    reinstateTitle: (name: string) => `Put ${name} back on the vipRegistry?`,
     reinstateBody: "Cameras start matching them again. The release and this reversal both stay in the activity log.",
     reinstateReasonPlaceholder: "Released in error · Listing renewed",
     reinstateConfirm: "Reinstate",
@@ -516,7 +517,7 @@ const T: Record<"en" | "ko", VipDict> = {
 
 interface RegisterValues {
   name: string;
-  /** Undefined = unclassified, which is a real state — see WatchlistCategory in the store. */
+  /** Undefined = unclassified, which is a real state — see VipCategory in the store. */
   categoryId?: string;
   basis?: string;
   /** Undefined = no expiry. */
@@ -545,7 +546,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
    *  predicate — recomputing it here would be a second opinion on the same question. */
   photoUnreadable?: boolean;
   groups: PersonGroup[];
-  categories: WatchlistCategory[];
+  categories: VipCategory[];
   projectId: string;
   onClose: () => void;
   onSubmit: (values: RegisterValues) => void;
@@ -662,7 +663,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
             <TextField value={name} onChange={setName} placeholder={t.namePlaceholder} />
           </div>
           {/* Classification, then what backs it, then when it ends — the three questions an audit
-              asks about a watchlist row, in the order somebody answers them. Above priority
+              asks about a vipRegistry row, in the order somebody answers them. Above priority
               because a category decides whether the basis is required and what the expiry starts
               at, and a field that changes two others should come before them. */}
           <div>
@@ -994,7 +995,7 @@ function GroupModal({ t, group, projectId, onClose }: {
 /**
  * The registration moment as the detail sheet shows it: the day, plus the time when the stored
  * value carries one. Rows enrolled before Portal recorded instants have only a date, and inventing
- * a time for them would be making up a fact about when somebody was put on a watchlist.
+ * a time for them would be making up a fact about when somebody was put on a VIP registry.
  *
  * The locale is pinned because the day beside it is an ISO slice: a runtime-default locale would
  * pair 2026-09-11 with whatever clock the viewer's machine happens to prefer.
@@ -1083,7 +1084,7 @@ function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
             {/* Group first, then what qualifies the person, then the note, then when they were
                 enrolled — last because it is the one value nobody comes here to read and the only
                 one that never changes. The time is shown as well: this is the detail view, and on
-                a watchlist "when was this face put in" is a question an inspection asks by the
+                a vipRegistry "when was this face put in" is a question an inspection asks by the
                 minute, not by the day. Rows enrolled before Portal recorded a time show only the
                 date rather than a made-up one. */}
             {row(t.colNote, person.description || <span style={{ color: "var(--gray-400)" }}>{t.detailNoNote}</span>)}
@@ -1109,16 +1110,16 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const persons = useVcaStore(s => s.persons);
   const personGroups = useVcaStore(s => s.personGroups);
   const projects = useVcaStore(s => s.projects);
-  const watchlistCategories = useVcaStore(s => s.watchlistCategories);
+  const vipCategories = useVcaStore(s => s.vipCategories);
   const releasePerson = useVcaStore(s => s.releasePerson);
   const reinstatePerson = useVcaStore(s => s.reinstatePerson);
   // Categories belong to the institution, so they are read through the project's team rather than
-  // through the project — see WatchlistCategory in the store.
+  // through the project — see VipCategory in the store.
   const teamId = projects.find(pr => pr.id === projectId)?.teamId;
-  const teamCategories = watchlistCategories.filter(c => c.teamId === teamId);
+  const teamCategories = vipCategories.filter(c => c.teamId === teamId);
   // Archived ones stay readable on rows that still reference them, but cannot be chosen again.
   const activeCategories = teamCategories.filter(c => !c.archived);
-  const categoryById = new Map(watchlistCategories.map(c => [c.id, c]));
+  const categoryById = new Map(vipCategories.map(c => [c.id, c]));
   // Same gate as the search-purpose list — see canSetPolicy. Both decide what the audit will find,
   // and an administrator able to loosen one and not the other would be a rule nobody could state.
   const me = currentPortalUser(useVcaStore.getState().portalUsers);
@@ -1138,13 +1139,13 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const [showRegister, setShowRegister] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState<Person | null>(null);
   const [search, setSearch] = useState("");
-  // Grid by default: a watchlist is looked at face-first, and the photo is the thing an operator
+  // Grid by default: a VIP registry is looked at face-first, and the photo is the thing an operator
   // recognises. Table is for the other job — comparing role, priority and when someone was added
   // across the whole list, which a wall of cards cannot do.
   /**
    * Table first, grid on request.
    *
-   * The grid opened by default because a watchlist is faces and faces are what you recognise — but
+   * The grid opened by default because a VIP registry is faces and faces are what you recognise — but
    * a hundred of them is a wall, and the job you come to this page with is usually "find this
    * person" or "check who is on the list", which a table answers in one line per person. The grid
    * is the right view for browsing and the wrong one for arriving.
@@ -1197,6 +1198,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const [detailFor, setDetailFor] = useState<Person | null>(null);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [managingCategories, setManagingCategories] = useState(false);
+  const releaseEnabled = getComplianceConfig().personRelease;
   const [releasing, setReleasing] = useState<Person | null>(null);
   const [reinstating, setReinstating] = useState<Person | null>(null);
   const [reinstateReason, setReinstateReason] = useState("");
@@ -1300,11 +1302,11 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       : matchingPersons;
 
   /**
-   * The watchlist as a file.
+   * The VIP registry as a file.
    *
    * Cameras and the staff roster both export; this list — the one a control centre is audited on
    * and the one a shift supervisor is handed on paper — did not, while the seeded audit log
-   * carried a line reading "VIP watchlist exported to CSV" and taught the customer the button
+   * carried a line reading "VIP VIP registry exported to CSV" and taught the customer the button
    * was there.
    *
    * What is on screen, not the whole registry: the toolbar's filters and search are how somebody
@@ -1338,7 +1340,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${projects.find(pr => pr.id === projectId)?.name ?? "project"}-watchlist.csv`;
+    a.download = `${projects.find(pr => pr.id === projectId)?.name ?? "project"}-vipRegistry.csv`;
     a.click();
     URL.revokeObjectURL(url);
     showToast({ variant: "success", title: t.toastVipExportTitle, desc: t.toastVipExportDesc(rows.length) });
@@ -1447,7 +1449,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           { id: "groups", label: t.tabGroups, count: personGroups.filter(g => g.projectId === projectId).length, hint: t.tabGroupsHint },
           // Only once there is something in it. A permanently visible "Released 0" invites the
           // question of whether releasing is something you are supposed to be doing.
-          ...(releasedPersons.length > 0
+          ...(releaseEnabled && releasedPersons.length > 0
             ? [{ id: "released" as const, label: t.tabReleased, count: releasedPersons.length, hint: t.tabReleasedHint }]
             : []),
         ] as { id: "all" | "individuals" | "groups" | "released"; label: string; count: number; hint: string }[]).map(tab => {
@@ -1646,7 +1648,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               {t.addGroup}
             </button>
           ) : (<>
-          {/* Export stays open to a read-only account — handing the watchlist to an auditor as a
+          {/* Export stays open to a read-only account — handing the vipRegistry to an auditor as a
               file is most of what the role is for. Import is what goes. */}
           <button className="portal-btn-quiet" onClick={() => fileInputRef.current?.click()} disabled={!mayEdit} title={readOnlyReason}
             style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: mayEdit ? "var(--gray-600)" : "var(--gray-300)", fontSize: "12px", fontWeight: 600, cursor: mayEdit ? "pointer" : "not-allowed" }}>
@@ -1839,7 +1841,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 </span>
                 {/* Expiry, and what has already happened to it.
                     Released and expired rows stay in the list — if they vanished, nobody could tell
-                    which of the two happened, and "it is gone" is the one answer a watchlist must
+                    which of the two happened, and "it is gone" is the one answer a vipRegistry must
                     never give about somebody it used to hold. */}
                 <span style={{ fontSize: "12px", minWidth: 0 }}>
                   {(() => {
@@ -1869,9 +1871,14 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                     // Released rows got no action at all here, which made release one-way: the
                     // only undo was delete-and-re-register, destroying the registration history
                     // the release was kept to preserve.
-                    person.releasedAt
-                      ? { label: t.reinstateAction, onClick: () => setReinstating(person), disabled: !mayEdit, reason: readOnlyReason }
-                      : { label: t.releaseAction, onClick: () => setReleasing(person), disabled: !mayEdit, reason: readOnlyReason },
+                    //
+                    // Both are behind complianceConfig.personRelease — off for the first release,
+                    // where delete is the only way off the list.
+                    ...(releaseEnabled
+                      ? [person.releasedAt
+                          ? { label: t.reinstateAction, onClick: () => setReinstating(person), disabled: !mayEdit, reason: readOnlyReason }
+                          : { label: t.releaseAction, onClick: () => setReleasing(person), disabled: !mayEdit, reason: readOnlyReason }]
+                      : []),
                     { label: t.removeAction, onClick: () => setConfirmingRemove(person), danger: true, disabled: !mayEdit, reason: readOnlyReason },
                   ]} />
                 </div>
@@ -1911,18 +1918,18 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               }}>
               {/* 60, not 44. At 44 the thumbnail told you which card was whose and nothing more —
                   a face that small cannot be compared to a person standing in front of you, which
-                  is what a watchlist is for. The detail sheet behind the card carries the size that
+                  is what a vipRegistry is for. The detail sheet behind the card carries the size that
                   actually answers that; this is the largest the grid can give without the tags and
                   the name losing their line. */}
               <img src={person.photoUrl} alt="" style={{ width: "60px", height: "60px", borderRadius: "10px", objectFit: "cover", flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 {/* Name first. The tags used to sit above it, which put a pill where the eye goes
-                    for the thing a watchlist card is actually scanned for — a face and a name. The
+                    for the thing a vipRegistry card is actually scanned for — a face and a name. The
                     group and the priority qualify that name, so they read after it. */}
                 {/* Two lines, always — reserved whether the name needs them or not.
                     "Muhammad Rizal bin Hassan" wraps at this width and "David Ho" does not, so a
                     height that follows the name made every card a different card. Clamped rather
-                    than ellipsised on one line, because a watchlist that truncates the name has
+                    than ellipsised on one line, because a vipRegistry that truncates the name has
                     broken the one thing it is for; two lines hold every name in the registry. */}
                 <p style={{
                   fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", lineHeight: 1.35,
@@ -1961,7 +1968,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 )}
                 {/* The note is not on the card.
                     It is free text with no length anybody controls, so on a card it either grew
-                    the card or had to be clamped — and a watchlist grid is read at a hundred faces
+                    the card or had to be clamped — and a vipRegistry grid is read at a hundred faces
                     at a time, where a line per card is a screenful. Four of six comparable grids
                     (Qatalog, Cosmos, Rive, and most of Wellfound's) leave it off the card for the
                     same reason; the ones that keep it (Kit) are grids where the prose IS the
@@ -1999,7 +2006,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         <RemoveVipConfirmModal t={t} person={confirmingRemove} onClose={() => setConfirmingRemove(null)} onConfirm={confirmRemove} />
       )}
       {managingCategories && teamId && (
-        <WatchlistCategoryModal teamId={teamId} categories={teamCategories} canEdit={maySetPolicy} onClose={() => setManagingCategories(false)} />
+        <VipCategoryModal teamId={teamId} categories={teamCategories} canEdit={maySetPolicy} onClose={() => setManagingCategories(false)} />
       )}
       {releasing && (
         <ConfirmModal

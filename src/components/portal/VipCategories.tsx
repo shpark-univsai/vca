@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useVcaStore, WATCHLIST_CATEGORY_COLORS, type WatchlistCategory, type WatchlistCategoryColor } from "@/lib/vcaStore";
+import { useVcaStore, VIP_CATEGORY_COLORS, type VipCategory, type VipCategoryColor } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { BORDER, CONTROL_HEIGHT, ConfirmModal, TextField } from "./PortalShared";
 
 /**
- * Watchlist categories are a TEAM's policy, not a project's.
+ * VIP registry categories are a TEAM's policy, not a project's.
  *
  * They lived inside ProjectVipTab, which meant the one screen that defines what a listing means
  * could only be opened from inside a project — so a team waiting for its first site could set up
@@ -82,7 +82,7 @@ interface CategoryDict {
 }
 
 /**
- * Where an institution defines its own watchlist categories.
+ * Where an institution defines its own VIP registry categories.
  *
  * Opens empty, and says so. There is no shipped default and no example row: a seeded "Wanted"
  * would read as the standard and the first thing a customer who is not a police force does is
@@ -92,9 +92,9 @@ interface CategoryDict {
  * console, not a brand: an arbitrary hex would let one sit outside the palette, or land on the same
  * green the validity stamp uses two screens over.
  */
-export function WatchlistCategoryModal({ teamId, categories, canEdit, onClose }: {
+export function VipCategoryModal({ teamId, categories, canEdit, onClose }: {
   teamId: string;
-  categories: WatchlistCategory[];
+  categories: VipCategory[];
   /** Owner only — see canSetPolicy. Everyone else reads the list. */
   canEdit: boolean;
   onClose: () => void;
@@ -102,29 +102,29 @@ export function WatchlistCategoryModal({ teamId, categories, canEdit, onClose }:
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const persons = useVcaStore(s => s.persons);
-  const addWatchlistCategory = useVcaStore(s => s.addWatchlistCategory);
-  const updateWatchlistCategory = useVcaStore(s => s.updateWatchlistCategory);
-  const archiveWatchlistCategory = useVcaStore(s => s.archiveWatchlistCategory);
+  const addVipCategory = useVcaStore(s => s.addVipCategory);
+  const updateVipCategory = useVcaStore(s => s.updateVipCategory);
+  const archiveVipCategory = useVcaStore(s => s.archiveVipCategory);
   /**
    * null when the form is closed, "new" when it is creating, a category id when it is editing.
    *
    * One form for both, because they collect exactly the same four things. Editing was the
-   * missing half: updateWatchlistCategory existed in the store, audit entry and all, and nothing
+   * missing half: updateVipCategory existed in the store, audit entry and all, and nothing
    * called it — so a category could be created and retired but a typo in its label was permanent
    * and the only way out was to retire the row and make another one beside it.
    */
   const [editing, setEditing] = useState<string | null>(null);
   /** Confirmed, because the comment on the button says it cannot be undone from this screen —
    *  and there is nothing anywhere that un-retires a category. */
-  const [retiring, setRetiring] = useState<WatchlistCategory | null>(null);
+  const [retiring, setRetiring] = useState<VipCategory | null>(null);
   const [label, setLabel] = useState("");
   const [validDays, setValidDays] = useState("");
   const [requiresBasis, setRequiresBasis] = useState(true);
-  const [color, setColor] = useState<WatchlistCategoryColor>("gray");
+  const [color, setColor] = useState<VipCategoryColor>("gray");
   useEscapeKey(onClose);
 
   const reset = () => { setEditing(null); setLabel(""); setValidDays(""); setRequiresBasis(true); setColor("gray"); };
-  const startEdit = (c: WatchlistCategory) => {
+  const startEdit = (c: VipCategory) => {
     setEditing(c.id);
     setLabel(c.label);
     setValidDays(c.defaultValidDays === null ? "" : String(c.defaultValidDays));
@@ -137,11 +137,11 @@ export function WatchlistCategoryModal({ teamId, categories, canEdit, onClose }:
     // Blank means no default, which is a different thing from zero days.
     const defaultValidDays = validDays.trim() === "" ? null : Math.max(1, Number(validDays));
     if (editing === "new") {
-      addWatchlistCategory({ teamId, label: trimmed, color, requiresBasis, defaultValidDays });
+      addVipCategory({ teamId, label: trimmed, color, requiresBasis, defaultValidDays });
     } else {
       // Only the four fields the form owns. Not `archived` — retiring is its own button, and a
       // save that quietly un-retired a category would be a surprise.
-      updateWatchlistCategory(editing, { label: trimmed, color, requiresBasis, defaultValidDays });
+      updateVipCategory(editing, { label: trimmed, color, requiresBasis, defaultValidDays });
     }
     reset();
   };
@@ -206,7 +206,7 @@ export function WatchlistCategoryModal({ teamId, categories, canEdit, onClose }:
               <div>
                 <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catColor}</label>
                 <div style={{ display: "flex", gap: "8px" }}>
-                  {WATCHLIST_CATEGORY_COLORS.map(name => (
+                  {VIP_CATEGORY_COLORS.map(name => (
                     <button key={name} onClick={() => setColor(name)} title={name}
                       style={{
                         width: "28px", height: "28px", borderRadius: "8px", cursor: "pointer",
@@ -262,7 +262,7 @@ export function WatchlistCategoryModal({ teamId, categories, canEdit, onClose }:
           confirmLabel={t.catArchive}
           cancelLabel={t.cancel}
           danger
-          onConfirm={() => { archiveWatchlistCategory(retiring.id); setRetiring(null); }}
+          onConfirm={() => { archiveVipCategory(retiring.id); setRetiring(null); }}
           onClose={() => setRetiring(null)}
         >
           {/* How many rows keep pointing at it. Retiring a category nobody uses and retiring the
@@ -282,13 +282,13 @@ export function WatchlistCategoryModal({ teamId, categories, canEdit, onClose }:
  * Token families only — the list is fixed in the store — so a category can never introduce a
  * colour the console does not already use.
  */
-export function categoryTint(color: WatchlistCategoryColor): { bg: string; fg: string; dot: string } {
+export function categoryTint(color: VipCategoryColor): { bg: string; fg: string; dot: string } {
   switch (color) {
     case "primary": return { bg: "var(--primary-100)", fg: "var(--primary-400)", dot: "var(--primary-400)" };
     case "info":    return { bg: "var(--info-100)",    fg: "var(--info-500)",    dot: "var(--info-500)" };
     case "teal":    return { bg: "var(--teal-100)",    fg: "var(--teal-500)",    dot: "var(--teal-500)" };
     case "magenta": return { bg: "var(--magenta-100)", fg: "var(--magenta-500)", dot: "var(--magenta-500)" };
-    // The three below are no longer offered — see WATCHLIST_CATEGORY_COLORS — but categories
+    // The three below are no longer offered — see VIP_CATEGORY_COLORS — but categories
     // created before that still carry them, and a chip that cannot resolve its colour is worse
     // than one drawn in a colour we would not pick again.
     case "danger":  return { bg: "var(--danger-100)",  fg: "var(--danger-500)",  dot: "var(--danger-400)" };

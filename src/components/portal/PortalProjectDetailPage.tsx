@@ -62,8 +62,8 @@ const T = {
     attnInvites: (n: number) => `${n} invitation${n === 1 ? "" : "s"} not yet accepted`,
     attnRequests: (n: number) => `${n} access request${n === 1 ? "" : "s"} waiting`,
     attnOverLimit: (used: number, limit: number) => `Over the licensed channels — ${used} of ${limit}`,
-    attnListingsExpired: (n: number) => `${n} watchlist listing(s) have expired`,
-    attnListingsExpiring: (n: number) => `${n} watchlist listing(s) expire within 30 days`,
+    attnListingsExpired: (n: number) => `${n} vipRegistry listing(s) have expired`,
+    attnListingsExpiring: (n: number) => `${n} vipRegistry listing(s) expire within 30 days`,
     attnExpiringSoon: (d: number) => `License expires in ${d} day${d === 1 ? "" : "s"}`,
     attnExpired: "License has expired",
     attnNoMail: "No mail server configured — nobody can be invited",
@@ -525,7 +525,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    * and who among the accounts is not yet in.
    */
 
-  // This project's entries, plus the institution's own policy changes — a watchlist category or a
+  // This project's entries, plus the institution's own policy changes — a VIP registry category or a
   // search purpose governs every site the team runs, so filing it under one of them would misplace
   // it and filtering it out would hide it everywhere. See AuditEvent.teamId.
   const projectActivity = auditLog
@@ -632,7 +632,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    * of line this screen has been shedding.
    */
   /**
-   * Watchlist listings that have run out, and ones about to.
+   * VIP registry listings that have run out, and ones about to.
    *
    * Released rows are excluded from both — somebody has already dealt with those, and the point of
    * these two figures is the ones nobody has.
@@ -696,7 +696,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     ...(licenseExpiringSoon && daysUntilExpiry !== null ? [{ key: "expiring", text: t.attnExpiringSoon(daysUntilExpiry), color: "var(--warning-500)", tab: "license" as DetailTab }] : []),
     ...(showAccessRequests && projectAccessRequests.length > 0 ? [{ key: "requests", text: t.attnRequests(projectAccessRequests.length), color: "var(--warning-500)", tab: "users" as DetailTab }] : []),
     // Expiring, in the reminders. The whole point of putting it here is that nobody remembers a
-    // date — a watchlist cleared by human memory is a watchlist that never gets cleared.
+    // date — a VIP registry cleared by human memory is a VIP registry that never gets cleared.
     ...(expiringListings > 0 ? [{ key: "listingsExpiring", text: t.attnListingsExpiring(expiringListings), color: "var(--warning-500)", tab: "vip" as DetailTab }] : []),
     ...(pendingInviteCount > 0 ? [{ key: "invites", text: t.attnInvites(pendingInviteCount), color: "var(--warning-500)", tab: "users" as DetailTab }] : []),
     // Setup, between the reminders and the "nothing here yet" notes. Amber rather than grey:
@@ -1019,7 +1019,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               {/* One row, no bar and no footer rule.
                   A bar needs a denominator that means something. The two cards to the left have
                   one — cameras installed, channels licensed — and these two do not: nobody manages
-                  "half the watchlist is high priority" or "60% of accounts are active". A
+                  "half the vipRegistry is high priority" or "60% of accounts are active". A
                   proportion invented to fill a slot is worse than an empty slot, so with the bar
                   gone the detail that was under the rule moved up beside the figure instead: the
                   right of this row was empty and the rule was separating a number from its own
@@ -1066,7 +1066,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
               {/* One row, no bar and no footer rule.
                   A bar needs a denominator that means something. The two cards to the left have
                   one — cameras installed, channels licensed — and these two do not: nobody manages
-                  "half the watchlist is high priority" or "60% of accounts are active". A
+                  "half the vipRegistry is high priority" or "60% of accounts are active". A
                   proportion invented to fill a slot is worse than an empty slot, so with the bar
                   gone the detail that was under the rule moved up beside the figure instead: the
                   right of this row was empty and the rule was separating a number from its own

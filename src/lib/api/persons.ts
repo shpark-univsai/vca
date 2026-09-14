@@ -1,4 +1,4 @@
-// Registered VIP / watchlist registry.
+// Registered VIP / VIP registry registry.
 // Portal (a separate app) owns registration/CRUD for this — VCA only consumes it. This stub
 // currently just wraps the locally-derived seed in `vcaStore.ts` (see `PERSONS` there) so the
 // shape is documented for review, but it is NOT yet wired into the store: `useVcaStore`'s

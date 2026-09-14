@@ -33,6 +33,18 @@ export interface ComplianceConfig {
    * partial copy that disagrees with the real one, which is worse than not keeping it.
    */
   externalRequests: boolean;
+  /**
+   * Whether a listing can be ended without being deleted.
+   *
+   * On, a row leaves the registry two ways: released (the listing's purpose ended, and the record
+   * of it stays, with a reason and a date) or deleted (nothing stays). Off, there is only delete.
+   *
+   * On for an institution that has to answer "when did this person come off the list, and on
+   * whose word" — the release date is the answer and a deleted row has none. Off where a listing
+   * simply stops being maintained and nobody is asked about it afterwards, because a second verb
+   * for "take them off" is one more thing to explain for a distinction that site never makes.
+   */
+  personRelease: boolean;
 }
 
 /**
@@ -69,5 +81,16 @@ export function getComplianceConfig(): ComplianceConfig {
      * empty one nobody can judge.
      */
     externalRequests: false,
+    /**
+     * Off for the first release (decided 2026-09-14), second release turns it back on. Same shape
+     * of reason as the two above: built, staying built, one boolean deciding whether this release
+     * carries it.
+     *
+     * What it hides: the row menu's release/reinstate action and the "Released" segment above the
+     * list. The one seeded released person stays in the store and is therefore not on screen
+     * while this is off — deliberate, and the same trade the register above makes: turning the
+     * switch on shows a populated screen rather than an empty one nobody can judge.
+     */
+    personRelease: false,
   };
 }

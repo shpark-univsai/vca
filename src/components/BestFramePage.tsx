@@ -178,7 +178,7 @@ function FilterIcon({ type, color, active, size = 14 }: { type: DetType; color: 
 }
 
 /* ── Colors ────────────────────────────────────────────────────── */
-// VIP is brand purple everywhere else in the app (Sidebar's VIP badges, watchlist icons) —
+// VIP is brand purple everywhere else in the app (Sidebar's VIP badges, VIP registry icons) —
 // matches that instead of the sky-blue this page used to use on its own.
 /**
  * The dot, the legend swatch and the HUD accent for a detection's type.
@@ -838,7 +838,7 @@ function CameraItem({ cam, onToggle, type = "camera", disabled = false, activity
   /**
    * Selection is grey here, not purple.
    *
-   * Purple means ONE thing in this product: a person on the watchlist. This row used to spend it
+   * Purple means ONE thing in this product: a person on the VIP registry. This row used to spend it
    * on "you ticked this camera" — in four places at once (fill, label, icon, monitor glyph) — and
    * the grid takes sixteen cameras, so a full grid painted sixty-four purple signals. The row's
    * own VIP dot, the one thing here that means "somebody is being detected right now", was the

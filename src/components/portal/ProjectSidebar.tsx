@@ -51,7 +51,7 @@ function CamerasIcon({ color }: IconProps) {
 /**
  * The crown the app already uses for VIP — Sidebar, the map pins and the detection chips all draw
  * lucide's Crown at this size. This was a hand-drawn five-pointed star, which matched neither the
- * app's icon nor the idea: a star is a favourite or a rating, and the registry is a watchlist of
+ * app's icon nor the idea: a star is a favourite or a rating, and the registry is a VIP registry of
  * specific people.
  *
  * 1.8, which renders 1.2px at this size — the rail's exception to the console-wide 1.4.

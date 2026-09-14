@@ -199,7 +199,7 @@ function StatCol({ icon, label, labelColor = "var(--gray-600)", labelFontSize = 
   );
 }
 
-function WatchlistStatIcon() {
+function VipStatIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 12 12" fill="none" style={{ flexShrink:0 }}>
       <path d="M1 10.5C0.999958 9.73016 1.22207 8.97667 1.63967 8.32994C2.05728 7.68322 2.65264 7.17074 3.3543 6.85401C4.05596 6.53728 4.83412 6.42975 5.59538 6.54434C6.35664 6.65893 7.06866 6.99075 7.646 7.5" stroke="var(--gray-600)" strokeLinecap="round" strokeLinejoin="round"/>
@@ -231,7 +231,7 @@ function LocationPinIcon({ color = "var(--gray-700)" }: { color?: string }) {
 }
 
 /**
- * The faces of up to three people actually on this site's watchlist.
+ * The faces of up to three people actually on this site's VIP registry.
  *
  * It used to draw three photos from a stock pool with no connection to the registry at all, so a
  * site with nobody enrolled showed three faces beside the number 0. A face is not decoration:
@@ -435,7 +435,7 @@ function useEventCounts() {
   const todaysHitCount = todaysDetectionHits(storeEvents).length;
   return {
     vipTargets: persons.filter(p => p.type === "VIP").length,
-    watchlistMatch: { ...(dashboardStats?.watchlistMatch ?? flatDelta), count: detections.filter(e => e.type === "VIP").length },
+    vipMatch: { ...(dashboardStats?.vipMatch ?? flatDelta), count: detections.filter(e => e.type === "VIP").length },
     tracking: { ...(dashboardStats?.tracking ?? flatDelta), count: detections.filter(e => e.type === "Tracking").length },
     eventsToday: { ...(dashboardStats?.eventsToday ?? flatDelta), count: todaysHitCount },
   };
@@ -501,7 +501,7 @@ function VipListModal({ onClose, onPersonSelect }: { onClose: () => void; onPers
 function EventsSummary({ onPersonSelect, onToggleDetectionChart }: { onPersonSelect: (name: string) => void; onToggleDetectionChart?: () => void }) {
   const [lang] = useLanguage();
   const t = T[lang];
-  const { vipTargets, watchlistMatch, eventsToday } = useEventCounts();
+  const { vipTargets, vipMatch, eventsToday } = useEventCounts();
   // Real enrolled faces from this site's registry — see AvatarStack. A person imported from a CSV
   // has no photo, so they contribute no avatar rather than a placeholder one.
   const vipFaces = useProjectPersons()
@@ -549,7 +549,7 @@ function EventsSummary({ onPersonSelect, onToggleDetectionChart }: { onPersonSel
             borderRadius:"8px", padding:"4px", margin:"-4px", transition:"background-color 0.15s",
           }}
         >
-          <StatCol icon={<WatchlistStatIcon />} label={t.vipDetections} labelColor="var(--gray-700)" labelFontSize={13} count={watchlistMatch.count} delta={watchlistMatch.delta} deltaPct={watchlistMatch.deltaPct} down={watchlistMatch.down} />
+          <StatCol icon={<VipStatIcon />} label={t.vipDetections} labelColor="var(--gray-700)" labelFontSize={13} count={vipMatch.count} delta={vipMatch.delta} deltaPct={vipMatch.deltaPct} down={vipMatch.down} />
         </div>
         <div style={{ width:"1px", backgroundColor:"var(--gray-200)", alignSelf:"stretch", flexShrink:0 }} />
         <div style={{ flex:1, minWidth:0 }}>

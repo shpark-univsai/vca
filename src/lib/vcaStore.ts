@@ -260,10 +260,10 @@ export interface VcaEvent {
   photoUrl?: string;
 }
 
-// Person = the VIP/watchlist registry. Portal owns registration/CRUD for this (see
+// Person = the VIP/VIP registry registry. Portal owns registration/CRUD for this (see
 // PortalVipRegistryTab) — VCA's own screens only ever read it, never write to it.
 /**
- * A watchlist category, defined by the institution rather than by us.
+ * A VIP registry category, defined by the institution rather than by us.
  *
  * WHY THIS IS NOT AN ENUM. Who buys this is not settled, and the words differ by customer: a police
  * force keeps wanted persons, missing persons and persons of interest; a company keeps barred
@@ -282,10 +282,10 @@ export interface VcaEvent {
  * scoping it per project would make the same person a different kind of case at each site.
  *
  * HANDOFF NOTE: the API request is a CRUD list under the team —
- *   GET/POST /teams/:id/watchlist-categories, PATCH /watchlist-categories/:id
+ *   GET/POST /teams/:id/VIP registry-categories, PATCH /VIP registry-categories/:id
  * Archive rather than delete, because registered people reference these by id.
  */
-export interface WatchlistCategory {
+export interface VipCategory {
   id: string;
   teamId: string;
   /** What the institution calls it. Shown verbatim — never translated, because it is their word. */
@@ -302,7 +302,7 @@ export interface WatchlistCategory {
   /** A design-token family name, not a hex value: the institution picks from the palette this
    *  product already has, so a category cannot introduce a colour the rest of the console does not
    *  use — or one that collides with the status colours. */
-  color: WatchlistCategoryColor;
+  color: VipCategoryColor;
   /** Retired rather than deleted. People registered under it still point at this id, and a
    *  category that vanishes would leave their rows naming nothing. */
   archived: boolean;
@@ -316,7 +316,7 @@ export interface WatchlistCategory {
  * server records the call on its own — confirmed by the backend — but it cannot invent the
  * purpose. Only the person at the screen knows that, so the screen has to ask.
  *
- * Institution-defined for the same reason watchlist categories are: a police control room and a
+ * Institution-defined for the same reason VIP registry categories are: a police control room and a
  * corporate security desk do not share a vocabulary, and a list fixed in code becomes a list
  * somebody works around.
  */
@@ -467,9 +467,9 @@ export interface SearchPurposeSelection {
   at: string;
 }
 
-/** The palette a category may take. Names, not values — see WatchlistCategory.color. */
+/** The palette a category may take. Names, not values — see VipCategory.color. */
 /**
- * The colours a watchlist category may be given.
+ * The colours a VIP registry category may be given.
  *
  * Three, not six, and the three missing ones are missing on purpose: danger, warning and
  * success already mean something on the screen these chips appear on. warning-500 is what the
@@ -488,14 +488,14 @@ export interface SearchPurposeSelection {
  * is the source of truth for colour. They have to be added there with the same values before
  * anything else picks them up.
  */
-export const WATCHLIST_CATEGORY_COLORS = ["primary", "info", "teal", "magenta", "gray"] as const;
+export const VIP_CATEGORY_COLORS = ["primary", "info", "teal", "magenta", "gray"] as const;
 
 /**
  * Wider than the list above on purpose. Categories created before the palette was narrowed can
  * still carry a retired name, and a stored value that no longer type-checks is a crash rather
  * than a chip in the wrong colour — categoryTint still resolves all six.
  */
-export type WatchlistCategoryColor = "primary" | "info" | "teal" | "magenta" | "gray" | "danger" | "warning" | "success";
+export type VipCategoryColor = "primary" | "info" | "teal" | "magenta" | "gray" | "danger" | "warning" | "success";
 
 export interface Person {
   id: string;
@@ -505,7 +505,7 @@ export interface Person {
    * The enrolled face, or absent.
    *
    * Optional because one path produces people without one: a CSV import carries names, not faces.
-   * Those rows are on the watchlist and cannot be matched by anything, which is a state the
+   * Those rows are on the VIP registry and cannot be matched by anything, which is a state the
    * registry has to be able to represent — the import used to paper over it by handing every row
    * a stock portrait, and a screen cannot warn about a problem the data denies having.
    */
@@ -545,7 +545,7 @@ export interface Person {
    * rather than behind its own endpoint.
    *
    * It is here because the registry could say everything about itself and nothing about whether it
-   * works. A watchlist rots quietly: contracts end, delegations fly home, and the row stays. The
+   * works. A VIP registry rots quietly: contracts end, delegations fly home, and the row stays. The
    * column this feeds is sortable, so "who has not been seen since June" is one click rather than
    * a report — and it is a column and not a warning on purpose, because never being detected is
    * not a fault. Some of these people are watched *for*, and a name that never comes up is that
@@ -596,12 +596,12 @@ export interface Person {
    * When this registration stops. Absent means it does not — a real answer for some categories and
    * a mistake for most, so the form asks rather than assuming.
    *
-   * A watchlist with no expiry keeps processing people after the purpose has ended, which is the
+   * A VIP registry with no expiry keeps processing people after the purpose has ended, which is the
    * first thing an audit asks about. A found child comes off; an arrested suspect comes off.
    *
    * HANDOFF NOTE — THE PART THAT MATTERS. An expiry that only greys a row out is worse than no
    * expiry at all: the operator believes the person was released while the cameras keep matching
-   * them. Expiry has to reach the analysis module. The provisioning call that carries the watchlist
+   * them. Expiry has to reach the analysis module. The provisioning call that carries the VIP registry
    * (PUT /v1/provision/vips in the module contract draft) is where expired people must drop out,
    * and that belongs in the contract rather than in the screen.
    */
@@ -637,8 +637,8 @@ interface VcaStoreState {
   cameras: Camera[];
   persons: Person[];
   personGroups: PersonGroup[];
-  /** Empty on a fresh installation, and deliberately so — see WatchlistCategory. */
-  watchlistCategories: WatchlistCategory[];
+  /** Empty on a fresh installation, and deliberately so — see VipCategory. */
+  vipCategories: VipCategory[];
   /** Empty on a fresh installation, same reason — see SearchPurpose. */
   searchPurposes: SearchPurpose[];
   /** Null until the operator declares one this sitting. See SearchPurposeSelection. */
@@ -700,7 +700,7 @@ interface VcaStoreState {
   /**
    * Deletes a project and everything filed under it.
    *
-   * Cascading, not orphaning: cameras, uploads, servers, the watchlist and its groups, roster
+   * Cascading, not orphaning: cameras, uploads, servers, the VIP registry and its groups, roster
    * rows and search-log entries all carry a projectId and mean nothing without it. The audit
    * entries stay — the record of what was done to a site outlives the site, which is the whole
    * point of keeping one — and so do accounts, which belong to the team; the project is removed
@@ -807,15 +807,15 @@ interface VcaStoreState {
    * on screen at the time — see SearchAccessRecord.
    */
   recordSearchAccess: (record: Omit<SearchAccessRecord, "id">) => void;
-  addWatchlistCategory: (category: Omit<WatchlistCategory, "id" | "archived">) => string;
-  updateWatchlistCategory: (categoryId: string, updates: Partial<Omit<WatchlistCategory, "id" | "teamId">>) => void;
+  addVipCategory: (category: Omit<VipCategory, "id" | "archived">) => string;
+  updateVipCategory: (categoryId: string, updates: Partial<Omit<VipCategory, "id" | "teamId">>) => void;
   /**
    * Retire a category. Not a delete — people registered under it keep the id, and their rows would
    * otherwise name a category that no longer exists.
    */
-  archiveWatchlistCategory: (categoryId: string) => void;
+  archiveVipCategory: (categoryId: string) => void;
   /**
-   * Take somebody off the watchlist without erasing that they were on it.
+   * Take somebody off the VIP registry without erasing that they were on it.
    *
    * Separate from removePerson because the two answer different questions later: a released row
    * says the purpose ended and when, a deleted row says nothing at all. Audited, because "who took
@@ -823,7 +823,7 @@ interface VcaStoreState {
    */
   releasePerson: (personId: string, reason: string) => void;
   /**
-   * Put a released person back on the watchlist.
+   * Put a released person back on the VIP registry.
    *
    * Release was one-way: the row menu dropped the action once releasedAt was set, saveEdit never
    * cleared it, and no reinstate existed anywhere — so the only undo was delete-and-re-register,
@@ -953,7 +953,7 @@ export interface AuditEvent {
   projectId?: string;
   /**
    * Set instead of projectId when the change belongs to the institution rather than to one site —
-   * a watchlist category, a search purpose. The Overview shows a project's own entries plus its
+   * a VIP registry category, a search purpose. The Overview shows a project's own entries plus its
    * team's, because a policy change is news at every site it governs and filing it under one of
    * them would be a lie about where it applies.
    */
@@ -1113,7 +1113,7 @@ const UPLOADS: UploadedMedia[] = [
   { id: "i1", projectId: "proj-sg", fileName: "west_gate_snapshot.jpg", kind: "image", sizeBytes: 2_400_000, resolution: "1920×1080", uploadedAt: auditAt(28 * 60), uploadedBy: "Grace Tan", status: "done", detectionCount: 2 },
 ];
 
-// Portal-managed accounts — separate from `persons` (the VIP/watchlist registry). A PortalUser is
+// Portal-managed accounts — separate from `persons` (the VIP/VIP registry registry). A PortalUser is
 // someone who can log into this same app; `permission` decides whether they land in the Portal
 // back-office shell or straight into the Smart City/School app (see PortalShell/ClientLayout),
 // and `projectIds` scopes which project(s) an operator can see once inside the app.
@@ -1167,7 +1167,7 @@ export function canManageAccess(permission: PortalPermission): boolean {
 }
 
 /**
- * May change the lists that decide what the audit will find: watchlist categories and search
+ * May change the lists that decide what the audit will find: VIP registry categories and search
  * purposes.
  *
  * Owner only, and narrower than canEditPortal on purpose. These two are not settings, they are the
@@ -1356,7 +1356,7 @@ export function useProjectEvents(): VcaEvent[] {
 }
 
 /**
- * The app's view of the watchlist: this site's people, minus the ones taken off it.
+ * The app's view of the VIP registry: this site's people, minus the ones taken off it.
  *
  * Deliberately NOT personsInProject — see watchedPersonsInProject. Portal keeps reading the
  * unfiltered list, because the record of a release is the point of a release.
@@ -2170,7 +2170,7 @@ const SEED_TODAY = Date.UTC(2026, 8, 9);
  *
  * The distribution is deliberate rather than uniform. This project has sixty cameras and four of
  * them carry an AI engine (see the camera seed and the Input Sources summary), so a hundred-name
- * watchlist that only four cameras can match is *supposed* to leave most rows untouched in a given
+ * VIP registry that only four cameras can match is *supposed* to leave most rows untouched in a given
  * week. A registry where everybody is seen every week would be the misleading mockup, not this one.
  *
  * Never returns a day before the person was registered — a face cannot be matched by a system it
@@ -2221,7 +2221,7 @@ function seededLastDetectedAt(id: string, registeredAt: string): string | undefi
 
 const PERSON_REGISTRY_INFO: Record<string, { registeredAt: string; description: string }> = {
   "Alexander Wright": { registeredAt: "2026-03-14", description: "Corporate Security — Executive Protection" },
-  "Priya Nair":        { registeredAt: "2026-05-02", description: "VIP Watchlist — Frequent Visitor" },
+  "Priya Nair":        { registeredAt: "2026-05-02", description: "VIP registry — Frequent Visitor" },
 };
 
 export const PERSONS: Person[] = (() => {
@@ -2327,7 +2327,7 @@ function bulkSampleVips(): Person[] {
       gender: "mfmfmfmfmfmfmfmfmfmfmfmfm",
     },
   ];
-  // Mostly normal. A watchlist where a third of the entries are the top level has no top level.
+  // Mostly normal. A VIP registry where a third of the entries are the top level has no top level.
   const priorities: Person["priorityLabel"][] = [
     "normal", "normal", "normal", "normal", "normal", "normal", "high", "normal", "normal", "very_high",
   ];
@@ -2341,7 +2341,7 @@ function bulkSampleVips(): Person[] {
    * A face each.
    *
    * getFacePhoto() hashes an id into FACE_PHOTOS, which holds six pictures — so a hundred people
-   * wore six faces, seventeen of them each, and a watchlist whose whole job is telling faces apart
+   * wore six faces, seventeen of them each, and a VIP registry whose whole job is telling faces apart
    * showed the same one under seventeen different names.
    *
    * A stable portrait set indexed per person instead, and taken from the set that matches the
@@ -2397,7 +2397,7 @@ const PERSON_GROUPS: PersonGroup[] = [
 
 let personSeq = PERSONS.length;
 let personGroupSeq = PERSON_GROUPS.length;
-let watchlistCategorySeq = 0;
+let vipCategorySeq = 0;
 let searchPurposeSeq = 0;
 let searchAccessSeq = 0;
 
@@ -2468,7 +2468,7 @@ export function dailyDetections(projectId: string, days = 7): DailyDetections[] 
 }
 
 /**
- * What is wrong with a project's watchlist, and how much of it is actually working.
+ * What is wrong with a project's VIP registry, and how much of it is actually working.
  *
  * ANOTHER REQUEST TO THE BACKEND, WRITTEN AS DATA. Everything the VIP page can say today it says
  * about itself — how many rows, how many groups, which priorities. None of that answers the
@@ -2485,7 +2485,7 @@ export function dailyDetections(projectId: string, days = 7): DailyDetections[] 
  *
  * The first three are defects with different causes and different fixes (upload a photo, replace a
  * bad photo, merge two rows), which is why they are three lists and not one number. The last two
- * are not defects: they are the reach of the list, and they are here because a watchlist nobody
+ * are not defects: they are the reach of the list, and they are here because a VIP registry nobody
  * ever matches is the quietest way this product fails.
  *
  * WHY TWO WINDOWS. One number cannot answer the question the figure is for. "9 of 104 seen this
@@ -2594,7 +2594,7 @@ const AUDIT_LOG: AuditEvent[] = [
   // console's log is weeks deep, and the point of the modal is that the card is a window onto
   // something bigger. Times fan out from an hour ago to nine days, in the order things actually
   // happen in a project: cameras get added and re-pointed, people get invited and promoted,
-  // watchlists get edited, servers get reconfigured.
+  // VIP registries get edited, servers get reconfigured.
   //
   // Every line here names an action Portal can actually perform, and is worded the way that
   // action words itself when it writes its own entry. Four of them did not: "Face recognition
@@ -2615,7 +2615,7 @@ const AUDIT_LOG: AuditEvent[] = [
   { id: "audit-13", projectId: "proj-sg", message: "Project timezone set to Asia/Singapore", actor: "Grace Tan", at: auditAt(4320) },
   { id: "audit-14", projectId: "proj-sg", message: "Camera CAM-QTN-001 renamed to Queenstown", actor: "Wei Chen", at: auditAt(5760) },
   { id: "audit-15", projectId: "proj-sg", message: "Marcus Lee granted app access", actor: "Grace Tan", at: auditAt(7200) },
-  { id: "audit-16", projectId: "proj-sg", message: "VIP watchlist exported to CSV", actor: "Aaron Sim", at: auditAt(8640) },
+  { id: "audit-16", projectId: "proj-sg", message: "VIP registry exported to CSV", actor: "Aaron Sim", at: auditAt(8640) },
   { id: "audit-17", projectId: "proj-sg", message: "Project mail settings updated", actor: "Wei Chen", at: auditAt(10080) },
   { id: "audit-18", projectId: "proj-sg", message: "Zone Angmokio created with 3 cameras", actor: "Marcus Lee", at: auditAt(11520) },
   { id: "audit-19", projectId: "proj-sg", message: "License renewed until 2029-03-31", actor: "Grace Tan", at: auditAt(12960) },
@@ -2714,7 +2714,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   persons: PERSONS,
   personGroups: PERSON_GROUPS,
   // No seed. An institution defines its own; a shipped default would become the standard.
-  watchlistCategories: [],
+  vipCategories: [],
   searchPurposes: [],
   searchPurpose: null,
   // No seed. These are events, and an installation that has run no searches has none.
@@ -2945,7 +2945,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         // decide what a screen shows, so what gets deleted and what could still be seen cannot
         // drift apart. `state.cameras` is read before the line above replaces it.
         //
-        // This used to match watchlist people instead, and never deleted anything: it compared
+        // This used to match VIP registry people instead, and never deleted anything: it compared
         // `Person.id` against `VcaEvent.personId`, and personId is not a person. Both writers
         // (SEED_EVENTS, ClientLayout's addEvent) put the SIGHTING's own id there, so the two id
         // spaces never overlapped, `has()` was always false, and the condition was always true.
@@ -3251,7 +3251,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         id: `audit-${++auditSeq}`, projectId: person?.projectId,
         // The name is snapshotted into the message because the row it names is about to stop
         // existing — the same reason the group and camera removals word themselves this way.
-        message: `VIP ${person?.name ?? personId} deleted from the watchlist`,
+        message: `VIP ${person?.name ?? personId} deleted from the VIP registry`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       };
       return {
@@ -3328,30 +3328,30 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       // entries is how a log stops being evidence. Retention belongs to the server.
       searchAccessLog: [{ ...record, id: `saccess-${++searchAccessSeq}` }, ...state.searchAccessLog],
     })),
-  addWatchlistCategory: (category) => {
-    const id = `wcat-${++watchlistCategorySeq}`;
+  addVipCategory: (category) => {
+    const id = `wcat-${++vipCategorySeq}`;
     set(state => ({
-      watchlistCategories: [...state.watchlistCategories, { ...category, id, archived: false }],
-      auditLog: [policyAudit(category.teamId, `Watchlist category "${category.label}" created`), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      vipCategories: [...state.vipCategories, { ...category, id, archived: false }],
+      auditLog: [policyAudit(category.teamId, `VIP category "${category.label}" created`), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return id;
   },
-  updateWatchlistCategory: (categoryId, updates) =>
+  updateVipCategory: (categoryId, updates) =>
     set(state => {
-      const before = state.watchlistCategories.find(c => c.id === categoryId);
+      const before = state.vipCategories.find(c => c.id === categoryId);
       if (!before) return {};
       return {
-        watchlistCategories: state.watchlistCategories.map(c => (c.id === categoryId ? { ...c, ...updates } : c)),
-        auditLog: [policyAudit(before.teamId, `Watchlist category "${updates.label ?? before.label}" changed`), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+        vipCategories: state.vipCategories.map(c => (c.id === categoryId ? { ...c, ...updates } : c)),
+        auditLog: [policyAudit(before.teamId, `VIP category "${updates.label ?? before.label}" changed`), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
-  archiveWatchlistCategory: (categoryId) =>
+  archiveVipCategory: (categoryId) =>
     set(state => {
-      const before = state.watchlistCategories.find(c => c.id === categoryId);
+      const before = state.vipCategories.find(c => c.id === categoryId);
       if (!before) return {};
       return {
-        watchlistCategories: state.watchlistCategories.map(c => (c.id === categoryId ? { ...c, archived: true } : c)),
-        auditLog: [policyAudit(before.teamId, `Watchlist category "${before.label}" retired`), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+        vipCategories: state.vipCategories.map(c => (c.id === categoryId ? { ...c, archived: true } : c)),
+        auditLog: [policyAudit(before.teamId, `VIP category "${before.label}" retired`), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   updatePerson: (personId, updates) =>
@@ -3423,7 +3423,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const person = state.persons.find(p => p.id === personId);
       if (!person) return {};
       const to = groupId ? state.personGroups.find(g => g.id === groupId)?.name ?? groupId : null;
-      // Logged like every other group change. Who is in a watchlist party is the kind of thing an
+      // Logged like every other group change. Who is in a VIP registry party is the kind of thing an
       // inspection asks about later, and the three group actions beside this one already log.
       const auditEntry: AuditEvent = {
         id: `audit-${++auditSeq}`, projectId: person.projectId,
@@ -3796,7 +3796,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         // Accounts filed under a team with no projects have nothing left to open. Removed with
         // it rather than left pointing at a team that is gone.
         portalUsers: state.portalUsers.filter(u => u.teamId !== teamId),
-        watchlistCategories: state.watchlistCategories.filter(c => c.teamId !== teamId),
+        vipCategories: state.vipCategories.filter(c => c.teamId !== teamId),
         searchPurposes: state.searchPurposes.filter(sp => sp.teamId !== teamId),
         auditLog: [{
           id: `audit-${++auditSeq}`,

@@ -6,7 +6,7 @@ import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, usePortalEditAccess, useTypeLabel } from "./PortalShared";
-import { WatchlistCategoryModal } from "./WatchlistCategories";
+import { VipCategoryModal } from "./VipCategories";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "@/components/Toast";
@@ -139,7 +139,7 @@ const T = {
     deleteConfirmTitle: (name: string) => `Delete ${name}?`,
     deleteConfirmBody: "This cannot be undone. Type the project's name to confirm.",
     deleteConfirmCounts: (cameras: number, vips: number, staff: number) =>
-      `${cameras} input source(s), ${vips} watchlist record(s) and ${staff} roster row(s) go with it. Accounts stay — this project is removed from their list.`,
+      `${cameras} input source(s), ${vips} VIP record(s) and ${staff} roster row(s) go with it. Accounts stay — this project is removed from their list.`,
     deleteConfirmLabel: "Delete project",
     deletedToast: "Project deleted",
     deleteLastProject: "This is the team's only project. A team with none shows the setup screen instead.",
@@ -366,7 +366,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   // their own interface language.
   const { mayEdit } = usePortalEditAccess();
   const typeLabel = useTypeLabel();
-  const watchlistCategories = useVcaStore(s => s.watchlistCategories);
+  const vipCategories = useVcaStore(s => s.vipCategories);
   const [managingCategories, setManagingCategories] = useState(false);
   const project = projects.find(p => p.id === projectId);
   const projectTeam = project ? teams.find(tm => tm.id === project.teamId) : undefined;
@@ -422,7 +422,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   // stand-in identity belongs to no account list and would otherwise see no list at all.
   const myTeamId = me?.teamId ?? project?.teamId;
   const teamPurposes = searchPurposes.filter(sp => sp.teamId === myTeamId);
-  const teamCategories = watchlistCategories.filter(c => c.teamId === myTeamId);
+  const teamCategories = vipCategories.filter(c => c.teamId === myTeamId);
   const activePurposes = teamPurposes.filter(sp => !sp.archived);
   // Owner only — see canSetPolicy. With no matching account the stand-in identity is treated as
   // the owner it stands in for, the same assumption the rest of Portal makes about it.
@@ -604,7 +604,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 the site rather than to the person looking, and changing it is audited.
 
                 Owner only. This is closer to a policy than a preference — the same gate the
-                search purposes and watchlist categories sit behind. */}
+                search purposes and VIP categories sit behind. */}
             <PairItem label={t.retention} hint={t.retentionNote}>
               {maySetPolicy ? (
                 <FilterSelect
@@ -648,7 +648,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
 
       {confirmingDelete && project && (
         /* Type the name back. A red button on a dialog is a click; a project holds a city's
-           cameras and a watchlist of named people, and the count of what goes is printed above
+           cameras and a VIP registry of named people, and the count of what goes is printed above
            the field so the number is read before the name is typed. */
         <ConfirmModal
           title={t.deleteConfirmTitle(project.name)}
@@ -685,13 +685,13 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         Search purposes — the institution's own list, and the reason the app's purpose gate can be
         satisfied at all.
 
-        Here rather than on the VIP screen (where watchlist categories are managed) because a
+        Here rather than on the VIP screen (where VIP categories are managed) because a
         purpose is not a project's: it belongs to the institution, and the operator declaring one is
         in the monitoring app, not in this console. Settings is where the things that govern every
         site live.
       */}
       {/*
-        Watchlist categories, alongside the purposes for the same reason: both are the team's
+        VIP categories, alongside the purposes for the same reason: both are the team's
         policy, not a project's. This one was reachable only from inside the VIP registry, so a
         team waiting for its first site could set up its purposes and not its categories —
         backwards, because deciding what your institution's categories ARE is exactly the
@@ -787,7 +787,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       )}
 
       {managingCategories && myTeamId && (
-        <WatchlistCategoryModal
+        <VipCategoryModal
           teamId={myTeamId}
           categories={teamCategories}
           canEdit={maySetPolicy}
@@ -974,7 +974,7 @@ function ChangePasswordModal({ t, lang, onClose }: {
 /**
  * The institution's list of search purposes: what is on it, and how to add to it.
  *
- * Opens empty and says so. No example row, for the same reason the watchlist categories have none
+ * Opens empty and says so. No example row, for the same reason the VIP registry categories have none
  * — a shipped "Case enquiry" would read as the standard, and the first thing a customer does with
  * somebody else's vocabulary is delete it.
  *
@@ -1038,7 +1038,7 @@ function SearchPurposeList({ t, teamId, purposes, canEdit }: {
             <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.purposeLabelField}</label>
             <TextField value={label} onChange={setLabel} placeholder={t.purposeLabelPlaceholder} autoFocus />
           </div>
-          {/* Off by default, unlike the watchlist category's basis. A purpose is declared once a
+          {/* Off by default, unlike the VIP registry category's basis. A purpose is declared once a
               sitting and a reference is not always available at that moment; a category is chosen
               per person, where the paperwork already exists. */}
           <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "var(--gray-600)" }}>

@@ -1261,7 +1261,7 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
   /**
    * One field the confirmation needs, under the body.
    *
-   * For the confirmations that are not purely yes/no — releasing somebody from the watchlist has to
+   * For the confirmations that are not purely yes/no — releasing somebody from the VIP registry has to
    * record why, and a second dialog stacked on this one to ask a single question is a stack nobody
    * wants to be two deep in.
    */
@@ -1274,7 +1274,7 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
    * Holds the confirm button shut until the `children` field says otherwise.
    *
    * For the one class of dialog where "are you sure" is not enough: deleting a project takes a
-   * city's cameras and a watchlist of named people at once, and a red button is still one click.
+   * city's cameras and a VIP registry of named people at once, and a red button is still one click.
    * The caller decides what unlocks it — typing the name back, in that case.
    */
   confirmDisabled?: boolean;
