@@ -99,7 +99,7 @@ const T = {
     activeNow: "지금 접속 중",
     systemPreferences: "시스템 환경설정",
     interfaceLanguage: "앱 화면 언어",
-    interfaceLanguageNote: "모니터링 앱에만 적용됩니다. 포털은 별도이고, 포털의 설정에서 정합니다.",
+    interfaceLanguageNote: "모니터링 앱에만 적용됩니다. Portal은 별도이고, Portal의 설정에서 정합니다.",
     thresholdLevels: "경보 단계",
     thresholdSummary: (alert: number, moderate: number) => `경보 ${alert} · 주의 ${moderate}`,
   },

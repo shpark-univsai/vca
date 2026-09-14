@@ -70,7 +70,7 @@ const T = {
     scope: "범위",
     allTeams: "모든 팀과 프로젝트",
     permission: "권한",
-    permAdmin: "관리자 — 포털 + 앱",
+    permAdmin: "관리자 — Portal + 앱",
     permOperator: "앱만",
     yesContinue: "네, 계속하기",
     notMe: "제가 아닙니다 — 다른 코드 입력하기",

@@ -72,6 +72,10 @@ const HEADER_SYNONYMS: Record<ColumnKey, string[]> = {
 const PERMISSION_VALUES: Record<string, "admin" | "operator"> = {
   admin: "admin", administrator: "admin", owner: "admin", portalapp: "admin", portaladmin: "admin",
   관리자: "admin", 어드민: "admin", 운영관리자: "admin", 포털앱: "admin", 포털관리자: "admin",
+  // The console is written "Portal" in Korean too since 2026-09-14, so its own roster screens now
+  // read "Portal 관리자". "포털앱" already covers "Portal + 앱" (the normaliser drops the spaces
+  // and the plus), but this spelling was new. The 포털 forms stay — see the note above.
+  portal관리자: "admin",
   operator: "operator", user: "operator", member: "operator", staff: "operator",
   appuser: "operator", apponly: "operator", app: "operator",
   운영자: "operator", 오퍼레이터: "operator", 사용자: "operator", 일반: "operator",

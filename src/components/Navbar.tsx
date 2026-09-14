@@ -65,7 +65,7 @@ const T = {
     showingOf: (shown: number, total: number, window: string) => `${total}건 중 ${shown}건 표시 · ${window}`,
     allOf: (total: number, window: string) => `전체 ${total}건 · ${window}`,
     settings: "설정",
-    portal: "포털",
+    portal: "Portal",
     myPage: "마이페이지",
     sidebar: "사이드바",
     left: "왼쪽",

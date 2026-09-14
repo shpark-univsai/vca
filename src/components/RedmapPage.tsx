@@ -106,7 +106,7 @@ const T = {
   },
   ko: {
     noPermissionTitle: "인물 검색 권한이 필요합니다",
-    noPermissionBody: "Redmap은 검색으로만 결과를 보여주는 화면이라, 검색 권한 없이는 보여줄 것이 없습니다. 관리자에게 요청하면 포털의 사용자 및 권한에서 열어 줄 수 있습니다.",
+    noPermissionBody: "Redmap은 검색으로만 결과를 보여주는 화면이라, 검색 권한 없이는 보여줄 것이 없습니다. 관리자에게 요청하면 Portal의 사용자 및 권한에서 열어 줄 수 있습니다.",
     close: "닫기",
     prevMonth: "지난달",
     nextMonth: "다음달",
