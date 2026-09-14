@@ -57,13 +57,20 @@ function SettingsNav({ sections, active, onSelect }: {
               // that carries at a glance is a mark at the leading edge — komoot and Pinterest
               // both mark the active row that way rather than tinting it harder, and the mark
               // works at any fill strength because it is a different KIND of difference.
-              // --line, not gray-100, for the selected fill. The ramp is deliberately two hues:
-              // gray-50..600 are slate (215°) and only 700..900 carry the primary's purple, because
-              // saturation in the mid-lightness range is what makes body text look dusty. That
-              // reasoning is about TEXT, and this is a surface — so the fill wants the purple side,
-              // and --line (240°, 93% lightness) is the one light token already on it. It also
-              // reads a step deeper than gray-100 did, which the selected row wanted anyway.
-              backgroundColor: on ? "var(--line)" : hovered === sec.id ? "var(--gray-50)" : "transparent",
+              // White, lifted — not a tint.
+              //
+              // Two tints were tried and both read as dusty: gray-100 (slate, 96%) and --line
+              // (purple, 93%). That is not a wrong token, it is the lightness band itself. Any
+              // saturated colour at 93-96% against this page's near-white ground has too little
+              // room left to be a colour, so it lands as grey with something in it.
+              //
+              // The rail sits on the page's tinted ground and the panel beside it is white, so
+              // white is available here as a LIFT rather than a shade — the selected row comes
+              // forward instead of being coloured in, which is what Etsy's settings rail does and
+              // why it stays clean. A shadow rather than a border: a bordered pill next to a
+              // bordered card reads as two cards arguing about which one you are in.
+              backgroundColor: on ? "white" : hovered === sec.id ? "var(--gray-50)" : "transparent",
+              boxShadow: on ? "var(--shadow-raised)" : "none",
               color: warm ? "var(--gray-900)" : "var(--gray-500)",
               fontSize: "13px", fontWeight: on ? 700 : 600, fontFamily: "inherit",
               textAlign: "left", cursor: "pointer", width: "100%",
