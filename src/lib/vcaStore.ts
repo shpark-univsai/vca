@@ -796,7 +796,8 @@ interface VcaStoreState {
   removePersonGroup: (groupId: string, options?: { deleteMembers?: boolean }) => void;
   setPersonGroup: (personId: string, groupId: string | undefined) => void;
   addSearchPurpose: (purpose: Omit<SearchPurpose, "id" | "archived">) => string;
-  updateSearchPurpose: (purposeId: string, updates: Partial<Omit<SearchPurpose, "id" | "teamId">>) => void;
+  /* No updateSearchPurpose, and that is the design rather than a gap — see the note on
+     archiveSearchPurpose. */
   archiveSearchPurpose: (purposeId: string) => void;
   /** Declare the purpose for this sitting, or clear it to be asked again. */
   setSearchPurpose: (selection: SearchPurposeSelection | null) => void;
@@ -3301,14 +3302,23 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     }));
     return id;
   },
-  updateSearchPurpose: (purposeId, updates) =>
-    set(state => ({
-      searchPurposes: state.searchPurposes.map(p => (p.id === purposeId ? { ...p, ...updates } : p)),
-      auditLog: [policyAudit(
-        state.searchPurposes.find(p => p.id === purposeId)?.teamId,
-        `Search purpose "${updates.label ?? state.searchPurposes.find(p => p.id === purposeId)?.label ?? purposeId}" changed`,
-      ), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
-    })),
+  /**
+   * Retire and replace — there is no edit, on purpose.
+   *
+   * A purpose is not a label on a thing, it is what an operator SAID they were looking somebody
+   * up for, and every row in the access log names one. Rename "Criminal investigation" and every
+   * past search made under it now reads as the new words: the record of what was claimed changes
+   * after the fact, without anybody's search changing. That is the one thing this log exists to
+   * prevent, and it is why removeProject keeps the log when a site is deleted.
+   *
+   * The screen already promises this out loud — "retired purposes cannot be chosen again; past
+   * searches that name them still resolve" — which only holds while the words stay put.
+   *
+   * An `updateSearchPurpose` action existed with no caller until 2026-09-14. Deleted rather than
+   * left for somebody to wire: an action sitting in the store is an invitation, and the cost of
+   * accepting it is silent. VIP categories keep their update for the opposite reason — a category
+   * groups people, and no audit row quotes it.
+   */
   archiveSearchPurpose: (purposeId) =>
     set(state => ({
       searchPurposes: state.searchPurposes.map(p => (p.id === purposeId ? { ...p, archived: true } : p)),
