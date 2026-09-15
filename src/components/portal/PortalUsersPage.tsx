@@ -221,7 +221,13 @@ const T = {
     viewSetupCode: "View setup code",
     setupExpires: (days: number) => `Expires in ${days} days`,
     soleAdminTitle: "Only one administrator can sign in",
-    soleAdminBody: "Granting permissions is an administrator-only power, and there is no supplier account behind this installation. If this one account is locked out, nobody can grant anything and there is no way back in. Make a second person an administrator.",
+    /* Was "there is no way back in", which is no longer true and was arguably never quite true:
+       the server promotes its seed account to owner on boot when no active owner is left. What IS
+       true is that the way back is not in Portal — it needs somebody with access to the machine,
+       which on an isolated site may be a different company and a scheduled visit. The named
+       recovery command is deliberately absent until it exists; naming it now would be a promise
+       this console cannot keep. */
+    soleAdminBody: "Granting permissions is an administrator-only power, and there is no supplier account behind this installation. If this one account is locked out, nobody here can grant anything — recovering it takes someone with access to the server itself, not Portal. Make a second person an administrator.",
     // Two sentences, because this renders as a footnote inside a dropdown. The reasoning behind the
     // rule — with nobody in this role no one can grant permissions and there is no way back in —
     // belongs in isLastActiveAdmin's comment, not in a 280px menu.
@@ -412,7 +418,7 @@ const T = {
     viewSetupCode: "설치 코드 보기",
     setupExpires: (days: number) => `${days}일 후 만료`,
     soleAdminTitle: "로그인 가능한 관리자가 한 명입니다",
-    soleAdminBody: "권한 부여는 관리자만 할 수 있고, 이 설치에는 공급사 계정이 없습니다. 이 한 계정이 잠기면 아무도 권한을 부여할 수 없고 되돌릴 방법도 없습니다. 두 번째 관리자를 지정하세요.",
+    soleAdminBody: "권한 부여는 관리자만 할 수 있고, 이 설치에는 공급사 계정이 없습니다. 이 한 계정이 잠기면 여기서는 아무도 권한을 부여할 수 없습니다 — 되돌리는 일은 포털이 아니라 서버에 접근할 수 있는 사람의 몫입니다. 두 번째 관리자를 지정하세요.",
     lastAdminReason: "로그인할 수 있는 유일한 관리자입니다. 다른 사람을 먼저 관리자로 지정하세요.",
     lastAdminRoleFixed: "유일한 소유자입니다 — 다른 소유자가 생기기 전까지 역할을 바꿀 수 없습니다.",
     reactivateUser: "재활성화",

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ShieldAlert } from "lucide-react";
 import PortalProjectDetailPage from "./PortalProjectDetailPage";
 import PortalEmptyState from "./PortalEmptyState";
 import { NewTeamModal } from "./TeamSwitcher";
@@ -28,6 +29,7 @@ const T = {
     requestManager: "Account manager",
     requestNoManager: "No account manager is recorded for this team. Contact whoever handled your installation.",
     fleetTitle: (online: number, offline: number) => `${online} cameras online, ${offline} offline — open Input Sources`,
+    recoveredOwner: "This account was made an owner by the recovery path, not by anyone granting it. Name a real owner and this notice goes away on its own.",
   },
   ko: {
     noTeam: "팀 없음", expand: "사이드바 펼치기", collapse: "사이드바 접기",
@@ -37,6 +39,7 @@ const T = {
     requestManager: "담당자",
     requestNoManager: "이 팀에 등록된 담당자가 없습니다. 설치를 담당한 곳으로 문의하세요.",
     fleetTitle: (online: number, offline: number) => `카메라 ${online}대 온라인, ${offline}대 오프라인 — 입력 소스 열기`,
+    recoveredOwner: "이 계정은 누가 권한을 준 것이 아니라 복구 경로로 최고관리자가 되었습니다. 정식 최고관리자를 지정하면 이 안내는 저절로 사라집니다.",
   },
 } as const;
 
@@ -219,6 +222,13 @@ export default function PortalShell() {
   const projectCameras = cameras.filter(c => c.projectId === currentProjectId);
   const fleetOnline = projectCameras.filter(c => c.status === "online").length;
   const fleetOffline = projectCameras.length - fleetOnline;
+  /* The badge is for a stand-in, so it stops the moment somebody else is holding the role for
+     real — counted over active accounts, because a suspended owner is not standing by to help.
+     `me` is the binding already read above. */
+  const recoveredOwner = useVcaStore(s =>
+    !!me?.recoveredAt
+    && !s.portalUsers.some(u => u.id !== me.id && u.permission === "owner" && u.status === "active"));
+
   const [tab, setTabState] = useState<DetailTab>(
     // A tab the rail does not offer is not a tab you can land on, so a bookmarked ?tab= for one
     // the release does not have lands on the overview rather than drawing a breadcrumb over an
@@ -389,6 +399,28 @@ export default function PortalShell() {
         The wizard is the exception: it renders without a rail, so the trail it needs (which team,
         and that you are creating rather than browsing) has nowhere else to go and stays here.
       */}
+      {/*
+        Standing in, and said so.
+
+        A recovered owner looks exactly like a granted one — same role, same buttons — and the two
+        are not the same thing: one was decided by a person, the other by a machine noticing nobody
+        was left. Without this line the installation quietly keeps running on a stand-in and nobody
+        remembers to name a real owner.
+
+        Above the bar rather than inside a page, because it is about the ACCOUNT, not about
+        whichever screen is open. It goes away by itself the moment another active owner exists —
+        there is no dismiss button, since dismissing it would be the whole failure mode.
+      */}
+      {recoveredOwner && (
+        <div style={{
+          flexShrink: 0, display: "flex", alignItems: "flex-start", gap: "10px",
+          padding: "10px 32px", backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
+          fontSize: "12px", fontWeight: 600, lineHeight: 1.5,
+        }}>
+          <span style={{ display: "flex", flexShrink: 0, marginTop: "2px" }}><ShieldAlert size={14} strokeWidth={2.4} /></span>
+          <span>{T[lang].recoveredOwner}</span>
+        </div>
+      )}
       {/* No rule under it, and 10px shorter than it was. The bar and the page are the same
           primary-50 ground, so a hairline between them was drawing a box around chrome that has
           nothing to separate — the crumb and the account button read as the top of the page, which

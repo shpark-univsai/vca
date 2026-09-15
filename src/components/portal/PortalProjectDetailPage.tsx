@@ -68,7 +68,7 @@ const T = {
     attnExpiringSoon: (d: number) => `License expires in ${d} day${d === 1 ? "" : "s"}`,
     attnExpired: "License has expired",
     attnNoMail: "No mail server configured — nobody can be invited",
-    attnSoleOwner: "Only one owner account — no way back if it is lost",
+    attnSoleOwner: "Only one owner account — getting back in would need server access",
     attnNoTimeZone: "Time zone never set — every date on this project is a guess",
     attnNoCameras: "No source connected yet",
     attnNoVips: "No VIP registered yet",
@@ -163,7 +163,7 @@ const T = {
     attnExpiringSoon: (d: number) => `라이선스 ${d}일 후 만료`,
     attnExpired: "라이선스가 만료되었습니다",
     attnNoMail: "메일 서버가 설정되지 않았습니다 — 아무도 초대할 수 없습니다",
-    attnSoleOwner: "최고관리자가 한 명뿐입니다 — 잃으면 돌아올 길이 없습니다",
+    attnSoleOwner: "최고관리자가 한 명뿐입니다 — 되돌리려면 서버 접근 권한이 필요합니다",
     attnNoTimeZone: "시간대를 정한 적이 없습니다 — 이 프로젝트의 모든 날짜가 추측입니다",
     attnNoCameras: "연결된 소스가 없습니다",
     attnNoVips: "등록된 VIP가 없습니다",
@@ -713,6 +713,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     // each of these means a capability is dead, not that a list is empty.
     ...(mailMissing ? [{ key: "nomail", text: t.attnNoMail, color: "var(--warning-500)", tab: "server" as DetailTab }] : []),
     ...(teamOwners <= 1 ? [{ key: "soleowner", text: t.attnSoleOwner, color: "var(--warning-500)", tab: "users" as DetailTab }] : []),
+    // Above the setup notes, below the licence: a door opened from outside the product's rules is
+    // not a "nothing here yet" note. Shows only while the recovered account is the only owner —
+    // once a normally-granted one exists, the recovery served its purpose.
     ...(timeZoneUnset ? [{ key: "notz", text: t.attnNoTimeZone, color: "var(--warning-500)", tab: "overview" as DetailTab }] : []),
     ...(projectCameras.length === 0 ? [{ key: "nocams", text: t.attnNoCameras, color: "var(--gray-400)", tab: "cameras" as DetailTab }] : []),
     ...(projectPersons.length === 0 ? [{ key: "novips", text: t.attnNoVips, color: "var(--gray-400)", tab: "vip" as DetailTab }] : []),
