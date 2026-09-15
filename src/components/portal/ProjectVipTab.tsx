@@ -663,6 +663,75 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
           </button>
         </div>
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+          {/* The face first (2026-09-15). Everything under it describes a person the system has
+              to be able to RECOGNISE, and a row with a name and no readable face is a row no
+              camera can ever match — this screen already counts those separately as "photo
+              unreadable". Asking for the picture last put the one thing the product needs at the
+              bottom of a form people fill top to bottom, after four fields that are only useful
+              once it works. */}
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
+              {editing ? t.facePhotoLabel : t.facePhotoLabelRequired}
+            </label>
+            <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: "none" }} />
+            {/*
+              With a photo: the photo, and "Change photo" over it on hover. Without: the dropzone.
+
+              The whole control is the button either way, so the picture is the target — clicking a
+              face to replace it is what every avatar field does, and a separate "Change" link
+              beside a thumbnail is a second thing to aim at. The overlay only appears on hover
+              because a caption printed permanently across somebody's face is a caption you stop
+              reading and a face you cannot see.
+            */}
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              onMouseEnter={() => setPhotoHovered(true)}
+              onMouseLeave={() => setPhotoHovered(false)}
+              style={{
+                width: "100%", boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: photoPreview ? "flex-start" : "center", gap: "12px",
+                padding: photoPreview ? "10px" : "24px", borderRadius: "10px",
+                border: photoPreview ? BORDER : "1px dashed var(--gray-300)",
+                backgroundColor: "var(--gray-50)", cursor: "pointer", textAlign: "left",
+              }}>
+              {photoPreview ? (
+                <>
+                  <span style={{ position: "relative", display: "flex", flexShrink: 0, borderRadius: "8px", overflow: "hidden" }}>
+                    <img src={photoPreview} alt="" style={{ width: "64px", height: "64px", objectFit: "cover", display: "block" }} />
+                    {photoHovered && (
+                      <span style={{
+                        position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                        backgroundColor: "rgba(24, 17, 39, 0.62)", color: "white", fontSize: "10px", fontWeight: 700,
+                        textAlign: "center", lineHeight: 1.3, padding: "4px",
+                      }}>
+                        {t.changePhoto}
+                      </span>
+                    )}
+                  </span>
+                  {/* The file name once a new one has been chosen; before that there is no file,
+                      only the picture the server already holds. */}
+                  <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {photoFileName ?? t.currentPhoto}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="var(--gray-500)" strokeWidth="1.22" strokeLinecap="round"/></svg>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}>{t.uploadPhoto}</span>
+                </>
+              )}
+            </button>
+            {/* The reason this form is open, for the people it is open about.
+                An admin who clicked "12 photo unreadable", picked a row and got here saw a
+                perfectly ordinary-looking photograph and no hint of what was wrong with it. The
+                model's complaint belongs against the picture it could not read. */}
+            {photoState === "unreadable" && (
+              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoUnreadableHint}</p>
+            )}
+            {photoState === "reenrolling" && (
+              <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoReenrollingHint}</p>
+            )}
+          </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
             <TextField value={name} onChange={setName} placeholder={t.namePlaceholder} />
@@ -753,69 +822,6 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.noteLabel}</label>
             <TextField value={description} onChange={setDescription} placeholder={t.notePlaceholder} />
-          </div>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
-              {editing ? t.facePhotoLabel : t.facePhotoLabelRequired}
-            </label>
-            <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: "none" }} />
-            {/*
-              With a photo: the photo, and "Change photo" over it on hover. Without: the dropzone.
-
-              The whole control is the button either way, so the picture is the target — clicking a
-              face to replace it is what every avatar field does, and a separate "Change" link
-              beside a thumbnail is a second thing to aim at. The overlay only appears on hover
-              because a caption printed permanently across somebody's face is a caption you stop
-              reading and a face you cannot see.
-            */}
-            <button
-              type="button"
-              onClick={() => photoInputRef.current?.click()}
-              onMouseEnter={() => setPhotoHovered(true)}
-              onMouseLeave={() => setPhotoHovered(false)}
-              style={{
-                width: "100%", boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: photoPreview ? "flex-start" : "center", gap: "12px",
-                padding: photoPreview ? "10px" : "24px", borderRadius: "10px",
-                border: photoPreview ? BORDER : "1px dashed var(--gray-300)",
-                backgroundColor: "var(--gray-50)", cursor: "pointer", textAlign: "left",
-              }}>
-              {photoPreview ? (
-                <>
-                  <span style={{ position: "relative", display: "flex", flexShrink: 0, borderRadius: "8px", overflow: "hidden" }}>
-                    <img src={photoPreview} alt="" style={{ width: "64px", height: "64px", objectFit: "cover", display: "block" }} />
-                    {photoHovered && (
-                      <span style={{
-                        position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                        backgroundColor: "rgba(24, 17, 39, 0.62)", color: "white", fontSize: "10px", fontWeight: 700,
-                        textAlign: "center", lineHeight: 1.3, padding: "4px",
-                      }}>
-                        {t.changePhoto}
-                      </span>
-                    )}
-                  </span>
-                  {/* The file name once a new one has been chosen; before that there is no file,
-                      only the picture the server already holds. */}
-                  <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {photoFileName ?? t.currentPhoto}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="var(--gray-500)" strokeWidth="1.22" strokeLinecap="round"/></svg>
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}>{t.uploadPhoto}</span>
-                </>
-              )}
-            </button>
-            {/* The reason this form is open, for the people it is open about.
-                An admin who clicked "12 photo unreadable", picked a row and got here saw a
-                perfectly ordinary-looking photograph and no hint of what was wrong with it. The
-                model's complaint belongs against the picture it could not read. */}
-            {photoState === "unreadable" && (
-              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoUnreadableHint}</p>
-            )}
-            {photoState === "reenrolling" && (
-              <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoReenrollingHint}</p>
-            )}
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
