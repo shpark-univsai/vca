@@ -7,7 +7,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useOnValueChange } from "@/hooks/useOnValueChange";
 import { useToast } from "./Toast";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
-import { camerasInProject, canSearchInApp, judgementFor, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
+import { camerasInProject, canExportEvidence, canSearchInApp, judgementFor, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { buildEvidenceManifest, evidenceFilename, saveManifest } from "@/lib/evidence";
 import { siteTimeZone } from "@/lib/time";
@@ -39,6 +39,7 @@ const T = {
     unnamedTarget: "Manual search",
     exportEvidence: "Export evidence",
     exportEvidenceHint: "Metadata and the operator's call, as a file. The frame is referenced, not enclosed.",
+    exportDenied: "Evidence export is not granted on this account. An administrator grants it in Portal, under Users & Permissions.",
     exported: (place: string) => `Evidence exported — ${place}`,
     exportedDesc: "The extraction is recorded in this project's log.",
     thresholdCost: (kept: number, total: number) => `${kept} of ${total} candidates`,
@@ -127,6 +128,7 @@ const T = {
     unnamedTarget: "직접 검색",
     exportEvidence: "증거 내보내기",
     exportEvidenceHint: "메타데이터와 관제요원의 판단을 파일로. 프레임은 참조만 하고 담지 않습니다.",
+    exportDenied: "이 계정에는 증거 내보내기 권한이 없습니다. 포털의 사용자 및 권한에서 관리자가 줄 수 있습니다.",
     exported: (place: string) => `증거를 내보냈습니다 — ${place}`,
     exportedDesc: "추출 사실이 이 프로젝트 기록에 남았습니다.",
     thresholdCost: (kept: number, total: number) => `후보 ${total}건 중 ${kept}건`,
@@ -845,6 +847,18 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
   // screen is gated rather than its button. See PortalUser.appSearch.
   const portalUsers = useVcaStore(state => state.portalUsers);
   const searchAllowed = canSearchInApp(portalUsers);
+  /**
+   * Whether this account may take a sighting out as a file.
+   *
+   * SHOWN AND REFUSED, not hidden — the opposite of the jump buttons, and for a reason that only
+   * applies here: a jump button leads to a screen this person will never see, while an operator
+   * told over the radio to send the file needs to learn that the grant is missing, not that the
+   * feature is broken. The button names who can give it.
+   *
+   * NOT A CONTROL. See PortalUser.appExport — a gate inside the browser guarding an export the
+   * browser performs is skipped by the same browser. The enforcement is a server call.
+   */
+  const exportAllowed = canExportEvidence(portalUsers);
   const [mode, setMode] = useState<Mode>("person");
   const [similarity, setSimilarity] = useState<SimilarityLimit>(70);
   const [dateRange, setDateRange] = useState<DateRange>(DEFAULT_DATE_RANGE);
@@ -2270,20 +2284,24 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                                     the camera, the site clock, the score and who said it was them. */}
                                 <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", flexWrap: "wrap" }}>
                                   <button
-                                    onClick={e => { e.stopPropagation(); void exportEvidence(node); }}
+                                    onClick={e => { e.stopPropagation(); if (exportAllowed) void exportEvidence(node); }}
+                                    disabled={!exportAllowed}
+                                    title={exportAllowed ? undefined : t.exportDenied}
                                     style={{
                                       display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0,
                                       height: "28px", padding: "0 11px", borderRadius: "8px",
-                                      border: "1px solid var(--gray-200)", backgroundColor: "white",
-                                      color: "var(--gray-700)", fontSize: "11px", fontWeight: 700,
-                                      cursor: "pointer", fontFamily: "inherit",
+                                      border: "1px solid var(--gray-200)",
+                                      backgroundColor: exportAllowed ? "white" : "var(--gray-50)",
+                                      color: exportAllowed ? "var(--gray-700)" : "var(--gray-400)",
+                                      fontSize: "11px", fontWeight: 700,
+                                      cursor: exportAllowed ? "pointer" : "not-allowed", fontFamily: "inherit",
                                     }}
                                   >
                                     <DownloadIconSm />
                                     {t.exportEvidence}
                                   </button>
-                                  <span style={{ flex: 1, minWidth: "180px", fontSize: "10px", lineHeight: 1.45, color: "var(--gray-500)" }}>
-                                    {t.exportEvidenceHint}
+                                  <span style={{ flex: 1, minWidth: "180px", fontSize: "10px", lineHeight: 1.45, color: exportAllowed ? "var(--gray-500)" : "var(--warning-500)" }}>
+                                    {exportAllowed ? t.exportEvidenceHint : t.exportDenied}
                                   </span>
                                 </div>
                               </div>

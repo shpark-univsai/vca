@@ -5682,10 +5682,13 @@ export default function DataPage({ onGoRedmap, onGoRedmapFrame, onGoAnalyzeFrame
    * Empty is impossible to reach: ClientLayout only renders Data when at least one of them is
    * held, so `heldTabs[0]` below always exists.
    */
-  const heldTabs = useVcaStore(st => {
-    const held = screensFor(st.portalUsers);
+  // Derived outside the selector, not inside it: a selector that builds a new array every read
+  // never compares equal to its previous result and drives React into an infinite re-render.
+  const portalUsersForTabs = useVcaStore(st => st.portalUsers);
+  const heldTabs = useMemo(() => {
+    const held = screensFor(portalUsersForTabs);
     return DATA_TABS.filter(tab => held.includes(DATA_TAB_SCREEN[tab]));
-  });
+  }, [portalUsersForTabs]);
   const [activeTab, setActiveTab] = useState<DataTab>(() => {
     // A slug this screen does not render is not a destination. Kept as a guard rather than
     // trusting the slug table to stay in step with DATA_TABS: when they disagreed, ?sub=search

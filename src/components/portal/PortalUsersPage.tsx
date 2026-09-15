@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Asterisk, ClipboardList, MailQuestion, Users2, UserMinus, UserX, ClipboardPlus, Download, KeyRound, Printer, Upload} from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, APP_SCREENS, type AppScreen, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
@@ -279,6 +279,13 @@ const T = {
     accessApprovedTitle: "Access approved — invite sent",
     usersInvitedTitle: (count: number) => `${count} users invited`,
     eachWillReceive: "Each will receive their own invite link.",
+    grantLabel: "App grants *",
+    grantCustom: "Custom",
+    grantCustomDesc: "Pick the screens and actions one by one.",
+    grantNotChosen: "Choose how this account's grants are decided",
+    screenName: { live: "Live monitoring", bestframe: "Best Frame", redmap: "Redmap", reid: "Re-ID", redface: "RedFace" } as Record<AppScreen, string>,
+    verbSearch: "Person search",
+    verbExport: "Evidence export",
   },
   ko: {
     // Page header
@@ -521,8 +528,32 @@ const T = {
     accessApprovedTitle: "접근 승인됨 — 초대장 발송됨",
     usersInvitedTitle: (count: number) => `${count}명의 사용자 초대됨`,
     eachWillReceive: "각자 개별 초대 링크를 받게 됩니다.",
+    grantLabel: "권한 부여 방식 *",
+    grantCustom: "커스텀",
+    grantCustomDesc: "화면과 동작을 하나씩 고릅니다.",
+    grantNotChosen: "권한 부여 방식을 선택해주세요",
+    screenName: { live: "실시간 관제", bestframe: "베스트 프레임", redmap: "레드맵", reid: "Re-ID", redface: "RedFace" } as Record<AppScreen, string>,
+    verbSearch: "인물 검색",
+    verbExport: "증거 내보내기",
   },
 } as const;
+
+/** A checkbox that reads as a chip. Used where a handful of flags sit in one row. */
+function CheckChip({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 10px", borderRadius: "999px",
+        border: on ? "1px solid var(--gray-900)" : BORDER,
+        backgroundColor: on ? "var(--gray-900)" : "white",
+        color: on ? "white" : "var(--gray-600)",
+        fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+      }}>
+      <span style={{ fontSize: "10px" }}>{on ? "✓" : "＋"}</span>
+      {label}
+    </button>
+  );
+}
 
 function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: string; onClose: () => void }) {
   useEscapeKey(onClose);
@@ -545,6 +576,36 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   // Access first, role second — the same order the table now reads in, and the order the questions
   // actually come in: whether this person opens Portal at all, then what they may do there.
   const [accessMode, setAccessMode] = useState<AccessMode>("appOnly");
+  /**
+   * How this account's app grants are decided. NOTHING IS PRE-SELECTED.
+   *
+   * A pre-ticked narrowest option looks harmless and is not: whatever sits first becomes the de
+   * facto answer for every administrator in a hurry, and the record afterwards cannot tell a
+   * decision from a default. AWS IAM Identity Center does not pre-pick a permission set either.
+   *
+   * Nothing chosen costs something, and three things pay for it: every option carries a line
+   * saying what it is for, the check happens once when Invite is pressed rather than while
+   * anybody types, and the disabled button says why instead of just sitting there.
+   */
+  // Same rule as the two above: the store slice comes out of the selector, the filtering happens
+  // in a memo. presetsForTeam() returns a new array every call.
+  const allPresets = useVcaStore(st => st.accessPresets);
+  const presets = useMemo(() => presetsForTeam(allPresets, teamId), [allPresets, teamId]);
+  const [grantChoice, setGrantChoice] = useState<string | null>(null);
+  const [customScreens, setCustomScreens] = useState<AppScreen[]>([]);
+  const [customSearch, setCustomSearch] = useState(false);
+  const [customExport, setCustomExport] = useState(false);
+  /** Shown only after Invite has been pressed once — see the note on grantChoice. */
+  const [submitted, setSubmitted] = useState(false);
+  const toggleCustomScreen = (screen: AppScreen) =>
+    setCustomScreens(prev => prev.includes(screen) ? prev.filter(x => x !== screen) : [...prev, screen]);
+  /**
+   * An installation with no presets starts on custom, because there is nothing else to offer.
+   * No guard forbidding it: zero screens is already refused at save, and a second rule here would
+   * be a second place for the two to disagree.
+   */
+  const effectiveChoice = presets.length === 0 ? "custom" : grantChoice;
+  const grantsChosen = accessMode === "portalOnly" || effectiveChoice !== null;
   const [permission, setPermission] = useState<PortalPermission>("admin");
   const [projectIds, setProjectIds] = useState<string[]>(defaultProjectId ? [defaultProjectId] : []);
 
@@ -595,15 +656,26 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
     : undeliverable && mailDomain ? t.errDomain(mailDomain)
     : "";
   const canInvite = name.trim() !== "" && emailValid && !duplicate && !undeliverable
-    && teamId !== "" && projectIds.length > 0;
+    && teamId !== "" && projectIds.length > 0 && grantsChosen;
   const submit = () => {
+    setSubmitted(true);
     // A project is required, the same as it is when the assignment is changed later: an account
     // invited with nothing ticked signs into an empty app and reads it as a broken product.
     if (!name.trim() || !email.trim() || !teamId || projectIds.length === 0) return;
     const resolved = applyAccessMode(accessMode, permission);
+    if (resolved.appAccess && !grantsChosen) return;
+    // A Portal-only account carries no app grants at all rather than empty ones: there is no
+    // surface for them, and an empty screen list on an account with no app door reads as a
+    // revocation somebody performed.
+    const chosen = presets.find(pr => pr.id === effectiveChoice);
+    const grants = !resolved.appAccess ? {}
+      : chosen ? grantsOfPreset(chosen)
+      : { appScreens: customScreens, appSearch: customSearch, appExport: customExport };
     const id = addPortalUser({
       name: name.trim(), email: email.trim(), teamId, projectIds,
       permission: resolved.permission, appAccess: resolved.appAccess, status: "invited",
+      ...grants,
+      ...(resolved.appAccess ? { grantMode: (chosen ? "preset" : "custom") as GrantMode, presetId: chosen?.id } : {}),
     });
     // The link carries a minted token, not the account id it used to carry — see PortalUser.
     // inviteToken. The toast stands in for the mail nobody can send yet.
@@ -660,8 +732,56 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               ))}
             </div>
           </div>
-          {/* Only asked once Portal is one of the doors. An app-only invite has no Portal role to
-              set, and a disabled select there would be a question with no answer. */}
+          {/* Only asked when the app is one of the doors — a Portal-only account has no screens
+              to grant, and the question would have no answer. Custom is the LAST ITEM OF THE SAME
+              LIST rather than a separate switch: it is one more way of answering "how are this
+              person's grants decided", and a toggle beside the list would make it a second
+              question people answer before the first. */}
+          {accessMode !== "portalOnly" && (
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.grantLabel}</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {[...presets.map(pr => ({ id: pr.id, label: pr.label, desc: pr.description })),
+                  { id: "custom", label: t.grantCustom, desc: t.grantCustomDesc }].map(opt => {
+                  const picked = effectiveChoice === opt.id;
+                  return (
+                    <div key={opt.id}>
+                      <button onClick={() => setGrantChoice(opt.id)}
+                        style={{
+                          width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
+                          padding: "10px 12px", borderRadius: "10px", cursor: "pointer",
+                          border: picked ? "1px solid var(--gray-900)" : BORDER,
+                          backgroundColor: picked ? "var(--gray-100)" : "white", fontFamily: "inherit",
+                        }}>
+                        <span style={{
+                          width: "14px", height: "14px", borderRadius: "999px", flexShrink: 0, marginTop: "2px",
+                          border: picked ? "4px solid var(--gray-900)" : "1px solid var(--gray-300)",
+                        }} />
+                        <span style={{ minWidth: 0 }}>
+                          <span style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{opt.label}</span>
+                          {/* Required on every option. A list of job titles with no descriptions
+                              cannot be chosen from, and removing the pre-selected default only
+                              works if the reader can tell the options apart. */}
+                          <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "2px" }}>{opt.desc}</span>
+                        </span>
+                      </button>
+                      {/* The checkboxes open under the option that asked for them, not somewhere
+                          else on the form. */}
+                      {picked && opt.id === "custom" && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", padding: "10px 12px 2px 36px" }}>
+                          {APP_SCREENS.map(sc => (
+                            <CheckChip key={sc} label={t.screenName[sc]} on={customScreens.includes(sc)} onClick={() => toggleCustomScreen(sc)} />
+                          ))}
+                          <CheckChip label={t.verbSearch} on={customSearch} onClick={() => setCustomSearch(!customSearch)} />
+                          <CheckChip label={t.verbExport} on={customExport} onClick={() => setCustomExport(!customExport)} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {accessMode !== "appOnly" && (
             <div>
               <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.permissionLabel}</label>
@@ -696,7 +816,15 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
             )}
           </div>
         </div>
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+        <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+          {/* The reason sits beside the button rather than leaving it dead and silent. Shown only
+              once Invite has been pressed: nothing on this form goes red while somebody is still
+              filling it in, because a form that argues during typing is a form people fight. */}
+          {/* `grantsChosen` is already true for a Portal-only invite — there are no screens to
+              pick — so this cannot fire on one. */}
+          {submitted && !grantsChosen && (
+            <span style={{ flex: 1, fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.45 }}>{t.grantNotChosen}</span>
+          )}
           <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>

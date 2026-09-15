@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import AccessGate, { denialFor } from "@/components/AccessGate";
 import { useOnValueChange } from "@/hooks/useOnValueChange";
@@ -174,6 +174,48 @@ function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void
   return null;
 }
 
+/**
+ * One screen refused, with the app still around it.
+ *
+ * NOT the full AccessGate. That one replaces the app because the door itself is shut and there is
+ * nothing behind it to serve; here the account is legitimately inside and holds other screens, so
+ * taking the whole shell away would look like a fault rather than a decision.
+ *
+ * It says what is missing and who fixes it, and nothing about what is behind the screen.
+ *
+ * WHEN THIS IS REACHED: the tab restore and the filtered nav between them keep anybody from
+ * arriving here by navigating or by bookmark. What they cannot cover is a grant taken away while
+ * somebody is standing on the screen — and on an on-premise control desk that is the normal case,
+ * not the edge one: the workstation stays signed in for days and only the shift changes.
+ *
+ * The notification bell above stays. The standard ClientLayout already applies is that a closed
+ * door must not also serve the room behind it — and the bell's content, VIP detections, is served
+ * by the Dashboard, which every account with the app door holds. Hiding it here would conceal
+ * nothing and would only make the refusal look like a malfunction.
+ */
+function ScreenRefused({ screen }: { screen: string }) {
+  const [lang] = useLanguage();
+  const t = {
+    en: {
+      title: "You do not have access to this screen",
+      body: "An administrator grants screens per account, in Portal under Users & Permissions.",
+    },
+    ko: {
+      title: "이 화면은 권한이 없습니다",
+      body: "화면은 계정마다 지정됩니다. 포털의 사용자 및 권한에서 관리자가 줄 수 있습니다.",
+    },
+  }[lang];
+  return (
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px", backgroundColor: "var(--gray-50)" }}>
+      <div style={{ maxWidth: "380px", textAlign: "center" }}>
+        <p style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
+        <p style={{ fontSize: "13px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "8px" }}>{t.body}</p>
+        <p style={{ fontSize: "11px", color: "var(--gray-300)", marginTop: "14px" }}>{screen}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function ClientLayout() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -186,7 +228,12 @@ export default function ClientLayout() {
    * rides on appAccess. DATA stands if ANY of its three sub-screens does; the sub-tabs inside it
    * are filtered by DataPage itself.
    */
-  const heldScreens = useVcaStore(s => screensFor(s.portalUsers));
+  // The selector returns the raw slice and the filtering happens outside it. screensFor() builds a
+  // new array every call, and a zustand selector that returns a fresh object on every read compares
+  // unequal to itself — React re-renders, re-selects, re-renders, and the page dies with "maximum
+  // update depth exceeded". Neither tsc nor next build can see this; only opening the page can.
+  const portalUsersForScreens = useVcaStore(s => s.portalUsers);
+  const heldScreens = useMemo(() => screensFor(portalUsersForScreens), [portalUsersForScreens]);
   const holds = (screen: AppScreen) => heldScreens.includes(screen);
   const tabAllowed = (tab: NavTab) =>
     tab === "DASHBOARD" ? true
@@ -458,7 +505,8 @@ export default function ClientLayout() {
         })()}
         {/* Best Frame stays mounted once loaded (display:none instead of unmounting) so its
             camera selection / detail view survives switching to another tab and back. */}
-        {!isLoading && (
+        {!isLoading && !tabAllowed(activePage) && <ScreenRefused screen={activePage} />}
+        {!isLoading && holds("bestframe") && (
           <div style={{ display: activePage === "BEST FRAME" ? "contents" : "none" }}>
             <BestFramePage
               focusLocation={bestFrameFocusLocation}
@@ -470,12 +518,12 @@ export default function ClientLayout() {
             />
           </div>
         )}
-        {!isLoading && activePage === "DATA"   && <DataPage
+        {!isLoading && activePage === "DATA" && tabAllowed("DATA") && <DataPage
           onGoRedmap={holds("redmap") ? () => setActivePage("REDMAP") : undefined}
           onGoRedmapFrame={holds("redmap") ? handleGoRedmapFrame : undefined}
           onGoAnalyzeFrame={holds("bestframe") ? handleGoAnalyzeFrame : undefined}
         />}
-        {!isLoading && activePage === "REDMAP" && (
+        {!isLoading && activePage === "REDMAP" && holds("redmap") && (
           <RedmapPage
             initialSearchName={redmapAutoSearchName}
             onInitialSearchConsumed={() => setRedmapAutoSearchName(null)}
