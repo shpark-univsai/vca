@@ -283,6 +283,7 @@ const T = {
     grantCustom: "Custom",
     grantCustomDesc: "Pick the screens and actions one by one.",
     grantNotChosen: "Choose how this account's grants are decided",
+    grantNoScreens: "Tick at least one screen — an account with none cannot open the app",
     screenName: { live: "Live monitoring", bestframe: "Best Frame", redmap: "Redmap", reid: "Re-ID", redface: "RedFace" } as Record<AppScreen, string>,
     screenDesc: {
       live: "Cameras as they are right now",
@@ -547,6 +548,7 @@ const T = {
     grantCustom: "커스텀",
     grantCustomDesc: "화면과 동작을 하나씩 고릅니다.",
     grantNotChosen: "권한 부여 방식을 선택해주세요",
+    grantNoScreens: "화면을 하나 이상 골라주세요 — 하나도 없으면 앱을 열 수 없습니다",
     screenName: { live: "실시간 관제", bestframe: "베스트 프레임", redmap: "레드맵", reid: "Re-ID", redface: "RedFace" } as Record<AppScreen, string>,
     screenDesc: {
       live: "지금 들어오는 카메라 화면",
@@ -669,11 +671,25 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
     setCustomScreens(prev => prev.includes(screen) ? prev.filter(x => x !== screen) : [...prev, screen]);
   /**
    * An installation with no presets starts on custom, because there is nothing else to offer.
-   * No guard forbidding it: zero screens is already refused at save, and a second rule here would
-   * be a second place for the two to disagree.
+   * No guard forbidding that: the emptiness check below already covers where it leads.
    */
   const effectiveChoice = presets.length === 0 ? "custom" : grantChoice;
-  const grantsChosen = accessMode === "portalOnly" || effectiveChoice !== null;
+  const isCustom = effectiveChoice === "custom";
+  /**
+   * PICKING A RADIO IS NOT PICKING GRANTS, and this used to treat them as the same thing.
+   *
+   * Custom with nothing ticked passed every check and saved `appScreens: []` — an account that
+   * signs in, is refused by the gate's `noScreens`, and reads as a broken product to the person
+   * it was created for. The comment above this line claimed "zero screens is already refused at
+   * save"; nothing refused it. The gate was catching it hours later, at the one moment nobody
+   * who could fix it is watching.
+   *
+   * Screens, not verbs: a verb acts on a screen, so search-without-screens is the same empty
+   * account wearing a tick. A preset cannot be empty — `addAccessPreset` is the only way one is
+   * made and no screen for it exists yet — so this asks the question only of custom.
+   */
+  const grantsChosen = accessMode === "portalOnly"
+    || (effectiveChoice !== null && !(isCustom && customScreens.length === 0));
   /**
    * What the grant list shows, which is not always what the custom checkboxes hold.
    *
@@ -684,7 +700,6 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
    * administrator is about to believe.
    */
   const pickedPreset = presets.find(pr => pr.id === effectiveChoice);
-  const isCustom = effectiveChoice === "custom";
   const shown = pickedPreset ? grantsOfPreset(pickedPreset) : null;
   const shownScreens = isCustom ? customScreens : (shown?.appScreens ?? []);
   const shownSearch = isCustom ? customSearch : shown?.appSearch === true;
@@ -937,7 +952,11 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           {/* `grantsChosen` is already true for a Portal-only invite — there are no screens to
               pick — so this cannot fire on one. */}
           {submitted && !grantsChosen && (
-            <span style={{ flex: 1, fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.45 }}>{t.grantNotChosen}</span>
+            <span style={{ flex: 1, fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.45 }}>
+              {/* Two different mistakes, two different sentences. "Pick a way" does not help
+                  somebody who already picked Custom and is looking at seven empty rows. */}
+              {effectiveChoice === null ? t.grantNotChosen : t.grantNoScreens}
+            </span>
           )}
           <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
