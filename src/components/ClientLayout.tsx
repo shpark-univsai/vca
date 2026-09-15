@@ -175,42 +175,70 @@ function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void
 }
 
 /**
- * One screen refused, with the app still around it.
+ * One screen refused: the person is moved to a screen they do hold, and told why.
  *
- * NOT the full AccessGate. That one replaces the app because the door itself is shut and there is
- * nothing behind it to serve; here the account is legitimately inside and holds other screens, so
- * taking the whole shell away would look like a fault rather than a decision.
+ * NOT a replaced body, which is what this was first. A refusal panel where the screen used to be
+ * keeps somebody standing somewhere they cannot use, and leaves them to work out what to press
+ * next — the tabs are still there, but "this is broken" and "go and click something else" are not
+ * the same thought. Moving them first and explaining second means the app behind the notice is
+ * already usable when they dismiss it.
  *
- * It says what is missing and who fixes it, and nothing about what is behind the screen.
+ * NOT a silent redirect either, which is the failure the tab-level version of this already caused
+ * once: a menu entry that bounced people without a word read as a broken link, and they asked
+ * whoever sent it rather than whoever grants it. The dialog names the screen and names who gives
+ * it, and it is a dialog rather than a toast because a toast that expires while somebody is
+ * reading is an answer they now have to go looking for.
  *
- * WHEN THIS IS REACHED: the tab restore and the filtered nav between them keep anybody from
- * arriving here by navigating or by bookmark. What they cannot cover is a grant taken away while
- * somebody is standing on the screen — and on an on-premise control desk that is the normal case,
- * not the edge one: the workstation stays signed in for days and only the shift changes.
- *
- * The notification bell above stays. The standard ClientLayout already applies is that a closed
- * door must not also serve the room behind it — and the bell's content, VIP detections, is served
- * by the Dashboard, which every account with the app door holds. Hiding it here would conceal
- * nothing and would only make the refusal look like a malfunction.
+ * NOT the full AccessGate, which is a different case: that one is an account with no screens at
+ * all, where there is nothing to be moved to and nothing behind the notice to use.
  */
-function ScreenRefused({ screen }: { screen: string }) {
+/**
+ * 은/는 — 받침이 있으면 "은", 없으면 "는".
+ *
+ * 화면 이름이 목록에서 오므로 문장을 미리 써 둘 수 없고, "레드맵은(는)"처럼 둘 다 적으면
+ * 사람이 읽는 문장이 아니라 번역이 덜 끝난 문자열로 읽힌다.
+ */
+function topicParticle(word: string): string {
+  const last = word.charCodeAt(word.length - 1);
+  if (Number.isNaN(last) || last < 0xac00 || last > 0xd7a3) return "은";
+  return (last - 0xac00) % 28 === 0 ? "는" : "은";
+}
+
+/** The tab's own name, so the notice says "Redmap" rather than "REDMAP" — see Navbar.TABS. */
+const TAB_LABEL: Record<"en" | "ko", Record<NavTab, string>> = {
+  en: { DASHBOARD: "Dashboard", "BEST FRAME": "Best Frame", DATA: "Data", REDMAP: "Redmap" },
+  ko: { DASHBOARD: "대시보드", "BEST FRAME": "베스트 프레임", DATA: "데이터", REDMAP: "레드맵" },
+};
+
+function ScreenRefusedNotice({ screen, onDismiss }: { screen: string; onDismiss: () => void }) {
   const [lang] = useLanguage();
   const t = {
     en: {
       title: "You do not have access to this screen",
-      body: "An administrator grants screens per account, in Portal under Users & Permissions.",
+      body: (name: string) => `${name} is granted per account. An administrator gives it in Portal, under Users & Permissions.`,
+      moved: "Meanwhile, the screens you do have are open behind this.",
+      ok: "Got it",
     },
     ko: {
       title: "이 화면은 권한이 없습니다",
-      body: "화면은 계정마다 지정됩니다. 포털의 사용자 및 권한에서 관리자가 줄 수 있습니다.",
+      body: (name: string) => `${name}${topicParticle(name)} 계정마다 따로 지정됩니다. 포털의 사용자 및 권한에서 관리자가 줍니다.`,
+      moved: "가진 화면으로 옮겨 두었습니다.",
+      ok: "확인",
     },
   }[lang];
   return (
-    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px", backgroundColor: "var(--gray-50)" }}>
-      <div style={{ maxWidth: "380px", textAlign: "center" }}>
+    <div onClick={e => { if (e.target === e.currentTarget) onDismiss(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", maxWidth: "380px", width: "100%", padding: "22px", boxShadow: "var(--shadow-modal)" }}>
         <p style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
-        <p style={{ fontSize: "13px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "8px" }}>{t.body}</p>
-        <p style={{ fontSize: "11px", color: "var(--gray-300)", marginTop: "14px" }}>{screen}</p>
+        <p style={{ fontSize: "13px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "8px" }}>{t.body(screen)}</p>
+        <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "6px" }}>{t.moved}</p>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "18px" }}>
+          <button onClick={onDismiss}
+            style={{ padding: "9px 18px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {t.ok}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -251,6 +279,20 @@ export default function ClientLayout() {
   const requestedTab = (VALID_TABS as string[]).includes(tabParam ?? "") ? (tabParam as NavTab) : "DASHBOARD";
   const initialTab = tabAllowed(requestedTab) ? requestedTab : "DASHBOARD";
   const [activePage, setActivePageState] = useState<NavTab>(initialTab);
+  /**
+   * The screen somebody was sent away from, held until they have read why.
+   *
+   * Seeded during the first render rather than from an effect: by the time an effect could run,
+   * the tab has already been corrected to one this account holds and the name of the one they
+   * asked for is gone. Arriving on a bookmarked screen the account has since lost is the ordinary
+   * way to reach this.
+   */
+  const [refusedScreen, setRefusedScreen] = useState<NavTab | null>(
+    () => (tabAllowed(requestedTab) ? null : requestedTab),
+  );
+  /** Where somebody goes when the screen they asked for is not theirs. Dashboard rides on the
+   *  app door, so this always resolves. */
+  const firstAllowedTab: NavTab = VALID_TABS.find(tabAllowed) ?? "DASHBOARD";
   const setActivePage = (tab: NavTab) => {
     setActivePageState(tab);
     router.replace(`${pathname}?tab=${tab}`, { scroll: false });
@@ -328,6 +370,32 @@ export default function ClientLayout() {
     const timer = setTimeout(() => setIsLoading(false), 700);
     return () => clearTimeout(timer);
   }, []);
+  /**
+   * A grant taken away while somebody is standing on the screen.
+   *
+   * On an on-premise control desk this is the ordinary case rather than the edge one: the
+   * workstation stays signed in for days and only the shift changes, so a screen can be revoked
+   * under a person who is looking at it. They are moved to a screen they still hold and told why.
+   */
+  useEffect(() => {
+    if (tabAllowed(activePage)) return;
+    setRefusedScreen(activePage);
+    setActivePage(firstAllowedTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePage, heldScreens]);
+  /**
+   * The address bar has to stop naming the refused screen too.
+   *
+   * The state moved on the first render, so the effect above never fires for a deep link — and
+   * without this the URL still reads ?tab=REDMAP over a Dashboard. That address gets bookmarked
+   * again, and every refresh re-runs the refusal for a screen the person has already been told
+   * about once.
+   */
+  useEffect(() => {
+    if (refusedScreen === null || requestedTab !== refusedScreen) return;
+    setActivePage(firstAllowedTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   /*
    * The jumps between screens, and the rule that governs all of them: a button that leads
    * somewhere this account cannot go is not shown at all.
@@ -394,6 +462,7 @@ export default function ClientLayout() {
   return (
     <ToastProvider>
     <VipAlertTicker onNavigate={handleNotificationNavigate} />
+    {refusedScreen && <ScreenRefusedNotice screen={TAB_LABEL[lang][refusedScreen]} onDismiss={() => setRefusedScreen(null)} />}
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
       <Navbar
         activeTab={activePage}
@@ -505,7 +574,6 @@ export default function ClientLayout() {
         })()}
         {/* Best Frame stays mounted once loaded (display:none instead of unmounting) so its
             camera selection / detail view survives switching to another tab and back. */}
-        {!isLoading && !tabAllowed(activePage) && <ScreenRefused screen={activePage} />}
         {!isLoading && holds("bestframe") && (
           <div style={{ display: activePage === "BEST FRAME" ? "contents" : "none" }}>
             <BestFramePage
