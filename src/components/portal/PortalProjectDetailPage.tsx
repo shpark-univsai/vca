@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
-import { canEnterApp, canEnterPortal, canManageAccess, currentPortalUser, isAwaitingFirstContact, resolveMailConfig, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
+import { canEnterApp, canEnterPortal, canManageAccess, currentPortalUser, isAwaitingFirstContact, registryHealth, resolveMailConfig, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed, zoneHour } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, FacePhoto, usePortalEditAccess } from "./PortalShared";
 import { useToast } from "../Toast";
@@ -64,7 +64,8 @@ const T = {
     attnRequests: (n: number) => `${n} access request${n === 1 ? "" : "s"} waiting`,
     attnOverLimit: (used: number, limit: number) => `Over the licensed channels — ${used} of ${limit}`,
     attnListingsExpired: (n: number) => `${n} vipRegistry listing(s) have expired`,
-    attnListingsExpiring: (n: number) => `${n} vipRegistry listing(s) expire within 30 days`,
+    attnListingsExpiring: (n: number, days: number) => `${n} vipRegistry listing(s) expire within ${days} days`,
+    attnListingsUnanswered: (n: number) => `${n} vipRegistry listing(s) have no end date set`,
     attnExpiringSoon: (d: number) => `License expires in ${d} day${d === 1 ? "" : "s"}`,
     attnExpired: "License has expired",
     attnNoMail: "No mail server configured — nobody can be invited",
@@ -159,7 +160,8 @@ const T = {
     attnRequests: (n: number) => `대기 중인 접근 요청 ${n}건`,
     attnOverLimit: (used: number, limit: number) => `라이선스 채널 초과 — ${limit}개 중 ${used}개`,
     attnListingsExpired: (n: number) => `등록 만료된 VIP ${n}명`,
-    attnListingsExpiring: (n: number) => `30일 내 등록 만료 ${n}명`,
+    attnListingsExpiring: (n: number, days: number) => `${days}일 내 등록 만료 ${n}명`,
+    attnListingsUnanswered: (n: number) => `만료일 미지정 ${n}명`,
     attnExpiringSoon: (d: number) => `라이선스 ${d}일 후 만료`,
     attnExpired: "라이선스가 만료되었습니다",
     attnNoMail: "메일 서버가 설정되지 않았습니다 — 아무도 초대할 수 없습니다",
@@ -644,17 +646,25 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    * Released rows are excluded from both — somebody has already dealt with those, and the point of
    * these two figures is the ones nobody has.
    *
-   * Thirty days for "soon", matching the licence page's own urgent threshold: a listing is cleared
-   * by a person who has to check something (has the child been found, was the suspect arrested),
-   * and that is a conversation, not a click.
+   * How far ahead "soon" reaches is complianceConfig.vipExpiryNoticeDays — the institution's
+   * clearing speed, not ours. A listing is cleared by a person who has to check something (has the
+   * child been found, was the suspect arrested), and that is a conversation, not a click.
+   *
+   * THREE FIGURES, NOT TWO. activeListings requires `p.expiresAt`, which quietly dropped every row
+   * nobody has answered the expiry question on out of both counts — the rows most worth raising
+   * were the ones that could not appear. They are counted separately rather than folded in,
+   * because they are a different sentence: those listings have not expired and are not about to,
+   * they are still being matched with no end in sight and nobody has decided that.
    */
   const activeListings = projectPersons.filter(p => !p.releasedAt && p.expiresAt);
+  const unansweredListings = registryHealth(projectId, persons).expiryUnanswered.length;
   const expiredListings = nowMs === null ? 0
     : activeListings.filter(p => Date.parse(p.expiresAt!) < nowMs).length;
+  const noticeMs = getComplianceConfig().vipExpiryNoticeDays * 86_400_000;
   const expiringListings = nowMs === null ? 0
     : activeListings.filter(p => {
       const left = Date.parse(p.expiresAt!) - nowMs;
-      return left >= 0 && left <= 30 * 86_400_000;
+      return left >= 0 && left <= noticeMs;
     }).length;
 
   /*
@@ -707,7 +717,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     ...(showAccessRequests && projectAccessRequests.length > 0 ? [{ key: "requests", text: t.attnRequests(projectAccessRequests.length), color: "var(--warning-500)", tab: "users" as DetailTab }] : []),
     // Expiring, in the reminders. The whole point of putting it here is that nobody remembers a
     // date — a VIP registry cleared by human memory is a VIP registry that never gets cleared.
-    ...(expiringListings > 0 ? [{ key: "listingsExpiring", text: t.attnListingsExpiring(expiringListings), color: "var(--warning-500)", tab: "vip" as DetailTab }] : []),
+    ...(expiringListings > 0 ? [{ key: "listingsExpiring", text: t.attnListingsExpiring(expiringListings, getComplianceConfig().vipExpiryNoticeDays), color: "var(--warning-500)", tab: "vip" as DetailTab }] : []),
+    ...(unansweredListings > 0 ? [{ key: "listingsUnanswered", text: t.attnListingsUnanswered(unansweredListings), color: "var(--warning-500)", tab: "vip" as DetailTab }] : []),
     ...(pendingInviteCount > 0 ? [{ key: "invites", text: t.attnInvites(pendingInviteCount), color: "var(--warning-500)", tab: "users" as DetailTab }] : []),
     // Setup, between the reminders and the "nothing here yet" notes. Amber rather than grey:
     // each of these means a capability is dead, not that a list is empty.

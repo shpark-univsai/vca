@@ -622,8 +622,27 @@ export interface Person {
    */
   reenrolledAt?: string;
   /**
-   * When this registration stops. Absent means it does not — a real answer for some categories and
-   * a mistake for most, so the form asks rather than assuming.
+   * When this registration stops. THREE STATES, and the third is the one that matters:
+   *
+   * - a date  — the listing stops then
+   * - `null`  — somebody was asked and answered "no end date". A real answer for some categories.
+   * - absent  — NOBODY WAS ASKED. Not an answer; a question still open on this row.
+   *
+   * The last two used to be the same stored value, and that collapse is what made the registry
+   * unable to say anything useful about its own oldest rows. A row registered before this field
+   * existed and a row where somebody deliberately chose "no end date" read identically, so the
+   * console could neither warn about the first nor leave the second alone.
+   *
+   * ONE FIELD WITH THREE STATES, not a date plus a `noExpiry` flag. Two fields can disagree —
+   * a row carrying both a date and "no expiry" is representable and means nothing — and somebody
+   * would have to decide which wins, in every reader, forever. Three states in one field cannot
+   * be inconsistent. `null` also survives JSON where an absent key does not, so the distinction
+   * reaches the backend rather than dying at the wire.
+   *
+   * WHAT AN UNANSWERED ROW DOES: it keeps being matched. Deciding for it — filling in a date
+   * because it has none — would stop cameras matching somebody without anybody choosing that, and
+   * a listing that goes quiet on its own is the failure this whole field exists to prevent. The
+   * console makes these rows visible instead and a person answers them. See registryHealth.
    *
    * A VIP registry with no expiry keeps processing people after the purpose has ended, which is the
    * first thing an audit asks about. A found child comes off; an arrested suspect comes off.
@@ -634,7 +653,7 @@ export interface Person {
    * (PUT /v1/provision/vips in the module contract draft) is where expired people must drop out,
    * and that belongs in the contract rather than in the screen.
    */
-  expiresAt?: string;
+  expiresAt?: string | null;
   /** When somebody took this person off the list, and why. A release, not a delete: the row stays
    *  so the history survives, and so "released" and "expired" stay tellable apart. */
   releasedAt?: string;
@@ -827,6 +846,18 @@ interface VcaStoreState {
    * import ever set it, so a note could exist on a row and never be written by hand.
    */
   updatePerson: (personId: string, updates: Partial<Omit<Person, "id">>) => void;
+  /**
+   * Set the end date on several listings at once. `null` means "no end date", the same answer the
+   * form's cleared field gives.
+   *
+   * Not a convenience. A registry that has accumulated hundreds of rows nobody set an expiry on
+   * cannot be cleared one row at a time, and a console that only warns about them is a console
+   * that nags. This is the way the warning becomes finishable.
+   *
+   * One audit entry for the whole act, the way removeCameras and addPersons already collapse a
+   * bulk action — two hundred separate lines would evict every entry before them.
+   */
+  setPersonsExpiry: (personIds: string[], expiresAt: string | null) => void;
   addPersonGroup: (group: Omit<PersonGroup, "id">) => string;
   updatePersonGroup: (groupId: string, updates: Partial<Omit<PersonGroup, "id">>) => void;
   /**
@@ -1385,9 +1416,19 @@ export function defaultVipExpiry(): string | undefined {
   return days === null ? undefined : new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 }
 
-/** Resolves addPerson's three-state `expiresAt`. See the declaration for what each state means. */
-function settledExpiry(given: string | null | undefined): string | undefined {
-  if (given === null) return undefined;
+/**
+ * Resolves addPerson's three-state `expiresAt` into the three-state stored value.
+ *
+ * `null` is now KEPT rather than flattened to undefined. It used to be thrown away, which is what
+ * made "answered: no end date" and "never asked" the same row as far as every reader was
+ * concerned. See the declaration on Person.expiresAt.
+ *
+ * Absent still means the installation's retention rule fills it in — that is the door-level policy
+ * and it applies to whoever comes in without an answer. An installation with no rule configured
+ * leaves the row unanswered, which is honest: nobody was asked and there is nothing to apply.
+ */
+function settledExpiry(given: string | null | undefined): string | null | undefined {
+  if (given === null) return null;
   return given ?? defaultVipExpiry();
 }
 
@@ -2355,12 +2396,26 @@ export const PERSONS: Person[] = (() => {
     // report. Fixed dates against SEED_TODAY, like every other seeded date in this file — they read
     // as today only while the mock is looked at on that day, which is the same bargain the
     // registration dates below already make.
-    { id: "person-portal-0a", name: "Nadia Rahman", type: "VIP", photoUrl: getFacePhoto("person-portal-0a"), registeredAt: "2026-09-09T09:12:00+08:00", projectId: "proj-sg", priorityLabel: "normal" },
+    /*
+     * Four of these carry an expiry and the rest do not, which is the point rather than an
+     * oversight — see Person.expiresAt's three states.
+     *
+     * Until now not one seeded person had the field, so the Overview's "listings expired" and
+     * "expiring soon" items could not render: both counts were structurally zero and the customer
+     * was shown a warning system that had never once fired. These four make all three states
+     * visible at once — one already past, two inside the notice window, one answered "no end
+     * date" — and everybody else stays unanswered, which is what the third count is for.
+     *
+     * Fixed dates, like SEED_TODAY above. Computing them from the clock at module load would
+     * differ between the server's render and the browser's first one, which is the hydration
+     * mismatch this file already avoids everywhere it reads time.
+     */
+    { id: "person-portal-0a", name: "Nadia Rahman", type: "VIP", photoUrl: getFacePhoto("person-portal-0a"), registeredAt: "2026-09-09T09:12:00+08:00", projectId: "proj-sg", priorityLabel: "normal", expiresAt: null },
     { id: "person-portal-0b", name: "Terence Goh", type: "VIP", photoUrl: getFacePhoto("person-portal-0b"), registeredAt: "2026-09-09T08:40:00+08:00", projectId: "proj-sg", priorityLabel: "high", groupId: "pgroup-1" },
     { id: "person-portal-0c", name: "Farah Idris", type: "VIP", photoUrl: getFacePhoto("person-portal-0c"), registeredAt: "2026-09-08T16:05:00+08:00", projectId: "proj-sg", priorityLabel: "normal" },
-    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2026-09-01T14:32:00+08:00", lastDetectedAt: "2026-09-08", projectId: "proj-sg", priorityLabel: "high", groupId: "pgroup-1" },
-    { id: "person-portal-2", name: "Sarah Lim", type: "VIP", photoUrl: getFacePhoto("person-portal-2"), registeredAt: "2026-08-30T09:05:00+08:00", lastDetectedAt: "2026-09-03", projectId: "proj-sg", priorityLabel: "normal", groupId: "pgroup-1" },
-    { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28T17:48:00+08:00", lastDetectedAt: "2026-08-29", projectId: "proj-sg", priorityLabel: "very_high", groupId: "pgroup-2" },
+    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2026-09-01T14:32:00+08:00", lastDetectedAt: "2026-09-08", projectId: "proj-sg", priorityLabel: "high", groupId: "pgroup-1", expiresAt: "2026-09-05" },
+    { id: "person-portal-2", name: "Sarah Lim", type: "VIP", photoUrl: getFacePhoto("person-portal-2"), registeredAt: "2026-08-30T09:05:00+08:00", lastDetectedAt: "2026-09-03", projectId: "proj-sg", priorityLabel: "normal", groupId: "pgroup-1", expiresAt: "2026-09-28" },
+    { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28T17:48:00+08:00", lastDetectedAt: "2026-08-29", projectId: "proj-sg", priorityLabel: "very_high", groupId: "pgroup-2", expiresAt: "2026-10-10" },
     { id: "person-portal-4", name: "Rachel Wong", type: "VIP", photoUrl: getFacePhoto("person-portal-4"), registeredAt: "2026-08-25T11:20:00+08:00", projectId: "proj-sg", priorityLabel: "normal" },
   );
   persons.push(...bulkSampleVips());
@@ -2594,8 +2649,28 @@ export function dailyDetections(projectId: string, days = 7): DailyDetections[] 
  *
  * Seeded deterministically, like everything else in this file.
  */
+/**
+ * Whether the expiry question is still open on this row — nobody answered it, as opposed to
+ * somebody answering "no end date".
+ *
+ * One predicate, exported, because four screens ask this and a registry where the summary card
+ * and the table disagree about which rows are unanswered is worse than one that never asks.
+ * See Person.expiresAt for the three states.
+ */
+export function isExpiryUnanswered(person: Person): boolean {
+  return person.expiresAt === undefined;
+}
+
 export interface RegistryHealth {
   missingPhoto: string[];
+  /**
+   * Listings nobody has set an expiry on — not "no end date", which is an answer, but no answer.
+   *
+   * These keep being matched. They are counted so a person can go and answer them, which is the
+   * only honest move available: filling a date in for them would stop cameras matching somebody
+   * without anybody choosing that.
+   */
+  expiryUnanswered: string[];
   embeddingFailed: string[];
   /** Photo replaced, waiting on the model's answer. See Person.reenrolledAt. */
   reenrolling: string[];
@@ -2607,6 +2682,7 @@ export interface RegistryHealth {
 export function registryHealth(projectId: string, persons: Person[]): RegistryHealth {
   const rows = persons.filter(p => p.projectId === projectId);
   const missingPhoto: string[] = [];
+  const expiryUnanswered: string[] = [];
   const embeddingFailed: string[] = [];
   // Re-submitted and waiting on the model. Separated from embeddingFailed rather than dropped
   // from it: the count going down on a save would claim the new photo works, which nothing here
@@ -2617,6 +2693,11 @@ export function registryHealth(projectId: string, persons: Person[]): RegistryHe
   const detectedLast7d: string[] = [];
   const detectedPrev7d: string[] = [];
   rows.forEach((p, i) => {
+    // Before the photo checks below and outside their else-branch: whether somebody answered the
+    // expiry question has nothing to do with whether the face is readable, and a row can be both
+    // unanswered and unmatchable. Released rows are excluded — the listing already ended, and
+    // asking for an end date on it is asking about something that is over.
+    if (!p.releasedAt && isExpiryUnanswered(p)) expiryUnanswered.push(p.id);
     // Not seeded: a person with no photoUrl has no enrolled face, full stop. The CSV import is
     // where they come from, and this reads the same field the table draws from — so the figure and
     // the rows behind it can never disagree.
@@ -2646,7 +2727,7 @@ export function registryHealth(projectId: string, persons: Person[]): RegistryHe
   for (let i = 0; i + 1 < rows.length && duplicates.length < 2; i += 1) {
     if (seededRandom(i * 8.19 + 3.3) > 0.96) duplicates.push([rows[i].id, rows[i + 1].id]);
   }
-  return { missingPhoto, embeddingFailed, reenrolling, duplicates, detectedLast7d, detectedPrev7d };
+  return { missingPhoto, expiryUnanswered, embeddingFailed, reenrolling, duplicates, detectedLast7d, detectedPrev7d };
 }
 
 /**
@@ -3334,6 +3415,25 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     }));
     return persons.length;
   },
+  setPersonsExpiry: (personIds, expiresAt) =>
+    set(state => {
+      const ids = new Set(personIds);
+      if (ids.size === 0) return state;
+      // Named by count and by the answer given, not by the ids: "47 listings" a year later says
+      // what happened, a list of ids says nothing anybody can read.
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`,
+        projectId: state.persons.find(p => ids.has(p.id))?.projectId,
+        message: expiresAt === null
+          ? `${ids.size} VIP listing(s) set to no end date`
+          : `${ids.size} VIP listing(s) set to expire ${expiresAt}`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        persons: state.persons.map(p => (ids.has(p.id) ? { ...p, expiresAt } : p)),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   removePerson: (personId) =>
     set(state => {
       const person = state.persons.find(p => p.id === personId);

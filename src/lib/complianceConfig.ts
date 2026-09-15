@@ -89,6 +89,19 @@ export interface ComplianceConfig {
    */
   vipDefaultValidDays: number | null;
   /**
+   * How many days ahead the console starts saying a listing is about to expire. 0-365.
+   *
+   * A setting rather than a constant because the right number is the institution's clearing speed,
+   * not ours. Clearing a listing means a person checking something — has the child been found, was
+   * the suspect arrested — and a force that answers those in a week wants a shorter warning than
+   * one that meets monthly. Thirty is what the number was when it was hardcoded, kept as the
+   * default so nothing moves for an installation that does not set it.
+   *
+   * 0 turns the warning off without turning the expiry off: the console then says a listing has
+   * expired and never says it is about to.
+   */
+  vipExpiryNoticeDays: number;
+  /**
    * Whether an operator can record a verdict on a detection — "yes, this is them" / "no, wrong
    * person" — against a sighting in Redmap or an associate in RedFace.
    *
@@ -180,6 +193,11 @@ export function getComplianceConfig(): ComplianceConfig {
      * somebody notices" was the default for every row anybody registered in a hurry.
      */
     vipDefaultValidDays: 365,
+    /**
+     * 30 (2026-09-15) — the value this was as a hardcoded constant in the Overview strip, so
+     * making it configurable changed nothing on its own.
+     */
+    vipExpiryNoticeDays: 30,
     /**
      * Off for the first release (decided 2026-09-14), because right now the record does not
      * survive a refresh — judgements live in the store and nothing persists them. The screen

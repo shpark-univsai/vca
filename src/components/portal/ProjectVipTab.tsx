@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
 import { AlertTriangle, ArrowDownWideNarrow, Eye, FileOutput, ImageOff, RefreshCw, Users } from "lucide-react";
-import { canSetPolicy, currentPortalUser, defaultVipExpiry, registryHealth, useVcaStore, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
+import { canSetPolicy, currentPortalUser, defaultVipExpiry, isExpiryUnanswered, registryHealth, useVcaStore, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -14,13 +14,13 @@ import { VipCategoryModal, categoryTint } from "./VipCategories";
 type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires";
 
 // 36px for the actions column, the width RowActionsMenu gets in every other table.
-const VIP_GRID = "48px 1.2fr 0.8fr 0.6fr 0.7fr 0.7fr 0.8fr 0.8fr 36px";
+const VIP_GRID = "28px 48px 1.2fr 0.8fr 0.6fr 0.7fr 0.7fr 0.8fr 0.8fr 36px";
 /** The All tab adds a Group column; the Individuals tab would print "Individual" on every row. */
-const VIP_GRID_WITH_GROUP = "48px 1.1fr 0.75fr 0.75fr 0.55fr 0.65fr 0.65fr 0.7fr 0.7fr 36px";
+const VIP_GRID_WITH_GROUP = "28px 48px 1.1fr 0.75fr 0.75fr 0.55fr 0.65fr 0.65fr 0.7fr 0.7fr 36px";
 /** Same two, with the category track dropped — see complianceConfig.vipCategories. The freed
  *  width goes to the name, which is what a reader scans this table by. */
-const VIP_GRID_NO_CAT = "48px 1.6fr 0.6fr 0.7fr 0.7fr 0.8fr 0.8fr 36px";
-const VIP_GRID_WITH_GROUP_NO_CAT = "48px 1.4fr 0.85fr 0.55fr 0.65fr 0.65fr 0.7fr 0.7fr 36px";
+const VIP_GRID_NO_CAT = "28px 48px 1.6fr 0.6fr 0.7fr 0.7fr 0.8fr 0.8fr 36px";
+const VIP_GRID_WITH_GROUP_NO_CAT = "28px 48px 1.4fr 0.85fr 0.55fr 0.65fr 0.65fr 0.7fr 0.7fr 36px";
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -109,6 +109,15 @@ interface VipDict {
   statusReleased: string;
   expiringInDays: (n: number) => string;
   noExpiry: string;
+  expiryUnanswered: string;
+  expiryUnansweredWhy: string;
+  selectAllLabel: string;
+  selectedCount: (n: number) => string;
+  bulkExpiryLabel: string;
+  bulkExpiryApply: string;
+  bulkExpiryNone: string;
+  bulkExpirySetTitle: (n: number) => string;
+  bulkClearSelection: string;
   releaseAction: string;
   reinstateAction: string;
   reinstateTitle: (name: string) => string;
@@ -269,6 +278,15 @@ const T: Record<"en" | "ko", VipDict> = {
     statusReleased: "Released",
     expiringInDays: (n: number) => `${n}d left`,
     noExpiry: "No end date",
+    selectAllLabel: "Select all listings shown",
+    selectedCount: (n: number) => `${n} selected`,
+    bulkExpiryLabel: "Set end date",
+    bulkExpiryApply: "Apply",
+    bulkExpiryNone: "No end date",
+    bulkExpirySetTitle: (n: number) => `End date set on ${n} listing(s)`,
+    bulkClearSelection: "Clear",
+    expiryUnanswered: "No end date set",
+    expiryUnansweredWhy: "Nobody has set an end date on this listing. It is still being matched, and will be until somebody decides otherwise.",
     releaseAction: "Release from VIP",
     reinstateAction: "Put back on the VIP list",
     reinstateTitle: (name: string) => `Put ${name} back on the vipRegistry?`,
@@ -428,6 +446,15 @@ const T: Record<"en" | "ko", VipDict> = {
     statusReleased: "해제됨",
     expiringInDays: (n: number) => `${n}일 남음`,
     noExpiry: "무기한",
+    selectAllLabel: "보이는 등록 전체 선택",
+    selectedCount: (n: number) => `${n}명 선택됨`,
+    bulkExpiryLabel: "만료일 지정",
+    bulkExpiryApply: "적용",
+    bulkExpiryNone: "무기한으로",
+    bulkExpirySetTitle: (n: number) => `${n}명의 만료일을 정했습니다`,
+    bulkClearSelection: "선택 해제",
+    expiryUnanswered: "만료일 미지정",
+    expiryUnansweredWhy: "이 등록에 만료일을 정한 사람이 없습니다. 지금도 대조되고 있고, 누군가 정하기 전까지 계속됩니다.",
     releaseAction: "VIP에서 해제",
     reinstateAction: "VIP로 되돌리기",
     reinstateTitle: (name: string) => `${name}을(를) VIP로 되돌릴까요?`,
@@ -1407,6 +1434,44 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       : matchingPersons;
 
   /**
+   * Bulk selection, for the one job this list cannot do a row at a time: answering the expiry
+   * question on rows that never had one. Hundreds of them is the realistic number, and a warning
+   * that can only be cleared 300 times is a warning people learn to ignore.
+   *
+   * Only rows actually on screen count as selected, the same rule the cameras table follows —
+   * searching for "Tan" while four people from a previous search sit selected, then pressing a
+   * bulk action, would change rows the person cannot see.
+   */
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const visibleSelectedIds = projectPersons.filter(p => selectedIds.has(p.id)).map(p => p.id);
+  const allVisibleSelected = projectPersons.length > 0 && visibleSelectedIds.length === projectPersons.length;
+  const toggleOne = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const toggleAllVisible = () => setSelectedIds(prev => {
+    const next = new Set(prev);
+    if (allVisibleSelected) projectPersons.forEach(p => next.delete(p.id));
+    else projectPersons.forEach(p => next.add(p.id));
+    return next;
+  });
+  const clearSelection = () => setSelectedIds(new Set());
+  const setPersonsExpiry = useVcaStore(s => s.setPersonsExpiry);
+  /** The date in the bulk bar's field. Empty means nothing chosen yet, not "no end date". */
+  const [bulkExpiry, setBulkExpiry] = useState("");
+  const applyBulkExpiry = (value: string | null) => {
+    setPersonsExpiry(visibleSelectedIds, value);
+    showToast({
+      variant: "success",
+      title: t.bulkExpirySetTitle(visibleSelectedIds.length),
+      desc: value === null ? t.noExpiry : value,
+    });
+    clearSelection();
+    setBulkExpiry("");
+  };
+
+  /**
    * The VIP registry as a file.
    *
    * Cameras and the staff roster both export; this list — the one a control centre is audited on
@@ -1846,11 +1911,70 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         </div>
       ) : view === "table" ? (
         <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW }}>
+          {/* Floating over the list rather than pushing it down: the rows being acted on must stay
+              where they were when they were picked. A centred pill, not a full-width band — fixed
+              positioning is relative to the window and a band would run under the rail. */}
+          {visibleSelectedIds.length > 0 && (
+            <div style={{ position: "fixed", left: 0, right: 0, bottom: "24px", zIndex: 40, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+              <div style={{
+                pointerEvents: "auto", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap",
+                backgroundColor: "var(--gray-900)", borderRadius: "12px", padding: "10px 12px 10px 18px",
+                boxShadow: "0 12px 32px rgba(24,17,39,0.28)", maxWidth: "calc(100% - 48px)",
+              }}>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "white", flexShrink: 0 }}>
+                  {t.selectedCount(visibleSelectedIds.length)}
+                </span>
+                <span style={{ width: "1px", alignSelf: "stretch", backgroundColor: "var(--gray-700)" }} />
+                {/* Selecting is still allowed for a read-only account — it is how you count a
+                    subset. What they lose is the thing that changes rows, and the bar says so
+                    rather than showing a dead date field. */}
+                {mayEdit ? (<>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", flexShrink: 0 }}>{t.bulkExpiryLabel}</span>
+                  <input
+                    type="date"
+                    value={bulkExpiry}
+                    onChange={e => setBulkExpiry(e.target.value)}
+                    style={{ height: CONTROL_HEIGHT, padding: "0 8px", borderRadius: "8px", border: "none", fontSize: "12px", fontFamily: "inherit", flexShrink: 0 }}
+                  />
+                  <button
+                    onClick={() => bulkExpiry && applyBulkExpiry(bulkExpiry)}
+                    disabled={!bulkExpiry}
+                    style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: bulkExpiry ? "var(--primary-400)" : "var(--gray-700)", color: bulkExpiry ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: bulkExpiry ? "pointer" : "not-allowed", flexShrink: 0 }}
+                  >
+                    {t.bulkExpiryApply}
+                  </button>
+                  {/* "No end date" is an answer too, and it has to be reachable here — otherwise
+                      the only way to clear the unanswered warning in bulk is to invent a date. */}
+                  <button
+                    onClick={() => applyBulkExpiry(null)}
+                    style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "1px solid var(--gray-700)", backgroundColor: "transparent", color: "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                  >
+                    {t.bulkExpiryNone}
+                  </button>
+                </>) : (
+                  <span style={{ fontSize: "12px", color: "var(--gray-400)", flexShrink: 0 }}>{readOnlyReason}</span>
+                )}
+                <button
+                  onClick={clearSelection}
+                  style={{ border: "none", background: "none", padding: "0 8px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", fontFamily: "inherit", flexShrink: 0 }}
+                >
+                  {t.bulkClearSelection}
+                </button>
+              </div>
+            </div>
+          )}
           {/* The column headings stay while the rows go under them. position:sticky against the
               shell's scroller, at top:0 — no measuring, no fixed positioning, and it works because
               nothing between here and that scroller clips its overflow. zIndex 2 so rows pass
               beneath rather than over, and the gray-50 fill is what makes "beneath" invisible. */}
           <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: categoriesEnabled ? (showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID) : (showGroupColumn ? VIP_GRID_WITH_GROUP_NO_CAT : VIP_GRID_NO_CAT), columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "16px", borderTopRightRadius: "16px" }}>
+            <input
+              type="checkbox"
+              checked={allVisibleSelected}
+              onChange={toggleAllVisible}
+              aria-label={t.selectAllLabel}
+              style={{ accentColor: "var(--gray-900)", cursor: "pointer", justifySelf: "start" }}
+            />
             {/* The photo and the note carry no sortKey — a face has no order, and a free-text note
                 sorted alphabetically answers nothing. */}
             <span />
@@ -1881,6 +2005,13 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 borderBottom: isLast ? "none" : BORDER,
                 borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
               }}>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(person.id)}
+                  onChange={() => toggleOne(person.id)}
+                  aria-label={person.name}
+                  style={{ accentColor: "var(--gray-900)", cursor: "pointer", justifySelf: "start" }}
+                />
                 {/* 48px, up from 32. A face at 32 in a table is a thumbnail of a thumbnail, and
                     this column exists so the reader can tell one Michael from another. The row's
                     own padding is untouched — the first grid track grew with the picture, so the
@@ -1954,13 +2085,22 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                 <span style={{ fontSize: "12px", minWidth: 0 }}>
                   {(() => {
                     if (person.releasedAt) return <span style={{ fontWeight: 700, color: "var(--gray-500)" }}>{t.statusReleased}</span>;
+                    // Two different empties, and they used to print the same word. `null` is an
+                    // answer somebody gave and is left alone in grey; an absent value is a question
+                    // nobody has answered, which is why it carries a colour — these rows are being
+                    // matched with no end in sight and nothing else on this screen says so.
+                    if (isExpiryUnanswered(person)) return (
+                      <span title={t.expiryUnansweredWhy} style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px", backgroundColor: "var(--warning-200)", color: "var(--warning-500)", fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {t.expiryUnanswered}
+                      </span>
+                    );
                     if (!person.expiresAt) return <span style={{ color: "var(--gray-300)" }}>{t.noExpiry}</span>;
                     const daysLeft = nowMs === null ? null : Math.ceil((Date.parse(person.expiresAt) - nowMs) / 86_400_000);
                     if (daysLeft !== null && daysLeft < 0) return <span style={{ fontWeight: 700, color: "var(--danger-500)" }}>{t.statusExpired}</span>;
                     return (
                       <span style={{ display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" }}>
                         <span style={{ color: "var(--gray-600)" }}>{person.expiresAt.slice(0, 10)}</span>
-                        {daysLeft !== null && daysLeft <= 30 && (
+                        {daysLeft !== null && daysLeft <= getComplianceConfig().vipExpiryNoticeDays && (
                           <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--warning-500)" }}>{t.expiringInDays(daysLeft)}</span>
                         )}
                       </span>
