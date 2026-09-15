@@ -8,7 +8,7 @@ import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, Tooltip, sortRows, useTableSort, usePortalEditAccess, MEASURE_TIGHT } from "./PortalShared";
+import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto, MEASURE_TIGHT } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
 
 type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires";
@@ -851,7 +851,7 @@ function RemoveVipConfirmModal({ t, person, onClose, onConfirm }: { t: VipDict; 
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "380px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "24px 20px 20px", textAlign: "center" }}>
-          <img src={person.photoUrl} alt="" style={{ width: "72px", height: "72px", borderRadius: "50%", objectFit: "cover", margin: "0 auto 14px" }} />
+          <FacePhoto src={person.photoUrl} size={72} radius="50%" style={{ margin: "0 auto 14px" }} />
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{person.name}</p>
           <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginTop: "12px" }}>{t.confirmRemoveTitle}</p>
           <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px" }}>{t.confirmRemoveBody}</p>
@@ -1060,8 +1060,9 @@ function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
         {/* Square, edge to edge, corners rounded only at the top so it reads as the sheet's own
             header rather than a picture sitting inside it. Capped so the sheet does not need to be
             taller than a short window on account of the photo alone. */}
-        <img src={person.photoUrl} alt=""
-          style={{ width: "100%", aspectRatio: "1 / 1", maxHeight: "320px", objectFit: "cover", display: "block", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", backgroundColor: "var(--gray-100)" }} />
+        <FacePhoto src={person.photoUrl} radius="0"
+          style={{ width: "100%", aspectRatio: "1 / 1", maxHeight: "320px", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", backgroundColor: "var(--gray-100)" }}
+          hiddenStyle={{ border: "none", borderBottom: "1px solid var(--gray-200)" }} />
         <div style={{ padding: "20px 20px", display: "flex", flexDirection: "column", gap: "12px" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
           <div style={{ minWidth: 0 }}>
@@ -1785,7 +1786,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                     this column exists so the reader can tell one Michael from another. The row's
                     own padding is untouched — the first grid track grew with the picture, so the
                     row is taller by exactly what the picture needed and by nothing else. */}
-                <img src={person.photoUrl} alt="" style={{ width: "48px", height: "48px", borderRadius: "8px", objectFit: "cover" }} />
+                <FacePhoto src={person.photoUrl} size={48} radius="8px" />
                 {/* The name is the way in, as it is in most tables — a narrow target that does not
                     fight the group select two cells over for the same click. */}
                 <button className="portal-link" onClick={() => setDetailFor(person)} title={person.name}
@@ -1929,7 +1930,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                   is what a vipRegistry is for. The detail sheet behind the card carries the size that
                   actually answers that; this is the largest the grid can give without the tags and
                   the name losing their line. */}
-              <img src={person.photoUrl} alt="" style={{ width: "60px", height: "60px", borderRadius: "10px", objectFit: "cover", flexShrink: 0 }} />
+              <FacePhoto src={person.photoUrl} size={60} radius="10px" style={{ flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 {/* Name first. The tags used to sit above it, which put a pill where the eye goes
                     for the thing a vipRegistry card is actually scanned for — a face and a name. The

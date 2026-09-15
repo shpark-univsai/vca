@@ -1196,6 +1196,25 @@ export function canManageAccess(permission: PortalPermission): boolean {
 }
 
 /**
+ * May look at a registered face.
+ *
+ * Decided 2026-09-15 (Q2·B). "May not change it" and "may look at it" are different questions, and
+ * the auditor role answered both with one word. That role exists for acceptance, inspection and
+ * security review — work that is done against counts, dates and who did what — and a face
+ * photograph is biometric-derived material that none of those errands needs. The rest of the
+ * registry stays open to them: names, groups, priorities, expiry, the whole history.
+ *
+ * Not a privacy flourish. On a police deployment the register is a list of suspects, and a
+ * contractor brought in to sign off on an installation has no business leaving with their faces.
+ *
+ * Shaped like the other gates (a permission in, a boolean out) so it can move into a capability
+ * checkbox unchanged when custom roles land — see the roles design note.
+ */
+export function canViewFaces(permission: PortalPermission): boolean {
+  return canEditPortal(permission);
+}
+
+/**
  * May change the lists that decide what the audit will find: VIP registry categories and search
  * purposes.
  *

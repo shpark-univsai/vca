@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Check } from "lucide-react";
-import { SUPPORT_CONTACT, canEditPortal, canSetPolicy, currentPortalUser, useVcaStore, type ProjectType } from "@/lib/vcaStore";
+import { ArrowDown, ArrowUp, Check, EyeOff } from "lucide-react";
+import { SUPPORT_CONTACT, canEditPortal, canSetPolicy, canViewFaces, currentPortalUser, useVcaStore, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 
@@ -1488,6 +1488,68 @@ export function FieldError({ children }: { children: React.ReactNode }) {
     <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.5, marginTop: "6px" }}>
       {children}
     </p>
+  );
+}
+
+/** Whether this account may look at registered faces. See canViewFaces(). */
+export function usePortalFaceAccess(): { mayViewFaces: boolean; reason: string } {
+  const portalUsers = useVcaStore(s => s.portalUsers);
+  const [lang] = usePortalLanguage();
+  const me = currentPortalUser(portalUsers);
+  return { mayViewFaces: me ? canViewFaces(me.permission) : true, reason: FACE_HIDDEN_REASON[lang] };
+}
+
+const FACE_HIDDEN_REASON = {
+  en: "Photo hidden from auditor accounts",
+  ko: "감사자 계정에는 사진이 보이지 않습니다",
+} as const;
+
+/**
+ * A registered face, or the space where one is.
+ *
+ * One component rather than a check at each of the six <img> tags, because the six are in two
+ * files and the seventh would have been written without it. It draws the placeholder at the same
+ * size and radius as the picture it stands in for: a row that shrinks when the photo is withheld
+ * tells a reader something is missing from the DATA, which is a different and wrong message.
+ *
+ * Marked, not blank. A grey square with no explanation reads as a failed image — the reader
+ * reloads, then files a bug. The title says who cannot see it and why, in one line.
+ */
+export function FacePhoto({ src, alt = "", size, radius, style, hiddenStyle }: {
+  /** Optional because Person.photoUrl is — a CSV import registers a name with no face. Passed
+   *  straight through, so a person with no photo renders exactly what it rendered before this
+   *  component existed: that is a different state from "withheld" and is not this gate's business. */
+  src?: string;
+  alt?: string;
+  /** Omitted for the detail sheet's full-bleed picture, which sizes itself from `style`. */
+  size?: number;
+  radius: string;
+  style?: React.CSSProperties;
+  /** Extra styling for the withheld tile only, where the picture's own rules do not apply. */
+  hiddenStyle?: React.CSSProperties;
+}) {
+  const { mayViewFaces, reason } = usePortalFaceAccess();
+  const box: React.CSSProperties = {
+    ...(size ? { width: `${size}px`, height: `${size}px` } : null),
+    borderRadius: radius,
+    ...style,
+  };
+  if (mayViewFaces) {
+    return <img src={src} alt={alt} style={{ objectFit: "cover", display: "block", ...box }} />;
+  }
+  return (
+    <span
+      title={reason}
+      aria-label={reason}
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+        backgroundColor: "var(--gray-100)", color: "var(--gray-400)",
+        border: "1px solid var(--gray-200)", boxSizing: "border-box",
+        ...box, ...hiddenStyle,
+      }}
+    >
+      <EyeOff size={size ? Math.max(12, Math.min(28, Math.round(size * 0.38))) : 28} strokeWidth={2} />
+    </span>
   );
 }
 
