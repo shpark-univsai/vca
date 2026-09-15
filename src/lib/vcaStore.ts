@@ -4304,9 +4304,10 @@ export function districtTally(hits: DetectionHit[], districtId: string): { peopl
  *
  * The last point is Keycloak's real lesson, and the reason for `recoveredAt`: an account made this
  * way is marked temporary and expected to be cleaned up. Keycloak keeps a banner and a log line on
- * it until it is removed. Ours shows a notice on the project Overview while the recovered account
- * is the only owner (see attnRecoveredOwner) — a door opened from outside the rules should not
- * quietly become the installation's normal state.
+ * it until it is removed. Ours puts a banner across the top of Portal for as long as the recovered
+ * account is the only owner (PortalShell, `recoveredOwner`) — a door opened from outside the rules
+ * should not quietly become the installation's normal state. It has no dismiss button, because
+ * dismissing it is the failure this exists to prevent.
  *
  * Do NOT solve this with email. `authConfig.passwordRecovery` already has two conditions because
  * some sites have no mail at all, and those are the same sites where a console is the only way in.
