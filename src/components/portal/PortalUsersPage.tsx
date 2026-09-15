@@ -1946,89 +1946,6 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         </div>
       )}
 
-      {/* No page title here: the top bar's crumb already names this page, and printing the same
-          word again 20px lower was the page introducing itself twice.
-
-          The "what the roles mean" link used to sit here, alone on the left of the buttons, and it
-          belonged to nothing — a lone underlined phrase at the top of a page reads as a warning or
-          a leftover. It moved to the end of the role-distribution caption below, where the roles
-          are being named one by one and the question arises on its own. */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", marginBottom: "20px" }}>
-        {/* Tools follow the tab. Six buttons in one row was every tool for both halves of the
-            lifecycle competing at once, and four of them could not act on what the reader was
-            looking at. The two ways of adding a person stay on the combined tab; the roster's bulk
-            work lives with the roster rows. */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" }}>
-        {peopleTab !== "roster" && (
-        /* Disabled with the reason on it rather than hidden: a control that vanishes reads as a
-           missing feature and sends the admin looking elsewhere for it. */
-        <button
-          onClick={() => manageAccess && setShowInvite(true)}
-          disabled={!manageAccess}
-          title={manageAccess ? undefined : t.reasonNotOwner}
-          style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: manageAccess ? "var(--primary-400)" : "var(--gray-100)", color: manageAccess ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed", flexShrink: 0 }}>
-          <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke={manageAccess ? "white" : "var(--gray-400)"} strokeWidth="1.22" strokeLinecap="round"/></svg>
-          {t.inviteUser}
-        </button>
-        )}
-        {/* Icons on the secondary tools too. Only the invite button had one, so on a page whose
-            neighbours put a mark on every action these five read as unfinished — and a row of five
-            identical grey pills is a row you have to read word by word. 14px at stroke 2.4 is the
-            1.4px Portal draws (see ICON_STROKE_PX). */}
-        {/*
-          Roster tab only, and the coloured action there.
-
-          It sat on both tabs for a while, on the reasoning that adding a person is the page's
-          subject either way. In practice the Accounts tab then offered two ways to add somebody
-          side by side — invite by mail, and put a name on the roster — which are the same goal by
-          two delivery mechanisms, and the labels do not carry that difference. The reader has to
-          stop and work out which one they want before doing either.
-
-          Accounts is about accounts: the one action there is inviting somebody to make one. The
-          roster is one tab away and its own tab's primary.
-        */}
-        {peopleTab === "roster" && (
-        <button
-          onClick={() => mayEdit && setRosterEditorFor({ entry: null })}
-          disabled={!mayEdit}
-          title={readOnlyReason}
-          style={{ ...SECONDARY_BTN, padding: "10px 16px", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-100)", border: "none", color: mayEdit ? "white" : "var(--gray-400)", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed" }}
-        >
-          <ClipboardPlus size={14} strokeWidth={2.4} />
-          {t.addToRoster}
-        </button>
-        )}
-        {peopleTab === "roster" && (<>
-        <button className="portal-btn-quiet" onClick={() => setShowRosterImport(true)} disabled={!mayEdit} title={readOnlyReason}
-          style={{ ...SECONDARY_BTN, color: mayEdit ? "var(--gray-600)" : "var(--gray-300)", cursor: mayEdit ? "pointer" : "not-allowed" }}>
-          <Upload size={14} strokeWidth={2.4} />
-          {t.importRoster}
-        </button>
-        {/* Export and Print stay open below: handing the roster to somebody as a file or a sheet
-            is reading it, not changing it, and it is most of what a read-only account is for. */}
-        <button className="portal-btn-quiet" onClick={bulkIssueCodes} disabled={!mayEdit || notIssuedIds.length === 0}
-          title={readOnlyReason}
-          style={{ ...SECONDARY_BTN, color: (!mayEdit || notIssuedIds.length === 0) ? "var(--gray-300)" : "var(--gray-600)", cursor: (!mayEdit || notIssuedIds.length === 0) ? "not-allowed" : "pointer" }}>
-          <KeyRound size={14} strokeWidth={2.4} />
-          {t.bulkIssue(notIssuedIds.length)}
-        </button>
-        <button className="portal-btn-quiet" onClick={() => {
-            const n = exportRosterCsv(projectRosterAll, currentProject?.name ?? projectId, rt);
-            showToast({ variant: "success", title: t.toastRosterExported(n) });
-          }}
-          disabled={projectRosterAll.length === 0}
-          style={{ ...SECONDARY_BTN, color: projectRosterAll.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: projectRosterAll.length === 0 ? "not-allowed" : "pointer" }}>
-          <Download size={14} strokeWidth={2.4} />
-          {t.exportRoster}
-        </button>
-        <button className="portal-btn-quiet" onClick={() => setShowPrintSheet(true)} disabled={printableEntries.length === 0}
-          style={{ ...SECONDARY_BTN, color: printableEntries.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: printableEntries.length === 0 ? "not-allowed" : "pointer" }}>
-          <Printer size={14} strokeWidth={2.4} />
-          {t.printHandout}
-        </button>
-        </>)}
-        </div>
-      </div>
 
       {/* Top-level cut of the list, with counts on the tabs — the same underlined row Input Sources
           uses for its kinds. */}
@@ -2083,6 +2000,19 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           counts strip directly above already answers what they were for (how many owners, how many
           invited, how many suspended), the columns they filtered on are sortable, and a project's
           account list is short enough to read. */}
+      {/* Search and the tools on one row, the way every other Portal table does it (2026-09-15).
+          The tools used to sit in a row of their own, 209px higher and above the tab switcher —
+          which put controls that CHANGE WITH THE TAB above the control that changes the tab, with
+          the counts, the summary strip and a caption in between. Read top to bottom, they looked
+          like page chrome rather than tools for the table underneath them.
+
+          No page title here: the top bar's crumb already names this page, and printing the same
+          word again 20px lower was the page introducing itself twice.
+
+          The "what the roles mean" link used to sit beside the buttons and belonged to nothing —
+          a lone underlined phrase at the top of a page reads as a warning or a leftover. It moved
+          to the end of the role-distribution caption, where the roles are named one by one and the
+          question arises on its own. */}
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
       <div style={{ position: "relative", flex: 1, minWidth: "220px", maxWidth: "320px" }}>
         <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
@@ -2103,6 +2033,86 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         />
       </div>
 
+          {/* Tools follow the tab. Six buttons in one row was every tool for both halves of the
+              lifecycle competing at once, and four of them could not act on what the reader was
+              looking at. The two ways of adding a person stay on the combined tab; the roster's bulk
+              work lives with the roster rows. */}
+          {/* marginLeft auto, not a <span style={{flex:1}}/> spacer beside it. A spacer only pushes
+              on the line it is on: once the row wraps — under about 1240px with the roster's six
+              controls — the group drops to a line of its own and the spacer stays behind, leaving
+              the buttons hugging the left edge with 200px of empty space to their right. An auto margin
+              absorbs the free space on whichever line the group lands on, so it stays at the right
+              end in both states. */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto" }}>
+          {peopleTab !== "roster" && (
+          /* Disabled with the reason on it rather than hidden: a control that vanishes reads as a
+             missing feature and sends the admin looking elsewhere for it. */
+          <button
+            onClick={() => manageAccess && setShowInvite(true)}
+            disabled={!manageAccess}
+            title={manageAccess ? undefined : t.reasonNotOwner}
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: manageAccess ? "var(--primary-400)" : "var(--gray-100)", color: manageAccess ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed", flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke={manageAccess ? "white" : "var(--gray-400)"} strokeWidth="1.22" strokeLinecap="round"/></svg>
+            {t.inviteUser}
+          </button>
+          )}
+          {/* Icons on the secondary tools too. Only the invite button had one, so on a page whose
+              neighbours put a mark on every action these five read as unfinished — and a row of five
+              identical grey pills is a row you have to read word by word. 14px at stroke 2.4 is the
+              1.4px Portal draws (see ICON_STROKE_PX). */}
+          {/*
+            Roster tab only, and the coloured action there.
+
+            It sat on both tabs for a while, on the reasoning that adding a person is the page's
+            subject either way. In practice the Accounts tab then offered two ways to add somebody
+            side by side — invite by mail, and put a name on the roster — which are the same goal by
+            two delivery mechanisms, and the labels do not carry that difference. The reader has to
+            stop and work out which one they want before doing either.
+
+            Accounts is about accounts: the one action there is inviting somebody to make one. The
+            roster is one tab away and its own tab's primary.
+          */}
+          {peopleTab === "roster" && (
+          <button
+            onClick={() => mayEdit && setRosterEditorFor({ entry: null })}
+            disabled={!mayEdit}
+            title={readOnlyReason}
+            style={{ ...SECONDARY_BTN, padding: "10px 16px", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-100)", border: "none", color: mayEdit ? "white" : "var(--gray-400)", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed" }}
+          >
+            <ClipboardPlus size={14} strokeWidth={2.4} />
+            {t.addToRoster}
+          </button>
+          )}
+          {peopleTab === "roster" && (<>
+          <button className="portal-btn-quiet" onClick={() => setShowRosterImport(true)} disabled={!mayEdit} title={readOnlyReason}
+            style={{ ...SECONDARY_BTN, color: mayEdit ? "var(--gray-600)" : "var(--gray-300)", cursor: mayEdit ? "pointer" : "not-allowed" }}>
+            <Upload size={14} strokeWidth={2.4} />
+            {t.importRoster}
+          </button>
+          {/* Export and Print stay open below: handing the roster to somebody as a file or a sheet
+              is reading it, not changing it, and it is most of what a read-only account is for. */}
+          <button className="portal-btn-quiet" onClick={bulkIssueCodes} disabled={!mayEdit || notIssuedIds.length === 0}
+            title={readOnlyReason}
+            style={{ ...SECONDARY_BTN, color: (!mayEdit || notIssuedIds.length === 0) ? "var(--gray-300)" : "var(--gray-600)", cursor: (!mayEdit || notIssuedIds.length === 0) ? "not-allowed" : "pointer" }}>
+            <KeyRound size={14} strokeWidth={2.4} />
+            {t.bulkIssue(notIssuedIds.length)}
+          </button>
+          <button className="portal-btn-quiet" onClick={() => {
+              const n = exportRosterCsv(projectRosterAll, currentProject?.name ?? projectId, rt);
+              showToast({ variant: "success", title: t.toastRosterExported(n) });
+            }}
+            disabled={projectRosterAll.length === 0}
+            style={{ ...SECONDARY_BTN, color: projectRosterAll.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: projectRosterAll.length === 0 ? "not-allowed" : "pointer" }}>
+            <Download size={14} strokeWidth={2.4} />
+            {t.exportRoster}
+          </button>
+          <button className="portal-btn-quiet" onClick={() => setShowPrintSheet(true)} disabled={printableEntries.length === 0}
+            style={{ ...SECONDARY_BTN, color: printableEntries.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: printableEntries.length === 0 ? "not-allowed" : "pointer" }}>
+            <Printer size={14} strokeWidth={2.4} />
+            {t.printHandout}
+          </button>
+          </>)}
+          </div>
       </div>
 
       {/* Only while the list is narrowed, and only with somebody to act on. An "act on everything
