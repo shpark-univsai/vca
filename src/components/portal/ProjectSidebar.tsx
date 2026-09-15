@@ -172,11 +172,23 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
   // The id stays "cameras" — it is a route key, and renaming it would only churn every call site.
   // The label changed because the tab now lists uploaded footage alongside cameras.
   { id: "cameras", group: "workspace", label: { en: "Input Sources", ko: "입력 소스" }, icon: CamerasIcon },
+  // Servers sit with the cameras (moved out of MANAGE 2026-09-15), one step further down the same
+  // plumbing: a camera is assigned to a server, so setting the fleet up needs both and they were
+  // in different groups. The Overview had already stopped keeping them apart — its attention band
+  // lists a missing mail server beside offline cameras, in one row, as the same kind of errand.
+  //
+  // It makes both halves say something truer than before. WORKSPACE is now everything that
+  // belongs to THIS SITE — who it watches for, what it watches with, what processes that — and
+  // MANAGE is everything that belongs to the INSTALLATION: people, the contract, the records.
+  // Before this, MANAGE was equipment and people and paperwork in one list.
+  //
+  // The tab carries mail settings and API docs too, and neither is site equipment. They ride
+  // along because the tab's first and default panel is the server list; if those two ever grow
+  // enough to need their own home, that is the split to make rather than sending the servers back.
+  { id: "server", group: "workspace", label: { en: "Server & API", ko: "서버 및 API" }, icon: ServerIcon },
 
-  // MANAGE, most-touched to least: servers change when the site changes, people are added and
-  // removed all year, and a licence is signed once and opened when somebody asks about the bill
-  // or runs out of channels.
-  { id: "server", group: "manage", label: { en: "Server & API", ko: "서버 및 API" }, icon: ServerIcon },
+  // MANAGE, most-touched to least: people are added and removed all year, and a licence is signed
+  // once and opened when somebody asks about the bill or runs out of channels.
   { id: "users", group: "manage", label: { en: "Users & Permissions", ko: "사용자 및 권한" }, icon: UsersIcon },
   { id: "license", group: "manage", label: { en: "License", ko: "라이선스" }, icon: LicenseIcon },
 
