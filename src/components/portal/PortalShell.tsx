@@ -15,8 +15,8 @@ import PortalSettingsPage from "./PortalSettingsPage";
 import PortalAccountMenu from "./PortalAccountMenu";
 import { ToastProvider } from "../Toast";
 import { getComplianceConfig } from "@/lib/complianceConfig";
-import { useVcaStore, canEnterApp, canEnterPortal, currentPortalUser, SIGNED_IN_USER, type ProjectType, type Team } from "@/lib/vcaStore";
-import AccessGate, { type GateDenial } from "@/components/AccessGate";
+import { useVcaStore, canEnterApp, currentPortalUser, SIGNED_IN_USER, type ProjectType, type Team } from "@/lib/vcaStore";
+import AccessGate, { denialFor } from "@/components/AccessGate";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 
@@ -159,14 +159,12 @@ export default function PortalShell() {
   // and the audit log were all on screen for as long as the navigation took. An account with no
   // console role is told that, shown what it does hold, and handed the app as a button.
   //
-  // The reason this door is shut is always the missing console role, whatever state the account is
-  // in — a suspended app-only account would not reach Portal once restored either, so leading with
-  // the suspension would answer a question nobody asked here. The gate's grants table states the
-  // suspension, and withholds the app button while it holds.
-  const portalDenial: GateDenial | null = !me || canEnterPortal(me.permission) ? null
-    : me.appAccess ? "portalNotGranted"
-    : "noDoor";
-  const locked = portalDenial !== null;
+  // denialFor, the same function the app door and /gate ask. What was here read the role and never
+  // the status, which is a different bug from the one it was written to avoid: a suspended
+  // administrator was turned away from the app and handed the roster, the license and the audit
+  // log — and could lift their own suspension from the Users screen. An administrator who pauses
+  // an account mid-shift expects both halves to go.
+  const portalDenial = denialFor(me, "portal");
   // Resolve ?teamId= against the real list rather than trusting it: an id that matches nothing used
   // to flow straight into the New Project wizard, which would have filed the project under an
   // team that does not exist. Falling back to the first team keeps the header and
@@ -225,9 +223,22 @@ export default function PortalShell() {
   /* The badge is for a stand-in, so it stops the moment somebody else is holding the role for
      real — counted over active accounts, because a suspended owner is not standing by to help.
      `me` is the binding already read above. */
-  const recoveredOwner = useVcaStore(s =>
+  const realRecoveredOwner = useVcaStore(s =>
     !!me?.recoveredAt
     && !s.portalUsers.some(u => u.id !== me.id && u.permission === "owner" && u.status === "active"));
+  /*
+   * ?demo=recovered draws the banner without a recovered account, the way /gate?demo= draws each
+   * refusal without arranging the account that earns it.
+   *
+   * It needs a switch because the honest answer is that nothing here can show it: no seeded
+   * account carries `recoveredAt`, and seeding one would make every demo of this product say the
+   * installation had been recovered — which is a claim, not a fixture. So the state stayed real
+   * and invisible, and a screen nobody can look at is a screen nobody reviews.
+   *
+   * Reads the URL, never the store: a demo that could set `recoveredAt` would be the very thing
+   * the field's own comment forbids.
+   */
+  const recoveredOwner = realRecoveredOwner || searchParams.get("demo") === "recovered";
 
   const [tab, setTabState] = useState<DetailTab>(
     // A tab the rail does not offer is not a tab you can land on, so a bookmarked ?tab= for one
@@ -326,7 +337,7 @@ export default function PortalShell() {
     router.push(`/portal?teamId=${teamId}`);
   };
 
-  if (locked) return <AccessGate user={me} denial={portalDenial} />;
+  if (me && portalDenial) return <AccessGate user={me} denial={portalDenial} inPortal />;
 
   return (
     <ToastProvider>
