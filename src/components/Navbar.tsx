@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatTimeAgo, LiveEvent } from "@/lib/mockData";
 import {
-  SIGNED_IN_USER, resolveActiveProject, useVcaStore,
+  SIGNED_IN_USER, resolveActiveProject, useVcaStore, canEnterPortal, currentPortalUser,
   vcaEventsToLiveEvents, useActiveProjectId, useProjectEvents,
 } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -107,6 +107,13 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
   // offer to change it — see the label below.
   const projects = useVcaStore(s => s.projects);
   const portalUsers = useVcaStore(s => s.portalUsers);
+  // Portal's own menu hides the way to the app for an account without it, and this side offered the
+  // way to Portal to everybody. The door refuses them either way — but an advertised door that
+  // answers "you cannot come in" is a fault the menu could have spared them, and crossing over is
+  // also what updates the remembered half, so an account that cannot enter was writing "Portal"
+  // as the half it was last in. Fail-open on an unresolved identity, like every other gate here.
+  const meForPortal = currentPortalUser(portalUsers);
+  const canGoToPortal = !meForPortal || canEnterPortal(meForPortal.permission);
   const activeProjectId = useVcaStore(s => s.activeProjectId);
   // Same resolution every scoped screen uses, so the name in the header and the data underneath
   // can never point at different sites.
@@ -548,6 +555,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                   <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", marginTop: "2px" }}>{SIGNED_IN_USER.email}</div>
                 </div>
                 <div style={{ height: "1px", backgroundColor: "var(--gray-200)", margin: "0 4px 6px" }} />
+                {canGoToPortal && (
                 <button
                   className="navbar-dropdown-item"
                   onClick={() => { setSettingsOpen(false); updateGateChoice("portal"); router.push("/portal"); }}
@@ -564,6 +572,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                   </svg>
                   <span style={{ fontSize: "13px", fontWeight: 600 }}>{t.portal}</span>
                 </button>
+                )}
                 <button
                   className="navbar-dropdown-item"
                   onClick={() => { setSettingsOpen(false); router.push("/mypage"); }}

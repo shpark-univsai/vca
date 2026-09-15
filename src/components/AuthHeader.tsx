@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage, type AppLanguage } from "@/lib/i18n";
+import { useLanguage, usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 
 // The console's one hairline value — see --line in globals.css, which was defined for exactly
 // this and then never reached the app: eight files each declared their own gray-200 rule instead,
@@ -18,8 +18,14 @@ const LANGUAGES: { value: AppLanguage; label: string }[] = [
  * is the one who cannot get past it. Two labels rather than a dropdown: there are only two, and
  * each is written in its own script so it is recognisable without reading the rest of the screen.
  */
-function LanguageToggle() {
-  const [lang, setLang] = useLanguage();
+function LanguageToggle({ scope }: { scope: "app" | "portal" }) {
+  // The two settings are deliberately separate (see lib/i18n.ts), so a toggle has to know which
+  // one it is in front of. Every pre-auth screen is the app's; the access gate is the exception —
+  // drawn inside Portal it reads Portal's, and a toggle that wrote the app's there would appear
+  // to do nothing while silently changing the other half.
+  const [appLang, setAppLang] = useLanguage();
+  const [portalLang, setPortalLang] = usePortalLanguage();
+  const [lang, setLang] = scope === "portal" ? [portalLang, setPortalLang] : [appLang, setAppLang];
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "2px", padding: "2px", backgroundColor: "var(--gray-50)", borderRadius: "7px" }}>
       {LANGUAGES.map(l => {
@@ -47,7 +53,7 @@ function LanguageToggle() {
 }
 
 /* Minimal header for pre-auth screens like login / password setup (logo only, no full nav) */
-export default function AuthHeader() {
+export default function AuthHeader({ scope = "app" }: { scope?: "app" | "portal" } = {}) {
   return (
     <div style={{
       height: "56px", backgroundColor: "white", borderBottom: BORDER,
@@ -65,7 +71,7 @@ export default function AuthHeader() {
           UNIVERSE AI
         </span>
       </div>
-      <LanguageToggle />
+      <LanguageToggle scope={scope} />
     </div>
   );
 }

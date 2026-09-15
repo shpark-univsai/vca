@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Cctv, Building2, ShieldOff, ArrowRight, LogOut } from "lucide-react";
 import AuthHeader from "@/components/AuthHeader";
-import { useLanguage } from "@/lib/i18n";
+import { useLanguage, usePortalLanguage } from "@/lib/i18n";
+import { getAuthConfig } from "@/lib/authConfig";
 import {
-  canEnterPortal, canUseAppNow, SIGNED_IN_USER,
+  canEnterPortal, SIGNED_IN_USER,
   type PortalPermission, type PortalUser,
 } from "@/lib/vcaStore";
 
@@ -55,21 +56,55 @@ export function readGateChoice(): GateDoor | null {
  */
 export function updateGateChoice(door: GateDoor): void {
   try {
-    if (localStorage.getItem(GATE_CHOICE_KEY)) localStorage.setItem(GATE_CHOICE_KEY, door);
+    // readGateChoice, not a truthy getItem: the two have to answer the same question. A leftover
+    // value this function cannot read ("Portal", a stale schema) is "nothing is remembered" to
+    // every reader, and a bare truthy check would quietly heal it into a real preference.
+    if (readGateChoice()) localStorage.setItem(GATE_CHOICE_KEY, door);
   } catch { /* private window — nothing was remembered to update */ }
 }
 
 /**
- * Why a door is closed. Not one "no access" state, because the three take different actions:
- * a paused account waits for an administrator, an ungranted one asks for a grant, and an account
- * with neither door is a broken record somebody has to repair.
+ * Why a door is closed. Not one "no access" state, because each takes a different action: a paused
+ * account waits for an administrator to lift it, an account that never activated has a code to use,
+ * an ungranted one asks for a grant, and an account with neither door is a broken record somebody
+ * has to repair.
  */
-export type GateDenial = "appNotGranted" | "portalNotGranted" | "suspended" | "noDoor";
+export type GateDenial = "appNotGranted" | "portalNotGranted" | "notActivated" | "suspended" | "noDoor";
+
+/** Everything the gate needs to judge an account. A subset of PortalUser so callers can pass one. */
+export type GateUser = Pick<PortalUser, "name" | "email" | "permission" | "appAccess" | "status">;
+
+/**
+ * Why this door is shut for this account, or null if it is open.
+ *
+ * ONE derivation. There used to be three — the app door, the Portal door and /gate each re-derived
+ * it from the same two helpers — and they disagreed: the Portal door read the role and never the
+ * status, so a suspended administrator was turned away from the app and handed the roster, the
+ * license and the audit log; and an account that had never activated was told it was "suspended",
+ * over a table that said "Never activated" two lines below. Three copies of one decision is three
+ * places to get it wrong and three places the backend has to be told about.
+ *
+ * Order matters and says what it means: a missing grant is answered before an account state,
+ * because "you were never given this" and "you cannot use it today" are different sentences and
+ * the first one outranks. An account with neither grant is neither — it is a record to repair.
+ */
+export function denialFor(user: GateUser | undefined, door: GateDoor): GateDenial | null {
+  // Fail-open, the same as both shells before this existed: an identity we cannot resolve locks
+  // nothing, because the door that matters is the server. See the note at the top of this file.
+  if (!user) return null;
+  const portal = canEnterPortal(user.permission);
+  if (!portal && !user.appAccess) return "noDoor";
+  const granted = door === "portal" ? portal : user.appAccess;
+  if (!granted) return door === "portal" ? "portalNotGranted" : "appNotGranted";
+  if (user.status === "suspended") return "suspended";
+  if (user.status === "invited") return "notActivated";
+  return null;
+}
 
 const T = {
   en: {
     chooseTitle: "Where to?",
-    remember: "Remember this choice",
+    remember: "Remember on this workstation",
     appName: "Monitoring app",
     appWhat: "Live cameras, detections, search",
     portalName: "Portal",
@@ -77,9 +112,11 @@ const T = {
     deniedAppTitle: "This account does not have the monitoring app",
     deniedPortalTitle: "This account does not have Portal",
     suspendedTitle: "This account is suspended",
+    notActivatedTitle: "This account has not been activated yet",
     noDoorTitle: "This account has no access",
     suspendedBody: "An administrator paused it. Sign-in resumes once they restore it.",
-    appNotGrantedBody: "An administrator grants app access per account.",
+    notActivatedBody: "Use the registration code your administrator gave you to set a password first.",
+    appNotGrantedBody: "An administrator grants app access per account, in Portal under Users & Permissions.",
     portalNotGrantedBody: "Portal is for console roles. An administrator grants it per account.",
     noDoorBody: "Neither door is open, which an administrator has to correct — no screen here can.",
     holds: "This account holds",
@@ -91,12 +128,15 @@ const T = {
     states: { active: "Active", invited: "Never activated", suspended: "Suspended" },
     goPortal: "Go to Portal",
     goApp: "Go to the monitoring app",
-    signOut: "Sign out",
+    logOut: "Log out",
+    activateWithCode: "Activate with a registration code",
+    contactNamed: (who: string) => <>For an account or access, contact <strong style={{ color: "var(--gray-600)" }}>{who}</strong>.</>,
+    contactGeneric: "For an account or access, contact your security operations team.",
     roles: { owner: "Owner", admin: "Administrator", auditor: "Auditor", none: "No console access" },
   },
   ko: {
     chooseTitle: "어디로 가시겠습니까?",
-    remember: "이 선택 기억하기",
+    remember: "이 단말에서 기억하기",
     appName: "모니터링 앱",
     appWhat: "실시간 카메라, 검출, 검색",
     portalName: "Portal",
@@ -104,9 +144,11 @@ const T = {
     deniedAppTitle: "이 계정에는 모니터링 앱 권한이 없습니다",
     deniedPortalTitle: "이 계정에는 Portal 권한이 없습니다",
     suspendedTitle: "정지된 계정입니다",
+    notActivatedTitle: "아직 활성화되지 않은 계정입니다",
     noDoorTitle: "접근 권한이 없는 계정입니다",
     suspendedBody: "관리자가 계정을 정지했습니다. 관리자가 해제하면 다시 로그인할 수 있습니다.",
-    appNotGrantedBody: "앱 접근 권한은 관리자가 계정별로 부여합니다.",
+    notActivatedBody: "관리자에게 받은 등록 코드로 먼저 비밀번호를 설정해주세요.",
+    appNotGrantedBody: "앱 접근 권한은 관리자가 Portal의 사용자 및 권한에서 계정별로 부여합니다.",
     portalNotGrantedBody: "Portal은 관리자 역할의 화면입니다. 관리자가 계정별로 부여합니다.",
     noDoorBody: "열린 문이 없습니다. 이 화면에서는 해결할 수 없고 관리자가 고쳐야 합니다.",
     holds: "이 계정의 권한",
@@ -118,7 +160,10 @@ const T = {
     states: { active: "정상", invited: "미활성", suspended: "정지" },
     goPortal: "Portal로 가기",
     goApp: "모니터링 앱으로 가기",
-    signOut: "로그아웃",
+    logOut: "로그아웃",
+    activateWithCode: "등록 코드로 계정 활성화하기",
+    contactNamed: (who: string) => <>계정이나 접근 권한은 <strong style={{ color: "var(--gray-600)" }}>{who}</strong>에게 문의해주세요.</>,
+    contactGeneric: "계정이나 접근 권한은 보안 관제 담당자에게 문의해주세요.",
     roles: { owner: "최고관리자", admin: "관리자", auditor: "읽기 전용 관리자", none: "권한 없음" },
   },
 } as const;
@@ -192,7 +237,7 @@ function Grants({ permission, appAccess, status, t }: {
   if (status !== "active") rows.push({ label: t.accountState, value: t.states[status], on: false });
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "8px" }}>
-      <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "-0.24px" }}>{t.holds}</span>
+      <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{t.holds}</span>
       <div style={{ border: CARD_BORDER, borderRadius: "10px", overflow: "hidden" }}>
         {rows.map((r, i) => (
           <div key={r.label} style={{
@@ -203,7 +248,9 @@ function Grants({ permission, appAccess, status, t }: {
             <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{r.label}</span>
             <span style={{
               fontSize: "13px", fontWeight: 700, letterSpacing: "-0.26px",
-              color: r.on ? "var(--gray-900)" : "var(--gray-400)",
+              // Not gray-400: at 12-13px on gray-50 that was 2.45:1, and "Not granted" is the
+              // single word somebody reads down a telephone to an administrator.
+              color: r.on ? "var(--gray-900)" : "var(--gray-500)",
             }}>
               {r.value}
             </span>
@@ -229,6 +276,27 @@ function PrimaryButton({ label, onClick }: { label: string; onClick: () => void 
   );
 }
 
+/**
+ * The way out. Goes to /login and nothing more — which is the honest amount for now, and the same
+ * thing the two account menus do. It used to go to /login?demo=signedOut, borrowing the developer
+ * preview of the sign-out notice: that banner says "you have been signed out of this workstation",
+ * and nothing is signed out of anything — there is no session yet, the identity is a constant, and
+ * typing / walks straight back in. A product path should not run through `demo=` either.
+ */
+function LogOutButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return <QuietButton label={label} icon={<LogOut size={15} strokeWidth={2.4} />} onClick={onClick} />;
+}
+
+/** Who to call. On a site with no mail this is the whole recovery path (see authConfig), and the
+ *  gate was the one refusal screen in the product not carrying it. */
+function SupportLine({ t, contact }: { t: typeof T["en"] | typeof T["ko"]; contact: string | null }) {
+  return (
+    <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", textAlign: "center", lineHeight: 1.6 }}>
+      {contact ? t.contactNamed(contact) : t.contactGeneric}
+    </p>
+  );
+}
+
 function QuietButton({ label, icon, onClick }: { label: string; icon?: React.ReactNode; onClick: () => void }) {
   return (
     <button
@@ -246,15 +314,28 @@ function QuietButton({ label, icon, onClick }: { label: string; icon?: React.Rea
   );
 }
 
-/** The screen. `denial` absent means the account holds both doors and is being asked which. */
-export default function AccessGate({ user, denial }: {
-  /** The signed-in account. Undefined only where the stand-in identity matches no seeded row —
-   *  the same fail-open case both shells already carry. */
-  user?: Pick<PortalUser, "name" | "email" | "permission" | "appAccess" | "status">;
-  denial?: GateDenial;
-}) {
+/**
+ * The screen. `denial` absent means the account holds both doors and is being asked which.
+ *
+ * A denial REQUIRES the account, and the type says so. With both optional, a caller could pass a
+ * refusal and no user, and the screen would draw a grants table out of the fallbacks — "no console
+ * role, no app" — under the stand-in's real name and address. An invented set of permissions
+ * attributed to a named person is the failure that looks like a working screen.
+ */
+type AccessGateProps =
+  | { user?: GateUser; denial?: undefined; inPortal?: boolean }
+  | { user: GateUser; denial: GateDenial; inPortal?: boolean };
+
+export default function AccessGate({ user, denial, inPortal = false }: AccessGateProps) {
   const router = useRouter();
-  const [lang] = useLanguage();
+  const authConfig = getAuthConfig();
+  // Two language settings exist and this screen is drawn under both: /gate and the app door read
+  // the app's, and the Portal door has to read Portal's, or an administrator who set the console
+  // to Korean is refused in English — on the one screen whose whole job is to be read and repeated
+  // to somebody else. Both hooks always run; only the answer is chosen.
+  const [appLang] = useLanguage();
+  const [portalLang] = usePortalLanguage();
+  const lang = inPortal ? portalLang : appLang;
   const t = T[lang];
   // Ticked by default: the question is worth asking once, and asking it every morning for the
   // life of the account is not what anybody wants from a two-door install. Unticking is how
@@ -268,39 +349,61 @@ export default function AccessGate({ user, denial }: {
   const appAccess = user?.appAccess ?? false;
   const status = user?.status ?? "active";
 
-  const go = (door: GateDoor) => {
-    if (remember) {
-      try { localStorage.setItem(GATE_CHOICE_KEY, door); } catch { /* private window — ask again */ }
-    }
+  /** Answering the question. The checkbox is the whole of the consent, both ways. */
+  const choose = (door: GateDoor) => {
+    try {
+      if (remember) localStorage.setItem(GATE_CHOICE_KEY, door);
+      // Unticking has to be able to undo a previous ticking, or the setting is a one-way door:
+      // a stored choice makes login skip this screen, so the only way back to the checkbox is to
+      // type /gate — and it used to leave the old value sitting there when you got here.
+      else localStorage.removeItem(GATE_CHOICE_KEY);
+    } catch { /* private window — nothing is remembered, so the question comes back */ }
+    router.replace(door === "portal" ? "/portal" : "/");
+  };
+
+  /**
+   * Leaving through the door that IS open, from a refusal.
+   *
+   * updateGateChoice, never a bare write: this screen shows no checkbox, so there is no consent
+   * here to record. It used to call the same function as the chooser, which defaults to
+   * "remember" — so being turned away from one door silently created a preference nobody was
+   * asked about, and did it even for somebody who had unticked the box earlier.
+   */
+  const leaveTo = (door: GateDoor) => {
+    updateGateChoice(door);
     router.replace(door === "portal" ? "/portal" : "/");
   };
 
   const title = denial === "suspended" ? t.suspendedTitle
+    : denial === "notActivated" ? t.notActivatedTitle
     : denial === "appNotGranted" ? t.deniedAppTitle
     : denial === "portalNotGranted" ? t.deniedPortalTitle
     : denial === "noDoor" ? t.noDoorTitle
     : t.chooseTitle;
   const body = denial === "suspended" ? t.suspendedBody
+    : denial === "notActivated" ? t.notActivatedBody
     : denial === "appNotGranted" ? t.appNotGrantedBody
     : denial === "portalNotGranted" ? t.portalNotGrantedBody
     : denial === "noDoor" ? t.noDoorBody
     : null;
 
-  // The way out, and only where it is genuinely open. A suspended account has no open door even
-  // where both are granted, so it is offered none — being sent to Portal and turned away there
-  // would be the same silent bounce this screen exists to replace.
-  const otherDoor: GateDoor | null = denial === "suspended" || denial === "noDoor" ? null
-    : denial === "appNotGranted" && canEnterPortal(permission) ? "portal"
-    : denial === "portalNotGranted" && !!user && canUseAppNow(user) ? "app"
+  // The way out, asked of the same function the arriving door will ask. Derived rather than
+  // matched against the denial: the old version read "appNotGranted means Portal is open", which
+  // is true of the grant and not of the account — a suspended auditor with no app was refused
+  // here and handed a Portal button, and Portal took it, because that door was not reading status
+  // either. Whatever denialFor says is open is open.
+  const otherDoor: GateDoor | null = !denial ? null
+    : denialFor(user, "portal") === null ? "portal"
+    : denialFor(user, "app") === null ? "app"
     : null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", backgroundColor: "white" }}>
-      <AuthHeader />
+      <AuthHeader scope={inPortal ? "portal" : "app"} />
       <div className="vca-auth-scroll" style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
         <div style={{
           width: denial ? "400px" : "560px", maxWidth: "100%",
-          margin: "auto 0", padding: "40px 20px",
+          margin: "auto 0",
           display: "flex", flexDirection: "column", gap: "28px", alignItems: "center",
         }}>
           {denial && (
@@ -329,14 +432,16 @@ export default function AccessGate({ user, denial }: {
             <>
               <Grants permission={permission} appAccess={appAccess} status={status} t={t} />
               <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px" }}>
-                {otherDoor === "portal" && <PrimaryButton label={t.goPortal} onClick={() => go("portal")} />}
-                {otherDoor === "app" && <PrimaryButton label={t.goApp} onClick={() => go("app")} />}
-                <QuietButton
-                  label={t.signOut}
-                  icon={<LogOut size={15} strokeWidth={2.4} />}
-                  onClick={() => router.replace("/login?demo=signedOut")}
-                />
+                {otherDoor === "portal" && <PrimaryButton label={t.goPortal} onClick={() => leaveTo("portal")} />}
+                {otherDoor === "app" && <PrimaryButton label={t.goApp} onClick={() => leaveTo("app")} />}
+                {/* A code and nowhere to use it is the dead end login already refused to leave
+                    people in — this screen had copied its sentence and left the button behind. */}
+                {denial === "notActivated" && authConfig.registrationCode && (
+                  <PrimaryButton label={t.activateWithCode} onClick={() => router.push("/register")} />
+                )}
+                <LogOutButton label={t.logOut} onClick={() => router.replace("/login")} />
               </div>
+              <SupportLine t={t} contact={authConfig.supportContact} />
             </>
           ) : (
             <>
@@ -344,12 +449,12 @@ export default function AccessGate({ user, denial }: {
                 <DoorCard
                   icon={<Cctv size={20} strokeWidth={2} />}
                   name={t.appName} what={t.appWhat}
-                  onClick={() => go("app")}
+                  onClick={() => choose("app")}
                 />
                 <DoorCard
                   icon={<Building2 size={20} strokeWidth={2} />}
                   name={t.portalName} what={t.portalWhat}
-                  onClick={() => go("portal")}
+                  onClick={() => choose("portal")}
                 />
               </div>
               <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
@@ -361,6 +466,11 @@ export default function AccessGate({ user, denial }: {
                 />
                 <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.remember}</span>
               </label>
+              {/* The refusals all carry one, and this is the screen that first shows somebody a
+                  name — on a shared terminal it is as likely to be the last person's as your own. */}
+              <div style={{ width: "100%", maxWidth: "260px" }}>
+                <LogOutButton label={t.logOut} onClick={() => router.replace("/login")} />
+              </div>
             </>
           )}
         </div>

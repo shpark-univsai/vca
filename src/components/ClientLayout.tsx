@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
-import AccessGate, { type GateDenial } from "@/components/AccessGate";
+import AccessGate, { denialFor } from "@/components/AccessGate";
 import { useOnValueChange } from "@/hooks/useOnValueChange";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
@@ -19,7 +19,7 @@ import SidebarToggleIcon from "./SidebarToggleIcon";
 import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
 import {
-  useVcaStore, canUseAppNow, canEnterPortal, currentPortalUser,
+  useVcaStore, currentPortalUser,
   camerasInProject, getActiveProjectId, useActiveProjectId, watchedPersonsInProject,
   type Camera,
 } from "@/lib/vcaStore";
@@ -200,13 +200,11 @@ export default function ClientLayout() {
   // for an address in no account list, and then nothing is locked. The real door is the server.
   const me = useVcaStore(s => currentPortalUser(s.portalUsers));
   // Which sentence the gate should say, not merely that it should appear: a paused account is a
-  // pause and an ungranted one is a grant somebody has to make, and the two need different
-  // actions from the person reading it.
-  const appDenial: GateDenial | null = !me || canUseAppNow(me) ? null
-    : !me.appAccess && !canEnterPortal(me.permission) ? "noDoor"
-    : !me.appAccess ? "appNotGranted"
-    : "suspended";
-  const locked = appDenial !== null;
+  // pause, an unactivated one has a code to use, and an ungranted one is a grant somebody has to
+  // make. The three need different actions from the person reading it — and the answer comes from
+  // denialFor, the same function the Portal door and /gate ask, because this used to be derived
+  // here in its own order and told an invited account it was "suspended".
+  const appDenial = denialFor(me, "app");
   const [selectedEvent, setSelectedEvent] = useState<LiveEvent | null>(null);
   const [locationFilter, setLocationFilter] = useState<string | null>(null);
   // Clicking a district cluster pill (zoomed-out map view) filters the sidebar to just that
@@ -307,11 +305,11 @@ export default function ClientLayout() {
     setActivePage("BEST FRAME");
   };
 
-  // Locked means this account has no app door, so the gate replaces the app entirely rather than
+  // A denial means this account has no app door, so the gate replaces the app entirely rather than
   // covering it: what sits below this line is the map, the sidebar's VIP list with names and
   // faces, and the alert ticker, which does not merely display but writes detections into the
   // shared store on a timer. A door that is closed cannot also serve the room behind it.
-  if (locked) return <AccessGate user={me} denial={appDenial} />;
+  if (me && appDenial) return <AccessGate user={me} denial={appDenial} />;
 
   return (
     <ToastProvider>
