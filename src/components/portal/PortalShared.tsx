@@ -36,7 +36,7 @@ export function usePortalEditAccess(): { mayEdit: boolean; reason: string | unde
  * The narrower gate: the handful of things an administrator may look at but not change.
  *
  * Separate hook rather than a flag on the one above, because the refusal is a different sentence.
- * "Auditor accounts are view-only" is wrong on a screen an ADMIN is being turned away from, and a
+ * "Read-only admins are view-only" is wrong on a screen an ADMIN is being turned away from, and a
  * control that greys out with no reason, or with the wrong one, reads as a bug.
  */
 export function usePortalPolicyAccess(): { maySetPolicy: boolean; reason: string | undefined } {
@@ -66,7 +66,7 @@ const SHARED_LABELS = {
 
 /** Why a control is disabled, said in the role's own words rather than "no permission". */
 const READ_ONLY_REASON = {
-  en: "Auditor accounts have view-only access to this console.",
+  en: "Read-only admin accounts have view-only access to this console.",
   ko: "읽기 전용 관리자 계정은 이 콘솔을 보기만 할 수 있습니다.",
 } as const;
 
@@ -337,7 +337,7 @@ interface SelectOption {
   label: string;
   /**
    * One line under the label, shown only in the open list. Roles are the case this exists for:
-   * an administrator does not memorise what "Auditor" means, they read the sentence at the moment
+   * an administrator does not memorise what "Read-only admin" grants, they read the sentence at the moment
    * they pick it. Jira, StackAI and Vanta all put the sentence in the dropdown for the same reason.
    */
   description?: string;
@@ -1500,7 +1500,7 @@ export function usePortalFaceAccess(): { mayViewFaces: boolean; reason: string }
 }
 
 const FACE_HIDDEN_REASON = {
-  en: "Photo hidden from auditor accounts",
+  en: "Photo hidden from read-only admin accounts",
   ko: "읽기 전용 관리자 계정에는 사진이 보이지 않습니다",
 } as const;
 

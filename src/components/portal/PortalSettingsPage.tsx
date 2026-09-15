@@ -184,7 +184,7 @@ const T = {
     updatePassword: "Update password",
     passwordChanged: "Password changed",
     passwordChangedBody: "Sign in with the new password next time.",
-    roles: { owner: "Owner", admin: "Admin", auditor: "Auditor", none: "No Portal access" } as Record<string, string>,
+    roles: { owner: "Owner", admin: "Admin", auditor: "Read-only admin", none: "No Portal access" } as Record<string, string>,
   },
   ko: {
     accountTitle: "계정",

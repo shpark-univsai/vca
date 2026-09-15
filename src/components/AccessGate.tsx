@@ -132,7 +132,7 @@ const T = {
     activateWithCode: "Activate with a registration code",
     contactNamed: (who: string) => <>For an account or access, contact <strong style={{ color: "var(--gray-600)" }}>{who}</strong>.</>,
     contactGeneric: "For an account or access, contact your security operations team.",
-    roles: { owner: "Owner", admin: "Administrator", auditor: "Auditor", none: "No console access" },
+    roles: { owner: "Owner", admin: "Administrator", auditor: "Read-only admin", none: "No console access" },
   },
   ko: {
     chooseTitle: "어디로 가시겠습니까?",
