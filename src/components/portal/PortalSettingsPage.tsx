@@ -269,7 +269,7 @@ const T = {
     updatePassword: "비밀번호 변경",
     passwordChanged: "비밀번호가 변경되었습니다",
     passwordChangedBody: "다음 로그인부터 새 비밀번호를 사용하세요.",
-    roles: { owner: "최고관리자", admin: "관리자", auditor: "감사자", none: "Portal 접근 없음" } as Record<string, string>,
+    roles: { owner: "최고관리자", admin: "관리자", auditor: "읽기 전용 관리자", none: "Portal 접근 없음" } as Record<string, string>,
   },
 } as const;
 

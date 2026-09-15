@@ -337,11 +337,14 @@ export default function AccessGate({ user, denial, inPortal = false }: AccessGat
   const [portalLang] = usePortalLanguage();
   const lang = inPortal ? portalLang : appLang;
   const t = T[lang];
-  // Ticked by default: the question is worth asking once, and asking it every morning for the
-  // life of the account is not what anybody wants from a two-door install. Unticking is how
-  // somebody who genuinely alternates says "keep asking" — and because crossing over updates the
-  // remembered half (see updateGateChoice), leaving it ticked locks nobody in.
-  const [remember, setRemember] = useState(true);
+  // Unticked by default (decided 2026-09-15). It was ticked, on the reasoning that asking every
+  // morning is not what anybody wants from a two-door install — true of one person on one browser,
+  // and this store is neither. localStorage belongs to the WORKSTATION, and the deployment is
+  // control rooms where a terminal is handed over at shift change: a default that remembers means
+  // the first person to touch a new terminal silently decides where the next person lands, without
+  // either of them being asked. Remembering is worth having, so the box stays — it just has to be
+  // somebody choosing it, not the screen choosing for them.
+  const [remember, setRemember] = useState(false);
 
   const name = user?.name ?? SIGNED_IN_USER.name;
   const email = user?.email ?? SIGNED_IN_USER.email;

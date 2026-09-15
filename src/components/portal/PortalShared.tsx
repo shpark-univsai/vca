@@ -67,7 +67,7 @@ const SHARED_LABELS = {
 /** Why a control is disabled, said in the role's own words rather than "no permission". */
 const READ_ONLY_REASON = {
   en: "Auditor accounts have view-only access to this console.",
-  ko: "감사자 계정은 이 콘솔을 보기만 할 수 있습니다.",
+  ko: "읽기 전용 관리자 계정은 이 콘솔을 보기만 할 수 있습니다.",
 } as const;
 
 /** Why an ADMINISTRATOR — who may change almost everything here — is refused this one. */
@@ -1501,7 +1501,7 @@ export function usePortalFaceAccess(): { mayViewFaces: boolean; reason: string }
 
 const FACE_HIDDEN_REASON = {
   en: "Photo hidden from auditor accounts",
-  ko: "감사자 계정에는 사진이 보이지 않습니다",
+  ko: "읽기 전용 관리자 계정에는 사진이 보이지 않습니다",
 } as const;
 
 /**

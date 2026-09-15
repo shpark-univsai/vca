@@ -68,7 +68,7 @@ const T = {
     statTotal: "건", statTotalLabel: "기록된 조회",
     statNoRef: "참조번호 없음", statNoRefUnit: "건",
     statOperators: "명", statOperatorsLabel: "조회한 사람",
-    ownerOnly: "이 기록은 최고관리자와 감사자가 읽습니다.",
+    ownerOnly: "이 기록은 최고관리자와 읽기 전용 관리자가 읽습니다.",
     csvAt: "시각", csvActor: "조회자", csvPurpose: "목적", csvReference: "참조번호",
     csvTarget: "조회 대상", csvSurface: "화면", csvResults: "결과", csvIp: "위치",
     none: "—",
