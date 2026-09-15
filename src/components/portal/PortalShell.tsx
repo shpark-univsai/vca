@@ -395,6 +395,17 @@ export default function PortalShell() {
           is what they are. With the line gone the leftover height read as a gap, so it went too. */}
       <div style={{
         height: "52px",
+        // The gap below this bar belongs to the BAR, not to the scroller underneath it.
+        //
+        // It used to be the scroller's own padding-top, and a scroll container's top padding is
+        // inside the scrollport: content scrolls up through it. Every sticky table header in
+        // Portal sticks at the scrollport's CONTENT edge, which left a 12px strip above the
+        // header where scrolled-past rows kept showing — half a line of an old row floating over
+        // the table. Input Sources hit this first and worked around it per-table by dropping
+        // sticky for a JS-measured fixed header (see useStickyHeader in ProjectCamerasTab); the
+        // other five tables had no such guard. Moving the 12px out here removes the strip itself,
+        // so plain `position: sticky; top: 0` is correct again everywhere.
+        marginBottom: "12px",
         display: "flex", alignItems: "center", padding: "0 32px", flexShrink: 0, gap: "10px",
         // The same column as the page below it, and for the reason written just above: with no
         // rule between them the crumb reads as the page's first line. It was not sitting on the
@@ -548,7 +559,7 @@ export default function PortalShell() {
          * Input Sources' sticky header measures this container to position its fixed copy — an
          * inner box would leave the header wider than the content it covers.
          */
-        <div style={{ flex: 1, overflow: "auto", padding: "12px 32px 32px", width: "100%", maxWidth: "1600px", marginInline: "auto" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: "0 32px 32px", width: "100%", maxWidth: "1600px", marginInline: "auto" }}>
             {showAccount
               ? <PortalSettingsPage projectId={currentProjectId} />
               : teamProjects.length === 0
