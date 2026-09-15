@@ -1768,7 +1768,16 @@ export const SIGNED_IN_USER: SignedInUser = {
 export type AppScreen = "live" | "bestframe" | "redmap" | "reid" | "redface";
 
 /** Order is the app's own tab order, so any list built from it reads the way the app does. */
-export const APP_SCREENS: AppScreen[] = ["bestframe", "live", "reid", "redface", "redmap"];
+/**
+ * Every screen, in the order the grants ladder runs: what is happening now, then what happened
+ * before, then the two that reconstruct a person's path.
+ *
+ * The order is not cosmetic — this array is what every list of grants renders in (the invite
+ * modal, My page) and what `screensFor` filters against, so it is also the order a stored
+ * `appScreens` comes out in. Alphabetical or arbitrary order made the preset descriptions
+ * ("Operator + finds what happened before") disagree with the list underneath them.
+ */
+export const APP_SCREENS: AppScreen[] = ["live", "bestframe", "redmap", "reid", "redface"];
 
 /**
  * How an account's app grants are decided: by following a preset, or by its own set.

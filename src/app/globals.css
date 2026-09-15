@@ -820,3 +820,20 @@ input:autofill {
 @media (max-height: 760px) {
   .vca-auth-scroll { padding: 20px 24px; }
 }
+
+/* The invite modal is two columns: who the person is on the left, what they may reach on the
+   right. Stripe, Whop and Grok all land on this shape for the same reason — a preset means
+   nothing until you can see, beside it, what it switches on. Below 820px the columns stack and
+   the divider moves to the top edge of the second one, so the reading order stays identity first.
+
+   A media query rather than inline styles because there is no other way to have one: the file
+   styles inline, and a grid that cannot collapse would push the right column off a laptop. */
+.portal-invite-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+}
+.portal-invite-grid > * + * { border-left: 1px solid var(--gray-200); }
+@media (max-width: 820px) {
+  .portal-invite-grid { grid-template-columns: minmax(0, 1fr); }
+  .portal-invite-grid > * + * { border-left: none; border-top: 1px solid var(--gray-200); }
+}

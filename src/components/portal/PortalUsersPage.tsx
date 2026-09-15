@@ -284,8 +284,23 @@ const T = {
     grantCustomDesc: "Pick the screens and actions one by one.",
     grantNotChosen: "Choose how this account's grants are decided",
     screenName: { live: "Live monitoring", bestframe: "Best Frame", redmap: "Redmap", reid: "Re-ID", redface: "RedFace" } as Record<AppScreen, string>,
+    screenDesc: {
+      live: "Cameras as they are right now",
+      bestframe: "Open the frames a detection produced",
+      redmap: "Follow a route on the map",
+      reid: "Find the same person on another camera",
+      redface: "Search past detections by face",
+    } as Record<AppScreen, string>,
     verbSearch: "Person search",
+    verbSearchDesc: "Reconstruct where a person went",
     verbExport: "Evidence export",
+    verbExportDesc: "Take a sighting out of the console as a file",
+    grantsHeading: "What this grants",
+    grantsGroupScreens: "Screens",
+    grantsGroupVerbs: "Actions",
+    grantsLocked: "Follows the preset. Choose Custom to change individual items.",
+    grantsUnset: "Choose how grants are decided, above.",
+    grantsPortalOnly: "A Portal-only account has no app screens to grant.",
   },
   ko: {
     // Page header
@@ -533,25 +548,78 @@ const T = {
     grantCustomDesc: "화면과 동작을 하나씩 고릅니다.",
     grantNotChosen: "권한 부여 방식을 선택해주세요",
     screenName: { live: "실시간 관제", bestframe: "베스트 프레임", redmap: "레드맵", reid: "Re-ID", redface: "RedFace" } as Record<AppScreen, string>,
+    screenDesc: {
+      live: "지금 들어오는 카메라 화면",
+      bestframe: "검출이 남긴 프레임을 열어 본다",
+      redmap: "지도에서 동선을 따라간다",
+      reid: "다른 카메라에서 같은 사람을 찾는다",
+      redface: "얼굴로 지난 검출을 찾는다",
+    } as Record<AppScreen, string>,
     verbSearch: "인물 검색",
+    verbSearchDesc: "그 사람이 어디를 지나갔는지 되짚는다",
     verbExport: "증거 내보내기",
+    verbExportDesc: "검출을 파일로 꺼낸다",
+    grantsHeading: "이 방식이 켜는 것",
+    grantsGroupScreens: "화면",
+    grantsGroupVerbs: "동작",
+    grantsLocked: "프리셋을 따릅니다. 하나씩 바꾸려면 커스텀을 고르세요.",
+    grantsUnset: "위에서 부여 방식을 먼저 고르세요.",
+    grantsPortalOnly: "Portal만 쓰는 계정에는 부여할 앱 화면이 없습니다.",
   },
 } as const;
 
 /** A checkbox that reads as a chip. Used where a handful of flags sit in one row. */
-function CheckChip({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+/**
+ * One grant, as a row: what it is, what it lets somebody do, and whether this account has it.
+ *
+ * This replaced a row of pills. Seven pills side by side read as one control with seven states —
+ * you could not tell at a glance which were on, and nothing said what any of them meant. A grant
+ * is a sentence about what a person may do, so it needs the width of a sentence. Stripe, Whop and
+ * Grok all put these in a list beside the role rather than as chips under it, for the same reason.
+ *
+ * `locked` is not `disabled` in the cosmetic sense — a preset-mode account genuinely holds these
+ * and the reader has to be able to see which, so the row stays legible and only stops responding.
+ * Hiding them would answer "what does this preset do?" with silence.
+ */
+function GrantRow({ label, desc, on, locked, onToggle }: {
+  label: string; desc: string; on: boolean; locked: boolean; onToggle: () => void;
+}) {
   return (
-    <button onClick={onClick}
+    <button onClick={locked ? undefined : onToggle} disabled={locked} aria-pressed={on}
       style={{
-        display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 10px", borderRadius: "999px",
-        border: on ? "1px solid var(--gray-900)" : BORDER,
-        backgroundColor: on ? "var(--gray-900)" : "white",
-        color: on ? "white" : "var(--gray-600)",
-        fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+        width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
+        padding: "9px 10px", borderRadius: "8px", border: "none", fontFamily: "inherit",
+        backgroundColor: on && !locked ? "var(--gray-50)" : "transparent",
+        cursor: locked ? "default" : "pointer",
+        opacity: locked && !on ? 0.5 : 1,
       }}>
-      <span style={{ fontSize: "10px" }}>{on ? "✓" : "＋"}</span>
-      {label}
+      <span style={{
+        width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, marginTop: "1px",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)",
+        backgroundColor: on ? "var(--gray-900)" : "white",
+      }}>
+        {on && (
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+            <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: "12.5px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</span>
+        <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, marginTop: "1px" }}>{desc}</span>
+      </span>
     </button>
+  );
+}
+
+/** The group heading inside the grant list — "Screens" over the five, "Actions" over the two. */
+function GrantGroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p style={{
+      fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+      color: "var(--gray-400)", padding: "0 10px", marginBottom: "2px",
+    }}>{children}</p>
   );
 }
 
@@ -606,6 +674,21 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
    */
   const effectiveChoice = presets.length === 0 ? "custom" : grantChoice;
   const grantsChosen = accessMode === "portalOnly" || effectiveChoice !== null;
+  /**
+   * What the grant list shows, which is not always what the custom checkboxes hold.
+   *
+   * The list is on screen before anything is chosen and while a preset is chosen, so it needs a
+   * source in all three states: nothing yet (everything off — an honest empty, not a guess), a
+   * preset (that preset's grants, read-only), custom (the checkboxes themselves). Reading
+   * customScreens in preset mode would show the wrong list, and it is the same list the
+   * administrator is about to believe.
+   */
+  const pickedPreset = presets.find(pr => pr.id === effectiveChoice);
+  const isCustom = effectiveChoice === "custom";
+  const shown = pickedPreset ? grantsOfPreset(pickedPreset) : null;
+  const shownScreens = isCustom ? customScreens : (shown?.appScreens ?? []);
+  const shownSearch = isCustom ? customSearch : shown?.appSearch === true;
+  const shownExport = isCustom ? customExport : shown?.appExport === true;
   const [permission, setPermission] = useState<PortalPermission>("admin");
   const [projectIds, setProjectIds] = useState<string[]>(defaultProjectId ? [defaultProjectId] : []);
 
@@ -689,14 +772,18 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
       {/* margin auto, not just centring: with the scroll on the backdrop, a form taller than the
           window has its top cut off under plain align-items centre. */}
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", margin: "auto", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      {/* Wider than the other modals on purpose. Two columns need the room, and the right column
+          is where camera and zone scope will land when that arrives — a 440px form would have to
+          be redesigned again to take it. */}
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "880px", width: "100%", margin: "auto", boxShadow: "var(--shadow-modal)" }}>
+        <div style={{ padding: "18px 24px 14px", borderBottom: "1px solid var(--gray-200)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.modalTitle}</p>
           <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
           </button>
         </div>
-        <div style={MODAL_BODY_WITH_SELECT}>
+        <div className="portal-invite-grid">
+          <div style={MODAL_BODY_WITH_SELECT}>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
             <TextField value={name} onChange={setName} placeholder={t.namePlaceholder} />
@@ -732,56 +819,6 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               ))}
             </div>
           </div>
-          {/* Only asked when the app is one of the doors — a Portal-only account has no screens
-              to grant, and the question would have no answer. Custom is the LAST ITEM OF THE SAME
-              LIST rather than a separate switch: it is one more way of answering "how are this
-              person's grants decided", and a toggle beside the list would make it a second
-              question people answer before the first. */}
-          {accessMode !== "portalOnly" && (
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.grantLabel}</label>
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                {[...presets.map(pr => ({ id: pr.id, label: pr.label, desc: pr.description })),
-                  { id: "custom", label: t.grantCustom, desc: t.grantCustomDesc }].map(opt => {
-                  const picked = effectiveChoice === opt.id;
-                  return (
-                    <div key={opt.id}>
-                      <button onClick={() => setGrantChoice(opt.id)}
-                        style={{
-                          width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
-                          padding: "10px 12px", borderRadius: "10px", cursor: "pointer",
-                          border: picked ? "1px solid var(--gray-900)" : BORDER,
-                          backgroundColor: picked ? "var(--gray-100)" : "white", fontFamily: "inherit",
-                        }}>
-                        <span style={{
-                          width: "14px", height: "14px", borderRadius: "999px", flexShrink: 0, marginTop: "2px",
-                          border: picked ? "4px solid var(--gray-900)" : "1px solid var(--gray-300)",
-                        }} />
-                        <span style={{ minWidth: 0 }}>
-                          <span style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{opt.label}</span>
-                          {/* Required on every option. A list of job titles with no descriptions
-                              cannot be chosen from, and removing the pre-selected default only
-                              works if the reader can tell the options apart. */}
-                          <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "2px" }}>{opt.desc}</span>
-                        </span>
-                      </button>
-                      {/* The checkboxes open under the option that asked for them, not somewhere
-                          else on the form. */}
-                      {picked && opt.id === "custom" && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", padding: "10px 12px 2px 36px" }}>
-                          {APP_SCREENS.map(sc => (
-                            <CheckChip key={sc} label={t.screenName[sc]} on={customScreens.includes(sc)} onClick={() => toggleCustomScreen(sc)} />
-                          ))}
-                          <CheckChip label={t.verbSearch} on={customSearch} onClick={() => setCustomSearch(!customSearch)} />
-                          <CheckChip label={t.verbExport} on={customExport} onClick={() => setCustomExport(!customExport)} />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
           {accessMode !== "appOnly" && (
             <div>
               <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.permissionLabel}</label>
@@ -815,8 +852,85 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "8px" }}>{mailTransportNote}</p>
             )}
           </div>
+          </div>
+
+          {/* RIGHT COLUMN — what this account may reach.
+              Only asked when the app is one of the doors: a Portal-only account has no screens to
+              grant and the question would have no answer. Custom is the LAST ITEM OF THE SAME LIST
+              rather than a separate switch — it is one more way of answering "how are this
+              person's grants decided", and a toggle beside the list would make it a second
+              question people answer before the first. */}
+          {accessMode !== "portalOnly" ? (
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.grantLabel}</label>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {[...presets.map(pr => ({ id: pr.id, label: pr.label, desc: pr.description })),
+                    { id: "custom", label: t.grantCustom, desc: t.grantCustomDesc }].map(opt => {
+                    const picked = effectiveChoice === opt.id;
+                    return (
+                      <button key={opt.id} onClick={() => setGrantChoice(opt.id)}
+                        style={{
+                          width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
+                          padding: "10px 12px", borderRadius: "10px", cursor: "pointer",
+                          border: picked ? "1px solid var(--gray-900)" : BORDER,
+                          backgroundColor: picked ? "var(--gray-100)" : "white", fontFamily: "inherit",
+                        }}>
+                        <span style={{
+                          width: "14px", height: "14px", borderRadius: "999px", flexShrink: 0, marginTop: "2px",
+                          border: picked ? "4px solid var(--gray-900)" : "1px solid var(--gray-300)",
+                        }} />
+                        <span style={{ minWidth: 0 }}>
+                          <span style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{opt.label}</span>
+                          {/* Required on every option. A list of job titles with no descriptions
+                              cannot be chosen from, and removing the pre-selected default only
+                              works if the reader can tell the options apart. */}
+                          <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "2px" }}>{opt.desc}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* THE LIST IS ALWAYS HERE, not only under Custom.
+                  A preset is a name until you can see what it switches on, and the reader is being
+                  asked to choose between names with no default pre-picked. In preset mode the rows
+                  are locked rather than hidden: hiding them answers "what does this preset do?"
+                  with silence. */}
+              <div style={{ borderTop: "1px solid var(--gray-200)", paddingTop: "14px", minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", marginBottom: "8px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.grantsHeading}</label>
+                  <span style={{ fontSize: "11px", color: "var(--gray-400)", textAlign: "right", lineHeight: 1.45 }}>
+                    {effectiveChoice === null ? t.grantsUnset : !isCustom ? t.grantsLocked : ""}
+                  </span>
+                </div>
+                <GrantGroupLabel>{t.grantsGroupScreens}</GrantGroupLabel>
+                <div style={{ display: "flex", flexDirection: "column", marginBottom: "10px" }}>
+                  {APP_SCREENS.map(sc => (
+                    <GrantRow key={sc} label={t.screenName[sc]} desc={t.screenDesc[sc]}
+                      on={shownScreens.includes(sc)} locked={!isCustom}
+                      onToggle={() => toggleCustomScreen(sc)} />
+                  ))}
+                </div>
+                <GrantGroupLabel>{t.grantsGroupVerbs}</GrantGroupLabel>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <GrantRow label={t.verbSearch} desc={t.verbSearchDesc}
+                    on={shownSearch} locked={!isCustom} onToggle={() => setCustomSearch(!customSearch)} />
+                  <GrantRow label={t.verbExport} desc={t.verbExportDesc}
+                    on={shownExport} locked={!isCustom} onToggle={() => setCustomExport(!customExport)} />
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Portal-only. The column is not left blank — an empty half reads as something that
+               failed to load rather than as a question that does not apply here. */
+            <div style={{ padding: "20px", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 0 }}>
+              <p style={{ fontSize: "12px", color: "var(--gray-400)", textAlign: "center", lineHeight: 1.6, maxWidth: "26ch" }}>{t.grantsPortalOnly}</p>
+            </div>
+          )}
         </div>
-        <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+        <div style={{ padding: "16px 24px", borderTop: "1px solid var(--gray-200)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
           {/* The reason sits beside the button rather than leaving it dead and silent. Shown only
               once Invite has been pressed: nothing on this form goes red while somebody is still
               filling it in, because a form that argues during typing is a form people fight. */}
