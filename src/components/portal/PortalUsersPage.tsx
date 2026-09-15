@@ -787,9 +787,16 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
       {/* margin auto, not just centring: with the scroll on the backdrop, a form taller than the
           window has its top cut off under plain align-items centre. */}
-      {/* Wider than the other modals on purpose. Two columns need the room, and the right column
-          is where camera and zone scope will land when that arrives — a 440px form would have to
-          be redesigned again to take it. */}
+      {/* Wider than the other modals on purpose: two columns need the room.
+          CAMERA SCOPE GOES IN THE LEFT COLUMN, NOT THIS ONE. An earlier note here said the right
+          column was its home, which the arithmetic disproves — the right column already stands at
+          788px with four presets and the seven grant rows, and the picker is 544px, so it would
+          put the modal at 1454px. The left column is at 470px and has the space. It is also where
+          the question belongs: this column already carries the door, the console role and the
+          project chips, and the project chips ARE a scope picker. Camera scope is one notch
+          narrower than they are, and the column then reads as one chain — team, which door, which
+          project, which cameras inside it. The right column answers a different question: which
+          screens, which actions. */}
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "880px", width: "100%", margin: "auto", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "18px 24px 14px", borderBottom: "1px solid var(--gray-200)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.modalTitle}</p>
