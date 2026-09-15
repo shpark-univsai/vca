@@ -7,6 +7,7 @@ import {
 } from "@/lib/time";
 import { effectiveCodeStatus, generateRegistrationCode, type RosterEntry } from "@/lib/staffRoster";
 import { generateTemporaryPassword } from "@/lib/password";
+import { getComplianceConfig } from "@/lib/complianceConfig";
 
 // Deterministic pseudo-random in [0,1) — same formula as mockData.ts's own seededRandom — used
 // below to bulk-generate cameras without Math.random(), which would differ between the
@@ -793,7 +794,19 @@ interface VcaStoreState {
   // null clears the override and falls back to the auto-detected value; true/false pins it.
   setNetworkIsolationOverride: (projectId: string, override: boolean | null) => void;
   updateTeamMail: (teamId: string, updates: Pick<Team, "mailDomain" | "smtp">) => void;
-  addPerson: (person: Omit<Person, "id">) => void;
+  /**
+   * `expiresAt` has three states here, not two, and the third is the point:
+   *
+   * - a date — this listing ends then
+   * - `null`  — somebody was asked and answered "no end date". Kept as given.
+   * - absent  — nobody was asked. The installation's retention rule fills it in.
+   *
+   * The rule used to live in the registration form, which meant it applied to people registered
+   * one at a time and to nobody else. A CSV import — how a real roster actually arrives — wrote
+   * rows with no expiry at all, so how long a face was kept depended on which door it came
+   * through. A policy that one screen implements is not a policy.
+   */
+  addPerson: (person: Omit<Person, "id" | "expiresAt"> & { expiresAt?: string | null }) => void;
   removePerson: (personId: string) => void;
   /**
    * A CSV import, as one act.
@@ -804,7 +817,7 @@ interface VcaStoreState {
    * not true of any of it, because nothing had been sent anywhere. One entry naming the file,
    * the way removeCameras and setCamerasZone already collapse a bulk action.
    */
-  addPersons: (persons: Omit<Person, "id">[], source: string) => number;
+  addPersons: (persons: (Omit<Person, "id" | "expiresAt"> & { expiresAt?: string | null })[], source: string) => number;
   /**
    * Edit a registered face — name, tag, priority, note, photo.
    *
@@ -1359,6 +1372,25 @@ export function personsInProject(persons: Person[], projectId: string): Person[]
  * of PUT /v1/provision/vips, or the analysis module keeps matching a face the console says it
  * has stopped watching. The screen filtering them is not the control; the provisioning call is.
  */
+/**
+ * The end date the installation's retention rule gives a listing starting today, or undefined
+ * where it has no rule.
+ *
+ * Exported because the registration form shows this value before anything is saved — the field
+ * arrives filled in, and what the registrar does is shorten it or clear it. Both sides read this
+ * function so the date on screen and the date stored cannot drift apart.
+ */
+export function defaultVipExpiry(): string | undefined {
+  const days = getComplianceConfig().vipDefaultValidDays;
+  return days === null ? undefined : new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+}
+
+/** Resolves addPerson's three-state `expiresAt`. See the declaration for what each state means. */
+function settledExpiry(given: string | null | undefined): string | undefined {
+  if (given === null) return undefined;
+  return given ?? defaultVipExpiry();
+}
+
 export function watchedPersonsInProject(persons: Person[], projectId: string, nowMs: number | null): Person[] {
   const today = nowMs === null ? null : new Date(nowMs).toISOString().slice(0, 10);
   return persons.filter(p => {
@@ -3287,13 +3319,13 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     })),
   addPerson: (person) =>
     set(state => ({
-      persons: [...state.persons, { registeredBy: SIGNED_IN_USER.name, ...person, id: `person-${++personSeq}` }],
+      persons: [...state.persons, { registeredBy: SIGNED_IN_USER.name, ...person, expiresAt: settledExpiry(person.expiresAt), id: `person-${++personSeq}` }],
       auditLog: [{ id: `audit-${++auditSeq}`, projectId: person.projectId, message: `VIP ${person.name} registered`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   addPersons: (persons, source) => {
     if (persons.length === 0) return 0;
     set(state => ({
-      persons: [...state.persons, ...persons.map(pp => ({ registeredBy: SIGNED_IN_USER.name, ...pp, id: `person-${++personSeq}` }))],
+      persons: [...state.persons, ...persons.map(pp => ({ registeredBy: SIGNED_IN_USER.name, ...pp, expiresAt: settledExpiry(pp.expiresAt), id: `person-${++personSeq}` }))],
       auditLog: [{
         id: `audit-${++auditSeq}`, projectId: persons[0].projectId,
         message: `${persons.length} ${persons.length === 1 ? "person" : "people"} imported from ${source}`,

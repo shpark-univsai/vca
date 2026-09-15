@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
 import { AlertTriangle, ArrowDownWideNarrow, Eye, FileOutput, ImageOff, RefreshCw, Users } from "lucide-react";
-import { canSetPolicy, currentPortalUser, registryHealth, useVcaStore, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
+import { canSetPolicy, currentPortalUser, defaultVipExpiry, registryHealth, useVcaStore, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -595,9 +595,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
    * value that quietly re-derives itself against a moving clock is a field that disagrees with
    * what the person looking at it chose.
    */
-  const [policyDate] = useState(() => compliance.vipDefaultValidDays === null
-    ? null
-    : dateInDays(compliance.vipDefaultValidDays));
+  const [policyDate] = useState(() => defaultVipExpiry() ?? null);
   /**
    * A new listing opens with the policy's end date already in it; editing keeps whatever the row
    * has, including nothing.
@@ -1465,7 +1463,10 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       groupId: values.groupId,
       categoryId: values.categoryId,
       basis: values.basis,
-      expiresAt: values.expiresAt,
+      // null, not undefined: the form asked and this is the answer. Undefined would mean nobody
+      // was asked, and the store would fill the retention default in over a date the registrar
+      // deliberately cleared. See addPerson.
+      expiresAt: values.expiresAt ?? null,
       projectId,
     });
     setShowRegister(false);
