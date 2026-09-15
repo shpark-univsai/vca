@@ -136,9 +136,7 @@ const T = {
     fieldZone: "Zone",
     fieldZonePlaceholder: "Front Gate",
     fieldRtspUrl: "Connection — RTSP URL *",
-    fieldResolution: "Resolution",
     fieldMaker: "Maker",
-    fieldStatus: "Status",
     cancel: "Cancel",
     saveChanges: "Save changes",
     addDevice: "Add device",
@@ -287,9 +285,7 @@ const T = {
     fieldZone: "구역",
     fieldZonePlaceholder: "정문 구역",
     fieldRtspUrl: "연결 — RTSP URL *",
-    fieldResolution: "해상도",
     fieldMaker: "제조사",
-    fieldStatus: "상태",
     cancel: "취소",
     saveChanges: "변경사항 저장",
     addDevice: "기기 추가",
@@ -433,7 +429,7 @@ type SourceRow =
   | { kind: "video" | "image" | "deepfake"; id: string; name: string; upload: UploadedMedia };
 
 const MAKERS = ["Hanwha", "Hikvision", "Dahua"];
-const RESOLUTIONS = ["FHD (1920×1080)", "4K (3840×2160)"];
+// No resolution chooser, and no status chooser — see CameraFormValues.
 // No Source Type chooser: the v1 contract is plain CCTV only, so there is nothing to choose
 // between (backend reply C2, 2026-09-09). See the note above Camera in the store.
 
@@ -443,7 +439,6 @@ interface CameraFormValues {
   location: string;
   zone: string;
   rtspUrl: string;
-  resolution: string;
   maker: string;
   model: string;
   username: string;
@@ -457,14 +452,25 @@ interface CameraFormValues {
   serverId: string;
   lat: string;
   lng: string;
-  status: CameraStatus;
+  /*
+   * NOT HERE, deliberately (2026-09-15): resolution and status used to be two selects at the foot
+   * of this form, and neither was a question the person filling it in could answer.
+   *
+   * Status was offered only on ADD, so an operator declared a camera online or offline before
+   * anything had been plugged in — and that answer went straight into the Overview's "51 of 60
+   * connected". The same fix the server form took this morning. A camera added here now starts
+   * offline, the way one added by the setup wizard already did: nothing has reached this address.
+   *
+   * Resolution is the device's own answer — an RTSP stream states it the moment it connects — and
+   * the field it wrote was read in exactly one place, a line on the grid card. Camera.resolution
+   * stays on the type for the server to fill; this form stops guessing it.
+   */
 }
 
 const EMPTY_FORM: CameraFormValues = {
   name: "", ip: "", location: "", zone: "", rtspUrl: "",
-  resolution: RESOLUTIONS[0], maker: MAKERS[0], model: "", username: "", password: "",
+  maker: MAKERS[0], model: "", username: "", password: "",
   serverId: "", lat: "", lng: "",
-  status: "offline",
 };
 
 // Camera codes are an internal identifier (shown in the table, used in mock RTSP paths) — the
@@ -630,10 +636,6 @@ function CameraFormModal({
             {field("zone", t.fieldZone, t.fieldZonePlaceholder)}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            {selectField(t.fieldResolution, form.resolution, RESOLUTIONS.map(r => ({ value: r, label: r })), v => setForm(f => ({ ...f, resolution: v })))}
-            {!isEdit && selectField(t.fieldStatus, form.status === "online" ? "Online" : "Offline", [{ value: "Online", label: t.online }, { value: "Offline", label: t.offline }], v => setForm(f => ({ ...f, status: v === "Online" ? "online" : "offline" })))}
-          </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
@@ -1001,9 +1003,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     addCamera({
       projectId, name: values.name.trim(), code: generateCameraCode(values.name.trim(), cameras.map(c => c.code)), rtspUrl: values.rtspUrl.trim(),
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
-      maker: values.maker, model: values.model.trim() || undefined, resolution: values.resolution,
+      maker: values.maker, model: values.model.trim() || undefined,
       username: values.username.trim() || undefined, serverId: values.serverId || undefined,
-      ip: values.ip.trim(), mac: "", status: values.status, thumbnail: DEFAULT_THUMBNAIL,
+      // Offline, not a claim. Portal has not reached this address and will not until camera
+      // polling lands — the same starting state the setup wizard's first camera gets.
+      ip: values.ip.trim(), mac: "", status: "offline", thumbnail: DEFAULT_THUMBNAIL,
       lat: values.lat.trim() === "" ? 0 : Number(values.lat),
       lng: values.lng.trim() === "" ? 0 : Number(values.lng),
     });
@@ -1016,7 +1020,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     updateCamera(editingCamera.id, {
       name: values.name.trim(), rtspUrl: values.rtspUrl.trim(), ip: values.ip.trim(),
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
-      maker: values.maker, model: values.model.trim() || undefined, resolution: values.resolution,
+      maker: values.maker, model: values.model.trim() || undefined,
       username: values.username.trim() || undefined, serverId: values.serverId || undefined,
       lat: values.lat.trim() === "" ? 0 : Number(values.lat),
       lng: values.lng.trim() === "" ? 0 : Number(values.lng),
@@ -1848,13 +1852,13 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             name: editingCamera.name, ip: editingCamera.ip, rtspUrl: editingCamera.rtspUrl,
             location: editingCamera.location, zone: editingCamera.zone,
             maker: editingCamera.maker ?? MAKERS[0], model: editingCamera.model ?? "",
-            resolution: editingCamera.resolution ?? RESOLUTIONS[0],
+
             username: editingCamera.username ?? "",
             // Always blank. The store has no password to put here, which is the point.
             password: "",
             serverId: editingCamera.serverId ?? "",
             lat: String(editingCamera.lat ?? ""), lng: String(editingCamera.lng ?? ""),
-            status: editingCamera.status,
+
           }}
           servers={projectServers}
           onClose={() => setEditingCamera(null)}
