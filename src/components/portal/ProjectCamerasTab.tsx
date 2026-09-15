@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import CameraImportModal from "./CameraImportModal";
-import { CircleAlert, FileOutput, Film as FilmIcon, Image as ImageIcon, RotateCw, ShieldCheck, Video as VideoIcon, VideoOff } from "lucide-react";
-import { useVcaStore, projectChannelLimit, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
+import { CircleAlert, FileOutput, Film as FilmIcon, Image as ImageIcon, RotateCw, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
+import { useVcaStore, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
@@ -39,6 +39,9 @@ const T = {
     healthConnected: "connected",
     healthConnectedWhy: "Answered the last connection attempt. It says the stream is reachable, not that anything is looking at it.",
     healthOfFleet: (total: number) => `of ${total}`,
+    healthAwaiting: "awaiting first contact",
+    healthAwaitingWhy: "Registered here, never heard from. Not a fault — this is where every camera sits between being added and its first report. On installation day it is most of the fleet.",
+    statusAwaiting: "Not yet connected",
     healthOffline: "offline",
     healthOfflineWhy: "No answer at all — the address is unreachable. Usually power, cable or network rather than the camera itself.",
     healthError: "refusing the connection",
@@ -188,6 +191,9 @@ const T = {
     healthConnected: "연결됨",
     healthConnectedWhy: "마지막 연결 시도에 응답했습니다. 스트림에 닿는다는 뜻이지, 누가 보고 있다는 뜻은 아닙니다.",
     healthOfFleet: (total: number) => `/ ${total}대`,
+    healthAwaiting: "첫 연결 대기",
+    healthAwaitingWhy: "여기 등록만 되고 아직 한 번도 응답한 적이 없습니다. 고장이 아니라, 모든 카메라가 등록과 첫 보고 사이에 거치는 자리입니다. 설치 당일에는 대부분이 여기 있습니다.",
+    statusAwaiting: "연결 전",
     healthOffline: "오프라인",
     healthOfflineWhy: "응답이 아예 없습니다. 주소에 닿지 않는 상태로, 대개 카메라보다 전원·케이블·네트워크 문제입니다.",
     healthError: "연결 거부",
@@ -777,7 +783,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [zoneFilter, setZoneFilter] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "online" | "offline" | "error">("ALL");
+  // "awaiting" is not a CameraStatus — it is offline plus a never-reported clock. The filter
+  // carries it anyway because it is what a reader actually wants to narrow to on install day.
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "online" | "offline" | "error" | "awaiting">("ALL");
   /**
    * Which "installed but doing nothing" gap the list is narrowed to, if any — set by the summary
    * strip above the table.
@@ -893,7 +901,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const matchingCameras = projectCameras.filter(c => {
     const matchesSearch = !q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q) || c.rtspUrl.toLowerCase().includes(q) || c.ip.includes(q);
     const matchesZone = zoneFilter === "ALL" || c.zone === zoneFilter;
-    const matchesStatus = statusFilter === "ALL" || c.status === statusFilter;
+    const matchesStatus = statusFilter === "ALL"
+      ? true
+      : statusFilter === "awaiting" ? isAwaitingFirstContact(c)
+      : statusFilter === "offline" ? c.status === "offline" && !isAwaitingFirstContact(c)
+      : c.status === statusFilter;
     return matchesSearch && matchesZone && matchesStatus;
   });
   const matchingUploads = projectUploads.filter(u => {
@@ -989,7 +1001,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const onlineCount = projectCameras.filter(c => c.status === "online").length;
   // Counted, not derived from the total: with a third state, "everything that is not online" is
   // two different errands and one number would hide the smaller one.
-  const offlineCount = projectCameras.filter(c => c.status === "offline").length;
+  /* Split off the ones nothing has ever reached. Before this, registering a camera added a number
+     to a warning cell — so installation day, when fifty are typed in and none is wired yet, read
+     as fifty faults. See isAwaitingFirstContact(). */
+  const awaitingCount = projectCameras.filter(isAwaitingFirstContact).length;
+  const offlineCount = projectCameras.filter(c => c.status === "offline" && !isAwaitingFirstContact(c)).length;
   const errorCount = projectCameras.filter(c => c.status === "error").length;
   // Anything not yet analysed — queued or mid-run. Both are "not done", and an administrator does
   // the same thing about either: wait, or find out why.
@@ -1134,7 +1150,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       // the store's own note says so — and exporting it as Offline hands an auditor a file
       // that disagrees with the screen it came from.
       c.name, c.code, c.zone, c.location, c.rtspUrl,
-      c.status === "online" ? t.online : c.status === "error" ? t.statusError : t.offline,
+      c.status === "online" ? t.online : c.status === "error" ? t.statusError : isAwaitingFirstContact(c) ? t.statusAwaiting : t.offline,
     ]);
     const csv = [header, ...rows].map(row => row.map(csvEscape).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -1278,6 +1294,12 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           unit: undefined, tone: "warning" as const,
           icon: <CircleAlert size={14} strokeWidth={2.4} />,
         },
+        {
+          // Neutral, not warning: nothing is wrong with a camera that was registered this morning.
+          key: "awaiting" as const, count: awaitingCount, label: t.healthAwaiting, why: t.healthAwaitingWhy,
+          unit: undefined, tone: "neutral" as const,
+          icon: <Unplug size={14} strokeWidth={2.4} />,
+        },
       ]
         // A cell reading "0 refusing the connection" is a click that returns an empty table. The
         // connected cell stays whatever it says: zero of sixty connected is the loudest thing this
@@ -1334,6 +1356,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             { value: "ALL", label: t.filterAllStatus },
             { value: "online", label: `${t.online} (${onlineCount})` },
             { value: "offline", label: `${t.offline} (${offlineCount})` },
+            { value: "awaiting", label: `${t.statusAwaiting} (${awaitingCount})` },
             // Only when there is one to filter to. An option reading "Error (0)" invites a click
             // that returns an empty table.
             ...(errorCount > 0 ? [{ value: "error", label: `${t.statusError} (${errorCount})` }] : []),
@@ -1723,7 +1746,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     fontSize: "12px", fontWeight: 700,
                     color: cam.status === "online" ? "var(--success-400)" : cam.status === "error" ? "var(--danger-400)" : "var(--gray-400)",
                   }}>
-                    {cam.status === "online" ? t.online : cam.status === "error" ? t.statusError : t.offline}
+                    {cam.status === "online" ? t.online : cam.status === "error" ? t.statusError : isAwaitingFirstContact(cam) ? t.statusAwaiting : t.offline}
                   </span>
                 </button>
                 {/* Preview first: it is the item somebody reaches for most and the only one that
@@ -1762,7 +1785,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     position: "absolute", top: "8px", left: "8px", fontSize: "10px", fontWeight: 600, padding: "4px 8px", borderRadius: "999px",
                     backgroundColor: cam.status === "online" ? "rgba(22,163,74,0.9)" : cam.status === "error" ? "rgba(244,63,94,0.9)" : "rgba(148,163,184,0.9)", color: "white",
                   }}>
-                    {(cam.status === "online" ? t.online : cam.status === "error" ? t.statusError : t.offline).toUpperCase()}
+                    {(cam.status === "online" ? t.online : cam.status === "error" ? t.statusError : isAwaitingFirstContact(cam) ? t.statusAwaiting : t.offline).toUpperCase()}
                   </span>
                 </button>
                 {/* No footer strip. It carried the AI-engine badges — which for a camera with no

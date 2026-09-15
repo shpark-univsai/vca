@@ -239,6 +239,23 @@ export interface Server {
   status?: ServerStatus;
 }
 
+/**
+ * Registered, and never heard from.
+ *
+ * `status: "offline"` answers "is it reachable now" and cannot tell apart a camera that went dark
+ * this morning from one typed into Portal ten minutes ago. Those are opposite errands: the first
+ * is a fault somebody has to go and fix, the second is the normal state every camera passes
+ * through between being registered and its first report, and on installation day it is most of
+ * the fleet. Counting them together makes the alarm say "58 offline" on the day nothing is wrong.
+ *
+ * `lastSeenAt` already carries the distinction — it is absent until a camera reports in — so this
+ * needs no new field and no new value in CameraStatus. `error` is deliberately excluded: something
+ * answered and refused, which means the address was reached.
+ */
+export function isAwaitingFirstContact(camera: Pick<Camera, "status" | "lastSeenAt">): boolean {
+  return camera.status === "offline" && !camera.lastSeenAt;
+}
+
 export type EventSeverity = "critical" | "warning" | "info";
 
 export interface VcaEvent {

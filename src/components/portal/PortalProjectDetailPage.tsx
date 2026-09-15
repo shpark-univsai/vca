@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
-import { canEnterApp, canEnterPortal, canManageAccess, currentPortalUser, resolveMailConfig, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
+import { canEnterApp, canEnterPortal, canManageAccess, currentPortalUser, isAwaitingFirstContact, resolveMailConfig, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed, zoneHour } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, usePortalEditAccess } from "./PortalShared";
 import { useToast } from "../Toast";
@@ -58,6 +58,7 @@ const T = {
     attentionTitle: "Attention needed",
     dismissBanner: "Dismiss",
     attnOffline: (n: number) => `${n} camera${n === 1 ? " is" : "s are"} offline`,
+    attnAwaiting: (n: number) => `${n} camera${n === 1 ? " has" : "s have"} never reported in`,
     attnCameraError: (n: number) => `${n} camera${n === 1 ? "" : "s"} refusing the connection`,
     attnInvites: (n: number) => `${n} invitation${n === 1 ? "" : "s"} not yet accepted`,
     attnRequests: (n: number) => `${n} access request${n === 1 ? "" : "s"} waiting`,
@@ -152,6 +153,7 @@ const T = {
     attentionTitle: "확인 필요",
     dismissBanner: "닫기",
     attnOffline: (n: number) => `오프라인 카메라 ${n}대`,
+    attnAwaiting: (n: number) => `한 번도 응답한 적 없는 카메라 ${n}대`,
     attnCameraError: (n: number) => `연결이 거부된 카메라 ${n}대`,
     attnInvites: (n: number) => `수락하지 않은 초대 ${n}건`,
     attnRequests: (n: number) => `대기 중인 접근 요청 ${n}건`,
@@ -492,7 +494,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    * "51 / 59 connected" (either way it is not sending video), but the strip names them separately
    * so the fixable one is not filed under the other.
    */
-  const offlineCount = projectCameras.filter(c => c.status === "offline").length;
+  /* Cameras nothing has ever reached are not filed as faults. Registering fifty on installation
+     day used to put "50 cameras are offline" in red at the top of the Overview, on a day when
+     nothing was wrong — see isAwaitingFirstContact(). They are still counted as not connected in
+     the ratio below, because they are not sending video either. */
+  const awaitingCount = projectCameras.filter(isAwaitingFirstContact).length;
+  const offlineCount = projectCameras.filter(c => c.status === "offline" && !isAwaitingFirstContact(c)).length;
   const errorCount = projectCameras.filter(c => c.status === "error").length;
   const projectUsers = portalUsers.filter(u => u.projectIds.includes(projectId));
   // Counted by door, not by role. "Admin: n | Operator: n" filed owners and read-only admins under
@@ -686,6 +693,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
 
   const attentionItems: { key: string; text: string; color: string; tab: DetailTab }[] = [
     ...(offlineCount > 0 ? [{ key: "offline", text: t.attnOffline(offlineCount), color: "var(--danger-400)", tab: "cameras" as DetailTab }] : []),
+    // Grey, and below the faults: worth seeing that fifty cameras are still waiting on their first
+    // report, not worth the colour that means somebody has to go and fix something.
+    ...(awaitingCount > 0 ? [{ key: "awaiting", text: t.attnAwaiting(awaitingCount), color: "var(--gray-400)", tab: "cameras" as DetailTab }] : []),
     ...(errorCount > 0 ? [{ key: "cameraError", text: t.attnCameraError(errorCount), color: "var(--danger-400)", tab: "cameras" as DetailTab }] : []),
     ...(licenseExpired ? [{ key: "expired", text: t.attnExpired, color: "var(--danger-400)", tab: "license" as DetailTab }] : []),
     ...(overChannelLimit && channelLimit ? [{ key: "overlimit", text: t.attnOverLimit(projectCameras.length, channelLimit), color: "var(--danger-400)", tab: "license" as DetailTab }] : []),
