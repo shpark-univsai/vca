@@ -401,7 +401,15 @@ function nearestZoneName(lat: number, lng: number, cameras: { name: string; lat:
   return best?.name ?? unknown;
 }
 
-function getDevicePopupHTML(device: Device, zoneName: string, lang: AppLanguage): string {
+/**
+ * `canGoLive` decides whether the "view live" button is in the markup at all.
+ *
+ * Passed in rather than read off `window.__vcaGoLiveCam`: the bridge is installed by an effect and
+ * this string is built during render, so asking the window here would sometimes draw the button
+ * and sometimes not for the same account. A button whose handler is missing does nothing when
+ * pressed, which is the one outcome worth ruling out.
+ */
+function getDevicePopupHTML(device: Device, zoneName: string, lang: AppLanguage, canGoLive: boolean): string {
   const t = T[lang];
   const isLive = device.status === "Live";
   return `
@@ -420,7 +428,7 @@ function getDevicePopupHTML(device: Device, zoneName: string, lang: AppLanguage)
       <div style="display:flex;align-items:center;gap:5px">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="var(--danger-400)" stroke-linecap="round"/><path d="M6 3v3l2 1.5" stroke="var(--danger-400)" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span style="font-size:11px;font-weight:600;color:var(--danger-400)">${t.outSince(device.lastSeen)}</span>
-      </div>` : `
+      </div>` : !canGoLive ? "" : `
       <button onclick="window.__vcaGoLiveCam && window.__vcaGoLiveCam('${escapeAttr(zoneName)}')"
         style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
         background:var(--gray-900);color:white;border:none;border-radius:6px;padding:7px 0;
@@ -1186,12 +1194,12 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                    <div style="background:white;padding:8px 12px 10px;white-space:nowrap">
                      <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${node.label}</div>
                      <div style="font-size:13px;color:var(--gray-500);margin-top:2px">${node.time}</div>
-                     <div onclick="window.__vcaGoRedmapTrace && window.__vcaGoRedmapTrace('${escapeAttr(selectedEvent.name)}')"
+                     ${onGoRedmapTrace === undefined ? "" : `<div onclick="window.__vcaGoRedmapTrace && window.__vcaGoRedmapTrace('${escapeAttr(selectedEvent.name)}')"
                        style="margin-top:6px;padding-top:6px;border-top:1px solid var(--gray-100);display:flex;align-items:center;gap:4px;
                        font-size:12px;font-weight:700;color:var(--type-tracking);cursor:pointer">
                        ${t.fullTrace}
                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3 2L7 5L3 8" stroke="var(--type-tracking)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                     </div>
+                     </div>`}
                    </div>
                  </div>
                </div>`
@@ -1286,7 +1294,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         offset: [0, -30], className: "vca-custom-popup", closeButton: true, autoPan: false, maxWidth: 220,
       })
         .setLatLng([lat, lng])
-        .setContent(getDevicePopupHTML(pinnedDevice, zoneName, lang))
+        .setContent(getDevicePopupHTML(pinnedDevice, zoneName, lang, onGoLiveCam !== undefined))
         .openOn(map);
       devicePopupRef.current = popup;
     });

@@ -782,13 +782,13 @@ function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState
 
       {/* Actions */}
       <div style={{ display:"flex", gap:"8px" }}>
-        <button onClick={onTrackOnMap} style={{ flex:1, padding:"12px 0", borderRadius:"12px", border:"1px solid var(--gray-900)", backgroundColor:"white", color:"var(--gray-900)", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
+        {onTrackOnMap && <button onClick={onTrackOnMap} style={{ flex:1, padding:"12px 0", borderRadius:"12px", border:"1px solid var(--gray-900)", backgroundColor:"white", color:"var(--gray-900)", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M16.6667 8.33333C16.6667 13.3333 10 18.3333 10 18.3333C10 18.3333 3.33333 13.3333 3.33333 8.33333C3.33333 6.56522 4.03571 4.86953 5.28596 3.61929C6.5362 2.36905 8.23189 1.66667 10 1.66667C11.7681 1.66667 13.4638 2.36905 14.714 3.61929C15.9643 4.86953 16.6667 6.56522 16.6667 8.33333Z" stroke="var(--gray-900)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M10 10.8333C11.3807 10.8333 12.5 9.71404 12.5 8.33333C12.5 6.95262 11.3807 5.83333 10 5.83333C8.61929 5.83333 7.5 6.95262 7.5 8.33333C7.5 9.71404 8.61929 10.8333 10 10.8333Z" stroke="var(--gray-900)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           {t.trackOnMap}
-        </button>
+        </button>}
         <button onClick={onAnalyze} style={{ flex:1, padding:"12px 0", borderRadius:"12px", border:"none", backgroundColor:"var(--gray-900)", color:"white", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <path d="M15.2701 1.77009L16.2301 2.73009C16.3163 2.81396 16.3848 2.91425 16.4315 3.02503C16.4783 3.13581 16.5024 3.25484 16.5024 3.37509C16.5024 3.49535 16.4783 3.61438 16.4315 3.72516C16.3848 3.83594 16.3163 3.93623 16.2301 4.02009L4.02009 16.2301C3.93623 16.3163 3.83594 16.3848 3.72516 16.4315C3.61438 16.4783 3.49535 16.5024 3.37509 16.5024C3.25484 16.5024 3.13581 16.4783 3.02503 16.4315C2.91425 16.3848 2.81396 16.3163 2.73009 16.2301L1.77009 15.2701C1.68483 15.1857 1.61715 15.0853 1.57095 14.9745C1.52476 14.8638 1.50098 14.7451 1.50098 14.6251C1.50098 14.5051 1.52476 14.3864 1.57095 14.2757C1.61715 14.1649 1.68483 14.0645 1.77009 13.9801L13.9801 1.77009C14.0645 1.68483 14.1649 1.61715 14.2757 1.57095C14.3864 1.52476 14.5051 1.50098 14.6251 1.50098C14.7451 1.50098 14.8638 1.52476 14.9745 1.57095C15.0853 1.61715 15.1857 1.68483 15.2701 1.77009Z" stroke="white" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1622,7 +1622,8 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
         })()}
 
         {/* HUD */}
-        {hud && <DetectionHUD hud={hud} onClose={() => setHud(null)} onAnalyze={handleAnalyze} onTrackOnMap={() => onGoRedmapTrace?.(hud.det.name)} />}
+        {hud && <DetectionHUD hud={hud} onClose={() => setHud(null)} onAnalyze={handleAnalyze}
+          onTrackOnMap={onGoRedmapTrace ? () => onGoRedmapTrace(hud.det.name) : undefined} />}
       </div>
     </div>
   );

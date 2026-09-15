@@ -78,12 +78,21 @@ interface NavbarProps {
   /** If null, none of the 4 tabs is active (e.g. screens outside the tabs, like My Page) */
   activeTab?: NavTab | null;
   onTabChange?: (tab: NavTab) => void;
+  /**
+   * Which tabs this account may open. Undefined means all of them — Navbar is used outside the
+   * app shell (My Page) where there is nothing to filter against.
+   *
+   * A tab nobody may open is not drawn. Drawing it disabled would advertise the screen and invite
+   * the question to the wrong person; a tab that is simply not there is the same answer Genetec's
+   * Security Desk gives when a task privilege is missing.
+   */
+  allowedTabs?: NavTab[];
   onNotificationSelect?: (event: LiveEvent) => void;
   sidebarPosition?: "left" | "right";
   onSidebarPositionChange?: (position: "left" | "right") => void;
 }
 
-export default function Navbar({ activeTab: externalTab, onTabChange, onNotificationSelect, sidebarPosition, onSidebarPositionChange }: NavbarProps) {
+export default function Navbar({ activeTab: externalTab, onTabChange, onNotificationSelect, allowedTabs, sidebarPosition, onSidebarPositionChange }: NavbarProps) {
   const router = useRouter();
   const [lang] = useLanguage();
   const t = T[lang];
@@ -349,7 +358,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
         transform: "translateX(-50%)",
         display: "flex", alignItems: "center", height: "62px",
       }}>
-        {TABS.map((tab) => {
+        {TABS.filter(tab => allowedTabs === undefined || allowedTabs.includes(tab.id)).map((tab) => {
           const active = activeTab === tab.id;
           return (
             <button

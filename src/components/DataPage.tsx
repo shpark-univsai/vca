@@ -3,10 +3,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MatchItem, ReIDStatus } from "@/types/reid";
 import {
-  CAMERA_CODES, canSearchInApp, judgementFor, type DetectionVerdict,
+  CAMERA_CODES, canSearchInApp, judgementFor, screensFor, type DetectionVerdict,
   useActiveProjectId, useProjectCameras, useVcaStore, getActiveProjectId, personsInProject,
   VIP_SESSION_WINDOW_MS,
-  type Camera, type Person,
+  type AppScreen, type Camera, type Person,
 } from "@/lib/vcaStore";
 import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtClockTime, sgtDateKey } from "@/lib/time";
@@ -405,6 +405,12 @@ export type DataTab = "Live Monitoring" | "Re-ID Analysis" | "RedFace";
 // The sub-tab rides the URL the way the top-level tab already does (?tab=DATA), so a reload lands
 // back where the user was rather than on Live Monitoring. Short slugs rather than the tab labels:
 // the labels contain spaces and a hyphen, and "?sub=Re-ID%20Analysis" is not worth reading.
+/** Which grantable screen each sub-tab is. See AppScreen in vcaStore. */
+const DATA_TAB_SCREEN: Record<DataTab, AppScreen> = {
+  "Live Monitoring": "live",
+  "Re-ID Analysis": "reid",
+  "RedFace": "redface",
+};
 const DATA_TAB_SLUGS: Record<DataTab, string> = {
   "Live Monitoring": "live",
   "Re-ID Analysis": "reid",
@@ -5670,13 +5676,27 @@ export default function DataPage({ onGoRedmap, onGoRedmapFrame, onGoAnalyzeFrame
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
+  /**
+   * The three screens inside Data, filtered to the ones this account holds.
+   *
+   * Empty is impossible to reach: ClientLayout only renders Data when at least one of them is
+   * held, so `heldTabs[0]` below always exists.
+   */
+  const heldTabs = useVcaStore(st => {
+    const held = screensFor(st.portalUsers);
+    return DATA_TABS.filter(tab => held.includes(DATA_TAB_SCREEN[tab]));
+  });
   const [activeTab, setActiveTab] = useState<DataTab>(() => {
     // A slug this screen does not render is not a destination. Kept as a guard rather than
     // trusting the slug table to stay in step with DATA_TABS: when they disagreed, ?sub=search
     // selected a tab that renders nothing — three inactive tab buttons over a blank body, and the
     // URL was left alone because the mirror effect below saw it as already correct.
+    //
+    // A slug this ACCOUNT does not hold is not a destination either, and for a sharper reason:
+    // the effect below writes ?sub= on every move, so somebody who last used Re-ID and then lost
+    // it would land on a refusal at every sign-in, from their own bookmark, forever.
     const fromSlug = DATA_TAB_BY_SLUG[searchParams.get("sub") ?? ""];
-    return fromSlug && DATA_TABS.includes(fromSlug) ? fromSlug : "Live Monitoring";
+    return fromSlug && heldTabs.includes(fromSlug) ? fromSlug : heldTabs[0] ?? "Live Monitoring";
   });
   // Mirrored into the URL from an effect rather than from inside the setter: one caller runs
   // DURING render (a seeded card's tab jump compares during render), and a router.replace() from
@@ -5729,7 +5749,7 @@ export default function DataPage({ onGoRedmap, onGoRedmapFrame, onGoAnalyzeFrame
 
       {/* Sub-nav tabs */}
       <div style={{ backgroundColor:"white", borderBottom:BORDER, display:"flex", alignItems:"center", padding:"0 20px", height:"46px", flexShrink:0 }}>
-        {DATA_TABS.map(tab => {
+        {heldTabs.map(tab => {
           const active = activeTab===tab;
           const tipKey = DATA_TAB_TOOLTIPS[tab];
           return (

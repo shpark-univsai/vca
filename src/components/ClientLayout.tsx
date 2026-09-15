@@ -19,9 +19,9 @@ import SidebarToggleIcon from "./SidebarToggleIcon";
 import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
 import {
-  useVcaStore, currentPortalUser,
+  useVcaStore, currentPortalUser, screensFor,
   camerasInProject, getActiveProjectId, useActiveProjectId, watchedPersonsInProject,
-  type Camera,
+  type AppScreen, type Camera,
 } from "@/lib/vcaStore";
 import { useLanguage } from "@/lib/i18n";
 
@@ -179,7 +179,30 @@ export default function ClientLayout() {
   const pathname = usePathname();
   const router = useRouter();
   const tabParam = searchParams.get("tab");
-  const initialTab = (VALID_TABS as string[]).includes(tabParam ?? "") ? (tabParam as NavTab) : "DASHBOARD";
+  /**
+   * Which app screens this account holds, and which top-level tabs that leaves standing.
+   *
+   * DASHBOARD is not in the grant list and never filtered out — it is the app's ground floor and
+   * rides on appAccess. DATA stands if ANY of its three sub-screens does; the sub-tabs inside it
+   * are filtered by DataPage itself.
+   */
+  const heldScreens = useVcaStore(s => screensFor(s.portalUsers));
+  const holds = (screen: AppScreen) => heldScreens.includes(screen);
+  const tabAllowed = (tab: NavTab) =>
+    tab === "DASHBOARD" ? true
+    : tab === "BEST FRAME" ? holds("bestframe")
+    : tab === "REDMAP" ? holds("redmap")
+    : holds("live") || holds("reid") || holds("redface");
+  /**
+   * The tab the URL asks for, but only if this account still holds it.
+   *
+   * setActivePage writes ?tab= on every move, so the address bar remembers where somebody was —
+   * and without this check, an operator whose Redmap grant was taken away lands on a refusal
+   * screen at every single sign-in, forever, because the last place they went is still in their
+   * bookmark. Falling back to the first tab they do hold puts them somewhere usable.
+   */
+  const requestedTab = (VALID_TABS as string[]).includes(tabParam ?? "") ? (tabParam as NavTab) : "DASHBOARD";
+  const initialTab = tabAllowed(requestedTab) ? requestedTab : "DASHBOARD";
   const [activePage, setActivePageState] = useState<NavTab>(initialTab);
   const setActivePage = (tab: NavTab) => {
     setActivePageState(tab);
@@ -258,6 +281,16 @@ export default function ClientLayout() {
     const timer = setTimeout(() => setIsLoading(false), 700);
     return () => clearTimeout(timer);
   }, []);
+  /*
+   * The jumps between screens, and the rule that governs all of them: a button that leads
+   * somewhere this account cannot go is not shown at all.
+   *
+   * Handed to the children as undefined rather than as a function that refuses, and every child
+   * hides its own button when the prop is absent. A visible control that bounces the person who
+   * presses it is the bug this product already had once at the menu level; reproducing it at ten
+   * jump sites would be worse, because a menu item at least looks like navigation while these
+   * look like actions on the thing being examined.
+   */
   const handleGoLiveCam = (location: string) => {
     setBestFrameFocusLocation(location);
     setActivePage("BEST FRAME");
@@ -318,6 +351,7 @@ export default function ClientLayout() {
       <Navbar
         activeTab={activePage}
         onTabChange={setActivePage}
+        allowedTabs={VALID_TABS.filter(tabAllowed)}
         onNotificationSelect={handleNotificationNavigate}
         // Only actually affects the Dashboard tab's Sidebar+Map layout — hidden on the other tabs
         // (via Navbar's own `{onSidebarPositionChange && (...)}` guard) so the Settings dropdown
@@ -361,9 +395,9 @@ export default function ClientLayout() {
                 districtFilter={districtFilter}
                 onDistrictSelect={(id) => { setDistrictFilter((prev) => (prev === id ? null : id)); setLocationFilter(null); }}
                 pinnedDevice={pinnedDevice}
-                onGoLiveCam={handleGoLiveCam}
-                onGoRedmapTrace={handleGoRedmapTrace}
-                onAnalyzeFrame={handleGoAnalyzeFrame}
+                onGoLiveCam={holds("bestframe") ? handleGoLiveCam : undefined}
+                onGoRedmapTrace={holds("redmap") ? handleGoRedmapTrace : undefined}
+                onAnalyzeFrame={holds("bestframe") ? handleGoAnalyzeFrame : undefined}
               />
               {/* Sidebar toggle button - absolutely positioned over the map, on whichever edge
                   is adjacent to the sidebar. Shifted 3px past that edge: the SidebarToggleIcon's
@@ -429,14 +463,18 @@ export default function ClientLayout() {
             <BestFramePage
               focusLocation={bestFrameFocusLocation}
               onFocusConsumed={() => setBestFrameFocusLocation(null)}
-              onGoRedmapTrace={handleGoRedmapTrace}
+              onGoRedmapTrace={holds("redmap") ? handleGoRedmapTrace : undefined}
               analyzeFrameLocation={bestFrameAnalyzeLocation}
               analyzeFrameAt={bestFrameAnalyzeAt}
               onAnalyzeFrameConsumed={() => { setBestFrameAnalyzeLocation(null); setBestFrameAnalyzeAt(null); }}
             />
           </div>
         )}
-        {!isLoading && activePage === "DATA"   && <DataPage onGoRedmap={() => setActivePage("REDMAP")} onGoRedmapFrame={handleGoRedmapFrame} onGoAnalyzeFrame={handleGoAnalyzeFrame} />}
+        {!isLoading && activePage === "DATA"   && <DataPage
+          onGoRedmap={holds("redmap") ? () => setActivePage("REDMAP") : undefined}
+          onGoRedmapFrame={holds("redmap") ? handleGoRedmapFrame : undefined}
+          onGoAnalyzeFrame={holds("bestframe") ? handleGoAnalyzeFrame : undefined}
+        />}
         {!isLoading && activePage === "REDMAP" && (
           <RedmapPage
             initialSearchName={redmapAutoSearchName}

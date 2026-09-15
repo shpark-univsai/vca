@@ -591,17 +591,20 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
       </div>
 
       {/* Buttons */}
-      <div style={{ padding:"10px 14px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px", flexShrink:0 }}>
+      {/* One column when this account cannot reach Redmap. The button is absent rather than
+          disabled: it leads somewhere, and a control that leads nowhere reachable is worse than
+          no control — see the note on the jump handlers in ClientLayout. */}
+      <div style={{ padding:"10px 14px", display:"grid", gridTemplateColumns: onGoRedmapTrace ? "1fr 1fr" : "1fr", gap:"8px", flexShrink:0 }}>
         <button onClick={onClose} style={{ padding:"9px 0", borderRadius:"8px", border:BORDER, backgroundColor:"white", color:"var(--gray-700)", fontSize:"13px", fontWeight:700, cursor:"pointer" }}>
           {t.back}
         </button>
-        <button onClick={() => onGoRedmapTrace?.(det.name)} style={{ padding:"9px 0", borderRadius:"8px", border:"none", backgroundColor:"var(--gray-900)", color:"white", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
+        {onGoRedmapTrace && <button onClick={() => onGoRedmapTrace(det.name)} style={{ padding:"9px 0", borderRadius:"8px", border:"none", backgroundColor:"var(--gray-900)", color:"white", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
             <path d="M16.6667 8.33333C16.6667 13.3333 10 18.3333 10 18.3333C10 18.3333 3.33333 13.3333 3.33333 8.33333C3.33333 6.56522 4.03571 4.86953 5.28596 3.61929C6.5362 2.36905 8.23189 1.66667 10 1.66667C11.7681 1.66667 13.4638 2.36905 14.714 3.61929C15.9643 4.86953 16.6667 6.56522 16.6667 8.33333Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M10 10.8333C11.3807 10.8333 12.5 9.71404 12.5 8.33333C12.5 6.95262 11.3807 5.83333 10 5.83333C8.61929 5.83333 7.5 6.95262 7.5 8.33333C7.5 9.71404 8.61929 10.8333 10 10.8333Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           {t.trackOnMap}
-        </button>
+        </button>}
       </div>
     </div>
   );

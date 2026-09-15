@@ -689,6 +689,7 @@ interface VcaStoreState {
   vipCategories: VipCategory[];
   /** Empty on a fresh installation, same reason — see SearchPurpose. */
   searchPurposes: SearchPurpose[];
+  accessPresets: AccessPreset[];
   /** Null until the operator declares one this sitting. See SearchPurposeSelection. */
   searchPurpose: SearchPurposeSelection | null;
   /** Every look-up, newest first. Empty until the app records one — see SearchAccessRecord. */
@@ -925,6 +926,25 @@ interface VcaStoreState {
    * manual adjustments are overwritten, not merged.
    */
   applyGrantPreset: (userId: string, presetId: string) => void;
+  /** Create a preset for a team. Returns its id so the caller can select it straight away. */
+  addAccessPreset: (preset: Omit<AccessPreset, "id" | "archived">) => string;
+  /**
+   * Edit a preset in place — and everybody following it receives the change.
+   *
+   * Living inheritance over an editable bundle is the combination AWS avoids (managed policies
+   * cannot be edited) and Genetec avoids (templates are copied, not followed). Doing it anyway is
+   * defensible only while the person editing can see who they are about to change, which is what
+   * accountsFollowingPreset exists for. If that preview ever comes off the screen, this action is
+   * no longer safe to offer.
+   */
+  updateAccessPreset: (presetId: string, updates: Partial<Omit<AccessPreset, "id" | "teamId">>) => void;
+  /**
+   * Retire a preset. Accounts following it become custom, holding exactly what they held.
+   *
+   * No guard forbidding retirement while accounts follow it: such a guard would make a preset
+   * permanent the moment it is used, which is how registries fill with names nobody dares touch.
+   */
+  archiveAccessPreset: (presetId: string) => void;
   /**
    * Cut an account loose from its preset, keeping exactly what it currently holds.
    *
@@ -1568,9 +1588,13 @@ export function canExportEvidence(users: PortalUser[]): boolean {
 }
 
 /** The grants a preset hands out, as the fields they are stored in. */
-export function grantsOfPreset(presetId: string): Pick<PortalUser, "appScreens" | "appSearch" | "appExport"> {
-  const preset = APP_GRANT_PRESETS.find(p => p.id === presetId) ?? APP_GRANT_PRESETS[0];
-  return { appScreens: [...preset.screens], appSearch: preset.search, appExport: preset.exportEvidence };
+export function grantsOfPreset(preset: AccessPreset): Pick<PortalUser, "appScreens" | "appSearch" | "appExport"> {
+  return { appScreens: [...preset.screens], appSearch: preset.appSearch, appExport: preset.appExport };
+}
+
+/** This team's presets, retired ones dropped. An empty list is a real state — see the invite form. */
+export function presetsForTeam(presets: AccessPreset[], teamId: string): AccessPreset[] {
+  return presets.filter(p => p.teamId === teamId && !p.archived);
 }
 
 /**
@@ -1715,50 +1739,39 @@ export const APP_SCREENS: AppScreen[] = ["bestframe", "live", "reid", "redface",
  */
 export type GrantMode = "preset" | "custom";
 
-export interface AppGrantPreset {
-  id: string;
-  /** A job, not a feature list. Whoever assigns this is thinking "what is this person here to do". */
-  label: { en: string; ko: string };
-  screens: AppScreen[];
-  search: boolean;
-  exportEvidence: boolean;
-}
-
 /**
- * The presets, narrowest first.
+ * A named bundle of app grants, defined by the customer.
  *
- * NARROWEST IS PRE-SELECTED, and that is the reason for the order. An administrator in a hurry
- * clicks the first option, so the first option becomes the de facto default whatever the screen
- * says — which means the first option has to be the one it is safest to be wrong about. Forcing
- * "nothing selected" does not avoid this; it just adds a step before the same click.
+ * DATA, NOT A CONSTANT, and on the same shelf as SearchPurpose and VipCategory — for the same
+ * reason those two are: the vocabulary is the institution's. A control room that calls its people
+ * 상황실장 and 판독관 should not be handed "Investigator" and told that is what they are.
  *
- * Nobody starts with everything. Every comparable product grants from empty — Genetec ("you must
- * grant privileges to users for them to do anything"), Milestone (Deny beats Allow) — and the
- * effort that costs an administrator is what presets are for, not a generous default.
+ * Team-scoped like SearchPurpose. One installation holds several teams, and a neighbouring team's
+ * preset list leaks that organisation's job titles to people who have no business reading them.
+ *
+ * Presets grant nothing new. They name a combination of grants somebody could already hand out one
+ * at a time, so `canManageAccess` — whoever may change the individual grants — may also name a
+ * combination of them. Putting this behind canSetPolicy would mean calling the owner every time a
+ * new job exists.
  */
-export const APP_GRANT_PRESETS: AppGrantPreset[] = [
-  {
-    id: "operator",
-    label: { en: "Operator", ko: "관제요원" },
-    screens: ["live", "bestframe"],
-    search: false,
-    exportEvidence: false,
-  },
-  {
-    id: "supervisor",
-    label: { en: "Shift supervisor", ko: "관제반장" },
-    screens: ["live", "bestframe", "redmap", "reid", "redface"],
-    search: true,
-    exportEvidence: false,
-  },
-  {
-    id: "evidence",
-    label: { en: "Evidence officer", ko: "증거 담당" },
-    screens: ["live", "bestframe", "redmap", "reid", "redface"],
-    search: true,
-    exportEvidence: true,
-  },
-];
+export interface AccessPreset {
+  id: string;
+  teamId: string;
+  /** The customer's own word. Never translated — see VipCategory.label. */
+  label: string;
+  /** One line saying what this is for. Required: a list of names with no descriptions cannot be
+   *  chosen from, which is the whole failure mode of removing the pre-selected default. */
+  description: string;
+  screens: AppScreen[];
+  appSearch: boolean;
+  appExport: boolean;
+  /**
+   * Retired rather than deleted, like an archived SearchPurpose. Accounts that followed it are
+   * moved to "custom", which changes nobody's access — detaching copies nothing because following
+   * a preset means already holding its grants.
+   */
+  archived?: boolean;
+}
 
 export interface PortalUser {
   id: string;
@@ -2165,10 +2178,10 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appSearch: true, appExport: true, appScreens: ["bestframe", "live", "reid", "redface", "redmap"], grantMode: "preset", presetId: "evidence", status: "active", lastLoginAt: "2026-08-25 09:14" },
-  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appSearch: true, appScreens: ["bestframe", "live", "reid", "redface", "redmap"], grantMode: "preset", presetId: "supervisor", status: "active", lastLoginAt: "2026-08-24 18:02" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appSearch: true, appExport: true, appScreens: ["bestframe", "live", "reid", "redface", "redmap"], grantMode: "preset", presetId: "preset-supervisor", status: "active", lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appSearch: true, appScreens: ["bestframe", "live", "reid", "redface", "redmap"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
   // Admin who also works the app — the combination the single-field model could not hold.
-  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appScreens: ["bestframe", "live"], grantMode: "preset", presetId: "operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
+  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appScreens: ["bestframe", "live"], grantMode: "preset", presetId: "preset-operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
   { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", employeeId: "EMP-2044", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "invited" },
   { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", employeeId: "EMP-2045", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "suspended", lastLoginAt: "2026-06-02 08:30" },
   // The customer's security officer: reads Portal for the audit trail, has no business in the
@@ -2969,6 +2982,7 @@ const AUDIT_LOG: AuditEvent[] = [
   { id: "audit-19", projectId: "proj-sg", message: "License renewed until 2029-03-31", actor: "Grace Tan", at: auditAt(12960) },
 ];
 let auditSeq = AUDIT_LOG.length;
+let presetSeq = 0;
 let judgementSeq = 0;
 let exportSeq = 0;
 let footageSeq = 0;
@@ -3064,6 +3078,39 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   // No seed. An institution defines its own; a shipped default would become the standard.
   vipCategories: [],
   searchPurposes: [],
+  /*
+   * Seeded, and that is a claim about the product rather than demo furniture: an installation with
+   * no presets makes every invitation a seven-checkbox exercise, and the first administrator to
+   * meet that screen learns to tick everything.
+   *
+   * The names follow the vocabulary the comparable products ship with — Genetec's own privilege
+   * templates are Operator / Investigator / Supervisor, and its documentation defines Supervisor
+   * as "the same privileges as Investigator, plus …", which is the cumulative ladder below.
+   *
+   * WHERE THE LADDER BREAKS is Verkada's line, not ours: its roles divide on how far back you can
+   * see (Live-Only Viewer "no access to historical video" against Site Viewer "live and recorded
+   * footage"), and our screens already fall on that seam — Live is now, the other four are the
+   * past, export is out of the building.
+   *
+   * The customer renames and recomposes all of it. This is a starting point, not a taxonomy.
+   */
+  accessPresets: [
+    {
+      id: "preset-operator", teamId: "team-univs", label: "운영자",
+      description: "지금 일어나는 일을 본다",
+      screens: ["live", "bestframe"], appSearch: false, appExport: false,
+    },
+    {
+      id: "preset-investigator", teamId: "team-univs", label: "조사자",
+      description: "운영자 + 지난 것을 찾는다",
+      screens: ["live", "bestframe", "redmap", "reid", "redface"], appSearch: true, appExport: false,
+    },
+    {
+      id: "preset-supervisor", teamId: "team-univs", label: "감독자",
+      description: "조사자 + 증거를 밖으로 낸다",
+      screens: ["live", "bestframe", "redmap", "reid", "redface"], appSearch: true, appExport: true,
+    },
+  ],
   searchPurpose: null,
   // No seed. These are events, and an installation that has run no searches has none.
   searchAccessLog: [],
@@ -3936,19 +3983,73 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
     }),
   setActiveProjectId: (projectId) => set({ activeProjectId: projectId }),
+  addAccessPreset: (preset) => {
+    const id = `preset-${++presetSeq}`;
+    set(state => ({
+      accessPresets: [...state.accessPresets, { ...preset, id }],
+      auditLog: [{
+        id: `audit-${++auditSeq}`,
+        message: `Access preset "${preset.label}" created`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    }));
+    return id;
+  },
+  updateAccessPreset: (presetId, updates) =>
+    set(state => {
+      const preset = state.accessPresets.find(p => p.id === presetId);
+      if (!preset) return state;
+      const next = { ...preset, ...updates };
+      const followers = state.portalUsers.filter(u => u.grantMode === "preset" && u.presetId === presetId);
+      return {
+        accessPresets: state.accessPresets.map(p => (p.id === presetId ? next : p)),
+        // Everybody on it moves with it. Recomputed rather than left to drift: a preset account
+        // that kept its old grants would be following a preset in name only.
+        portalUsers: state.portalUsers.map(u => (
+          u.grantMode === "preset" && u.presetId === presetId ? { ...u, ...grantsOfPreset(next) } : u
+        )),
+        auditLog: [{
+          id: `audit-${++auditSeq}`,
+          message: `Access preset "${next.label}" (${presetId}) changed — ${followers.length} account(s) updated`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  archiveAccessPreset: (presetId) =>
+    set(state => {
+      const preset = state.accessPresets.find(p => p.id === presetId);
+      if (!preset) return state;
+      const followers = state.portalUsers.filter(u => u.grantMode === "preset" && u.presetId === presetId);
+      return {
+        accessPresets: state.accessPresets.map(p => (p.id === presetId ? { ...p, archived: true } : p)),
+        // Nobody's access changes: they already hold what the preset grants, and "custom" only
+        // says where the values come from from now on.
+        portalUsers: state.portalUsers.map(u => (
+          u.grantMode === "preset" && u.presetId === presetId ? { ...u, grantMode: "custom" as GrantMode } : u
+        )),
+        auditLog: [{
+          id: `audit-${++auditSeq}`,
+          message: `Access preset "${preset.label}" (${presetId}) retired — ${followers.length} account(s) moved to custom`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   applyGrantPreset: (userId, presetId) =>
     set(state => {
       const user = state.portalUsers.find(u => u.id === userId);
-      const preset = APP_GRANT_PRESETS.find(p => p.id === presetId);
+      const preset = state.accessPresets.find(p => p.id === presetId);
       if (!user || !preset) return state;
+      // THE LABEL IS A SNAPSHOT. The id alone would make this line lie the day somebody renames
+      // the preset, and an audit entry that resolves to a different name than the one the
+      // administrator chose is worse than no entry — the same rule SearchAccessRecord follows.
       const auditEntry: AuditEvent = {
         id: `audit-${++auditSeq}`, projectId: user.projectIds[0],
-        message: `App grants for ${user.name} set from preset "${preset.label.en}"`,
+        message: `App grants for ${user.name} set from preset "${preset.label}" (${preset.id})`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       };
       return {
         portalUsers: state.portalUsers.map(u => (
-          u.id === userId ? { ...u, ...grantsOfPreset(presetId), grantMode: "preset" as GrantMode, presetId } : u
+          u.id === userId ? { ...u, ...grantsOfPreset(preset), grantMode: "preset" as GrantMode, presetId } : u
         )),
         auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
