@@ -316,7 +316,7 @@ export function useTypeLabel(): (type: ProjectType) => string {
   return type => (type === "smart_city" ? SHARED_LABELS[lang].typeSmartCity : SHARED_LABELS[lang].typeSmartSchool);
 }
 
-interface RowAction {
+export interface RowAction {
   label: string;
   onClick: () => void;
   danger?: boolean;
@@ -536,7 +536,23 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
 // Shared "..." overflow menu for table/list row actions (edit/remove/etc.) — replaces a row of
 // always-visible icon buttons with one trigger, matching how Vimeo (and most SaaS admin tables)
 // keep row actions compact and consistent as more of them get added over time.
-export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
+export function RowActionsMenu({ actions, variant = "row", label }: {
+  actions: RowAction[];
+  /**
+   * Where the trigger is standing, which is the only thing that differs.
+   *
+   * "row" is the bare kebab a table row carries. "toolbar" is the same menu behind a control that
+   * has to line up with the buttons beside it — same height, same quiet chrome — because a 16px
+   * dot column next to 34px buttons reads as a rendering fault rather than a control.
+   *
+   * One component, two triggers, rather than a second menu: the panel, the hover state, the
+   * escape and click-outside handling and the footnote that explains greyed items are the parts
+   * worth not writing twice.
+   */
+  variant?: "row" | "toolbar";
+  /** Toolbar only, and optional: a word beside the dots where the menu needs naming. */
+  label?: string;
+}) {
   const [lang] = usePortalLanguage();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -555,19 +571,28 @@ export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
+  const toolbar = variant === "toolbar";
   return (
-    <div ref={ref} style={{ position: "relative", justifySelf: "end" }}>
+    <div ref={ref} style={{ position: "relative", justifySelf: toolbar ? undefined : "end", flexShrink: 0 }}>
       <button
+        className={toolbar ? "portal-btn-quiet" : undefined}
         onClick={() => setOpen(o => !o)}
         title={SHARED_LABELS[lang].moreActions}
         aria-label={SHARED_LABELS[lang].moreActions}
-        style={{ border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", borderRadius: "6px" }}
+        style={toolbar
+          // Padding, not a fixed height, and an 18px glyph below rather than the row's 16: the
+          // buttons this sits beside are sized by their own padding around 18px of content, so
+          // 10 + 18 + 10 lands on their 38px exactly. CONTROL_HEIGHT (36) and a 16px glyph both
+          // came up two pixels short.
+          ? { display: "flex", alignItems: "center", gap: "6px", padding: "10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }
+          : { border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", borderRadius: "6px" }}
       >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <svg width={toolbar ? 18 : 16} height={toolbar ? 18 : 16} viewBox="0 0 16 16" fill="none">
           <circle cx="8" cy="3.3" r="1.3" fill="currentColor"/>
           <circle cx="8" cy="8" r="1.3" fill="currentColor"/>
           <circle cx="8" cy="12.7" r="1.3" fill="currentColor"/>
         </svg>
+        {toolbar && label}
       </button>
       {open && (
         <div style={{

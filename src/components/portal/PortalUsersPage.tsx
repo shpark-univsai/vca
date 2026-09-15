@@ -64,6 +64,8 @@ const T = {
     bulkIssue: (n: number) => `Issue ${n} code${n === 1 ? "" : "s"}`,
     printHandout: "Print code slips",
     exportRoster: "Export CSV",
+    nothingToExport: "The roster is empty — there is nothing to export yet.",
+    nothingToPrint: "No unused codes to print. A slip is printed once, for a code nobody has redeemed.",
     toastRosterExported: (n: number) => `${n} roster row(s) exported`,
     rosterEmpty: "Nobody is waiting on the roster.",
     toastBulkIssued: (n: number) => `${n} registration code(s) issued`,
@@ -319,6 +321,8 @@ const T = {
     bulkIssue: (n: number) => `코드 ${n}개 발급`,
     printHandout: "코드 슬립 인쇄",
     exportRoster: "CSV 내보내기",
+    nothingToExport: "명부가 비어 있어 내보낼 것이 없습니다.",
+    nothingToPrint: "인쇄할 미사용 코드가 없습니다. 슬립은 아직 아무도 쓰지 않은 코드에 대해 한 번 찍습니다.",
     toastRosterExported: (n: number) => `명부 ${n}개 행을 내보냈습니다`,
     rosterEmpty: "명부에서 기다리는 사람이 없습니다.",
     toastBulkIssued: (n: number) => `등록 코드 ${n}개를 발급했습니다`,
@@ -2083,35 +2087,39 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             {t.addToRoster}
           </button>
           )}
-          {peopleTab === "roster" && (<>
-          <button className="portal-btn-quiet" onClick={() => setShowRosterImport(true)} disabled={!mayEdit} title={readOnlyReason}
-            style={{ ...SECONDARY_BTN, color: mayEdit ? "var(--gray-600)" : "var(--gray-300)", cursor: mayEdit ? "pointer" : "not-allowed" }}>
-            <Upload size={14} strokeWidth={2.4} />
-            {t.importRoster}
-          </button>
-          {/* Export and Print stay open below: handing the roster to somebody as a file or a sheet
-              is reading it, not changing it, and it is most of what a read-only account is for. */}
-          <button className="portal-btn-quiet" onClick={bulkIssueCodes} disabled={!mayEdit || notIssuedIds.length === 0}
-            title={readOnlyReason}
-            style={{ ...SECONDARY_BTN, color: (!mayEdit || notIssuedIds.length === 0) ? "var(--gray-300)" : "var(--gray-600)", cursor: (!mayEdit || notIssuedIds.length === 0) ? "not-allowed" : "pointer" }}>
+          {/* Three controls, not five (2026-09-15). "Add to roster" is the errand; the code
+              button carries a COUNT, and that count is nowhere else on the screen — the summary
+              strip states invited, suspended and on-the-roster, never how many are still waiting
+              for a code — so folding it away would delete the only thing that says four people
+              cannot sign in yet. It hides itself at zero instead of greying out, which is the
+              same information with nothing to read.
+
+              The other three move behind the menu: putting a file in, taking a file out, printing
+              a sheet. None of them changes who is in the roster, and none carries a number. */}
+          {peopleTab === "roster" && notIssuedIds.length > 0 && mayEdit && (
+          <button className="portal-btn-quiet" onClick={bulkIssueCodes}
+            style={{ ...SECONDARY_BTN, color: "var(--gray-600)", cursor: "pointer" }}>
             <KeyRound size={14} strokeWidth={2.4} />
             {t.bulkIssue(notIssuedIds.length)}
           </button>
-          <button className="portal-btn-quiet" onClick={() => {
-              const n = exportRosterCsv(projectRosterAll, currentProject?.name ?? projectId, rt);
-              showToast({ variant: "success", title: t.toastRosterExported(n) });
-            }}
-            disabled={projectRosterAll.length === 0}
-            style={{ ...SECONDARY_BTN, color: projectRosterAll.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: projectRosterAll.length === 0 ? "not-allowed" : "pointer" }}>
-            <Download size={14} strokeWidth={2.4} />
-            {t.exportRoster}
-          </button>
-          <button className="portal-btn-quiet" onClick={() => setShowPrintSheet(true)} disabled={printableEntries.length === 0}
-            style={{ ...SECONDARY_BTN, color: printableEntries.length === 0 ? "var(--gray-300)" : "var(--gray-600)", cursor: printableEntries.length === 0 ? "not-allowed" : "pointer" }}>
-            <Printer size={14} strokeWidth={2.4} />
-            {t.printHandout}
-          </button>
-          </>)}
+          )}
+          {peopleTab === "roster" && (
+          <RowActionsMenu
+            variant="toolbar"
+            actions={[
+              { label: t.importRoster, onClick: () => setShowRosterImport(true), disabled: !mayEdit, reason: readOnlyReason },
+              /* Export and Print stay reachable for a read-only account: handing the roster over
+                 as a file or a sheet is reading it, not changing it, and it is most of what that
+                 role is for. They grey out only when there is nothing to hand over. */
+              { label: t.exportRoster, onClick: () => {
+                  const n = exportRosterCsv(projectRosterAll, currentProject?.name ?? projectId, rt);
+                  showToast({ variant: "success", title: t.toastRosterExported(n) });
+                }, disabled: projectRosterAll.length === 0, reason: t.nothingToExport },
+              { label: t.printHandout, onClick: () => setShowPrintSheet(true),
+                disabled: printableEntries.length === 0, reason: t.nothingToPrint },
+            ]}
+          />
+          )}
           </div>
       </div>
 
