@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
-import { AlertTriangle, ArrowDownWideNarrow, Eye, FileOutput, ImageOff, RefreshCw, Users } from "lucide-react";
+import { AlertTriangle, ArrowDownWideNarrow, CalendarOff, Eye, FileOutput, ImageOff, RefreshCw, Users } from "lucide-react";
 import { canSetPolicy, currentPortalUser, defaultVipExpiry, isExpiryUnanswered, registryHealth, useVcaStore, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -79,6 +79,7 @@ interface VipDict {
   toastVipExportDesc: (n: number) => string;
   colPriority: string;
   healthMissingPhoto: string;
+  healthExpiryUnanswered: string;
   healthMissingPhotoWhy: string;
   healthEmbeddingFailed: string;
   healthEmbeddingFailedWhy: string;
@@ -247,6 +248,7 @@ const T: Record<"en" | "ko", VipDict> = {
     toastVipExportTitle: "Export complete",
     toastVipExportDesc: (n: number) => `${n} vipRegistry record(s) exported to CSV.`,
     colPriority: "Priority",
+    healthExpiryUnanswered: "no end date set",
     healthMissingPhoto: "no photo",
     healthMissingPhotoWhy: "On the VIP list with no face attached. A CSV import can add a name without a photo; these people cannot be matched until one is uploaded.",
     healthEmbeddingFailed: "photo unreadable",
@@ -415,6 +417,7 @@ const T: Record<"en" | "ko", VipDict> = {
     toastVipExportTitle: "내보내기 완료",
     toastVipExportDesc: (n: number) => `VIP ${n}건을 CSV로 내보냈습니다.`,
     colPriority: "우선순위",
+    healthExpiryUnanswered: "만료일 미지정",
     healthMissingPhoto: "사진 없음",
     healthMissingPhotoWhy: "VIP 목록에는 있지만 얼굴 사진이 없습니다. CSV로 가져오면 사진 없이 이름만 등록될 수 있고, 사진을 올리기 전까지는 매칭되지 않습니다.",
     healthEmbeddingFailed: "사진 인식 실패",
@@ -1287,7 +1290,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
    * above it. A card that only states a number leaves the reader to find the twelve rows it counted;
    * this makes the number the way to them.
    */
-  const [healthFilter, setHealthFilter] = useState<"missingPhoto" | "embeddingFailed" | "reenrolling" | "duplicates" | "detected" | null>(null);
+  const [healthFilter, setHealthFilter] = useState<"expiryUnanswered" | "missingPhoto" | "embeddingFailed" | "reenrolling" | "duplicates" | "detected" | null>(null);
   /**
    * All / Individuals / Groups. Same underlined tab row Input Sources and Users & Permissions use.
    *
@@ -1385,6 +1388,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   const health = registryHealth(projectId, persons.filter(p => !p.releasedAt));
   const duplicateIds = new Set(health.duplicates.flat());
   const healthIds = {
+    expiryUnanswered: new Set(health.expiryUnanswered),
     missingPhoto: new Set(health.missingPhoto),
     embeddingFailed: new Set(health.embeddingFailed),
     reenrolling: new Set(health.reenrolling),
@@ -1673,6 +1677,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           those four rows. */}
       {vipTab !== "groups" && <SummaryStrip cells={[
         ...([
+          // First, because it is the only one of these that is about what the cameras are still
+          // doing rather than about a record being incomplete.
+          { key: "expiryUnanswered" as const, count: health.expiryUnanswered.length, label: t.healthExpiryUnanswered, why: t.expiryUnansweredWhy, icon: <CalendarOff size={14} strokeWidth={2.4} /> },
           { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, why: t.healthMissingPhotoWhy, icon: <ImageOff size={14} strokeWidth={2.4} /> },
           { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed, why: t.healthEmbeddingFailedWhy, icon: <AlertTriangle size={14} strokeWidth={2.4} /> },
           // Not amber. A photo somebody has already replaced is not an outstanding defect, it is
@@ -2090,11 +2097,14 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                   {(() => {
                     if (person.releasedAt) return <span style={{ fontWeight: 700, color: "var(--gray-500)" }}>{t.statusReleased}</span>;
                     // Two different empties, and they used to print the same word. `null` is an
-                    // answer somebody gave and is left alone in grey; an absent value is a question
-                    // nobody has answered, which is why it carries a colour — these rows are being
-                    // matched with no end in sight and nothing else on this screen says so.
+                    // answer somebody gave; an absent value is a question nobody has answered. Both
+                    // are quiet here, and that is a correction: an amber pill on 119 of 123 rows
+                    // was not a warning, it was the table's background. It also buried the three
+                    // rows that DO carry a date, which are the ones worth finding. The count that
+                    // deserves a colour is one number, and it lives in the strip above with a
+                    // filter attached — that is where 119 of something is actionable.
                     if (isExpiryUnanswered(person)) return (
-                      <span title={t.expiryUnansweredWhy} style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px", backgroundColor: "var(--warning-200)", color: "var(--warning-500)", fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap" }}>
+                      <span title={t.expiryUnansweredWhy} style={{ color: "var(--gray-400)", borderBottom: "1px dotted var(--gray-300)" }}>
                         {t.expiryUnanswered}
                       </span>
                     );
