@@ -17,7 +17,7 @@ import { useVcaStore, currentPortalUser } from "@/lib/vcaStore";
  *   /gate?demo=suspended         granted, paused by an administrator
  *   /gate?demo=noDoor            neither — a record an administrator has to repair
  */
-const DEMO_DENIALS: GateDenial[] = ["appNotGranted", "portalNotGranted", "notActivated", "suspended", "noDoor"];
+const DEMO_DENIALS: GateDenial[] = ["appNotGranted", "portalNotGranted", "notActivated", "suspended", "noDoor", "noScreens"];
 
 /**
  * The account each demo state describes, so the grants table and the exits agree with the
@@ -36,6 +36,10 @@ const DEMO_USERS: Record<GateDenial, GateUser> = {
   notActivated: { name: "Wei Chen", email: "wei.chen@univs.ai", permission: "none", appAccess: true, status: "invited" },
   suspended: { name: "David Ong", email: "david.ong@univs.ai", permission: "none", appAccess: true, status: "suspended" },
   noDoor: { name: "(no roster entry)", email: "unknown@univs.ai", permission: "none", appAccess: false, status: "active" },
+  // Synthetic for the same reason noDoor is, though not for the same reason: the store can create
+  // this state — a bulk CSV invitation does — but no seeded account is in it, and putting a real
+  // person here would contradict what Users & Permissions says about them.
+  noScreens: { name: "(bulk-invited account)", email: "newcomer@univs.ai", permission: "none", appAccess: true, status: "active", appScreens: [] },
 };
 
 function GateBody() {

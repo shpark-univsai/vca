@@ -918,6 +918,29 @@ interface VcaStoreState {
   /** Grant or take away person-search in the app. Logged: who may search is worth an audit trail
    *  in a face-recognition installation, and so is the moment it changed. */
   setAppSearch: (userId: string, allowed: boolean) => void;
+  /**
+   * Put an account on a preset, copying that preset's grants onto it now.
+   *
+   * Also the way back from custom, and the reason the confirmation that precedes it matters: the
+   * manual adjustments are overwritten, not merged.
+   */
+  applyGrantPreset: (userId: string, presetId: string) => void;
+  /**
+   * Cut an account loose from its preset, keeping exactly what it currently holds.
+   *
+   * Nothing changes on screen at the moment of switching, which is the point — "custom" is a
+   * statement about where the values come from from now on, not a new set of values.
+   */
+  startCustomGrants: (userId: string) => void;
+  /**
+   * Turn one screen or verb on or off on a custom account.
+   *
+   * EVERY CHANGE IS ITS OWN AUDIT LINE. A preset name alone would swallow the manual tuning that
+   * came after it, which is the half an access review is actually asking about — the same reason
+   * updatePortalUserAccess already logs a dropped search grant separately from the access change
+   * that caused it.
+   */
+  setAppGrant: (userId: string, grant: AppScreen | "search" | "export", allowed: boolean) => void;
   /** Which project the monitoring app is watching. Empty until something picks one. */
   activeProjectId: string;
   setActiveProjectId: (projectId: string) => void;
@@ -1522,6 +1545,47 @@ export function canSearchInApp(users: PortalUser[]): boolean {
 }
 
 /**
+ * Whether this account may open one app screen. Same stand-in rule as canSearchInApp above — an
+ * identity that resolves to nobody answers true, so the mock stays explorable and a real build
+ * reads the session and denies by default.
+ */
+export function canSeeScreen(users: PortalUser[], screen: AppScreen): boolean {
+  const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
+  return me ? (me.appScreens ?? []).includes(screen) : true;
+}
+
+/** The screens this account holds, in the app's own tab order. Empty is a real answer. */
+export function screensFor(users: PortalUser[]): AppScreen[] {
+  const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
+  if (!me) return APP_SCREENS;
+  return APP_SCREENS.filter(sc => (me.appScreens ?? []).includes(sc));
+}
+
+/** Whether this account may take a sighting out as a file. See PortalUser.appExport. */
+export function canExportEvidence(users: PortalUser[]): boolean {
+  const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
+  return me ? me.appExport === true : true;
+}
+
+/** The grants a preset hands out, as the fields they are stored in. */
+export function grantsOfPreset(presetId: string): Pick<PortalUser, "appScreens" | "appSearch" | "appExport"> {
+  const preset = APP_GRANT_PRESETS.find(p => p.id === presetId) ?? APP_GRANT_PRESETS[0];
+  return { appScreens: [...preset.screens], appSearch: preset.search, appExport: preset.exportEvidence };
+}
+
+/**
+ * How many accounts a change to this preset would reach.
+ *
+ * An editable preset with living inheritance is the combination both AWS (managed policies are
+ * not editable) and Genetec (templates are copied, not followed) chose to avoid. Doing it anyway
+ * is defensible only if the person editing can see who they are about to change, so this exists to
+ * make that preview possible rather than optional.
+ */
+export function accountsFollowingPreset(users: PortalUser[], presetId: string): PortalUser[] {
+  return users.filter(u => u.grantMode === "preset" && u.presetId === presetId);
+}
+
+/**
  * The role Portal should treat the current visitor as.
  *
  * HANDOFF NOTE: this is the one thing a session would answer for free. With no login response to
@@ -1623,6 +1687,79 @@ export const SIGNED_IN_USER: SignedInUser = {
   team: "Operational Control Team Alpha",
 };
 
+/**
+ * The app screens a grant can name. FIVE, and the list is the app's own, not a tidy invention:
+ * the top-level tabs are DASHBOARD / BEST FRAME / DATA / REDMAP (Navbar.TABS) and DATA holds three
+ * of its own (DataPage.DataTab). Five of those six are grantable.
+ *
+ * DASHBOARD IS NOT HERE, deliberately. It is the app's ground floor — the map, the site's own
+ * state, the thing every other screen is reached from — and an account admitted through the door
+ * with nowhere to land is a door onto nothing. It rides on appAccess.
+ *
+ * Person search and evidence export are NOT in this list either. They are verbs that cut across
+ * screens (search lives in Data AND Redmap; export hangs off a sighting), and folding a verb into
+ * a screen list produces a flat checkbox column that lies about what it grants.
+ */
+export type AppScreen = "live" | "bestframe" | "redmap" | "reid" | "redface";
+
+/** Order is the app's own tab order, so any list built from it reads the way the app does. */
+export const APP_SCREENS: AppScreen[] = ["bestframe", "live", "reid", "redface", "redmap"];
+
+/**
+ * How an account's app grants are decided: by following a preset, or by its own set.
+ *
+ * Stored, not a UI mode. Which one an account is in outlives the dialog that set it — a preset
+ * account keeps receiving changes made to the preset, and that is the whole difference. A screen
+ * that only remembered "the administrator clicked custom" would forget the relationship the next
+ * time anybody opened it.
+ */
+export type GrantMode = "preset" | "custom";
+
+export interface AppGrantPreset {
+  id: string;
+  /** A job, not a feature list. Whoever assigns this is thinking "what is this person here to do". */
+  label: { en: string; ko: string };
+  screens: AppScreen[];
+  search: boolean;
+  exportEvidence: boolean;
+}
+
+/**
+ * The presets, narrowest first.
+ *
+ * NARROWEST IS PRE-SELECTED, and that is the reason for the order. An administrator in a hurry
+ * clicks the first option, so the first option becomes the de facto default whatever the screen
+ * says — which means the first option has to be the one it is safest to be wrong about. Forcing
+ * "nothing selected" does not avoid this; it just adds a step before the same click.
+ *
+ * Nobody starts with everything. Every comparable product grants from empty — Genetec ("you must
+ * grant privileges to users for them to do anything"), Milestone (Deny beats Allow) — and the
+ * effort that costs an administrator is what presets are for, not a generous default.
+ */
+export const APP_GRANT_PRESETS: AppGrantPreset[] = [
+  {
+    id: "operator",
+    label: { en: "Operator", ko: "관제요원" },
+    screens: ["live", "bestframe"],
+    search: false,
+    exportEvidence: false,
+  },
+  {
+    id: "supervisor",
+    label: { en: "Shift supervisor", ko: "관제반장" },
+    screens: ["live", "bestframe", "redmap", "reid", "redface"],
+    search: true,
+    exportEvidence: false,
+  },
+  {
+    id: "evidence",
+    label: { en: "Evidence officer", ko: "증거 담당" },
+    screens: ["live", "bestframe", "redmap", "reid", "redface"],
+    search: true,
+    exportEvidence: true,
+  },
+];
+
 export interface PortalUser {
   id: string;
   name: string;
@@ -1656,6 +1793,42 @@ export interface PortalUser {
    * the seam to widen, and there is now one thing waiting at it.
    */
   appSearch?: boolean;
+  /**
+   * Which app screens this account may open. Undefined or empty means none.
+   *
+   * Nothing is inherited from the role: a Portal owner with app access and no screens sees no
+   * screens. The door and what is behind it are two questions, and the console answers both out
+   * loud rather than deducing one from the other.
+   *
+   * An account with the door and no screens is a real state the console has to handle rather than
+   * prevent everywhere — bulk CSV invitations and server-made accounts never pass the screen that
+   * makes zero impossible. See GateDenial "noScreens".
+   */
+  appScreens?: AppScreen[];
+  /**
+   * May take a sighting out of the console as a file. Undefined means not granted.
+   *
+   * NOT A CONTROL, AND IT MUST NOT BE DESCRIBED AS ONE. A gate inside the browser, guarding an
+   * export the browser performs, recorded by a line the browser writes — the same browser skips
+   * all three. src/lib/evidence.ts already says the necessary half: the export has to be a server
+   * call that logs before it returns bytes, and the permission has to be read there.
+   *
+   * It exists here for two reasons that are not enforcement. A flag we do not declare is an
+   * endpoint the backend builds without a permission check, and retrofitting one costs far more
+   * than declaring it now. And export is wired only to Redmap today while `EvidenceSurface`
+   * already declares "bestframe" — the day that call site appears, every operator holding the
+   * narrowest preset could export faces, because BestFrame is in it.
+   */
+  appExport?: boolean;
+  /**
+   * Whether this account follows a preset or carries its own set, and which preset.
+   *
+   * `presetId` stays meaningful in "custom" too — it records where the account started, which is
+   * what makes returning to the preset a sentence anybody can read ("back to Operator") rather
+   * than a list of eleven toggles.
+   */
+  grantMode?: GrantMode;
+  presetId?: string;
   /**
    * May sign into the monitoring app.
    *
@@ -1992,10 +2165,10 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appSearch: true, status: "active", lastLoginAt: "2026-08-25 09:14" },
-  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appSearch: true, status: "active", lastLoginAt: "2026-08-24 18:02" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appSearch: true, appExport: true, appScreens: ["bestframe", "live", "reid", "redface", "redmap"], grantMode: "preset", presetId: "evidence", status: "active", lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appSearch: true, appScreens: ["bestframe", "live", "reid", "redface", "redmap"], grantMode: "preset", presetId: "supervisor", status: "active", lastLoginAt: "2026-08-24 18:02" },
   // Admin who also works the app — the combination the single-field model could not hold.
-  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, status: "active", lastLoginAt: "2026-08-20 11:47" },
+  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appScreens: ["bestframe", "live"], grantMode: "preset", presetId: "operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
   { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", employeeId: "EMP-2044", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "invited" },
   { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", employeeId: "EMP-2045", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "suspended", lastLoginAt: "2026-06-02 08:30" },
   // The customer's security officer: reads Portal for the audit trail, has no business in the
@@ -3740,6 +3913,8 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       // most sensitive grant in the product reading as live on somebody who cannot use it.
       // Logged separately, because granting and revoking it is its own audited act.
       const at = new Date().toISOString();
+      // Screens and export go the same way search does, and for the same reason: they are grants
+      // on a surface the account can no longer reach, and a row still showing them reads as live.
       const searchDropped = !appAccess && user?.appSearch === true;
       const entries: AuditEvent[] = [{
         id: `audit-${++auditSeq}`, projectId: user?.projectIds[0],
@@ -3755,12 +3930,67 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       }
       return {
         portalUsers: state.portalUsers.map(u => (
-          u.id === userId ? { ...u, permission, appAccess, ...(appAccess ? null : { appSearch: false }) } : u
+          u.id === userId ? { ...u, permission, appAccess, ...(appAccess ? null : { appSearch: false, appExport: false, appScreens: [] }) } : u
         )),
         auditLog: [...entries, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   setActiveProjectId: (projectId) => set({ activeProjectId: projectId }),
+  applyGrantPreset: (userId, presetId) =>
+    set(state => {
+      const user = state.portalUsers.find(u => u.id === userId);
+      const preset = APP_GRANT_PRESETS.find(p => p.id === presetId);
+      if (!user || !preset) return state;
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: user.projectIds[0],
+        message: `App grants for ${user.name} set from preset "${preset.label.en}"`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        portalUsers: state.portalUsers.map(u => (
+          u.id === userId ? { ...u, ...grantsOfPreset(presetId), grantMode: "preset" as GrantMode, presetId } : u
+        )),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  startCustomGrants: (userId) =>
+    set(state => {
+      const user = state.portalUsers.find(u => u.id === userId);
+      if (!user) return state;
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: user.projectIds[0],
+        message: `App grants for ${user.name} detached from preset and set individually`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        // The values are already what they should be — following a preset means holding its
+        // grants. Detaching copies nothing because there is nothing to copy.
+        portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, grantMode: "custom" as GrantMode } : u)),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  setAppGrant: (userId, grant, allowed) =>
+    set(state => {
+      const user = state.portalUsers.find(u => u.id === userId);
+      if (!user) return state;
+      const next = { ...user };
+      if (grant === "search") next.appSearch = allowed;
+      else if (grant === "export") next.appExport = allowed;
+      else {
+        const held = new Set(user.appScreens ?? []);
+        if (allowed) held.add(grant); else held.delete(grant);
+        next.appScreens = APP_SCREENS.filter(sc => held.has(sc));
+      }
+      const auditEntry: AuditEvent = {
+        id: `audit-${++auditSeq}`, projectId: user.projectIds[0],
+        message: `${allowed ? "Granted" : "Revoked"} app ${grant} for ${user.name}`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      };
+      return {
+        portalUsers: state.portalUsers.map(u => (u.id === userId ? next : u)),
+        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   setAppSearch: (userId, allowed) =>
     set(state => {
       const user = state.portalUsers.find(u => u.id === userId);

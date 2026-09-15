@@ -69,10 +69,10 @@ export function updateGateChoice(door: GateDoor): void {
  * an ungranted one asks for a grant, and an account with neither door is a broken record somebody
  * has to repair.
  */
-export type GateDenial = "appNotGranted" | "portalNotGranted" | "notActivated" | "suspended" | "noDoor";
+export type GateDenial = "appNotGranted" | "portalNotGranted" | "notActivated" | "suspended" | "noDoor" | "noScreens";
 
 /** Everything the gate needs to judge an account. A subset of PortalUser so callers can pass one. */
-export type GateUser = Pick<PortalUser, "name" | "email" | "permission" | "appAccess" | "status">;
+export type GateUser = Pick<PortalUser, "name" | "email" | "permission" | "appAccess" | "status" | "appScreens">;
 
 /**
  * Why this door is shut for this account, or null if it is open.
@@ -98,6 +98,15 @@ export function denialFor(user: GateUser | undefined, door: GateDoor): GateDenia
   if (!granted) return door === "portal" ? "portalNotGranted" : "appNotGranted";
   if (user.status === "suspended") return "suspended";
   if (user.status === "invited") return "notActivated";
+  // Last, and after the account states rather than with the other grant checks. An account that
+  // was never activated has a code to use and must be told that; hearing "no screens assigned"
+  // first would send them to the wrong person. This is the state of somebody who got all the way
+  // in and found nothing behind the door.
+  //
+  // A backstop, not the main defence. The grant screen makes zero screens unpickable, but bulk CSV
+  // invitations and server-created accounts never pass through it, so the answer has to exist at
+  // sign-in too — which is also where Milestone answers it.
+  if (door === "app" && (user.appScreens ?? []).length === 0) return "noScreens";
   return null;
 }
 
@@ -114,11 +123,13 @@ const T = {
     suspendedTitle: "This account is suspended",
     notActivatedTitle: "This account has not been activated yet",
     noDoorTitle: "This account has no access",
+    noScreensTitle: "No screens have been assigned to this account",
     suspendedBody: "An administrator paused it. Sign-in resumes once they restore it.",
     notActivatedBody: "Use the registration code your administrator gave you to set a password first.",
     appNotGrantedBody: "An administrator grants app access per account, in Portal under Users & Permissions.",
     portalNotGrantedBody: "Portal is for console roles. An administrator grants it per account.",
     noDoorBody: "Neither door is open, which an administrator has to correct — no screen here can.",
+    noScreensBody: "App access is granted, but an administrator has not yet said which screens. They assign them in Portal, under Users & Permissions.",
     holds: "This account holds",
     portalRole: "Portal",
     appDoor: "Monitoring app",
@@ -146,11 +157,13 @@ const T = {
     suspendedTitle: "정지된 계정입니다",
     notActivatedTitle: "아직 활성화되지 않은 계정입니다",
     noDoorTitle: "접근 권한이 없는 계정입니다",
+    noScreensTitle: "볼 화면이 지정되지 않은 계정입니다",
     suspendedBody: "관리자가 계정을 정지했습니다. 관리자가 해제하면 다시 로그인할 수 있습니다.",
     notActivatedBody: "관리자에게 받은 등록 코드로 먼저 비밀번호를 설정해주세요.",
     appNotGrantedBody: "앱 접근 권한은 관리자가 Portal의 사용자 및 권한에서 계정별로 부여합니다.",
     portalNotGrantedBody: "Portal은 관리자 역할의 화면입니다. 관리자가 계정별로 부여합니다.",
     noDoorBody: "열린 문이 없습니다. 이 화면에서는 해결할 수 없고 관리자가 고쳐야 합니다.",
+    noScreensBody: "앱 접근은 있지만 어느 화면을 볼지 관리자가 아직 지정하지 않았습니다. 포털의 사용자 및 권한에서 지정합니다.",
     holds: "이 계정의 권한",
     portalRole: "Portal",
     appDoor: "모니터링 앱",
@@ -382,12 +395,14 @@ export default function AccessGate({ user, denial, inPortal = false }: AccessGat
     : denial === "appNotGranted" ? t.deniedAppTitle
     : denial === "portalNotGranted" ? t.deniedPortalTitle
     : denial === "noDoor" ? t.noDoorTitle
+    : denial === "noScreens" ? t.noScreensTitle
     : t.chooseTitle;
   const body = denial === "suspended" ? t.suspendedBody
     : denial === "notActivated" ? t.notActivatedBody
     : denial === "appNotGranted" ? t.appNotGrantedBody
     : denial === "portalNotGranted" ? t.portalNotGrantedBody
     : denial === "noDoor" ? t.noDoorBody
+    : denial === "noScreens" ? t.noScreensBody
     : null;
 
   // The way out, asked of the same function the arriving door will ask. Derived rather than
