@@ -1834,6 +1834,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   // installation's settings, not who can get in. See PortalPermission in vcaStore.
   const myRole = currentPortalRole(portalUsers);
   const manageAccess = canManageAccess(myRole);
+  const recordListExport = useVcaStore(s => s.recordListExport);
   // The roster is in the guide's "cameras, VIP, roster, license, server" row, so it takes the
   // wider gate — an admin maintains it, an auditor reads it. Everything about ACCOUNTS above
   // stays owner-only under manageAccess.
@@ -2241,6 +2242,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                  role is for. They grey out only when there is nothing to hand over. */
               { label: t.exportRoster, onClick: () => {
                   const n = exportRosterCsv(projectRosterAll, currentProject?.name ?? projectId, rt);
+                  // Recorded here rather than inside exportRosterCsv: that one is a plain function
+                  // shared with the print sheet and cannot hold a hook. Not a gate — see
+                  // ListExportRecord; reading these is the auditor's job.
+                  recordListExport({ projectId, list: "roster", rowCount: n });
                   showToast({ variant: "success", title: t.toastRosterExported(n) });
                 }, disabled: projectRosterAll.length === 0, reason: t.nothingToExport },
               { label: t.printHandout, onClick: () => setShowPrintSheet(true),

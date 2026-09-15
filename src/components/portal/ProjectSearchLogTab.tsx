@@ -83,6 +83,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const searchAccessLog = useVcaStore(s => s.searchAccessLog);
+  const recordListExport = useVcaStore(s => s.recordListExport);
   // The project's zone, not the reviewer's browser and not siteTimeZone() — see the note on the
   // timestamp cell below.
   const projectZone = useVcaStore(s => s.projects.find(p => p.id === projectId)?.timeZone) ?? PROJECT_TIME_ZONE;
@@ -142,6 +143,9 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
     a.download = `search-log-${projectId}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    // Written down because a list leaving the console is the part an audit asks about, and until
+    // now nothing here knew it had happened. Not a gate — see ListExportRecord.
+    recordListExport({ projectId, list: "searchLog", rowCount: body.length });
   };
 
   const cell = (value: string, muted?: boolean) => (

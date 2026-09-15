@@ -744,6 +744,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const uploads = useVcaStore(s => s.uploads);
   const servers = useVcaStore(s => s.servers);
   const addUpload = useVcaStore(s => s.addUpload);
+  const recordListExport = useVcaStore(s => s.recordListExport);
   const removeUpload = useVcaStore(s => s.removeUpload);
   const addCamera = useVcaStore(s => s.addCamera);
   const updateCamera = useVcaStore(s => s.updateCamera);
@@ -1161,6 +1162,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     a.click();
     URL.revokeObjectURL(url);
     showToast({ variant: "success", title: t.toastExportTitle, desc: t.toastExportDesc(projectCameras.length) });
+    // Written down because a list leaving the console is the part an audit asks about, and until
+    // now nothing here knew it had happened. Not a gate — see ListExportRecord.
+    recordListExport({ projectId, list: "cameras", rowCount: projectCameras.length });
   };
 
   return (

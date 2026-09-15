@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import {
   DISTRICT_ALERT_THRESHOLD_KEY, DISTRICT_MODERATE_THRESHOLD_KEY,
   DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD,
 } from "@/lib/mockData";
-import { canEnterPortal, canUseAppNow, currentPortalUser, SIGNED_IN_USER, useVcaStore } from "@/lib/vcaStore";
+import { APP_SCREENS, canEnterPortal, canExportEvidence, canSearchInApp, canUseAppNow, currentPortalUser, screensFor, SIGNED_IN_USER, useVcaStore, type AppScreen } from "@/lib/vcaStore";
 import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
@@ -38,6 +38,11 @@ const T = {
     saved: "Saved",
     settings: "Settings",
     myPage: "My page",
+    myGrants: "What this account can open",
+    myGrantsWho: "Granted per account. An administrator changes this in Portal, under Users & Permissions.",
+    screenName: { live: "Live monitoring", bestframe: "Best Frame", redmap: "Redmap", reid: "Re-ID", redface: "RedFace" } as Record<AppScreen, string>,
+    verbSearch: "Person search",
+    verbExport: "Evidence export",
     profile: "Profile information",
     fullName: "Full name",
     emailAddress: "Email address",
@@ -80,6 +85,11 @@ const T = {
     saved: "저장됨",
     settings: "설정",
     myPage: "마이 페이지",
+    myGrants: "이 계정이 열 수 있는 것",
+    myGrantsWho: "계정마다 따로 지정됩니다. 포털의 사용자 및 권한에서 관리자가 바꿉니다.",
+    screenName: { live: "실시간 관제", bestframe: "베스트 프레임", redmap: "레드맵", reid: "Re-ID", redface: "RedFace" } as Record<AppScreen, string>,
+    verbSearch: "인물 검색",
+    verbExport: "증거 내보내기",
     profile: "프로필 정보",
     fullName: "이름",
     emailAddress: "이메일 주소",
@@ -176,6 +186,22 @@ function ChevronDownIcon() {
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
       <path d="M3 4.5L6 7.5L9 4.5" stroke="var(--gray-600)" strokeLinecap="round" strokeWidth="1.1"/>
     </svg>
+  );
+}
+
+/** One grant, held or not. Both states are drawn — a list of only what you have cannot answer
+ *  "is there a Re-ID screen at all", which is the question somebody asks before phoning. */
+function GrantChip({ label, on }: { label: string; on: boolean }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: "5px", padding: "4px 9px", borderRadius: "999px",
+      backgroundColor: on ? "var(--info-100)" : "var(--gray-50)",
+      color: on ? "var(--info-500)" : "var(--gray-400)",
+      fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap",
+    }}>
+      <span>{on ? "✓" : "—"}</span>
+      {label}
+    </span>
   );
 }
 
@@ -584,6 +610,12 @@ export default function MyPage() {
   // preference, so it belongs here, and here it now writes the store the whole interface reads.
   const [lang, setLang] = useLanguage();
   const t = T[lang];
+  // Derived outside the selector: screensFor() builds a new array on every call, and a zustand
+  // selector that returns a fresh array re-renders forever.
+  const portalUsers = useVcaStore(s => s.portalUsers);
+  const heldScreens = useMemo(() => screensFor(portalUsers), [portalUsers]);
+  const maySearch = useMemo(() => canSearchInApp(portalUsers), [portalUsers]);
+  const mayExport = useMemo(() => canExportEvidence(portalUsers), [portalUsers]);
   // Only one session is ever listed here (this mock has no other-device data to actually
   // terminate) — the confirmation is honest about that rather than pretending to have revoked
   // something. Auto-clears the same way BestFramePage's highlightCamId does.
@@ -651,6 +683,29 @@ export default function MyPage() {
                   <ReadOnlyField label={t.fullName} value={SIGNED_IN_USER.name} />
                   <ReadOnlyField label={t.emailAddress} value={SIGNED_IN_USER.email} />
                   <ReadOnlyField label={t.departmentTeam} value={SIGNED_IN_USER.team} />
+                </div>
+                {/*
+                  What this account may open, where the person holding it can read it.
+                  
+                  The same table exists on the access gate, which only the refused ever see —
+                  everybody who signs in successfully had no way to find out what they hold. The
+                  cost of that is a phone call to an administrator for every "why can't I see
+                  Re-ID", and the administrator has to go and look it up.
+                  
+                  Read-only, and it says who changes it. This screen is the account's own; the
+                  grants are not.
+                */}
+                <div style={{ height: "1px", backgroundColor: "var(--gray-200)", width: "100%" }} />
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.24px" }}>{t.myGrants}</span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                    {APP_SCREENS.map(sc => (
+                      <GrantChip key={sc} label={t.screenName[sc]} on={heldScreens.includes(sc)} />
+                    ))}
+                    <GrantChip label={t.verbSearch} on={maySearch} />
+                    <GrantChip label={t.verbExport} on={mayExport} />
+                  </div>
+                  <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", lineHeight: 1.5 }}>{t.myGrantsWho}</span>
                 </div>
               </Card>
             </div>

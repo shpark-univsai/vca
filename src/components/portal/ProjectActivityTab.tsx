@@ -90,6 +90,7 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const auditLog = useVcaStore(s => s.auditLog);
+  const recordListExport = useVcaStore(s => s.recordListExport);
   const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
   const projectZone = project?.timeZone ?? PROJECT_TIME_ZONE;
   const { sort, toggle: toggleSort } = useTableSort<ActivitySortKey>({ key: "at", direction: "desc" });
@@ -157,6 +158,9 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
     a.download = `${project?.name ?? projectId}-activity.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    // Written down because a list leaving the console is the part an audit asks about, and until
+    // now nothing here knew it had happened. Not a gate — see ListExportRecord.
+    recordListExport({ projectId, list: "activity", rowCount: body.length });
   };
 
   const distinctActors = new Set(rows.map(a => a.actor)).size;

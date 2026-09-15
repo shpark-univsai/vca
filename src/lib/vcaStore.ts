@@ -487,6 +487,43 @@ export interface EvidenceExportRecord {
   at: string;
 }
 
+/**
+ * A whole list taken out of Portal as a file.
+ *
+ * A DIFFERENT THING FROM EvidenceExportRecord, and the difference is the size of it: that one is
+ * one sighting, this is everybody. The VIP registry CSV carries every listed person's name, group,
+ * basis, who registered them, expiry and last detection; the search-log CSV carries the audit
+ * trail itself, IP addresses included.
+ *
+ * NO GATE GOES WITH THIS, and that is a decision rather than an omission. Two reasons:
+ *
+ * First, blocking it would block the auditor. That role exists to read "every Portal screen and
+ * the audit log … for handover, inspection, and the customer's security officer" — taking the
+ * records away from the person whose job is reading them inverts the role.
+ *
+ * Second, these five are a reformat of what is already on the screen. A blocked button leaves
+ * screenshots and copy-paste, so the button is an inconvenience rather than a control. The app's
+ * evidence export is the opposite case: the server has to hand over frame bytes for it to
+ * complete, so a door there is real.
+ *
+ * What was missing is not a door but a record — the console could not say a list had left it.
+ *
+ * HANDOFF NOTE: same as EvidenceExportRecord and for the same reason. The browser writing its own
+ * audit row is a note to ourselves; a client that writes it can skip writing it. These exports
+ * have to go through the server, which logs before it returns the file.
+ */
+export interface ListExportRecord {
+  id: string;
+  /** The project whose log this lands in. Absent for a list that belongs to no single site. */
+  projectId?: string;
+  /** Which list left — the tab a reader would go back to. */
+  list: "vips" | "searchLog" | "activity" | "roster" | "cameras";
+  /** How many rows went, so the row says how much left without opening the file. */
+  rowCount: number;
+  actor: string;
+  at: string;
+}
+
 export interface SearchPurposeSelection {
   purposeId: string;
   /** Case or document reference, when the purpose requires one. */
@@ -698,6 +735,8 @@ interface VcaStoreState {
   detectionJudgements: DetectionJudgement[];
   /** Every detection taken out of the console — see EvidenceExportRecord. */
   evidenceExports: EvidenceExportRecord[];
+  /** Every list taken out of the console as a file — see ListExportRecord. */
+  listExports: ListExportRecord[];
   /** Outside requests for recorded footage — see FootageRequest. Empty until one is filed. */
   footageRequests: FootageRequest[];
   /** Requests to be erased — see ErasureRequest. Empty until one is filed. */
@@ -795,6 +834,8 @@ interface VcaStoreState {
   /** Back to "nobody has looked at this". Not the same as marking it a false positive. */
   clearJudgement: (surface: DetectionJudgement["surface"], subjectId: string) => void;
   recordEvidenceExport: (e: Pick<EvidenceExportRecord, "projectId" | "subjectId" | "surface" | "targetLabel" | "manifestHash">) => void;
+  /** Write down that a whole list left as a file. See ListExportRecord — a record, not a gate. */
+  recordListExport: (e: Pick<ListExportRecord, "projectId" | "list" | "rowCount">) => void;
   /** File a new request. Returns its id. */
   addFootageRequest: (r: Omit<FootageRequest, "id" | "status" | "receivedAt" | "receivedBy">) => string;
   /** Approve or refuse. A note is required either way — see decideFootageRequest's own comment. */
@@ -3116,6 +3157,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   searchAccessLog: [],
   detectionJudgements: [],
   evidenceExports: [],
+  listExports: [],
   // Empty on purpose, like the access requests below it: a seeded release would teach whoever
   // reads this screen that the product has already handed footage to somebody.
   footageRequests: SEED_FOOTAGE_REQUESTS,
@@ -3545,6 +3587,29 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           id: `audit-${++auditSeq}`, projectId: req.projectId,
           message: `Footage released to ${release.releasedTo || req.requesterName}`
             + ` · ${release.redaction?.done ? `redacted (${release.redaction.method})` : "not redacted"}`,
+          actor: SIGNED_IN_USER.name, at,
+        }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  recordListExport: ({ projectId, list, rowCount }) =>
+    set(state => {
+      const at = new Date().toISOString();
+      const LIST_NAME: Record<ListExportRecord["list"], string> = {
+        vips: "VIP registry", searchLog: "search access log", activity: "activity log",
+        roster: "staff roster", cameras: "camera list",
+      };
+      return {
+        // Append, never replace — the same rule as evidenceExports. Exporting the same list twice
+        // is two files in the world, and the second one is often the one that left the building.
+        listExports: [
+          { id: `listexport-${++exportSeq}`, projectId, list, rowCount, actor: SIGNED_IN_USER.name, at },
+          ...state.listExports,
+        ],
+        // The row count is in the line because it is what tells a reader whether this was somebody
+        // checking one page or the whole registry leaving.
+        auditLog: [{
+          id: `audit-${++auditSeq}`, projectId,
+          message: `${LIST_NAME[list]} exported as a file — ${rowCount} row(s)`,
           actor: SIGNED_IN_USER.name, at,
         }, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };

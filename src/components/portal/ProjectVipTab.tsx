@@ -1458,6 +1458,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   });
   const clearSelection = () => setSelectedIds(new Set());
   const setPersonsExpiry = useVcaStore(s => s.setPersonsExpiry);
+  const recordListExport = useVcaStore(s => s.recordListExport);
   /** The date in the bulk bar's field. Empty means nothing chosen yet, not "no end date". */
   const [bulkExpiry, setBulkExpiry] = useState("");
   const applyBulkExpiry = (value: string | null) => {
@@ -1514,6 +1515,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
     a.click();
     URL.revokeObjectURL(url);
     showToast({ variant: "success", title: t.toastVipExportTitle, desc: t.toastVipExportDesc(rows.length) });
+    // Written down because a list leaving the console is the part an audit asks about, and until
+    // now nothing here knew it had happened. Not a gate — see ListExportRecord.
+    recordListExport({ projectId, list: "vips", rowCount: rows.length });
   };
 
   const register = (values: RegisterValues) => {
