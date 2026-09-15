@@ -1262,7 +1262,6 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   // narrower gate above — an admin may add a person, not redefine what a listing means.
   const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
   const removePersonGroup = useVcaStore(s => s.removePersonGroup);
-  const setPersonGroup = useVcaStore(s => s.setPersonGroup);
   const addPerson = useVcaStore(s => s.addPerson);
   const addPersons = useVcaStore(s => s.addPersons);
   const removePerson = useVcaStore(s => s.removePerson);
@@ -2038,25 +2037,18 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                   }}>
                   {person.name}
                 </button>
-                {/* Membership is set from the person, not from the group. Putting a member list in
-                    the group editor would mean two places that have to agree about who is in it;
-                    one select on the person's own row is the single place that decides. */}
+                {/* A VALUE, NOT A CONTROL. This was a select on every row, so 123 bordered boxes
+                    with dropdown arrows ran down the middle of the table — after the faces, the
+                    loudest thing on the screen, and most of them reading "Individual".
+
+                    Membership is still set from the person rather than from the group (a member
+                    list in the group editor would be a second place that has to agree about who is
+                    in it). What changed is where: the edit form, which already carries it, and the
+                    bulk selection. Every other table in Portal shows values and sends changes to a
+                    form; this column was the one that did not. */}
                 {showGroupColumn && (
-                  /* Padding on the cell, not a narrower column: the boxes still fill their column
-                     and line up down the table (a select sized to its own label draws a different
-                     width on every row), they just stop short of the edge. Moving the column
-                     boundary would not have helped — the gap between the two cells is the grid's
-                     columnGap either way, and what looked cramped was the select's border landing
-                     12px from the priority tag with nothing between them. */
-                  <span style={{ display: "block", minWidth: 0, paddingRight: "16px" }}>
-                  <FilterSelect
-                    value={person.groupId ?? ""}
-                    onChange={v => setPersonGroup(person.id, v || undefined)}
-                    options={[
-                      { value: "", label: t.groupNone },
-                      ...personGroups.filter(g => g.projectId === projectId).map(g => ({ value: g.id, label: g.name })),
-                    ]}
-                  />
+                  <span style={{ minWidth: 0, fontSize: "12px", color: person.groupId ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {personGroups.find(g => g.id === person.groupId)?.name ?? t.groupNone}
                   </span>
                 )}
                 {/* The category, in the institution's own word and its own colour. Unclassified
