@@ -69,6 +69,26 @@ export interface ComplianceConfig {
    */
   vipCategories: boolean;
   /**
+   * How long a VIP listing lasts by default, in days. Null = no default end date.
+   *
+   * A retention period is the institution's policy, not the registrar's opinion. Letting whoever
+   * types the name also decide how long the face is kept produces a registry where every row has
+   * a different answer and nobody can say why — which is the question an audit opens with.
+   *
+   * So the form arrives with this already filled in, and what the registrar does is shorten it for
+   * a listing that ends sooner, or clear it for one that genuinely has no end. Both are visible
+   * departures from the policy rather than the result of skipping a field.
+   *
+   * With vipCategories on, a category's own defaultValidDays wins — that is the finer-grained
+   * version of this same policy, and a police force keeping wanted and missing persons under
+   * different durations is exactly why categories exist. This is what applies to everything else:
+   * the unclassified rows, and every installation that does not classify at all.
+   *
+   * OPEN QUESTION for legal, and it is not ours to answer: 365 is a placeholder, not a finding.
+   * The number has to come from the deployment's own retention rule.
+   */
+  vipDefaultValidDays: number | null;
+  /**
    * Whether an operator can record a verdict on a detection — "yes, this is them" / "no, wrong
    * person" — against a sighting in Redmap or an associate in RedFace.
    *
@@ -149,6 +169,17 @@ export function getComplianceConfig(): ComplianceConfig {
      * Turning it on restores all of it; the categories and their colours are still in the store.
      */
     vipCategories: false,
+    /**
+     * 365 days (2026-09-15). Placeholder for a number the deployment's retention rule decides —
+     * see the interface comment.
+     *
+     * It exists because the switch above is off. With no categories there was no policy source
+     * for an expiry at all: the registration form opened with an empty date field and an orange
+     * line warning that an empty one means forever. That is the worst arrangement of the three —
+     * the consequential choice was also the one that required no action, so "tracked until
+     * somebody notices" was the default for every row anybody registered in a hurry.
+     */
+    vipDefaultValidDays: 365,
     /**
      * Off for the first release (decided 2026-09-14), because right now the record does not
      * survive a refresh — judgements live in the store and nothing persists them. The screen

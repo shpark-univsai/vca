@@ -25,6 +25,11 @@ const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
 
+/** A retention period expressed as the date it ends on, in the yyyy-mm-dd a date input takes. */
+function dateInDays(days: number): string {
+  return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+}
+
 /* A field is quoted when it holds a comma, a quote or a newline, and inner quotes are doubled.
    TODO: this is the fifth copy in Portal (cameras, roster, roster import, search log) — one
    src/lib/csv.ts, once no other session has those files open. */
@@ -202,6 +207,9 @@ interface VipDict {
   groupRemovedWithMembersTitle: (members: number) => string;
   close: string;
   detailNoNote: string;
+  moreDetails: string;
+  expiryPolicyNote: (days: number) => string;
+  expiryCategoryNote: (label: string, days: number) => string;
 }
 
 const T: Record<"en" | "ko", VipDict> = {
@@ -360,6 +368,9 @@ const T: Record<"en" | "ko", VipDict> = {
     close: "Close",
     detailNoNote: "No note",
     bulkEmptyDesc: "Expected CSV rows as \"name,description\".",
+    moreDetails: "More details",
+    expiryPolicyNote: (days: number) => `Default retention — ${days} days from today.`,
+    expiryCategoryNote: (label: string, days: number) => `${label} — ${days} days from today.`,
   },
   ko: {
     bulkUpload: "일괄 업로드",
@@ -516,6 +527,9 @@ const T: Record<"en" | "ko", VipDict> = {
     close: "닫기",
     detailNoNote: "메모 없음",
     bulkEmptyDesc: "CSV 행은 \"이름,설명\" 형식이어야 합니다.",
+    moreDetails: "추가 정보",
+    expiryPolicyNote: (days: number) => `기본 보유기간 — 오늘부터 ${days}일.`,
+    expiryCategoryNote: (label: string, days: number) => `${label} — 오늘부터 ${days}일.`,
   },
 };
 
@@ -570,11 +584,61 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
   const [priorityLabel, setPriorityLabel] = useState<NonNullable<Person["priorityLabel"]>>(person?.priorityLabel ?? "normal");
   const [description, setDescription] = useState(person?.description ?? "");
   const [groupId, setGroupId] = useState(person?.groupId ?? "");
-  const categoriesEnabled = getComplianceConfig().vipCategories;
+  const compliance = getComplianceConfig();
+  const categoriesEnabled = compliance.vipCategories;
   const [categoryId, setCategoryId] = useState(person?.categoryId ?? "");
   const [basis, setBasis] = useState(person?.basis ?? "");
-  const [expiresAt, setExpiresAt] = useState(person?.expiresAt?.slice(0, 10) ?? "");
+  /**
+   * The installation's retention rule, as a date. Null when it has none configured.
+   *
+   * Read once at mount rather than per render: this is the date a field is seeded with, and a
+   * value that quietly re-derives itself against a moving clock is a field that disagrees with
+   * what the person looking at it chose.
+   */
+  const [policyDate] = useState(() => compliance.vipDefaultValidDays === null
+    ? null
+    : dateInDays(compliance.vipDefaultValidDays));
+  /**
+   * A new listing opens with the policy's end date already in it; editing keeps whatever the row
+   * has, including nothing.
+   *
+   * The field used to open empty, with an orange line underneath explaining that empty means this
+   * person is watched until somebody removes them. That put the consequential outcome behind the
+   * one action that costs nothing — skipping the field — and a warning does not fix a default, it
+   * just makes it uncomfortable. How long a face is kept is the institution's rule anyway, not a
+   * decision for whoever happens to be typing the name, so the rule fills it in and what the
+   * registrar does here is depart from it deliberately.
+   */
+  const [expiresAt, setExpiresAt] = useState(editing ? (person.expiresAt?.slice(0, 10) ?? "") : (policyDate ?? ""));
   const chosenCategory = categories.find(c => c.id === categoryId);
+  /**
+   * Where the date currently in the field came from, when it came from a rule rather than from
+   * this person. Said out loud because a pre-filled date with no explanation reads as a date
+   * somebody already chose for this listing, and nobody edits one of those.
+   */
+  const expirySource: { label?: string; days: number } | null =
+    chosenCategory?.defaultValidDays != null && expiresAt === dateInDays(chosenCategory.defaultValidDays)
+      ? { label: chosenCategory.label, days: chosenCategory.defaultValidDays }
+      : compliance.vipDefaultValidDays !== null && expiresAt === policyDate
+        ? { days: compliance.vipDefaultValidDays }
+        : null;
+  /**
+   * The basis is asked for in the open only where a category demands one. Everywhere else it is a
+   * reference number somebody may or may not have, which is what the section below is for.
+   */
+  const basisRequired = !!chosenCategory?.requiresBasis;
+  /**
+   * Priority, group and note: none of them decide anything the moment a face is registered. They
+   * are list furniture — a sort order, a filter, a line on the detail sheet — and every one of
+   * them can be set afterwards from the row itself. They were five of the eight fields a person
+   * met when registering somebody, at the same weight as the photograph.
+   *
+   * Open from the start when editing somebody who already has any of them, because a value hidden
+   * behind a disclosure is a value the next person will not know is there.
+   */
+  const [moreOpen, setMoreOpen] = useState(editing && (
+    !!person.basis || (person.priorityLabel ?? "normal") !== "normal" || !!person.groupId || !!person.description
+  ));
   /**
    * Picking a category fills the expiry from its default, and only then.
    *
@@ -587,9 +651,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
     setCategoryId(nextId);
     const next = categories.find(c => c.id === nextId);
     if (!next) return;
-    setExpiresAt(next.defaultValidDays === null
-      ? ""
-      : new Date(Date.now() + next.defaultValidDays * 86_400_000).toISOString().slice(0, 10));
+    setExpiresAt(next.defaultValidDays === null ? "" : dateInDays(next.defaultValidDays));
   };
   /**
    * Making a group without leaving this form.
@@ -641,7 +703,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
     && (editing || photoPreview !== null)
     // A category that says a basis is required means it: without one the row has nobody to ask
     // later, and "we will fill it in afterwards" is how a registry ends up with none at all.
-    && (!chosenCategory?.requiresBasis || basis.trim().length > 0);
+    && (!basisRequired || basis.trim().length > 0);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -757,71 +819,101 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
               footerAction={{ label: t.manageCategories, onClick: onManageCategories }}
             />
           </div>}
-          <div>
+          {/* Only where a category demands one; otherwise it waits below with the rest of the
+              optional fields. Nothing is lost either way — it is the same state in both places. */}
+          {basisRequired && <div>
             <label style={{ display: "flex", alignItems: "baseline", gap: "6px", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>
               {t.basisLabel}
-              {chosenCategory?.requiresBasis
-                ? <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)" }}>{t.requiredMark}</span>
-                : <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--gray-400)" }}>{t.optionalMark}</span>}
+              <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)" }}>{t.requiredMark}</span>
             </label>
             <TextField value={basis} onChange={setBasis} placeholder={t.basisPlaceholder} />
-          </div>
+          </div>}
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.expiresLabel}</label>
             <TextField value={expiresAt} onChange={setExpiresAt} type="date" />
-            {/* Said out loud rather than left to an empty field. A blank expiry is the most
-                consequential default on this form and the one nobody notices leaving. */}
+            {/* Three things this line can be saying, and they are not the same sentence: the date
+                came from a rule (so it is a default, edit it if this listing ends sooner), the
+                date was chosen for this person, or there is no date at all — which is the one
+                outcome worth a colour, because nothing ends a listing that has none. */}
             <p style={{ fontSize: "11px", color: expiresAt ? "var(--gray-400)" : "var(--warning-500)", lineHeight: 1.45, marginTop: "6px" }}>
-              {expiresAt ? t.expiresNote : t.noExpiryWarning}
+              {!expiresAt ? t.noExpiryWarning
+                : expirySource === null ? t.expiresNote
+                : expirySource.label ? t.expiryCategoryNote(expirySource.label, expirySource.days)
+                : t.expiryPolicyNote(expirySource.days)}
             </p>
           </div>
-          {/* Priority alone now, full width — it shared a two-column row with the Role select. */}
-          <div>
+          {/* Everything an audit asks about is above this line; everything below it is how the
+              list reads afterwards. Shut by default so registering somebody is three fields. */}
+          <div style={{ borderTop: BORDER, paddingTop: "14px" }}>
+            <button
+              type="button"
+              onClick={() => setMoreOpen(o => !o)}
+              style={{
+                display: "flex", alignItems: "center", gap: "6px", padding: 0, border: "none",
+                background: "none", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
+              }}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+                style={{ transform: moreOpen ? "rotate(90deg)" : "none", transition: "transform 120ms" }}>
+                <path d="M4.5 2.5L8 6l-3.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {t.moreDetails}
+            </button>
+            {moreOpen && <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "14px" }}>
+              {!basisRequired && (
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.priorityLabel}</label>
-              <FilterSelect
-                value={priorityLabel}
-                onChange={v => setPriorityLabel(v as typeof priorityLabel)}
-                options={PRIORITY_LABELS.map(p => ({ value: p, label: t.priorityText[p] }))}
-              />
+              <label style={{ display: "flex", alignItems: "baseline", gap: "6px", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>
+                {t.basisLabel}
+                <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--gray-400)" }}>{t.optionalMark}</span>
+              </label>
+              <TextField value={basis} onChange={setBasis} placeholder={t.basisPlaceholder} />
             </div>
-          </div>
-          {/* Group is set here, with everything else. It used to be a select on the detail sheet
-              instead — the one editable thing on a sheet whose other four values were read-only,
-              next to an Edit item in the menu, which read as "the group is all you may change". */}
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.colGroup}</label>
-            {newGroupName === null ? (
-              <FilterSelect
-                value={groupId}
-                onChange={setGroupId}
-                options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
-                footerAction={{ label: t.addGroup, onClick: () => setNewGroupName("") }}
-              />
-            ) : (
-              <div style={{ display: "flex", gap: "8px" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <TextField value={newGroupName} onChange={setNewGroupName} placeholder={t.groupNamePlaceholder} autoFocus />
-                </div>
-                <button className="portal-btn-primary" onClick={createGroup} disabled={!newGroupName.trim()}
-                  style={{
-                    height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none",
-                    backgroundColor: newGroupName.trim() ? "var(--primary-400)" : "var(--gray-200)",
-                    color: newGroupName.trim() ? "white" : "var(--gray-400)",
-                    fontSize: "12px", fontWeight: 700, cursor: newGroupName.trim() ? "pointer" : "not-allowed", flexShrink: 0,
-                  }}>
-                  {t.createGroupAction}
-                </button>
-                <button className="portal-btn-outline" onClick={() => setNewGroupName(null)}
-                  style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-                  {t.cancel}
-                </button>
+              )}
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.priorityLabel}</label>
+                <FilterSelect
+                  value={priorityLabel}
+                  onChange={v => setPriorityLabel(v as typeof priorityLabel)}
+                  options={PRIORITY_LABELS.map(p => ({ value: p, label: t.priorityText[p] }))}
+                />
               </div>
-            )}
-          </div>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.noteLabel}</label>
-            <TextField value={description} onChange={setDescription} placeholder={t.notePlaceholder} />
+              {/* Group is set here rather than on the detail sheet, where it used to be the one
+                  editable thing on a sheet whose other four values were read-only, next to an Edit
+                  item in the menu — which read as "the group is all you may change". */}
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.colGroup}</label>
+                {newGroupName === null ? (
+                  <FilterSelect
+                    value={groupId}
+                    onChange={setGroupId}
+                    options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
+                    footerAction={{ label: t.addGroup, onClick: () => setNewGroupName("") }}
+                  />
+                ) : (
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <TextField value={newGroupName} onChange={setNewGroupName} placeholder={t.groupNamePlaceholder} autoFocus />
+                    </div>
+                    <button className="portal-btn-primary" onClick={createGroup} disabled={!newGroupName.trim()}
+                      style={{
+                        height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none",
+                        backgroundColor: newGroupName.trim() ? "var(--primary-400)" : "var(--gray-200)",
+                        color: newGroupName.trim() ? "white" : "var(--gray-400)",
+                        fontSize: "12px", fontWeight: 700, cursor: newGroupName.trim() ? "pointer" : "not-allowed", flexShrink: 0,
+                      }}>
+                      {t.createGroupAction}
+                    </button>
+                    <button className="portal-btn-outline" onClick={() => setNewGroupName(null)}
+                      style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+                      {t.cancel}
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.noteLabel}</label>
+                <TextField value={description} onChange={setDescription} placeholder={t.notePlaceholder} />
+              </div>
+            </div>}
           </div>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
