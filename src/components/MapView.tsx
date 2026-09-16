@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LiveEvent, Device, TrackingHop, nearestDistrict, getFacePhoto, formatTimeAgo,
+import { LiveEvent, Device, TrackingHop, getFacePhoto, formatTimeAgo,
   DISTRICT_ALERT_THRESHOLD_KEY, DISTRICT_MODERATE_THRESHOLD_KEY,
   DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD, districtIdAt } from "@/lib/mockData";
 import {
@@ -687,7 +687,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         // but a map you are looking at should not require looking away to undo.
         const home = districts?.find(d => d.id === districtFilter);
         if (home) {
-          const camerasHere = cameras.filter(c => nearestDistrict(c.lat, c.lng).id === home.id);
+          const camerasHere = cameras.filter(c => districtIdAt(c.lat, c.lng) === home.id);
           const count = todaysHits.filter(h => districtIdAt(h.lat, h.lng) === home.id).length;
           const icon = L.divIcon({
             html: districtPillHtml(
@@ -731,7 +731,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         // district happens to be nearest the equator, silently, and the count read as real.
         const inDistrictToday = (lat: number | undefined, lng: number | undefined, timestamp: string) =>
           lat !== undefined && lng !== undefined
-          && isTodaySgt(new Date(timestamp), now) && nearestDistrict(lat, lng).id === districtFilter;
+          && isTodaySgt(new Date(timestamp), now) && districtIdAt(lat, lng) === districtFilter;
         const hits: LiveEvent[] = recentEvents
           .flatMap(ev => {
             if (ev.type === "Tracking" && ev.path?.length) {
@@ -872,7 +872,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         const SAME_SPOT_DEGREES = 0.0006; // ~65m at this latitude
         const hitSpots = [...bySpot.values()].map(spot => spot[0]);
         cameras
-          .filter(c => nearestDistrict(c.lat, c.lng).id === districtFilter)
+          .filter(c => districtIdAt(c.lat, c.lng) === districtFilter)
           .filter(c => !hitSpots.some(h =>
             Math.abs(h.lat - c.lat) < SAME_SPOT_DEGREES && Math.abs(h.lng - c.lng) < SAME_SPOT_DEGREES))
           .forEach(cam => {
@@ -900,7 +900,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
       } else if (zoom <= CLUSTER_ZOOM_BREAKPOINT) {
         // ── Zoomed out: one pill per district ──
         districts.forEach((district) => {
-          const camerasInDistrict = cameras.filter(c => nearestDistrict(c.lat, c.lng).id === district.id);
+          const camerasInDistrict = cameras.filter(c => districtIdAt(c.lat, c.lng) === district.id);
           // The dashed pill means "this district's cameras are all down right now" — a coverage
           // gap, which is worth a pin even with nothing to report. Checking run state rather than
           // array length is what captures that.
@@ -1077,7 +1077,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
       // in it. Those are different rectangles, and the difference was visible: pressing Angmokio
       // listed three sightings in the sidebar and showed ONE pin, because the other camera (Yishun
       // MRT) sits well north of Ang Mo Kio's centre and fell outside a zoom-15 window. A district
-      // here is a nearest-CENTRE bucket, not a boundary (see nearestDistrict), so its members can
+      // here is a nearest-centre bucket within DISTRICT_REACH_KM, not a drawn boundary, so members can
       // be much further from the centre than any real boundary would allow — the mismatch is built
       // into the attribution, not an occasional accident.
       //

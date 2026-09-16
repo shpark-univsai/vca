@@ -74,24 +74,60 @@ export const DISTRICTS: District[] = [
  * still have shown confident numbers, in the wrong districts, for the customer deciding where to
  * install cameras next. The cosine factor below costs one multiplication and removes the trap.
  */
+/** Kilometres between two points, near enough at city scale. Longitude degrees shrink toward the
+ *  poles and latitude degrees do not, so Δlng is scaled by cos(lat) to make the two comparable. */
+function kmBetween(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const lngScale = Math.cos(((aLat + bLat) / 2 * Math.PI) / 180);
+  return Math.hypot(aLat - bLat, (aLng - bLng) * lngScale) * 111.29;
+}
+
 /**
- * The district id for a point that may not exist.
+ * How far from a district's centre a point can be and still belong to it.
  *
- * Callers hold coordinates that can be absent — a sighting on a camera nobody has surveyed. They
- * used to pass `?? 0`, and `nearestDistrict(0, 0)` answers with a real Singapore district, so an
- * unplaced sighting was counted into whichever one sits nearest the equator. There is no district
- * for a point that is nowhere, and this says so instead of picking one.
+ * DERIVED FROM THE DISTRICT LAYOUT, not typed in, because this list is per installation — a
+ * hard-coded radius tuned on Singapore would be wrong in the next city the product ships to. The
+ * measure is the median distance from each district centre to its nearest neighbour: past that,
+ * a point is closer to the gaps between districts than to any district, and calling it a member
+ * of the nearest one is a guess dressed as a fact.
+ *
+ * `nearestDistrict` has no such limit and never did, which is how a detection 6.8 km outside the
+ * whole grid (a seed at "Yishun MRT", since moved) was counted into Angmokio's tally. District
+ * tallies are the evidence a customer buys cameras on, so a point outside the grid has to read as
+ * outside rather than as somebody's number going up.
+ *
+ * On Singapore's seventeen this comes to about 2.1 km, and the answer is insensitive to the
+ * choice: anything from 2.1 to 4.3 km excludes exactly the same two cameras (Queenstown and
+ * Jurong East, which have no district in the list at all) and includes the other fifty-nine.
+ * That gap in the data is what makes the rule safe rather than a fitted constant.
+ */
+export const DISTRICT_REACH_KM: number = (() => {
+  if (DISTRICTS.length < 2) return Infinity;
+  const nearest = DISTRICTS.map((a, i) =>
+    Math.min(...DISTRICTS.filter((_, j) => j !== i).map(b => kmBetween(a.lat, a.lng, b.lat, b.lng))),
+  ).sort((x, y) => x - y);
+  const mid = Math.floor(nearest.length / 2);
+  return nearest.length % 2 ? nearest[mid] : (nearest[mid - 1] + nearest[mid]) / 2;
+})();
+
+/**
+ * The district a point belongs to, or undefined — the only district function callers should use.
+ *
+ * Two ways to belong to none, and both are real: the point may not exist (a sighting on a camera
+ * nobody has surveyed — callers used to pass `?? 0`, and `nearestDistrict(0, 0)` answers with a
+ * real Singapore district), or it may lie outside the grid (see DISTRICT_REACH_KM).
  */
 export function districtIdAt(lat: number | undefined, lng: number | undefined): string | undefined {
   if (lat === undefined || lng === undefined) return undefined;
-  return nearestDistrict(lat, lng).id;
+  const d = nearestDistrict(lat, lng);
+  return kmBetween(lat, lng, d.lat, d.lng) <= DISTRICT_REACH_KM ? d.id : undefined;
 }
 
+/**
+ * Raw nearest centre, with no limit. Prefer `districtIdAt` — this answers "which is closest",
+ * which is not the same question as "which does it belong to", and the difference is the bug
+ * DISTRICT_REACH_KM exists to stop.
+ */
 export function nearestDistrict(lat: number, lng: number): District {
-  // Longitude degrees shrink toward the poles; latitude degrees do not. Scaling Δlng by cos(lat)
-  // makes the two comparable, which is what turns this from a coordinate difference into a
-  // distance. Using the query point's own latitude is exact enough at city scale — the districts
-  // are kilometres apart, not degrees.
   const lngScale = Math.cos((lat * Math.PI) / 180);
   let best = DISTRICTS[0];
   let bestDist = Infinity;

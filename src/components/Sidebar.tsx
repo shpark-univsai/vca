@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Search, Crown } from "lucide-react";
-import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, getFacePhoto, formatTimeAgo, nearestDistrict, districtIdAt } from "@/lib/mockData";
+import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, getFacePhoto, formatTimeAgo, districtIdAt } from "@/lib/mockData";
 import {
   useVcaStore, vcaEventsToLiveEvents, todaysDetectionHits, districtTally,
   useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras, hasPosition,
