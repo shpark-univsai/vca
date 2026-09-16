@@ -7,7 +7,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import {
   BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR,
-  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, sortRows, useTableSort, MEASURE } from "./PortalShared";
+  ActiveFilterCount, FilterSelect, FIELD_STYLE, SortableHeader, SummaryStrip, sortRows, useTableSort, MEASURE } from "./PortalShared";
 import { Eye, FileOutput, ShieldAlert } from "lucide-react";
 
 /**
@@ -30,17 +30,22 @@ import { Eye, FileOutput, ShieldAlert } from "lucide-react";
 // dropped "Screen" — so the record an auditor reads on this page and the file they are handed
 // disagreed about which fields the log even has.
 /**
- * Two shapes, because two of the columns only exist when the installation asks for a purpose.
+ * The columns are assembled rather than written out, because two of them only exist when
+ * something outside this screen is true.
  *
- * With requireSearchPurpose off the app never collects one, so Purpose and Reference could not be
- * filled by anything — a pair of columns that are blank on every row for the life of the release.
- * A permanently empty column is not a placeholder, it is a promise the screen cannot keep, and a
- * reader seeing rows arrive with those two always dashed concludes the log is half broken.
+ * A column that cannot be filled is not a placeholder, it is a promise the screen cannot keep —
+ * and it gets worse once rows arrive, because then the reader watches entries land with that cell
+ * dashed on every one of them and concludes the log is half broken. Purpose and Reference depend
+ * on requireSearchPurpose; the IP depends on a server that is not there yet (the browser does not
+ * know its own public address — see SearchAccessRecord.ip).
  *
- * Same rule the VIP registry already follows for its category column when vipCategories is off.
+ * Widths live next to their labels so the two cannot drift apart, which is what a second
+ * hardcoded grid string would eventually do.
  */
-const GRID = "150px 1fr 1fr 0.9fr 0.8fr 0.8fr 0.7fr 0.9fr";
-const GRID_NO_PURPOSE = "150px 1.1fr 1fr 0.8fr 0.7fr 0.9fr";
+const COLUMN_WIDTH = {
+  at: "150px", actor: "1fr", purpose: "1fr", reference: "0.9fr",
+  target: "1fr", surface: "0.8fr", results: "0.7fr", ip: "0.9fr",
+} as const;
 
 type LogSortKey = "at" | "actor" | "purpose" | "target";
 
@@ -53,6 +58,7 @@ const T = {
     colAt: "When", colActor: "Operator", colPurpose: "Purpose", colReference: "Reference",
     colTarget: "Searched for", colSurface: "Screen", colResults: "Results", colIp: "From",
     filterAllPurposes: "All purposes",
+    filterFrom: "From", filterTo: "To",
     filterAllActors: "All operators",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     clearFilters: "Clear",
@@ -73,6 +79,7 @@ const T = {
     colAt: "시각", colActor: "조회자", colPurpose: "목적", colReference: "참조번호",
     colTarget: "조회 대상", colSurface: "화면", colResults: "결과", colIp: "위치",
     filterAllPurposes: "전체 목적",
+    filterFrom: "시작일", filterTo: "종료일",
     filterAllActors: "전체 조회자",
     filtersActive: (n: number) => `필터 ${n}`,
     clearFilters: "해제",
@@ -101,7 +108,29 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
   const projectZone = useVcaStore(s => s.projects.find(p => p.id === projectId)?.timeZone) ?? PROJECT_TIME_ZONE;
   const { sort, toggle: toggleSort } = useTableSort<LogSortKey>({ key: "at", direction: "desc" });
   const purposeAsked = getComplianceConfig().requireSearchPurpose;
+  /**
+   * The IP column appears once anything can fill it.
+   *
+   * Not tied to a config switch like the purpose columns are, because this is not a policy — it is
+   * a server that has not arrived. SearchAccessRecord.ip is written by the backend and a browser
+   * cannot know its own public address, so today every row would carry a dash under a heading that
+   * promises where somebody was sitting.
+   */
   const [purposeFilter, setPurposeFilter] = useState("ALL");
+  /**
+   * The range an auditor is asking about.
+   *
+   * Every comparable log opens with one — 1Password, Vanta, Okta and Dropbox all put a date range
+   * ahead of the other filters, because nobody reads an audit log from the top; they arrive with a
+   * day or a week in mind. This log had a filter for who and none for when, which is the wrong way
+   * round: the operator is usually the thing being looked FOR, and the date is what narrows the
+   * haystack first.
+   *
+   * Empty means unbounded on that side, so one field alone is a useful question ("anything since
+   * Monday").
+   */
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [actorFilter, setActorFilter] = useState("ALL");
 
   const projectRecords = useMemo(
@@ -123,9 +152,27 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
     [projectRecords],
   );
 
+  const showIp = projectRecords.some(r => r.ip);
+  const columns = [
+    "at", "actor",
+    ...(purposeAsked ? ["purpose", "reference"] : []),
+    "target", "surface", "results",
+    ...(showIp ? ["ip"] : []),
+  ] as (keyof typeof COLUMN_WIDTH)[];
+  const grid = columns.map(c => COLUMN_WIDTH[c]).join(" ");
+
   const rows = projectRecords
     .filter(r => purposeFilter === "ALL" || r.purposeId === purposeFilter)
-    .filter(r => actorFilter === "ALL" || r.actor === actorFilter);
+    .filter(r => actorFilter === "ALL" || r.actor === actorFilter)
+    // Compared in the project's own zone, the same one the rows print. A range picked as
+    // "2026-09-15" means that day at the site, not a UTC slice of it that starts nine hours early.
+    .filter(r => {
+      if (!fromDate && !toDate) return true;
+      const day = dateKeyIn(new Date(r.at), projectZone);
+      if (fromDate && day < fromDate) return false;
+      if (toDate && day > toDate) return false;
+      return true;
+    });
   const visible = sortRows(rows, sort, (r, key) => {
     switch (key) {
       case "at": return r.at;
@@ -135,8 +182,9 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
     }
   });
 
-  const activeFilterCount = [purposeFilter, actorFilter].filter(v => v !== "ALL").length;
-  const clearFilters = () => { setPurposeFilter("ALL"); setActorFilter("ALL"); };
+  const activeFilterCount = [purposeFilter, actorFilter].filter(v => v !== "ALL").length
+    + (fromDate ? 1 : 0) + (toDate ? 1 : 0);
+  const clearFilters = () => { setPurposeFilter("ALL"); setActorFilter("ALL"); setFromDate(""); setToDate(""); };
 
   /* A look-up with no reference is not a fault — most purposes do not require one — but it is the
      slice a reviewer samples first, so the strip counts it rather than making them filter for it. */
@@ -146,10 +194,10 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
   const exportCsv = () => {
     // The file carries the columns the screen carries. A CSV with two always-blank columns is the
     // same unkept promise one screen further out, and it is the copy that leaves the building.
-    const header = [t.csvAt, t.csvActor, ...(purposeAsked ? [t.csvPurpose, t.csvReference] : []), t.csvTarget, t.csvSurface, t.csvResults, t.csvIp];
+    const header = [t.csvAt, t.csvActor, ...(purposeAsked ? [t.csvPurpose, t.csvReference] : []), t.csvTarget, t.csvSurface, t.csvResults, ...(showIp ? [t.csvIp] : [])];
     const body = visible.map(r => [
       r.at, r.actor, ...(purposeAsked ? [r.purposeLabel ?? "", r.reference ?? ""] : []), r.target, r.surface,
-      r.resultCount === undefined ? "" : String(r.resultCount), r.ip ?? "",
+      r.resultCount === undefined ? "" : String(r.resultCount), ...(showIp ? [r.ip ?? ""] : []),
     ]);
     const csv = [header, ...body].map(row => row.map(csvEscape).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
@@ -201,6 +249,16 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "12px" }}>
         {/* Gone with the columns: a filter whose only option is "all" narrows nothing. */}
+        {/* First in the row, because it is the question an auditor arrives with. */}
+        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <input type="date" value={fromDate} max={toDate || undefined} onChange={e => setFromDate(e.target.value)}
+            aria-label={t.filterFrom} title={t.filterFrom}
+            style={{ ...FIELD_STYLE, height: CONTROL_HEIGHT, width: "150px", padding: "0 10px", fontSize: "12px" }} />
+          <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>—</span>
+          <input type="date" value={toDate} min={fromDate || undefined} onChange={e => setToDate(e.target.value)}
+            aria-label={t.filterTo} title={t.filterTo}
+            style={{ ...FIELD_STYLE, height: CONTROL_HEIGHT, width: "150px", padding: "0 10px", fontSize: "12px" }} />
+        </span>
         {purposeAsked && (
           <FilterSelect value={purposeFilter} onChange={setPurposeFilter}
             options={[{ value: "ALL", label: t.filterAllPurposes }, ...purposeOptions]} />
@@ -223,23 +281,21 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
 
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW }}>
         <div style={{
-          position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: purposeAsked ? GRID : GRID_NO_PURPOSE,
+          position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: grid,
           columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)",
           borderBottom: BORDER, borderTopLeftRadius: "16px", borderTopRightRadius: "16px",
           color: TABLE_HEADER_COLOR,
         }}>
-          {([
-            { label: t.colAt, key: "at" as LogSortKey },
-            { label: t.colActor, key: "actor" as LogSortKey },
-            ...(purposeAsked ? [
-              { label: t.colPurpose, key: "purpose" as LogSortKey },
-              { label: t.colReference },
-            ] : []),
-            { label: t.colTarget, key: "target" as LogSortKey },
-            { label: t.colSurface },
-            { label: t.colResults },
-            { label: t.colIp },
-          ] as { label: string; key?: LogSortKey }[]).map((h, i) => (
+          {(columns.map(c => ({
+            at: { label: t.colAt, key: "at" as LogSortKey },
+            actor: { label: t.colActor, key: "actor" as LogSortKey },
+            purpose: { label: t.colPurpose, key: "purpose" as LogSortKey },
+            reference: { label: t.colReference },
+            target: { label: t.colTarget, key: "target" as LogSortKey },
+            surface: { label: t.colSurface },
+            results: { label: t.colResults },
+            ip: { label: t.colIp },
+          }[c])) as { label: string; key?: LogSortKey }[]).map((h, i) => (
             <span key={i}><SortableHeader label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} /></span>
           ))}
         </div>
@@ -251,7 +307,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
           </div>
         ) : visible.map((r: SearchAccessRecord, i) => (
           <div key={r.id} style={{
-            display: "grid", gridTemplateColumns: purposeAsked ? GRID : GRID_NO_PURPOSE, columnGap: TABLE_COLUMN_GAP,
+            display: "grid", gridTemplateColumns: grid, columnGap: TABLE_COLUMN_GAP,
             padding: "10px 16px", alignItems: "center",
             borderBottom: i === visible.length - 1 ? "none" : BORDER,
           }}>
@@ -277,7 +333,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
             {cell(r.target)}
             {cell(r.surface)}
             {cell(r.resultCount === undefined ? t.none : String(r.resultCount), r.resultCount === undefined)}
-            {cell(r.ip ?? t.none, !r.ip)}
+            {showIp && cell(r.ip ?? t.none, !r.ip)}
           </div>
         ))}
       </div>
