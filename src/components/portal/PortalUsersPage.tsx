@@ -118,12 +118,12 @@ const T = {
     accessAppOnlyDesc: "Signs straight into the monitoring app. No Portal.",
     accessPortalOnlyDesc: "Settings console only — no monitoring app.",
     accessGainsRoleNote: (role: string) => `Given the ${role} role, which changes nothing until you raise it.`,
-    reasonNoApp: "This account has no app access — person search has no screen to run on.",
+    reasonNoApp: "This account has no app access — there are no screens to grant or to search on.",
     reasonNoPortal: "This account does not open Portal — change where they sign in first.",
     reasonNotOwner: "Only an owner can change access.",
     appSearchOn: "On",
-    appSearchGrant: "Allow person search in the app",
-    appSearchRevoke: "Block person search in the app",
+    appSearchGrant: "Allow person search",
+    appSearchRevoke: "Block person search",
     appSearchToastOn: "Person search allowed",
     appSearchToastOff: "Person search blocked",
     appSearchToastDesc: (name: string) => `${name} — Data and Redmap searches`,
@@ -135,12 +135,18 @@ const T = {
     // Row actions
     // Not "Resend": nothing is posted anywhere (see InviteLinkPanel). This mints a fresh token
     // and puts the link on screen, which is a different act and has to read as one.
+    // NO TRAILING ELLIPSIS ON ANY OF THESE, and that is the product's rule rather than this
+    // menu's exception. The desktop convention (… means "this asks you something first") was
+    // carried by exactly four labels here and by nothing else in the product: 카메라 추가,
+    // 사용자 초대, CSV 가져오기, 편집, 프리셋 추가, 팀 만들기 and eleven more all open a form and
+    // none of them carry one. A convention with four users is not a convention, and adding it to
+    // the other seventeen would import a desktop-menu habit into a console that never used it.
     resendInvite: "New invite link",
     // The two cells that used to be a select on every row — see AccessChangeModal.
-    changeRole: "Change Portal role…",
-    changeAccess: "Change where they sign in…",
-    changeGrants: "Change app screens…",
-    reasonNoAppScreens: "This account has no app access — there are no screens to grant.",
+    changeRole: "Change Portal role",
+    changeAccess: "Change where they sign in",
+    changeGrants: "Change app screens",
+    reasonNoAppScreens: "This account has no app access — there are no screens to grant or to search on.",
     generateTempPassword: "Generate temporary password",
     // "user" is redundant in a menu that opens from a user's own row — the row already says who.
     reactivateUser: "Reactivate",
@@ -278,7 +284,7 @@ const T = {
     errEmail: "That is not an email address.",
     errDuplicate: "An account already uses this address.",
     errDomain: (d: string) => `Accounts must be on @${d} — mail to anything else is not deliverable from this installation.`,
-    editProjects: "Projects…",
+    editProjects: "Change projects",
     projectsModalTitle: "Projects",
     projectsModalIntro: (name: string) => `Which of this team's projects ${name} may open. A project they are not given stops appearing in their app.`,
     projectsModalNoneWarning: "At least one project. An account with no projects signs in to an empty app with no sign that anything was taken away — suspend the account instead.",
@@ -409,12 +415,12 @@ const T = {
     accessAppOnlyDesc: "로그인하면 바로 관제 앱. Portal은 못 봅니다.",
     accessPortalOnlyDesc: "설정 콘솔만 — 관제 앱은 못 씁니다.",
     accessGainsRoleNote: (role: string) => `${role} 역할로 들어갑니다. 올리기 전까지는 바꾸는 게 없습니다.`,
-    reasonNoApp: "앱 접근이 없는 계정입니다 — 인물 검색을 쓸 화면이 없습니다.",
+    reasonNoApp: "앱 접근이 없는 계정입니다 — 지정하거나 검색할 화면이 없습니다.",
     reasonNoPortal: "Portal을 열지 않는 계정입니다 — 로그인 위치를 먼저 바꾸세요.",
     reasonNotOwner: "권한 변경은 최고관리자만 할 수 있습니다.",
     appSearchOn: "허용",
-    appSearchGrant: "앱에서 인물 검색 허용",
-    appSearchRevoke: "앱에서 인물 검색 차단",
+    appSearchGrant: "인물 검색 허용",
+    appSearchRevoke: "인물 검색 차단",
     appSearchToastOn: "인물 검색을 허용했습니다",
     appSearchToastOff: "인물 검색을 차단했습니다",
     appSearchToastDesc: (name: string) => `${name} — Data · Redmap 검색`,
@@ -425,10 +431,10 @@ const T = {
 
     // Row actions
     resendInvite: "초대 링크 다시 만들기",
-    changeRole: "Portal 역할 변경…",
-    changeAccess: "로그인 위치 변경…",
-    changeGrants: "앱 화면 권한 변경…",
-    reasonNoAppScreens: "앱 접근이 없는 계정입니다 — 지정할 화면이 없습니다.",
+    changeRole: "Portal 역할 변경",
+    changeAccess: "로그인 위치 변경",
+    changeGrants: "앱 화면 권한 변경",
+    reasonNoAppScreens: "앱 접근이 없는 계정입니다 — 지정하거나 검색할 화면이 없습니다.",
     generateTempPassword: "임시 비밀번호 생성",
     resetPassword: "비밀번호 재설정",
     sendCode: "코드 전송",
@@ -547,7 +553,7 @@ const T = {
     errEmail: "이메일 주소 형식이 아닙니다.",
     errDuplicate: "이미 이 주소를 쓰는 계정이 있습니다.",
     errDomain: (d: string) => `계정은 @${d} 주소여야 합니다 — 이 설치본에서 다른 주소로는 메일이 나가지 않습니다.`,
-    editProjects: "프로젝트…",
+    editProjects: "담당 프로젝트 변경",
     projectsModalTitle: "프로젝트",
     projectsModalIntro: (name: string) => `${name} 님이 열 수 있는 이 팀의 프로젝트입니다. 주지 않은 프로젝트는 앱에서 보이지 않습니다.`,
     projectsModalNoneWarning: "최소 한 개는 있어야 합니다. 프로젝트가 없는 계정은 아무것도 없는 앱에 로그인하게 되고, 무엇이 회수됐는지 알 방법이 없습니다. 그럴 땐 계정을 정지하세요.",
@@ -3080,7 +3086,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                         showToast({ variant: "warning", title: t.userSuspendedTitle, desc: t.userSuspendedDesc(u.name) });
                       },
                     }),
-                    danger: true,
+                    // NOT `danger` on the menu row, though the confirm dialog above still is.
+                    // Suspending is reversible — 재활성화 occupies this very slot afterwards — and
+                    // 제거 below is not. Colouring both red makes red mean "bottom of the menu"
+                    // instead of "think", and the one that cannot be undone loses its warning.
                     // Refused, not warned about: this deployment is on-premise with the top
                     // administrator on the customer's side, so there is no supplier account to
                     // undo it with. The store refuses these too — see isLastActiveAdmin.
