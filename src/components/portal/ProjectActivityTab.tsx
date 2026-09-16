@@ -55,6 +55,10 @@ const T = {
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     clearFilters: "Clear",
     export: "Export CSV",
+    // Two ways this button can be dead, and on an audit surface they are opposite answers — see
+    // the note on the control itself.
+    exportNothingHeld: "No activity recorded yet — there is nothing to export.",
+    exportNoMatch: "These filters match no entries. The file carries the rows the table is showing.",
     statTotal: "changes", statTotalLabel: "in range",
     statActors: "people", statActorsLabel: "made them",
     statLatest: "latest", statLatestNone: "—",
@@ -76,6 +80,8 @@ const T = {
     filtersActive: (n: number) => `필터 ${n}`,
     clearFilters: "해제",
     export: "CSV 내보내기",
+    exportNothingHeld: "기록된 변경이 없어 내보낼 것이 없습니다.",
+    exportNoMatch: "조건에 맞는 기록이 없습니다. 파일에는 표에 보이는 행만 담깁니다.",
     statTotal: "건", statTotalLabel: "기간 내 변경",
     statActors: "명", statActorsLabel: "변경한 사람",
     statLatest: "마지막", statLatestNone: "—",
@@ -171,6 +177,12 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
     recordListExport({ projectId, list: "activity", rowCount: body.length });
   };
 
+  /* Empty log or empty filter — the same split the table body below already makes, said once so
+     the button and the empty row cannot drift apart. undefined while there is something to export:
+     a title on a live control is a tooltip nobody asked for. */
+  const exportBlocked = visible.length > 0 ? undefined
+    : projectEntries.length === 0 ? t.exportNothingHeld : t.exportNoMatch;
+
   const distinctActors = new Set(rows.map(a => a.actor)).size;
   const latest = visible.length > 0
     ? [...rows].sort((a, b) => b.at.localeCompare(a.at))[0]
@@ -204,16 +216,29 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
           options={[{ value: "ALL", label: t.filterAllActors }, ...actorOptions]} />
         <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
         <span style={{ flex: 1 }} />
-        <button className="portal-btn-quiet" onClick={exportCsv} disabled={visible.length === 0}
-          style={{
-            display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px",
-            borderRadius: "8px", border: "none", backgroundColor: "transparent",
-            color: visible.length === 0 ? "var(--gray-300)" : "var(--gray-600)",
-            fontSize: "12px", fontWeight: 600, cursor: visible.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit",
-          }}>
-          <FileOutput size={14} strokeWidth={2.4} />
-          {t.export}
-        </button>
+        {/* WHY THE GREY BUTTON SAYS WHICH KIND OF NOTHING IT IS. The two reasons this control can
+            be dead send an auditor to opposite conclusions — "nothing was ever recorded on this
+            project" is a finding somebody writes down, "the range you picked holds nothing" is
+            their own filter and they should widen it. Greyed out with no sentence, the first is
+            what a reader assumes. The roster's export answers the same question through
+            RowActionsMenu's `reason`; this toolbar has no menu to hang a footnote on, so the
+            sentence rides on the control.
+
+            On the wrapper as well as the button: a disabled button dispatches no pointer events,
+            and browsers differ on whether they still show its own title — the span around it is
+            hovered either way. */}
+        <span title={exportBlocked} style={{ display: "inline-flex" }}>
+          <button className="portal-btn-quiet" onClick={exportCsv} disabled={visible.length === 0} title={exportBlocked}
+            style={{
+              display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px",
+              borderRadius: "8px", border: "none", backgroundColor: "transparent",
+              color: visible.length === 0 ? "var(--gray-300)" : "var(--gray-600)",
+              fontSize: "12px", fontWeight: 600, cursor: visible.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit",
+            }}>
+            <FileOutput size={14} strokeWidth={2.4} />
+            {t.export}
+          </button>
+        </span>
       </div>
 
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>

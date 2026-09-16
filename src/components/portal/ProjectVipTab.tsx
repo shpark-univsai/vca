@@ -70,6 +70,12 @@ interface VipDict {
   viewTable: string;
   colName: string;
   exportCsv: string;
+  /* Two sentences, because the button dies for two different reasons and they need different
+     answers. The export is the list as filtered — see exportCsv() — so an empty registry and a
+     filter that happens to match nobody both leave zero rows, and only one of them is fixed by
+     touching the toolbar. PortalUsersPage keeps the same pair under `nothingToExport`. */
+  nothingToExport: string;
+  nothingToExportFiltered: string;
   csvRegisteredBy: string;
   csvStatus: string;
   csvNever: string;
@@ -159,7 +165,11 @@ interface VipDict {
   healthReachFlat: string;
   colRegistered: string;
   colNote: string;
-  confirmRemoveTitle: string;
+  /* Names the person, the way every other dialog on this screen does — releaseTitle,
+     reinstateTitle, confirmRemoveGroupTitle. It used to be a stock "정말 삭제하시겠습니까?" with the
+     name printed on a line of its own above it, which is the one shape that reads as a generic
+     browser confirm rather than as a decision about somebody. */
+  confirmRemoveTitle: (name: string) => string;
   confirmRemoveBody: string;
   removeAction: string;
   vipRemovedTitle: string;
@@ -243,13 +253,18 @@ const T: Record<"en" | "ko", VipDict> = {
     viewTable: "Table",
     colName: "Name",
     exportCsv: "Export CSV",
+    nothingToExport: "This list has nothing in it to export.",
+    nothingToExportFiltered: "The file is whatever the list is showing, and the filters have left it empty. Clear them and the export comes back.",
     csvRegisteredBy: "Registered by",
     csvStatus: "Status",
     csvNever: "never",
     csvUnclassified: "unclassified",
     csvStatusActive: "active",
     toastVipExportTitle: "Export complete",
-    toastVipExportDesc: (n: number) => `${n} vipRegistry record(s) exported to CSV.`,
+    // People, not records: every row of this file is one person on the VIP list, and the Korean
+    // side counted them in 건 while the same screen counted them in 명 three lines later.
+    // ("vipRegistry" was an identifier that leaked into the sentence.)
+    toastVipExportDesc: (n: number) => `${n} VIP(s) exported to CSV.`,
     colPriority: "Priority",
     healthExpired: "end date passed",
     // These sentences stop at the list on purpose. Expiry and release take a person off the
@@ -295,7 +310,9 @@ const T: Record<"en" | "ko", VipDict> = {
     statusReleased: "Released",
     expiringInDays: (n: number) => `${n}d left`,
     noExpiry: "No end date",
-    selectAllLabel: "Select all listings shown",
+    // Same words as the cameras table's checkbox, which is the same control doing the same thing —
+    // and "shown" stays in both, because both only ever select the rows on screen.
+    selectAllLabel: "Select all rows shown",
     selectedCount: (n: number) => `${n} selected`,
     bulkExpiryLabel: "Set end date",
     bulkExpiryApply: "Apply",
@@ -340,7 +357,7 @@ const T: Record<"en" | "ko", VipDict> = {
     healthReachFlat: "same as last week",
     colRegistered: "Registered",
     colNote: "Note",
-    confirmRemoveTitle: "Remove this VIP?",
+    confirmRemoveTitle: (name: string) => `Remove ${name}?`,
     confirmRemoveBody: "They will be removed from this project's VIP list, and come off the matching list.",
     removeAction: "Remove",
     vipRemovedTitle: "VIP removed",
@@ -423,13 +440,15 @@ const T: Record<"en" | "ko", VipDict> = {
     viewTable: "테이블",
     colName: "이름",
     exportCsv: "CSV 내보내기",
+    nothingToExport: "이 목록에 내보낼 것이 없습니다.",
+    nothingToExportFiltered: "내보내는 것은 지금 보이는 목록인데, 필터에 걸린 사람이 없습니다. 필터를 지우면 다시 내보낼 수 있습니다.",
     csvRegisteredBy: "등록자",
     csvStatus: "상태",
     csvNever: "없음",
     csvUnclassified: "미분류",
     csvStatusActive: "유효",
     toastVipExportTitle: "내보내기 완료",
-    toastVipExportDesc: (n: number) => `VIP ${n}건을 CSV로 내보냈습니다.`,
+    toastVipExportDesc: (n: number) => `VIP ${n}명을 CSV로 내보냈습니다.`,
     colPriority: "우선순위",
     healthExpired: "만료일 지남",
     healthExpiredWhy: "만료일이 지나 대조 명단에서 내려갔습니다. 목적이 이어지는지(만료일을 새로 지정) 끝났는지(해제) 한 건씩 정해야 합니다.",
@@ -466,7 +485,7 @@ const T: Record<"en" | "ko", VipDict> = {
     statusReleased: "해제됨",
     expiringInDays: (n: number) => `${n}일 남음`,
     noExpiry: "무기한",
-    selectAllLabel: "보이는 등록 전체 선택",
+    selectAllLabel: "보이는 행 전체 선택",
     selectedCount: (n: number) => `${n}명 선택됨`,
     bulkExpiryLabel: "만료일 지정",
     bulkExpiryApply: "적용",
@@ -511,7 +530,7 @@ const T: Record<"en" | "ko", VipDict> = {
     healthReachFlat: "지난주와 같음",
     colRegistered: "등록일",
     colNote: "메모",
-    confirmRemoveTitle: "정말 삭제하시겠습니까?",
+    confirmRemoveTitle: (name: string) => `${name}을(를) 삭제할까요?`,
     confirmRemoveBody: "이 프로젝트의 VIP 목록에서 삭제되고, 대조 명단에서 내려갑니다.",
     removeAction: "삭제",
     vipRemovedTitle: "VIP 삭제됨",
@@ -995,9 +1014,12 @@ function RemoveVipConfirmModal({ t, person, onClose, onConfirm }: { t: VipDict; 
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "380px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "24px 20px 20px", textAlign: "center" }}>
           <FacePhoto src={person.photoUrl} size={72} radius="50%" style={{ margin: "0 auto 14px" }} />
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{person.name}</p>
-          <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", marginTop: "12px" }}>{t.confirmRemoveTitle}</p>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px" }}>{t.confirmRemoveBody}</p>
+          {/* One heading, not a name on one line and "정말 삭제하시겠습니까?" under it — the second
+              line repeated the first without adding anything, and the question it asked was about
+              nobody in particular. 16px/800 is the dialog heading size the status and group
+              confirms already use. */}
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.confirmRemoveTitle(person.name)}</p>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px" }}>{t.confirmRemoveBody}</p>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
@@ -1608,6 +1630,19 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
     recordListExport({ projectId, list: "vips", rowCount: rows.length });
   };
 
+  /**
+   * Why the export button is dead, when it is.
+   *
+   * It greys out on `projectPersons`, which is the list after the search box and the filters — the
+   * same set the file would hold. So "there is nothing here" and "your filters have hidden
+   * everything" both land on zero, and they are not the same problem: one is answered by
+   * registering somebody, the other by clearing a chip two inches to the left. Undefined while the
+   * button works, so an enabled control carries no tooltip.
+   */
+  const exportDisabledReason = projectPersons.length > 0
+    ? undefined
+    : q || activeFilterCount > 0 ? t.nothingToExportFiltered : t.nothingToExport;
+
   const register = (values: RegisterValues) => {
     addPerson({
       // The form requires a photo, so values.photoUrl is set here — but it is passed straight
@@ -1940,7 +1975,9 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 9.33V1.75M7 1.75 4.08 4.67M7 1.75 9.92 4.67M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
             {t.bulkUpload}
           </button>
-          <button className="portal-btn-quiet" onClick={exportCsv} disabled={projectPersons.length === 0}
+          {/* title, the same way the two buttons on either side of it carry their refusal — a
+              toolbar has no room for a sentence under it, and these three have to stay one row. */}
+          <button className="portal-btn-quiet" onClick={exportCsv} disabled={projectPersons.length === 0} title={exportDisabledReason}
             style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: projectPersons.length === 0 ? "var(--gray-300)" : "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: projectPersons.length === 0 ? "not-allowed" : "pointer" }}>
             <FileOutput size={14} strokeWidth={2.4} />
             {t.exportCsv}

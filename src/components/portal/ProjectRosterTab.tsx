@@ -138,8 +138,12 @@ const T = {
     duplicateId: "이미 명부에 있는 사번입니다.",
     save: "저장",
     addNote: "여기에 추가한다고 들어올 수 있게 되지는 않습니다 — 코드는 그다음에 발급합니다.",
-    toastAddedTitle: "명부에 추가했습니다",
-    toastUpdatedTitle: "명부를 수정했습니다",
+    // 토스트 제목은 한 어미로. 이 파일의 제목들이 "…했습니다" · "…완료" · "…됨" 세 갈래였고,
+    // 그중 셋(코드 발급·재발급·명부 삭제)은 사용자 화면의 같은 행 메뉴에서 잇달아 뜹니다. 제품이
+    // 쓰는 짧은 "됨"에 맞춥니다 — 카메라 탭 "카메라 추가됨", 서버 탭 "서버 추가됨"과 같은 형태.
+    // 단서를 단 문장은 어미를 바꾸지 않습니다(toastCodeReissuedDesc).
+    toastAddedTitle: "명부에 추가됨",
+    toastUpdatedTitle: "명부 항목 수정됨",
     exportCsv: "CSV 내보내기",
     printHandout: "코드 슬립 인쇄",
     issueCodesTo: (n: number) => `미발급 ${n}명에게 코드 발급`,
@@ -160,11 +164,13 @@ const T = {
     reissueCodeAction: "코드 재발급",
     issueCodeAction: "코드 발급",
     removeFromRoster: "명부에서 삭제",
-    toastCodesIssuedTitle: "코드 발급 완료",
-    toastCodesIssuedDesc: (n: number) => `등록 코드 ${n}개가 발급되었습니다.`,
-    toastCodeReissuedTitle: "코드 재발급 완료",
+    toastCodesIssuedTitle: "코드 발급됨",
+    toastCodesIssuedDesc: (n: number) => `등록 코드 ${n}개 발급됨`,
+    toastCodeReissuedTitle: "코드 재발급됨",
+    // 제목과 달리 이 줄은 결과가 아니라 단서입니다 — 이전 코드를 들고 있는 사람이 못 들어온다는
+    // 사실을 알려야 하므로 문장 그대로 둡니다.
     toastCodeReissuedDesc: (name: string) => `${name}님의 이전 코드는 더 이상 사용할 수 없습니다.`,
-    toastCodeIssuedTitle: "코드 발급 완료",
+    toastCodeIssuedTitle: "코드 발급됨",
     toastRemovedTitle: "명부에서 삭제됨",
     toastExportTitle: "내보내기 완료",
     toastExportDesc: (n: number) => `${n}개 행이 CSV로 내보내졌습니다.`,

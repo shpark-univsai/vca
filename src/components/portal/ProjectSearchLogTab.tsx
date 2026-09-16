@@ -59,20 +59,30 @@ const T = {
     // at — a wrong screen name in an audit row is worse than a code the reader can look up.
     surfaceName: { live: "Live monitoring", reid: "Re-ID", redmap: "Redmap", redface: "RedFace" } as Record<string, string>,
     colAt: "When", colActor: "Operator", colPurpose: "Purpose", colReference: "Reference",
-    colTarget: "Searched for", colSurface: "Screen", colResults: "Results", colIp: "From",
+    /* The last column holds SearchAccessRecord.ip, an address string the server writes. It was
+       headed "From" / "위치" — the Korean said "location", which an IP is not: it names a machine
+       on a network, and reading a place out of it is an inference somebody else has to make. On a
+       log that gets quoted in a review, a heading that has already drawn the conclusion is the
+       heading that gets quoted. Both languages renamed together — fixing only the Korean is how
+       the two sides end up saying different things. */
+    colTarget: "Searched for", colSurface: "Screen", colResults: "Results", colIp: "IP address",
     filterAllPurposes: "All purposes",
     filterFrom: "From", filterTo: "To",
     filterAllActors: "All operators",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     clearFilters: "Clear",
     export: "Export CSV",
+    // Two ways this button can be dead, and on this tab they are opposite answers — see the note
+    // on the control itself.
+    exportNothingHeld: "No look-ups recorded yet — there is nothing to export.",
+    exportNoMatch: "These filters match no look-ups. The file carries the rows the table is showing.",
     statTotal: "look-ups", statTotalLabel: "recorded",
     statNoRef: "no reference", statNoRefUnit: "look-ups",
     statOperators: "operators", statOperatorsLabel: "searched",
     ownerOnly: "Only the owner and auditors read this log.",
     csvAt: "When", csvActor: "Operator", csvPurpose: "Purpose", csvReference: "Reference",
     csvActorEmail: "Operator address",
-    csvTarget: "Searched for", csvSurface: "Screen", csvResults: "Results", csvIp: "From",
+    csvTarget: "Searched for", csvSurface: "Screen", csvResults: "Results", csvIp: "IP address",
     none: "—",
   },
   ko: {
@@ -82,20 +92,22 @@ const T = {
     noMatch: "조건에 맞는 조회 기록이 없습니다.",
     surfaceName: { live: "실시간 관제", reid: "Re-ID", redmap: "레드맵", redface: "RedFace" } as Record<string, string>,
     colAt: "시각", colActor: "조회자", colPurpose: "목적", colReference: "참조번호",
-    colTarget: "조회 대상", colSurface: "화면", colResults: "결과", colIp: "위치",
+    colTarget: "조회 대상", colSurface: "화면", colResults: "결과", colIp: "IP 주소",
     filterAllPurposes: "전체 목적",
     filterFrom: "시작일", filterTo: "종료일",
     filterAllActors: "전체 조회자",
     filtersActive: (n: number) => `필터 ${n}`,
     clearFilters: "해제",
     export: "CSV 내보내기",
+    exportNothingHeld: "기록된 조회가 없어 내보낼 것이 없습니다.",
+    exportNoMatch: "조건에 맞는 조회가 없습니다. 파일에는 표에 보이는 행만 담깁니다.",
     statTotal: "건", statTotalLabel: "기록된 조회",
     statNoRef: "참조번호 없음", statNoRefUnit: "건",
     statOperators: "명", statOperatorsLabel: "조회한 사람",
     ownerOnly: "이 기록은 최고관리자와 읽기 전용 관리자가 읽습니다.",
     csvAt: "시각", csvActor: "조회자", csvPurpose: "목적", csvReference: "참조번호",
     csvActorEmail: "조회자 주소",
-    csvTarget: "조회 대상", csvSurface: "화면", csvResults: "결과", csvIp: "위치",
+    csvTarget: "조회 대상", csvSurface: "화면", csvResults: "결과", csvIp: "IP 주소",
     none: "—",
   },
 } as const;
@@ -201,6 +213,12 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
   const noReference = projectRecords.filter(r => !r.reference).length;
   const operatorCount = new Set(projectRecords.map(r => r.actor)).size;
 
+  /* Empty log or empty filter — the same split the table body below makes, said once so the
+     button and the empty row cannot drift apart. undefined while there is something to export: a
+     title on a live control is a tooltip nobody asked for. */
+  const exportBlocked = visible.length > 0 ? undefined
+    : projectRecords.length === 0 ? t.exportNothingHeld : t.exportNoMatch;
+
   const exportCsv = () => {
     // The file carries the columns the screen carries. A CSV with two always-blank columns is the
     // same unkept promise one screen further out, and it is the copy that leaves the building.
@@ -278,16 +296,28 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
           options={[{ value: "ALL", label: t.filterAllActors }, ...actorOptions]} />
         <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
         <span style={{ flex: 1 }} />
-        <button className="portal-btn-quiet" onClick={exportCsv} disabled={visible.length === 0}
-          style={{
-            display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px",
-            borderRadius: "8px", border: "none", backgroundColor: "transparent",
-            color: visible.length === 0 ? "var(--gray-300)" : "var(--gray-600)",
-            fontSize: "12px", fontWeight: 600, cursor: visible.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit",
-          }}>
-          <FileOutput size={14} strokeWidth={2.4} />
-          {t.export}
-        </button>
+        {/* WHY THE GREY BUTTON SAYS WHICH KIND OF NOTHING IT IS. "Nobody has looked anybody up
+            here" and "your date range matched nothing" are the same two sentences the empty table
+            below already separates, and the export is where the difference leaves the building: an
+            auditor handed nothing concludes the log is empty. The roster's export answers this
+            through RowActionsMenu's `reason`; this toolbar has no menu to hang a footnote on, so
+            the sentence rides on the control.
+
+            On the wrapper as well as the button: a disabled button dispatches no pointer events,
+            and browsers differ on whether they still show its own title — the span around it is
+            hovered either way. */}
+        <span title={exportBlocked} style={{ display: "inline-flex" }}>
+          <button className="portal-btn-quiet" onClick={exportCsv} disabled={visible.length === 0} title={exportBlocked}
+            style={{
+              display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px",
+              borderRadius: "8px", border: "none", backgroundColor: "transparent",
+              color: visible.length === 0 ? "var(--gray-300)" : "var(--gray-600)",
+              fontSize: "12px", fontWeight: 600, cursor: visible.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit",
+            }}>
+            <FileOutput size={14} strokeWidth={2.4} />
+            {t.export}
+          </button>
+        </span>
       </div>
 
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>

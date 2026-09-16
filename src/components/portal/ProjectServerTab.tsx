@@ -652,6 +652,16 @@ const MAIN_T = {
     allTypes: "All types", reset: "Reset", addServer: "Add server",
     emptyNoServers: "No servers configured for this project yet.",
     emptyNoMatch: "No servers match these filters.",
+    /* THE PARENTHETICAL STAYS, on both languages, and it is the one column in Portal that earns
+       one. The cameras, roster and users tables all head theirs "Status" / "상태" with nothing
+       after it, and on the camera table that word is backed by a measurement — "Answered the last
+       connection attempt" (healthConnectedWhy). Nothing here probes a server. `Server.status` is a
+       stored field the form no longer even offers (see STATUS_T), one of its three values is
+       "Not checked", and the summary strip above already has to spell out "Somebody recorded this
+       server as failing. Nothing here tested it" (gapErrorWhy) because a bare red "Error" was
+       being read as a live result. Dropping the parenthetical for consistency with the other
+       tables would make this column claim the observation those tables have and this one does
+       not. */
     colStatus: "Status (recorded)", colName: "Server Name", colIp: "Server IP", colType: "Server Type", colSpec: "Specification",
     edit: "Edit", remove: "Remove", cancel: "Cancel",
     showingEntries: (start: number, end: number, total: number) => `Showing ${start} to ${end} of ${total} entries`,

@@ -26,6 +26,11 @@ const T = {
     zeroChannelReason: "This project's licence carries no channels. Connecting a source needs a licence with at least one.",
     zeroChannelBanner: "This project's licence carries zero channels, so no source can be connected. That is a licence to correct rather than a limit to raise.",
     errIp: "That does not look like an address.",
+    // Said when the button is pressed, not while somebody is still filling the form in. Ten fields
+    // on a scrolling sheet: by the time the reader reaches the button the empty one is off the top
+    // of the modal, so the marks alone do not answer "why did nothing happen".
+    saveRefused: "Something above is empty or not in the right form — the fields are marked.",
+    errRequired: "Required.",
     errRtsp: "A stream address starts with rtsp://",
     errLat: "Latitude runs from -90 to 90.",
     errLng: "Longitude runs from -180 to 180.",
@@ -112,7 +117,9 @@ const T = {
     bulkDeleteBody: "They stop being monitored immediately and their channels are freed. Recordings already made are not deleted.",
     bulkDeletedTitle: (n: number) => `${n} camera${n === 1 ? "" : "s"} removed`,
     bulkMovedTitle: (n: number, zone: string) => `${n} camera${n === 1 ? "" : "s"} moved to ${zone}`,
-    selectAllLabel: "Select all rows",
+    // Same words as the VIP table's checkbox — one control, one label. "shown" is in both
+    // because both only ever select the rows on screen.
+    selectAllLabel: "Select all rows shown",
     viewTable: "Table",
     viewGrid: "Grid",
     colCamera: "Camera",
@@ -179,6 +186,8 @@ const T = {
     zeroChannelReason: "이 프로젝트의 라이선스에 채널이 0개입니다. 소스를 연결하려면 채널이 있는 라이선스가 필요합니다.",
     zeroChannelBanner: "이 프로젝트의 라이선스에 채널이 0개라 소스를 연결할 수 없습니다. 한도를 올릴 문제가 아니라 라이선스를 바로잡을 문제입니다.",
     errIp: "주소 형식이 아닙니다.",
+    saveRefused: "위에 비어 있거나 형식이 맞지 않는 항목이 있습니다 — 해당 칸에 표시했습니다.",
+    errRequired: "필수 항목입니다.",
     errRtsp: "스트림 주소는 rtsp:// 로 시작합니다.",
     errLat: "위도는 -90에서 90 사이입니다.",
     errLng: "경도는 -180에서 180 사이입니다.",
@@ -265,7 +274,7 @@ const T = {
     bulkDeleteBody: "즉시 모니터링이 중단되고 채널이 반환됩니다. 이미 저장된 녹화는 삭제되지 않습니다.",
     bulkDeletedTitle: (n: number) => `카메라 ${n}대가 삭제됨`,
     bulkMovedTitle: (n: number, zone: string) => `카메라 ${n}대를 ${zone}(으)로 이동함`,
-    selectAllLabel: "전체 선택",
+    selectAllLabel: "보이는 행 전체 선택",
     viewTable: "테이블",
     viewGrid: "그리드",
     colCamera: "카메라",
@@ -552,8 +561,27 @@ function CameraFormModal({
   const ipShape = ipv4Problem(form.ip);
   const ipError = ipCharsBad || ipShape !== null;
   const rtspError = form.rtspUrl.trim() !== "" && !/^rtsp:\/\/.+/i.test(form.rtspUrl.trim());
-  const valid = form.name.trim().length > 0 && form.rtspUrl.trim().length > 0
+  /*
+   * The two the form cannot do without, held apart from the format checks above.
+   *
+   * A name and a stream address were the only silent half of this form: every other refusal wrote
+   * a line under its field, and these two just killed the button. Ten fields and no mark on either
+   * of them, so the reader's next move is to guess.
+   */
+  const nameMissing = form.name.trim().length === 0;
+  const rtspMissing = form.rtspUrl.trim().length === 0;
+  const valid = !nameMissing && !rtspMissing
     && !latError && !lngError && !ipError && !rtspError;
+  /*
+   * Refused on the press, not while somebody is still typing.
+   *
+   * An empty form that starts red the moment it opens is arguing with a person who has not said
+   * anything yet, which is why the format checks here only speak once their field is non-empty.
+   * The button stays greyed — it still will not save — but it stays pressable so the press has
+   * somewhere to land. That is the signup wizard's rule, written out over .portal-btn-primary in
+   * globals.css: a disabled button cannot tell you why it is disabled.
+   */
+  const [refused, setRefused] = useState(false);
 
   const field = (
     key: "name" | "ip" | "location" | "zone" | "rtspUrl" | "model" | "username" | "password" | "lat" | "lng",
@@ -601,7 +629,9 @@ function CameraFormModal({
         </div>
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
 
-          {field("name", t.fieldDeviceName, t.fieldDeviceNamePlaceholder)}
+          {field("name", t.fieldDeviceName, t.fieldDeviceNamePlaceholder, {
+            error: refused && nameMissing ? t.errRequired : undefined,
+          })}
           {field("ip", t.fieldIp, t.fieldIpPlaceholder, {
             error: ipShape ? FIELD_CHECK_T[lang][ipShape] : ipCharsBad ? t.errIp : undefined,
           })}
@@ -623,7 +653,11 @@ function CameraFormModal({
             </p>
           </div>
 
-          {field("rtspUrl", t.fieldRtspUrl, "rtsp://10.20.4.11:554/stream1", { error: rtspError ? t.errRtsp : undefined })}
+          {/* The malformed case wins over the empty one: they cannot both be true, and rtspError
+              is the more specific thing to say. */}
+          {field("rtspUrl", t.fieldRtspUrl, "rtsp://10.20.4.11:554/stream1", {
+            error: rtspError ? t.errRtsp : refused && rtspMissing ? t.errRequired : undefined,
+          })}
 
           {selectField(
             t.fieldServer,
@@ -643,12 +677,20 @@ function CameraFormModal({
           </div>
 
         </div>
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+        {/* Readable text beside the dead button rather than a tooltip on it — the call the licence
+            tab's install button already makes, for the same reason: a tooltip on a disabled control
+            is unreliable across browsers and this sentence has to be read. */}
+        <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", flexWrap: "wrap" }}>
+          {refused && !valid && (
+            <p style={{ flex: "1 1 200px", minWidth: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, margin: 0 }}>
+              {t.saveRefused}
+            </p>
+          )}
           <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
-          <button className="portal-btn-primary" onClick={() => valid && onSubmit(form)} disabled={!valid}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", }}>
+          <button className="portal-btn-primary" onClick={() => (valid ? onSubmit(form) : setRefused(true))}
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
             {isEdit ? t.saveChanges : t.addDevice}
           </button>

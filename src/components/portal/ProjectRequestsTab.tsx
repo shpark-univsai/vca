@@ -50,6 +50,11 @@ const T = {
     newErasure: "Log an erasure request",
     filterAll: "All", filterOpen: "Open", filterFootage: "Footage", filterErasure: "Erasure",
     empty: "Nothing has been asked of this project.",
+    // The other sentence. "Nothing arrived" and "your chips matched nothing" were one message, and
+    // the first is a statement about the institution that a reader repeats — somebody who has
+    // clicked "Erasure" and been told nothing was ever asked of this project has been told
+    // something untrue about the footage requests sitting one chip away.
+    noMatch: "No requests match this filter.",
     colKind: "Kind", colWho: "Who", colFiled: "Filed", colState: "State", colOpen: "",
     kindFootage: "Footage", kindErasure: "Erasure",
     fStatus: { received: "Awaiting decision", approved: "Approved, not released", refused: "Refused", released: "Released" } as Record<string, string>,
@@ -131,6 +136,7 @@ const T = {
     newErasure: "삭제 요청 접수",
     filterAll: "전체", filterOpen: "열린 건", filterFootage: "영상 제공", filterErasure: "삭제",
     empty: "이 프로젝트에 들어온 요청이 없습니다.",
+    noMatch: "이 필터와 일치하는 요청이 없습니다.",
     colKind: "종류", colWho: "요청인", colFiled: "접수", colState: "상태", colOpen: "",
     kindFootage: "영상 제공", kindErasure: "삭제 요청",
     fStatus: { received: "결정 대기", approved: "승인됨 · 미제공", refused: "거절됨", released: "제공됨" } as Record<string, string>,
@@ -340,7 +346,10 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
 
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
         {rows.length === 0 ? (
-          <TableEmpty text={t.empty} />
+          /* Which nothing it is. The chips only render once something has arrived (all.length > 0
+             above), so the second sentence appears exactly when a chip is the thing hiding the
+             rows. */
+          <TableEmpty text={all.length === 0 ? t.empty : t.noMatch} />
         ) : (
           <>
             {/* The shared header, not a local copy of it. This row used to draw its own — same
