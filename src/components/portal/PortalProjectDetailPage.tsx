@@ -872,7 +872,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                spent on a 28px square. */
             <div style={{
               display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
-              backgroundColor: "var(--primary-50)", border: BORDER,
+              // White, like every other card on this page. The tinted band asked for attention
+              // with its whole surface, which on a page of white cards made it the loudest thing
+              // before anybody read a word of it — and what it holds is a list of errands, not an
+              // alarm. The square keeps the tint, so the mark still says which kind of block this
+              // is without the block itself shouting.
+              backgroundColor: "white", border: BORDER,
               // 10px, not 14. The band holds one line of text beside a 28px square, so the
               // padding was setting its height rather than breathing around content — 56px of
               // strip for 28px of thing. Horizontal stays wider than vertical, which is what
