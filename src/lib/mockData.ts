@@ -95,10 +95,39 @@ function kmBetween(aLat: number, aLng: number, bLat: number, bLng: number): numb
  * tallies are the evidence a customer buys cameras on, so a point outside the grid has to read as
  * outside rather than as somebody's number going up.
  *
- * On Singapore's seventeen this comes to about 2.1 km, and the answer is insensitive to the
- * choice: anything from 2.1 to 4.3 km excludes exactly the same two cameras (Queenstown and
- * Jurong East, which have no district in the list at all) and includes the other fifty-nine.
- * That gap in the data is what makes the rule safe rather than a fitted constant.
+ * On Singapore's seventeen this comes to about 2.1 km. An earlier version of this comment claimed
+ * the answer was insensitive to the choice — that anything from 2.1 to 4.3 km excluded the same
+ * two cameras. That was measured on proj-sg alone and is false across the register: at 2.1 km
+ * eight cameras fall outside, and six of them (all of Riverside International School, 3.50–3.96 km
+ * from Bukit) come back in at 4.0 km. The rule is a fitted constant. Saying so is the point.
+ *
+ * WHAT THIS ENCODES, AND WHY IT IS STILL THE LEAST-WRONG GUESS.
+ *
+ * A median is region-agnostic in its NUMBER and not in its ASSUMPTION: it assumes district centres
+ * are roughly evenly spaced, so one distance can describe all of them. Singapore's spacing already
+ * runs 0.78 km to 7.67 km, and a layout with a dense core and far-flung outer districts (Ulaanbaatar
+ * has six central duureg a few km apart and Baganuur 130 km east) makes the median describe the core
+ * and cut the outskirts off. Undercounting is as damaging as overcounting here and just as quiet —
+ * no number inflates, the pill simply never appears.
+ *
+ * The obvious repair — give each district its own reach, max(median, its own nearest-neighbour) —
+ * was measured and rejected. It flips seven cameras in, and six of them are Riverside's campus,
+ * which would then be labelled "Bukit" on the school's own map. Trading a silent undercount for a
+ * confident wrong label on a customer-facing screen is the worse of the two, and it does not even
+ * hold at the boundary: with two districts the rule degenerates to their separation, which is no
+ * limit at all.
+ *
+ * Neither rule can be right, because the input cannot answer the question — seventeen points carry
+ * no boundaries, and no function over them produces one. So this stays a stopgap with its
+ * assumption written down, and the fix is contract sentence 8: attribution comes from the register's
+ * `Camera.zone`, which the installer already filled in, and this geometry is deleted rather than
+ * tuned. Riverside's cameras are zoned "Campus" and "Perimeter" — the right answer was in the
+ * register the whole time.
+ *
+ * One more defect this cannot fix, recorded rather than patched: DISTRICTS is a module constant
+ * while cameras are per project, so a school site draws seventeen Singapore administrative
+ * districts. The district list has to become per project, and that lands when the server delivers
+ * it, not before.
  */
 export const DISTRICT_REACH_KM: number = (() => {
   if (DISTRICTS.length < 2) return Infinity;
