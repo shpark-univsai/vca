@@ -13,7 +13,7 @@ import ProjectSidebar, { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import PortalSettingsPage from "./PortalSettingsPage";
 import PortalAccountMenu from "./PortalAccountMenu";
-import { ToastProvider } from "../Toast";
+import { ToastProvider, useToast } from "../Toast";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useVcaStore, canEnterApp, currentPortalUser, SIGNED_IN_USER, type ProjectType, type Team } from "@/lib/vcaStore";
 import AccessGate, { denialFor } from "@/components/AccessGate";
@@ -23,6 +23,8 @@ import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 const T = {
   en: {
     noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar",
+    teamGoneTitle: "That link's team is not here",
+    teamGoneDesc: (name: string) => `Showing ${name} instead. Anything the link pointed at will not be on this screen.`,
     newProject: "New project", settingsCrumb: "Settings", close: "Close",
     requestTitle: "Adding another project",
     requestBody: "A project is a licensed site. Its channels and term come from the contract, so it is set up during installation rather than from this console.",
@@ -33,6 +35,8 @@ const T = {
   },
   ko: {
     noTeam: "팀 없음", expand: "사이드바 펼치기", collapse: "사이드바 접기",
+    teamGoneTitle: "링크가 가리킨 팀이 없습니다",
+    teamGoneDesc: (name: string) => `대신 ${name}을(를) 열었습니다. 그 링크가 가리키던 것은 이 화면에 없습니다.`,
     newProject: "새 프로젝트", settingsCrumb: "설정", close: "닫기",
     requestTitle: "프로젝트를 더 추가하려면",
     requestBody: "프로젝트는 라이선스가 걸린 현장입니다. 채널과 기간이 계약에서 나오기 때문에, 이 콘솔이 아니라 설치 과정에서 세팅됩니다.",
@@ -171,6 +175,29 @@ export default function PortalShell() {
   // the wizard describing the same place.
   const currentOrg = teams.find(o => o.id === teamIdParam) ?? teams[0];
   const currentOrgId = currentOrg?.id ?? "";
+  /**
+   * The link named a team that is not in this list — and the fallback above quietly showed a
+   * different one under an address still claiming the first.
+   *
+   * Falling back is right (see the comment above: an unmatched id reaching the wizard files a
+   * project under a team that does not exist). Falling back **silently** is not. Somebody sent
+   * "the Riverside project, in this team"; the reader opens it, sees another team's projects, and
+   * concludes the project was deleted. Two things follow from this flag: the address is corrected
+   * so it stops naming a team nobody is looking at, and the reader is told once.
+   */
+  const teamParamMissed = teams.length > 0 && teamIdParam !== null && !teams.some(o => o.id === teamIdParam);
+  /**
+   * Latched, because the correction below erases its own evidence.
+   *
+   * Rewriting the address makes `teamIdParam` name a team that does exist, so the derived flag is
+   * false again a frame later — and a notice keyed on the derived value never fires. Measured:
+   * the address was already corrected 500ms in, and the toast had never appeared. What has to be
+   * remembered is the arrival, not the current state.
+   */
+  const [teamLinkMissed, setTeamLinkMissed] = useState(false);
+  useEffect(() => {
+    if (teamParamMissed) setTeamLinkMissed(true);
+  }, [teamParamMissed]);
   // Everything below this line is the current team's, not the whole installation's. Before the
   // header could switch teams this distinction cost nothing, because there was only ever one team
   // on screen; now a shell that kept reading the global list would show one team's name over
@@ -315,6 +342,17 @@ export default function PortalShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /* Point the address at the team actually on screen. replaceState rather than router.replace for
+     the same reason as syncUrl — this is the same page, corrected, not a navigation — and it must
+     not add a back-stack entry that would bounce the reader to the dead id. */
+  useEffect(() => {
+    if (!teamParamMissed || typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (currentOrgId) url.searchParams.set("teamId", currentOrgId);
+    else url.searchParams.delete("teamId");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  }, [teamParamMissed, currentOrgId]);
+
   const selectFromSwitcher = (projectId: string) => {
     setActiveProjectId(projectId);
     // Leave Settings too. setTab writes the address bar without `view=account`, so staying on
@@ -365,6 +403,7 @@ export default function PortalShell() {
 
   return (
     <ToastProvider>
+    {currentOrg && <TeamLinkMissedNotice missed={teamLinkMissed} teamName={currentOrg.name} t={t} />}
     {/*
         Rail first, full height — the top bar starts where the rail ends.
 
@@ -674,4 +713,27 @@ export default function PortalShell() {
     </div>
     </ToastProvider>
   );
+}
+
+/**
+ * Says once that the link's team was not found, and which team is on screen instead.
+ *
+ * Its own component because `useToast` is only available BELOW the provider, and this shell is the
+ * provider. It says nothing on the ordinary path: a notice that fires on every load is one nobody
+ * reads by the time it means something.
+ */
+function TeamLinkMissedNotice({ missed, teamName, t }: {
+  missed: boolean;
+  teamName: string;
+  t: { teamGoneTitle: string; teamGoneDesc: (name: string) => string };
+}) {
+  const { showToast } = useToast();
+  useEffect(() => {
+    if (!missed) return;
+    showToast({ variant: "warning", title: t.teamGoneTitle, desc: t.teamGoneDesc(teamName) });
+    // Once per arrival on a dead id. showToast is not in the deps because a provider that
+    // re-created it would re-fire this on every render of the shell.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missed, teamName]);
+  return null;
 }
