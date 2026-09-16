@@ -14,7 +14,7 @@
 | 세션 | 잡은 파일 | 상태 |
 |---|---|---|
 | vca-84 | **`src/components/ClientLayout.tsx` · `MapView.tsx` · `Sidebar.tsx` · `MapWrapper.tsx`** | 하드코딩 사냥(지도·셸) **진행 중**. `vcaStore.ts`·`mockData.ts`·`globals.css`·`HANDOFF.md`는 커밋 완료하고 비웠습니다 |
-| vca-cf | `src/components/portal/**` — 특히 `PortalShared` · `PortalUsersPage` · `PortalSettingsPage` · `ProjectActivityTab` · `ProjectVipTab` | c2 완료(프리셋 만들기·편집·폐기 + 계정별 권한 편집). 지금은 비어 있음 |
+| vca-cf | **`PortalShared.tsx` · `PortalUsersPage.tsx`** (미커밋) | **세션 종료 — 인수인계함.** 저 두 파일에 서브에이전트가 남긴 미커밋 변경이 있습니다. 브리프는 ① `ConfirmModal` **옵트인** 스크롤(그냥 `overflowY`를 주면 `AccessChangeModal`의 셀렉트 목록이 잘립니다 — 그 주석이 비스크롤에 의존한다고 적혀 있습니다) ② 인물 검색 해제 확인창의 `danger: !next`(되돌릴 수 있는 유일한 빨강) ③ `vipRegistry` 누출 스윕. **보고를 못 받고 넘기니 diff를 읽고 판단하세요.** tsc 0은 확인했습니다 |
 | vca-hv | — | `mypage` · `Navbar` · `RedmapPage` 커밋 완료(`c0ef5f3`·`785ff7b`·`047441d`). **`login/page.tsx`와 `forgot-password/page.tsx`는 스테이징하지 않았습니다** — 아래 참조 |
 
 **`login/page.tsx` · `forgot-password/page.tsx`에 두 세션의 미커밋 변경이 섞여
