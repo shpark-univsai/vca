@@ -1139,13 +1139,19 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
         setImageCams(prev => prev.map(c => ({ ...c, checked: false })));
         setHighlightCamId(match.id);
       } else {
-        // The hint came from the System tab's own device list, whose zone names (e.g. "Bishan
-        // 3") are drawn from a completely different bulk-generated pool than this page's 16
-        // curated CAM_DATA locations — they were never going to substring-match. Rather than
-        // silently doing nothing (the previous behavior), isolate to a synthesized tile named
-        // after the actual device so "View Live" always shows *a* single matching camera. It
-        // falls back to DEFAULT_DATA (generic feed, no detections) same as any other
-        // bulk-generated camera with no real footage behind it — honest, not fabricated.
+        // No camera, for one of two reasons now, and this branch answers both the same way.
+        //
+        // Either nothing in the register carries this name — the hint can come from a device list
+        // whose labels are not register camera names — or the name is AMBIGUOUS. The register
+        // really does hold duplicates: DISTRICTS lists "Kallang" twice, so two bulk cameras are
+        // both called "Kallang 1", and only 16 of the site's cameras carry a curated feed, so a
+        // hint like "Toa payoh" has two candidates and no way to choose between them.
+        //
+        // The old matcher resolved that by array position, which is how a hint for one camera
+        // opened a neighbour's real footage. Refusing is the fix, and a synthesized tile named
+        // after the device is what refusing looks like: it falls back to DEFAULT_DATA (generic
+        // feed, no detections) like any register camera with no footage behind it. An operator
+        // sees "no footage for this one" instead of somebody else's street.
         const focusId = `focus-${hint.replace(/[^a-z0-9]+/g, "-")}`;
         setNormalCams(prev => {
           const withFocusCam = prev.some(c => c.id === focusId)
