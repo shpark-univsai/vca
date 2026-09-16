@@ -322,6 +322,7 @@ const T = {
     // anything tuned by hand since goes — and the person doing it is usually the person who tuned it.
     grantsOverwriteWarning: "This account has grants set by hand. Following this preset replaces them.",
     grantsUnchanged: "Nothing changed yet.",
+    grantsHeldNone: "No screens",
     grantsSavedTitle: "App screens updated",
     grantsSavedDesc: (name: string) => `${name}'s grants take effect the next time they open the app.`,
     grantsPortalOnly: "A Portal-only account has no app screens to grant.",
@@ -601,6 +602,7 @@ const T = {
     grantsModalIntro: (name: string) => `${name}이(가) 관제 앱에서 열 수 있는 화면과, 그것을 정하는 방식입니다.`,
     grantsOverwriteWarning: "이 계정은 손으로 조정한 권한을 갖고 있습니다. 이 프리셋을 따르면 그것이 대체됩니다.",
     grantsUnchanged: "아직 바뀐 것이 없습니다.",
+    grantsHeldNone: "화면 없음",
     grantsSavedTitle: "앱 화면 권한을 바꿨습니다",
     grantsSavedDesc: (name: string) => `${name}이(가) 다음에 앱을 열 때부터 적용됩니다.`,
     grantsPortalOnly: "Portal만 쓰는 계정에는 부여할 앱 화면이 없습니다.",
@@ -2396,6 +2398,13 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const [changingRoleFor, setChangingRoleFor] = useState<PortalUser | null>(null);
   const [changingAccessFor, setChangingAccessFor] = useState<PortalUser | null>(null);
   const [changingGrantsFor, setChangingGrantsFor] = useState<PortalUser | null>(null);
+  // Raw slice out of the selector, lookup built in a memo — a selector that returns a new object
+  // every call re-renders forever, which is how this page last broke.
+  const allPresetsHere = useVcaStore(s => s.accessPresets);
+  const presetLabelById = useMemo(
+    () => new Map(allPresetsHere.map(pr => [pr.id, pr.label])),
+    [allPresetsHere]
+  );
   /**
    * The account action waiting on a yes. One piece of state rather than a flag per action: the
    * dialog is the same dialog every time and only its wording and its callback differ, and four
@@ -2958,8 +2967,23 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               <span title={lastAdmin ? t.lastAdminRoleFixed : undefined} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{roleLabel(t, u.permission)}</span>
             )}
             {/* Where this person may sign in. Its own value rather than a fourth role, because it
-                is a second question — see PortalPermission's doc. */}
-            <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{accessLabel(t, accessModeOf(u))}</span>
+                is a second question — see PortalPermission's doc.
+
+                The second line says where the app grants come from, which was nowhere on this
+                screen: an access review could not tell who follows a preset from who was tuned by
+                hand, and the preset a person follows is most of the answer to "why can they see
+                this". It reads what the account HOLDS first — an account with the app and no
+                screens is turned away by the gate, and naming its preset would describe access it
+                does not have. */}
+            <span style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: 0 }}>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{accessLabel(t, accessModeOf(u))}</span>
+              {u.appAccess && (
+                <span style={{ fontSize: "11px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {(u.appScreens ?? []).length === 0 ? t.grantsHeldNone
+                    : (u.grantMode === "preset" && u.presetId && presetLabelById.get(u.presetId)) || t.grantCustom}
+                </span>
+              )}
+            </span>
             {/* Search is a separate grant from the console role, so it gets its own column rather
                 than being folded into the role label — the two answer different questions. The cell
                 is always emitted, "—" included: this is a grid, so a conditional cell does not
