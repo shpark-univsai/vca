@@ -1725,11 +1725,20 @@ export function grantsOfPreset(preset: AccessPreset): Pick<PortalUser, "appScree
  * administrator's change, because the follower recompute overwrites it. Neither failure raises
  * anything — the screen just stops matching the words on it.
  *
- * WHY THIS LIVES HERE RATHER THAN IN THE CALLER. PortalUsersPage's custom-grant form already
- * calls `startCustomGrants` before writing values, and got it right. The row's own search toggle
- * did not, and wrote `appSearch` straight onto a preset account. A rule that every call site has
- * to remember is a rule that holds until the next call site, and the grant actions are exactly
- * where a forgotten rule turns into somebody holding access the console says they do not have.
+ * WHY THIS LIVES HERE AS WELL AS IN THE CALLER — it is not a replacement for either one.
+ *
+ * This covers "a grant changed": the row's own search toggle wrote `appSearch` straight onto a
+ * preset account, and a rule every call site has to remember is a rule that holds until the next
+ * call site. PortalUsersPage's custom-grant form covers a case this one CANNOT, and the two are
+ * not redundant — that was measured, not assumed. `setAppGrant` is only called for grants that
+ * actually changed, so switching an account from a preset to custom while leaving every grant as
+ * it was calls it zero times. Without the caller's own `startCustomGrants`, that save reported
+ * success and did nothing: the account stayed on the preset and the table's source column went on
+ * reading "감독자". Removing the call site because "the store handles it now" reintroduces exactly
+ * that, and it is the silent kind — the form says saved.
+ *
+ * So: the store guarantees the invariant whenever a value moves, and the caller announces the
+ * mode change when no value moves. Deleting either leaves a hole.
  *
  * `presetId` is deliberately kept. It records where the account started, which is what lets the
  * way back read as one sentence ("back to Operator") instead of eleven toggles — see the field's
