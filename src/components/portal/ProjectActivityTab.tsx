@@ -59,6 +59,11 @@ const T = {
     statActors: "people", statActorsLabel: "made them",
     statLatest: "latest", statLatestNone: "—",
     csvAt: "When", csvActor: "Who", csvMessage: "What changed",
+    // Said on the exception, not on the rule. Server rows are the ordinary case and badging all
+    // of them would make the badge the background — which is how the offline camera ended up the
+    // quietest thing on its own screen.
+    recordedClient: "Reported by this browser · not observed by the server",
+    csvRecordedBy: "Recorded by", csvServer: "server", csvClient: "browser",
   },
   ko: {
     intro: "콘솔에서 이 프로젝트에 가해진 모든 변경입니다. 기관 전체에 적용되는 정책 변경도 함께 나옵니다.",
@@ -75,6 +80,8 @@ const T = {
     statActors: "명", statActorsLabel: "변경한 사람",
     statLatest: "마지막", statLatestNone: "—",
     csvAt: "시각", csvActor: "담당자", csvMessage: "변경 내용",
+    recordedClient: "브라우저 보고 · 서버 미관측",
+    csvRecordedBy: "기록 주체", csvServer: "서버", csvClient: "브라우저",
   },
 } as const;
 
@@ -144,8 +151,13 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
   };
 
   const exportCsv = () => {
-    const header = [t.csvAt, t.csvActor, t.csvMessage];
-    const body = visible.map((a: AuditEvent) => [stamp(a.at), a.actor, a.message]);
+    const header = [t.csvAt, t.csvActor, t.csvMessage, t.csvRecordedBy];
+    // The column goes out with the file. A row pulled into a spreadsheet loses the screen's
+    // second line, and what gets quoted in a review is the spreadsheet.
+    const body = visible.map((a: AuditEvent) => [
+      stamp(a.at), a.actor, a.message,
+      a.recordedBy === "client" ? t.csvClient : t.csvServer,
+    ]);
     const csv = [header, ...body].map(row => row.map(csvEscape).join(",")).join("\n");
     // BOM so Excel reads the Korean columns as UTF-8 rather than the local code page.
     const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" }));
@@ -241,6 +253,20 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
                 and an entry cut off at the ellipsis is an entry nobody can act on. */}
             <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>
               {a.message}
+              {/* WHO SAW THIS HAPPEN, on the rows where the answer is "only the browser that did
+                  it". An audit log's whole claim is that an independent party observed the event;
+                  a line the client wrote is the client's own account of itself, and mixing the two
+                  with no mark lets the second be quoted as the first.
+
+                  HANDOFF NOTE: these are the rows that have to move server-side. The store's
+                  clientAudit() is the only way the front end writes one and it cannot say
+                  "server", so this label is exhaustive by construction — every row carrying it is
+                  an entry the API does not yet record. */}
+              {a.recordedBy === "client" && (
+                <span style={{ display: "block", fontSize: "11px", color: "var(--gray-400)", marginTop: "2px" }}>
+                  {t.recordedClient}
+                </span>
+              )}
             </span>
           </div>
         ))}
