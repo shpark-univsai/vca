@@ -1486,8 +1486,13 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
    * empty intersection printed "no VIPs registered for this project yet" over a registry holding
    * 123 of them — while the chip two inches above it said a filter was on.
    */
+  /* Three states, not two. `noIndividuals` says "everyone here is in a group", which is a claim
+     about a register that has people in it — on a project with nobody registered at all it is
+     simply false, and it is the first screen a new site sees. Nothing registered wins over
+     nothing-in-this-tab. */
   const emptyText = q || activeFilterCount > 0
     ? t.noSearchResults
+    : activePersons.length === 0 ? t.noVips
     : vipTab === "individuals" ? t.noIndividuals : t.noVips;
   const sortValue = (person: Person, key: VipSortKey) => {
     switch (key) {

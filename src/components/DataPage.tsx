@@ -1086,7 +1086,11 @@ function makeLiveItem(seed: number, camId: string, index: number, vipRegistry: P
     status,
     gender: REID_GENDER_CYCLE[passageSeed % REID_GENDER_CYCLE.length],
     age: REID_AGE_CYCLE[passageSeed % REID_AGE_CYCLE.length],
-    score: status === "VIP" ? 87.8 : null,
+    // Per detection, not a constant — see REID_SCORE_CYCLE. This line held a literal 87.8, which
+    // is where the live wall's identical percentages came from.
+    // Per detection, not a constant — this line held a literal 87.8, which is where the live
+    // wall's identical percentages came from.
+    score: status === "VIP" ? VIP_SCORE_CYCLE[passageSeed % VIP_SCORE_CYCLE.length] : null,
     cam: camId,
     personName: matched?.name,
     // The ENROLLED face when the register has one, never a crop of the capture — the card's inset
@@ -2561,7 +2565,24 @@ const REID_STATUS_CYCLE: ReIDStatus[] = [
 ];
 const REID_GENDER_CYCLE  = ["F","M","F","F","M","F","M","F","F","M","M","F","F","M","F","M","F","M"];
 const REID_AGE_CYCLE     = ["28yo","28yo","28yo","35yo","28yo","42yo","28yo","28yo","31yo","28yo","35yo","28yo","28yo","29yo","28yo","37yo","28yo","33yo"];
-const REID_SCORE_CYCLE   = [null,null,87.8,null,null,null,87.8,null,null,null,null,87.8,null,null,null,null,87.8,null];
+/**
+ * VIP match confidence. `null` on everything that is not a VIP — a confidence with nothing to be
+ * confident ABOUT is not a number.
+ *
+ * The non-null entries were all 87.8, so every VIP card the product ever drew read "VIP 87.8%".
+ * An operator triaging a wall of cards by confidence had nothing to sort by, and one who believed
+ * the number was sorting them was wrong. The spread here follows REID_SIMILARITY_CYCLE's shape —
+ * a stride that does not repeat inside the cycle — and stays in a band a registry match plausibly
+ * lands in. Positions of the nulls are unchanged.
+ */
+const REID_SCORE_CYCLE: (number | null)[] = [null,null,84.1,null,null,null,91.6,null,null,null,null,88.3,null,null,null,null,96.2,null];
+
+/**
+ * The same figure for the live wall, where every card being drawn IS a VIP, so there are no nulls
+ * to carry. Reading REID_SCORE_CYCLE here and defaulting the nulls would put four-fifths of the
+ * wall back on one number, which is the bug this pair is fixing.
+ */
+const VIP_SCORE_CYCLE = Array.from({ length: 17 }, (_, i) => Math.round((83 + ((i * 7) % 17)) * 10) / 10 + (i % 3) * 0.3);
 
 
 /**
