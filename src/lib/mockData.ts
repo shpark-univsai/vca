@@ -333,14 +333,28 @@ const RAW_VIP_HITS: RawVipHit[] = [
   { id: "5",  name: "Michael Tan",      confidence: 76.9, location: "Bugis MRT",      timestamp: minutesAgo(22), lat: 1.3006, lng: 103.8561 },
   { id: "6",  name: "Michael Tan",      confidence: 73.3, location: "Jurong East",    timestamp: minutesAgo(9),  lat: 1.3329, lng: 103.7436 },
   { id: "7",  name: "Priya Nair",       confidence: 77.8, location: "Tampines Hub",   timestamp: minutesAgo(15), lat: 1.3528, lng: 103.9440 },
+  // ONE REGISTER, AND THIS PAIR BROKE IT. `cameraIdForLocation` joined on `location` alone, so
+  // "Geylang" + "NC1" never matched the register's "Geylang NC1" — and "NC2" named a camera that
+  // did not exist. Both fell through to CAMERAS[0] (Novena): a Geylang trail filed against a
+  // Novena camera, and Novena's own panel counting these as its detections. The rule was already
+  // written for DAY_VIP_IDENTITIES thirty lines below; this hand-written head predates it.
+  // The pair stays as it was — one site, two cameras, which is the Tracking case cameraLabel
+  // exists for. What changed is that Geylang NC2 is now in the register and the join reads the
+  // label, so these resolve exactly. Coordinates match the register's, not an approximation.
   { id: "8",  name: "James Wilson",     confidence: 72.6, location: "Geylang", cameraLabel: "NC1", timestamp: minutesAgo(12), lat: 1.3148, lng: 103.8778 },
-  { id: "9",  name: "James Wilson",     confidence: 68.1, location: "Geylang", cameraLabel: "NC2", timestamp: minutesAgo(4),  lat: 1.3148, lng: 103.8778 },
+  { id: "9",  name: "James Wilson",     confidence: 68.1, location: "Geylang", cameraLabel: "NC2", timestamp: minutesAgo(4),  lat: 1.3163, lng: 103.8791 },
   { id: "10", name: "Grace Lim",        confidence: 82.4, location: "Orchard MRT",    timestamp: minutesAgo(22), lat: 1.3044, lng: 103.8321 },
   // Same person, same single camera, two separate points in time — demonstrates that a repeat
   // sighting at one camera stays as two distinct VIP rows (not merged into a Tracking trail,
   // since deriveLiveEvents() only switches to Tracking once 2+ DISTINCT cameras are involved).
-  { id: "11", name: "Rachel Ong",       confidence: 74.2, location: "Yishun MRT",     timestamp: minutesAgo(18), lat: 1.4295, lng: 103.8353 },
-  { id: "12", name: "Rachel Ong",       confidence: 85.7, location: "Yishun MRT",     timestamp: minutesAgo(3),  lat: 1.4295, lng: 103.8353 },
+  // Same fault, no rescue available: "Yishun MRT" is in no register and Yishun is not even one of
+  // the seventeen districts, so its coordinate (1.4295, 103.8353) also sat outside the whole grid
+  // and the unbounded nearestDistrict was counting it six kilometres away. A camera was not added
+  // for it — the register belongs to the customer, and inventing one to satisfy a demo row inverts
+  // the dependency the 2026-09-10 decision settled. Moved to Queenstown, which no other seed hit
+  // uses, so "same person, same single camera, twice" still reads as its own case on the map.
+  { id: "11", name: "Rachel Ong",       confidence: 74.2, location: "Queenstown",     timestamp: minutesAgo(18), lat: 1.2942, lng: 103.8060 },
+  { id: "12", name: "Rachel Ong",       confidence: 85.7, location: "Queenstown",     timestamp: minutesAgo(3),  lat: 1.2942, lng: 103.8060 },
   // The rest of today, hour by hour — see generateDayVipHits() above for why this is what makes
   // the detection chart's dots (one per real hit) look like a full day instead of a dozen recent
   // ones clustered in the last hour.

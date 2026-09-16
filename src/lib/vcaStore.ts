@@ -8,6 +8,7 @@ import {
 import { effectiveCodeStatus, generateRegistrationCode, type RosterEntry } from "@/lib/staffRoster";
 import { generateTemporaryPassword } from "@/lib/password";
 import { getComplianceConfig } from "@/lib/complianceConfig";
+import { dateKeyIn } from "@/lib/time";
 
 // Deterministic pseudo-random in [0,1) — same formula as mockData.ts's own seededRandom — used
 // below to bulk-generate cameras without Math.random(), which would differ between the
@@ -1543,6 +1544,28 @@ function settledExpiry(given: string | null | undefined): string | null | undefi
   return given ?? defaultVipExpiry();
 }
 
+/**
+ * The calendar day a registration belongs to, in the site's own zone.
+ *
+ * `Person.registeredAt` arrives in two shapes and always has: the seeds carry a local instant
+ * ("2026-09-09T09:12:00+08:00") and anything registered through Portal carries `new Date()
+ * .toISOString()`, which is UTC. Screens were slicing the first ten characters off whichever one
+ * they got and comparing that to a day computed in the project's zone — so on a UTC+8 site every
+ * registration made between local midnight and 08:00 carried YESTERDAY's UTC date, and the
+ * Overview's "N today" counted it under "yesterday" instead. The first of the month lost its
+ * morning the same way.
+ *
+ * Parsing first and formatting in the zone makes the two shapes answer the same question. A
+ * date-only value (the group rows use one) parses as UTC midnight, which lands on the same day in
+ * any zone east of Greenwich and is the day it names either way.
+ *
+ * HANDOFF NOTE: the server should send one shape. An instant in UTC is the right one — a stored
+ * local time cannot be re-bucketed when a site's zone is corrected.
+ */
+export function registeredDayIn(registeredAt: string, timeZone: string): string {
+  return dateKeyIn(new Date(registeredAt), timeZone);
+}
+
 export function watchedPersonsInProject(persons: Person[], projectId: string, nowMs: number | null): Person[] {
   const today = nowMs === null ? null : new Date(nowMs).toISOString().slice(0, 10);
   return persons.filter(p => {
@@ -2347,6 +2370,21 @@ serverId: "srv-1",
     lat: 1.3148, lng: 103.8778, maker: "Hikvision", resolution: "FHD (1920×1080)",
   },
   {
+    // NC1 IMPLIES NC2, and a seed trail was already naming it. "Geylang" + "NC2" resolved to
+    // nothing and fell through to the first camera in the register, so James Wilson's two-camera
+    // trail was filed against Novena. The register is the one population (2026-09-10), so the
+    // fix is the camera existing rather than the trail being rewritten — the two-cameras-at-one-
+    // site case is why TrackingHop carries cameraLabel and why hopCameraKey exists at all.
+    // Same site as NC1, ~180m along the road: close enough to be the same zone, far enough that
+    // the trail between them is a real two-point route rather than one pin drawn twice.
+    id: "cam-geylang-2", projectId: "proj-sg", code: "CAM-GEY-002", name: "Geylang NC2",
+    ip: "10.20.4.22", mac: "00:1B:44:11:3A:C2", rtspUrl: "rtsp://10.20.4.22:554/stream1",
+    status: "online", location: "Geylang NC2, Singapore", zone: "Geylang",
+    serverId: "srv-1",
+    thumbnail: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
+    lat: 1.3163, lng: 103.8791, maker: "Hikvision", resolution: "FHD (1920×1080)",
+  },
+  {
     id: "cam-orchard", projectId: "proj-sg", code: "CAM-ORC-001", name: "Orchard MRT",
     ip: "10.20.4.13", mac: "00:1B:44:11:3A:B9", rtspUrl: "rtsp://10.20.4.13:554/stream1",
     status: "online", location: "Orchard MRT, Singapore", zone: "Orchard",
@@ -2535,15 +2573,59 @@ export const VIP_SIMULATION_CAMERAS: Camera[] = DISTRICTS.flatMap((district, di)
   });
 });
 
-function cameraIdForLocation(location: string): string {
-  return CAMERAS.find(c => c.name === location)?.id ?? CAMERAS[0].id;
+/**
+ * The register entry a seed detection names. Throws if there is none.
+ *
+ * THREE THINGS WERE WRONG HERE, and only the first one was visible as code.
+ *
+ * 1. `?? CAMERAS[0].id`. A location naming no camera was filed against whatever sat first in the
+ *    register, and two readers take that id: the event's own `cameraId` — which `eventsInProject`
+ *    turns into a SITE BOUNDARY — and the derived `Person.projectId`. So a failed string match
+ *    decided which site a watched person belonged to, in a product where another project is
+ *    another customer. It stayed hidden for two reasons: CAMERAS[0] is Novena in proj-sg, which
+ *    is where those rows plausibly belonged anyway, and the one screen that could have shown it
+ *    (CameraStreamModal's per-camera detection count) shows counts and a last-seen time, never
+ *    the detections' own locations. Novena's panel was counting three foreign detections and its
+ *    timestamp did not visibly move because Novena had a real recent one of its own.
+ *
+ * 2. It joined on `location` alone, ignoring `cameraLabel`. A hit at "Geylang" + "NC1" could
+ *    never match the register's "Geylang NC1" — the two halves of the name were sitting right
+ *    there. Joining the pair is what makes this resolvable at all.
+ *
+ * 3. THE LOOKUP HAD NO PROJECT SCOPE, and that is the cross-tenant path. Camera CODES are unique
+ *    (generateCameraCode guarantees it); names guarantee nothing, and the register already holds
+ *    fifteen suffix-less names across two projects — "Main Gate", "Car Park", "Rear Gate" and
+ *    the rest belong to the school. A seed that said "Car Park" would have filed a Singapore
+ *    detection against Riverside, with no error and a plausible-looking result. Scoped to the
+ *    project the seeds belong to, that cannot happen.
+ *
+ * It throws rather than returning undefined because the input is STATIC. These seeds are checked
+ * in: what resolves in dev resolves in prod, so there is no runtime state to degrade gracefully
+ * for — a failure here is a committed bug, and the app refusing to start is how the next person
+ * who adds a location line finds out. Returning undefined was considered and rejected: `cameraId`
+ * is required on VcaEvent and it is the site boundary, and unlike a missing coordinate (a real
+ * state — see Camera.lat) "a detection with no camera" does not exist.
+ */
+const SEED_PROJECT_ID = "proj-sg";
+function cameraIdForSeedHit(hit: { location: string; cameraLabel?: string }): string {
+  const scoped = CAMERAS.filter(c => c.projectId === SEED_PROJECT_ID);
+  const fullName = hit.cameraLabel ? `${hit.location} ${hit.cameraLabel}` : hit.location;
+  const camera = scoped.find(c => c.name === fullName)
+    ?? (hit.cameraLabel ? undefined : scoped.find(c => c.name === hit.location));
+  if (!camera) {
+    throw new Error(
+      `Seed detection names no registered camera in ${SEED_PROJECT_ID}: "${fullName}". ` +
+      `Seeds bind to the register (2026-09-10) — add the camera or use an existing name.`,
+    );
+  }
+  return camera.id;
 }
 
 // Seeded from mockData's liveEvents — the ONE raw event list — so the store starts already
 // consistent with what the Dashboard/Sidebar show, instead of inventing a second baseline.
 const SEED_EVENTS: VcaEvent[] = liveEvents.map((e) => ({
   id: `evt-seed-${e.id}`,
-  cameraId: cameraIdForLocation(e.location),
+  cameraId: cameraIdForSeedHit(e),
   type: e.type === "VIP" ? "VIP Match" : "Tracking Detection",
   severity: e.type === "VIP" ? "warning" : "info",
   timestamp: e.timestamp,
@@ -2653,7 +2735,7 @@ export const PERSONS: Person[] = (() => {
       // Attributed through the camera that detected them, which is the same rule detections use.
       // Without this these rows carried no site at all, so the app — once it started scoping to
       // one site — would have shown an empty VIP list while the detections were still arriving.
-      projectId: projectIdForCameraId(cameraIdForLocation(e.location), CAMERAS),
+      projectId: projectIdForCameraId(cameraIdForSeedHit(e), CAMERAS),
     });
   });
   // Portal-scoped sample data for the Overview tab's "Recently Registered VIPs" panel — the
@@ -3162,6 +3244,24 @@ function personHitHistory(events: VcaEvent[], personName: string, nowMs: number)
   return hits
     .filter(h => nowMs - new Date(h.timestamp).getTime() <= VIP_ACTIVITY_WINDOW_MS)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+}
+
+/**
+ * One invite token.
+ *
+ * Extracted because two paths mint them — a single invitation and an approved access request — and
+ * the second one used not to. An account created without a token has no way in at all:
+ * /password-setup finds accounts by `inviteToken` and nothing else, so it was a row in the table
+ * that could never become a person.
+ *
+ * HANDOFF NOTE: mockup only. The real token is minted server-side, stored as a hash next to its
+ * expiry, and single-use. What matters here is the shape the link takes, so /password-setup can be
+ * written against an opaque token instead of the account id it used to carry.
+ */
+function mintInviteToken(): string {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
 }
 
 export const useVcaStore = create<VcaStoreState>((set, get) => ({
@@ -4321,12 +4421,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   issueInviteToken: (userId) => {
     const user = get().portalUsers.find(u => u.id === userId);
     if (!user) return null;
-    // HANDOFF NOTE: mockup only. The real token is minted server-side, stored as a hash next to its
-    // expiry, and single-use. What matters here is the shape the link takes, so /password-setup can
-    // be written against an opaque token instead of the account id it used to carry.
-    const bytes = new Uint8Array(24);
-    crypto.getRandomValues(bytes);
-    const token = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+    const token = mintInviteToken();
     set(state => ({
       portalUsers: state.portalUsers.map(u =>
         u.id === userId
@@ -4402,6 +4497,12 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         permission: "none",
         appAccess: true,
         status: "invited",
+        // A TOKEN, MINTED HERE. Approving used to create the account and stop, so every approved
+        // person was unreachable: /password-setup looks accounts up by inviteToken and there was
+        // none. The single-invite path minted one separately, which hid the hole — approve one
+        // request and the toast carried a working link, approve five and none of them existed.
+        inviteToken: mintInviteToken(),
+        inviteTokenIssuedAt: new Date().toISOString(),
       };
     });
     const auditEntries: AuditEvent[] = toApprove.map(r => ({
