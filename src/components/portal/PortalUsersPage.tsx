@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Asterisk, ClipboardList, MailQuestion, Users2, UserMinus, UserX, ClipboardPlus, Download, KeyRound, Printer, Upload} from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, APP_SCREENS, type AppScreen, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, APP_SCREENS, type AccessPreset, type AppScreen, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
@@ -139,6 +139,8 @@ const T = {
     // The two cells that used to be a select on every row — see AccessChangeModal.
     changeRole: "Change Portal role…",
     changeAccess: "Change where they sign in…",
+    changeGrants: "Change app screens…",
+    reasonNoAppScreens: "This account has no app access — there are no screens to grant.",
     generateTempPassword: "Generate temporary password",
     // "user" is redundant in a menu that opens from a user's own row — the row already says who.
     reactivateUser: "Reactivate",
@@ -314,6 +316,14 @@ const T = {
     grantsGroupVerbs: "Actions",
     grantsLocked: "Follows the preset. Choose Custom to change individual items.",
     grantsUnset: "Choose how grants are decided, above.",
+    grantsModalTitle: "App screens",
+    grantsModalIntro: (name: string) => `What ${name} may open in the monitoring app, and how that is decided.`,
+    // Named before it happens, not reported after. Following a preset means holding its grants, so
+    // anything tuned by hand since goes — and the person doing it is usually the person who tuned it.
+    grantsOverwriteWarning: "This account has grants set by hand. Following this preset replaces them.",
+    grantsUnchanged: "Nothing changed yet.",
+    grantsSavedTitle: "App screens updated",
+    grantsSavedDesc: (name: string) => `${name}'s grants take effect the next time they open the app.`,
     grantsPortalOnly: "A Portal-only account has no app screens to grant.",
   },
   ko: {
@@ -427,6 +437,8 @@ const T = {
     resendInvite: "초대 링크 다시 만들기",
     changeRole: "Portal 역할 변경…",
     changeAccess: "로그인 위치 변경…",
+    changeGrants: "앱 화면 권한 변경…",
+    reasonNoAppScreens: "앱 접근이 없는 계정입니다 — 지정할 화면이 없습니다.",
     generateTempPassword: "임시 비밀번호 생성",
     resetPassword: "비밀번호 재설정",
     sendCode: "코드 전송",
@@ -585,6 +597,12 @@ const T = {
     grantsGroupVerbs: "동작",
     grantsLocked: "프리셋을 따릅니다. 하나씩 바꾸려면 커스텀을 고르세요.",
     grantsUnset: "위에서 부여 방식을 먼저 고르세요.",
+    grantsModalTitle: "앱 화면 권한",
+    grantsModalIntro: (name: string) => `${name}이(가) 관제 앱에서 열 수 있는 화면과, 그것을 정하는 방식입니다.`,
+    grantsOverwriteWarning: "이 계정은 손으로 조정한 권한을 갖고 있습니다. 이 프리셋을 따르면 그것이 대체됩니다.",
+    grantsUnchanged: "아직 바뀐 것이 없습니다.",
+    grantsSavedTitle: "앱 화면 권한을 바꿨습니다",
+    grantsSavedDesc: (name: string) => `${name}이(가) 다음에 앱을 열 때부터 적용됩니다.`,
     grantsPortalOnly: "Portal만 쓰는 계정에는 부여할 앱 화면이 없습니다.",
   },
 } as const;
@@ -641,6 +659,97 @@ function GrantGroupLabel({ children }: { children: React.ReactNode }) {
       fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
       color: "var(--gray-400)", padding: "0 10px", marginBottom: "2px",
     }}>{children}</p>
+  );
+}
+
+/**
+ * The two questions that decide an account's app grants: how they are decided, and what they are.
+ *
+ * ONE COMPONENT BECAUSE IT HAS TO READ THE SAME IN BOTH PLACES. An administrator learns this pair
+ * once, at invite time, and meets it again a month later when somebody changes jobs. Two separate
+ * arrangements of the same question would make the second one a new thing to learn, and the answer
+ * it collects is who may look at what.
+ *
+ * It holds no state. The caller owns the draft, because the two callers resolve it differently —
+ * an invite starts with nothing chosen, an edit starts from what the account already holds.
+ */
+function GrantPicker({ presets, choice, onChoice, screens, search, exportOn, onToggleScreen, onToggleSearch, onToggleExport, t }: {
+  presets: AccessPreset[];
+  choice: string | null;
+  onChoice: (id: string) => void;
+  /** What the list shows — already resolved by the caller, which is not always the custom draft. */
+  screens: AppScreen[];
+  search: boolean;
+  exportOn: boolean;
+  onToggleScreen: (screen: AppScreen) => void;
+  onToggleSearch: () => void;
+  onToggleExport: () => void;
+  t: (typeof T)["en"] | (typeof T)["ko"];
+}) {
+  const isCustom = choice === "custom";
+  return (
+    <>
+      <div>
+        <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.grantLabel}</label>
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          {/* Custom is the LAST ITEM OF THE SAME LIST rather than a separate switch — it is one
+              more way of answering "how are this person's grants decided", and a toggle beside the
+              list would make it a second question people answer before the first. */}
+          {[...presets.map(pr => ({ id: pr.id, label: pr.label, desc: pr.description })),
+            { id: "custom", label: t.grantCustom, desc: t.grantCustomDesc }].map(opt => {
+            const picked = choice === opt.id;
+            return (
+              <button key={opt.id} onClick={() => onChoice(opt.id)}
+                style={{
+                  width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
+                  padding: "10px 12px", borderRadius: "10px", cursor: "pointer",
+                  border: picked ? "1px solid var(--gray-900)" : BORDER,
+                  backgroundColor: picked ? "var(--gray-100)" : "white", fontFamily: "inherit",
+                }}>
+                <span style={{
+                  width: "14px", height: "14px", borderRadius: "999px", flexShrink: 0, marginTop: "2px",
+                  border: picked ? "4px solid var(--gray-900)" : "1px solid var(--gray-300)",
+                }} />
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{opt.label}</span>
+                  {/* Required on every option. A list of job titles with no descriptions cannot be
+                      chosen from, and removing the pre-selected default only works if the reader
+                      can tell the options apart. */}
+                  <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "2px" }}>{opt.desc}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* THE LIST IS ALWAYS HERE, not only under Custom.
+          A preset is a name until you can see what it switches on. In preset mode the rows are
+          locked rather than hidden: hiding them answers "what does this preset do?" with silence. */}
+      <div style={{ borderTop: "1px solid var(--gray-200)", paddingTop: "14px", minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", marginBottom: "8px" }}>
+          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.grantsHeading}</label>
+          <span style={{ fontSize: "11px", color: "var(--gray-400)", textAlign: "right", lineHeight: 1.45 }}>
+            {choice === null ? t.grantsUnset : !isCustom ? t.grantsLocked : ""}
+          </span>
+        </div>
+        <GrantGroupLabel>{t.grantsGroupScreens}</GrantGroupLabel>
+        <div style={{ display: "flex", flexDirection: "column", marginBottom: "10px" }}>
+          {APP_SCREENS.map(sc => (
+            <GrantRow key={sc} label={t.screenName[sc]} desc={t.screenDesc[sc]}
+              on={screens.includes(sc)} locked={!isCustom}
+              onToggle={() => onToggleScreen(sc)} />
+          ))}
+        </div>
+        <GrantGroupLabel>{t.grantsGroupVerbs}</GrantGroupLabel>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <GrantRow label={t.verbSearch} desc={t.verbSearchDesc}
+            on={search} locked={!isCustom} onToggle={onToggleSearch} />
+          <GrantRow label={t.verbExport} desc={t.verbExportDesc}
+            on={exportOn} locked={!isCustom} onToggle={onToggleExport} />
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -1010,65 +1119,13 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               question people answer before the first. */}
           {accessMode !== "portalOnly" ? (
             <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.grantLabel}</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  {[...presets.map(pr => ({ id: pr.id, label: pr.label, desc: pr.description })),
-                    { id: "custom", label: t.grantCustom, desc: t.grantCustomDesc }].map(opt => {
-                    const picked = effectiveChoice === opt.id;
-                    return (
-                      <button key={opt.id} onClick={() => setGrantChoice(opt.id)}
-                        style={{
-                          width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
-                          padding: "10px 12px", borderRadius: "10px", cursor: "pointer",
-                          border: picked ? "1px solid var(--gray-900)" : BORDER,
-                          backgroundColor: picked ? "var(--gray-100)" : "white", fontFamily: "inherit",
-                        }}>
-                        <span style={{
-                          width: "14px", height: "14px", borderRadius: "999px", flexShrink: 0, marginTop: "2px",
-                          border: picked ? "4px solid var(--gray-900)" : "1px solid var(--gray-300)",
-                        }} />
-                        <span style={{ minWidth: 0 }}>
-                          <span style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{opt.label}</span>
-                          {/* Required on every option. A list of job titles with no descriptions
-                              cannot be chosen from, and removing the pre-selected default only
-                              works if the reader can tell the options apart. */}
-                          <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "2px" }}>{opt.desc}</span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* THE LIST IS ALWAYS HERE, not only under Custom.
-                  A preset is a name until you can see what it switches on, and the reader is being
-                  asked to choose between names with no default pre-picked. In preset mode the rows
-                  are locked rather than hidden: hiding them answers "what does this preset do?"
-                  with silence. */}
-              <div style={{ borderTop: "1px solid var(--gray-200)", paddingTop: "14px", minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", marginBottom: "8px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.grantsHeading}</label>
-                  <span style={{ fontSize: "11px", color: "var(--gray-400)", textAlign: "right", lineHeight: 1.45 }}>
-                    {effectiveChoice === null ? t.grantsUnset : !isCustom ? t.grantsLocked : ""}
-                  </span>
-                </div>
-                <GrantGroupLabel>{t.grantsGroupScreens}</GrantGroupLabel>
-                <div style={{ display: "flex", flexDirection: "column", marginBottom: "10px" }}>
-                  {APP_SCREENS.map(sc => (
-                    <GrantRow key={sc} label={t.screenName[sc]} desc={t.screenDesc[sc]}
-                      on={shownScreens.includes(sc)} locked={!isCustom}
-                      onToggle={() => toggleCustomScreen(sc)} />
-                  ))}
-                </div>
-                <GrantGroupLabel>{t.grantsGroupVerbs}</GrantGroupLabel>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <GrantRow label={t.verbSearch} desc={t.verbSearchDesc}
-                    on={shownSearch} locked={!isCustom} onToggle={() => setCustomSearch(!customSearch)} />
-                  <GrantRow label={t.verbExport} desc={t.verbExportDesc}
-                    on={shownExport} locked={!isCustom} onToggle={() => setCustomExport(!customExport)} />
-                </div>
-              </div>
+              <GrantPicker
+                presets={presets} choice={effectiveChoice} onChoice={setGrantChoice}
+                screens={shownScreens} search={shownSearch} exportOn={shownExport}
+                onToggleScreen={toggleCustomScreen}
+                onToggleSearch={() => setCustomSearch(!customSearch)}
+                onToggleExport={() => setCustomExport(!customExport)}
+                t={t} />
             </div>
           ) : (
             /* Portal-only. The column is not left blank — an empty half reads as something that
@@ -1835,6 +1892,146 @@ function UserProjectsModal({ user, teamProjects, onClose, onSave }: {
   );
 }
 
+/**
+ * Change one account's app grants after the invite.
+ *
+ * WITHOUT THIS, GRANTS FREEZE AT INVITE TIME. Role, app access, person search, projects and status
+ * were all editable from the row menu; the five screens, evidence export and preset membership
+ * were not. The only way to move somebody between jobs was to delete the account and invite them
+ * again, which throws away the audit continuity the account exists to carry and makes somebody
+ * hand out a fresh setup link. The workaround was worse than the gap.
+ *
+ * It starts from what the account holds, unlike the invite form, which pre-selects nothing. The
+ * difference is not an inconsistency: there is a decision on file here, and showing it is
+ * reporting rather than defaulting.
+ */
+function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => void }) {
+  useEscapeKey(onClose);
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  const { showToast } = useToast();
+  // Same rule as the invite form: the raw slice comes out of the selector and the filtering
+  // happens in a memo, because presetsForTeam() returns a new array every call.
+  const allPresets = useVcaStore(st => st.accessPresets);
+  const presets = useMemo(() => presetsForTeam(allPresets, user.teamId), [allPresets, user.teamId]);
+  const applyGrantPreset = useVcaStore(st => st.applyGrantPreset);
+  const startCustomGrants = useVcaStore(st => st.startCustomGrants);
+  const setAppGrant = useVcaStore(st => st.setAppGrant);
+
+  /** What this account holds right now — the thing every comparison below is against. */
+  const held = useMemo(() => ({
+    screens: user.appScreens ?? [],
+    search: user.appSearch === true,
+    export: user.appExport === true,
+  }), [user.appScreens, user.appSearch, user.appExport]);
+
+  const [choice, setChoice] = useState<string | null>(() => {
+    // A preset that is no longer offered cannot be shown as selected — the radio would sit on
+    // nothing and the locked list below would show an empty grant set for an account that holds
+    // five screens. archiveAccessPreset already moves followers to custom, so this is a guard
+    // against a state that should not arrive, not a case being handled.
+    const following = user.grantMode === "preset" && user.presetId
+      && presetsForTeam(allPresets, user.teamId).some(pr => pr.id === user.presetId);
+    return following ? user.presetId ?? "custom" : "custom";
+  });
+  const [customScreens, setCustomScreens] = useState<AppScreen[]>(held.screens);
+  const [customSearch, setCustomSearch] = useState(held.search);
+  const [customExport, setCustomExport] = useState(held.export);
+  const toggleCustomScreen = (screen: AppScreen) =>
+    setCustomScreens(prev => prev.includes(screen) ? prev.filter(x => x !== screen) : [...prev, screen]);
+
+  const isCustom = choice === "custom";
+  const pickedPreset = presets.find(pr => pr.id === choice);
+  const shown = pickedPreset ? grantsOfPreset(pickedPreset) : null;
+  const screens = isCustom ? customScreens : (shown?.appScreens ?? []);
+  const search = isCustom ? customSearch : shown?.appSearch === true;
+  const exportOn = isCustom ? customExport : shown?.appExport === true;
+
+  /** Order-independent: the toggle appends, the store stores in APP_SCREENS order. */
+  const sameScreens = (a: AppScreen[], b: AppScreen[]) =>
+    APP_SCREENS.filter(sc => a.includes(sc)).join() === APP_SCREENS.filter(sc => b.includes(sc)).join();
+
+  const dirty = isCustom
+    ? user.grantMode !== "custom" || !sameScreens(customScreens, held.screens)
+      || customSearch !== held.search || customExport !== held.export
+    : user.grantMode !== "preset" || user.presetId !== choice;
+  /* Same refusal as the invite form, for the same reason: custom with nothing ticked saves an
+     account that signs in and is turned away by the gate's noScreens. */
+  const canSave = dirty && (isCustom ? customScreens.length > 0 : choice !== null);
+  /* Said before it happens rather than reported after. Following a preset means holding its
+     grants, so hand-tuned values go — and only when they actually differ, or the warning becomes
+     wallpaper on every preset switch. */
+  const willOverwrite = !isCustom && shown != null && user.grantMode === "custom"
+    && (!sameScreens(shown.appScreens ?? [], held.screens)
+      || (shown.appSearch === true) !== held.search
+      || (shown.appExport === true) !== held.export);
+
+  const save = () => {
+    if (!canSave) return;
+    if (!isCustom && choice) {
+      applyGrantPreset(user.id, choice);
+    } else {
+      // Detach first: setAppGrant writes values and says nothing about where they come from, so
+      // tuning an account that still reads as "follows the preset" is the silent mismatch this
+      // screen exists to end.
+      if (user.grantMode !== "custom") startCustomGrants(user.id);
+      // ONE AUDIT LINE PER CHANGE, which is what the store's comment asks for — a preset name
+      // alone swallows the manual tuning that came after it, and that is the half an access
+      // review is actually asking about.
+      APP_SCREENS.forEach(sc => {
+        const next = customScreens.includes(sc);
+        if (next !== held.screens.includes(sc)) setAppGrant(user.id, sc, next);
+      });
+      if (customSearch !== held.search) setAppGrant(user.id, "search", customSearch);
+      if (customExport !== held.export) setAppGrant(user.id, "export", customExport);
+    }
+    // The app reads its grants when it loads, so this is what actually happens — not "revoked".
+    showToast({ variant: "success", title: t.grantsSavedTitle, desc: t.grantsSavedDesc(user.name) });
+    onClose();
+  };
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-modal)" }}>
+        <div style={{ padding: "20px 20px 0" }}>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.grantsModalTitle}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.grantsModalIntro(user.name)}</p>
+        </div>
+        <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0, overflowY: "auto" }}>
+          <GrantPicker
+            presets={presets} choice={choice} onChoice={setChoice}
+            screens={screens} search={search} exportOn={exportOn}
+            onToggleScreen={toggleCustomScreen}
+            onToggleSearch={() => setCustomSearch(!customSearch)}
+            onToggleExport={() => setCustomExport(!customExport)}
+            t={t} />
+        </div>
+        {willOverwrite && (
+          <p style={{ padding: "0 20px", fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.grantsOverwriteWarning}</p>
+        )}
+        <div style={{ padding: "16px 20px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+          {/* The button says why it is dead instead of sitting there. Two states, two sentences:
+              nothing has moved yet, or custom is on with no screen ticked. */}
+          {!canSave && (
+            <span style={{ flex: 1, fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>
+              {!dirty ? t.grantsUnchanged : t.grantNoScreens}
+            </span>
+          )}
+          <button className="portal-btn-outline" onClick={onClose}
+            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {t.cancel}
+          </button>
+          <button className="portal-btn-primary" onClick={save} disabled={!canSave}
+            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+            {t.save}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const STAGES = ["rosterListed", "codeIssued", "codeExpired", "invited", "active", "suspended"] as const;
 type Stage = (typeof STAGES)[number];
 
@@ -2198,6 +2395,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   // the user, not an id.
   const [changingRoleFor, setChangingRoleFor] = useState<PortalUser | null>(null);
   const [changingAccessFor, setChangingAccessFor] = useState<PortalUser | null>(null);
+  const [changingGrantsFor, setChangingGrantsFor] = useState<PortalUser | null>(null);
   /**
    * The account action waiting on a yes. One piece of state rather than a flag per action: the
    * dialog is the same dialog every time and only its wording and its callback differ, and four
@@ -2821,6 +3019,17 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 reason: manageAccess ? undefined : t.reasonNotOwner,
                 onClick: () => setChangingAccessFor(u),
               },
+              {
+                // Sits under "where they sign in" because it is the second half of the same
+                // question: the door, then what is behind it. Refused without the app for the
+                // reason the sentence gives — there is nothing to grant, not a missing privilege.
+                label: t.changeGrants,
+                disabled: !manageAccess || !u.appAccess,
+                reason: !manageAccess ? t.reasonNotOwner
+                  : !u.appAccess ? t.reasonNoAppScreens
+                  : undefined,
+                onClick: () => setChangingGrantsFor(u),
+              },
               ...(mailAvailable && u.status === "invited" ? [{
                 label: t.resendInvite,
                 disabled: !manageAccess,
@@ -3042,6 +3251,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           onApply={v => updatePortalUserPermission(changingRoleFor.id, v as PortalPermission)}
           onClose={() => setChangingRoleFor(null)}
         />
+      )}
+      {changingGrantsFor && (
+        <AppGrantModal user={changingGrantsFor} onClose={() => setChangingGrantsFor(null)} />
       )}
       {changingAccessFor && (
         <AccessChangeModal
