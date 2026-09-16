@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useVcaStore, type SearchAccessRecord } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
+import { getComplianceConfig } from "@/lib/complianceConfig";
 import {
   BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR,
   ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, sortRows, useTableSort, MEASURE } from "./PortalShared";
@@ -28,13 +29,25 @@ import { Eye, FileOutput, ShieldAlert } from "lucide-react";
 // Eight tracks, matching the eight columns the CSV writes. The table had seven and quietly
 // dropped "Screen" — so the record an auditor reads on this page and the file they are handed
 // disagreed about which fields the log even has.
+/**
+ * Two shapes, because two of the columns only exist when the installation asks for a purpose.
+ *
+ * With requireSearchPurpose off the app never collects one, so Purpose and Reference could not be
+ * filled by anything — a pair of columns that are blank on every row for the life of the release.
+ * A permanently empty column is not a placeholder, it is a promise the screen cannot keep, and a
+ * reader seeing rows arrive with those two always dashed concludes the log is half broken.
+ *
+ * Same rule the VIP registry already follows for its category column when vipCategories is off.
+ */
 const GRID = "150px 1fr 1fr 0.9fr 0.8fr 0.8fr 0.7fr 0.9fr";
+const GRID_NO_PURPOSE = "150px 1.1fr 1fr 0.8fr 0.7fr 0.9fr";
 
 type LogSortKey = "at" | "actor" | "purpose" | "target";
 
 const T = {
   en: {
-    intro: "Every person look-up run from the monitoring app, with the purpose the operator declared.",
+    intro: "Every person look-up run from the monitoring app.",
+    introWithPurpose: "Every person look-up run from the monitoring app, with the purpose the operator declared.",
     empty: "No look-ups recorded yet.",
     emptyHint: "A row appears here each time an operator searches for a person in the app. Nothing is written in advance.",
     colAt: "When", colActor: "Operator", colPurpose: "Purpose", colReference: "Reference",
@@ -53,7 +66,8 @@ const T = {
     none: "—",
   },
   ko: {
-    intro: "모니터링 앱에서 실행된 인물 조회와, 그때 관제요원이 밝힌 목적입니다.",
+    intro: "모니터링 앱에서 실행된 인물 조회입니다.",
+    introWithPurpose: "모니터링 앱에서 실행된 인물 조회와, 그때 관제요원이 밝힌 목적입니다.",
     empty: "기록된 조회가 없습니다.",
     emptyHint: "앱에서 인물을 조회할 때마다 한 줄씩 쌓입니다. 미리 채워두는 것은 없습니다.",
     colAt: "시각", colActor: "조회자", colPurpose: "목적", colReference: "참조번호",
@@ -86,6 +100,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
   // timestamp cell below.
   const projectZone = useVcaStore(s => s.projects.find(p => p.id === projectId)?.timeZone) ?? PROJECT_TIME_ZONE;
   const { sort, toggle: toggleSort } = useTableSort<LogSortKey>({ key: "at", direction: "desc" });
+  const purposeAsked = getComplianceConfig().requireSearchPurpose;
   const [purposeFilter, setPurposeFilter] = useState("ALL");
   const [actorFilter, setActorFilter] = useState("ALL");
 
@@ -129,9 +144,11 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
   const operatorCount = new Set(projectRecords.map(r => r.actor)).size;
 
   const exportCsv = () => {
-    const header = [t.csvAt, t.csvActor, t.csvPurpose, t.csvReference, t.csvTarget, t.csvSurface, t.csvResults, t.csvIp];
+    // The file carries the columns the screen carries. A CSV with two always-blank columns is the
+    // same unkept promise one screen further out, and it is the copy that leaves the building.
+    const header = [t.csvAt, t.csvActor, ...(purposeAsked ? [t.csvPurpose, t.csvReference] : []), t.csvTarget, t.csvSurface, t.csvResults, t.csvIp];
     const body = visible.map(r => [
-      r.at, r.actor, r.purposeLabel ?? "", r.reference ?? "", r.target, r.surface,
+      r.at, r.actor, ...(purposeAsked ? [r.purposeLabel ?? "", r.reference ?? ""] : []), r.target, r.surface,
       r.resultCount === undefined ? "" : String(r.resultCount), r.ip ?? "",
     ]);
     const csv = [header, ...body].map(row => row.map(csvEscape).join(",")).join("\n");
@@ -172,7 +189,9 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
       {projectRecords.length > 0 && (
         <SummaryStrip cells={[
           { key: "total", icon: <Eye size={14} strokeWidth={2.4} />, figure: projectRecords.length, unit: t.statTotal, label: t.statTotalLabel, tone: "neutral" },
-          ...(noReference > 0 ? [{
+          // Only where a reference could have been given. With no purpose collected, "no
+          // reference" would count every row and raise a defect nobody could have avoided.
+          ...(purposeAsked && noReference > 0 ? [{
             key: "noref", icon: <ShieldAlert size={14} strokeWidth={2.4} />, figure: noReference,
             unit: t.statNoRefUnit, label: t.statNoRef, tone: "warning" as const,
           }] : []),
@@ -181,8 +200,11 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "12px" }}>
-        <FilterSelect value={purposeFilter} onChange={setPurposeFilter}
-          options={[{ value: "ALL", label: t.filterAllPurposes }, ...purposeOptions]} />
+        {/* Gone with the columns: a filter whose only option is "all" narrows nothing. */}
+        {purposeAsked && (
+          <FilterSelect value={purposeFilter} onChange={setPurposeFilter}
+            options={[{ value: "ALL", label: t.filterAllPurposes }, ...purposeOptions]} />
+        )}
         <FilterSelect value={actorFilter} onChange={setActorFilter}
           options={[{ value: "ALL", label: t.filterAllActors }, ...actorOptions]} />
         <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
@@ -201,7 +223,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
 
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW }}>
         <div style={{
-          position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: GRID,
+          position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: purposeAsked ? GRID : GRID_NO_PURPOSE,
           columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)",
           borderBottom: BORDER, borderTopLeftRadius: "16px", borderTopRightRadius: "16px",
           color: TABLE_HEADER_COLOR,
@@ -209,8 +231,10 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
           {([
             { label: t.colAt, key: "at" as LogSortKey },
             { label: t.colActor, key: "actor" as LogSortKey },
-            { label: t.colPurpose, key: "purpose" as LogSortKey },
-            { label: t.colReference },
+            ...(purposeAsked ? [
+              { label: t.colPurpose, key: "purpose" as LogSortKey },
+              { label: t.colReference },
+            ] : []),
             { label: t.colTarget, key: "target" as LogSortKey },
             { label: t.colSurface },
             { label: t.colResults },
@@ -227,7 +251,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
           </div>
         ) : visible.map((r: SearchAccessRecord, i) => (
           <div key={r.id} style={{
-            display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP,
+            display: "grid", gridTemplateColumns: purposeAsked ? GRID : GRID_NO_PURPOSE, columnGap: TABLE_COLUMN_GAP,
             padding: "10px 16px", alignItems: "center",
             borderBottom: i === visible.length - 1 ? "none" : BORDER,
           }}>
@@ -243,11 +267,13 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
             <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {r.actor}
             </span>
-            {/* Absent because nobody was asked — see SearchAccessRecord.purposeId. */}
-            {cell(r.purposeLabel ?? t.none, !r.purposeLabel)}
-            {/* Absent, not blank: a reference that was never required reads differently from one
-                that is missing, and only the purpose knows which. */}
-            {cell(r.reference ?? t.none, !r.reference)}
+            {purposeAsked && <>
+              {/* Absent because this look-up carried none — see SearchAccessRecord.purposeId. */}
+              {cell(r.purposeLabel ?? t.none, !r.purposeLabel)}
+              {/* Absent, not blank: a reference that was never required reads differently from one
+                  that is missing, and only the purpose knows which. */}
+              {cell(r.reference ?? t.none, !r.reference)}
+            </>}
             {cell(r.target)}
             {cell(r.surface)}
             {cell(r.resultCount === undefined ? t.none : String(r.resultCount), r.resultCount === undefined)}
@@ -269,7 +295,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
           The second is not a permission notice — an auditor reading it has every right to be here —
           it is the answer to "is anybody actually looking at this", which is the question that
           decides whether the purpose field does any work at all. */}
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px", maxWidth: MEASURE }}>{t.intro}</p>
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px", maxWidth: MEASURE }}>{purposeAsked ? t.introWithPurpose : t.intro}</p>
       <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "4px" }}>{t.ownerOnly}</p>
     </div>
   );
