@@ -27,9 +27,10 @@ export function projectChannelLimit(project: Pick<Project, "licenseChannelLimit"
 
 export const UNLIMITED_EXPIRY = "Unlimited";
 
-// Flat per-channel subscription rate used both on Overview's CHANNELS cell and the License tab's
-// contract breakdown — one constant so the two never drift apart.
-export const PRICE_PER_CHANNEL_PER_YEAR = 100;
+// PRICE_PER_CHANNEL_PER_YEAR was here — a flat 100 multiplied by the channel count and printed as
+// "$10,000/yr" in the fees clause of the licence card. It had no source: LicensePayload carries no
+// fee field, so nothing in the product ever knew a price. Removed rather than moved. The comment
+// also claimed Overview's CHANNELS cell used it; it did not, and had not for some time.
 
 /**
  * "error" is not a worse "offline".
@@ -2784,6 +2785,28 @@ function seededPhotoUnreadable(id: string): boolean {
   return seededRandom(personSeed(id) * 0.023 + 1.9) > 0.87;
 }
 
+/**
+ * When this person was put on the list, spread deterministically per person.
+ *
+ * It used to be `?? "2026-01-01"` — one literal for everyone the registry derives from live
+ * events, which is fourteen of the fifteen. Three screens read it and all three went wrong: the
+ * overview's 오늘 / 어제 / 이번 달 등록 counts were structurally zero, the table's sort had nothing
+ * to sort by, and an auditor reading a column of identical dates concludes the whole watchlist was
+ * bulk-imported on New Year's Day. It is also the first question an audit asks — since when has
+ * this face been watched — and it leaves the building in the CSV export.
+ *
+ * Seeded, not invented: the spread is a function of the person's own id, so it is stable across
+ * reloads and every screen agrees. Six months back to a fortnight ago, which keeps every row
+ * earlier than the detections seededLastDetectedAt hands it — that function refuses to place a
+ * sighting before its registration, and a registration date later than "today" would silently
+ * empty it.
+ */
+function seededRegisteredAt(id: string): string {
+  const h = personSeed(id);
+  const daysAgo = 14 + Math.floor(seededRandom(h * 0.031 + 3.7) * 166);
+  return new Date(SEED_TODAY - daysAgo * 86_400_000).toISOString().slice(0, 10);
+}
+
 function seededLastDetectedAt(id: string, registeredAt: string): string | undefined {
   // Unmatchable faces are never matched. Reading this from the same predicate registryHealth uses
   // is the only thing keeping the summary and the table from contradicting each other on the same
@@ -2824,7 +2847,7 @@ export const PERSONS: Person[] = (() => {
       name: e.name,
       type: e.type,
       photoUrl: getFacePhoto(e.id),
-      registeredAt: info?.registeredAt ?? "2026-01-01",
+      registeredAt: info?.registeredAt ?? seededRegisteredAt(`person-${e.id}`),
       description: info?.description,
       // Attributed through the camera that detected them, which is the same rule detections use.
       // Without this these rows carried no site at all, so the app — once it started scoping to

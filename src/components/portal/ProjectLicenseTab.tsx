@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, FileUp, Gem, Layers, Sprout } from "lucide-react";
-import { useVcaStore, UNLIMITED_EXPIRY, PRICE_PER_CHANNEL_PER_YEAR } from "@/lib/vcaStore";
+import { useVcaStore, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
 import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TYPE_META, useTypeLabel, usePortalPolicyAccess, MEASURE } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
@@ -108,6 +108,7 @@ const T = {
     clauseTerm: "Expires",
     clauseScope: "Scope",
     clauseFees: "Fees",
+    feesInContract: "Not carried by the licence file. The amount is in the signed agreement.",
     clauseParty: "Account manager",
     channelsUnitN: (n: number) => `${n} channel${n === 1 ? "" : "s"}`,
     inUseNow: (used: number, avail: number) => `${used} in use · ${avail} free`,
@@ -170,6 +171,7 @@ const T = {
     clauseTerm: "만료일",
     clauseScope: "포함 범위",
     clauseFees: "대금",
+    feesInContract: "라이선스 파일에 실려 있지 않습니다. 금액은 체결한 계약서에 있습니다.",
     clauseParty: "담당자",
     channelsUnitN: (n: number) => `${n}채널`,
     inUseNow: (used: number, avail: number) => `현재 ${used} 사용 · ${avail} 여유`,
@@ -315,7 +317,6 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
     : isUnlimitedExpiry ? { label: t.perpetual, color: "var(--success-400)" }
     : { label: t.valid, color: "var(--success-400)" };
 
-  const subscriptionYearlyCost = (limit ?? 0) * PRICE_PER_CHANNEL_PER_YEAR;
 
   const used = projectCameras.length;
   const available = limit === undefined ? undefined : Math.max(0, limit - used);
@@ -578,11 +579,22 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           )}
         </Clause>
 
+        {/* NO FIGURE HERE, and there cannot be one.
+            This clause printed `$10,000/yr`, computed as channels × a flat constant of 100 that
+            lived in vcaStore with no source behind it. Every other clause on this card is real —
+            channels, expiry, scope, the contact — so nothing marked this one as a guess, and it
+            is the clause an administrator quotes into a renewal request. Money then travels up a
+            signing chain with a number this console made up.
+
+            It is not a wiring gap either: `LicensePayload` (lib/licenseFile.ts) carries no fee
+            field at all, so the installed licence does not know the price and the server will not
+            supply one by being connected. Discounts, tiers, currency and term all live in the
+            signed agreement, which is the thing this card is a record OF, not a copy of.
+
+            HANDOFF NOTE: if fees are ever meant to show here, the licence payload needs them —
+            amount AND currency AND period. Do not reintroduce a rate constant. */}
         <Clause n={4} label={t.clauseFees} last>
-          <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>
-            {limit ? t.channelsCostPerYear(subscriptionYearlyCost.toLocaleString("en-US")) : "—"}
-          </p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "3px" }}>{t.perChannelPerYear(PRICE_PER_CHANNEL_PER_YEAR)}</p>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.feesInContract}</p>
         </Clause>
         </div>
 
