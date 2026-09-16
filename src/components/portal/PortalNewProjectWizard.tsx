@@ -126,7 +126,10 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
         // polling lands, so "offline" is the honest starting state — the same one a camera added
         // from Input Sources gets before anything answers.
         status: "offline",
-        thumbnail: "", lat: 0, lng: 0,
+        // No coordinates either, and that is written as absence rather than 0,0 — the comment
+        // above already says this wizard does not ask for them, and 0,0 is a real point in the
+        // Gulf of Guinea that every map drew a pin at. See Camera.lat.
+        thumbnail: "",
       });
     }
     onDeployed(created?.id ?? "");
