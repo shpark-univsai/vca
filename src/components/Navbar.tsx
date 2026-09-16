@@ -135,7 +135,20 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
   // disagree about how many cameras are up.
   const camsRunning = dashboardStatsError ? "—" : dashboardStats?.linkedCams.count ?? 0;
   const camsStopped = dashboardStatsError ? "—" : dashboardStats?.offlineCams.count ?? 0;
-  const location = dashboardStats?.location ?? "Singapore";
+  // The site's own region, off the project the header already names — not a mock constant.
+  //
+  // It read `dashboardStats.location`, a module-level "Singapore" in mockData that every project
+  // got: the school campus, and any project made with the new-project wizard, were all labelled
+  // Singapore under a map pin, beside the project name that said otherwise. The `?? "Singapore"`
+  // behind it was the same invention a second time.
+  //
+  // Optional, and no fallback: `addProject` does not collect a region, so a project created in
+  // the console genuinely has none, and a pin with a made-up place beside it is worse than no
+  // pin. When it is absent the chip is not drawn (see below).
+  //
+  // HANDOFF NOTE: Project.regionName is seeded and set nowhere else — the server owns it, and the
+  // new-project wizard has to start asking for it.
+  const location = activeProject?.regionName;
 
   const [sgNow, setSgNow] = useState<Date | null>(null);
   useEffect(() => {
@@ -397,7 +410,8 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
 
       {/* ── Right: location + date/time + icons ── */}
       <div style={{ display: "flex", alignItems: "center", gap: "20px", flexShrink: 0 }}>
-        {/* Location */}
+        {/* Location — drawn only for a site that has one on record. */}
+        {location && (
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <svg width="16" height="16" viewBox="0 0 18 18" fill="none" style={{ flexShrink:0 }}>
             <path d="M9.45075 16.3492C10.8457 15.1447 15 11.2448 15 7.5C15 5.9087 14.3679 4.38258 13.2426 3.25736C12.1174 2.13214 10.5913 1.5 9 1.5C7.4087 1.5 5.88258 2.13214 4.75736 3.25736C3.63214 4.38258 3 5.9087 3 7.5C3 11.2448 7.15425 15.1447 8.54925 16.3492C8.67921 16.447 8.8374 16.4998 9 16.4998C9.1626 16.4998 9.32079 16.447 9.45075 16.3492Z" stroke="var(--gray-800)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -407,6 +421,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
             {location}
           </span>
         </div>
+        )}
 
         {/* Date/time */}
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -422,11 +437,12 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
             </defs>
           </svg>
           <span style={{ fontWeight: 600, fontSize: "13px", color: "var(--gray-900)", letterSpacing: "-0.26px", lineHeight: 1 }}>{currentDate}</span>
-          {/* No timezone label here on purpose. "SGT" isn't a widely-read abbreviation, and the
-              location chip to the left already says Singapore — which is the timezone, since
-              Singapore has exactly one. If this ever serves a second city, the fix is to make the
-              clock itself follow that city (see lib/time.ts, currently Asia/Singapore for every
-              date/hour bucket in the app) — not to re-add a label the clock doesn't honor. */}
+          {/* No timezone label here on purpose, and the clock is not pinned to one either: since
+              2026-09-09 lib/time.ts resolves every date, hour and clock string from the site on
+              screen (Project.timeZone, falling back to Asia/Singapore only when a project carries
+              none), so this reads the site's own wall clock. The label stays off because "SGT" is
+              not a widely-read abbreviation and it would have to change per site to stay true —
+              and a label the clock does not honour is worse than none. */}
           <span style={{ fontWeight: 700, fontSize: "13px", color: "var(--gray-900)", letterSpacing: "-0.26px", lineHeight: 1, ...FIGURES }}>{currentTime}</span>
         </div>
 
