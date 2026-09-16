@@ -2990,7 +2990,17 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 leave a hole, it slides every cell after it one column left and pushes the row's
                 actions menu onto a second line. */}
             <span>
-              {u.appSearch ? (
+              {/* Gated on the app door as well as the grant. The column asks whether this person
+                  can run searches in the app, and without the app the answer is no however the
+                  flag reads — an "On" badge on an account that cannot reach a search box is the
+                  kind of confident wrong value this console keeps producing.
+
+                  FIXING IT HERE RATHER THAN IN THE DATA. updatePortalUserAccess used to clear the
+                  grants when the app went, which made the badge honest by destroying the answer to
+                  "what did this person have?" — the mirror image of inventing a coordinate with
+                  `?? 0`. The grant is kept and comes back with the door; this cell just stops
+                  claiming it is live while the door is shut. */}
+              {u.appSearch && u.appAccess ? (
                 <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px", backgroundColor: "var(--info-100)", color: "var(--info-500)", fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap" }}>
                   {t.appSearchOn}
                 </span>
