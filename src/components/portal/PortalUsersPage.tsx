@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip, usePortalEditAccess } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip, usePortalEditAccess, AppGrantList } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import RosterImportModal from "./RosterImportModal";
@@ -302,21 +302,7 @@ const T = {
     grantCustomDesc: "Pick the screens and actions one by one.",
     grantNotChosen: "Choose how this account's grants are decided",
     grantNoScreens: "Tick at least one screen — an account with none cannot open the app",
-    screenName: { live: "Live monitoring", bestframe: "Best Frame", redmap: "Redmap", reid: "Re-ID", redface: "RedFace" } as Record<AppScreen, string>,
-    screenDesc: {
-      live: "Cameras as they are right now",
-      bestframe: "Open the frames a detection produced",
-      redmap: "Follow a route on the map",
-      reid: "Find the same person on another camera",
-      redface: "Search past detections by face",
-    } as Record<AppScreen, string>,
-    verbSearch: "Person search",
-    verbSearchDesc: "Reconstruct where a person went",
-    verbExport: "Evidence export",
-    verbExportDesc: "Take a sighting out of the console as a file",
     grantsHeading: "What this grants",
-    grantsGroupScreens: "Screens",
-    grantsGroupVerbs: "Actions",
     grantsLocked: "Follows the preset. Choose Custom to change individual items.",
     grantsUnset: "Choose how grants are decided, above.",
     grantsModalTitle: "App screens",
@@ -584,21 +570,7 @@ const T = {
     grantCustomDesc: "화면과 동작을 하나씩 고릅니다.",
     grantNotChosen: "권한 부여 방식을 선택해주세요",
     grantNoScreens: "화면을 하나 이상 골라주세요 — 하나도 없으면 앱을 열 수 없습니다",
-    screenName: { live: "실시간 관제", bestframe: "베스트 프레임", redmap: "레드맵", reid: "Re-ID", redface: "RedFace" } as Record<AppScreen, string>,
-    screenDesc: {
-      live: "지금 들어오는 카메라 화면",
-      bestframe: "검출이 남긴 프레임을 열어 본다",
-      redmap: "지도에서 동선을 따라간다",
-      reid: "다른 카메라에서 같은 사람을 찾는다",
-      redface: "얼굴로 지난 검출을 찾는다",
-    } as Record<AppScreen, string>,
-    verbSearch: "인물 검색",
-    verbSearchDesc: "그 사람이 어디를 지나갔는지 되짚는다",
-    verbExport: "증거 내보내기",
-    verbExportDesc: "검출을 파일로 꺼낸다",
     grantsHeading: "이 방식이 켜는 것",
-    grantsGroupScreens: "화면",
-    grantsGroupVerbs: "동작",
     grantsLocked: "프리셋을 따릅니다. 하나씩 바꾸려면 커스텀을 고르세요.",
     grantsUnset: "위에서 부여 방식을 먼저 고르세요.",
     grantsModalTitle: "앱 화면 권한",
@@ -625,48 +597,6 @@ const T = {
  * and the reader has to be able to see which, so the row stays legible and only stops responding.
  * Hiding them would answer "what does this preset do?" with silence.
  */
-function GrantRow({ label, desc, on, locked, onToggle }: {
-  label: string; desc: string; on: boolean; locked: boolean; onToggle: () => void;
-}) {
-  return (
-    <button onClick={locked ? undefined : onToggle} disabled={locked} aria-pressed={on}
-      style={{
-        width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
-        padding: "9px 10px", borderRadius: "8px", border: "none", fontFamily: "inherit",
-        backgroundColor: on && !locked ? "var(--gray-50)" : "transparent",
-        cursor: locked ? "default" : "pointer",
-        opacity: locked && !on ? 0.5 : 1,
-      }}>
-      <span style={{
-        width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, marginTop: "1px",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)",
-        backgroundColor: on ? "var(--gray-900)" : "white",
-      }}>
-        {on && (
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-            <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        )}
-      </span>
-      <span style={{ minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: "12.5px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</span>
-        <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, marginTop: "1px" }}>{desc}</span>
-      </span>
-    </button>
-  );
-}
-
-/** The group heading inside the grant list — "Screens" over the five, "Actions" over the two. */
-function GrantGroupLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p style={{
-      fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
-      color: "var(--gray-400)", padding: "0 10px", marginBottom: "2px",
-    }}>{children}</p>
-  );
-}
-
 /**
  * The two questions that decide an account's app grants: how they are decided, and what they are.
  *
@@ -738,21 +668,9 @@ function GrantPicker({ presets, choice, onChoice, screens, search, exportOn, onT
             {choice === null ? t.grantsUnset : !isCustom ? t.grantsLocked : ""}
           </span>
         </div>
-        <GrantGroupLabel>{t.grantsGroupScreens}</GrantGroupLabel>
-        <div style={{ display: "flex", flexDirection: "column", marginBottom: "10px" }}>
-          {APP_SCREENS.map(sc => (
-            <GrantRow key={sc} label={t.screenName[sc]} desc={t.screenDesc[sc]}
-              on={screens.includes(sc)} locked={!isCustom}
-              onToggle={() => onToggleScreen(sc)} />
-          ))}
-        </div>
-        <GrantGroupLabel>{t.grantsGroupVerbs}</GrantGroupLabel>
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <GrantRow label={t.verbSearch} desc={t.verbSearchDesc}
-            on={search} locked={!isCustom} onToggle={onToggleSearch} />
-          <GrantRow label={t.verbExport} desc={t.verbExportDesc}
-            on={exportOn} locked={!isCustom} onToggle={onToggleExport} />
-        </div>
+        <AppGrantList
+          screens={screens} search={search} exportOn={exportOn} locked={!isCustom}
+          onToggleScreen={onToggleScreen} onToggleSearch={onToggleSearch} onToggleExport={onToggleExport} />
       </div>
     </>
   );

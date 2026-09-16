@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Check, EyeOff } from "lucide-react";
-import { SUPPORT_CONTACT, canEditPortal, canSetPolicy, canViewFaces, currentPortalUser, useVcaStore, type ProjectType } from "@/lib/vcaStore";
+import { APP_SCREENS, SUPPORT_CONTACT, canEditPortal, canSetPolicy, canViewFaces, currentPortalUser, useVcaStore, type AppScreen, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 
@@ -1780,3 +1780,130 @@ const SUPPORT_T = {
     close: "닫기",
   },
 } as const;
+
+
+/**
+ * The seven things an app account can be given, drawn once.
+ *
+ * ONE COPY OF THE WORDS, because two screens now ask this question — the invite form and the
+ * per-account editor in Users, and the preset editor in Settings. Two lists would drift, and what
+ * they would drift about is what "Redmap" lets somebody do. A person granting access reads the
+ * description, not the screen name.
+ *
+ * Locked renders the rows greyed rather than hidden: a preset is a name until you can see what it
+ * switches on, and hiding the list answers "what does this preset do?" with silence.
+ */
+const GRANT_T = {
+  en: {
+    groupScreens: "Screens",
+    groupVerbs: "Actions",
+    screenName: { live: "Live monitoring", bestframe: "Best Frame", redmap: "Redmap", reid: "Re-ID", redface: "RedFace" } as Record<AppScreen, string>,
+    screenDesc: {
+      live: "Cameras as they are right now",
+      bestframe: "Open the frames a detection produced",
+      redmap: "Follow a route on the map",
+      reid: "Find the same person on another camera",
+      redface: "Search past detections by face",
+    } as Record<AppScreen, string>,
+    verbSearch: "Person search",
+    verbSearchDesc: "Reconstruct where a person went",
+    verbExport: "Evidence export",
+    verbExportDesc: "Take a sighting out of the console as a file",
+  },
+  ko: {
+    groupScreens: "화면",
+    groupVerbs: "동작",
+    screenName: { live: "실시간 관제", bestframe: "베스트 프레임", redmap: "레드맵", reid: "Re-ID", redface: "RedFace" } as Record<AppScreen, string>,
+    screenDesc: {
+      live: "지금 들어오는 카메라 화면",
+      bestframe: "검출이 남긴 프레임을 열어 본다",
+      redmap: "지도에서 동선을 따라간다",
+      reid: "다른 카메라에서 같은 사람을 찾는다",
+      redface: "얼굴로 지난 검출을 찾는다",
+    } as Record<AppScreen, string>,
+    verbSearch: "인물 검색",
+    verbSearchDesc: "그 사람이 어디를 지나갔는지 되짚는다",
+    verbExport: "증거 내보내기",
+    verbExportDesc: "검출을 파일로 꺼낸다",
+  },
+} as const;
+
+function GrantRow({ label, desc, on, locked, onToggle }: {
+  label: string; desc: string; on: boolean; locked: boolean; onToggle: () => void;
+}) {
+  return (
+    <button onClick={locked ? undefined : onToggle} disabled={locked} aria-pressed={on}
+      style={{
+        width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
+        padding: "9px 10px", borderRadius: "8px", border: "none", fontFamily: "inherit",
+        backgroundColor: on && !locked ? "var(--gray-50)" : "transparent",
+        cursor: locked ? "default" : "pointer",
+        opacity: locked && !on ? 0.5 : 1,
+      }}>
+      <span style={{
+        width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, marginTop: "1px",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)",
+        backgroundColor: on ? "var(--gray-900)" : "white",
+      }}>
+        {on && (
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+            <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: "12.5px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</span>
+        <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, marginTop: "1px" }}>{desc}</span>
+      </span>
+    </button>
+  );
+}
+
+function GrantGroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p style={{
+      fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+      color: "var(--gray-400)", padding: "0 10px", marginBottom: "2px",
+    }}>{children}</p>
+  );
+}
+
+/** The five screens over the two actions, with one source for both sets of words. */
+export function AppGrantList({ screens, search, exportOn, locked, onToggleScreen, onToggleSearch, onToggleExport }: {
+  screens: AppScreen[];
+  search: boolean;
+  exportOn: boolean;
+  locked: boolean;
+  onToggleScreen: (screen: AppScreen) => void;
+  onToggleSearch: () => void;
+  onToggleExport: () => void;
+}) {
+  const [lang] = usePortalLanguage();
+  const g = GRANT_T[lang];
+  return (
+    <>
+      <GrantGroupLabel>{g.groupScreens}</GrantGroupLabel>
+      <div style={{ display: "flex", flexDirection: "column", marginBottom: "10px" }}>
+        {APP_SCREENS.map(sc => (
+          <GrantRow key={sc} label={g.screenName[sc]} desc={g.screenDesc[sc]}
+            on={screens.includes(sc)} locked={locked} onToggle={() => onToggleScreen(sc)} />
+        ))}
+      </div>
+      <GrantGroupLabel>{g.groupVerbs}</GrantGroupLabel>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <GrantRow label={g.verbSearch} desc={g.verbSearchDesc}
+          on={search} locked={locked} onToggle={onToggleSearch} />
+        <GrantRow label={g.verbExport} desc={g.verbExportDesc}
+          on={exportOn} locked={locked} onToggle={onToggleExport} />
+      </div>
+    </>
+  );
+}
+
+/** The screen names alone, for places that list a preset's grants without offering to change them. */
+export function useGrantNames(): { screen: Record<AppScreen, string>; search: string; export: string } {
+  const [lang] = usePortalLanguage();
+  const g = GRANT_T[lang];
+  return { screen: g.screenName, search: g.verbSearch, export: g.verbExport };
+}
