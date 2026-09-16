@@ -683,7 +683,8 @@ function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null
   // got here by its event coordinate rather than by a hop (a Tracking row whose path is empty),
   // and a row with no location line at all would be worse than one naming the wrong district.
   const lastHop = (districtHopFilter
-    ? hops.find(h => districtIdAt(h.lat ?? event.lat, h.lng ?? event.lng) === districtHopFilter)
+    // No substitution — see personHitHistory. A hop with no coordinate is in no district.
+    ? hops.find(h => districtIdAt(h.lat, h.lng) === districtHopFilter)
     : undefined) ?? hops[0];
   // "N cameras" must count DISTINCT cameras, not raw hits — a person re-visiting their same
   // regular camera many times over the day is still a single camera in that count.
@@ -935,7 +936,7 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
   const byLocation = districtFilter
     ? byType.filter(e =>
         districtIdAt(e.lat, e.lng) === districtFilter
-        || !!e.path?.some(hop => districtIdAt(hop.lat ?? e.lat, hop.lng ?? e.lng) === districtFilter))
+        || !!e.path?.some(hop => districtIdAt(hop.lat, hop.lng) === districtFilter))
     : locationFilter
       ? byType.filter(e => e.location.toLowerCase().includes(locationFilter.toLowerCase()))
       : byType;

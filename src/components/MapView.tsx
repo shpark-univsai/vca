@@ -456,22 +456,24 @@ function getDeviceMarkerHTML(name: string, isLive: boolean): string {
 // Ported from RedmapMap.tsx's tracking-route rendering — reused here so a Tracking event
 // selected on the Dashboard draws the same numbered-node route instead of a single pin, since
 // the whole point of "Tracking" is the multi-camera path, not just one last-known point.
-type CameraRef = { name: string; lat: number; lng: number };
 
-// A TrackingHop only carries a location name (+ optional camera label), not lat/lng — resolve it
-// against the registered camera list the same way the badge label is built ("Geylang" + "NC1").
-function hopToLatLng(hop: TrackingHop, cameras: CameraRef[]): { lat: number; lng: number } {
-  const fullName = hop.cameraLabel ? `${hop.location} ${hop.cameraLabel}` : hop.location;
-  const exact = cameras.find(c => c.name === fullName) ?? cameras.find(c => c.name === hop.location);
-  if (exact) return { lat: exact.lat, lng: exact.lng };
-  const firstWord = hop.location.split(" ")[0];
-  const partial = cameras.find(c => c.name.includes(firstWord));
-  if (!partial) return { lat: cameras[0]?.lat ?? 1.3521, lng: cameras[0]?.lng ?? 103.8198 };
-  // No dedicated coordinate for this specific camera label (e.g. a second camera at the same
-  // site) — nudge deterministically off the site's own point so it doesn't sit exactly on top.
-  const seed = hop.cameraLabel ? hop.cameraLabel.charCodeAt(hop.cameraLabel.length - 1) : 0;
-  return { lat: partial.lat + (seed % 5) * 0.0015, lng: partial.lng + (seed % 3) * 0.0015 };
-}
+/**
+ * DELETED: hopToLatLng, which resolved a hop's position by matching `location` against camera
+ * NAMES and, failing that, invented one.
+ *
+ * It was never needed. A TrackingHop carries its own coordinate (mockData's TrackingHop.lat,
+ * added in 57b7282), every producer fills it, and RedmapPage reads it directly — this file was
+ * the one reader still working back from the name. The field's own comment had already recorded
+ * why not to: "falls back to the first camera when a name does not resolve, and silently puts a
+ * sighting in a district kilometres away." Four branches deep, the failures were:
+ *
+ *   - partial name match  → the site's point plus (seed % 5) * 0.0015, up to ~600m off. This was
+ *                           the common one, and the quiet one: a plausible point, no error.
+ *   - no match at all     → the project's first camera, or 1.3521/103.8198 (central Singapore).
+ *
+ * `hasPosition` replaces all of it. A hop with no coordinate is drawn nowhere and counted
+ * nowhere, and the route says so — see the gap handling below.
+ */
 
 function routeBubbleTailHtml(centerY: number, fillColor: string, borderColor: string): string {
   return `<div style="position:absolute;left:-9px;top:${centerY - 8}px;width:0;height:0;
@@ -737,11 +739,11 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
               // would put an earlier stop at the newest sighting's camera, which is the bug that
               // fix was for.
               return ev.path
-                .filter(hop => inDistrictToday(hop.lat ?? ev.lat, hop.lng ?? ev.lng, hop.timestamp))
+                .filter(hop => inDistrictToday(hop.lat, hop.lng, hop.timestamp))
                 .map(hop => ({
                   ...ev,
-                  lat: hop.lat ?? ev.lat,
-                  lng: hop.lng ?? ev.lng,
+                  lat: hop.lat,
+                  lng: hop.lng,
                   timestamp: hop.timestamp,
                   location: hop.location,
                   cameraLabel: hop.cameraLabel,
@@ -978,7 +980,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         const recentVipKeys = new Set<string>();
         recentEvents.forEach(ev => {
           const stamps = ev.type === "Tracking" && ev.path?.length
-            ? ev.path.map(hop => ({ t: hop.timestamp, lat: hop.lat ?? ev.lat, lng: hop.lng ?? ev.lng }))
+            ? ev.path.map(hop => ({ t: hop.timestamp, lat: hop.lat, lng: hop.lng }))
             : [{ t: ev.timestamp, lat: ev.lat, lng: ev.lng }];
           stamps.forEach(({ t: at, lat, lng }) => {
             if (nowMs - new Date(at).getTime() > RECENT_VIP_WINDOW_MS) return;
@@ -1148,7 +1150,27 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
     import("leaflet").then(({ default: L }) => {
       // ── Tracking: draw the full multi-camera route instead of a single pin ──
       if (hops && hops.length > 0) {
-        const nodes = hops.map(h => ({ ...hopToLatLng(h, camerasRef.current), label: h.location + (h.cameraLabel ? ` ${h.cameraLabel}` : ""), time: formatTimeAgo(h.timestamp, lang) }));
+        /**
+         * THE NUMBER IS THE HOP'S PLACE IN THE WHOLE TRAIL, not its place among the drawable ones.
+         *
+         * Renumbering after the filter would make the map say "03" about a stop the list calls
+         * "04", and these numbers are spoken out loud — "check point three" over the radio has to
+         * mean one stop. A missing number is also the only thing on the map that says a stop is
+         * missing, so keeping the gap is the signal, not an artefact.
+         */
+        const placedNodes = hops
+          .map((h, i) => ({ hop: h, num: i + 1, isTrailEnd: i === hops.length - 1 }))
+          .filter((n): n is typeof n & { hop: TrackingHop & { lat: number; lng: number } } => hasPosition(n.hop))
+          .map(n => ({
+            lat: n.hop.lat, lng: n.hop.lng, num: n.num, isTrailEnd: n.isTrailEnd,
+            label: n.hop.location + (n.hop.cameraLabel ? ` ${n.hop.cameraLabel}` : ""),
+            time: formatTimeAgo(n.hop.timestamp, lang),
+          }));
+        const unplacedCount = hops.length - placedNodes.length;
+        // Nothing placeable: no route, no flyTo (an empty array would have thrown on
+        // nodes[nodes.length - 1]). The sidebar's timeline still carries every stop.
+        if (placedNodes.length === 0) return;
+        const nodes = placedNodes;
 
         map.flyTo([nodes[nodes.length - 1].lat, nodes[nodes.length - 1].lng], 14, { duration: 0.8, easeLinearity: 0.5 });
 
@@ -1178,8 +1200,16 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         }
 
         nodes.forEach((node, i) => {
-          const num = String(i + 1).padStart(2, "0");
-          const isLast = i === nodes.length - 1;
+          const num = String(node.num).padStart(2, "0");
+          /**
+           * The filled "latest detection" card is a claim about now, so it only goes on the hop
+           * that actually is the latest. When the newest stop has no coordinate the card is not
+           * drawn at all rather than sliding onto the one before it — a map asserting "latest ·
+           * Geylang 3 · 11 minutes ago" while the real newest sighting was two minutes ago
+           * somewhere else is the one wrong line here that a reader would act on.
+           */
+          const isLast = node.isTrailEnd;
+          void i;
           const size = isLast ? 44 : 36;
 
           const circleHtml = isLast

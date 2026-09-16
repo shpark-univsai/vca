@@ -3150,7 +3150,11 @@ function personHitHistory(events: VcaEvent[], personName: string, nowMs: number)
       // so using it for every hop collapsed a trail across three districts onto the newest one.
       // A hop written before TrackingHop carried coordinates has none; it falls back to the
       // event's, which is the old behaviour and the best guess available for it.
-      hits.push(...e.personPath.map(p => ({ location: p.location, cameraLabel: p.cameraLabel, timestamp: p.timestamp, confidence: p.confidence ?? 0, lat: p.lat ?? e.lat, lng: p.lng ?? e.lng })));
+      // NO SUBSTITUTION. A hop with no coordinate does not borrow the event's — the event's is
+      // where this person was seen LAST, so lending it to an earlier hop puts that stop at the
+      // newest camera. 57b7282 fixed exactly this for the route drawing and the same line
+      // survived here. Absent stays absent; readers that place or count filter on it.
+      hits.push(...e.personPath.map(p => ({ location: p.location, cameraLabel: p.cameraLabel, timestamp: p.timestamp, confidence: p.confidence ?? 0, lat: p.lat, lng: p.lng })));
     } else {
       hits.push({ location: e.location ?? "", cameraLabel: e.cameraLabel, timestamp: e.timestamp, confidence: e.confidence ?? 0, lat: e.lat, lng: e.lng });
     }
@@ -4775,7 +4779,12 @@ export function todaysDetectionHits(events: VcaEvent[]): DetectionHit[] {
         // places, not three in the last one.
         // Every hop is the same person — that is what makes a trail a trail. Carrying the event's
         // person onto each hop is what lets the pill count a VIP who crossed four cameras as one.
-        if (hop.location) hits.push({ id: `${e.id}-${i}`, timestamp: hop.timestamp, location: hop.location, lat: hop.lat ?? e.lat, lng: hop.lng ?? e.lng, person: e.personName, camera: hop.cameraLabel });
+        // Same rule as personHitHistory above, and this one matters most: these hits feed the
+        // district VIP tallies, and those numbers are the evidence a customer buys cameras on.
+        // Lending the event's coordinate here credits an unplaced sighting to whichever district
+        // the person was last seen in — the LAPD crime map put 1,380 ungeocodable addresses next
+        // to City Hall and raised that district's rate. districtIdAt answers "nowhere" instead.
+        if (hop.location) hits.push({ id: `${e.id}-${i}`, timestamp: hop.timestamp, location: hop.location, lat: hop.lat, lng: hop.lng, person: e.personName, camera: hop.cameraLabel });
       });
     }
   });
