@@ -1714,6 +1714,44 @@ export function grantsOfPreset(preset: AccessPreset): Pick<PortalUser, "appScree
   return { appScreens: [...preset.screens], appSearch: preset.appSearch, appExport: preset.appExport };
 }
 
+/**
+ * Changing one of an account's grants individually detaches it from its preset.
+ *
+ * `updateAccessPreset` states the invariant and enforces it in the other direction: editing a
+ * preset recomputes every follower, "because a preset account that kept its old grants would be
+ * following a preset in name only". So an account left on `grantMode: "preset"` after somebody
+ * edits one of its grants is wrong twice over. The row reads "Operator" while the account no
+ * longer holds Operator's set; and the next edit to that preset silently reverts the
+ * administrator's change, because the follower recompute overwrites it. Neither failure raises
+ * anything — the screen just stops matching the words on it.
+ *
+ * WHY THIS LIVES HERE RATHER THAN IN THE CALLER. PortalUsersPage's custom-grant form already
+ * calls `startCustomGrants` before writing values, and got it right. The row's own search toggle
+ * did not, and wrote `appSearch` straight onto a preset account. A rule that every call site has
+ * to remember is a rule that holds until the next call site, and the grant actions are exactly
+ * where a forgotten rule turns into somebody holding access the console says they do not have.
+ *
+ * `presetId` is deliberately kept. It records where the account started, which is what lets the
+ * way back read as one sentence ("back to Operator") instead of eleven toggles — see the field's
+ * own comment. Detaching is about where the values come from from now on, not about erasing
+ * where they came from, which is the same line `archiveAccessPreset` draws.
+ *
+ * Returns both halves because the detach is its own audited act: the state patch, and the audit
+ * row that says it happened. A caller that applied the patch and dropped the row would leave the
+ * access review unable to explain why an account stopped following its preset.
+ */
+function detachedFromPreset(user: PortalUser): { patch: Partial<PortalUser>; audit: AuditEvent[] } {
+  if (user.grantMode !== "preset") return { patch: {}, audit: [] };
+  return {
+    patch: { grantMode: "custom" },
+    audit: [clientAudit({
+      projectId: user.projectIds[0],
+      message: `App grants for ${user.name} detached from preset and set individually`,
+      actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+    })],
+  };
+}
+
 /** This team's presets, retired ones dropped. An empty list is a real state — see the invite form. */
 export function presetsForTeam(presets: AccessPreset[], teamId: string): AccessPreset[] {
   return presets.filter(p => p.teamId === teamId && !p.archived);
@@ -4412,7 +4450,11 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     set(state => {
       const user = state.portalUsers.find(u => u.id === userId);
       if (!user) return state;
-      const next = { ...user };
+      // Built once, before the grant row: the detach happened first, so it takes the lower id and
+      // sits below the change in the newest-first log. Calling it twice would also spend an id on
+      // a row nobody keeps.
+      const detach = detachedFromPreset(user);
+      const next = { ...user, ...detach.patch };
       if (grant === "search") next.appSearch = allowed;
       else if (grant === "export") next.appExport = allowed;
       else {
@@ -4427,20 +4469,24 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       });
       return {
         portalUsers: state.portalUsers.map(u => (u.id === userId ? next : u)),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+        auditLog: [auditEntry, ...detach.audit, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   setAppSearch: (userId, allowed) =>
     set(state => {
       const user = state.portalUsers.find(u => u.id === userId);
+      if (!user) return state;
+      const detach = detachedFromPreset(user);
       const auditEntry: AuditEvent = clientAudit({
-        projectId: user?.projectIds[0],
-        message: `${allowed ? "Person search granted" : "Person search revoked"}: ${user?.name ?? userId}`,
+        projectId: user.projectIds[0],
+        message: `${allowed ? "Person search granted" : "Person search revoked"}: ${user.name}`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       return {
-        portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, appSearch: allowed } : u)),
-        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+        portalUsers: state.portalUsers.map(u => (
+          u.id === userId ? { ...u, appSearch: allowed, ...detach.patch } : u
+        )),
+        auditLog: [auditEntry, ...detach.audit, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   updatePortalUserProjects: (userId, projectIds) =>
