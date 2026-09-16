@@ -152,7 +152,7 @@ const T = {
     retention: "Recording retention",
     retentionUnset: "Not decided",
     retentionDaysLabel: (n: number) => `${n} days`,
-    retentionNote: "This console deletes nothing. The recorder and the server do, on this number.",
+    retentionNote: "This console deletes nothing. Saving writes the number down here; it does not reach the recorder or the server.",
     purposeTitle: "Search purposes",
     purposeEmpty: "No purposes defined.",
     purposeRequirementOn: "Searches are supposed to record a purpose, and there is nothing to choose. Until one exists, operators search without giving a reason.",
@@ -182,8 +182,14 @@ const T = {
     mismatch: "Passwords do not match. Please try again.",
     cancel: "Cancel",
     updatePassword: "Update password",
-    passwordChanged: "Password changed",
-    passwordChangedBody: "Sign in with the new password next time.",
+    // Nothing here changes a password yet — see the HANDOFF NOTE on ChangePasswordModal. The
+    // notice is what the modal says up front; the toast is what it says to somebody who typed one
+    // anyway. Neither is a success: the old pair ("Password changed" / "Sign in with the new
+    // password next time") sent a person away believing the old one no longer worked, and the one
+    // way to find out otherwise was to be locked out of a console they now had two passwords for.
+    passwordNotWired: "Not connected yet. A password typed here is not saved.",
+    passwordNotSaved: "Password not changed",
+    passwordNotSavedBody: "Ask whoever runs your installation to change it for now.",
     roles: { owner: "Owner", admin: "Admin", auditor: "Read-only admin", none: "No Portal access" } as Record<string, string>,
   },
   ko: {
@@ -237,7 +243,7 @@ const T = {
     retention: "영상 보관기간",
     retentionUnset: "미정",
     retentionDaysLabel: (n: number) => `${n}일`,
-    retentionNote: "이 콘솔은 영상을 지우지 않습니다. 레코더와 서버가 이 숫자대로 지웁니다.",
+    retentionNote: "이 콘솔은 영상을 지우지 않습니다. 저장하면 이 숫자가 여기에 기록될 뿐, 레코더와 서버에는 전달되지 않습니다.",
     purposeTitle: "조회 목적",
     purposeEmpty: "정의된 사유가 없습니다.",
     purposeRequirementOn: "조회할 때 목적을 기록하도록 되어 있는데 고를 것이 없습니다. 하나라도 만들기 전까지는 사유 없이 조회가 실행됩니다.",
@@ -267,8 +273,9 @@ const T = {
     mismatch: "비밀번호가 일치하지 않습니다. 다시 입력해주세요.",
     cancel: "취소",
     updatePassword: "비밀번호 변경",
-    passwordChanged: "비밀번호가 변경되었습니다",
-    passwordChangedBody: "다음 로그인부터 새 비밀번호를 사용하세요.",
+    passwordNotWired: "아직 서버에 연결되지 않아, 여기서 입력한 비밀번호는 저장되지 않습니다.",
+    passwordNotSaved: "비밀번호는 바뀌지 않았습니다",
+    passwordNotSavedBody: "변경은 설치를 담당한 곳으로 요청하세요.",
     roles: { owner: "최고관리자", admin: "관리자", auditor: "읽기 전용 관리자", none: "Portal 접근 없음" } as Record<string, string>,
   },
 } as const;
@@ -607,7 +614,23 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 the site rather than to the person looking, and changing it is audited.
 
                 Owner only. This is closer to a policy than a preference — the same gate the
-                search purposes and VIP categories sit behind. */}
+                search purposes and VIP categories sit behind.
+
+                The note under it used to end "the recorder and the server delete on this number",
+                which was a claim about machines nothing here talks to. setProjectRetention writes
+                the project object and an audit line and stops; no request leaves the browser. The
+                store's own note on retentionDays says recording the policy is NOT enforcing it and
+                that the screen has to say so out loud — that sentence said the opposite. It is not
+                a harmless overstatement either: the erasure-request screen quotes this value back
+                as the schedule footage is deleted on, so a wrong answer here is repeated to the
+                person asking to be erased.
+
+                HANDOFF: the sentence becomes true when saving carries the number out of the
+                console — PUT /api/portal/projects/:id/retention, or whatever the deletion job
+                reads, called from setProjectRetention (or from a caller that can report a
+                failure, since a retention the recorder rejected must not read as saved). Until
+                then the note describes what saving does, which is to write it down. When that
+                call exists, restore the second sentence and delete this paragraph. */}
             <PairItem label={t.retention} hint={t.retentionNote}>
               {maySetPolicy ? (
                 <FilterSelect
@@ -868,7 +891,10 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
  *           session can be revoked, so step 2 re-checks or the revocation did nothing.
  *
  * Everything the front end *can* judge is still judged here: the format rule, and the two new
- * entries matching.
+ * entries matching. Everything it cannot, it says out loud instead of miming: the modal carries a
+ * standing "not connected yet" line and the last step closes on a toast saying the password was
+ * not changed. Those two are the copy half of this note — restore success wording when the two
+ * endpoints above answer, and not one release earlier.
  */
 function ChangePasswordModal({ t, lang, onClose }: {
   t: (typeof T)["en"] | (typeof T)["ko"];
@@ -901,7 +927,12 @@ function ChangePasswordModal({ t, lang, onClose }: {
   const submit = () => {
     if (!canSubmit) return;
     onClose();
-    showToast({ variant: "success", title: t.passwordChanged, desc: t.passwordChangedBody });
+    /* Not a success toast, because nothing succeeded. The form validates what a browser can
+       validate and then has nowhere to send it; a green "Password changed" over that is the exact
+       failure this codebase keeps finding — a plausible answer nobody can tell from a real one.
+       The person is told what did not happen and what to do instead, and the day the endpoint
+       below exists this goes back to being a success line. */
+    showToast({ variant: "info", title: t.passwordNotSaved, desc: t.passwordNotSavedBody });
   };
 
   const field = (label: string, value: string, onChange: (v: string) => void, autoComplete: string, hint?: React.ReactNode) => (
@@ -922,6 +953,14 @@ function ChangePasswordModal({ t, lang, onClose }: {
               are, "Confirm it is you" tells you what is being asked. */}
           <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "3px" }}>
             {step === "verify" ? t.verifyStep : t.changeStep}
+          </p>
+          {/* Said before the typing rather than after it, on both steps, for the same reason the
+              current-password check was split off into its own: a person should learn that this
+              goes nowhere before composing a password and entering it twice, not in the toast that
+              follows. Amber, because a quiet grey line is not enough weight to stop somebody
+              believing a form that otherwise behaves exactly like a working one. */}
+          <p style={{ fontSize: "11px", lineHeight: 1.45, color: "var(--warning-500)", marginTop: "8px" }}>
+            {t.passwordNotWired}
           </p>
         </div>
         {step === "verify" ? (

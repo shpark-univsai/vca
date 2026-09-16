@@ -3,13 +3,19 @@
 import { useState } from "react";
 import { ListChecks, Users } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
+import { getComplianceConfig } from "@/lib/complianceConfig";
 import { BORDER } from "./PortalShared";
 
 const T = {
   en: {
     eyebrow: "Projects",
-    title: "Deploy AI Monitoring for Any Environment",
-    subtitle: "Create your first project, connect a camera stream, and start monitoring in minutes.",
+    // Says what happens next, and nothing about creating anything. The headline here used to be a
+    // product pitch with "Create your first project" underneath it, which contradicted the card
+    // beside it word for word — that card says a project is provisioned at installation, and the
+    // screen has no create button at all (see the note on provisioning below). It was left over
+    // from the version of this page that opened a wizard. No standfirst under it: the card carries
+    // the reason and the person to ask, and repeating either here would be the same sentence twice.
+    title: "Your site appears here once it is installed",
     // A project is a licensed site, and a licence is implanted by contract at installation —
     // so there is nothing to press here. See PortalEmptyState's note on provisioning.
     notProvisionedTitle: "No projects provisioned for this team yet",
@@ -17,7 +23,9 @@ const T = {
     contactManager: "Your account manager",
     noManager: "Contact whoever handled your installation.",
     prepTitle: "What you can set up before the site arrives",
-    prepBody: "These belong to the team, not to a project, so none of them are waiting on hardware.",
+    // Worded for one item as well as two — the list below is gated per switch, so "both of these"
+    // would be wrong on an installation that shows only one.
+    prepBody: "Team-level settings, so none of this is waiting on hardware.",
     prepCategories: "VIP categories",
     prepCategoriesWhy: "What a listing means here, how long it lasts by default, and whether it needs a written basis.",
     prepPurposes: "Search purposes",
@@ -33,14 +41,13 @@ const T = {
   },
   ko: {
     eyebrow: "프로젝트",
-    title: "모든 환경에 AI 모니터링을 적용하세요",
-    subtitle: "첫 프로젝트를 생성하고 카메라 스트림을 연결하면 몇 분 안에 모니터링을 시작할 수 있습니다.",
+    title: "현장은 설치가 끝나면 여기에 나타납니다",
     notProvisionedTitle: "이 팀에 배정된 프로젝트가 아직 없습니다",
     notProvisionedBody: "프로젝트는 라이선스가 걸린 현장입니다. 채널과 기간이 계약에서 나오기 때문에, 이 콘솔이 아니라 설치 과정에서 세팅됩니다.",
     contactManager: "담당자",
     noManager: "설치를 담당한 곳으로 문의하세요.",
     prepTitle: "현장이 들어오기 전에 해둘 수 있는 것",
-    prepBody: "전부 프로젝트가 아니라 팀에 걸린 설정이라, 장비를 기다릴 필요가 없습니다.",
+    prepBody: "프로젝트가 아니라 팀에 걸린 설정이라, 장비를 기다릴 필요가 없습니다.",
     prepCategories: "VIP 분류",
     prepCategoriesWhy: "여기서 '등록'이 무엇을 뜻하는지, 기본 유효기간은 얼마인지, 근거를 필수로 할지.",
     prepPurposes: "조회 목적",
@@ -92,6 +99,19 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
   const [teamName, setTeamName] = useState("");
   const [nameFocused, setNameFocused] = useState(false);
   const askTeam = noTeam && !!onCreateTeam;
+
+  /* Only the preparations this installation actually has a screen for.
+     Both of these are hidden by a compliance switch — vipCategories and requireSearchPurpose are
+     off for the first release, and PortalSettingsPage drops each section from its rail on the same
+     flag. Listed unconditionally, this panel promised two things and its button opened a settings
+     screen with neither of them on it. So each item is gated on the flag that decides whether its
+     settings section exists, and if neither survives the panel is not the place to say so — there
+     is simply nothing to prepare, and the screen says that by not offering it. */
+  const compliance = getComplianceConfig();
+  const prepItems = [
+    ...(compliance.vipCategories ? [{ label: t.prepCategories, why: t.prepCategoriesWhy }] : []),
+    ...(compliance.requireSearchPurpose ? [{ label: t.prepPurposes, why: t.prepPurposesWhy }] : []),
+  ];
 
   if (askTeam) {
     const canSubmit = teamName.trim().length > 0;
@@ -150,14 +170,11 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "48px", alignItems: "center" }}>
+    <div style={{ display: "grid", gridTemplateColumns: prepItems.length > 0 ? "1fr 1fr" : "1fr", gap: "48px", alignItems: "center" }}>
       <div>
         <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary-400)", marginBottom: "12px" }}>{t.eyebrow}</p>
         <p style={{ fontSize: "26px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "40px" }}>
           {t.title}
-        </p>
-        <p style={{ fontSize: "14px", color: "var(--gray-500)", marginTop: "12px", lineHeight: "22px" }}>
-          {t.subtitle}
         </p>
         {/* A named person, not a "contact support" button. Whoever is looking at this screen has
             bought the product and is waiting for a site; the useful thing is the name of the
@@ -181,17 +198,21 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
       {/* The gallery is gone from this state.
           It was a pitch for what the product does, shown to somebody who has already bought it
           and is waiting for their site — the wrong thing to read while waiting. What replaces it
-          is the work that IS available: both of these are the team's policy, so they can be
-          settled before a single camera is mounted, and settling them early is what stops the
-          first month's registrations going in unclassified. */}
+          is the work that IS available: these are the team's policy, so they can be settled before
+          a single camera is mounted, and settling them early is what stops the first month's
+          registrations going in unclassified.
+
+          Which is only true of a preparation whose settings screen this installation actually
+          shows — hence prepItems above, and hence the whole panel, button included, going with it
+          when the list comes back empty. The button is the part that made this a bug rather than
+          an inaccuracy: it opened Settings on a promise of two sections the rail had already
+          dropped. */}
+      {prepItems.length > 0 && (
       <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "14px", padding: "20px 22px" }}>
         <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)" }}>{t.prepTitle}</p>
         <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.prepBody}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "18px" }}>
-          {[
-            { label: t.prepCategories, why: t.prepCategoriesWhy },
-            { label: t.prepPurposes, why: t.prepPurposesWhy },
-          ].map(item => (
+          {prepItems.map(item => (
             <div key={item.label} style={{ display: "flex", gap: "10px" }}>
               <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "2px" }}>
                 <ListChecks size={15} strokeWidth={1.9} />
@@ -210,6 +231,7 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
           </button>
         )}
       </div>
+      )}
     </div>
   );
 }
