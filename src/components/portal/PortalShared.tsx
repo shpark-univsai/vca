@@ -394,10 +394,19 @@ interface SelectOption {
 // and inside this app's nested-scroll shell (PortalShell's outer overflow:hidden + inner
 // overflow:auto content area) that positioning can land the popup far from its trigger. Ported
 // from the main VCA app's SimpleSelect (DataPage.tsx) to match its exact look and behavior.
-export function FilterSelect({ value, onChange, options, fitContent, footerAction }: {
+export function FilterSelect({ value, onChange, options, fitContent, footerAction, onOpenChange }: {
   value: string;
   onChange: (value: string) => void;
   options: SelectOption[];
+  /**
+   * Told when the list opens and closes, for a parent that also listens for Escape.
+   *
+   * Both this and a dialog around it bind Escape, and both fire on the same keypress — so closing
+   * the list took the dialog with it. Reproduced in the browser: open Portal 역할 변경, open the
+   * list, press Escape, and the whole dialog goes. The parent suspends its own handler while this
+   * is open; see ConfirmModal's escapeSuspended.
+   */
+  onOpenChange?: (open: boolean) => void;
   /**
    * A pinned item at the foot of the open list — "+ Add group" and the like.
    *
@@ -430,6 +439,7 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
   const [dropUp, setDropUp] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEscapeKey(() => setOpen(false), open);
+  useEffect(() => { onOpenChange?.(open); }, [open, onOpenChange]);
 
   useEffect(() => {
     if (!open) return;
@@ -1380,7 +1390,7 @@ export function SortableHeader<K extends string>({ label, sortKey, sort, onToggl
  * Remove) predate it and still carry their own markup — worth folding in here, but not while they
  * are untouched by the change that needed this.
  */
-export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, confirmDisabled, altAction, onConfirm, onClose, children }: {
+export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, confirmDisabled, altAction, onConfirm, onClose, escapeSuspended, children }: {
   title: string;
   body: string;
   /**
@@ -1414,8 +1424,17 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
   altAction?: { label: string; onClick: () => void; danger?: boolean };
   onConfirm: () => void;
   onClose: () => void;
+  /**
+   * Hold Escape while something inside this dialog is using it — an open select, say.
+   *
+   * Escape handlers stack: the select's and this one both fire on one keypress, so dismissing the
+   * list dismissed the whole dialog and the administrator lost the change they were part-way
+   * through. Same shape as the category-retire and team-switch confirmations fixed earlier today;
+   * this is the third, and it is the generic one every ConfirmModal caller inherits.
+   */
+  escapeSuspended?: boolean;
 }) {
-  useEscapeKey(onClose);
+  useEscapeKey(onClose, !escapeSuspended);
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>

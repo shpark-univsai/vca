@@ -2251,6 +2251,9 @@ function AccessChangeModal({ title, body, options, current, onApply, onClose }: 
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const [value, setValue] = useState(current);
+  /* While the list below is open it owns Escape. Without this, one keypress closed the list AND
+     this dialog — reproduced in the browser before fixing. */
+  const [selectOpen, setSelectOpen] = useState(false);
   return (
     <ConfirmModal
       title={title}
@@ -2260,11 +2263,12 @@ function AccessChangeModal({ title, body, options, current, onApply, onClose }: 
       confirmDisabled={value === current}
       onConfirm={() => { onApply(value); onClose(); }}
       onClose={onClose}
+      escapeSuspended={selectOpen}
     >
       {/* ConfirmModal's body does not scroll, so the list this opens is free to hang below the
           field — the clipping MODAL_BODY_WITH_SELECT exists for cannot happen here. */}
       <div style={{ marginTop: "14px" }}>
-        <FilterSelect value={value} onChange={setValue} options={options} />
+        <FilterSelect value={value} onChange={setValue} options={options} onOpenChange={setSelectOpen} />
       </div>
     </ConfirmModal>
   );
