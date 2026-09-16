@@ -121,6 +121,7 @@ const T = {
     accessPortalOnlyDesc: "Settings console only — no monitoring app.",
     accessGainsRoleNote: (role: string) => `Given the ${role} role, which changes nothing until you raise it.`,
     reasonNoApp: "This account has no app access — person search has no screen to run on.",
+    reasonNoPortal: "This account does not open Portal — change where they sign in first.",
     reasonNotOwner: "Only an owner can change access.",
     appSearchOn: "On",
     appSearchGrant: "Allow person search in the app",
@@ -134,7 +135,12 @@ const T = {
     statusSuspended: "Suspended",
 
     // Row actions
-    resendInvite: "Resend invite",
+    // Not "Resend": nothing is posted anywhere (see InviteLinkPanel). This mints a fresh token
+    // and puts the link on screen, which is a different act and has to read as one.
+    resendInvite: "New invite link",
+    // The two cells that used to be a select on every row — see AccessChangeModal.
+    changeRole: "Change Portal role…",
+    changeAccess: "Change where they sign in…",
     generateTempPassword: "Generate temporary password",
     // "user" is redundant in a menu that opens from a user's own row — the row already says who.
     reactivateUser: "Reactivate",
@@ -154,11 +160,19 @@ const T = {
     confirmSearchGrantBody: "They will be able to look up any registered individual in the app's Data and Redmap searches.",
     confirmSearchRevokeTitle: (name: string) => `Block ${name} from searching for people?`,
     confirmSearchRevokeBody: "Person search in the app stops working for them. Their console permission is unchanged.",
+    confirmRoleTitle: (name: string) => `Change ${name}'s Portal role?`,
+    confirmRoleBody: "Takes effect at once. A higher role can hand out and take away other people's access; a lower one closes Portal screens this person may be working in.",
+    confirmAccessTitle: (name: string) => `Change where ${name} signs in?`,
+    confirmAccessBody: "Takes effect at once. Closing a door stops them signing in through it. The account and everything they registered stay.",
+    changeApply: "Change",
 
     // Row action toasts
-    inviteResentTitle: "Invite resent",
-    resetCodeSentTitle: "Reset code sent",
-    resetCodeSentDesc: (email: string) => `To ${email}`,
+    inviteLinkRemadeTitle: "New invite link",
+    // "Sent" was a lie: this path posts nowhere (see the note on generate()). The title says what
+    // the administrator did, and the second line says what did NOT happen — the same shape
+    // ProjectServerTab's mail-settings toast uses, for the same reason.
+    resetCodeRequestedTitle: "Reset code requested",
+    resetCodeRequestedDesc: (email: string) => `For ${email}. Nothing has gone out through the mail relay yet.`,
     tempIssuedTitle: "Temporary password issued",
     tempIssuedDesc: (name: string) => `${name} must set their own password at next login`,
     userReactivatedTitle: "User reactivated",
@@ -267,7 +281,9 @@ const T = {
     projectsModalNoneWarning: "At least one project. An account with no projects signs in to an empty app with no sign that anything was taken away — suspend the account instead.",
     projectsUpdatedTitle: "Projects updated",
     sendInvite: "Send Invite",
-    inviteSentTitle: "Invite sent",
+    inviteCreatedTitle: "Account created",
+    // On the panel that carries the link, in all three places one is made.
+    inviteLinkNote: "Nothing has been sent — hand this link over yourself. It is not shown again, and making a new one from the row menu retires this one.",
 
     // Access requests panel
     accessRequestsTitle: (count: number) => `Access Requests (${count})`,
@@ -276,9 +292,8 @@ const T = {
     approve: "Approve",
     requestedAgo: (elapsed: string) => `Requested ${elapsed} ago`,
     requestedLoading: "Requested …",
-    accessApprovedTitle: "Access approved — invite sent",
-    usersInvitedTitle: (count: number) => `${count} users invited`,
-    eachWillReceive: "Each will receive their own invite link.",
+    accessApprovedTitle: "Access approved — account created",
+    accountsCreatedTitle: (count: number) => `${count} accounts created`,
     grantLabel: "App grants *",
     grantCustom: "Custom",
     grantCustomDesc: "Pick the screens and actions one by one.",
@@ -399,6 +414,7 @@ const T = {
     accessPortalOnlyDesc: "설정 콘솔만 — 관제 앱은 못 씁니다.",
     accessGainsRoleNote: (role: string) => `${role} 역할로 들어갑니다. 올리기 전까지는 바꾸는 게 없습니다.`,
     reasonNoApp: "앱 접근이 없는 계정입니다 — 인물 검색을 쓸 화면이 없습니다.",
+    reasonNoPortal: "Portal을 열지 않는 계정입니다 — 로그인 위치를 먼저 바꾸세요.",
     reasonNotOwner: "권한 변경은 최고관리자만 할 수 있습니다.",
     appSearchOn: "허용",
     appSearchGrant: "앱에서 인물 검색 허용",
@@ -412,7 +428,9 @@ const T = {
     statusSuspended: "정지됨",
 
     // Row actions
-    resendInvite: "초대 재전송",
+    resendInvite: "초대 링크 다시 만들기",
+    changeRole: "Portal 역할 변경…",
+    changeAccess: "로그인 위치 변경…",
     generateTempPassword: "임시 비밀번호 생성",
     resetPassword: "비밀번호 재설정",
     sendCode: "코드 전송",
@@ -462,11 +480,16 @@ const T = {
     confirmSearchGrantBody: "앱의 Data · Redmap 검색에서 등록된 인물을 모두 조회할 수 있게 됩니다.",
     confirmSearchRevokeTitle: (name: string) => `${name} 님의 인물 검색을 차단할까요?`,
     confirmSearchRevokeBody: "앱에서 인물 검색이 동작하지 않게 됩니다. 콘솔 권한은 그대로입니다.",
+    confirmRoleTitle: (name: string) => `${name} 님의 Portal 역할을 바꿀까요?`,
+    confirmRoleBody: "즉시 적용됩니다. 역할을 올리면 다른 사람의 접근까지 주고 뺏을 수 있게 되고, 내리면 지금 보고 있던 포털 화면이 닫힙니다.",
+    confirmAccessTitle: (name: string) => `${name} 님이 로그인하는 곳을 바꿀까요?`,
+    confirmAccessBody: "즉시 적용됩니다. 문을 닫으면 그쪽으로는 로그인할 수 없게 되고, 계정과 등록한 내용은 그대로 남습니다.",
+    changeApply: "변경",
 
     // Row action toasts
-    inviteResentTitle: "초대 재전송됨",
-    resetCodeSentTitle: "재설정 코드 전송됨",
-    resetCodeSentDesc: (email: string) => `${email}로 전송됨`,
+    inviteLinkRemadeTitle: "새 초대 링크",
+    resetCodeRequestedTitle: "재설정 코드 요청됨",
+    resetCodeRequestedDesc: (email: string) => `${email} 앞. 아직 메일 릴레이로 나간 것은 없습니다.`,
     tempIssuedTitle: "임시 비밀번호가 발급됨",
     tempIssuedDesc: (name: string) => `${name} 님은 다음 로그인 시 직접 비밀번호를 설정해야 합니다`,
     userReactivatedTitle: "사용자가 재활성화됨",
@@ -532,7 +555,8 @@ const T = {
     projectsModalNoneWarning: "최소 한 개는 있어야 합니다. 프로젝트가 없는 계정은 아무것도 없는 앱에 로그인하게 되고, 무엇이 회수됐는지 알 방법이 없습니다. 그럴 땐 계정을 정지하세요.",
     projectsUpdatedTitle: "프로젝트가 변경되었습니다",
     sendInvite: "초대 보내기",
-    inviteSentTitle: "초대장 발송됨",
+    inviteCreatedTitle: "계정이 만들어졌습니다",
+    inviteLinkNote: "발송된 것은 없습니다 — 이 링크를 직접 전달하세요. 다시 볼 수 없고, 행 메뉴에서 새로 만들면 이 링크는 못 쓰게 됩니다.",
 
     // Access requests panel
     accessRequestsTitle: (count: number) => `접근 요청 (${count}건)`,
@@ -541,9 +565,8 @@ const T = {
     approve: "승인",
     requestedAgo: (elapsed: string) => `${elapsed} 전 요청됨`,
     requestedLoading: "요청됨 …",
-    accessApprovedTitle: "접근 승인됨 — 초대장 발송됨",
-    usersInvitedTitle: (count: number) => `${count}명의 사용자 초대됨`,
-    eachWillReceive: "각자 개별 초대 링크를 받게 됩니다.",
+    accessApprovedTitle: "접근 승인됨 — 계정이 만들어졌습니다",
+    accountsCreatedTitle: (count: number) => `계정 ${count}개가 만들어졌습니다`,
     grantLabel: "권한 부여 방식 *",
     grantCustom: "커스텀",
     grantCustomDesc: "화면과 동작을 하나씩 고릅니다.",
@@ -625,6 +648,103 @@ function GrantGroupLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** One account and the one link that reaches it, before anybody has signed in as it. */
+type InviteLink = { name: string; email: string; url: string };
+
+/**
+ * One account and the link that reaches it. Its own component only for the copied flag, which is
+ * per row: the bulk panel below can hold five of these and one shared flag would light them all.
+ */
+function InviteLinkRow({ name, email, url }: { name: string; email: string; url: string }) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  const [copied, setCopied] = useState(false);
+  // Same rule as the temporary password's copy button: the write can be refused (insecure origin,
+  // browser permission), and a "Copied" label over a clipboard that did not take is how somebody
+  // pastes whatever was there before. Flip the label only once the write resolves — on failure the
+  // link is still on screen to read off.
+  const copy = () => {
+    navigator.clipboard?.writeText(url).then(
+      () => { setCopied(true); setTimeout(() => setCopied(false), 2000); },
+      () => setCopied(false),
+    );
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "12px 14px", borderRadius: "10px", border: "1px solid var(--line)", backgroundColor: "var(--gray-50)" }}>
+      {/* Who this one is for. The bulk case hands over several at once, and a column of tokens
+          that differ in the last six characters cannot be told apart by eye. */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: "8px", minWidth: 0 }}>
+        <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", flexShrink: 0 }}>{name}</span>
+        <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{email}</span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        {/* user-select stays on: the button is a convenience, not the only way out of the box. */}
+        <code style={{ flex: 1, minWidth: 0, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "12px", color: "var(--gray-700)", wordBreak: "break-all", lineHeight: 1.5 }}>
+          {url}
+        </code>
+        <button onClick={copy}
+          style={{ flexShrink: 0, padding: "7px 11px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: copied ? "var(--success-400)" : "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          {copied ? t.tempCopied : t.tempCopy}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The only artefact of creating an account, held on screen until it is dismissed.
+ *
+ * A /password-setup link used to be the `desc` of a toast — and ToastProvider drops every toast
+ * five seconds after it appears, with no copy button and no way to pin it. Nothing in this build
+ * mails that link (the relay is not wired up; the invite flow's other notes say the same), so
+ * those five seconds were the entire life of the only route into an account that had just been
+ * made. Look away and the account was unreachable: the token is stored on the user and never
+ * rendered again, and the only repair was to mint another one.
+ *
+ * Shaped after the temporary-password result step above, deliberately — it is the same problem.
+ * A value that has to leave the screen by hand, a clipboard write that only claims success once
+ * it resolves, and a box the reader closes when they are done rather than one that closes itself.
+ *
+ * DO NOT PUT THIS BACK IN A TOAST. A toast is for something that happened; this is something the
+ * administrator still has to carry somewhere.
+ */
+function InviteLinkPanel({ title, links, onClose }: {
+  title: string;
+  links: InviteLink[];
+  onClose: () => void;
+}) {
+  useEscapeKey(onClose);
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 310, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      {/* 310 rather than the 300 every other modal here uses. This is the one box on the page
+          that must not end up behind something else — it holds the only copy of the link. */}
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "520px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
+        <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{title}</p>
+          <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+          </button>
+        </div>
+        <div style={MODAL_BODY}>
+          <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>{t.inviteLinkNote}</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {links.map(l => <InviteLinkRow key={l.url} name={l.name} email={l.email} url={l.url} />)}
+          </div>
+        </div>
+        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
+          <button className="portal-btn-primary" onClick={onClose}
+            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {t.tempDone}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: string; onClose: () => void }) {
   useEscapeKey(onClose);
   const teams = useVcaStore(s => s.teams);
@@ -632,9 +752,11 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const allUsers = useVcaStore(s => s.portalUsers);
   const addPortalUser = useVcaStore(s => s.addPortalUser);
   const issueInviteToken = useVcaStore(s => s.issueInviteToken);
-  const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t = T[lang];
+  /** The account this form just made, or null while it is still a form. Holding it here rather
+   *  than closing on submit is what keeps the link reachable — see InviteLinkPanel. */
+  const [issued, setIssued] = useState<InviteLink | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   // Defaults to the team that owns the project this page is scoped to — not teams[0]. With more
@@ -776,11 +898,19 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
       ...(resolved.appAccess ? { grantMode: (chosen ? "preset" : "custom") as GrantMode, presetId: chosen?.id } : {}),
     });
     // The link carries a minted token, not the account id it used to carry — see PortalUser.
-    // inviteToken. The toast stands in for the mail nobody can send yet.
+    // inviteToken. NO TOAST AND NO CLOSE HERE: nothing mails this link, so it is the entire
+    // result of pressing the button, and a toast would take it away five seconds later. The
+    // result panel replaces the form and the reader dismisses it themselves.
     const token = issueInviteToken(id);
-    showToast({ variant: "success", title: t.inviteSentTitle, desc: `/password-setup?token=${token}` });
-    onClose();
+    // Cannot be null — the account was created on the line above — but a "?token=null" link would
+    // look like a working one and reach nothing, which is worse than no link at all.
+    if (!token) return;
+    setIssued({ name: name.trim(), email: email.trim(), url: `/password-setup?token=${token}` });
   };
+
+  if (issued) {
+    return <InviteLinkPanel title={t.inviteCreatedTitle} links={[issued]} onClose={onClose} />;
+  }
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
@@ -1020,7 +1150,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
   const c = kind === "mail"
     ? {
         modalTitle: t.resetPassword, intro: undefined as string | undefined, generate: t.sendCode,
-        resultTitle: t.resetCodeSentTitle, note: "",
+        resultTitle: t.resetCodeRequestedTitle, note: "",
         handoverTitle: "", handover: "",
         // This branch used to carry no rules at all, and it is the one the modal OPENS on wherever
         // mail works — so the box looked as though the button had nothing to warn about until the
@@ -1077,7 +1207,8 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
       // HANDOFF NOTE: posts nowhere. The real call asks the backend to mail a reset code, and the
       // OPEN QUESTION from before still stands — if the person then uses "Forgot password?"
       // themselves they request a second code, invalidating this one.
-      showToast({ variant: "success", title: t.resetCodeSentTitle, desc: t.resetCodeSentDesc(user.email) });
+      // "success" would be a claim: nothing left the building. info, and the second line says so.
+      showToast({ variant: "info", title: t.resetCodeRequestedTitle, desc: t.resetCodeRequestedDesc(user.email) });
       onClose();
       return;
     }
@@ -1477,13 +1608,17 @@ function RecoveryModeNotice({ supportContact }: { supportContact: string | null 
  * an owner can change access", fully live for an admin or an auditor. Dismiss destroyed a
  * pending request with no gate and no confirmation.
  */
-function AccessRequestsPanel({ projectId }: { projectId: string }) {
+function AccessRequestsPanel({ projectId, onLinksMade }: {
+  projectId: string;
+  /** Approving hands back links that have to outlive this panel: approving the last request
+   *  empties the queue and the early returns below unmount the whole card. The page holds them. */
+  onLinksMade: (panel: { title: string; links: InviteLink[] }) => void;
+}) {
   const accessRequests = useVcaStore(s => s.accessRequests);
   const portalUsers = useVcaStore(s => s.portalUsers);
   const approveAccessRequests = useVcaStore(s => s.approveAccessRequests);
   const issueInviteToken = useVcaStore(s => s.issueInviteToken);
   const dismissAccessRequest = useVcaStore(s => s.dismissAccessRequest);
-  const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const [selected, setSelected] = useState<string[]>([]);
@@ -1511,10 +1646,30 @@ function AccessRequestsPanel({ projectId }: { projectId: string }) {
     if (!manageAccess) return;
     const newUserIds = approveAccessRequests(ids);
     setSelected(prev => prev.filter(id => !ids.includes(id)));
-    if (newUserIds.length === 1) {
-      showToast({ variant: "success", title: t.accessApprovedTitle, desc: `/password-setup?token=${issueInviteToken(newUserIds[0])}` });
-    } else if (newUserIds.length > 1) {
-      showToast({ variant: "success", title: t.usersInvitedTitle(newUserIds.length), desc: t.eachWillReceive });
+    /*
+     * A LINK PER ACCOUNT, NOT A SENTENCE ABOUT LINKS.
+     *
+     * Approving five used to raise "5 users invited — each will receive their own invite link",
+     * which was two untruths in one card: nobody receives anything (no mail goes out of this
+     * build), and the links themselves were never shown, so five accounts existed that nothing
+     * could reach. Approving one showed a link and then dropped it after five seconds.
+     *
+     * approveAccessRequests walks the requests in store order and returns the new ids in that
+     * same order, and this list is a filtered subsequence of the same array — so index i here is
+     * the person index i was created from. Their name and address come off the request rather
+     * than out of the store, which this closure would only see a stale copy of.
+     */
+    const from = requests.filter(r => ids.includes(r.id));
+    const links = newUserIds.flatMap((userId, i) => {
+      const token = issueInviteToken(userId);
+      const who = from[i];
+      return token && who ? [{ name: who.name, email: who.email, url: `/password-setup?token=${token}` }] : [];
+    });
+    if (links.length > 0) {
+      onLinksMade({
+        title: links.length === 1 ? t.accessApprovedTitle : t.accountsCreatedTitle(links.length),
+        links,
+      });
     }
   };
 
@@ -1934,6 +2089,58 @@ interface PortalUsersPageProps {
  */
 const DORMANT_AFTER_DAYS = 90;
 
+/**
+ * Changing a row's Portal role, or which doors that account opens, asked as a question.
+ *
+ * Both of these were a 36px FilterSelect ON EVERY ROW, and that is what the table looked like:
+ * two columns of bordered white boxes with chevrons running down the middle of it, heavier than
+ * the names beside them, most of them repeating the same word — while the actions somebody came
+ * to this table for (suspend, remove) sat quietly behind the kebab. A list of accounts read as a
+ * permissions form. ProjectVipTab made the same call on its group column and states the rule this
+ * follows: every other table in Portal shows values and sends changes to a form.
+ *
+ * It also fixes something the selects hid. A viewer who could not change these saw plain text in
+ * the same cells, so the table's density depended on who was reading it — the same screen was two
+ * different screens, and neither was the one anybody had designed.
+ *
+ * CONFIRMED, NOT APPLIED ON PICK. A select commits the moment it changes and offers nothing to
+ * cancel with, and neither of these is cheap to walk back: a demoted owner may no longer have the
+ * power to restore themselves, and closing a door signs the person out of it. ConfirmModal already
+ * carries every other access change on this page, and the picker is its one field — the same way
+ * the VIP release dialog asks its one question rather than stacking a second box on top.
+ */
+function AccessChangeModal({ title, body, options, current, onApply, onClose }: {
+  title: string;
+  body: string;
+  options: { value: string; label: string; description?: string }[];
+  /** The value the row already holds. Also the guard on the confirm button: a dialog that has
+   *  been opened and not answered should not be able to write the answer it started with. */
+  current: string;
+  onApply: (value: string) => void;
+  onClose: () => void;
+}) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  const [value, setValue] = useState(current);
+  return (
+    <ConfirmModal
+      title={title}
+      body={body}
+      confirmLabel={t.changeApply}
+      cancelLabel={t.cancel}
+      confirmDisabled={value === current}
+      onConfirm={() => { onApply(value); onClose(); }}
+      onClose={onClose}
+    >
+      {/* ConfirmModal's body does not scroll, so the list this opens is free to hang below the
+          field — the clipping MODAL_BODY_WITH_SELECT exists for cannot happen here. */}
+      <div style={{ marginTop: "14px" }}>
+        <FilterSelect value={value} onChange={setValue} options={options} />
+      </div>
+    </ConfirmModal>
+  );
+}
+
 function isDormant(u: PortalUser, nowMs: number): boolean {
   const cutoff = nowMs - DORMANT_AFTER_DAYS * 24 * 60 * 60 * 1000;
   if (u.status === "active") {
@@ -1988,6 +2195,13 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   // The user a temporary password is being issued for, or null. Held as the user rather than an id
   // so the modal keeps rendering the right name even if the row scrolls out from under it.
   const [credentialFor, setCredentialFor] = useState<PortalUser | null>(null);
+  /** The invite links waiting to be handed over, or null. Held by the page, not by whatever made
+   *  them: approving the last access request unmounts that panel. See InviteLinkPanel. */
+  const [invitePanel, setInvitePanel] = useState<{ title: string; links: InviteLink[] } | null>(null);
+  // The row whose Portal role, or whose doors, are being changed. Same reason as credentialFor:
+  // the user, not an id.
+  const [changingRoleFor, setChangingRoleFor] = useState<PortalUser | null>(null);
+  const [changingAccessFor, setChangingAccessFor] = useState<PortalUser | null>(null);
   /**
    * The account action waiting on a yes. One piece of state rather than a flag per action: the
    * dialog is the same dialog every time and only its wording and its callback differ, and four
@@ -2271,7 +2485,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         }}
         onShowGuide={() => setShowGuide(true)} />
 
-      <AccessRequestsPanel projectId={projectId} />
+      <AccessRequestsPanel projectId={projectId} onLinksMade={setInvitePanel} />
 
       {/* Search alone. The permission and status filters that used to sit on the right are gone: the
           counts strip directly above already answers what they were for (how many owners, how many
@@ -2540,52 +2754,28 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 ));
               })()}
             </div>
-            {/* Only an owner may change this. For everyone else the cell reads as text — a select
-                that opens and then refuses is worse than a value that never looked editable.
+            {/* A VALUE, NOT A CONTROL — both this cell and Access beside it. They were each a
+                bordered 36px select on every row, which made a list of people read as a form for
+                editing permissions, and left the row's real actions (suspend, remove) as the
+                quietest thing on it. Changing either now goes through the row menu, which is
+                where this table's other access changes already live, and through a confirm step,
+                because neither is cheap to undo. See AccessChangeModal.
 
-                An account with no Portal access has no role to pick, and offering one would imply
-                a Portal role can be held without Portal. The cell says so and the Access select
-                next to it is where that changes. */}
+                An account with no Portal access has no role to show, and printing one would imply
+                a Portal role can be held without Portal. The dash says so; Access beside it is
+                where that changes.
+
+                The dead-end the selects used to have is gone with them: the last owner's role is
+                the one the store refuses to change (isLastActiveAdmin), and the menu entry for it
+                is disabled with the reason attached rather than opening and doing nothing. */}
             {!canEnterPortal(u.permission) ? (
               <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
-            ) : lastAdmin ? (
-              /* The last owner's role is the one the store refuses to change (isLastActiveAdmin) —
-                 demoting them locks the customer out of their own installation. As a select it
-                 opened, offered three roles and then did nothing with the answer. Plain text with
-                 the reason on it says the same thing without the dead end. */
-              <span title={t.lastAdminRoleFixed} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{roleLabel(t, u.permission)}</span>
-            ) : manageAccess ? (
-              <FilterSelect
-                fitContent
-                value={u.permission}
-                onChange={v => updatePortalUserPermission(u.id, v as PortalPermission)}
-                options={consoleRoleOptions(t)}
-              />
             ) : (
-              <span title={t.reasonNotOwner} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{roleLabel(t, u.permission)}</span>
+              <span title={lastAdmin ? t.lastAdminRoleFixed : undefined} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{roleLabel(t, u.permission)}</span>
             )}
-            {/* Where this person may sign in. Its own control rather than a fourth role, because it
+            {/* Where this person may sign in. Its own value rather than a fourth role, because it
                 is a second question — see PortalPermission's doc. */}
-            {manageAccess ? (
-              <FilterSelect
-                fitContent
-                value={accessModeOf(u)}
-                onChange={v => {
-                  const next = applyAccessMode(v as AccessMode, u.permission);
-                  updatePortalUserAccess(u.id, next.permission, next.appAccess);
-                  // Say it when the change quietly hands out a Portal role the owner did not pick.
-                  if (!canEnterPortal(u.permission) && canEnterPortal(next.permission)) {
-                    showToast({ variant: "info", title: accessLabel(t, v as AccessMode), desc: t.accessGainsRoleNote(roleLabel(t, next.permission)) });
-                  }
-                }}
-                /* App-only would strip Portal from the last owner, which the store refuses on the
-                   same guard — so it is not offered on that row rather than offered and ignored.
-                   Portal-only stays: taking the app away from an owner locks nobody out. */
-                options={lastAdmin ? accessOptions(t).filter(o => o.value !== "appOnly") : accessOptions(t)}
-              />
-            ) : (
-              <span title={t.reasonNotOwner} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{accessLabel(t, accessModeOf(u))}</span>
-            )}
+            <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{accessLabel(t, accessModeOf(u))}</span>
             {/* Search is a separate grant from the console role, so it gets its own column rather
                 than being folded into the role label — the two answer different questions. The cell
                 is always emitted, "—" included: this is a grid, so a conditional cell does not
@@ -2627,13 +2817,37 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 reason: manageAccess ? undefined : t.reasonNotOwner,
                 onClick: () => setEditingProjectsFor(u),
               },
+              {
+                // The Permission cell's editor. Refused for the last owner on the store's own
+                // guard rather than offered and then ignored, and refused outright for an account
+                // that does not open Portal — there is no role to hold without the door.
+                label: t.changeRole,
+                disabled: !manageAccess || lastAdmin || !canEnterPortal(u.permission),
+                reason: !manageAccess ? t.reasonNotOwner
+                  : lastAdmin ? t.lastAdminRoleFixed
+                  : !canEnterPortal(u.permission) ? t.reasonNoPortal
+                  : undefined,
+                onClick: () => setChangingRoleFor(u),
+              },
+              {
+                label: t.changeAccess,
+                disabled: !manageAccess,
+                reason: manageAccess ? undefined : t.reasonNotOwner,
+                onClick: () => setChangingAccessFor(u),
+              },
               ...(mailAvailable && u.status === "invited" ? [{
                 label: t.resendInvite,
                 disabled: !manageAccess,
                 reason: manageAccess ? undefined : t.reasonNotOwner,
-                // A resend is a reissue: the previous link stops working, which is the point when
-                // the first one has been sitting in a forwarded mail thread for a week.
-                onClick: () => showToast({ variant: "success", title: t.inviteResentTitle, desc: `/password-setup?token=${issueInviteToken(u.id)}` }),
+                // A reissue, not a resend: the previous link stops working the moment this mints
+                // a new one, which is the point when the first has been sitting unused for a week.
+                // The link goes on a panel rather than in a toast — nothing posts it anywhere, so
+                // it is the whole result and it has to survive longer than five seconds.
+                onClick: () => {
+                  const token = issueInviteToken(u.id);
+                  if (!token) return;
+                  setInvitePanel({ title: t.inviteLinkRemadeTitle, links: [{ name: u.name, email: u.email, url: `/password-setup?token=${token}` }] });
+                },
               }] : []),
               {
                 // All three recovery paths behind one entry. Mailing a code, reading out a temporary
@@ -2832,6 +3046,41 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             showToast({ variant: "success", title: t.projectsUpdatedTitle, desc: editingProjectsFor.name });
           }}
         />
+      )}
+      {changingRoleFor && (
+        <AccessChangeModal
+          title={t.confirmRoleTitle(changingRoleFor.name)}
+          body={t.confirmRoleBody}
+          options={consoleRoleOptions(t)}
+          current={changingRoleFor.permission}
+          onApply={v => updatePortalUserPermission(changingRoleFor.id, v as PortalPermission)}
+          onClose={() => setChangingRoleFor(null)}
+        />
+      )}
+      {changingAccessFor && (
+        <AccessChangeModal
+          title={t.confirmAccessTitle(changingAccessFor.name)}
+          body={t.confirmAccessBody}
+          /* App-only would strip Portal from the last owner, which the store refuses on the same
+             guard — so it is not offered rather than offered and ignored. Portal-only stays:
+             taking the app away from an owner locks nobody out. */
+          options={isLastActiveAdmin(portalUsers, changingAccessFor.id)
+            ? accessOptions(t).filter(o => o.value !== "appOnly")
+            : accessOptions(t)}
+          current={accessModeOf(changingAccessFor)}
+          onApply={v => {
+            const next = applyAccessMode(v as AccessMode, changingAccessFor.permission);
+            updatePortalUserAccess(changingAccessFor.id, next.permission, next.appAccess);
+            // Say it when the change quietly hands out a Portal role nobody picked.
+            if (!canEnterPortal(changingAccessFor.permission) && canEnterPortal(next.permission)) {
+              showToast({ variant: "info", title: accessLabel(t, v as AccessMode), desc: t.accessGainsRoleNote(roleLabel(t, next.permission)) });
+            }
+          }}
+          onClose={() => setChangingAccessFor(null)}
+        />
+      )}
+      {invitePanel && (
+        <InviteLinkPanel title={invitePanel.title} links={invitePanel.links} onClose={() => setInvitePanel(null)} />
       )}
       {credentialFor && (
         <TempPasswordModal user={credentialFor} mailAvailable={mailAvailable} onClose={() => setCredentialFor(null)} />
