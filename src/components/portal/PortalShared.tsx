@@ -1487,7 +1487,10 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
             Not kept anywhere, including the two modals whose body scrolls: the footer buttons are
             outlined pills, so a rule directly above them is a line sitting on a row of lines, and
             a scroll region's edge is already told by its scrollbar and by content being cut off. */}
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+        {/* flexShrink 0 so the row of buttons keeps its full height when the card is capped. Inert
+            with `bodyScrolls` off — the card is not a flex container then, and flex-shrink means
+            nothing outside one — so it costs the other callers nothing. */}
+        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
           <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {cancelLabel}
           </button>

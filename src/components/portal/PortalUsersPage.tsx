@@ -292,9 +292,15 @@ const T = {
     accessLabel: "Where they sign in",
     permissionLabel: "Portal role",
     projectsLabel: "Projects",
-    mailNoteBoth: "Invite will be sent by external email for internet-connected projects, and the internal mailbox for internet-isolated ones.",
-    mailNoteIsolated: "This project's site is internet-isolated — invite will be sent through its internal mailbox, not external email.",
-    mailNoteReachable: "Invite will be sent by external email.",
+    // WHAT THE SITE CAN REACH, NOT A SEND THAT DOES NOT HAPPEN. These three lines used to read
+    // "Invite will be sent by external email…" — a future-tense promise made one button before the
+    // panel that says, in as many words, that nothing has been sent and the link is handed over by
+    // hand. The address still matters (it is the account's identity, and errDomain refuses one this
+    // installation cannot deliver to), so the constraint stays and only the promise goes.
+    // HANDOFF NOTE: the 2026-08-28 decision is that the backend mails the invite. When it does,
+    // this is where the transport sentence comes back — with the send actually behind it.
+    mailNoteBoth: "One of these projects is on an internet-isolated site: from there, only an address on that site's own internal mailbox can be reached.",
+    mailNoteIsolated: "This project's site is internet-isolated — from there, only an address on its own internal mailbox can be reached.",
     cancel: "Cancel",
     errEmail: "That is not an email address.",
     errDuplicate: "An account already uses this address.",
@@ -307,7 +313,11 @@ const T = {
     sendInvite: "Create invite link",
     inviteCreatedTitle: "Account created",
     // On the panel that carries the link, in all three places one is made.
-    inviteLinkNote: "Nothing has been sent — hand this link over yourself. It is not shown again, and making a new one from the row menu retires this one.",
+    // No longer "from the row menu": that item is offered only while the installation has outbound
+    // mail (see the resendInvite entry's condition), so on a site without it the sentence named a
+    // control the reader could not find. What is true everywhere is the token — one per account, so
+    // whichever screen mints the next one kills this link.
+    inviteLinkNote: "Nothing has been sent — hand this link over yourself. It is not shown again, and a later link for the same person retires this one.",
 
     // Access requests panel
     accessRequestsTitle: (count: number) => `Access Requests (${count})`,
@@ -560,9 +570,8 @@ const T = {
     accessLabel: "어디로 로그인하나",
     permissionLabel: "Portal 역할",
     projectsLabel: "프로젝트",
-    mailNoteBoth: "인터넷에 연결된 프로젝트에는 외부 이메일로, 인터넷이 차단된 프로젝트에는 내부 메일함으로 초대장이 발송됩니다.",
-    mailNoteIsolated: "이 프로젝트의 사이트는 인터넷이 차단되어 있습니다 — 초대장은 외부 이메일이 아닌 내부 메일함으로 발송됩니다.",
-    mailNoteReachable: "초대장이 외부 이메일로 발송됩니다.",
+    mailNoteBoth: "선택한 프로젝트 중 인터넷이 차단된 사이트가 있습니다 — 그쪽에서는 사이트 내부 메일함 주소로만 연락이 닿습니다.",
+    mailNoteIsolated: "이 프로젝트의 사이트는 인터넷이 차단되어 있습니다 — 사이트 내부 메일함 주소로만 연락이 닿습니다.",
     cancel: "취소",
     errEmail: "이메일 주소 형식이 아닙니다.",
     errDuplicate: "이미 이 주소를 쓰는 계정이 있습니다.",
@@ -574,7 +583,7 @@ const T = {
     projectsUpdatedTitle: "프로젝트가 변경되었습니다",
     sendInvite: "초대 링크 만들기",
     inviteCreatedTitle: "계정이 만들어졌습니다",
-    inviteLinkNote: "발송된 것은 없습니다 — 이 링크를 직접 전달하세요. 다시 볼 수 없고, 행 메뉴에서 새로 만들면 이 링크는 못 쓰게 됩니다.",
+    inviteLinkNote: "발송된 것은 없습니다 — 이 링크를 직접 전달하세요. 다시 볼 수 없고, 같은 사람에게 링크를 새로 만들면 이 링크는 못 쓰게 됩니다.",
 
     // Access requests panel
     accessRequestsTitle: (count: number) => `접근 요청 (${count}건)`,
@@ -897,13 +906,15 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const selectedProjects = teamProjects.filter(p => projectIds.includes(p.id));
   const hasIsolated = selectedProjects.some(isNetworkIsolated);
   const hasReachable = selectedProjects.some(p => !isNetworkIsolated(p));
-  const mailTransportNote = selectedProjects.length === 0
+  // Only when a site constrains the address. The all-connected case had a line of its own
+  // ("Invite will be sent by external email"), which told the reader nothing they could act on
+  // and, since nothing is sent from here, was not true either. Silence is the accurate default;
+  // the note is for the exception.
+  const mailTransportNote = selectedProjects.length === 0 || !hasIsolated
     ? null
-    : hasIsolated && hasReachable
+    : hasReachable
       ? t.mailNoteBoth
-      : hasIsolated
-        ? t.mailNoteIsolated
-        : t.mailNoteReachable;
+      : t.mailNoteIsolated;
 
   /*
    * The same three checks /request-access already makes, for the reason resolveMailConfig's own
