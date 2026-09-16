@@ -7,6 +7,7 @@ import { canSetPolicy, currentPortalUser, defaultVipExpiry, isExpiryUnanswered, 
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
+import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { useToast } from "../Toast";
 import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto, MEASURE_TIGHT } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
@@ -1132,18 +1133,25 @@ function GroupModal({ t, group, projectId, onClose }: {
  *
  * The locale is pinned because the day beside it is an ISO slice: a runtime-default locale would
  * pair 2026-09-11 with whatever clock the viewer's machine happens to prefer.
+ *
+ * BOTH HALVES IN THE SITE'S ZONE. Pinning the locale was not enough — the day came from slicing
+ * the stored string (UTC for anything registered through Portal) while the time came from
+ * toLocaleTimeString with no zone at all, so the date could be a day behind the time beside it and
+ * the same record read differently depending on where the reader was sitting.
  */
-function registeredLong(value: string): string {
-  const day = value.slice(0, 10);
-  if (!value.includes("T")) return day;
+function registeredLong(value: string, zone: string): string {
   const at = new Date(value);
-  if (Number.isNaN(at.getTime())) return day;
-  return `${day} ${at.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+  if (Number.isNaN(at.getTime())) return value.slice(0, 10);
+  const day = dateKeyIn(at, zone);
+  if (!value.includes("T")) return day;
+  return `${day} ${clockMinutesIn(at, zone)}`;
 }
 
-function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
+function PersonDetailModal({ t, person, zone, groups, onClose, onEdit, onRemove }: {
   t: VipDict;
   person: Person;
+  /** The site's zone — the registration stamp below is a fact about the site's clock, not the reader's. */
+  zone: string;
   groups: PersonGroup[];
   onClose: () => void;
   onEdit: () => void;
@@ -1222,7 +1230,7 @@ function PersonDetailModal({ t, person, groups, onClose, onEdit, onRemove }: {
                 minute, not by the day. Rows enrolled before Portal recorded a time show only the
                 date rather than a made-up one. */}
             {row(t.colNote, person.description || <span style={{ color: "var(--gray-400)" }}>{t.detailNoNote}</span>)}
-            {row(t.colRegistered, registeredLong(person.registeredAt))}
+            {row(t.colRegistered, registeredLong(person.registeredAt, zone))}
           </div>
         </div>
         {/* Outlined, not filled. A dark Close next to a red Remove was two saturated blocks
@@ -1346,6 +1354,15 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
    */
   const [nowMs, setNowMs] = useState<number | null>(null);
   useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
+  /**
+   * The site's zone, and today in it.
+   *
+   * Expiry is a calendar date, so whether a listing has lapsed is a question about the site's
+   * calendar rather than about an instant — and the Overview counts it the same way. Deriving it
+   * once here keeps the two screens from drifting apart again.
+   */
+  const projectZone = useVcaStore(st => st.projects.find(pr => pr.id === projectId)?.timeZone) ?? PROJECT_TIME_ZONE;
+  const todayKey = nowMs === null ? null : dateKeyIn(new Date(nowMs), projectZone);
   const [releaseReason, setReleaseReason] = useState("");
   const { sort, toggle: toggleSort } = useTableSort<VipSortKey>({ key: "registered", direction: "desc" });
   const [searchFocused, setSearchFocused] = useState(false);
@@ -1417,7 +1434,9 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
       // Ranked, not alphabetical: "very_high" has to sit above "high", and alphabetically it would
       // sit below it. Unset reads as normal, the same way the filter and the card do.
       case "priority": return PRIORITY_LABELS.indexOf(person.priorityLabel ?? "normal");
-      case "registered": return person.registeredAt;
+      // The instant, not the text. registeredAt arrives as a UTC instant from Portal and as a
+      // local one from the seeds, and read as strings those two sort against each other wrongly.
+      case "registered": return Date.parse(person.registeredAt);
       // Never-detected rows sort as the empty string, which puts them at the top of the ascending
       // pass — first click on this heading is "who is this list not catching", which is the whole
       // reason the column is here.
@@ -2112,8 +2131,15 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                       </span>
                     );
                     if (!person.expiresAt) return <span style={{ color: "var(--gray-300)" }}>{t.noExpiry}</span>;
+                    // "Expired" is decided on calendar days in the project's zone, which is what
+                    // the Overview counts too. It used to come out of Math.ceil on an instant, and
+                    // Math.ceil(-0.4) is -0 — so for the whole day after a listing lapsed this cell
+                    // still read "0 days left" while the Overview's red banner counted it expired.
+                    // Somebody clicking that banner arrived at a table with nothing expired in it.
+                    const expiryDay = person.expiresAt.slice(0, 10);
+                    const isExpired = todayKey !== null && expiryDay < todayKey;
+                    if (isExpired) return <span style={{ fontWeight: 700, color: "var(--danger-500)" }}>{t.statusExpired}</span>;
                     const daysLeft = nowMs === null ? null : Math.ceil((Date.parse(person.expiresAt) - nowMs) / 86_400_000);
-                    if (daysLeft !== null && daysLeft < 0) return <span style={{ fontWeight: 700, color: "var(--danger-500)" }}>{t.statusExpired}</span>;
                     return (
                       <span style={{ display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" }}>
                         <span style={{ color: "var(--gray-600)" }}>{person.expiresAt.slice(0, 10)}</span>
@@ -2325,6 +2351,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         <PersonDetailModal
           t={t}
           person={persons.find(p => p.id === detailFor.id) ?? detailFor}
+          zone={projectZone}
           groups={personGroups.filter(g => g.projectId === projectId)}
           onClose={() => setDetailFor(null)}
           onEdit={() => { setEditingPerson(detailFor); setDetailFor(null); }}

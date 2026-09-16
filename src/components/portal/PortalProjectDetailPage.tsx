@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
-import { canEnterApp, canEnterPortal, canManageAccess, currentPortalUser, isAwaitingFirstContact, registryHealth, resolveMailConfig, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
+import { canEnterApp, canEnterPortal, canManageAccess, currentPortalUser, isAwaitingFirstContact, registeredDayIn, registryHealth, resolveMailConfig, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed, zoneHour } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, FacePhoto, usePortalEditAccess } from "./PortalShared";
 import { useToast } from "../Toast";
@@ -63,9 +63,9 @@ const T = {
     attnInvites: (n: number) => `${n} invitation${n === 1 ? "" : "s"} not yet accepted`,
     attnRequests: (n: number) => `${n} access request${n === 1 ? "" : "s"} waiting`,
     attnOverLimit: (used: number, limit: number) => `Over the licensed channels — ${used} of ${limit}`,
-    attnListingsExpired: (n: number) => `${n} vipRegistry listing(s) have expired`,
-    attnListingsExpiring: (n: number, days: number) => `${n} vipRegistry listing(s) expire within ${days} days`,
-    attnListingsUnanswered: (n: number) => `${n} vipRegistry listing(s) have no end date set`,
+    attnListingsExpired: (n: number) => `${n} VIP listing(s) have expired`,
+    attnListingsExpiring: (n: number, days: number) => `${n} VIP listing(s) expire within ${days} days`,
+    attnListingsUnanswered: (n: number) => `${n} VIP listing(s) have no end date set`,
     attnExpiringSoon: (d: number) => `License expires in ${d} day${d === 1 ? "" : "s"}`,
     attnExpired: "License has expired",
     attnNoMail: "No mail server configured — nobody can be invited",
@@ -563,7 +563,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     ? Math.round(((weekTotal - previousWeekTotal) / previousWeekTotal) * 100)
     : 0;
   const highPriorityVipCount = projectPersons.filter(p => p.priorityLabel === "high" || p.priorityLabel === "very_high").length;
-  const recentVips = [...projectPersons].sort((a, b) => b.registeredAt.localeCompare(a.registeredAt)).slice(0, 3);
+  // Compared as instants, not as strings. The two shapes registeredAt arrives in sort against each
+  // other wrongly when read as text: "2026-09-16T00:30:00+08:00" is 15 Sep 16:30Z and sorts AFTER
+  // "2026-09-15T23:00:00.000Z", which is 16 Sep 07:00 local — the later row read as the earlier one.
+  const recentVips = [...projectPersons].sort((a, b) => Date.parse(b.registeredAt) - Date.parse(a.registeredAt)).slice(0, 3);
   // nowMs-derived, not new Date() directly, so this stays in sync with the same not-yet-mounted ->
   // mounted correction every other clock-reading value on this page already follows.
   // The project's calendar day, not UTC's. toISOString() cuts the day at 00:00 UTC, and the
@@ -572,9 +575,14 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // naming the day the registration actually happened on. Settings promises the opposite in so
   // many words: "Days, hours and 'today' on every screen are counted in this zone."
   const todayStr = nowMs !== null ? dateKeyIn(new Date(nowMs), projectZone) : null;
-  // startsWith, not equality: registeredAt is a date on the seeded rows and a full ISO instant on
-  // anything registered through Portal now, and "===" quietly counted none of the new ones.
-  const todayVipCount = todayStr ? projectPersons.filter(p => p.registeredAt.startsWith(todayStr)).length : 0;
+  // BOTH SIDES IN THE SAME ZONE. The day above was moved to the project's zone and the comparison
+  // was not: `registeredAt.startsWith(todayStr)` reads the first ten characters of whatever shape
+  // the value happens to be, and anything registered through Portal is a UTC instant. On a UTC+8
+  // site that made every registration between local midnight and 08:00 carry yesterday's date —
+  // so this card said "0 today / 1 yesterday" about somebody enrolled at seven in the morning,
+  // which is the exact fault the note above claims to have fixed. registeredDayIn parses first
+  // and formats in the zone, so the seeds' local instants and Portal's UTC ones answer alike.
+  const todayVipCount = todayStr ? projectPersons.filter(p => registeredDayIn(p.registeredAt, projectZone) === todayStr).length : 0;
   /**
    * Yesterday's registrations, so today's figure has something to be read against.
    *
@@ -588,11 +596,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    * Days are the project's calendar days, like every other bucket.
    */
   const yesterdayStr = nowMs !== null ? dateKeyIn(new Date(nowMs - 86_400_000), projectZone) : null;
-  const yesterdayVipCount = yesterdayStr ? projectPersons.filter(p => p.registeredAt.startsWith(yesterdayStr)).length : 0;
-  // Registered since the first of this month — the chip's "+12 this month". Same startsWith rule
-  // the today figure uses: registeredAt is a date on seeded rows and an instant on new ones.
+  const yesterdayVipCount = yesterdayStr ? projectPersons.filter(p => registeredDayIn(p.registeredAt, projectZone) === yesterdayStr).length : 0;
+  // Registered since the first of this month — the chip's "+12 this month". Same zone rule as the
+  // two counts above; a month that began this morning used to lose its first eight hours.
   const monthStr = nowMs !== null ? dateKeyIn(new Date(nowMs), projectZone).slice(0, 7) : null;
-  const newVipsThisMonth = monthStr ? projectPersons.filter(p => p.registeredAt.startsWith(monthStr)).length : 0;
+  const newVipsThisMonth = monthStr ? projectPersons.filter(p => registeredDayIn(p.registeredAt, projectZone).startsWith(monthStr)).length : 0;
   const onlineShare = projectCameras.length ? Math.round((onlineCount / projectCameras.length) * 100) : 0;
 
   /**
@@ -659,7 +667,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   const activeListings = projectPersons.filter(p => !p.releasedAt && p.expiresAt);
   const unansweredListings = registryHealth(projectId, persons).expiryUnanswered.length;
   const expiredListings = nowMs === null ? 0
-    : activeListings.filter(p => Date.parse(p.expiresAt!) < nowMs).length;
+    // Compared as calendar days in the project's zone, the same unit the VIP row prints. Instants
+    // put the two screens up to a day apart: this counted a listing expired the moment its date
+    // began, while the row said "0 days left" until Math.ceil finally went negative — so the red
+    // "N expired" banner led to a table with nothing expired in it.
+    : activeListings.filter(p => registeredDayIn(p.expiresAt!, projectZone) < dateKeyIn(new Date(nowMs), projectZone)).length;
   const noticeMs = getComplianceConfig().vipExpiryNoticeDays * 86_400_000;
   const expiringListings = nowMs === null ? 0
     : activeListings.filter(p => {
