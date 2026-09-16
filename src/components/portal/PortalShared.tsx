@@ -776,14 +776,26 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
                 </span>
               )}
             </span>
-            {/* marginTop 4 puts the mark's centre on the figure's line rather than at the top of
-                the cell's padding. */}
-            <span style={{ display: "flex", color: markColor, flexShrink: 0, marginTop: "4px" }}>{cell.icon}</span>
           </>
+        );
+        /*
+          The mark, on the left in a tinted square — the same shape the Overview cards use.
+          
+          It used to be pushed to the far right by space-between, which was invisible while the
+          cells were narrow slices of one strip. As separate cards each one is ~320px wide holding
+          ~100px of text, so the icon ended up stranded against the right edge with a void between
+          it and the number it belongs to. Beside the figure it reads as part of it.
+        */
+        const mark = (
+          <span style={{
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            width: "30px", height: "30px", borderRadius: "9px", color: markColor,
+            backgroundColor: cell.tone === "warning" ? "var(--warning-100)" : "var(--gray-100)",
+          }}>{cell.icon}</span>
         );
         const shared: React.CSSProperties = {
           flex: 1, minWidth: "148px",
-          display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px",
+          display: "flex", alignItems: "center", gap: "12px",
           // Roomier than it was (10px 18px). These are the page's headline numbers and they were
           // wearing the padding of a table row.
           padding: "14px 18px",
@@ -811,10 +823,11 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
                 : "white",
             }}
           >
+            {mark}
             {body}
           </button>
         ) : (
-          <span key={cell.key} style={shared}>{body}</span>
+          <span key={cell.key} style={shared}>{mark}{body}</span>
         );
       })}
     </div>
