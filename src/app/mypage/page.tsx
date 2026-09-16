@@ -54,12 +54,15 @@ const T = {
     passwordSettings: "Password settings",
     passwordChange: "Password change",
     changedJustNow: "Last changed just now",
+    // HANDOFF NOTE: kept for when the account record carries a real timestamp. Do not wire it to
+    // a constant again — that is what it was doing.
     changedDaysAgo: (n: number) => `Last changed ${n} days ago`,
     change: "Change",
     sessions: "Active login sessions",
     sessionsEnded: (n: number) => `${n} session${n === 1 ? "" : "s"} ended`,
     signOutOthers: "Sign out other sessions",
-    onlyThisDevice: "Only this device",
+    onlyDeviceKnown: "Only the browser you are in — other sessions are not visible here yet",
+    thisBrowser: "This browser",
     activeNow: "Active now",
     systemPreferences: "System preferences",
     interfaceLanguage: "App interface language",
@@ -105,7 +108,8 @@ const T = {
     sessions: "접속 중인 기기",
     sessionsEnded: (n: number) => `${n}개 세션을 종료했습니다`,
     signOutOthers: "다른 기기 로그아웃",
-    onlyThisDevice: "이 기기뿐입니다",
+    onlyDeviceKnown: "지금 쓰는 브라우저만 보입니다 — 다른 접속은 아직 여기서 확인할 수 없습니다",
+    thisBrowser: "지금 쓰는 브라우저",
     activeNow: "지금 접속 중",
     systemPreferences: "시스템 환경설정",
     interfaceLanguage: "앱 화면 언어",
@@ -121,8 +125,6 @@ const LANGUAGE_OPTIONS = [
   { value: "ko" as const, label: "한국어" },
 ];
 
-/** How long ago the mock says the password was last set. Seeded, like LOGIN_SESSIONS. */
-const PASSWORD_AGE_DAYS = 45;
 
 // The console's one hairline value — see --line in globals.css, which was defined for exactly
 // this and then never reached the app: eight files each declared their own gray-200 rule instead,
@@ -133,8 +135,13 @@ const CARD_BORDER = "1px solid var(--line)";
 // session store, which is also what makes ending one possible: with stateless tokens alone there
 // is nothing to revoke before expiry, and a control offering it would be lying. Shaped as a list
 // so the UI is already right when that arrives.
-const LOGIN_SESSIONS: { id: string; device: string; where: string; current: boolean; lastActive?: string }[] = [
-  { id: "current", device: "MacBook Pro (Chrome)", where: "Singapore · 1.3521, 103.8198", current: true },
+const LOGIN_SESSIONS: { id: string; device: string; where?: string; current: boolean; lastActive?: string }[] = [
+  // `where` is OPTIONAL and this row has none. It used to read "Singapore · 1.3521, 103.8198" —
+  // a coordinate the browser never measured, on a screen whose whole subject is "is this really
+  // me". The device string was "MacBook Pro (Chrome)", which told every operator on Windows a
+  // fact about their own machine that was false. What the page can honestly say is that this is
+  // the browser it is running in, and it says only that until the session store arrives.
+  { id: "current", device: "", current: true },
 ];
 
 function UserCheckIcon() {
@@ -721,9 +728,16 @@ export default function MyPage() {
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "var(--gray-50)", borderRadius: "10px", padding: "12px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                       <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.28px" }}>{t.passwordChange}</span>
-                      <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.2px" }}>
-                        {passwordJustChanged ? t.changedJustNow : t.changedDaysAgo(PASSWORD_AGE_DAYS)}
-                      </span>
+                      {/* Only when it actually happened here. The other branch was
+                          `changedDaysAgo(PASSWORD_AGE_DAYS)` with the constant fixed at 45, so the
+                          console told every operator the same invented fact about their own
+                          password. "방금 변경했습니다" is true — this session did it — and when the
+                          console does not know, it says nothing rather than a number. */}
+                      {passwordJustChanged && (
+                        <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.2px" }}>
+                          {t.changedJustNow}
+                        </span>
+                      )}
                     </div>
                     <button
                       onClick={() => setShowPasswordModal(true)}
@@ -757,15 +771,23 @@ export default function MyPage() {
                         </button>
                       </div>
                     ) : (
-                      <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-400)" }}>{t.onlyThisDevice}</span>
+                      /* Not "only this device". The absence of other sessions is not something
+                         the front end can see — there is no session store to ask — so claiming it
+                         is the same shape as a coordinate nobody measured. It says what it can:
+                         this is the one it knows about. */
+                      <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-400)" }}>{t.onlyDeviceKnown}</span>
                     )}
                   </div>
                   {LOGIN_SESSIONS.map(session => (
                     <div key={session.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "var(--gray-50)", borderRadius: "10px", padding: "12px 14px", width: "100%" }}>
                       <div style={{ display: "flex", gap: "10px", alignItems: "center", flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0 }}>
-                          <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-700)", letterSpacing: "-0.26px" }}>{session.device}</span>
-                          <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.2px" }}>{session.where}</span>
+                          <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-700)", letterSpacing: "-0.26px" }}>{session.device || t.thisBrowser}</span>
+                          {/* Drawn only when there is one. An empty second line is better than a
+                              place that was never measured. */}
+                          {session.where && (
+                            <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.2px" }}>{session.where}</span>
+                          )}
                         </div>
                       </div>
                       <span style={{ fontSize: "12px", fontWeight: 700, color: session.current ? "var(--success-400)" : "var(--gray-500)", backgroundColor: session.current ? "var(--success-100)" : "var(--gray-100)", borderRadius: "4px", padding: "3px 8px" }}>
