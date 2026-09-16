@@ -127,9 +127,15 @@ const T = {
     previewAction: "Preview stream",
     editAction: "Edit",
     removeAction: "Remove",
-    addModalTitle: "Add Input Device",
+    // ONE NOUN FOR THIS THING, and it is the one on the tab: Input Sources. Adding one camera
+    // used to walk the reader through five names — 입력 소스 (sidebar) → 카메라 추가 (overview)
+    // → 소스 추가 (this tab) → 입력 장치 추가 (this modal) → 기기 추가 + 기기 이름 (its fields).
+    // Source / camera / input device / device, inside one flow. It is the same class of mistake
+    // as Camera.zone against district: two names for one thing, and nobody can tell they are the
+    // same thing.
+    addModalTitle: "Add source",
     editModalTitle: "Edit Input Device",
-    fieldDeviceName: "Device name *",
+    fieldDeviceName: "Source name *",
     fieldDeviceNamePlaceholder: "Novena",
     fieldLocation: "Location",
     fieldLocationPlaceholder: "Entrance",
@@ -139,7 +145,7 @@ const T = {
     fieldMaker: "Maker",
     cancel: "Cancel",
     saveChanges: "Save changes",
-    addDevice: "Add device",
+    addDevice: "Add",
     confirmOfflineTitle: "Mark camera offline?",
     confirmOfflineBody: (name: string) => `${name} will show as offline for everyone monitoring this project — make sure the stream is actually down before confirming.`,
     markOffline: "Mark offline",
@@ -274,9 +280,9 @@ const T = {
     previewAction: "스트림 미리보기",
     editAction: "수정",
     removeAction: "삭제",
-    addModalTitle: "입력 장치 추가",
+    addModalTitle: "소스 추가",
     editModalTitle: "입력 장치 수정",
-    fieldDeviceName: "기기 이름 *",
+    fieldDeviceName: "소스 이름 *",
     fieldDeviceNamePlaceholder: "Novena",
     fieldLocation: "위치",
     fieldLocationPlaceholder: "입구",
@@ -286,7 +292,7 @@ const T = {
     fieldMaker: "제조사",
     cancel: "취소",
     saveChanges: "변경사항 저장",
-    addDevice: "기기 추가",
+    addDevice: "추가",
     confirmOfflineTitle: "카메라를 오프라인으로 표시하시겠습니까?",
     confirmOfflineBody: (name: string) => `${name} 카메라가 이 프로젝트를 모니터링하는 모든 사용자에게 오프라인으로 표시됩니다. 확인하기 전에 실제로 스트림이 끊겼는지 확인하세요.`,
     markOffline: "오프라인으로 표시",

@@ -23,7 +23,8 @@ import { getComplianceConfig } from "@/lib/complianceConfig";
 const T = {
   en: {
     projectNotFound: "Project not found.",
-    addCamera: "Add Camera",
+    // Same words as the tab this opens — see the note on addModalTitle in ProjectCamerasTab.
+    addCamera: "Add source",
     registerVip: "Register VIP",
     goToApp: "Go to app",
     greetMorning: (name: string) => `Good morning, ${name}`,
@@ -122,7 +123,7 @@ const T = {
   },
   ko: {
     projectNotFound: "프로젝트를 찾을 수 없습니다.",
-    addCamera: "카메라 추가",
+    addCamera: "소스 추가",
     registerVip: "VIP 등록",
     goToApp: "앱으로 이동",
     greetMorning: (name: string) => `좋은 아침이에요, ${name}님`,
