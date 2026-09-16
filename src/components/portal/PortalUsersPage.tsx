@@ -165,7 +165,11 @@ const T = {
     confirmSearchGrantTitle: (name: string) => `Allow ${name} to search for people?`,
     confirmSearchGrantBody: "They will be able to look up any registered individual in the app's Data and Redmap searches.",
     confirmSearchRevokeTitle: (name: string) => `Block ${name} from searching for people?`,
-    confirmSearchRevokeBody: "Person search in the app stops working for them. Their console permission is unchanged.",
+    // The reversal is in the sentence now, not just in the code: the red button used to carry the
+    // weight of this dialog, and taking it away (red is for what cannot be undone) left a body
+    // that said only what stops working. Nothing is deleted here — the grant is one menu item
+    // away, for as long as the account still has the app to search in.
+    confirmSearchRevokeBody: "Person search in the app stops working for them. Nothing is deleted and their console permission is unchanged — the same menu allows it again while they still have app access.",
     confirmRoleTitle: (name: string) => `Change ${name}'s Portal role?`,
     confirmRoleBody: "Takes effect at once. A higher role can hand out and take away other people's access; a lower one closes Portal screens this person may be working in.",
     confirmAccessTitle: (name: string) => `Change where ${name} signs in?`,
@@ -494,7 +498,7 @@ const T = {
     confirmSearchGrantTitle: (name: string) => `${name} 님에게 인물 검색을 허용할까요?`,
     confirmSearchGrantBody: "앱의 Data · Redmap 검색에서 등록된 인물을 모두 조회할 수 있게 됩니다.",
     confirmSearchRevokeTitle: (name: string) => `${name} 님의 인물 검색을 차단할까요?`,
-    confirmSearchRevokeBody: "앱에서 인물 검색이 동작하지 않게 됩니다. 콘솔 권한은 그대로입니다.",
+    confirmSearchRevokeBody: "앱에서 인물 검색이 동작하지 않게 됩니다. 삭제되는 것은 없고 콘솔 권한도 그대로이며, 앱 접근이 남아 있는 동안에는 같은 메뉴에서 다시 허용할 수 있습니다.",
     confirmRoleTitle: (name: string) => `${name} 님의 Portal 역할을 바꿀까요?`,
     confirmRoleBody: "즉시 적용됩니다. 역할을 올리면 다른 사람의 접근까지 주고 뺏을 수 있게 되고, 내리면 지금 보고 있던 Portal 화면이 닫힙니다.",
     confirmAccessTitle: (name: string) => `${name} 님이 로그인하는 곳을 바꿀까요?`,
@@ -2273,8 +2277,9 @@ function AccessChangeModal({ title, body, options, current, onApply, onClose }: 
       onClose={onClose}
       escapeSuspended={selectOpen}
     >
-      {/* ConfirmModal's body does not scroll, so the list this opens is free to hang below the
-          field — the clipping MODAL_BODY_WITH_SELECT exists for cannot happen here. */}
+      {/* ConfirmModal's body does not scroll unless a caller asks it to, and this one must never
+          ask: the list below hangs past the body's edge, and `bodyScrolls` would make the
+          clipping context that cuts it off — the same trap MODAL_BODY_WITH_SELECT exists for. */}
       <div style={{ marginTop: "14px" }}>
         <FilterSelect value={value} onChange={setValue} options={options} onOpenChange={setSelectOpen} />
       </div>
@@ -3052,8 +3057,11 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
               {
                 // Granting needs the app: person search is a grant on a surface, and an account
                 // with no app cannot reach it. Revoking stays available whatever the app state —
-                // taking a grant away is never the thing to block. (The other direction is
-                // already handled: updatePortalUserAccess drops appSearch when the app goes.)
+                // taking a grant away is never the thing to block. (A note here used to say
+                // updatePortalUserAccess drops appSearch when the app goes; it does not, and has
+                // not since closing the app door stopped erasing the grants behind it. The two
+                // values are read together instead — the cell above is `appSearch && appAccess`,
+                // and this row's disable rule is the same pair.)
                 label: u.appSearch ? t.appSearchRevoke : t.appSearchGrant,
                 disabled: !manageAccess || (!u.appSearch && !u.appAccess),
                 reason: !manageAccess ? t.reasonNotOwner
@@ -3065,7 +3073,13 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                     title: next ? t.confirmSearchGrantTitle(u.name) : t.confirmSearchRevokeTitle(u.name),
                     body: next ? t.confirmSearchGrantBody : t.confirmSearchRevokeBody,
                     confirmLabel: next ? t.appSearchGrant : t.appSearchRevoke,
-                    danger: !next,
+                    // NOT `danger` in either direction. Red on a confirm means what cannot be
+                    // undone, and blocking person search deletes nothing — the account keeps its
+                    // screens, its role and its place on the list, and this same menu row flips
+                    // back to 인물 검색 허용 the moment it is done. It read as the heaviest
+                    // dialog on the page because it is about the most sensitive grant, which is
+                    // weight, not permanence; spending red on it is what leaves 제거 — which
+                    // really is final — looking like everything else.
                     onConfirm: () => {
                       setAppSearch(u.id, next);
                       showToast({

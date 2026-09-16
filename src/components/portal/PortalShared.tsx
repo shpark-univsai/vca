@@ -1390,7 +1390,7 @@ export function SortableHeader<K extends string>({ label, sortKey, sort, onToggl
  * Remove) predate it and still carry their own markup — worth folding in here, but not while they
  * are untouched by the change that needed this.
  */
-export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, confirmDisabled, altAction, onConfirm, onClose, escapeSuspended, children }: {
+export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, confirmDisabled, altAction, onConfirm, onClose, escapeSuspended, bodyScrolls, children }: {
   title: string;
   body: string;
   /**
@@ -1445,13 +1445,36 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
    * this is the third, and it is the generic one every ConfirmModal caller inherits.
    */
   escapeSuspended?: boolean;
+  /**
+   * Cap the card at the window and scroll the middle — the buttons stay on screen.
+   *
+   * OPT-IN, and it has to stay opt-in. overflow-y makes a clipping context, and a FilterSelect
+   * inside the body opens as an absolutely positioned list, so a body that scrolls cuts the list
+   * off at its own edge — the same trap MODAL_BODY_WITH_SELECT exists to keep the invite modal out
+   * of. AccessChangeModal's picker is exactly that case and says so, so this is off unless a
+   * caller asks.
+   *
+   * Who asks: the dialogs whose `children` grow past a short laptop window. Deleting a project
+   * stacks a body, three counts, a warning about the team's last project and a field to type the
+   * name back into — taller than 600px of viewport once the English wraps, and what goes off the
+   * bottom is the Cancel button and the red one. A dialog you can neither finish nor call off is
+   * worse than either answer.
+   */
+  bodyScrolls?: boolean;
 }) {
   useEscapeKey(onClose, !escapeSuspended);
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "20px" }}>
+      {/* The cap is on the CARD and the scroll is on the body, so the footer is outside the scroll
+          region and cannot leave the screen. Both halves are spread in only when asked: with the
+          prop off the card and the body carry exactly the styles they always did, which is what
+          keeps every existing caller's layout where it was. 32px is the backdrop's own padding. */}
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)",
+        ...(bodyScrolls ? { maxHeight: "calc(100vh - 32px)", display: "flex", flexDirection: "column" } : null) }}>
+        {/* minHeight 0 alongside the overflow: a column flex item's default min-height is its
+            content, so without it the body refuses to shrink and the cap above does nothing. */}
+        <div style={{ padding: "20px", ...(bodyScrolls ? { overflowY: "auto", minHeight: 0 } : null) }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{title}</p>
           <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.5 }}>{body}</p>
           {children}
