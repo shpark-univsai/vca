@@ -398,8 +398,27 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
 
 function getMarkerHTML(type: string, photoUrl: string): string {
   const color = type === "VIP" ? "var(--primary-400)" : "var(--type-tracking)";
-  // VIP arrivals get a flashing glow around the pin so they're easy to spot on the map at a
-  // glance — other event types keep the plain static halo.
+  /**
+   * INTENT: a flashing glow around a VIP pin, static for other event types. NEITHER IS ON SCREEN.
+   *
+   * The two halo divs below build their fill as `${color}14` / `${color}26` — a hex alpha suffix
+   * appended to the colour. That works for a literal (`#5a3dfb` + `14`), and `color` has been a
+   * token since the palette landed, so the declaration resolves to `background: var(--primary-400)14`.
+   * `var()` substitution is not string concatenation: the suffix makes the whole declaration
+   * invalid and the browser drops it. Measured in Chrome 2026-09-16 — the suffixed div computes
+   * `rgba(0, 0, 0, 0)` while the bare token gives `rgb(90, 61, 251)`. So `.vca-vip-flash` animates
+   * two fully transparent circles, and has since the day the colours became tokens.
+   *
+   * Note this is NOT the same trap as var() inside an SVG attribute, which does work here (202
+   * places rely on it). This one is about concatenating onto a var() in a CSS value.
+   *
+   * LEFT IN PLACE DELIBERATELY, because restoring it is a design decision and not a bug fix:
+   * there is no translucent step of the primary ramp among the 32 tokens, and inventing an alpha
+   * is the one move the design system forbids. `--primary-100/200` would paint a large opaque disc
+   * over the map rather than a glow. So the choice is a new token or no halo, and that belongs to
+   * whoever owns the palette. The markup and the keyframes (globals.css `.vca-vip-flash`) are kept
+   * so the intent is still legible when that call is made.
+   */
   const flashClass = type === "VIP" ? "vca-vip-flash" : "";
   return `
     <div style="width:42px;height:56px;position:relative;display:flex;flex-direction:column;align-items:center">
