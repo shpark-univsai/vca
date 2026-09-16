@@ -1622,7 +1622,17 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         nobody else on the page asks — whether this list catches anyone at all.
       */}
       {/* All / Individuals / Groups. Same underlined row as Input Sources and Users & Permissions. */}
-      <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
+      {/*
+        The view switch sits at the far end of this row rather than down in the toolbar.
+
+        It answers the same kind of question the tabs do — which shape of this list am I looking at
+        — and it is set once and left, while everything in the toolbar below (search, filters, the
+        bulk bar) is touched on the way to a particular row. Keeping the two apart stops the
+        toolbar from reading as one undifferentiated bank of controls, and leaves the right end of
+        that row to the actions.
+      */}
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "16px", borderBottom: BORDER, marginBottom: "16px" }}>
+      <div style={{ display: "flex", gap: "20px" }}>
         {([
           { id: "all", label: t.tabAll, count: activePersons.length, hint: t.tabAllHint },
           { id: "individuals", label: t.tabIndividuals, count: activePersons.filter(p => !p.groupId).length, hint: t.tabIndividualsHint },
@@ -1650,6 +1660,24 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             </Tooltip>
           );
         })}
+      </div>
+        {/* Not on the Groups tab: a party has no face, so a wall of cards would be a wall of empty
+            squares. Same segmented control Input Sources uses, so the one gesture for "show me
+            this differently" looks the same in both places. */}
+        {vipTab !== "groups" && (
+          <div style={{ display: "flex", alignItems: "center", marginBottom: "8px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px", flexShrink: 0 }}>
+            {(["grid", "table"] as const).map(v => (
+              <button key={v} onClick={() => setView(v)}
+                style={{
+                  padding: "4px 10px", borderRadius: "8px", border: "none", cursor: "pointer", fontFamily: "inherit",
+                  backgroundColor: view === v ? "white" : "transparent", boxShadow: view === v ? PANEL_SHADOW : "none",
+                  fontSize: "10px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
+                }}>
+                {v === "grid" ? t.viewGrid : t.viewTable}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/*
@@ -1798,23 +1826,6 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             <ArrowDownWideNarrow size={14} strokeWidth={2.4} />
             {t.sortByPriority}
           </button>
-        )}
-        {/* Same segmented control the Input Sources tab uses, so the one gesture for "show me this
-            differently" looks the same in both places. Not on the Groups tab: a party has no face,
-            so a wall of cards would be a wall of empty squares. */}
-        {vipTab !== "groups" && (
-        <div style={{ display: "flex", alignItems: "center", height: CONTROL_HEIGHT, boxSizing: "border-box", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "4px", flexShrink: 0 }}>
-          {(["grid", "table"] as const).map(v => (
-            <button key={v} onClick={() => setView(v)}
-              style={{
-                height: "100%", padding: "0 10px", borderRadius: "8px", border: "none", cursor: "pointer", fontFamily: "inherit",
-                backgroundColor: view === v ? "white" : "transparent", boxShadow: view === v ? PANEL_SHADOW : "none",
-                fontSize: "10px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
-              }}>
-              {v === "grid" ? t.viewGrid : t.viewTable}
-            </button>
-          ))}
-        </div>
         )}
         {/* The tools, at the right end of the toolbar — same place Input Sources keeps its own.
             Left of this row is how you narrow and view the list; right of it is what you do to it.

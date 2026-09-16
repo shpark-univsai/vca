@@ -1201,7 +1201,12 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           fourth select in the filter strip below: which kind of source you are looking at is a
           different question from how you are narrowing that kind, and the counts belong where the
           choice is made. Same arrangement the previous product's INPUT screen used. */}
-      <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
+      {/* The view switch at the far end of the tab row, not down in the toolbar — the same
+          arrangement the VIP registry uses. It answers the tabs' kind of question (which shape of
+          this list) and is set once and left, while the toolbar below is touched on the way to a
+          particular row. */}
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "16px", borderBottom: BORDER, marginBottom: "16px" }}>
+      <div style={{ display: "flex", gap: "20px" }}>
         {([
           { id: "ALL", label: t.kindTabAll, count: projectCameras.length + projectUploads.length },
           { id: "camera", label: t.kindTabCamera, count: projectCameras.length },
@@ -1230,6 +1235,25 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             </button>
           );
         })}
+      </div>
+        {/* Grid is a wall of camera thumbnails, and an unanalysed file has no frame to put in one.
+            So the toggle is only offered on the tabs where both views can show the same rows —
+            and `effectiveView` below makes sure a Grid choice made earlier does not silently hide
+            the files. */}
+        {showCameraColumns && (
+          <div style={{ display: "flex", alignItems: "center", marginBottom: "8px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px", flexShrink: 0 }}>
+            {(["table", "grid"] as const).map(v => (
+              <button key={v} onClick={() => setView(v)}
+                style={{
+                  padding: "4px 10px", borderRadius: "8px", border: "none", cursor: "pointer", fontFamily: "inherit",
+                  backgroundColor: view === v ? "white" : "transparent", boxShadow: view === v ? PANEL_SHADOW : "none",
+                  fontSize: "10px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
+                }}>
+                {v === "table" ? t.viewTable : t.viewGrid}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/*
@@ -1350,24 +1374,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           ]}
         />
         <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
-        {/* Grid is a wall of camera thumbnails, and an unanalysed file has no frame to put in one.
-            Rather than let file rows vanish the moment someone picks Grid, the toggle is only
-            offered on the tabs where both views can show the same rows — and `effectiveView` below
-            makes sure a Grid choice made earlier does not silently hide the files. */}
-        {showCameraColumns && (
-        <div style={{ display: "flex", alignItems: "center", height: CONTROL_HEIGHT, boxSizing: "border-box", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "4px" }}>
-          {(["table", "grid"] as const).map(v => (
-            <button key={v} onClick={() => setView(v)}
-              style={{
-                height: "100%", padding: "0 10px", borderRadius: "8px", border: "none", cursor: "pointer",
-                backgroundColor: view === v ? "white" : "transparent", boxShadow: view === v ? PANEL_SHADOW : "none",
-                fontSize: "10px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
-              }}>
-              {v === "table" ? t.viewTable : t.viewGrid}
-            </button>
-          ))}
-        </div>
-        )}
         {/*
           The tools, at the right end of the toolbar.
 
