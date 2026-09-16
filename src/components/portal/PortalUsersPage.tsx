@@ -163,7 +163,10 @@ const T = {
     confirmRoleTitle: (name: string) => `Change ${name}'s Portal role?`,
     confirmRoleBody: "Takes effect at once. A higher role can hand out and take away other people's access; a lower one closes Portal screens this person may be working in.",
     confirmAccessTitle: (name: string) => `Change where ${name} signs in?`,
-    confirmAccessBody: "Takes effect at once. Closing a door stops them signing in through it. The account and everything they registered stay.",
+    // True as of faedeb5 and not before: updatePortalUserAccess used to empty appScreens, so the
+    // old sentence's "everything they registered stays" was false about app grants. It writes the
+    // two doors now and touches nothing behind them.
+    confirmAccessBody: "Takes effect at once. Closing a door stops them signing in through it. The account, everything they registered and their app screens stay — reopen the door and the same screens come back.",
     changeApply: "Change",
 
     // Row action toasts
@@ -492,7 +495,7 @@ const T = {
     confirmRoleTitle: (name: string) => `${name} 님의 Portal 역할을 바꿀까요?`,
     confirmRoleBody: "즉시 적용됩니다. 역할을 올리면 다른 사람의 접근까지 주고 뺏을 수 있게 되고, 내리면 지금 보고 있던 포털 화면이 닫힙니다.",
     confirmAccessTitle: (name: string) => `${name} 님이 로그인하는 곳을 바꿀까요?`,
-    confirmAccessBody: "즉시 적용됩니다. 문을 닫으면 그쪽으로는 로그인할 수 없게 되고, 계정과 등록한 내용은 그대로 남습니다.",
+    confirmAccessBody: "즉시 적용됩니다. 문을 닫으면 그쪽으로는 로그인할 수 없게 되고, 계정·등록한 내용·앱 화면 권한은 그대로 남습니다 — 문을 다시 열면 같은 화면이 돌아옵니다.",
     changeApply: "변경",
 
     // Row action toasts
@@ -1976,6 +1979,11 @@ function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => voi
       // Detach first: setAppGrant writes values and says nothing about where they come from, so
       // tuning an account that still reads as "follows the preset" is the silent mismatch this
       // screen exists to end.
+      // NOT REDUNDANT WITH THE STORE'S OWN DETACH, though it looks it. setAppGrant detaches on
+      // its way through, but it is only called for grants that actually changed — so "switch this
+      // account to custom and change nothing else", which is a real thing an administrator does
+      // to stop a preset edit reaching them, would save nothing at all while the toast said it
+      // saved. Reproduced with this line removed before keeping it: the row still read "감독자".
       if (user.grantMode !== "custom") startCustomGrants(user.id);
       // ONE AUDIT LINE PER CHANGE, which is what the store's comment asks for — a preset name
       // alone swallows the manual tuning that came after it, and that is the half an access
