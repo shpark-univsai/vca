@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LiveEvent, Device, TrackingHop, getFacePhoto, formatTimeAgo,
   DISTRICT_ALERT_THRESHOLD_KEY, DISTRICT_MODERATE_THRESHOLD_KEY,
-  DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD, districtIdAt } from "@/lib/mockData";
+  DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD, districtIdAt,
+  districtIdForCameraZone } from "@/lib/mockData";
 import {
   vcaEventsToLiveEvents,
   useProjectEvents, useProjectCameras, todaysDetectionHits, hasPosition, type Camera,
@@ -711,7 +712,10 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         // but a map you are looking at should not require looking away to undo.
         const home = districts?.find(d => d.id === districtFilter);
         if (home) {
-          const camerasHere = cameras.filter(c => districtIdAt(c.lat, c.lng) === home.id);
+          // Cameras by the register's own zone, not re-guessed from coordinates — see
+          // districtIdForCameraZone. Detections below stay geometric because a hit carries no
+          // camera id.
+          const camerasHere = allCameras.filter(c => districtIdForCameraZone(c.zone, c.lat, c.lng) === home.id);
           const count = todaysHits.filter(h => districtIdAt(h.lat, h.lng) === home.id).length;
           const icon = L.divIcon({
             html: districtPillHtml(
@@ -924,7 +928,11 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
       } else if (zoom <= CLUSTER_ZOOM_BREAKPOINT) {
         // ── Zoomed out: one pill per district ──
         districts.forEach((district) => {
-          const camerasInDistrict = cameras.filter(c => districtIdAt(c.lat, c.lng) === district.id);
+          // The register answers this, not the geometry — districtIdForCameraZone. Read from
+          // allCameras rather than the hasPosition-filtered list: a camera's district comes from
+          // its zone, so one that was never surveyed still belongs to the district it was
+          // registered in ("Depot Bay 2", zone Kallang).
+          const camerasInDistrict = allCameras.filter(c => districtIdForCameraZone(c.zone, c.lat, c.lng) === district.id);
           // The dashed pill means "this district's cameras are all down right now" — a coverage
           // gap, which is worth a pin even with nothing to report. Checking run state rather than
           // array length is what captures that.

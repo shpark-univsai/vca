@@ -152,6 +152,58 @@ export function districtIdAt(lat: number | undefined, lng: number | undefined): 
 }
 
 /**
+ * The district a REGISTERED CAMERA belongs to. Name first; geometry only breaks ties.
+ *
+ * Cameras are not detections. A camera carries `zone` — typed in by whoever installed it, editable
+ * in the console, bulk-movable — and that value is the answer to "which district is this in".
+ * `districtIdAt` was being used here instead, which threw the register away and re-guessed from
+ * coordinates. Measured 2026-09-16 on the ten named proj-sg cameras: it was wrong on FIVE.
+ *
+ *   Geylang NC1  zone Geylang     → answered Kallang  (0.83 km)
+ *   Geylang NC2  zone Geylang     → answered Kallang  (1.04 km)
+ *   Orchard MRT  zone Orchard     → answered Novena   (1.95 km)
+ *   Bugis MRT    zone Bugis       → answered Geylang  (1.14 km)
+ *   Phone test   zone Marina Bay  → answered Central area (1.33 km)
+ *
+ * And it was not quiet: clicking the Kallang pill filters the sidebar to Kallang, and a row in
+ * that list reads "Geylang · NC1". District tallies are what a customer takes upstairs to argue
+ * for more cameras, so a wrong one buys cameras for the wrong neighbourhood.
+ *
+ * WHY GEOMETRY STILL APPEARS HERE, AND WHY IT IS SAFE NOW. DISTRICTS has duplicate labels —
+ * Geylang three times, Kallang twice, fourteen names over seventeen points. A zone of "Geylang"
+ * names all three, so something has to pick one. Geometry picks, but ONLY among points that
+ * already share the register's name: it can narrow, never cross. That is the whole difference
+ * from `districtIdAt`, which could hand a Geylang camera to Kallang.
+ *
+ * A zone the district list does not contain answers `undefined` — deliberately. Five of the
+ * register's zone values are not in DISTRICTS (Queenstown · Jurong East · Orchard · Marina Bay ·
+ * Bugis), and three of those were the false attributions above. Absent is the truthful answer and
+ * it is the one that keeps the gap visible: the fix is for the server to deliver the district list
+ * in the register's own zone namespace (contract sentence 8), not for this function to guess
+ * harder.
+ *
+ * Detections still go through `districtIdAt`, because a hit carries coordinates and no camera id.
+ * That asymmetry is not an oversight — it is the shape of the contract gap, and it closes when
+ * `TrackingHop.cameraId` arrives.
+ */
+export function districtIdForCameraZone(zone: string, lat?: number, lng?: number): string | undefined {
+  const named = DISTRICTS.filter(d => d.label === zone);
+  if (named.length === 0) return undefined;
+  if (named.length === 1) return named[0].id;
+  // Same name, several points, and no coordinate to choose with: the first, deliberately. The pill
+  // a reader sees is labelled by NAME, and the name is right either way — "Depot Bay 2", zone
+  // Kallang and never surveyed, is in Kallang. Dropping it from all of them would undercount a
+  // camera whose district the register actually knows.
+  if (lat === undefined || lng === undefined) return named[0].id;
+  let best = named[0], bestKm = Infinity;
+  for (const d of named) {
+    const km = kmBetween(lat, lng, d.lat, d.lng);
+    if (km < bestKm) { bestKm = km; best = d; }
+  }
+  return best.id;
+}
+
+/**
  * Raw nearest centre, with no limit. Prefer `districtIdAt` — this answers "which is closest",
  * which is not the same question as "which does it belong to", and the difference is the bug
  * DISTRICT_REACH_KM exists to stop.
