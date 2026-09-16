@@ -7,7 +7,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useOnValueChange } from "@/hooks/useOnValueChange";
 import { useToast } from "./Toast";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
-import { camerasInProject, canExportEvidence, hasPosition, canSearchInApp, judgementFor, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
+import { camerasInProject, canExportEvidence, hasPosition, canSearchInApp, judgementFor, SIGNED_IN_USER, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { buildEvidenceManifest, evidenceFilename, saveManifest } from "@/lib/evidence";
 import { siteTimeZone } from "@/lib/time";
@@ -266,6 +266,17 @@ function bindHitsToCameras(shapes: HitShape[], allCams: Camera[]): HitResult[] {
   });
 }
 
+/**
+ * One person, three cameras — so one face.
+ *
+ * The crops here are hand-authored narrative (see HitShape), and the narrative has to hold: these
+ * three sightings all carry `personId: "p1"` and the screen draws them as one person's route,
+ * under "Tracing: <name>", with a map line joining them. They used to carry three DIFFERENT stock
+ * portraits, one of them the body photo sitting in the face slot — so the claim the screen makes
+ * loudest was contradicted by the three pictures beside it, and anyone reading the trail as a
+ * witness comparison was reading three strangers. HIT_SET_LOOKALIKES had this right already: one
+ * appearance per personId, which is what makes its two people legible as two.
+ */
 const HIT_SET_TRAIL: HitShape[] = [
   {
     id: "hit-1",
@@ -284,7 +295,7 @@ const HIT_SET_TRAIL: HitShape[] = [
     score: "99.4%",
     bodyScore: "78.2%",
     isUnregistered: false,
-    faceUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&h=100&q=80",
+    faceUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
     elapsed: "30m 32s",
     personId: "p1",
@@ -295,7 +306,7 @@ const HIT_SET_TRAIL: HitShape[] = [
     score: "82.3%",
     bodyScore: "70.1%",
     isUnregistered: true,
-    faceUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&h=100&q=80",
+    faceUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
     personId: "p1",
   },
@@ -324,7 +335,7 @@ const HIT_SET_MODERATE: HitShape[] = [
     score: "79.8%",
     bodyScore: "71.0%",
     isUnregistered: true,
-    faceUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=100&h=100&q=80",
+    faceUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=100&h=100&q=80",
     bodyUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=200&q=80",
     personId: "p1",
   },
@@ -972,7 +983,16 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
         verdictBy: judged?.actor,
         verdictAt: judged?.at,
       },
-      { projectName: siteProjectName, operator: portalUsers[0]?.name ?? "", purpose: null },
+      // The signed-in stand-in, like every other actor field in this mock (see the store's
+      // recordSearchAccess and clientAudit). It was `portalUsers[0]?.name` — the FIRST ROW of the
+      // account list, which happens to be Grace Tan today and so happens to agree: an export
+      // manifest naming whoever sorts first is a false attribution the moment that row is
+      // removed, reordered or renamed, in the one file whose entire job is provenance. The `?? ""`
+      // was the same bug's other half, ready to sign the file with nobody.
+      //
+      // HANDOFF NOTE: the real one comes from the session. A browser naming its own operator is
+      // not evidence of anything; the server has to stamp exported_by.
+      { projectName: siteProjectName, operator: SIGNED_IN_USER.name, purpose: null },
       at,
     );
     saveManifest(manifest, evidenceFilename(node.key, at));
@@ -1367,13 +1387,13 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
         <div
           onClick={e => { if (e.target === e.currentTarget) setUploadFor(null); }}
           style={{
-            position: "absolute", inset: 0, zIndex: 2000, backgroundColor: "rgba(24,17,39,0.15)",
+            position: "absolute", inset: 0, zIndex: 2000, backgroundColor: "var(--scrim)",
             display: "flex", justifyContent: "center", alignItems: "flex-start", paddingTop: "24px",
           }}>
           <div style={{
             width: "730px", height: "303px", boxSizing: "border-box", backgroundColor: "white",
             border: "1px solid var(--gray-200)", borderRadius: "8px",
-            boxShadow: "0 2px 12px rgba(24,17,39,0.08)",
+            boxShadow: "var(--shadow-modal)",
             padding: "12px", display: "flex", flexDirection: "column", gap: "10px",
           }}>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -1409,7 +1429,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                 style={{
                   padding: "10px 16px", borderRadius: "24px", border: "none", cursor: "pointer",
                   backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700,
-                  boxShadow: "0 4px 4px rgba(29,41,59,0.1)",
+                  boxShadow: "var(--shadow-raised)",
                 }}
               >
                 {t.chooseImage}
@@ -1716,7 +1736,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                           {hoverUpload === key && (
                             <div style={{
                               position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                              backgroundColor: image ? "rgba(24,17,39,0.35)" : "transparent",
+                              backgroundColor: image ? "var(--scrim-media)" : "transparent",
                             }}>
                               <span style={{ fontSize: "12px", fontWeight: 700, color: image ? "white" : "var(--primary-400)" }}>
                                 {image ? t.clickToChange : t.clickToUpload}
@@ -1878,7 +1898,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                       </div>
                       <div style={{ position: "relative", width: "63px", height: "62px", borderRadius: "8px", overflow: "hidden", flexShrink: 0 }}>
                         <img src={hit.bodyUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} alt="" />
-                        <span style={{ position: "absolute", top: "4px", left: "4px", backgroundColor: "rgba(90,61,251,0.4)", color: "white", fontSize: "10px", fontWeight: 600, padding: "2px 4px", borderRadius: "3px" }}>{t.body}</span>
+                        <span style={{ position: "absolute", top: "4px", left: "4px", backgroundColor: "var(--label-plate)", color: "white", fontSize: "10px", fontWeight: 600, padding: "2px 4px", borderRadius: "3px" }}>{t.body}</span>
                       </div>
                     </div>
                     <div style={{ backgroundColor: "var(--gray-100)", borderRadius: "6px", padding: "4px 6px", overflow: "hidden" }}>
