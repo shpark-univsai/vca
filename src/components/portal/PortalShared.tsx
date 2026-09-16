@@ -133,6 +133,29 @@ export const ICON_STROKE_PX = 1.4;
 export const TABLE_COLUMN_GAP = "12px";
 
 /**
+ * The gap between a toolbar and the table it narrows.
+ *
+ * SMALL ON PURPOSE. A search box, some filters and the list they act on are one thing, and the
+ * distance that carries meaning on these pages is the one ABOVE the toolbar — where the summary
+ * cards end and the list begins. Seven tabs had picked 16, 12 and 10 independently, so the same
+ * three-part page attached itself slightly differently every time a reader moved between them.
+ */
+export const TOOLBAR_GAP = "10px";
+
+/**
+ * The search field at the left end of a toolbar.
+ *
+ * One rule, because five had grown: two tabs let it stretch with no ceiling, one capped it with no
+ * floor, and two more picked different floors. A field that starts at a different width on every
+ * screen makes the toolbar look re-laid-out each time rather than the same row doing the same job.
+ *
+ * The cap matters more than the floor. Unbounded, the field ate the empty middle of the row and
+ * left the actions stranded at the far edge; a search box wider than the longest thing anybody
+ * types is width spent on nothing.
+ */
+export const SEARCH_FIELD: React.CSSProperties = { flex: 1, minWidth: "200px", maxWidth: "320px" };
+
+/**
  * PLACEHOLDERS carry the example and not the words "e.g.".
  *
  * Grey text in an empty field already reads as an example, so the prefix restates the thing the
@@ -284,6 +307,29 @@ export const BREADCRUMB_PROJECT_MAX_WIDTH = "min(320px, 22vw)";
  * Two values, not seven. The caps in place ranged 46–80ch, and that spread was drift rather than
  * seven decisions: they are all either a paragraph somebody reads or a note somebody glances at.
  */
+/**
+ * The body of a table that has no rows to show.
+ *
+ * INSIDE the table card, under its column headings — not a separate card standing where the table
+ * would be. The two read as different situations: a card of its own says "there is no table here",
+ * which is wrong, because the headings above it are the table and they are still true.
+ *
+ * ONE LINE. A second line under an empty state is a rule this product settled on, and four tables
+ * were breaking it with a hint nobody needed — the heading already says what is missing, and the
+ * toolbar above says what would change it.
+ *
+ * `reason` is for the case that is genuinely a different sentence: nothing matched the filters, as
+ * opposed to nothing exists. A reader who has narrowed a list and sees "nothing registered yet"
+ * concludes the registry is empty rather than that their filter is.
+ */
+export function TableEmpty({ text }: { text: string }) {
+  return (
+    <div style={{ padding: "40px 20px", textAlign: "center" }}>
+      <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-500)" }}>{text}</p>
+    </div>
+  );
+}
+
 export const MEASURE = "38em";
 export const MEASURE_TIGHT = "30em";
 
