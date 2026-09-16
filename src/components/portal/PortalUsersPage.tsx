@@ -173,6 +173,10 @@ const T = {
     // old sentence's "everything they registered stays" was false about app grants. It writes the
     // two doors now and touches nothing behind them.
     confirmAccessBody: "Takes effect at once. Closing a door stops them signing in through it. The account, everything they registered and their app screens stay — reopen the door and the same screens come back.",
+    // The confirm on every dialog that changes what one account holds — role, sign-in doors,
+    // projects, app screens. Three of them are the same decision at the same weight, and two used
+    // to say "Save": a form saves, an access change takes effect on somebody who is signed in, and
+    // the button that does the second should not borrow the word for the first.
     changeApply: "Change",
 
     // Row action toasts
@@ -282,7 +286,6 @@ const T = {
     mailNoteIsolated: "This project's site is internet-isolated — invite will be sent through its internal mailbox, not external email.",
     mailNoteReachable: "Invite will be sent by external email.",
     cancel: "Cancel",
-    save: "Save",
     errEmail: "That is not an email address.",
     errDuplicate: "An account already uses this address.",
     errDomain: (d: string) => `Accounts must be on @${d} — mail to anything else is not deliverable from this installation.`,
@@ -551,7 +554,6 @@ const T = {
     mailNoteIsolated: "이 프로젝트의 사이트는 인터넷이 차단되어 있습니다 — 초대장은 외부 이메일이 아닌 내부 메일함으로 발송됩니다.",
     mailNoteReachable: "초대장이 외부 이메일로 발송됩니다.",
     cancel: "취소",
-    save: "저장",
     errEmail: "이메일 주소 형식이 아닙니다.",
     errDuplicate: "이미 이 주소를 쓰는 계정이 있습니다.",
     errDomain: (d: string) => `계정은 @${d} 주소여야 합니다 — 이 설치본에서 다른 주소로는 메일이 나가지 않습니다.`,
@@ -1815,7 +1817,7 @@ function UserProjectsModal({ user, teamProjects, onClose, onSave }: {
           </button>
           <button className="portal-btn-primary" onClick={() => { onSave(picked); onClose(); }} disabled={!canSave}
             style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-            {t.save}
+            {t.changeApply}
           </button>
         </div>
       </div>
@@ -1960,7 +1962,7 @@ function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => voi
           </button>
           <button className="portal-btn-primary" onClick={save} disabled={!canSave}
             style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-            {t.save}
+            {t.changeApply}
           </button>
         </div>
       </div>
@@ -2783,12 +2785,16 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       {confirmingBulkSuspend && (
         /* Every name, not a count. The list IS the review step here — there are no checkboxes to
            look back at, so the dialog has to be the place where "wait, not that one" happens. */
+        /* NOT `danger`, however many accounts it acts on at once. Red on a confirm is this
+           console's mark for what cannot be taken back — everywhere else it appears, something is
+           deleted — while this dialog's own body says nothing is deleted and that any of these
+           accounts can be restored without a new invitation. A red button under that sentence
+           teaches the reader to stop reading the sentence. 제거 keeps it. */
         <ConfirmModal
           title={t.bulkSuspendTitle(bulkSuspendTargets.length)}
           body={t.bulkSuspendBody}
           confirmLabel={t.bulkSuspendCta(bulkSuspendTargets.length)}
           cancelLabel={t.cancel}
-          danger
           onClose={() => setConfirmingBulkSuspend(false)}
           onConfirm={() => {
             const refused = suspendPortalUsers(bulkSuspendTargets.map(u => u.id));
@@ -3086,16 +3092,17 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                       title: t.confirmSuspendTitle(u.name),
                       body: t.confirmSuspendBody,
                       confirmLabel: t.suspendUser,
-                      danger: true,
                       onConfirm: () => {
                         updatePortalUserStatus(u.id, "suspended");
                         showToast({ variant: "warning", title: t.userSuspendedTitle, desc: t.userSuspendedDesc(u.name) });
                       },
                     }),
-                    // NOT `danger` on the menu row, though the confirm dialog above still is.
-                    // Suspending is reversible — 재활성화 occupies this very slot afterwards — and
-                    // 제거 below is not. Colouring both red makes red mean "bottom of the menu"
-                    // instead of "think", and the one that cannot be undone loses its warning.
+                    // NOT `danger` on the menu row, and not on its confirm either. Suspending is
+                    // reversible — 재활성화 occupies this very slot afterwards — and 제거 below is
+                    // not. Colouring both red makes red mean "bottom of the menu" instead of
+                    // "think", and the one that cannot be undone loses its warning. The dialog
+                    // kept the red after the row lost it, over a body that says in as many words
+                    // that nothing is deleted; the same fix as the bulk-suspend dialog above.
                     // Refused, not warned about: this deployment is on-premise with the top
                     // administrator on the customer's side, so there is no supplier account to
                     // undo it with. The store refuses these too — see isLastActiveAdmin.

@@ -1403,7 +1403,19 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
   children?: React.ReactNode;
   confirmLabel: string;
   cancelLabel: string;
-  /** Red confirm button — for the ones that take access away or cannot be undone from the menu. */
+  /**
+   * Red confirm button — for the ones that CANNOT BE UNDONE. Not for the ones that merely weigh a
+   * lot.
+   *
+   * The "or takes access away" half of this sentence used to be here, and it let a suspend dialog
+   * go red while its own body said 삭제되는 것은 없습니다 … 되돌릴 수 있습니다 — the colour and the
+   * words disagreeing inside one card. Checked against every call site: each remaining red confirm
+   * destroys something (project, camera, category, server, VIP group, team, account). Suspension is
+   * reversible from the very menu row it was started from, so it is not one of them.
+   *
+   * A dialog that is red for weight rather than for permanence spends the colour, and then the one
+   * that really cannot be undone arrives looking the same.
+   */
   danger?: boolean;
   /**
    * Holds the confirm button shut until the `children` field says otherwise.

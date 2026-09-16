@@ -32,8 +32,10 @@ const T = {
     deleteTeam: "Delete this team",
     deleteHint: "Only a team with no projects can be deleted. Delete each project from its own Settings screen first, where what goes with it is listed.",
     deleteBlocked: (n: number) => `${n} project(s) still belong to this team.`,
+    deleteBlockedLastOwner: "The installation's last active owner is in this team. Hand the owner role to an account in another team first.",
     deleteConfirmTitle: (name: string) => `Delete ${name}?`,
     deleteConfirmBody: "The team, its accounts, its VIP categories and its search purposes. This cannot be undone.",
+    deleteConfirmAccounts: (n: number) => (n === 1 ? "1 account is filed under this team." : `${n} accounts are filed under this team.`),
     deleteConfirm: "Delete team",
     deletedToast: "Team deleted",
     ownerOnly: "Only the owner renames or deletes a team.",
@@ -61,8 +63,10 @@ const T = {
     deleteTeam: "이 팀 삭제",
     deleteHint: "프로젝트가 없는 팀만 삭제할 수 있습니다. 각 프로젝트는 자기 설정 화면에서 먼저 지우세요 — 무엇이 함께 지워지는지 거기 적혀 있습니다.",
     deleteBlocked: (n: number) => `아직 이 팀에 프로젝트가 ${n}개 있습니다.`,
+    deleteBlockedLastOwner: "이 설치의 마지막 활성 최고관리자가 이 팀에 있습니다. 다른 팀의 계정에 최고관리자를 먼저 넘기세요.",
     deleteConfirmTitle: (name: string) => `${name}을(를) 삭제할까요?`,
     deleteConfirmBody: "팀과 그 계정, VIP 분류, 조회 목적이 함께 지워집니다. 되돌릴 수 없습니다.",
+    deleteConfirmAccounts: (n: number) => `이 팀에 속한 계정 ${n}개.`,
     deleteConfirm: "팀 삭제",
     deletedToast: "팀이 삭제되었습니다",
     ownerOnly: "팀 이름 변경과 삭제는 최고관리자만 할 수 있습니다.",
@@ -382,6 +386,7 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
   const renameTeam = useVcaStore(s => s.renameTeam);
   const removeTeam = useVcaStore(s => s.removeTeam);
   const projects = useVcaStore(s => s.projects);
+  const portalUsers = useVcaStore(s => s.portalUsers);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -398,7 +403,23 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
   useEscapeKey(onClose, !confirming);
 
   const projectCount = projects.filter(p => p.teamId === team.id).length;
-  const canDelete = projectCount === 0;
+  /*
+   * The number the dialog below prints. A team with no projects still holds people, and the
+   * confirmation named them ("the team, its accounts, …") without ever saying how many — so the
+   * team somebody set up and abandoned and the team half the staff sign in through asked the same
+   * question. Counted here rather than stored, for the same reason the switcher counts projects.
+   */
+  const accountCount = portalUsers.filter(u => u.teamId === team.id).length;
+  /*
+   * removeTeam ALSO refuses a delete that would leave the installation with no active owner, and
+   * this screen did not know that: the button was live, the store returned the state untouched,
+   * and the toast below still said the team was deleted. The guard is mirrored here — same two
+   * fields, same "active owner" test — so the refusal arrives as a reason on the button rather
+   * than as a success message for something that did not happen.
+   */
+  const ownerElsewhere = portalUsers.some(u => u.teamId !== team.id && u.permission === "owner" && u.status === "active");
+  const holdsLastOwner = !ownerElsewhere && portalUsers.some(u => u.teamId === team.id && u.permission === "owner" && u.status === "active");
+  const canDelete = projectCount === 0 && !holdsLastOwner;
   const canSave = name.trim().length > 0 && name.trim() !== team.name;
 
   return (
@@ -435,7 +456,7 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
               {/* The blocker names the number, then the hint says where to go. "Cannot delete"
                   on its own is a wall; this is a direction. */}
               <p style={{ fontSize: "11px", color: canDelete ? "var(--gray-400)" : "var(--warning-500)", lineHeight: 1.45, marginTop: "4px" }}>
-                {canDelete ? t.deleteHint : t.deleteBlocked(projectCount)}
+                {canDelete ? t.deleteHint : projectCount > 0 ? t.deleteBlocked(projectCount) : t.deleteBlockedLastOwner}
               </p>
             </div>
           </div>
@@ -472,7 +493,13 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
             onDeleted();
             showToast({ variant: "warning", title: t.deletedToast, desc: label });
           }}
-        />
+        >
+          {/* Accounts are the part of the list above that cannot be re-made from anywhere else —
+              the same reason the server and category confirmations print their number. */}
+          <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginTop: "12px" }}>
+            {t.deleteConfirmAccounts(accountCount)}
+          </p>
+        </ConfirmModal>
       )}
     </>
   );
