@@ -37,7 +37,6 @@ const T = {
     intro: "Every person look-up run from the monitoring app, with the purpose the operator declared.",
     empty: "No look-ups recorded yet.",
     emptyHint: "A row appears here each time an operator searches for a person in the app. Nothing is written in advance.",
-    notWired: "The app does not write to this log yet — the purpose is collected on screen but not stored. Until it is, this stays empty however much searching happens.",
     colAt: "When", colActor: "Operator", colPurpose: "Purpose", colReference: "Reference",
     colTarget: "Searched for", colSurface: "Screen", colResults: "Results", colIp: "From",
     filterAllPurposes: "All purposes",
@@ -57,7 +56,6 @@ const T = {
     intro: "모니터링 앱에서 실행된 인물 조회와, 그때 관제요원이 밝힌 목적입니다.",
     empty: "기록된 조회가 없습니다.",
     emptyHint: "앱에서 인물을 조회할 때마다 한 줄씩 쌓입니다. 미리 채워두는 것은 없습니다.",
-    notWired: "앱이 아직 이 기록을 쓰지 않습니다 — 목적은 화면에서 받지만 저장되지 않습니다. 연결 전까지는 아무리 조회해도 비어 있습니다.",
     colAt: "시각", colActor: "조회자", colPurpose: "목적", colReference: "참조번호",
     colTarget: "조회 대상", colSurface: "화면", colResults: "결과", colIp: "위치",
     filterAllPurposes: "전체 목적",
@@ -156,19 +154,20 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
 
   return (
     <div>
-      {/* The gap between collecting a purpose and keeping it, said where somebody would otherwise
-          conclude the log is broken. It goes away when the app calls recordSearchAccess. */}
-      {projectRecords.length === 0 && (
-        <p style={{
-          display: "flex", alignItems: "flex-start", gap: "8px", maxWidth: "fit-content",
-          padding: "10px 14px", borderRadius: "10px", marginBottom: "12px",
-          backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
-          fontSize: "12px", fontWeight: 700, lineHeight: 1.5,
-        }}>
-          <span style={{ display: "flex", flexShrink: 0, marginTop: "2px" }}><ShieldAlert size={14} strokeWidth={2.4} /></span>
-          {t.notWired}
-        </p>
-      )}
+      {/*
+        NO "the app does not write this yet" BANNER. It was here and both of its sentences had
+        stopped being true.
+        
+        It said the app never calls recordSearchAccess — it does, from four places (Data's live and
+        Re-ID searches, Redmap's search and its deep link), wired when the look-up record was
+        turned on. And it said a purpose is collected on screen but not kept; with
+        requireSearchPurpose off the app does not ask for one at all.
+        
+        It was written before either of those was decided and nothing sent it away. An empty log
+        was being explained by a warning that described a version of this product that no longer
+        exists, and the explanation was louder than the empty state's own words — which are
+        accurate: rows appear when somebody searches, and nothing is seeded.
+      */}
 
       {projectRecords.length > 0 && (
         <SummaryStrip cells={[
