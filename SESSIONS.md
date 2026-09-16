@@ -13,9 +13,9 @@
 
 | 세션 | 잡은 파일 | 상태 |
 |---|---|---|
-| vca-84 | **`src/components/ClientLayout.tsx` · `MapView.tsx` · `Sidebar.tsx` · `MapWrapper.tsx`** | 하드코딩 사냥(지도·셸) **진행 중**. `vcaStore.ts`·`mockData.ts`·`globals.css`·`HANDOFF.md`는 커밋 완료하고 비웠습니다 |
-| vca-cf | **`PortalShared.tsx` · `PortalUsersPage.tsx`** (미커밋) | **세션 종료 — 인수인계함.** 저 두 파일에 서브에이전트가 남긴 미커밋 변경이 있습니다. 브리프는 ① `ConfirmModal` **옵트인** 스크롤(그냥 `overflowY`를 주면 `AccessChangeModal`의 셀렉트 목록이 잘립니다 — 그 주석이 비스크롤에 의존한다고 적혀 있습니다) ② 인물 검색 해제 확인창의 `danger: !next`(되돌릴 수 있는 유일한 빨강) ③ `vipRegistry` 누출 스윕. **보고를 못 받고 넘기니 diff를 읽고 판단하세요.** tsc 0은 확인했습니다 |
-| vca-hv | — | `mypage` · `Navbar` · `RedmapPage` 커밋 완료(`c0ef5f3`·`785ff7b`·`047441d`). **`login/page.tsx`와 `forgot-password/page.tsx`는 스테이징하지 않았습니다** — 아래 참조 |
+| vca-84 | **`src/components/ClientLayout.tsx` · `MapView.tsx`** | 하드코딩 사냥(지도·셸) 진행 중. `Sidebar.tsx`는 `fd4c82c`로 비웠습니다 |
+| vca-cf | — **세션 종료(2026-09-16)** | 인수 항목은 아래 §1-A |
+| vca-hv | — 종료 | `mypage`·`Navbar`·`RedmapPage` 커밋 완료. 섞였던 두 auth 파일은 `4d51589`로 정리됨 |
 
 **`login/page.tsx` · `forgot-password/page.tsx`에 두 세션의 미커밋 변경이 섞여
 있습니다.** 제 것(발송·변경 주장 문구, 로그인의 상태 열거 제거)과 다른 세션의
@@ -30,6 +30,22 @@ tsc 0 · next build 0을 확인했습니다(두 변경이 모두 들어간 상�
 (+ 타이핑 전 호박색 한 줄, `PortalSettingsPage` 문구 그대로), 그리고 로그인에서
 식별자만으로 정지·미활성을 알려주던 두 줄 제거(HANDOFF 계약 13, `4cc65ee`의 교정
 반영 — 감추는 것이 아니라 **비밀번호 검사 뒤에** 말하는 것).
+
+### §1-A. vca-cf에서 넘어온 것 (2026-09-16 종료)
+
+| | |
+|---|---|
+| **카메라 범위 연결** | 필드·앱 필터·`CameraScopePicker`·`setCameraScope`는 완성(`7b73fa8`). 남은 건 `PortalUsersPage`의 **행 메뉴 항목 하나**와 **초대 폼**에 붙이는 것. 설계 요점 셋: ① `cameraIds === undefined`가 **전부**다(`[]`=없음과 다르고, 기존 계정은 전부 `undefined`라 아무도 안 좁혀진다) ② **프리셋과 직교** — 프리셋은 이 값을 절대 싣지 않는다(같은 직무가 설치마다 다른 카메라를 갖는다) ③ **구역이 아니라 카메라 id** — 구역으로 좁히면 카메라의 구역을 바로잡는 날 접근이 조용히 넓어진다 |
+| **미해결 질문** | 사용자: *"커스텀이 프리셋이랑 똑같다, 더 세부적이었으면."* 축이 일곱뿐이라 커스텀이 표현할 게 더 없고 **값을 누가 정하느냐만** 다르다. 카메라 범위가 여덟째 축으로 붙으면 절반은 풀리지만, 기능 단위로 더 쪼갤지는 **정해진 바 없음** — 착수 전 사용자와 정할 일 |
+| **발견만 (미착수)** | `supportContact`가 기본 빌드에서 `null`(`.env.example:43` 주석 처리). 문구가 "보안 관제 담당자에게 문의"로 떨어지는데 단일 현장에서 **그 담당자가 잠긴 오너 본인**이다 |
+| **리뷰 잔여** | `PortalProjectDetailPage.tsx:96,189` `colStreamUrl`이 `주소`인데 카메라 탭은 같은 필드를 `연결 정보`라 부름 · `ProjectVipTab.tsx:337-353` 17키 `cat*` 사전이 통째로 죽음 · `vcaStore`의 `?? state.teams[0]?.id` 두 곳(`approveAccessRequests`·`activateRosterEntry`) — `?? CAMERAS[0].id`와 같은 모양 · `mockData`의 `currentDate`/`currentTime` 고정 시계 |
+| **안 건드린 대기와 이유** | `rv15` 만들지 않기로 패널이 정함 · `h2` 계약 변경이라 프론트에서 못 함 · `rv11` 서버 페이징 전에 만들면 두 번 만듦 |
+
+**규칙 0-B — 에이전트에 검증을 시킬 때 스크래치패드 파일명을 지정합니다.**
+
+vca-cf가 스크래치패드를 에이전트와 공유해서 **자기 CDP 검증 헬퍼가 덮어써졌습니다.** 에이전트가
+같은 경로에 자기 헬퍼를 썼고, 히트 테스트와 `given`/`expect`가 든 원본이 날아갔습니다. 파일
+경계는 `git status`가 지켜주지만 **스크래치패드는 아무도 안 지킵니다.**
 
 **규칙 0 — 착수 전에 이 표에 적습니다. 사후 통보는 소통이 아닙니다.**
 
