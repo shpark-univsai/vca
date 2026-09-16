@@ -85,6 +85,26 @@ const T = {
     lastSeen: "LAST SEEN",
     fullTrace: "View Full Trace on Redmap",
     unknownZone: "Unknown",
+    /**
+     * The chip sitting on a stretch of trail whose stops could not be drawn.
+     *
+     * It carries the stops' NUMBERS, because the numbers are the only handle anyone has on them:
+     * the trail keeps its gap in the numbering (see placedNodes below), and this chip is what
+     * says the gap is a stop rather than a counting mistake. A dashed line on its own would not —
+     * a dashed segment on a map already means "estimated route", so without the label the reader
+     * is told the opposite of the truth: that we know the path, not that we are missing a stop.
+     *
+     * No warning colour. A missing coordinate is a blank in the camera register, not a camera
+     * fault, and in a control room yellow gets a fault reported that nobody can find.
+     */
+    noCoordsChipOne: (num: string) => `${num} No coordinates`,
+    noCoordsChipMany: (from: string, to: string, n: number) => `${from}–${to} No coordinates · ${n}`,
+    noCoordsWhy: "No coordinates on record, so it cannot be drawn",
+    /**
+     * The one line over the map, shown only when the chips can't carry the message on their own —
+     * three or more gaps, or a missing end. See the call site for why those two cases and no others.
+     */
+    noCoordsSummary: (missing: number, total: number) => `${missing} of ${total} points have no coordinates`,
   },
   ko: {
     camerasShort: (n: number) => `${n}대`,
@@ -108,6 +128,10 @@ const T = {
     lastSeen: "마지막 검출",
     fullTrace: "레드맵에서 전체 경로 보기",
     unknownZone: "미확인",
+    noCoordsChipOne: (num: string) => `${num} 좌표 없음`,
+    noCoordsChipMany: (from: string, to: string, n: number) => `${from}–${to} 좌표 없음 ${n}곳`,
+    noCoordsWhy: "좌표가 등록되지 않아 지도에 표시할 수 없습니다",
+    noCoordsSummary: (missing: number, total: number) => `${total}곳 중 ${missing}곳은 좌표가 없어 지도에 없습니다`,
   },
 } as const;
 
@@ -1174,16 +1198,110 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
 
         map.flyTo([nodes[nodes.length - 1].lat, nodes[nodes.length - 1].lng], 14, { duration: 0.8, easeLinearity: 0.5 });
 
-        const line = L.polyline(nodes.map(n => [n.lat, n.lng]), {
-          // The trail is drawn in the Tracking colour, the same one the sidebar list and the map's
-          // own event pins already use for a Tracking row (see typeColor above). It was purple,
-          // so one event was olive in the list and purple on the map — and a long trail painted
-          // the map purple in proportion to how many hops it had.
-          color: "var(--type-tracking)", weight: 2, opacity: 1, lineJoin: "round", className: "vca-route-line",
-        }).addTo(map);
-        trackingRouteLayersRef.current.push(line);
+        /**
+         * Split the trail into RUNS of stops that really are next to each other, and GAPS.
+         *
+         * Two consecutive drawable stops whose numbers are not consecutive have at least one
+         * undrawable stop between them, so the straight line joining them is not a stretch of the
+         * route — it is the two ends of a stretch we cannot draw. Drawing it like the rest says
+         * the person went from one to the other, which is a claim about a path nobody observed.
+         *
+         * Runs are kept whole rather than split per segment: one polyline per run keeps
+         * `lineJoin: "round"` doing its job at the corners and keeps `.vca-route-line`'s flowing
+         * dash on a single phase along the whole run. With no gaps there is exactly one run
+         * holding every node, which is byte-for-byte the single polyline this used to draw.
+         */
+        const runs: (typeof nodes)[] = [];
+        const gaps: { prev: typeof nodes[number]; next: typeof nodes[number]; missing: number[] }[] = [];
+        let run: typeof nodes = [nodes[0]];
+        for (let i = 1; i < nodes.length; i++) {
+          const prev = nodes[i - 1];
+          const cur = nodes[i];
+          if (cur.num - prev.num > 1) {
+            const missing: number[] = [];
+            for (let n = prev.num + 1; n < cur.num; n++) missing.push(n);
+            gaps.push({ prev, next: cur, missing });
+            runs.push(run);
+            run = [cur];
+          } else {
+            run.push(cur);
+          }
+        }
+        runs.push(run);
 
-        if (nodes.length >= 2) {
+        runs.forEach(runNodes => {
+          const line = L.polyline(runNodes.map(n => [n.lat, n.lng]), {
+            // The trail is drawn in the Tracking colour, the same one the sidebar list and the map's
+            // own event pins already use for a Tracking row (see typeColor above). It was purple,
+            // so one event was olive in the list and purple on the map — and a long trail painted
+            // the map purple in proportion to how many hops it had.
+            color: "var(--type-tracking)", weight: 2, opacity: 1, lineJoin: "round", className: "vca-route-line",
+          }).addTo(map);
+          trackingRouteLayersRef.current.push(line);
+        });
+
+        gaps.forEach(gap => {
+          /**
+           * Quiet grey, tight dots, and NO arrow. The arrow is the one mark on this map that
+           * asserts a direction of travel, and across a gap there is nothing to assert it from:
+           * the stops in between are unplaced, so which way the line bends between them is
+           * unknown. Grey rather than the trail colour so the eye reads it as absent data;
+           * `--gray-400` and not `--warning-500`, for the reason on noCoordsChipOne above.
+           *
+           * No `vca-route-line` class either: that stylesheet rule sets its own
+           * `stroke-dasharray` and animates it, and CSS beats the presentation attribute — the
+           * gap would end up wearing the travelling dash of a route we are saying we don't have.
+           */
+          const gapLine = L.polyline([[gap.prev.lat, gap.prev.lng], [gap.next.lat, gap.next.lng]], {
+            color: "var(--gray-400)", weight: 2, opacity: 1, lineJoin: "round", dashArray: "2 5",
+          }).addTo(map);
+          trackingRouteLayersRef.current.push(gapLine);
+
+          const nums = gap.missing.map(n => String(n).padStart(2, "0"));
+          const chipText = nums.length === 1
+            ? t.noCoordsChipOne(nums[0])
+            : t.noCoordsChipMany(nums[0], nums[nums.length - 1], nums.length);
+          // Content-sized icon, the same shape the district pills use: a 1x1 marker box with the
+          // real width coming from the chip's own `white-space:nowrap`, centred by its transform.
+          const chipIcon = L.divIcon({
+            html: `<div style="transform:translate(-50%,-50%);display:inline-block;background:var(--gray-0);border:1px solid var(--gray-200);
+                        border-radius:6px;padding:3px 8px;font-family:'SUIT',sans-serif;font-size:11px;font-weight:600;
+                        color:var(--gray-500);white-space:nowrap">${chipText}</div>`,
+            iconSize: [1, 1], iconAnchor: [0, 0], className: "",
+          });
+          const chip = L.marker(
+            [(gap.prev.lat + gap.next.lat) / 2, (gap.prev.lng + gap.next.lng) / 2],
+            { icon: chipIcon, interactive: true },
+          )
+            // The stops themselves, named, so the chip's numbers lead somewhere. Camera names are
+            // data and stay in their own language. One name·time line per missing stop — with a
+            // single one that is exactly the two lines this tooltip is meant to be.
+            .bindTooltip(
+              `<div style="font-family:'SUIT',system-ui,sans-serif;padding:8px 10px;display:flex;flex-direction:column;gap:3px">
+                 ${gap.missing.map(n => {
+                   const hop = hops[n - 1];
+                   const name = hop.location + (hop.cameraLabel ? ` ${hop.cameraLabel}` : "");
+                   const prefix = gap.missing.length > 1 ? `${String(n).padStart(2, "0")} ` : "";
+                   return `<span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.24px;white-space:nowrap">${prefix}${name} · ${formatTimeAgo(hop.timestamp, lang)}</span>`;
+                 }).join("")}
+                 <span style="font-size:10px;font-weight:600;color:var(--gray-500);white-space:nowrap">${t.noCoordsWhy}</span>
+               </div>`,
+              { direction: "top", offset: [0, -16], className: "vca-camera-tooltip", opacity: 1 },
+            )
+            .addTo(map);
+          // Above the route lines and the arrow, below the numbered stop cards (1000+).
+          chip.setZIndexOffset(500);
+          trackingRouteLayersRef.current.push(chip);
+        });
+
+        /**
+         * The arrow goes on the last OBSERVED segment only. It marks the direction of the most
+         * recent leg; sitting on a dashed gap it would be pointing along a line that exists
+         * because a stop in between is missing, not because anyone saw that leg travelled.
+         */
+        const lastSegmentIsGap = nodes.length >= 2
+          && nodes[nodes.length - 1].num - nodes[nodes.length - 2].num > 1;
+        if (nodes.length >= 2 && !lastSegmentIsGap) {
           const a = nodes[nodes.length - 2];
           const b = nodes[nodes.length - 1];
           const t = 0.35;
@@ -1262,6 +1380,47 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           marker.setZIndexOffset(1000 + i * 100);
           trackingRouteLayersRef.current.push(marker);
         });
+
+        /**
+         * One line over the map, and only when the chips cannot carry the message themselves.
+         *
+         * A chip sits between the two stops it is about, which is the honest place for it and
+         * enough on its own for one or two gaps — repeating the same fact in a banner above them
+         * would just be the map saying it twice. Two cases the chips genuinely cannot cover:
+         *
+         *  - three or more gaps, where the reader is no longer counting chips but needs the shape
+         *    of it ("most of this trail isn't here");
+         *  - a missing FIRST or LAST stop, which has no chip at all. A gap chip needs a drawable
+         *    stop on each side, so an unplaced end leaves the trail simply starting or stopping
+         *    short — and the most recent stop missing is the one omission that changes what the
+         *    map means, because the trail's visible end then isn't where the person was last seen.
+         *
+         * A Leaflet control rather than another divIcon: this line is about the trail as a whole, so it
+         * has no latlng — any coordinate picked for it would be the map asserting a place for
+         * stops whose whole problem is having none, and it would pan away with the tiles. A
+         * control is anchored to the viewport, stays put, and its `.remove()` is the same method
+         * the teardown above already calls on everything in trackingRouteLayersRef. Bottom-left:
+         * the zoom control took topright and the attribution bottomright. Not the legend — people
+         * looking at a map do not look at the legend.
+         */
+        const endMissing = nodes[0].num !== 1 || !nodes[nodes.length - 1].isTrailEnd;
+        if (unplacedCount > 0 && (gaps.length >= 3 || endMissing)) {
+          const summary = new L.Control({ position: "bottomleft" });
+          summary.onAdd = () => {
+            // `leaflet-control` is what gives a control its inset from the map edge — the corner
+            // containers carry none of their own, so without the class this sits flush in the
+            // corner and reads as clipped. `pointer-events:none` gives back what the class turns
+            // on: it is a line of text, and it must not swallow a drag of the map under it.
+            const el = L.DomUtil.create("div", "leaflet-control");
+            el.style.cssText = "background:var(--gray-0);border:1px solid var(--gray-200);border-radius:6px;padding:5px 10px;"
+              + "font-family:'SUIT',sans-serif;font-size:11px;font-weight:600;color:var(--gray-500);"
+              + "white-space:nowrap;box-shadow:var(--shadow-popover);pointer-events:none";
+            el.textContent = t.noCoordsSummary(unplacedCount, hops.length);
+            return el;
+          };
+          summary.addTo(map);
+          trackingRouteLayersRef.current.push(summary);
+        }
         return;
       }
 
