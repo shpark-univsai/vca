@@ -30,6 +30,8 @@ const T = {
     cameraName: "Camera name",
     eventTime: "Event time",
     analysisResults: "Analysis results",
+    noAttributes: "The module does not return appearance attributes for a detection yet.",
+    photosNotWired: "Detections do not carry the matched crop or the enrolled photo yet.",
     attrBasic: "Basic",
     noRegistration: "None on record",
     attrTop: "Top",
@@ -64,6 +66,8 @@ const T = {
     cameraName: "카메라",
     eventTime: "검출 시각",
     analysisResults: "분석 결과",
+    noAttributes: "검출에 인상착의 속성이 아직 실려 오지 않습니다.",
+    photosNotWired: "검출이 대조에 쓴 얼굴과 등록 사진을 아직 싣지 않습니다.",
     attrBasic: "기본",
     noRegistration: "등록 정보 없음",
     attrTop: "상의",
@@ -132,8 +136,9 @@ const AVATAR = [
 // A Vehicle-type detection is a car, not a person — it needs its own photo rather than cycling
 // through the same face-portrait AVATAR set everything else uses.
 const VEHICLE_PHOTO = "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=200&q=80";
-const DB_PHOTO = "/enrolled-db-sample.png";
-const LIVE_CAPTURE_PHOTO = "/live-capture-sample.png";
+// DB_PHOTO / LIVE_CAPTURE_PHOTO were declared here and drawn as this detection's captured
+// face and this person's enrolled photo. Removed with their call sites — left as a name so the
+// next person does not reintroduce them from the files still sitting in /public.
 
 /**
  * The model's own words for what it saw, translated only where they are drawn — the same rule
@@ -154,12 +159,17 @@ function detailAttr(value: string, lang: AppLanguage): string {
   return lang === "ko" ? ATTR_KO_DETAIL[value] ?? value : value;
 }
 
-const ATTRS: Record<DetType, { basic: string[]; top: string[]; bottom: string[]; addons: string[] }> = {
-  VIP:     { basic:["ASIAN","MALE","34YR"],  top:["WHITE TOP","LONG SLEEVE"],   bottom:["BROWN BOTTOM","TROUSERS"], addons:["NO BACKPACK"] },
-  Unknown: { basic:["ASIAN","MALE","28YR"],  top:["RED JACKET","SHORT SLEEVE"], bottom:["BLACK JEANS"],             addons:["BACKPACK"] },
-  Vehicle: { basic:["SEDAN","WHITE","2020"], top:["SGX411"],                    bottom:[],                          addons:["REGISTERED"] },
-};
-
+/**
+ * REMOVED — it was keyed on DetType, not on the detection.
+ *
+ * Every VIP in the product was ASIAN / MALE / 34YR / WHITE TOP / BROWN BOTTOM / NO BACKPACK, under
+ * a heading that said 분석 결과 and directly beneath `det.name`. A VIP called Sarah Lin was
+ * analysed as male. Every vehicle carried the plate SGX411 while its own name said YW2281.
+ *
+ * `Detection` carries no attributes, so there was nothing behind these tags and nothing to bind
+ * them to. HANDOFF NOTE: when the module returns per-detection attributes, render one tag per
+ * attribute that actually arrived — never a table indexed by type.
+ */
 /**
  * What the registry has on this person or vehicle.
  *
@@ -497,7 +507,6 @@ function BestFrameReel({ data, focusedId, onFocus, onSelect, filter, onFilterCha
 function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Detection; data: CamData; onClose: () => void; onGoRedmapTrace?: (name: string) => void }) {
   const [lang] = useLanguage();
   const t = T[lang];
-  const attrs = ATTRS[det.type];
   const c = DET_COLOR[det.type];
 
   return (
@@ -513,9 +522,25 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
       <div style={{ flex:1, overflowY:"auto", padding:"14px" }}>
         {/* Photo comparison */}
         <div style={{ display:"flex", alignItems:"flex-end", gap:"8px", marginBottom:"14px" }}>
+          {/* NO FACES HERE UNTIL THEY ARE THIS PERSON'S.
+              Two fixed image files used to sit on either side of the match percentage, captioned
+              실시간 검출 and 등록 DB, with a tooltip calling the right one "the reference photo in
+              the enrolled database". They were the same two pictures for every detection in the
+              product — press any card and the same stranger appeared, with only the number
+              changing. An operator's job at this panel is to confirm an identity by eye, and the
+              screen was letting them confirm it against a stock photo.
+
+              `Detection` (src/types/detection.ts) carries no image at all, and the enrolled photo
+              lives on `Person.photoUrl`, reachable from here only by matching on name — the one
+              join this codebase forbids. So there is nothing honest to draw, and the frame is left
+              empty rather than filled.
+
+              HANDOFF NOTE: this panel needs two images per detection — the crop the module matched
+              on, and the enrolled photo of the person it matched to, carried by id. Until both
+              arrive, no picture goes in these two boxes. */}
           <div style={{ flex:"0 0 77px", display:"flex", flexDirection:"column", alignItems:"center", gap:"4px" }}>
-            <img src={LIVE_CAPTURE_PHOTO} alt="" style={{ width:"77px", height:"177px", objectFit:"cover", objectPosition:"top", borderRadius:"8px", display:"block" }} />
-            <p title={t.liveCaptureHint} style={{ fontSize:"10px", fontWeight:600, color:"var(--primary-400)", letterSpacing:"-0.2px", cursor:"help" }}>{t.liveCapture}</p>
+            <div style={{ width:"77px", height:"177px", borderRadius:"8px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)" }} />
+            <p title={t.liveCaptureHint} style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", letterSpacing:"-0.2px", cursor:"help" }}>{t.liveCapture}</p>
           </div>
           <div style={{ flex:1, alignSelf:"flex-end", height:"177px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"6px" }}>
             <svg width="22" height="22" viewBox="0 0 16 16" fill="none">
@@ -527,7 +552,9 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
             <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{det.confidence || 0}%</span>
           </div>
           <div style={{ flex:"0 0 176px", display:"flex", flexDirection:"column", alignItems:"center", gap:"4px" }}>
-            <img src={DB_PHOTO} alt="" style={{ width:"176px", height:"177px", objectFit:"cover", objectPosition:"top", borderRadius:"10px", display:"block" }} />
+            <div style={{ width:"176px", height:"177px", borderRadius:"10px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", display:"flex", alignItems:"center", justifyContent:"center", padding:"12px" }}>
+              <p style={{ fontSize:"11px", color:"var(--gray-400)", textAlign:"center", lineHeight:1.5, margin:0 }}>{t.photosNotWired}</p>
+            </div>
             <p title={t.enrolledDbHint} style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)", letterSpacing:"-0.2px", cursor:"help" }}>{t.enrolledDb}</p>
           </div>
         </div>
@@ -537,7 +564,10 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
           <TypeIcon type={det.type} color={c} size={15} />
           <span style={{ fontSize:"16px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.32px" }}>{det.name}</span>
         </div>
-        <p style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-500)", marginBottom:"14px" }}>{t.registeredAs} {REGISTERED[det.type] ?? t.noRegistration}</p>
+        {/* det.group, which differs per detection — REGISTERED was keyed on the TYPE, so every
+            VIP in the product read "Admin_Staff (Parking Zone F)" while the card beside it showed
+            that person's real group. One panel, two answers. */}
+        <p style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-500)", marginBottom:"14px" }}>{t.registeredAs} {det.group || t.noRegistration}</p>
 
         {/* Divider — info below is separated by rules, not a boxed container */}
         <div style={{ height:"1px", backgroundColor:"var(--gray-200)", marginBottom:"14px" }} />
@@ -562,16 +592,10 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
           </svg>
           <p style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)", letterSpacing:"-0.26px" }}>{t.analysisResults}</p>
         </div>
-        {[[t.attrBasic, attrs.basic], [t.attrTop, attrs.top], [t.attrBottom, attrs.bottom], [t.attrAddons, attrs.addons]]
-          .filter(([, v]) => (v as string[]).length > 0)
-          .map(([label, tags]) => (
-            <div key={label as string} style={{ display:"flex", alignItems:"flex-start", gap:"8px", marginBottom:"8px" }}>
-              <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-600)", width:"52px", flexShrink:0, paddingTop:"2px" }}>{label as string}</span>
-              <div style={{ display:"flex", gap:"4px", flexWrap:"wrap" }}>
-                {(tags as string[]).map(v => <Tag key={v} label={detailAttr(v, lang)} />)}
-              </div>
-            </div>
-          ))}
+        {/* The tag rows that stood here are gone with ATTRS — see the note on it. Nothing is
+            drawn in their place: a detection that carries no attributes has none to show, and an
+            empty row of labels would be the same promise the constants were making. */}
+        <p style={{ fontSize:"12px", color:"var(--gray-400)", lineHeight:1.5, margin:0 }}>{t.noAttributes}</p>
 
         {/* Also captured in this frame */}
         {data.detections.filter(d => d.id !== det.id).length > 0 && (

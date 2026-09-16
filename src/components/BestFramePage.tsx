@@ -26,6 +26,7 @@ const T = {
     unpinPanel: "Unpin panel",
     close: "Close",
     liveSnapshot: "LIVE SNAPSHOT",
+    photosNotWired: "No matched crop or enrolled photo yet",
     liveSnapshotHint: "Frame the camera just captured",
     noDbMatch: "NO DB MATCH",
     noDbMatchHint: "No match for this face in the enrolled database",
@@ -72,6 +73,7 @@ const T = {
     unpinPanel: "고정 해제",
     close: "닫기",
     liveSnapshot: "실시간 검출",
+    photosNotWired: "대조 얼굴과 등록 사진이 아직 실려 오지 않습니다",
     liveSnapshotHint: "카메라가 방금 잡은 프레임입니다",
     noDbMatch: "등록 DB 없음",
     noDbMatchHint: "이 얼굴은 등록 데이터베이스에서 찾을 수 없습니다",
@@ -778,8 +780,13 @@ function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState
       {/* Photo comparison */}
       <div style={{ display:"flex", gap:"12px", backgroundColor:"var(--gray-50)", borderRadius:"16px", padding:"12px" }}>
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"8px", width:"96px", flexShrink:0 }}>
-          <img src={det.type === "Vehicle" ? CAR_IMG : AVATAR[0]} alt="" style={{ width:"100%", aspectRatio: det.type === "Vehicle" ? "1/1" : "77/177", objectFit:"cover", borderRadius:"8px", display:"block" }} />
-          <span title={t.liveSnapshotHint} style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)", cursor:"help" }}>{t.liveSnapshot}</span>
+          {/* Empty, not a stock face. Both sides of this comparison were the SAME constant —
+              AVATAR[0] for people, CAR_IMG for vehicles — captioned 실시간 검출 and 등록 DB with a
+              match percentage between them. The panel was inviting the operator to confirm an
+              identity by eye against a picture of somebody else. See the long note in
+              BestFrameDetailPage, which had the same pair. */}
+          <div style={{ width:"100%", aspectRatio: det.type === "Vehicle" ? "1/1" : "77/177", borderRadius:"8px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)" }} />
+          <span title={t.liveSnapshotHint} style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", cursor:"help" }}>{t.liveSnapshot}</span>
         </div>
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"8px", flex:1, minWidth:0 }}>
           {isUnknown ? (
@@ -787,7 +794,9 @@ function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState
               <span title={t.noDbMatchHint} style={{ fontSize:"10px", fontWeight:600, color:"var(--warning-500)", textAlign:"center", cursor:"help" }}>{t.noDbMatch}</span>
             </div>
           ) : (
-            <img src={det.type === "Vehicle" ? CAR_IMG : AVATAR[0]} alt="" style={{ width:"100%", aspectRatio:"1/1", objectFit:"cover", borderRadius:"10px", display:"block", filter:"sepia(0.2)" }} />
+            <div style={{ width:"100%", aspectRatio:"1/1", borderRadius:"10px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", display:"flex", alignItems:"center", justifyContent:"center", padding:"10px" }}>
+              <p style={{ fontSize:"10px", color:"var(--gray-400)", textAlign:"center", lineHeight:1.5, margin:0 }}>{t.photosNotWired}</p>
+            </div>
           )}
           <span title={t.enrolledDbHint} style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)", cursor:"help" }}>{t.enrolledDb}</span>
         </div>
