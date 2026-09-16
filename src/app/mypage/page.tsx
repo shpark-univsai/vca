@@ -92,7 +92,7 @@ const T = {
     settings: "설정",
     myPage: "마이 페이지",
     myGrants: "이 계정이 열 수 있는 것",
-    myGrantsWho: "계정마다 따로 지정됩니다. 포털의 사용자 및 권한에서 관리자가 바꿉니다.",
+    myGrantsWho: "계정마다 따로 지정됩니다. Portal의 사용자 및 권한에서 관리자가 바꿉니다.",
     verbSearch: "인물 검색",
     verbExport: "증거 내보내기",
     profile: "프로필 정보",

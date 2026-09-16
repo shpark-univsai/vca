@@ -128,7 +128,7 @@ const T = {
     unnamedTarget: "직접 검색",
     exportEvidence: "증거 내보내기",
     exportEvidenceHint: "메타데이터와 관제요원의 판단을 파일로. 프레임은 참조만 하고 담지 않습니다.",
-    exportDenied: "이 계정에는 증거 내보내기 권한이 없습니다. 포털의 사용자 및 권한에서 관리자가 줄 수 있습니다.",
+    exportDenied: "이 계정에는 증거 내보내기 권한이 없습니다. Portal의 사용자 및 권한에서 관리자가 줄 수 있습니다.",
     exported: (place: string) => `증거를 내보냈습니다 — ${place}`,
     exportedDesc: "추출 사실이 이 프로젝트 기록에 남았습니다.",
     thresholdCost: (kept: number, total: number) => `후보 ${total}건 중 ${kept}건`,

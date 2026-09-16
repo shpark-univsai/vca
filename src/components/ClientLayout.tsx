@@ -246,7 +246,7 @@ function ScreenRefusedNotice({ screen, onDismiss }: { screen: string; onDismiss:
     },
     ko: {
       title: "이 화면은 권한이 없습니다",
-      body: (name: string) => `${name}${topicParticle(name)} 계정마다 따로 지정됩니다. 포털의 사용자 및 권한에서 관리자가 줍니다.`,
+      body: (name: string) => `${name}${topicParticle(name)} 계정마다 따로 지정됩니다. Portal의 사용자 및 권한에서 관리자가 줍니다.`,
       moved: "가진 화면으로 옮겨 두었습니다.",
       ok: "확인",
     },
