@@ -6,7 +6,7 @@ import { Search, Crown } from "lucide-react";
 import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, getFacePhoto, formatTimeAgo, districtIdAt } from "@/lib/mockData";
 import {
   useVcaStore, vcaEventsToLiveEvents, todaysDetectionHits, districtTally,
-  useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras, hasPosition,
+  useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras, type Camera,
 } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useOnValueChange } from "@/hooks/useOnValueChange";
@@ -64,11 +64,10 @@ const T = {
     outCams: "Out cams",
     availability: "Availability",
     searchDevices: "Search devices",
-    columns: { name: "NAME", status: "STATUS", type: "TYPE", info: "INFO", pin: "PIN" },
+    columns: { name: "NAME", status: "STATUS", info: "INFO", pin: "PIN" },
     devicesLoadFailed: "Couldn’t load devices.",
     retry: "Retry",
     noDevices: "No devices found.",
-    unknownZone: "Unknown",
     today: "TODAY",
     avail: "AVAIL",
     tabEvents: "EVENTS",
@@ -111,11 +110,10 @@ const T = {
     outCams: "중단된 카메라",
     availability: "가동률",
     searchDevices: "장비 검색",
-    columns: { name: "이름", status: "상태", type: "종류", info: "정보", pin: "고정" },
+    columns: { name: "이름", status: "상태", info: "정보", pin: "고정" },
     devicesLoadFailed: "장비 목록을 불러오지 못했습니다.",
     retry: "다시 시도",
     noDevices: "장비가 없습니다.",
-    unknownZone: "미확인",
     today: "오늘",
     avail: "가동률",
     tabEvents: "이벤트",
@@ -313,15 +311,19 @@ function describeArc(cx: number, cy: number, r: number, startAngle: number, endA
 // half-circle). The previous version drew 3 fixed decorative paths that never changed shape
 // regardless of `pct` — the gauge looked identical whether availability was 19% or 90%, which is
 // why it always read as "not filling in."
-function AvailabilityDonut({ pct, size = 92, hasCameras }: { pct: number; size?: number; hasCameras: boolean }) {
+function AvailabilityDonut({ pct, size = 92, hasCameras }: { pct?: number; size?: number; hasCameras: boolean }) {
   const height = size * (40 / 92);
+  // `pct` is optional because the figure arrives from a request. Absent is not zero: an arc drawn
+  // at 0 and a label reading "0%" are a measurement saying every camera is down, and the gauge
+  // would say it in the window before the answer comes back. No figure, no arc, and a dash.
+  const known = pct !== undefined && hasCameras;
   // Neutral gray by default; only shift to a semantic signal color when availability is
   // genuinely low (matches the red/green convention already used elsewhere in this file for
   // LIVE/OUT status). A site with no cameras registered is not a site at 0% — nothing is down
   // there, there is nothing there — so it reads as a dash in gray rather than an alarm.
-  const ringColor = hasCameras && pct < 50 ? "var(--danger-400)" : "var(--gray-400)";
+  const ringColor = known && pct < 50 ? "var(--danger-400)" : "var(--gray-400)";
   const cx = 46, cy = 40, r = 34, strokeWidth = 10;
-  const sweep = 180 * (Math.max(0, Math.min(100, pct)) / 100);
+  const sweep = known ? 180 * (Math.max(0, Math.min(100, pct)) / 100) : 0;
   const trackPath = describeArc(cx, cy, r, 270, 450);
   const fillPath = describeArc(cx, cy, r, 270, 270 + sweep);
   return (
@@ -329,7 +331,7 @@ function AvailabilityDonut({ pct, size = 92, hasCameras }: { pct: number; size?:
       <svg width={size} height={height} viewBox="0 0 92 40" fill="none">
         <path d={trackPath} stroke={ringColor} strokeOpacity={0.15} strokeWidth={strokeWidth} strokeLinecap="round" fill="none"/>
         {fillPath && <path d={fillPath} stroke={ringColor} strokeWidth={strokeWidth} strokeLinecap="round" fill="none"/>}
-        <text x="46" y="33" textAnchor="middle" fontSize="13" fontWeight="800" fill={ringColor} fontFamily="SUIT, sans-serif">{hasCameras ? `${pct}%` : "—"}</text>
+        <text x="46" y="33" textAnchor="middle" fontSize="13" fontWeight="800" fill={ringColor} fontFamily="SUIT, sans-serif">{known ? `${pct}%` : "—"}</text>
       </svg>
     </div>
   );
@@ -399,7 +401,7 @@ function StatusBadge({ status }: { status: string }) {
     <div style={{
       display:"inline-flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
       padding:"4px 8px", borderRadius:"12px", backgroundColor:"white",
-      border: isLive ? "1px solid rgba(22,163,74,0.3)" : "1px solid var(--danger-100)",
+      border: isLive ? "1px solid var(--success-200)" : "1px solid var(--danger-100)",
     }}>
       <div style={{ display:"flex", alignItems:"center", gap:"4px" }}>
         <div style={{ width: isLive ? 2 : 5, height: isLive ? 2 : 5, borderRadius:"50%", backgroundColor: isLive ? "var(--success-400)" : "var(--danger-400)", flexShrink:0 }} />
@@ -1118,14 +1120,15 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
   const devices = devicesData ?? [];
   const linkedCams = dashboardStats?.linkedCams ?? { count: 0, delta: 0, deltaPct: 0, down: false };
   const offlineCams = dashboardStats?.offlineCams ?? { count: 0, delta: 0, deltaPct: 0, down: false };
-  const availability = dashboardStats?.availability ?? 0;
+  // Undefined until the figure has been fetched, NOT `?? 0` — see AvailabilityDonut.
+  const availability = dashboardStats?.availability;
   const linkedCount  = devices.filter(d => d.status === "Live").length;
   const offlineCount = devices.filter(d => d.status === "Off").length;
 
-  // The list has 1000 rows to draw from, so there's no reason a page should ever look emptier
-  // than the space available for it — measure how tall the list container actually is and how
-  // tall one row actually renders at, and fill the page with exactly that many rows instead of
-  // a fixed guess. Only the true last page (1000 not evenly divisible) can ever come up short.
+  // No reason a page should ever look emptier than the space available for it — measure how tall
+  // the list container actually is and how tall one row actually renders at, and fill the page
+  // with exactly that many rows instead of a fixed guess. Only the true last page (the register's
+  // count not dividing evenly) can ever come up short.
   const listRef = useRef<HTMLDivElement>(null);
   const firstRowRef = useRef<HTMLDivElement>(null);
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
@@ -1220,9 +1223,18 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
       </div>
 
       {/* Table header */}
-      <div style={{ display:"grid", gridTemplateColumns:"76px 60px 40px 1fr 32px", padding:"6px 20px", flexShrink:0, gap:"4px" }}>
+      {/* HANDOFF NOTE: there was a TYPE column here, and every row of it said "Normal".
+          `Device.type` is a constant in lib/api/dashboard's cameraToDevice ("The store carries no
+          equivalent"), because the register has no camera type at all — not fixed/dome/PTZ, not
+          a channel kind, nothing. So the column was 61 identical cells presented as a per-camera
+          attribute, which is the shape SESSIONS rules out: a column nothing can fill is a promise
+          the screen cannot keep, and a reader who sees it never asks again what type a camera is.
+          It comes back when the register carries the field — the server must send a per-camera
+          type on the camera record, alongside maker/model/resolution which it already has room
+          for. Until then the width belongs to the name and the address, which are real. */}
+      <div style={{ display:"grid", gridTemplateColumns:"76px 60px 1fr 32px", padding:"6px 20px", flexShrink:0, gap:"4px" }}>
         {([
-          ["name", "left"], ["status", "left"], ["type", "center"], ["info", "right"], ["pin", "center"],
+          ["name", "left"], ["status", "left"], ["info", "right"], ["pin", "center"],
         ] as const).map(([key, align]) => (
           <span key={key} style={{
             fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.24px",
@@ -1234,8 +1246,8 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
       {/* Device list — flex:1 so pagination stays pinned to the sidebar's bottom (the standard
           pattern), but pageSize is measured from the actual available height (see the
           ResizeObserver below) so the page is filled with real rows instead of leaving a gap
-          above the pagination bar. Only the true last page (e.g. 1000 not divisible by pageSize)
-          can ever be short — that's unavoidable, not a bug. */}
+          above the pagination bar. Only the true last page (the register's count not divisible by
+          pageSize) can ever be short — that's unavoidable, not a bug. */}
       <div ref={listRef} style={{ flex:1, overflowY:"auto", minHeight:0 }}>
         {/* A failed fetch and a genuinely-empty filter used to look identical ("No devices
             found."), which reads as "your search matched nothing" when the real problem is the
@@ -1259,7 +1271,7 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
         )}
         {paginated.map((device, i) => {
           const isPinned = device.id === pinnedDeviceId;
-          const zone = nearestZoneName(device.lat, device.lng, cameras.filter(hasPosition), t.unknownZone);
+          const zone = zoneOfDevice(device.id, cameras);
           return (
             <div key={device.id} ref={i === 0 ? firstRowRef : undefined}>
             <div
@@ -1271,16 +1283,18 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
               onMouseEnter={e => { if (!isPinned) e.currentTarget.style.backgroundColor = "var(--gray-50)"; }}
               onMouseLeave={e => { if (!isPinned) e.currentTarget.style.backgroundColor = "transparent"; }}
               style={{
-                display:"grid", gridTemplateColumns:"76px 60px 40px 1fr 32px",
+                display:"grid", gridTemplateColumns:"76px 60px 1fr 32px",
                 alignItems:"center", padding:"10px 20px", gap:"4px", cursor:"pointer",
                 backgroundColor: isPinned ? "var(--gray-100)" : "transparent", transition:"background-color 0.1s",
               }}>
               <div style={{ display:"flex", flexDirection:"column", gap:"1px", overflow:"hidden" }}>
                 <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-600)", letterSpacing:"-0.24px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{device.name}</span>
-                <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-400)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{zone}</span>
+                {/* Only when the register holds one — see zoneOfDevice. The row is the camera's
+                    name and, under it, where the register says that camera is; with no zone on
+                    record there is no second line rather than a guessed one. */}
+                {zone && <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-400)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{zone}</span>}
               </div>
               <div><StatusBadge status={device.status} /></div>
-              <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-600)", textAlign:"center", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{device.type}</span>
               <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-600)", textAlign:"right", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{device.ip}</span>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"center", padding:"2px" }}>
                 <TablePinIcon active={isPinned} />
@@ -1313,22 +1327,33 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
   );
 }
 
-/* ── Collapsed sidebar (60px) ── */
-// Devices only carry lat/lng, not a location name — approximate one from the nearest
-// registered camera zone rather than inventing a label with no data behind it.
-// Takes the point as possibly-absent: a device with no surveyed position has no nearest anything,
-// and answering "Unknown" is the truthful result rather than measuring from 0,0.
-function nearestZoneName(lat: number | undefined, lng: number | undefined, cameras: { name: string; lat: number; lng: number }[], unknown = "Unknown"): string {
-  if (lat === undefined || lng === undefined) return unknown;
-  let best = cameras[0];
-  let bestDist = Infinity;
-  for (const c of cameras) {
-    const d = (c.lat - lat) ** 2 + (c.lng - lng) ** 2;
-    if (d < bestDist) { bestDist = d; best = c; }
-  }
-  return best?.name ?? unknown;
+/**
+ * A device's zone, off the register, by id.
+ *
+ * REPLACES nearestZoneName, which measured to the closest camera in the register and returned
+ * that camera's NAME. Its own comment said devices "only carry lat/lng, not a location name", and
+ * that premise stopped being true when the device list became a projection of the register (one
+ * camera population, 2026-09-10): `cameraToDevice` in lib/api/dashboard copies the camera's id
+ * straight through, so `device.id === camera.id` and the zone is a lookup.
+ *
+ * What the old approximation actually produced:
+ *   - a camera NAME under a heading that means zone — and since the nearest camera to a device is
+ *     normally itself (the device's coordinates ARE the camera's), the row printed its own name
+ *     twice. Measured in the browser before this change: "Geylang NC1 / Geylang NC1",
+ *     "Orchard MRT / Orchard MRT", every row of the table; after: "Geylang NC1 / Geylang",
+ *     "Orchard MRT / Orchard";
+ *   - "Unknown" for a camera nobody has surveyed, e.g. "Depot Bay 2", whose zone the register
+ *     records as Kallang. No coordinate is not no zone.
+ *
+ * Absent zone (the new-project wizard registers cameras with an empty one) answers undefined, and
+ * the caller draws nothing. A blank is a blank; it is not a place called "Unknown".
+ */
+function zoneOfDevice(deviceId: string, cameras: Camera[]): string | undefined {
+  const zone = cameras.find(c => c.id === deviceId)?.zone;
+  return zone?.trim() ? zone : undefined;
 }
 
+/* ── Collapsed sidebar (60px) ── */
 function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, onPinDevice, pinnedDeviceId }: {
   position?: "left" | "right";
   onEventSelect?: (event: LiveEvent | null) => void;
@@ -1343,7 +1368,8 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
   const { vipTargets, eventsToday } = useEventCounts();
   const activeProjectId = useActiveProjectId();
   const { data: dashboardStats } = useApiData(() => getDashboardStats(activeProjectId), [activeProjectId]);
-  const availability = dashboardStats?.availability ?? 0;
+  // Undefined until the figure has been fetched, NOT `?? 0` — see AvailabilityDonut.
+  const availability = dashboardStats?.availability;
   // The same figure the expanded sidebar shows under "today's detections", not a sum of the two
   // row counts. Those count ROWS, with no date filter at all — a Tracking row is one row and
   // several hits, and yesterday's rows are still in the list — so the collapsed badge and the
@@ -1403,14 +1429,20 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
           // genuinely low (<50%), not a fixed purple regardless of value — and no alarm at a site
           // with no cameras registered, where nothing is down because nothing is there.
           (() => {
-            const low = cameras.length > 0 && availability < 50;
+            // Only once there is a figure to judge; no figure is not a low figure. `cameras`
+            // comes from the store and is populated on the first render while `availability`
+            // comes from a request that resolves a moment later, so with `?? 0` this test was
+            // true for that window on every mount: the panel opened with a red AVAIL 0% — every
+            // camera on the site is down — and then corrected itself to 96%.
+            const low = availability !== undefined && cameras.length > 0 && availability < 50;
+            const shown = availability !== undefined && cameras.length > 0 ? `${availability}%` : "—";
             return (
               <div style={{
                 width:"38px", height:"38px", borderRadius:"10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
                 backgroundColor: low ? "var(--danger-100)" : "var(--gray-100)", border: low ? "1px solid var(--danger-200)" : "1px solid var(--gray-200)",
               }}>
                 <span style={{ fontSize:"10px", fontWeight:600, color: low ? "var(--danger-400)" : "var(--gray-400)", letterSpacing:"0.3px" }}>{t.avail}</span>
-                <span style={{ fontSize:"13px", fontWeight:700, color: low ? "var(--danger-400)" : "var(--gray-400)", lineHeight:1 }}>{cameras.length > 0 ? `${availability}%` : "—"}</span>
+                <span style={{ fontSize:"13px", fontWeight:700, color: low ? "var(--danger-400)" : "var(--gray-400)", lineHeight:1 }}>{shown}</span>
               </div>
             );
           })()
@@ -1489,13 +1521,13 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
         } else {
           const device = hovered.item as Device;
           const isLive = device.status === "Live";
-          const zone = nearestZoneName(device.lat, device.lng, cameras.filter(hasPosition), t.unknownZone);
+          const zone = zoneOfDevice(device.id, cameras);
           return (
             <div style={{ position:"fixed", ...(position === "right" ? { right:"64px" } : { left:"64px" }), top: clampedTop, zIndex:1000, width:"180px", backgroundColor:"var(--gray-900)", border:"1px solid var(--gray-700)", borderRadius:"12px", padding:"10px", boxShadow:"0 4px 20px rgba(24, 17, 39,0.2)", pointerEvents:"none" }}>
-              <div style={{ fontSize:"10px", color:"var(--gray-400)", marginBottom:"3px" }}>{zone}</div>
+              {zone && <div style={{ fontSize:"10px", color:"var(--gray-400)", marginBottom:"3px" }}>{zone}</div>}
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <span style={{ fontSize:"12px", fontWeight:800, color:"white" }}>{device.name}</span>
-                <span style={{ fontSize:"10px", fontWeight:600, color: isLive ? "var(--success-400)" : "var(--danger-400)", backgroundColor: isLive ? "rgba(22, 163, 74,0.1)" : "rgba(244,63,94,0.1)", padding:"2px 6px", borderRadius:"4px" }}>
+                <span style={{ fontSize:"10px", fontWeight:600, color: isLive ? "var(--success-400)" : "var(--danger-400)", backgroundColor: "var(--gray-800)", padding:"2px 6px", borderRadius:"4px" }}>
                   {isLive ? "● LIVE" : "○ OFF"}
                 </span>
               </div>
