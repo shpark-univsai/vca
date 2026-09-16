@@ -14,7 +14,7 @@
 | 세션 | 잡은 파일 | 상태 |
 |---|---|---|
 | vca-84 | **`src/components/ClientLayout.tsx` · `MapView.tsx`** | 하드코딩 사냥(지도·셸) 진행 중. `Sidebar.tsx`는 `fd4c82c`로 비웠습니다 |
-| vca-cf | — **세션 종료(2026-09-16)** | 인수 항목은 아래 §1-A |
+| vca-cf | — (비었습니다) | **세션 종료.** 인수인계 때 "에이전트 미커밋 변경 있음"으로 넘겼는데, 그 뒤 에이전트가 끝나 제가 검증하고 `0f75742`로 올렸습니다. **남은 미커밋 없습니다.** 붙일 곳 하나 남김: `bodyScrolls`를 `PortalSettingsPage.tsx:741`(프로젝트 삭제)에 전달 — `AccessChangeModal`에는 절대 주지 말 것(주석에 이유 있음) |
 | vca-hv | — 종료 | `mypage`·`Navbar`·`RedmapPage` 커밋 완료. 섞였던 두 auth 파일은 `4d51589`로 정리됨 |
 
 **`login/page.tsx` · `forgot-password/page.tsx`에 두 세션의 미커밋 변경이 섞여
