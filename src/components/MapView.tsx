@@ -85,7 +85,6 @@ const T = {
     viewLive: "View Live in Best Frame",
     lastSeen: "LAST SEEN",
     fullTrace: "View Full Trace on Redmap",
-    unknownZone: "Unknown",
     /**
      * The chip sitting on a stretch of trail whose stops could not be drawn.
      *
@@ -128,7 +127,6 @@ const T = {
     viewLive: "베스트 프레임에서 실시간 보기",
     lastSeen: "마지막 검출",
     fullTrace: "레드맵에서 전체 경로 보기",
-    unknownZone: "미확인",
     noCoordsChipOne: (num: string) => `${num} 좌표 없음`,
     noCoordsChipMany: (from: string, to: string, n: number) => `${from}–${to} 좌표 없음 ${n}곳`,
     noCoordsWhy: "좌표가 등록되지 않아 지도에 표시할 수 없습니다",
@@ -190,7 +188,7 @@ function cameraDotTooltipHtml(cam: Camera, lang: AppLanguage): string {
     <div style="font-family:'SUIT',system-ui,sans-serif;padding:8px 10px;display:flex;flex-direction:column;gap:3px;min-width:120px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.24px;white-space:nowrap">${cam.name}</span>
-        <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:999px;flex-shrink:0;color:${isLive ? "var(--success-400)" : "var(--danger-400)"};background:${isLive ? "rgba(22, 163, 74,0.12)" : "rgba(244,63,94,0.12)"}">
+        <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:999px;flex-shrink:0;color:${isLive ? "var(--success-400)" : "var(--danger-400)"};background:${isLive ? "var(--success-100)" : "var(--danger-100)"}">
           ${isLive ? t.live : t.offline}
         </span>
       </div>
@@ -416,15 +414,29 @@ function getMarkerHTML(type: string, photoUrl: string): string {
   `;
 }
 
-function nearestZoneName(lat: number, lng: number, cameras: { name: string; lat: number; lng: number }[], unknown = "Unknown"): string {
-  let best = cameras[0];
-  let bestDist = Infinity;
-  for (const c of cameras) {
-    const d = (c.lat - lat) ** 2 + (c.lng - lng) ** 2;
-    if (d < bestDist) { bestDist = d; best = c; }
-  }
-  return best?.name ?? unknown;
-}
+/**
+ * DELETED: nearestZoneName, which answered "which zone is this device in?" by measuring to the
+ * closest camera in the register and printing THAT CAMERA'S NAME.
+ *
+ * Three things were wrong with it, and none of them showed up as an error.
+ *
+ *   - It was a name, not a zone. The register carries `Camera.zone` ("Kallang", "Perimeter"),
+ *     and this printed `Camera.name` ("Geylang NC1") under a location pin, so the popup's second
+ *     line was the same string as the title above it — a device's row said its own name twice.
+ *   - It was a guess where an id join was available. A Device IS a register camera projected
+ *     into display shape (lib/api/dashboard's cameraToDevice, one register since 2026-09-10), so
+ *     `device.id === camera.id` and the camera's own zone can simply be read. Recovering an
+ *     entity by proximity is the coordinate version of recovering it by name, which this repo
+ *     bans for the reason SESSIONS records: the join key is the id.
+ *   - Its fallback erased a fact instead of inventing one. A camera nobody has surveyed has no
+ *     nearest anything, so it answered "Unknown" — for "Depot Bay 2", whose zone the register
+ *     knows perfectly well ("Kallang"). Absent coordinates are not an absent zone.
+ *
+ * And the wrong-camera name did not stay on the popup: it was passed to __vcaGoLiveCam as the
+ * deep-link hint, which BestFramePage resolves as a camera NAME (see cameraForLocationHint). So
+ * "View Live" on one device could open another camera's feed — the exact failure that helper's
+ * own comment was written about. The hint is now the pinned camera's own name.
+ */
 
 /**
  * `canGoLive` decides whether the "view live" button is in the markup at all.
@@ -433,28 +445,47 @@ function nearestZoneName(lat: number, lng: number, cameras: { name: string; lat:
  * this string is built during render, so asking the window here would sometimes draw the button
  * and sometimes not for the same account. A button whose handler is missing does nothing when
  * pressed, which is the one outcome worth ruling out.
+ *
+ * `cam` is the register entry this device is a projection of, found by id. Everything the popup
+ * says beyond name and status comes from it — the zone, the last signal, and the deep link — and
+ * each of those is drawn only when the register actually holds it.
  */
-function getDevicePopupHTML(device: Device, zoneName: string, lang: AppLanguage, canGoLive: boolean): string {
+function getDevicePopupHTML(device: Device, cam: Camera | undefined, lang: AppLanguage, canGoLive: boolean): string {
   const t = T[lang];
   const isLive = device.status === "Live";
+  // Blank in the register (the new-project wizard registers cameras without one) reads as absent,
+  // not as a zone called "". No row rather than an empty row under a location pin.
+  const zone = cam?.zone?.trim() ? cam.zone : null;
+  /**
+   * "Out since 14:02" needs a time that exists. `Camera.lastSeenAt` is absent until a camera has
+   * reported in at all, and the projection this popup used to read fills that absence with an em
+   * dash — so an offline camera that has never once been reachable said "Out since —".
+   *
+   * The OUT badge above already carries the fact that it is down; this row only adds the moment,
+   * and where there is no moment it is not drawn. (The register can tell "dropped" from "never
+   * contacted" — isAwaitingFirstContact in vcaStore — but that is a sentence this popup does not
+   * have, and a wrong one is worse than a missing one.)
+   */
+  const outSince = !isLive && cam?.lastSeenAt ? formatTimeAgo(cam.lastSeenAt, lang) : null;
   return `
     <div style="font-family:'SUIT',system-ui,sans-serif;width:200px;padding:12px 14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-right:18px;gap:8px">
         <span style="font-size:13px;font-weight:800;color:var(--gray-900);letter-spacing:-0.26px">${device.name}</span>
-        <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;color:${isLive ? "var(--success-400)" : "var(--danger-400)"};background:${isLive ? "rgba(22, 163, 74,0.12)" : "rgba(244,63,94,0.12)"};flex-shrink:0">
+        <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;color:${isLive ? "var(--success-400)" : "var(--danger-400)"};background:${isLive ? "var(--success-100)" : "var(--danger-100)"};flex-shrink:0">
           ${isLive ? t.live : t.out}
         </span>
       </div>
+      ${zone === null ? "" : `
       <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6.3 10.9C7.23 10.1 10 7.5 10 5c0-2.21-1.79-4-4-4S2 2.79 2 5c0 2.5 2.77 5.1 3.7 5.9.09.06.19.1.3.1s.21-.04.3-.1Z" stroke="var(--gray-500)" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="5" r="1.5" stroke="var(--gray-500)"/></svg>
-        <span style="font-size:11px;font-weight:600;color:var(--gray-600)">${zoneName}</span>
-      </div>
-      ${!isLive ? `
+        <span style="font-size:11px;font-weight:600;color:var(--gray-600)">${zone}</span>
+      </div>`}
+      ${outSince !== null ? `
       <div style="display:flex;align-items:center;gap:5px">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="var(--danger-400)" stroke-linecap="round"/><path d="M6 3v3l2 1.5" stroke="var(--danger-400)" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span style="font-size:11px;font-weight:600;color:var(--danger-400)">${t.outSince(device.lastSeen)}</span>
-      </div>` : !canGoLive ? "" : `
-      <button onclick="window.__vcaGoLiveCam && window.__vcaGoLiveCam('${escapeAttr(zoneName)}')"
+        <span style="font-size:11px;font-weight:600;color:var(--danger-400)">${t.outSince(outSince)}</span>
+      </div>` : !isLive || !canGoLive || !cam ? "" : `
+      <button onclick="window.__vcaGoLiveCam && window.__vcaGoLiveCam('${escapeAttr(cam.name)}')"
         style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
         background:var(--gray-900);color:white;border:none;border-radius:6px;padding:7px 0;
         font-family:'SUIT',system-ui,sans-serif;font-size:11px;font-weight:700;cursor:pointer">
@@ -601,8 +632,12 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
   // Camera run state comes from one place — see lib/realtime/cameraStatus.ts. The backend owns the
   // realtime layer and replaces that module's body at intake; nothing here changes.
   const cameraStatus = useCameraStatus();
-  const camerasRef = useRef(cameras);
-  useEffect(() => { camerasRef.current = cameras; }, [cameras]);
+  // The FULL register, position or not — the pinned-device popup looks its camera up by id to
+  // read the zone and the last signal off the register entry, and neither of those facts depends
+  // on anybody having surveyed where the camera stands. (This replaces a ref over the
+  // position-filtered list, whose only reader was the nearest-camera guess that is now gone.)
+  const allCamerasRef = useRef(allCameras);
+  useEffect(() => { allCamerasRef.current = allCameras; }, [allCameras]);
 
   // Recently-detected locations — feeds the district-cluster/recent-activity effect below
   // directly (no ref needed there since that effect already re-runs on every change).
@@ -899,8 +934,19 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         // left undrawn rather than asserted to have caught nobody.
         const SAME_SPOT_DEGREES = 0.0006; // ~65m at this latitude
         const hitSpots = [...bySpot.values()].map(spot => spot[0]);
+        // WHICH district a camera belongs to comes from the register, not from its coordinates —
+        // districtIdForCameraZone, the same question the pill above answered when it counted this
+        // district's cameras. It was asked two different ways here: the pill by zone, these dots
+        // by nearest centre, and the two disagree on five of proj-sg's ten named cameras (Geylang
+        // NC1/NC2 read as Kallang by geometry, Orchard MRT as Novena — see
+        // project_vca_district_vip_count). So the pill said "5 cams" and the map drew a different
+        // five, which is the denominator contradicting itself inside one click.
+        //
+        // Read off the positioned list: a camera the register places in this district but nobody
+        // has surveyed has no dot to draw, and it is left out of the drawing rather than given a
+        // guessed one. Detections stay geometric (districtIdAt) — a hit carries no camera id.
         cameras
-          .filter(c => districtIdAt(c.lat, c.lng) === districtFilter)
+          .filter(c => districtIdForCameraZone(c.zone, c.lat, c.lng) === districtFilter)
           .filter(c => !hitSpots.some(h =>
             Math.abs(h.lat - c.lat) < SAME_SPOT_DEGREES && Math.abs(h.lng - c.lng) < SAME_SPOT_DEGREES))
           .forEach(cam => {
@@ -1503,16 +1549,18 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
       });
       deviceMarkerRef.current = L.marker([lat, lng], { icon }).addTo(map);
 
-      const zoneName = nearestZoneName(lat, lng, camerasRef.current, t.unknownZone);
+      // By id. A pinned device IS a register camera (cameraToDevice in lib/api/dashboard projects
+      // one into the other), so the entry behind it is a lookup rather than a measurement.
+      const cam = allCamerasRef.current.find(c => c.id === pinnedDevice.id);
       const popup = L.popup({
         offset: [0, -30], className: "vca-custom-popup", closeButton: true, autoPan: false, maxWidth: 220,
       })
         .setLatLng([lat, lng])
-        .setContent(getDevicePopupHTML(pinnedDevice, zoneName, lang, onGoLiveCam !== undefined))
+        .setContent(getDevicePopupHTML(pinnedDevice, cam, lang, onGoLiveCam !== undefined))
         .openOn(map);
       devicePopupRef.current = popup;
     });
-  }, [pinnedDevice, mapReady, lang, t.unknownZone]);
+  }, [pinnedDevice, mapReady, lang]);
 
   return (
     <div
