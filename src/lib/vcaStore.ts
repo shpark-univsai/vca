@@ -4334,29 +4334,40 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const where = canEnterPortal(permission)
         ? (appAccess ? "Portal and the app" : "Portal only")
         : "the app only";
-      // Losing the app takes person search with it. appSearch is a grant on a surface the
-      // account can no longer reach, and the row went on showing its "Search on" badge — the
-      // most sensitive grant in the product reading as live on somebody who cannot use it.
-      // Logged separately, because granting and revoking it is its own audited act.
+      /**
+       * CLOSING THE APP DOOR NO LONGER ERASES WHAT IS BEHIND IT.
+       *
+       * This used to set `appSearch: false, appExport: false, appScreens: []` whenever app access
+       * went away. The motive was real — the row went on showing a "Search on" badge for somebody
+       * who could not reach the app, and the most sensitive grant in the product read as live on
+       * an account that could not use it. But the fix destroyed the data to correct a label, and
+       * it cost more than it bought:
+       *
+       *   - Turning the app back on produced an account holding NOTHING while `grantMode` still
+       *     said "preset". The row read "Operator" and the gate refused with "noScreens" — a
+       *     preset follower with none of the preset's screens.
+       *   - Nobody could be restored. A preset account could in principle be recomputed, but a
+       *     custom account's individual set was gone for good, so the administrator's only route
+       *     back was to pick eleven toggles again from memory.
+       *   - The erasure was itself unreadable. The users table now shows where each account's
+       *     grants come from, and two seeded accounts read "no screens" — with the values wiped
+       *     there is no way to tell "never granted" from "app was switched off and on again".
+       *     Clearing did not remove a false fact; it removed the history.
+       *
+       * So the grants stay, and `appAccess` is what answers "can this person do it". The table
+       * reads the two together (`appSearch && appAccess`), which is the honest form of the
+       * question the column was always asking. Same rule as coordinates: do not invent a value
+       * for something unknown, and do not delete a known one to make a label agree.
+       */
       const at = new Date().toISOString();
-      // Screens and export go the same way search does, and for the same reason: they are grants
-      // on a surface the account can no longer reach, and a row still showing them reads as live.
-      const searchDropped = !appAccess && user?.appSearch === true;
       const entries: AuditEvent[] = [clientAudit({
         projectId: user?.projectIds[0],
         message: `${user?.name ?? userId} may now use ${where} (role: ${permission})`,
         actor: SIGNED_IN_USER.name, at,
       })];
-      if (searchDropped) {
-        entries.unshift(clientAudit({
-          projectId: user?.projectIds[0],
-          message: `Person search revoked with app access: ${user?.name ?? userId}`,
-          actor: SIGNED_IN_USER.name, at,
-        }));
-      }
       return {
         portalUsers: state.portalUsers.map(u => (
-          u.id === userId ? { ...u, permission, appAccess, ...(appAccess ? null : { appSearch: false, appExport: false, appScreens: [] }) } : u
+          u.id === userId ? { ...u, permission, appAccess } : u
         )),
         auditLog: [...entries, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
