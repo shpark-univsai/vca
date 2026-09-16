@@ -1039,6 +1039,14 @@ interface VcaStoreState {
    * that caused it.
    */
   setAppGrant: (userId: string, grant: AppScreen | "search" | "export", allowed: boolean) => void;
+  /**
+   * Narrow this account to a set of cameras, or hand it all of them again with `undefined`.
+   *
+   * `undefined` and `[]` are different answers and both are kept: all, and none. The audit line
+   * says which of the three happened, because "scoped to 4 cameras" and "scoped to none" are not
+   * the same event to whoever reads the log afterwards.
+   */
+  setCameraScope: (userId: string, cameraIds: string[] | undefined) => void;
   /** Which project the monitoring app is watching. Empty until something picks one. */
   activeProjectId: string;
   setActiveProjectId: (projectId: string) => void;
@@ -1676,10 +1684,31 @@ export function getActiveProjectId(): string {
   return resolveActiveProject(s.activeProjectId, s.portalUsers, s.projects)?.id ?? "";
 }
 
+/**
+ * The cameras of a project that this account may watch.
+ *
+ * Portal deliberately does NOT go through here — an administrator manages every camera on the
+ * site, including the ones they are not scoped to watch, and `camerasInProject` stays the
+ * unrestricted answer for it.
+ *
+ * Same stand-in rule as canSearchInApp: an identity that resolves to nobody sees everything, so
+ * the mock stays explorable. A real build reads the scope off the session.
+ */
+export function camerasVisibleTo(cameras: Camera[], projectId: string, users: PortalUser[]): Camera[] {
+  const inProject = camerasInProject(cameras, projectId);
+  const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
+  if (!me || me.cameraIds === undefined) return inProject;
+  const allowed = new Set(me.cameraIds);
+  return inProject.filter(c => allowed.has(c.id));
+}
+
 export function useProjectCameras(): Camera[] {
   const cameras = useVcaStore(s => s.cameras);
+  // Raw slice out of the selector, filtering in the memo — a selector that builds a new array
+  // every call never settles. This page has been killed by that twice.
+  const users = useVcaStore(s => s.portalUsers);
   const projectId = useActiveProjectId();
-  return useMemo(() => camerasInProject(cameras, projectId), [cameras, projectId]);
+  return useMemo(() => camerasVisibleTo(cameras, projectId, users), [cameras, projectId, users]);
 }
 
 /**
@@ -2005,6 +2034,28 @@ export interface PortalUser {
    * makes zero impossible. See GateDenial "noScreens".
    */
   appScreens?: AppScreen[];
+  /**
+   * Which cameras of its projects this account may watch. UNDEFINED MEANS ALL OF THEM.
+   *
+   * Absent is the default and it is not the same as empty. Every account that exists today has no
+   * value here and sees everything its projects hold, which is what it has always done — a new
+   * optional field must not silently narrow anybody. `[]` is a real state meaning none, the same
+   * way `appScreens: []` is, and the gate has to handle it rather than the forms preventing it
+   * everywhere: bulk CSV invitations and server-made accounts do not pass a picker.
+   *
+   * ORTHOGONAL TO grantMode. A preset says which screens a job opens; which cameras it opens them
+   * on is a fact about the site, not about the job, and the same job has different cameras at
+   * different installations. So this is editable in preset mode too and a preset never carries it.
+   *
+   * Camera ids, not zones. A zone is a label an installer typed and can retype; scoping by it
+   * would silently widen somebody's access the day a camera's zone is corrected — the same class
+   * of mistake as joining detections to cameras by name.
+   *
+   * HANDOFF NOTE: the front end filtering a list is not the control. The server must scope the
+   * streams and the search results it returns, or an account narrowed here still receives
+   * everything and only the screen is hiding it.
+   */
+  cameraIds?: string[];
   /**
    * May take a sighting out of the console as a file. Undefined means not granted.
    *
@@ -4495,6 +4546,22 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         // grants. Detaching copies nothing because there is nothing to copy.
         portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, grantMode: "custom" as GrantMode } : u)),
         auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  setCameraScope: (userId, cameraIds) =>
+    set(state => {
+      const user = state.portalUsers.find(u => u.id === userId);
+      if (!user) return state;
+      const message = cameraIds === undefined
+        ? `Camera scope for ${user.name} cleared — every camera on their projects`
+        : cameraIds.length === 0
+        ? `Camera scope for ${user.name} set to none`
+        : `Camera scope for ${user.name} set to ${cameraIds.length} camera(s)`;
+      return {
+        portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, cameraIds } : u)),
+        auditLog: [clientAudit({
+          projectId: user.projectIds[0], message, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   setAppGrant: (userId, grant, allowed) =>
