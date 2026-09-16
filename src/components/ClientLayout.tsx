@@ -20,7 +20,7 @@ import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
 import {
   useVcaStore, currentPortalUser, screensFor,
-  camerasInProject, hasPosition, getActiveProjectId, useActiveProjectId, watchedPersonsInProject,
+  camerasInProject, getActiveProjectId, useActiveProjectId, watchedPersonsInProject,
   type AppScreen, type Camera,
 } from "@/lib/vcaStore";
 import { useLanguage } from "@/lib/i18n";
@@ -66,13 +66,30 @@ const SIDEBAR_POSITION_KEY = "vca-sidebar-position";
 // cannot check in Portal — and the map's ping matched positions against that pool while the device
 // list counted the register, so the same site had two camera populations with two different
 // counts. One register (decided 2026-09-10).
-// A detection also has to land somewhere the map can draw: the event carries lat/lng, and a
-// camera whose position nobody has surveyed yet has none to give. Registering such a camera is
-// allowed on purpose (see Camera.lat), so this filters rather than assuming.
+// Not filtered by position, on purpose.
+//
+// This used to end in `.filter(hasPosition)`, which said "a camera whose position nobody has
+// surveyed cannot produce a detection". That is false. A camera detects people because it is
+// pointed at them; whether a surveyor has written down where it stands is a separate fact about
+// the register, and it changes nothing about what the lens sees. The filter folded "we cannot draw
+// this on the map" into "this cannot detect", and the consequence was a running camera that is
+// live in the device list, streaming, and countable in Portal, yet silently incapable of ever
+// producing a sighting — an absence that reads as a quiet detection gap rather than a missing
+// survey.
+//
+// The reason it was left in was that releasing it hands a position-less sighting to the map, the
+// district roll-up and the map ping, none of which could take absence at the time. All three can
+// now:
+//   - MapView filters `useProjectCameras()` through hasPosition once, and the 16 geo computations
+//     downstream read that narrowed list;
+//   - districtIdAt(lat?, lng?) answers `undefined` for a point with no coordinate, and all six
+//     district-judgement call sites take that answer;
+//   - a trail's gap segment renders as a dashed leg with a "no coordinate" chip instead of a
+//     straight line through a place the person was never at.
+// So absence travels now, and the filter is what was lying.
 function simulationCameras(projectId: string) {
   return camerasInProject(useVcaStore.getState().cameras, projectId)
-    .filter(c => runStateOf(c.status) === "running")
-    .filter(hasPosition);
+    .filter(c => runStateOf(c.status) === "running");
 }
 
 function hashStringToIndex(s: string, mod: number): number {
@@ -91,11 +108,11 @@ function hashStringToIndex(s: string, mod: number): number {
 // regular cameras (deterministic from their id, so stable across ticks/reloads) keeps most
 // sightings repeating at the same camera (stays a plain VIP row) and bounds any real trail to at
 // most those 3 cameras, instead of growing unbounded.
-// The pool is already narrowed to cameras that have a position (see simulationCameras), and the
-// return type says so — a simulated detection carries lat/lng, so losing the narrowing here would
-// only push the same question one line down.
-type PlacedCamera = Camera & { lat: number; lng: number };
-function regularCamerasForPerson(personId: string, pool: PlacedCamera[]): PlacedCamera[] {
+// Plain `Camera`, not a position-narrowed one. The pool is every running camera at the site now
+// (see simulationCameras), so a regular camera may be one nobody has surveyed, and a sighting at
+// it carries no coordinate. LiveEvent.lat/lng and VcaEvent.lat/lng are already optional, which is
+// where that absence goes.
+function regularCamerasForPerson(personId: string, pool: Camera[]): Camera[] {
   return [
     pool[hashStringToIndex(personId, pool.length)],
     pool[hashStringToIndex(`${personId}-alt1`, pool.length)],
