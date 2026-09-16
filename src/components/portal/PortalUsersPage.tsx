@@ -251,18 +251,24 @@ const T = {
     setupBadgeExpired: "Setup code expired",
     viewSetupCode: "View setup code",
     setupExpires: (days: number) => `Expires in ${days} days`,
-    soleAdminTitle: "Only one administrator can sign in",
+    // OWNER, not "administrator". The condition behind this banner counts canManageAccess — the
+    // owner role — and the copy said administrator, which is a DIFFERENT role in the same picker
+    // (permOwner vs permAdmin). Somebody following the instruction promotes an Admin, the count
+    // does not move, the banner stays, and the product reads as broken. The comment over the
+    // condition already recorded that the COUNT was fixed to owners; the sentence was not.
+    // Korean was worse: this family called one role 관리자, 최고관리자 and 소유자 in four strings.
+    soleAdminTitle: "Only one owner can sign in",
     /* Was "there is no way back in", which is no longer true and was arguably never quite true:
        the server promotes its seed account to owner on boot when no active owner is left. What IS
        true is that the way back is not in Portal — it needs somebody with access to the machine,
        which on an isolated site may be a different company and a scheduled visit. The named
        recovery command is deliberately absent until it exists; naming it now would be a promise
        this console cannot keep. */
-    soleAdminBody: "Granting permissions is an administrator-only power, and there is no supplier account behind this installation. If this one account is locked out, nobody here can grant anything — recovering it takes someone with access to the server itself, not Portal. Make a second person an administrator.",
+    soleAdminBody: "Granting permissions is an owner-only power, and there is no supplier account behind this installation. If this one account is locked out, nobody here can grant anything — recovering it takes someone with access to the server itself, not Portal. Make a second person an owner.",
     // Two sentences, because this renders as a footnote inside a dropdown. The reasoning behind the
     // rule — with nobody in this role no one can grant permissions and there is no way back in —
     // belongs in isLastActiveAdmin's comment, not in a 280px menu.
-    lastAdminReason: "The only administrator who can sign in. Make someone else an administrator first.",
+    lastAdminReason: "The only owner who can sign in. Make someone else an owner first.",
     lastAdminRoleFixed: "The only owner — the role cannot be changed until there is another one.",
     tempExpires: (hours: number) => `Expires in ${hours} hours`,
     tempDone: "Done",
@@ -348,7 +354,7 @@ const T = {
     guideViewOnly: "보기만",
     guideView: "보기",
     guideNone: "접근 없음",
-    guideSameNote: "나머지 Portal 화면은 모두 설정 행과 똑같이 동작합니다 — 소유자와 관리자의 차이는 하나뿐이고, 그게 첫 줄입니다.",
+    guideSameNote: "나머지 Portal 화면은 모두 설정 행과 똑같이 동작합니다 — 최고관리자와 관리자의 차이는 하나뿐이고, 그게 첫 줄입니다.",
     guideAppHeading: "앱 안에서",
     guideAppSearchNote: "인물 검색은 계정마다 따로 부여하며 Portal 역할과 무관합니다 — 앱 전용 운영자가 가질 수도 있고, Portal 관리자가 없을 수도 있습니다.",
     guideClose: "닫기",
@@ -471,16 +477,16 @@ const T = {
     setupBadgeExpired: "설치 코드 만료",
     viewSetupCode: "설치 코드 보기",
     setupExpires: (days: number) => `${days}일 후 만료`,
-    soleAdminTitle: "로그인 가능한 관리자가 한 명입니다",
-    soleAdminBody: "권한 부여는 관리자만 할 수 있고, 이 설치에는 공급사 계정이 없습니다. 이 한 계정이 잠기면 여기서는 아무도 권한을 부여할 수 없습니다 — 되돌리는 일은 Portal이 아니라 서버에 접근할 수 있는 사람의 몫입니다. 두 번째 관리자를 지정하세요.",
-    lastAdminReason: "로그인할 수 있는 유일한 관리자입니다. 다른 사람을 먼저 관리자로 지정하세요.",
-    lastAdminRoleFixed: "유일한 소유자입니다 — 다른 소유자가 생기기 전까지 역할을 바꿀 수 없습니다.",
+    soleAdminTitle: "로그인 가능한 최고관리자가 한 명입니다",
+    soleAdminBody: "권한 부여는 최고관리자만 할 수 있고, 이 설치에는 공급사 계정이 없습니다. 이 한 계정이 잠기면 여기서는 아무도 권한을 부여할 수 없습니다 — 되돌리는 일은 Portal이 아니라 서버에 접근할 수 있는 사람의 몫입니다. 두 번째 최고관리자를 지정하세요.",
+    lastAdminReason: "로그인할 수 있는 유일한 최고관리자입니다. 다른 사람을 먼저 최고관리자로 지정하세요.",
+    lastAdminRoleFixed: "유일한 최고관리자입니다 — 다른 최고관리자가 생기기 전까지 역할을 바꿀 수 없습니다.",
     reactivateUser: "재활성화",
     suspendUser: "정지",
     removeUser: "제거",
 
     confirmSuspendTitle: (name: string) => `${name} 님을 정지할까요?`,
-    confirmSuspendBody: "즉시 로그아웃되며, 소유자가 다시 활성화하기 전까지 로그인할 수 없습니다. 등록한 내용은 삭제되지 않습니다.",
+    confirmSuspendBody: "즉시 로그아웃되며, 최고관리자가 다시 활성화하기 전까지 로그인할 수 없습니다. 등록한 내용은 삭제되지 않습니다.",
     confirmReactivateTitle: (name: string) => `${name} 님을 재활성화할까요?`,
     confirmReactivateBody: "바로 다시 로그인할 수 있게 되며, 정지 전에 가지고 있던 권한이 그대로 복구됩니다.",
     confirmRemoveTitle: (name: string) => `${name} 님을 제거할까요?`,
