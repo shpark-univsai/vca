@@ -12,6 +12,10 @@ import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useLanguage } from "@/lib/i18n";
+// One source for the seven names, shared with the Portal screens that grant them. This page used
+// to keep its own copy and it had already drifted: it said "실시간 관제" for a tab the app calls
+// 대시보드, so the person reading their own permissions went looking for a tab that is not there.
+import { APP_GRANT_LABELS } from "@/lib/appGrants";
 
 // See the per-file pattern note in lib/i18n.ts. SIGNED_IN_USER's role and team are not in here on
 // purpose — those are the customer's own words for their org chart, and translating them would put
@@ -40,7 +44,6 @@ const T = {
     myPage: "My page",
     myGrants: "What this account can open",
     myGrantsWho: "Granted per account. An administrator changes this in Portal, under Users & Permissions.",
-    screenName: { live: "Live monitoring", bestframe: "Best Frame", redmap: "Redmap", reid: "Re-ID", redface: "RedFace" } as Record<AppScreen, string>,
     verbSearch: "Person search",
     verbExport: "Evidence export",
     profile: "Profile information",
@@ -87,7 +90,6 @@ const T = {
     myPage: "마이 페이지",
     myGrants: "이 계정이 열 수 있는 것",
     myGrantsWho: "계정마다 따로 지정됩니다. 포털의 사용자 및 권한에서 관리자가 바꿉니다.",
-    screenName: { live: "실시간 관제", bestframe: "베스트 프레임", redmap: "레드맵", reid: "Re-ID", redface: "RedFace" } as Record<AppScreen, string>,
     verbSearch: "인물 검색",
     verbExport: "증거 내보내기",
     profile: "프로필 정보",
@@ -700,7 +702,7 @@ export default function MyPage() {
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.24px" }}>{t.myGrants}</span>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                     {APP_SCREENS.map(sc => (
-                      <GrantChip key={sc} label={t.screenName[sc]} on={heldScreens.includes(sc)} />
+                      <GrantChip key={sc} label={APP_GRANT_LABELS[lang].screenName[sc]} on={heldScreens.includes(sc)} />
                     ))}
                     <GrantChip label={t.verbSearch} on={maySearch} />
                     <GrantChip label={t.verbExport} on={mayExport} />
