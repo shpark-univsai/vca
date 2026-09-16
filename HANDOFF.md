@@ -26,6 +26,7 @@ git diff portal-handoff-v2 portal-handoff-v3
 | §3 답을 기다리는 것 | **만료 반영이 즉시인지 주기인지** — 이 답 하나가 화면 문구를 정합니다 |
 | §3 계약 12번 | **최고관리자 복구**(`vca-admin recover-owner` · `recoveredAt`) — 설계가 끝나 있었는데 여태 전달되지 않은 항목입니다 |
 | §3 답을 기다리는 것 | **새벽 3시에 그 서버에 로그인할 수 있는 사람** — 백엔드가 아니라 설치 인수 서명자에게 갈 질문입니다 |
+| §3 계약 13번 | **계정 상태는 비밀번호가 맞은 뒤에만** — 지금 우리 목업이 식별자만으로 정지·미활성을 알려주고, 그게 계약으로 넘어갑니다 |
 
 ## 1. 실행
 
@@ -429,6 +430,45 @@ Redmap · Best Frame · RedFace 네 화면을 카메라 등록부에 묶었습�
 **공급사 개입 모델**입니다. 이 제품은 *"설치 뒤에 공급사 계정이 없다"*를 전제로 만들었고, 생체
 정보 명단을 공급사에 보내는 것은 지원 티켓이 아니라 데이터 이전이라 택하지 않았습니다. Genetec·Bosch에서
 이전해 오는 고객은 **서류 기반 복구를 기대하고 올 것**이므로, 이건 벤더 어드민 미팅 안건입니다.
+
+**13. 계정 상태는 비밀번호가 맞은 뒤에만 알려줍니다.**
+
+`src/lib/authErrors.ts`의 실패 다섯 종(`badCredentials`·`locked`·`suspended`·`pendingApproval`·
+`notActivated`)은 **의도한 계약이고 그대로 유지해 주세요.** 같은 파일 머리가 그 이유를 적어놨습니다 —
+*"Handing the backend developer this list is the point: it is the error contract the login endpoint
+has to satisfy."* 닫힌 망에 셀프 복구가 없으므로 "로그인 실패" 하나로는 운영자가 비밀번호를 다시
+칠지, 기다릴지, 관리자에게 전화할지 판단할 수 없습니다.
+
+**빠진 것은 종류가 아니라 시점입니다.** 계약이 각 상태를 **언제** 돌려줄 수 있는지 규정하지 않고,
+지금 우리 목업이 잘못된 시점을 시범 보이고 있습니다 — `src/app/login/page.tsx:203-204`가
+**비밀번호를 검사하기 전에** 식별자만으로 계정을 찾아 `suspended`·`notActivated`를 돌려줍니다.
+그러면 이메일 한 개를 타이핑하는 것만으로 **그 계정의 존재와 상태**를 알 수 있습니다.
+
+OWASP Authentication Cheat Sheet가 정확히 이 문장들을 **잘못된 응답**으로 지목합니다 —
+*"Login failed; account disabled."* · *"Login failed; this user is not active."* 그리고 규칙을
+이렇게 씁니다: 인증 기능은 *"사용자 ID나 비밀번호가 틀렸든, 계정이 존재하지 않든, 계정이 잠기거나
+비활성이든"* 관계없이 일반화된 메시지로 응답해야 한다. 목적은 **차이 요소(discrepancy factor)를
+만들지 않는 것**입니다(CWE-204).
+
+> 서버 쪽으로: **비밀번호가 검증되기 전에는 무조건 `badCredentials`입니다.** 계정이 없든,
+> 정지됐든, 미활성이든, 승인 대기든 같은 응답·같은 HTTP 코드입니다. `locked`만 예외로 둘지는
+> 정책 판단입니다(OWASP는 잠금도 감추는 쪽을 권하고, Keycloak이 실제로 그렇게 합니다 —
+> `accountTemporarilyDisabledMessage=Invalid username or password.`).
+>
+> 비밀번호가 맞은 **뒤에는** 나머지 넷을 구분해서 돌려주세요. 그 시점에는 누가 서 있는지 알고
+> 있으므로 상태를 말하는 것이 맞습니다 — 로그인 이후 화면(`AccessGate`)이 이미 그렇게 하고
+> 있고, Milestone도 같은 자리에서 답합니다.
+>
+> **응답 시간도 같아야 합니다.** 존재하는 계정에서 빨리 빠져나오면(quick exit) 시간 차이가
+> 그대로 열거 수단이 됩니다. OWASP가 이 항목을 따로 다룹니다.
+>
+> **HTTP 코드도 같아야 합니다.** 화면에 같은 문장을 띄워도 200과 403으로 갈리면 계정 유효성이
+> 누출됩니다.
+
+우리 쪽 목업도 같이 고칩니다 — 이 결함은 목업 한정이 아니라 **계약으로 넘어가는 시범**이라
+남겨두면 백엔드가 열거 수단을 만들게 됩니다. 같은 파일이 *모르는* 식별자에 대해서는 이미
+열거를 의식하고 있었는데(*"anyone opening this build can look around without being handed a list
+of seeded accounts"*), **아는 계정의 상태**에는 그 의식이 적용되지 않았습니다.
 
 ### 답을 기다리는 것 (정책)
 
