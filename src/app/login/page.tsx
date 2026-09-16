@@ -44,6 +44,12 @@ const T = {
     ],
     contactNamed: (who: string) => <>For an account or access, contact <strong style={{ color: "var(--gray-500)" }}>{who}</strong>.</>,
     contactGeneric: "For an account or access, contact your security operations team.",
+    // The one person neither line above can help. The installation's top administrator has nobody
+    // above them to contact, and when supportContact is unset the generic line sends them to their
+    // own desk — so the dead end reads as an instruction. This says where the way back actually is
+    // (the machine this is installed on) and says plainly that it is not here: the console cannot
+    // restore an account, and copy implying otherwise would promise a control that does not exist.
+    ownerLastResort: "No administrator above you? The owner account is restored on the server this is installed on, by whoever administers that machine — not from this screen.",
   },
   ko: {
     title: "로그인",
@@ -71,6 +77,7 @@ const T = {
     ],
     contactNamed: (who: string) => <>계정이나 접근 권한은 <strong style={{ color: "var(--gray-500)" }}>{who}</strong>에게 문의해주세요.</>,
     contactGeneric: "계정이나 접근 권한은 보안 관제 담당자에게 문의해주세요.",
+    ownerLastResort: "위에 문의할 관리자가 없나요? 최고관리자 계정은 이 시스템이 설치된 서버에서, 그 서버를 관리하는 사람이 복구합니다 — 이 화면에서는 할 수 없습니다.",
   },
 } as const;
 
@@ -100,11 +107,13 @@ const REMEMBERED_ID_KEY = "vca.rememberedId";
  *   /login?demo=sessionExpired   signed out by the session timing out
  *   /login?demo=signedOut        signed out deliberately
  *
- * Two of these also happen for real against the seeded accounts, because the mock user list
- * already carries a status: wei.chen@univs.ai (EMP-2044) is "invited" and david.ong@univs.ai
- * (EMP-2045) is "suspended". Until this change both of them signed in perfectly happily, which was
- * a real hole. Either identifier reaches them — EMP-2041 is Grace Tan, an admin, so it lands in
- * Portal; EMP-2042 is an operator and lands in the app.
+ * All seven are demo-only, and that is now true of every state except badCredentials. Two of them
+ * used to happen for real against the seeded accounts — wei.chen@univs.ai (EMP-2044) is "invited"
+ * and david.ong@univs.ai (EMP-2045) is "suspended" — and that check was removed: answering an
+ * account's state from the typed identifier, before any password, is the enumeration oracle
+ * HANDOFF.md contract 13 forbids. See the note in handleSubmit. Either identifier still reaches
+ * the branch below — EMP-2041 is Grace Tan, an admin, so it lands in Portal; EMP-2042 is an
+ * operator and lands in the app.
  */
 export default function LoginPage() {
   return (
@@ -195,12 +204,36 @@ function LoginForm() {
         || (authConfig.employeeIdLogin && !!u.employeeId && u.employeeId.toLowerCase() === typed)
     );
 
-    // A known account's status decides whether it may sign in at all, and this is checked before
-    // the temporary-password branch — a suspended account holding a temporary password should be
-    // turned away, not sent on to set a new one. Both of these used to sail straight through:
-    // access withdrawn by an administrator, and an account that never set a password.
-    if (matchedUser?.status === "suspended") { setNotice("suspended"); return; }
-    if (matchedUser?.status === "invited") { setNotice("notActivated"); return; }
+    // The account's state is deliberately NOT answered here.
+    //
+    // It used to be: a "suspended" or "invited" status turned the attempt away right at this
+    // point. `matchedUser` is resolved from the typed identifier alone and this screen never
+    // checks the password at all (see the HANDOFF NOTE above), so typing one address told the
+    // person whether that account exists and what state it is in, with no credential submitted.
+    // The irony is that this file was already thinking about exactly that three lines below, for
+    // the identifier that matches NOTHING, and the same thought did not reach the branch that
+    // matched something.
+    //
+    // This is a TIMING fix, not a hiding one, and the difference matters — HANDOFF.md contract 13
+    // was corrected on this very point (4cc65ee): naming the state AFTER the password verifies is
+    // what this industry ships, not what it hides. Genetec sends a separate "locked user account"
+    // message and says how many attempts were exceeded; Milestone generalises in the client and
+    // documents the lockout. On a closed network with no self-service recovery that is the right
+    // answer for the operator, and it is the judgement lib/authErrors.ts already made. Where we
+    // were worse than Genetec is only this: they tell you after you submit credentials, and we
+    // told you for typing an email.
+    //
+    // So all five states stay — they are the contract in lib/authErrors.ts and each is viewable
+    // at /login?demo=<key>, which is how they are meant to be reviewed. What moved is WHEN they
+    // fire: `badCredentials` before the password verifies, the other four only after. Only the
+    // server can honour that, because only the server can verify a password.
+    //
+    // Note what this costs in the mock, so nobody reads it as a hole reopening: the seeded
+    // suspended and never-activated accounts (david.ong, wei.chen) now get as far as the app,
+    // because there is no password to verify and no session to carry which identifier was typed
+    // — the app resolves its own identity from the signed-in stand-in either way (see
+    // currentPortalUser). The door that refuses those two states is denialFor/AccessGate, on the
+    // other side of a real login.
     setNotice(null);
 
     // HANDOFF NOTE: an identifier matching nothing is still let through, so anyone opening this
@@ -459,6 +492,18 @@ function LoginForm() {
                   {authConfig.supportContact
                     ? t.contactNamed(authConfig.supportContact)
                     : t.contactGeneric}
+                </p>
+                {/* The line above answers everyone who has somebody to ring. The owner of the
+                    installation does not — and with supportContact unset (it is, in a default
+                    build: authConfig reads NEXT_PUBLIC_SUPPORT_CONTACT and falls back to null) the
+                    generic phrase names the security operations desk, which at a single-site
+                    installation is the locked-out person themselves. So the dead end gets its own
+                    sentence, and it points at the host rather than at a button: recovery runs on
+                    the server, never over the network, and this screen must not suggest it can do
+                    it. Quieter than the line above it — most people reading this screen are not
+                    the owner. */}
+                <p style={{ margin: "8px 0 0", textAlign: "center", fontSize: "11px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.22px", lineHeight: 1.5 }}>
+                  {t.ownerLastResort}
                 </p>
               </div>
             </div>

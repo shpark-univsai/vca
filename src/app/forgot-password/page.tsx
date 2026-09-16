@@ -7,7 +7,7 @@ import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import VerificationCodeInput from "@/components/VerificationCodeInput";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT, RESET_CODE_LENGTH, RESET_CODE_TTL_MIN } from "@/lib/password";
 import { getAuthConfig } from "@/lib/authConfig";
-import { josa, useLanguage, type AppLanguage } from "@/lib/i18n";
+import { useLanguage, type AppLanguage } from "@/lib/i18n";
 
 // See the per-file pattern note in lib/i18n.ts.
 const T = {
@@ -22,20 +22,22 @@ const T = {
     haveCode: "Already have a code?",
     activateAccount: "Activate your account",
     emailTitle: "Forgot your password?",
-    emailSub: "We’ll send a verification code to your registered email",
+    // "requested", not "sent". The console asks the relay; the relay delivers — and nothing here
+    // asks it yet (see sendCode). Same wording Portal settled on for its own reset code.
+    emailSub: "A verification code is requested for the email on your account",
     identifierWithId: "Employee number or email",
     identifierEmailOnly: "Email",
     noAddressNote: "No email address on your account? Only an administrator can reset it —",
     noAddressFallback: "contact your security operations team",
-    sendCode: "Send code",
+    sendCode: "Request code",
     rememberedIt: "Remembered it?",
     logIn: "Log in",
     throttledTitle: "Too many attempts",
     throttledSub: "Code entry is locked for now",
     throttledBody: "Try again in a few minutes, or contact your administrator.",
     codeTitle: "Enter your verification code",
-    codeSentTo: (address: string) => `Code sent to ${address}`,
-    codeSentToAccount: "Code sent to the email on this account",
+    codeRequestedFor: (address: string) => `Code requested for ${address}`,
+    codeRequestedForAccount: "Code requested for the email on this account",
     expiresIn: (min: number) => `Expires in ${min} minutes`,
     sendNewCode: "Send a new code",
     noCode: "Didn’t get the code?",
@@ -54,8 +56,19 @@ const T = {
     confirmPassword: "Confirm password",
     mismatch: "Passwords don’t match",
     changePassword: "Change password",
-    doneTitle: "Password changed",
-    doneSub: "Log in with your new password",
+    // Verbatim from Portal's own change-password modal (PortalSettingsPage), which refuses to
+    // claim a change for the same reason.
+    passwordNotWired: "Not connected yet. A password typed here is not saved.",
+    doneTitle: "Password not changed",
+    doneSub: "Ask whoever runs your installation to change it for now.",
+    // Every remedy this screen offers routes through somebody standing above you. The installation's
+    // top administrator has nobody there, and when supportContact is unset the fallback beside it
+    // names "your security operations team" — which at a single-site installation is the locked-out
+    // person's own desk, so the dead end reads as an instruction. This says where the way back
+    // actually is: the machine the system is installed on, held by whoever administers it. No
+    // command and no button, because the console has neither — and a screen that implied it could
+    // restore an account would be promising a control that does not exist.
+    ownerLastResort: "No administrator above you? The owner account is restored on the server this is installed on, by whoever administers that machine — not from this screen.",
   },
   ko: {
     errIdentifier: "사번 또는 이메일 주소를 입력해주세요.",
@@ -68,20 +81,20 @@ const T = {
     haveCode: "이미 코드를 받으셨나요?",
     activateAccount: "계정 활성화하기",
     emailTitle: "비밀번호를 잊으셨나요?",
-    emailSub: "등록된 이메일로 인증 코드를 보내드립니다",
+    emailSub: "계정에 등록된 이메일 앞으로 인증 코드를 요청합니다",
     identifierWithId: "사번 또는 이메일",
     identifierEmailOnly: "이메일",
     noAddressNote: "계정에 이메일 주소가 없나요? 관리자만 재설정할 수 있습니다 —",
     noAddressFallback: "보안 관제 담당자에게 문의해주세요",
-    sendCode: "코드 보내기",
+    sendCode: "코드 요청",
     rememberedIt: "기억나셨나요?",
     logIn: "로그인",
     throttledTitle: "시도 횟수를 초과했습니다",
     throttledSub: "코드 입력이 잠시 차단되었습니다",
     throttledBody: "몇 분 뒤에 다시 시도하시거나 관리자에게 문의해주세요.",
     codeTitle: "인증 코드를 입력해주세요",
-    codeSentTo: (address: string) => `${address}${josa(address, "으로", "로")} 코드를 보냈습니다`,
-    codeSentToAccount: "계정에 등록된 이메일로 코드를 보냈습니다",
+    codeRequestedFor: (address: string) => `${address} 앞으로 코드를 요청했습니다`,
+    codeRequestedForAccount: "계정에 등록된 이메일 앞으로 코드를 요청했습니다",
     expiresIn: (min: number) => `${min}분 후 만료됩니다`,
     sendNewCode: "새 코드 보내기",
     noCode: "코드를 받지 못하셨나요?",
@@ -100,8 +113,10 @@ const T = {
     confirmPassword: "비밀번호 확인",
     mismatch: "비밀번호가 일치하지 않습니다",
     changePassword: "비밀번호 변경",
-    doneTitle: "비밀번호가 변경되었습니다",
-    doneSub: "새 비밀번호로 로그인해주세요",
+    passwordNotWired: "아직 서버에 연결되지 않아, 여기서 입력한 비밀번호는 저장되지 않습니다.",
+    doneTitle: "비밀번호는 바뀌지 않았습니다",
+    doneSub: "변경은 설치를 담당한 곳으로 요청하세요.",
+    ownerLastResort: "위에 문의할 관리자가 없나요? 최고관리자 계정은 이 시스템이 설치된 서버에서, 그 서버를 관리하는 사람이 복구합니다 — 이 화면에서는 할 수 없습니다.",
   },
 } as const;
 
@@ -313,7 +328,11 @@ function ForgotPasswordFlow() {
 
   const savePassword = () => {
     if (!canSetPassword || !formatValid || mismatch) return;
-    // HANDOFF NOTE: submits nowhere. The real call needs the verified-code token from verifyCode.
+    // HANDOFF NOTE: submits nowhere. The real call needs the verified-code token from verifyCode,
+    // and its response is what turns the last step back into "Password changed". Until then that
+    // step says the opposite, because the opposite is what happened — a green success line over a
+    // form with nowhere to post is the failure this codebase keeps finding, and the person walks
+    // away and tries to sign in with a password nothing kept.
     setStep("done");
   };
 
@@ -399,6 +418,15 @@ function ForgotPasswordFlow() {
                   <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.26px", lineHeight: 1.5 }}>
                     {t.adminRemedies}
                   </p>
+                  {/* The card above answers everyone with an administrator over them. The one
+                      account that has none is the one this card cannot help, and it is also the
+                      account whose loss stops the whole installation — so it gets the last line
+                      rather than nothing at all. Inside the same card, quieter than the remedies,
+                      because most people reading this are not that person. */}
+                  <div style={{ height: "1px", backgroundColor: "var(--gray-200)", margin: "2px 0" }} />
+                  <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", lineHeight: 1.5 }}>
+                    {t.ownerLastResort}
+                  </p>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
@@ -420,7 +448,8 @@ function ForgotPasswordFlow() {
           {step === "email" && (
             <>
               {/* One line, not three. The field below already says what to type into it, and the
-                  step after this one says a code was sent — the subtitle only has to promise it. */}
+                  step after this one says a code was asked for — the subtitle only has to say
+                  where it goes. */}
               {heading(t.emailTitle, [t.emailSub])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
@@ -454,6 +483,17 @@ function ForgotPasswordFlow() {
                       {authConfig.supportContact ?? t.noAddressFallback}.
                     </p>
                   ) : null}
+                  {/* And who the line above sends them to, when that person is themselves.
+                      Outside the ternary, not in its empty arm: the dead end does not depend on
+                      employee-number login — it depends on there being nobody above you — and the
+                      arm that renders is the employeeIdLogin one in every current deployment, so a
+                      line hidden in the other arm would never be read. Suppressed while the field
+                      is in error, where the only thing worth reading is the error. */}
+                  {!identifierError && (
+                    <p style={{ margin: 0, fontSize: "11px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.22px", lineHeight: 1.5 }}>
+                      {t.ownerLastResort}
+                    </p>
+                  )}
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
@@ -504,8 +544,8 @@ function ForgotPasswordFlow() {
                 // nothing to leak. An employee number resolves to an address the screen has no
                 // business printing, so it says where it went without saying where that is.
                 typedEmail
-                  ? t.codeSentTo(identifier.trim())
-                  : t.codeSentToAccount,
+                  ? t.codeRequestedFor(identifier.trim())
+                  : t.codeRequestedForAccount,
                 t.expiresIn(RESET_CODE_TTL_MIN),
               ])}
 
@@ -577,6 +617,15 @@ function ForgotPasswordFlow() {
             <>
               {heading(t.passwordTitle, [t.passwordSub])}
 
+              {/* Said before the typing rather than after it: a person should learn that this
+                  goes nowhere before composing a password and entering it twice. Amber, because a
+                  quiet grey line is not enough weight to stop somebody believing a form that
+                  otherwise behaves exactly like a working one. Portal's own modal carries the
+                  same line, in the same words. */}
+              <p style={{ margin: "-24px 0 0", fontSize: "12px", fontWeight: 600, lineHeight: 1.45, color: "var(--warning-500)", textAlign: "center" }}>
+                {t.passwordNotWired}
+              </p>
+
               <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "24px", width: "100%" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
@@ -646,7 +695,9 @@ function ForgotPasswordFlow() {
           {step === "done" && (
             <>
               {heading(t.doneTitle, [t.doneSub])}
-              {primaryButton(t.logIn, true, () => router.push("/login"))}
+              {/* "Back to log in", not "Log in": nothing was changed, so there is no new password
+                  to sign in with. */}
+              {primaryButton(t.backToLogin, true, () => router.push("/login"))}
             </>
           )}
           </>
