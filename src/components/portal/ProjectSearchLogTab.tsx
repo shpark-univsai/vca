@@ -68,6 +68,7 @@ const T = {
     statOperators: "operators", statOperatorsLabel: "searched",
     ownerOnly: "Only the owner and auditors read this log.",
     csvAt: "When", csvActor: "Operator", csvPurpose: "Purpose", csvReference: "Reference",
+    csvActorEmail: "Operator address",
     csvTarget: "Searched for", csvSurface: "Screen", csvResults: "Results", csvIp: "From",
     none: "—",
   },
@@ -89,6 +90,7 @@ const T = {
     statOperators: "명", statOperatorsLabel: "조회한 사람",
     ownerOnly: "이 기록은 최고관리자와 읽기 전용 관리자가 읽습니다.",
     csvAt: "시각", csvActor: "조회자", csvPurpose: "목적", csvReference: "참조번호",
+    csvActorEmail: "조회자 주소",
     csvTarget: "조회 대상", csvSurface: "화면", csvResults: "결과", csvIp: "위치",
     none: "—",
   },
@@ -147,10 +149,13 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
     projectRecords.forEach(r => { if (r.purposeId && r.purposeLabel) seen.set(r.purposeId, r.purposeLabel); });
     return [...seen].map(([value, label]) => ({ value, label }));
   }, [projectRecords]);
-  const actorOptions = useMemo(
-    () => [...new Set(projectRecords.map(r => r.actor))].map(a => ({ value: a, label: a })),
-    [projectRecords],
-  );
+  /* Keyed by address rather than by name: two operators sharing a name would collapse into one
+     option and quietly return both their look-ups under either. */
+  const actorOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    projectRecords.forEach(r => seen.set(r.actorEmail, r.actor));
+    return [...seen].map(([value, name]) => ({ value, label: `${name} · ${value}` }));
+  }, [projectRecords]);
 
   const showIp = projectRecords.some(r => r.ip);
   const columns = [
@@ -163,7 +168,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
 
   const rows = projectRecords
     .filter(r => purposeFilter === "ALL" || r.purposeId === purposeFilter)
-    .filter(r => actorFilter === "ALL" || r.actor === actorFilter)
+    .filter(r => actorFilter === "ALL" || r.actorEmail === actorFilter)
     // Compared in the project's own zone, the same one the rows print. A range picked as
     // "2026-09-15" means that day at the site, not a UTC slice of it that starts nine hours early.
     .filter(r => {
@@ -176,7 +181,8 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
   const visible = sortRows(rows, sort, (r, key) => {
     switch (key) {
       case "at": return r.at;
-      case "actor": return r.actor.toLowerCase();
+      // Sorted by the address, so two people with the same name do not interleave.
+      case "actor": return `${r.actor}\u0000${r.actorEmail}`.toLowerCase();
       case "purpose": return (r.purposeLabel ?? "").toLowerCase();
       case "target": return r.target.toLowerCase();
     }
@@ -194,9 +200,9 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
   const exportCsv = () => {
     // The file carries the columns the screen carries. A CSV with two always-blank columns is the
     // same unkept promise one screen further out, and it is the copy that leaves the building.
-    const header = [t.csvAt, t.csvActor, ...(purposeAsked ? [t.csvPurpose, t.csvReference] : []), t.csvTarget, t.csvSurface, t.csvResults, ...(showIp ? [t.csvIp] : [])];
+    const header = [t.csvAt, t.csvActor, t.csvActorEmail, ...(purposeAsked ? [t.csvPurpose, t.csvReference] : []), t.csvTarget, t.csvSurface, t.csvResults, ...(showIp ? [t.csvIp] : [])];
     const body = visible.map(r => [
-      r.at, r.actor, ...(purposeAsked ? [r.purposeLabel ?? "", r.reference ?? ""] : []), r.target, r.surface,
+      r.at, r.actor, r.actorEmail, ...(purposeAsked ? [r.purposeLabel ?? "", r.reference ?? ""] : []), r.target, r.surface,
       r.resultCount === undefined ? "" : String(r.resultCount), ...(showIp ? [r.ip ?? ""] : []),
     ]);
     const csv = [header, ...body].map(row => row.map(csvEscape).join(",")).join("\n");
@@ -320,8 +326,17 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
             <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
               {`${dateKeyIn(new Date(r.at), projectZone)} ${clockMinutesIn(new Date(r.at), projectZone)}`}
             </span>
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {r.actor}
+            {/* Name over address, the shape every comparable audit log uses. The name is what a
+                reader recognises and the address is what makes the row name ONE person — two
+                operators with the same name produce rows nobody can tell apart, and telling them
+                apart is the whole job of this log. */}
+            <span style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: 0 }}>
+              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {r.actor}
+              </span>
+              <span style={{ fontSize: "11px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {r.actorEmail}
+              </span>
             </span>
             {purposeAsked && <>
               {/* Absent because this look-up carried none — see SearchAccessRecord.purposeId. */}

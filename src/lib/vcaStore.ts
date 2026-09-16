@@ -402,8 +402,22 @@ export interface SearchAccessRecord {
   /** The institution, so an auditor can read across the sites it runs. */
   teamId: string;
   at: string;
-  /** The account that ran it. */
+  /** The account that ran it, as a display name. */
   actor: string;
+  /**
+   * The address that name belongs to. NOT decoration — it is what makes the row identify somebody.
+   *
+   * A name alone cannot: two people called 김민수 produce rows an auditor cannot tell apart, and
+   * "who looked this person up" is the one question this log exists to answer. Every comparable
+   * audit log prints both (1Password, Dropbox, Vanta, Okta), and the filter keys off this rather
+   * than the name for the same reason.
+   *
+   * HANDOFF NOTE: the server should carry a stable account id alongside this. An address can be
+   * reassigned to a new employee, and a record from two years ago then names the wrong person —
+   * which is exactly the failure a log kept as evidence must not have. The id is for identity, the
+   * address is for reading; this mock has only the second.
+   */
+  actorEmail: string;
   /**
    * The stated purpose, when the installation asks for one.
    *
@@ -934,7 +948,7 @@ interface VcaStoreState {
    * Takes the purpose's label rather than resolving it, so the record keeps the wording that was
    * on screen at the time — see SearchAccessRecord.
    */
-  recordSearchAccess: (record: Omit<SearchAccessRecord, "id" | "at" | "actor" | "teamId">) => void;
+  recordSearchAccess: (record: Omit<SearchAccessRecord, "id" | "at" | "actor" | "actorEmail" | "teamId">) => void;
   addVipCategory: (category: Omit<VipCategory, "id" | "archived">) => string;
   updateVipCategory: (categoryId: string, updates: Partial<Omit<VipCategory, "id" | "teamId">>) => void;
   /**
@@ -3860,6 +3874,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         id: `saccess-${++searchAccessSeq}`,
         at: new Date().toISOString(),
         actor: SIGNED_IN_USER.name,
+        actorEmail: SIGNED_IN_USER.email,
         teamId: state.projects.find(p => p.id === record.projectId)?.teamId ?? "",
       }, ...state.searchAccessLog],
     })),
