@@ -29,6 +29,9 @@ const T = {
     lastDetection: "Last detection",
     detectionCount: "Detections on record",
     detectionCountValue: (n: number) => `${n}`,
+    // This one is not a message, it is what stands in the "Last detection" slot where a timestamp
+    // would be — so it has to stay the length of a timestamp in every language. The caption beside
+    // it already names the field; the value only has to say there is none.
     noRecentDetections: "None yet",
     close: "Close",
   },
@@ -52,7 +55,7 @@ const T = {
     lastDetection: "마지막 탐지",
     detectionCount: "기록된 탐지",
     detectionCountValue: (n: number) => `${n}건`,
-    noRecentDetections: "이 카메라에서 최근 감지된 내역이 없습니다.",
+    noRecentDetections: "아직 없음",
     close: "닫기",
   },
 } as const;

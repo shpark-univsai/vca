@@ -636,7 +636,7 @@ export default function PortalShell() {
                   noTeam={teams.length === 0}
                   onCreateTeam={createFirstTeam}
                 />
-              : <PortalProjectDetailPage projectId={currentProjectId} tab={tab} onTabChange={setTab} />}
+              : <PortalProjectDetailPage projectId={currentProjectId} tab={tab} onTabChange={setTab} onOpenSettings={() => setShowAccount(true)} />}
         </div>
       }
       </div>

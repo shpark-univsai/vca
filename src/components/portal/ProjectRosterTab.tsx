@@ -185,11 +185,29 @@ type Translations = (typeof T)["en"] | (typeof T)["ko"];
 
 // "Issued" is shown to admins for what the type calls "unused" — from an admin's point of view the
 // interesting fact is "I handed this out, nobody's used it yet," not the code's own internal state.
+//
+// Two of these four tones were off the Portal's chip scale, and both errors pushed colour at rows
+// that do not need it.
+//
+// "Issued" was the only chip in the console on a -200 background; every other chip — STATE_TONE in
+// the requests tab, TYPE_META in PortalShared, the VIP category tones — fills with the -100 step and
+// writes in the -400/-500 one. On a site that has just been set up, "code handed out, not used yet"
+// is almost every row, so the one chip mixed a step darker than the rest was making the table's
+// most ordinary state its loudest thing. That is the mistake the VIP registry already wrote down:
+// an amber pill on 119 of 123 rows was not a warning, it was the table's background.
+//
+// "Used" mixed families outright — a grey fill under green text, which nothing else in Portal does.
+// Of the two ways to settle it, neutral is the right one rather than success-100/-400: a code that
+// has been used is finished, not an achievement, and it is the one status on this screen that will
+// never need an administrator again. The camera table reached the same conclusion for the same
+// reason — four states, only the two that want attention coloured, "Online" left in plain grey.
+// gray-600 rather than "not-issued"'s gray-500 keeps the two quiet states apart in a scan and
+// matches what the requests tab gives its own terminal state, `closed`.
 function getStatusMeta(t: Translations): Record<RosterCodeStatus, { label: string; bg: string; color: string }> {
   return {
     "not-issued": { label: t.statusNotIssued, bg: "var(--gray-100)", color: "var(--gray-500)" },
-    unused: { label: t.statusIssued, bg: "var(--warning-200)", color: "var(--warning-500)" },
-    used: { label: t.statusUsed, bg: "var(--gray-100)", color: "var(--success-400)" },
+    unused: { label: t.statusIssued, bg: "var(--warning-100)", color: "var(--warning-500)" },
+    used: { label: t.statusUsed, bg: "var(--gray-100)", color: "var(--gray-600)" },
     expired: { label: t.statusExpired, bg: "var(--danger-100)", color: "var(--danger-500)" },
   };
 }

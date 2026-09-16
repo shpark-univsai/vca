@@ -400,9 +400,12 @@ interface PortalProjectDetailPageProps {
   projectId: string;
   tab: DetailTab;
   onTabChange: (tab: DetailTab) => void;
+  /** Settings is not a project tab, so an errand whose fix lives there cannot be reached by
+   *  onTabChange. The empty state already takes the same prop from the shell. */
+  onOpenSettings?: () => void;
 }
 
-export default function PortalProjectDetailPage({ projectId, tab, onTabChange }: PortalProjectDetailPageProps) {
+export default function PortalProjectDetailPage({ projectId, tab, onTabChange, onOpenSettings }: PortalProjectDetailPageProps) {
   const projects = useVcaStore(s => s.projects);
   const cameras = useVcaStore(s => s.cameras);
   const portalUsers = useVcaStore(s => s.portalUsers);
@@ -725,7 +728,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // answer for a Singapore site, and flagging that would be a false alarm on a finished install.
   const timeZoneUnset = project.timeZone === undefined;
 
-  const attentionItems: { key: string; text: string; color: string; tab: DetailTab; vipHealth?: VipHealthFilter }[] = [
+  const attentionItems: {
+    key: string; text: string; color: string; tab: DetailTab;
+    /** Lands on the VIP tab with this filter already applied — a hundred rows are no help. */
+    vipHealth?: VipHealthFilter;
+    /** Opens Settings instead of a project tab, for the one errand whose control lives there. */
+    settings?: boolean;
+  }[] = [
     ...(offlineCount > 0 ? [{ key: "offline", text: t.attnOffline(offlineCount), color: "var(--danger-400)", tab: "cameras" as DetailTab }] : []),
     // Grey, and below the faults: worth seeing that fifty cameras are still waiting on their first
     // report, not worth the colour that means somebody has to go and fix something.
@@ -754,7 +763,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     // Above the setup notes, below the licence: a door opened from outside the product's rules is
     // not a "nothing here yet" note. Shows only while the recovered account is the only owner —
     // once a normally-granted one exists, the recovery served its purpose.
-    ...(timeZoneUnset ? [{ key: "notz", text: t.attnNoTimeZone, color: "var(--warning-500)", tab: "overview" as DetailTab }] : []),
+    // The only errand on this strip whose fix is not on a project tab. It pointed at "overview",
+    // which is the screen it is already on — pressing it did nothing at all, under a sentence
+    // telling the reader every date here is a guess. The control that sets a zone lives in
+    // Settings, which is not a DetailTab and cannot be reached by onTabChange.
+    ...(timeZoneUnset ? [{ key: "notz", text: t.attnNoTimeZone, color: "var(--warning-500)", tab: "overview" as DetailTab, settings: true }] : []),
     ...(projectCameras.length === 0 ? [{ key: "nocams", text: t.attnNoCameras, color: "var(--gray-400)", tab: "cameras" as DetailTab }] : []),
     ...(projectPersons.length === 0 ? [{ key: "novips", text: t.attnNoVips, color: "var(--gray-400)", tab: "vip" as DetailTab }] : []),
   ];
@@ -939,7 +952,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <span key={item.key}>
                     {i > 0 && <span style={{ color: "var(--gray-400)" }}>{" · "}</span>}
                     <button
-                      onClick={() => { setVipHealthFocus(item.vipHealth ?? null); onTabChange(item.tab); }}
+                      onClick={() => {
+                        if (item.settings) { onOpenSettings?.(); return; }
+                        setVipHealthFocus(item.vipHealth ?? null);
+                        onTabChange(item.tab);
+                      }}
                       style={{
                         border: "none", background: "none", padding: 0, cursor: "pointer",
                         font: "inherit", color: "var(--gray-900)", fontWeight: 600,

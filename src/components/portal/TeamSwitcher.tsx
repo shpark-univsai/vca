@@ -379,7 +379,6 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
    *  onClose, and that dropdown would then be listing a team that no longer exists. */
   onDeleted: () => void;
 }) {
-  useEscapeKey(onClose);
   const renameTeam = useVcaStore(s => s.renameTeam);
   const removeTeam = useVcaStore(s => s.removeTeam);
   const projects = useVcaStore(s => s.projects);
@@ -388,6 +387,15 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
   const t = T[lang];
   const [name, setName] = useState(team.name);
   const [confirming, setConfirming] = useState(false);
+  /*
+   * Escape stops closing this modal while the delete confirmation is stacked on top of it.
+   *
+   * useEscapeKey attaches a bare document listener, so with both dialogs mounted one Escape fired
+   * both handlers: the confirmation and this modal closed together, and a team rename typed into
+   * `name` but not yet saved went with them. The hook takes an `enabled` flag for exactly this, so
+   * the top-most dialog swallows the key.
+   */
+  useEscapeKey(onClose, !confirming);
 
   const projectCount = projects.filter(p => p.teamId === team.id).length;
   const canDelete = projectCount === 0;

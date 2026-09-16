@@ -121,7 +121,15 @@ export function VipCategoryModal({ teamId, categories, canEdit, onClose }: {
   const [validDays, setValidDays] = useState("");
   const [requiresBasis, setRequiresBasis] = useState(true);
   const [color, setColor] = useState<VipCategoryColor>("gray");
-  useEscapeKey(onClose);
+  /*
+   * Escape stops closing this manager while the retire confirmation is stacked on top of it.
+   *
+   * useEscapeKey attaches a bare document listener, so with both dialogs mounted one Escape fired
+   * both handlers: the confirmation and the category manager behind it went away together, taking
+   * a half-typed category — label, validity, color — with them. The hook takes an `enabled` flag
+   * for exactly this, so the top-most dialog swallows the key.
+   */
+  useEscapeKey(onClose, !retiring);
 
   const reset = () => { setEditing(null); setLabel(""); setValidDays(""); setRequiresBasis(true); setColor("gray"); };
   const startEdit = (c: VipCategory) => {
