@@ -11,7 +11,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { MOCK_STAMP_GRANULARITY_MIN, parseSgtStamp, recentSgtStamp } from "@/lib/time";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 
-import { useLanguage } from "@/lib/i18n";
+import { useLanguage, type AppLanguage } from "@/lib/i18n";
 
 // See the per-file pattern note in lib/i18n.ts. Camera codes ("CAM_WestGate_BS1"), site names and
 // the seeded detection groups are the install's own data and stay as they are.
@@ -199,6 +199,19 @@ function FilterIcon({ type, color, active, size = 14 }: { type: DetType; color: 
  */
 const DET_COLOR: Record<DetType, string> = { VIP: "var(--primary-400)", Vehicle: "var(--type-vehicle)", Unknown: "var(--gray-600)" };
 
+/**
+ * The detection class, in the reader's language. "VIP" is the same word in both.
+ *
+ * These two words were spelled out inline in the filter chips and nowhere else, so the chip read
+ * 차량 while the row it filtered to, and the HUD that row opened, both said Vehicle. One answer,
+ * in one place, for all three.
+ */
+function typeLabel(type: DetType, lang: AppLanguage): string {
+  if (type === "Vehicle") return lang === "ko" ? "차량" : "Vehicle";
+  if (type === "Unknown") return lang === "ko" ? "미확인" : "Unknown";
+  return "VIP";
+}
+
 // How long the sidebar's "VIP detected now" pulsing dot stays lit after a hit — long enough not
 // to be missed on a glance, short enough that it still means "just now" rather than "at some
 // point today." (Also cleared immediately if the operator checks the camera first — see
@@ -233,12 +246,14 @@ const BG = [
   "/cctv-sample.png",
   "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=900&q=80",
 ];
-const AVATAR = [
-  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=80&q=80",
-  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=80&q=80",
-  "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=80&q=80",
-];
-const CAR_IMG = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=80&q=80";
+// AVATAR (three stock portraits) and CAR_IMG (one stock car) stood here and were dealt out to the
+// detection rows by row number — AVATAR[i % 3]. Row position is not identity: the third person on
+// every camera wore the same face, and the same person sat in row 2 on one camera and row 3 on
+// another, changing face between the two lists. Removed with their call sites; the HUD's
+// comparison boxes had already dropped them for the same reason (see the note there).
+//
+// BG below is different and stays: it is the footage the boxes are drawn on, one still per camera
+// rather than a per-person fact, and it is what this screen is a mock-up OF.
 
 // Each detection's date and time come from recentSgtStamp — the DAY as well as the clock, and
 // both relative to the actual current time rather than literal hardcoded strings (a fixed
@@ -272,30 +287,30 @@ const CAMERA_FEEDS: CamData[] = [
   { camLabel: "CAM_WestGate_BS1", location: "Main Intake Road", bgUrl: BG[0], detections: [
     { id:"d3", type:"VIP",          name:"Dr. Alex Wong",          group:"VIP group",       confidence:98.4, ...recentSgtStamp(86), top:"18%", left:"68%", width:"12%", height:"36%" },
     { id:"d1", type:"VIP",          name:"Sarah Lin",              group:"Staff (Finance)", confidence:98.4, ...recentSgtStamp(86), top:"15%", left:"10%", width:"12%", height:"38%" },
-    { id:"d4", type:"Unknown", name:"Blue shirts • Man • Bag",group:"Unknown",    confidence:0,    ...recentSgtStamp(86), top:"25%", left:"32%", width:"11%", height:"35%" },
+    { id:"d4", type:"Unknown", name:"Blue shirts • Man • Bag",group:"",    confidence:0,    ...recentSgtStamp(86), top:"25%", left:"32%", width:"11%", height:"35%" },
     { id:"d2", type:"Vehicle",      name:"Vehicle SGX411",         group:"Navy",            confidence:92.8, ...recentSgtStamp(86), top:"20%", left:"48%", width:"18%", height:"28%" },
     { id:"d21", type:"VIP",     name:"Michelle Tan",       group:"VIP group",     confidence:95.7, ...recentSgtStamp(86), top:"17%", left:"22%", width:"12%", height:"37%" },
-    { id:"d22", type:"Unknown", name:"Red cap • Male",     group:"Unknown",       confidence:0,    ...recentSgtStamp(86), top:"24%", left:"58%", width:"11%", height:"34%" },
+    { id:"d22", type:"Unknown", name:"Red cap • Male",     group:"",       confidence:0,    ...recentSgtStamp(86), top:"24%", left:"58%", width:"11%", height:"34%" },
     { id:"d23", type:"Vehicle", name:"Vehicle YW2281",     group:"Logistics",     confidence:87.4, ...recentSgtStamp(86), top:"19%", left:"5%",  width:"17%", height:"27%" },
     { id:"d24", type:"VIP",     name:"James Kwek",         group:"Staff (Security)", confidence:90.1, ...recentSgtStamp(86), top:"16%", left:"78%", width:"12%", height:"37%" },
-    { id:"d25", type:"Unknown", name:"Grey hoodie • Female", group:"Unknown",     confidence:0,    ...recentSgtStamp(86), top:"23%", left:"42%", width:"11%", height:"34%" },
+    { id:"d25", type:"Unknown", name:"Grey hoodie • Female", group:"",     confidence:0,    ...recentSgtStamp(86), top:"23%", left:"42%", width:"11%", height:"34%" },
   ]},
   { camLabel: "CAM_EastGate_BS3", location: "Annex 2F Hall", bgUrl: BG[1], detections: [
-    { id:"d6", type:"Unknown", name:"Beige coat • Female",group:"Unknown", confidence:0,    ...recentSgtStamp(0), top:"24%", left:"55%", width:"11%", height:"34%" },
+    { id:"d6", type:"Unknown", name:"Beige coat • Female",group:"", confidence:0,    ...recentSgtStamp(0), top:"24%", left:"55%", width:"11%", height:"34%" },
     { id:"d5", type:"VIP",          name:"hong gildong", group:"VIP group",    confidence:72.6, ...recentSgtStamp(0), top:"22%", left:"25%", width:"13%", height:"37%" },
   ]},
   { camLabel: "CAM_NorthGate_BS2", location: "Orchard MRT Gate", bgUrl: BG[0], detections: [
     { id:"d7", type:"Vehicle", name:"Vehicle XB3291", group:"Logistics", confidence:81.3, ...recentSgtStamp(1), top:"20%", left:"40%", width:"18%", height:"28%" },
   ]},
   { camLabel: "CAM_CentralA_CA2", location: "CA2 Sub Station", bgUrl: BG[1], detections: [
-    { id:"d8", type:"Unknown", name:"Red jacket • Female", group:"Unknown", confidence:0, ...recentSgtStamp(2), top:"26%", left:"52%", width:"12%", height:"34%" },
+    { id:"d8", type:"Unknown", name:"Red jacket • Female", group:"", confidence:0, ...recentSgtStamp(2), top:"26%", left:"52%", width:"12%", height:"34%" },
   ]},
   { camLabel: "CAM_WestGate_BS1B", location: "Bugis MRT", bgUrl: BG[0], detections: [
     { id:"d9",  type:"VIP",     name:"hong gildong", group:"VIP group",  confidence:76.9, ...recentSgtStamp(1), top:"20%", left:"18%", width:"13%", height:"36%" },
     { id:"d10", type:"Vehicle", name:"Vehicle XC112", group:"Security",  confidence:64.2, ...recentSgtStamp(1), top:"22%", left:"60%", width:"16%", height:"26%" },
   ]},
   { camLabel: "CAM_HarbourB_HB4", location: "HB4 Terminal",  bgUrl: BG[1], detections: [
-    { id:"d11", type:"Unknown", name:"Blue cap • Male", group:"Unknown", confidence:0, ...recentSgtStamp(5), top:"22%", left:"36%", width:"12%", height:"36%" },
+    { id:"d11", type:"Unknown", name:"Blue cap • Male", group:"", confidence:0, ...recentSgtStamp(5), top:"22%", left:"36%", width:"12%", height:"36%" },
   ]},
   { camLabel: "CAM_NorthC_NC1",   location: "NC 1 West",      bgUrl: BG[0], detections: [
     { id:"d12", type:"VIP", name:"hong gildong", group:"Staff (HR)", confidence:77.8, ...recentSgtStamp(6), top:"19%", left:"48%", width:"13%", height:"38%" },
@@ -307,7 +322,7 @@ const CAMERA_FEEDS: CamData[] = [
     { id:"d14", type:"Vehicle", name:"Vehicle TJ8821", group:"Logistics", confidence:88.1, ...recentSgtStamp(13), top:"22%", left:"45%", width:"16%", height:"26%" },
   ]},
   { camLabel: "CAM_JurongG_JR1",     location: "Jurong Gateway",        bgUrl: BG[0], detections: [
-    { id:"d15", type:"Unknown", name:"Grey hoodie • Male", group:"Unknown", confidence:0, ...recentSgtStamp(14), top:"24%", left:"38%", width:"11%", height:"34%" },
+    { id:"d15", type:"Unknown", name:"Grey hoodie • Male", group:"", confidence:0, ...recentSgtStamp(14), top:"24%", left:"38%", width:"11%", height:"34%" },
   ]},
   { camLabel: "CAM_SengkangR_SG1",   location: "Sengkang Riverside",    bgUrl: BG[1], detections: [
     { id:"d16", type:"VIP", name:"Dr. Alex Wong", group:"VIP group", confidence:91.5, ...recentSgtStamp(15), top:"18%", left:"55%", width:"12%", height:"37%" },
@@ -316,7 +331,7 @@ const CAMERA_FEEDS: CamData[] = [
     { id:"d17", type:"Vehicle", name:"Vehicle CQ4471", group:"Navy", confidence:79.6, ...recentSgtStamp(16), top:"20%", left:"40%", width:"17%", height:"27%" },
   ]},
   { camLabel: "CAM_WoodlandsCP_WD1", location: "Woodlands Checkpoint",  bgUrl: BG[1], detections: [
-    { id:"d18", type:"Unknown", name:"Navy jacket • Male • Backpack", group:"Unknown", confidence:0, ...recentSgtStamp(17), top:"23%", left:"50%", width:"12%", height:"35%" },
+    { id:"d18", type:"Unknown", name:"Navy jacket • Male • Backpack", group:"", confidence:0, ...recentSgtStamp(17), top:"23%", left:"50%", width:"12%", height:"35%" },
   ]},
   { camLabel: "CAM_AngMoKioH_AK1",   location: "Ang Mo Kio Hub",        bgUrl: BG[0], detections: [
     { id:"d19", type:"VIP", name:"hong gildong", group:"Staff (HR)", confidence:68.9, ...recentSgtStamp(18), top:"19%", left:"33%", width:"13%", height:"38%" },
@@ -342,7 +357,7 @@ const UPLOAD_DATA: Record<string, CamData> = {
     { id:"dv2", type:"Vehicle", name:"Vehicle SGX411", group:"Navy", confidence:88.2, ...recentSgtStamp(50), top:"20%", left:"45%", width:"18%", height:"28%" },
   ]},
   v3: { camLabel: "CAM_WestGate_BS1_REC3", location: "Main Intake Road", bgUrl: BG[0], detections: [
-    { id:"dv3", type:"Unknown", name:"Grey hoodie • Male", group:"Unknown", confidence:0, ...recentSgtStamp(60), top:"24%", left:"38%", width:"11%", height:"34%" },
+    { id:"dv3", type:"Unknown", name:"Grey hoodie • Male", group:"", confidence:0, ...recentSgtStamp(60), top:"24%", left:"38%", width:"11%", height:"34%" },
   ]},
   i1: { camLabel: "CAM_WestGate_BS1_SNAP1", location: "Main Intake Road", bgUrl: BG[0], sourceType:"image", detections: [
     { id:"di1", type:"VIP", name:"Sarah Lin", group:"Staff (Finance)", confidence:93.5, ...recentSgtStamp(70), top:"15%", left:"20%", width:"12%", height:"38%" },
@@ -620,6 +635,10 @@ function CameraCard({
           className={hasVip ? "vca-cam-label-glow" : undefined}
           style={{ position:"absolute", top:10, left:10, display:"flex", alignItems:"center", gap:"5px", zIndex:10, backgroundColor:"var(--scrim-media)", padding:"4px 8px", border:"1.5px solid transparent" }}
         >
+          {/* The dot is fixed green and that is not a constant standing in for a status: a tile is
+              only ever built for a camera the register says is running (gridCams filters
+              monitor === "alert" out, deliberately — see the note there). If that filter ever goes,
+              this has to be bound to cam.monitor rather than left saying "live" over a dark feed. */}
           <div style={{ width:"6px", height:"6px", borderRadius:"50%", backgroundColor:"var(--success-400)", flexShrink:0 }} />
           <span style={{ fontSize:"10px", fontWeight:600, color:"white", letterSpacing:"-0.2px" }}>
             {data.camLabel} • {data.location}
@@ -669,7 +688,6 @@ function CameraCard({
           {dets.length === 0 ? (
             <div style={{ padding:"20px", textAlign:"center", color:"var(--gray-400)", fontSize:"11px" }}>{t.noDetections}</div>
           ) : dets.map((det, i) => {
-            const avatarSrc = det.type === "Vehicle" ? CAR_IMG : AVATAR[i % AVATAR.length];
             const showConfidence = det.type === "VIP";
             return (
               <div key={det.id}
@@ -682,10 +700,12 @@ function CameraCard({
                 onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--gray-50)")}
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
               >
-                {/* Avatar + status dot — rounded-square (8px), not a circle, per Figma */}
+                {/* The crop's place, held empty, with the type dot still on its corner — the
+                    rounded-square (8px, per Figma) is the shape the crop will come back in.
+                    HANDOFF NOTE: one image per detection brings it back — the crop this row's
+                    detection was matched on, carried on the detection by id. */}
                 <div style={{ position:"relative", flexShrink:0, width:"42px", height:"42px" }}>
-                  <img src={avatarSrc} alt=""
-                    style={{ width:"42px", height:"42px", borderRadius:"8px", objectFit:"cover", display:"block" }} />
+                  <div style={{ width:"42px", height:"42px", borderRadius:"8px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", boxSizing:"border-box" }} />
                   <div style={{
                     position:"absolute", top:"-2px", right:"-3px", width:"10px", height:"10px", borderRadius:"50%", border:"1px solid white",
                     backgroundColor: DET_COLOR[det.type],
@@ -711,7 +731,13 @@ function CameraCard({
                             group (Staff/VIP group, Navy/Logistics/Security fleet, etc.) varied
                             row to row and read as inconsistent; that detail is still available
                             in the HUD popup / Inspection Detail view. */}
-                        {det.type === "VIP" ? "VIP" : det.type === "Vehicle" ? "Vehicle" : det.group}
+                        {/* The group is the install's own data and stays as written; the class is
+                            this screen's word for it and follows the chips above. */}
+                        {/* An unidentified detection has no group — the seed used to write the
+                            literal "Unknown" into that field, so a Korean screen printed an
+                            English word that was not install data but a placeholder standing in
+                            for absence. Empty now, and the class fills the slot. */}
+                        {det.type === "Unknown" ? (det.group || typeLabel(det.type, lang)) : typeLabel(det.type, lang)}
                       </span>
                     </div>
                     <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)", fontFamily:"monospace", flexShrink:0 }}>
@@ -756,12 +782,12 @@ function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState
               here and grey three lines away in the list it was opened from — the same icon for
               the same fact, twice, in two colours.
 
-              The type is not un-signalled by this: the avatar's dot carries it in the reel, and
+              The type is not un-signalled by this: the dot on the row's crop frame carries it, and
               the detail headline below keeps the coloured icon. One coloured moment per surface,
               spent where the subject is named. */}
           <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
             <FilterIcon type={det.type} color="var(--gray-700)" size={16} />
-            <span style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-700)" }}>{det.type}</span>
+            <span style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-700)" }}>{typeLabel(det.type, lang)}</span>
           </div>
           {det.type === "VIP" && (
             <div style={{ backgroundColor:"var(--primary-100)", borderRadius:"12px", padding:"2px 6px" }}>
@@ -1425,13 +1451,11 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
     );
   }
 
-  // "VIP" and "Vehicle" are the detection classes the model reports and read the same in both
-  // languages here; only "All" and "Unknown" get translated.
   const FILTER_CFG: { id: DetType | "All"; label: string; color?: string }[] = [
     { id:"All",     label: t.filterAll },
-    { id:"VIP",     label:"VIP",              color: DET_COLOR.VIP },
-    { id:"Vehicle", label: lang === "ko" ? "차량" : "Vehicle", color: DET_COLOR.Vehicle },
-    { id:"Unknown", label: lang === "ko" ? "미확인" : "Unknown", color: DET_COLOR.Unknown },
+    { id:"VIP",     label: typeLabel("VIP", lang),     color: DET_COLOR.VIP },
+    { id:"Vehicle", label: typeLabel("Vehicle", lang), color: DET_COLOR.Vehicle },
+    { id:"Unknown", label: typeLabel("Unknown", lang), color: DET_COLOR.Unknown },
   ];
 
   return (

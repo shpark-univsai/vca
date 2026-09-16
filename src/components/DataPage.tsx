@@ -482,17 +482,19 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
 
         {/* Header */}
         <div style={{ padding:"14px 16px", borderBottom:BORDER, backgroundColor:"var(--gray-50)", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
-            <div style={{ width:"10px", height:"10px", borderRadius:"50%", backgroundColor:"var(--success-400)", flexShrink:0 }} />
-            <div>
-              <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-                <p style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{T[lang].reidObject(String(item.id).padStart(4,"0"))}</p>
-                <ScoreBadge score={item.similarity} />
-                <span style={{ fontSize:"10px", fontWeight:700, color:"var(--gray-600)", backgroundColor:"var(--gray-100)", padding:"2px 7px", borderRadius:"999px" }}>{item.cam}</span>
-                <span style={{ fontSize:"10px", fontWeight:800, color:REID_STATUS_STYLE[item.status].text, backgroundColor:`${REID_STATUS_STYLE[item.status].text}1a`, padding:"2px 7px", borderRadius:"999px" }}>{attr(item.status, lang)}</span>
-              </div>
-              <p style={{ fontSize:"10px", color:"var(--gray-400)", marginTop:"1px" }}>{item.time}</p>
+          {/* A fixed --success-400 dot sat here, 10px to the left of the status badge below —
+              so a row reading 미확인 (grey) or RedFace (red) still opened with a green lamp beside
+              it. Two status signals, and the constant one was the first thing the eye reached.
+              Removed rather than recoloured: the badge already carries item.status, in its own
+              colour, in the same row. */}
+          <div>
+            <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+              <p style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{T[lang].reidObject(String(item.id).padStart(4,"0"))}</p>
+              <ScoreBadge score={item.similarity} />
+              <span style={{ fontSize:"10px", fontWeight:700, color:"var(--gray-600)", backgroundColor:"var(--gray-100)", padding:"2px 7px", borderRadius:"999px" }}>{item.cam}</span>
+              <span style={{ fontSize:"10px", fontWeight:800, color:REID_STATUS_STYLE[item.status].text, backgroundColor:`${REID_STATUS_STYLE[item.status].text}1a`, padding:"2px 7px", borderRadius:"999px" }}>{attr(item.status, lang)}</span>
             </div>
+            <p style={{ fontSize:"10px", color:"var(--gray-400)", marginTop:"1px" }}>{item.time}</p>
           </div>
           <button onClick={onClose} style={{ padding:"4px", border:"none", background:"none", cursor:"pointer", color:"var(--gray-400)", display:"flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -4050,7 +4052,9 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                     ) : (
                       <>
                         <DefaultFaceIconSm />
-                        <span className="vca-dropzone-label" style={{ fontSize:"10px", color:"var(--gray-400)" }}>Face</span>
+                        {/* t.face / t.body, not the literals — this pair of dropzones was the one
+                            place on the Korean screen still labelled Face / Body. */}
+                        <span className="vca-dropzone-label" style={{ fontSize:"10px", color:"var(--gray-400)" }}>{t.face}</span>
                         <span className="vca-dropzone-hint" style={{ fontSize:"10px", fontWeight:700, color:"var(--primary-400)", opacity:0 }}>{t.clickToUpload}</span>
                       </>
                     )}
@@ -4080,7 +4084,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                     ) : (
                       <>
                         <FullBodyIconSm />
-                        <span className="vca-dropzone-label" style={{ fontSize:"10px", color:"var(--gray-400)" }}>Body</span>
+                        <span className="vca-dropzone-label" style={{ fontSize:"10px", color:"var(--gray-400)" }}>{t.body}</span>
                         <span className="vca-dropzone-hint" style={{ fontSize:"10px", fontWeight:700, color:"var(--primary-400)", opacity:0 }}>{t.clickToUpload}</span>
                       </>
                     )}
@@ -4093,7 +4097,9 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
 
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
             <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.dateRange}</span>
-            <DateRangeTrigger value={dateRange} onApply={setDateRange} mode="split" size="sm" emptyText="Last 7 days" />
+            {/* The same default this component is given everywhere else, from T — spelled out
+                as a literal here it stayed English under a Korean label. */}
+            <DateRangeTrigger value={dateRange} onApply={setDateRange} mode="split" size="sm" emptyText={t.last7days} />
           </div>
 
           {isVehicle && (
@@ -4626,6 +4632,22 @@ function groupCooccurEvents(events: CooccurEvent[]) {
   return groups.sort((a, b) => b.events.length - a.events.length);
 }
 
+/**
+ * The bucket words are this screen's own, not the model's — so unlike ATTR_KO's values they are
+ * translated wherever they are drawn. They were reaching the Korean screen raw, in the peak-time
+ * card, its tooltip, the active-filter chip and the associate table: "evening · 12" under 주 시간대.
+ *
+ * Kept as a map beside timeBucket rather than in T because the keys ARE timeBucket's return
+ * values — the two have to change together, and a lookup that misses falls back to the English
+ * word rather than inventing one.
+ */
+const TIME_BUCKET_KO: Record<string, string> = {
+  morning: "오전", afternoon: "오후", evening: "저녁", night: "밤",
+};
+function timeBucketLabel(bucket: string, lang: AppLanguage): string {
+  return lang === "ko" ? (TIME_BUCKET_KO[bucket] ?? bucket) : bucket;
+}
+
 function timeBucket(time: string) {
   const hour = parseInt(time.split(":")[0], 10);
   if (hour >= 5 && hour < 12) return "morning";
@@ -4931,7 +4953,9 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
   const shown = focus === "location" ? newestFirst.filter(e => e.location === topGroup.location)
     : focus === "time" ? newestFirst.filter(e => timeBucket(e.time) === bucket)
     : newestFirst;
-  const focusLabel = focus === "location" ? topGroup.location : focus === "time" ? bucket : null;
+  // Translated here, not at the chip: the chip prints whatever this is, and a location name is
+  // data (never translated) while the bucket is one of this file's own four words.
+  const focusLabel = focus === "location" ? topGroup.location : focus === "time" ? timeBucketLabel(bucket, lang) : null;
 
   const pageCount = Math.max(1, Math.ceil(shown.length / perPage));
   const safePage = Math.min(page, pageCount);
@@ -5073,7 +5097,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
             </button>
             <button className="vca-peak-card" data-on={focus === "time"}
               onClick={() => toggleFocus("time")}
-              title={t.peakTimeTip(bucketCount, events.length, pct, attr(bucket, lang))}
+              title={t.peakTimeTip(bucketCount, events.length, pct, timeBucketLabel(bucket, lang))}
               style={{ flex:1, minWidth:0, borderRadius:"8px", padding:"6px 10px", textAlign:"left", cursor:"pointer" }}>
               <p className="vca-peak-label" style={{ margin:0, fontSize:"10px", color:"var(--gray-400)" }}>{t.colPeakTime}</p>
               {/* Sun or moon by the bucket itself — a sun beside "night" would be worse than no
@@ -5082,7 +5106,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
                 {/* Count, not the percentage that used to sit here: the two cards now say the same
                     kind of thing, and the total they are out of is the badge two rows down. The
                     percentage moved into this card's tooltip. */}
-                {bucket === "evening" || bucket === "night" ? <MoonIconSm /> : <SunIconSm />} {bucket}
+                {bucket === "evening" || bucket === "night" ? <MoonIconSm /> : <SunIconSm />} {timeBucketLabel(bucket, lang)}
                 <span style={{ marginLeft:"auto", fontWeight:800, color:"var(--primary-400)" }}>{bucketCount}</span>
               </p>
             </button>
@@ -5345,7 +5369,7 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort, 
             </div>
             <span style={{ width:"76px", flexShrink:0, fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{groups.length}</span>
             <span style={{ width:"160px", flexShrink:0, fontSize:"12px", fontWeight:600, color:"var(--gray-900)" }}>{`${topGroup.location} · ${topGroup.events.length}`}</span>
-            <span style={{ width:"118px", flexShrink:0, fontSize:"12px", fontWeight:600, color:"var(--gray-900)", textTransform:"capitalize" }}>{`${bucket} · ${bucketCount}`}</span>
+            <span style={{ width:"118px", flexShrink:0, fontSize:"12px", fontWeight:600, color:"var(--gray-900)", textTransform:"capitalize" }}>{`${timeBucketLabel(bucket, lang)} · ${bucketCount}`}</span>
             <span style={{ width:"168px", flexShrink:0, fontSize:"12px", fontWeight:600, color:"var(--gray-500)", display:"flex", gap:"6px", whiteSpace:"nowrap" }}>
               {firstSeen.date.slice(5)} → {lastSeen.date.slice(5)}
               {/* Elapsed is blank until mounted rather than computed during render — the clock is

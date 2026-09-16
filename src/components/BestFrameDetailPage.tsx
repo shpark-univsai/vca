@@ -127,18 +127,15 @@ export interface DetailProps {
  */
 const DET_COLOR: Record<DetType, string> = { VIP: "var(--primary-400)", Vehicle: "var(--type-vehicle)", Unknown: "var(--gray-600)" };
 
-const AVATAR = [
-  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
-  "https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=200&q=80",
-  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80",
-];
-// A Vehicle-type detection is a car, not a person — it needs its own photo rather than cycling
-// through the same face-portrait AVATAR set everything else uses.
-const VEHICLE_PHOTO = "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=200&q=80";
-// DB_PHOTO / LIVE_CAPTURE_PHOTO were declared here and drawn as this detection's captured
-// face and this person's enrolled photo. Removed with their call sites — left as a name so the
-// next person does not reintroduce them from the files still sitting in /public.
+// AVATAR (four stock portraits) and VEHICLE_PHOTO (one stock car) were declared here and dealt
+// out to the reel cards and the "caught in this frame together" cards by LIST POSITION. Two lists,
+// two positions: the same detection was one stranger in the reel and another in the panel it
+// opened, and filtering the reel changed a person's face where they stood. Removed with their call
+// sites — a face beside a name on this screen is read as that person.
+//
+// DB_PHOTO / LIVE_CAPTURE_PHOTO were declared here for the same reason and removed the same way —
+// left as names so the next person does not reintroduce them from the files still sitting
+// in /public.
 
 /**
  * The model's own words for what it saw, translated only where they are drawn — the same rule
@@ -170,17 +167,10 @@ function detailAttr(value: string, lang: AppLanguage): string {
  * them to. HANDOFF NOTE: when the module returns per-detection attributes, render one tag per
  * attribute that actually arrived — never a table indexed by type.
  */
-/**
- * What the registry has on this person or vehicle.
- *
- * The Unknown case is not data: nothing was found, and saying so is the screen's own sentence, so
- * it comes from T rather than sitting here in English under a Korean label.
- */
-const REGISTERED: Record<DetType, string | null> = {
-  VIP:     "Admin_Staff (Parking Zone F)",
-  Unknown: null,
-  Vehicle: "Navy Fleet Registry",
-};
+// REGISTERED stood here — a registry line per TYPE ("Admin_Staff (Parking Zone F)" for every VIP
+// in the product). Its one reader now prints det.group instead (see the note at that line), and it
+// has been sitting here unread since. Deleted rather than left as furniture: it is exactly the
+// shape — a per-entity fact stored per type — that the next person is meant to stop reaching for.
 
 // ── Timeline time model ─────────────────────────────────────────
 // Everything below works in "seconds since midnight" so stepping/ticking is plain arithmetic —
@@ -352,6 +342,31 @@ function ReelFilterBar({ filter, onChange, counts }: { filter: ReelFilter; onCha
   );
 }
 
+/**
+ * The target's number within the frame, as "P-01".
+ *
+ * It belongs to where the detection sits in the FRAME's own list — not to where it landed in
+ * whichever list is being drawn. The reel numbered its cards by their index in the FILTERED list,
+ * so filtering to VIP renumbered the third target P-01 while the box around that same person on
+ * the feed beside it still said P-03: one person, two numbers, one screen.
+ *
+ * Padded, because the widest frame here holds nine and the next one to hold ten read "P-010".
+ */
+function targetLabel(n: number) {
+  return `P-${String(n).padStart(2, "0")}`;
+}
+
+/**
+ * The detection class, in the reader's language. "VIP" is the same word in both.
+ *
+ * t.vehicle / t.unknown have been in T since the reel's filter chips were translated — the cards
+ * sitting directly under those chips went on printing the raw English type, so one panel said
+ * 차량 on the chip and Vehicle on the card it filtered to.
+ */
+function typeLabel(type: DetType, t: (typeof T)[AppLanguage]): string {
+  return type === "Vehicle" ? t.vehicle : type === "Unknown" ? t.unknown : "VIP";
+}
+
 /* ── Tag chip ─────────────────────────────────────────────────── */
 function Tag({ label }: { label: string }) {
   return (
@@ -361,31 +376,29 @@ function Tag({ label }: { label: string }) {
   );
 }
 
-/* ── Also-captured card — same visual design as Live Monitoring's grid card
-   (MonitorCard in DataPage.tsx): full-bleed photo, bottom gradient, an
-   overlapping rounded-square face-crop bubble (VIP gets a purple ring), and a
-   white footer with the status/score row and a timestamp row. There's only
-   one real photo per detection here (no separate face crop), so the bubble
-   reuses it with a scaled-up, top-weighted crop to fake a face-zoom. ─────── */
-// Same face-crop-on-top/full-body-below stack the Best Frame Reel cards use, but purely a
-// read-only "who else is in this frame" listing — nothing to click through to, unlike the reel
-// cards. A plain div, not a button.
-function AlsoCapturedCard({ det, index }: { det: Detection; index: number }) {
-  const photo = det.type === "Vehicle" ? VEHICLE_PHOTO : AVATAR[index % AVATAR.length];
+/* ── Also-captured card ───────────────────────────────────────────
+   The narrow read-only "who else is in this frame" listing — nothing to click
+   through to, unlike the reel cards, so a plain div rather than a button.
+
+   It used to be described here as Live Monitoring's grid card (full-bleed
+   photo, gradient, a face-crop bubble faked by scaling one photo 1.8x): that
+   description outlived the photos themselves and is not what this draws any
+   more. See the note inside. ──────────────────────────────────────────────── */
+function AlsoCapturedCard({ det }: { det: Detection }) {
+  const [lang] = useLanguage();
   const c = DET_COLOR[det.type];
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"5px", width:"64px", flexShrink:0 }}>
-      <div style={{ width:"100%", aspectRatio:"1/1", borderRadius:"6px", overflow:"hidden", backgroundColor:"var(--gray-900)" }}>
-        <img src={photo} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"50% 20%", display:"block", transform:"scale(1.8)", transformOrigin:"50% 20%" }} />
-      </div>
-      <div style={{ width:"100%", aspectRatio:"1/2", borderRadius:"6px", overflow:"hidden", backgroundColor:"var(--gray-900)" }}>
-        <img src={photo} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
-      </div>
+      {/* Empty, not a stock face — see the note where AVATAR was removed. This row sat directly
+          under the comparison boxes that had already been emptied for the same reason, so the
+          panel was denying it had this person's picture at the top and showing one at the bottom.
+          HANDOFF NOTE: the crop the module matched on, carried on the detection by id, goes here. */}
+      <div style={{ width:"100%", aspectRatio:"1/1", borderRadius:"6px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", boxSizing:"border-box" }} />
       <p style={{ fontSize:"11px", fontWeight:700, color:"var(--gray-900)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", margin:0 }}>
         {det.name}
       </p>
       <span style={{ display:"flex", alignItems:"baseline", gap:"3px" }}>
-        <span style={{ fontSize:"10px", fontWeight:800, color:c, letterSpacing:"-0.2px" }}>{det.type}</span>
+        <span style={{ fontSize:"10px", fontWeight:800, color:c, letterSpacing:"-0.2px" }}>{typeLabel(det.type, T[lang])}</span>
         {det.type === "VIP" && <span style={{ fontSize:"9px", fontWeight:600, color:"var(--gray-600)" }}>{det.confidence}%</span>}
       </span>
     </div>
@@ -393,9 +406,9 @@ function AlsoCapturedCard({ det, index }: { det: Detection; index: number }) {
 }
 
 /* ── Reel card ────────────────────────────────────────────────── */
-function ReelCard({ det, index, isFocused, onClick }: { det: Detection; index: number; isFocused: boolean; onClick: () => void }) {
+function ReelCard({ det, targetNo, isFocused, onClick }: { det: Detection; targetNo: number; isFocused: boolean; onClick: () => void }) {
+  const [lang] = useLanguage();
   const c = DET_COLOR[det.type];
-  const photo = det.type === "Vehicle" ? VEHICLE_PHOTO : AVATAR[index % AVATAR.length];
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -413,19 +426,18 @@ function ReelCard({ det, index, isFocused, onClick }: { det: Detection; index: n
         transition: "background-color 0.15s ease",
       }}
     >
-      {/* Face crop on top, full-body capture below — stacked, not overlapping. The overlapping-
-          bubble style (borrowed from Live Monitoring's wider grid cards) didn't hold up at this
-          card's narrower width: the bubble scaled up disproportionately large relative to the
-          card and read as broken rather than intentional. A plain stack has no such scaling
-          issue at any card width. */}
-      <div style={{ position:"relative", width:"100%", aspectRatio:"1/1", borderRadius:"10px", overflow:"hidden", backgroundColor:"var(--gray-900)" }}>
-        <img src={photo} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"50% 20%", display:"block", transform:"scale(1.8)", transformOrigin:"50% 20%" }} />
-        <div style={{ position:"absolute", top:6, left:6, backgroundColor:"var(--label-plate)", borderRadius:"4px", padding:"2px 6px", fontSize:"10px", fontWeight:600, color:"white" }}>
-          P-0{index + 1}
+      {/* A face crop sat on top and a full-body capture below it — the same stock portrait twice,
+          the top one scaled 1.8x to fake a face zoom, chosen by the card's position in the list.
+          Both are gone; see the note where AVATAR was removed. One empty frame is left, holding
+          the target number, so the card still says which box on the feed it belongs to.
+          HANDOFF NOTE: two images per detection bring the stack back — the matched crop and the
+          full-body capture, carried on the detection by id. The plate label style (white on
+          --label-plate) goes back on the label then too; it is for text drawn over imagery, and
+          there is no imagery under it right now. */}
+      <div style={{ position:"relative", width:"100%", aspectRatio:"1/1", borderRadius:"10px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", boxSizing:"border-box" }}>
+        <div style={{ position:"absolute", top:6, left:6, fontSize:"10px", fontWeight:600, color:"var(--gray-500)" }}>
+          {targetLabel(targetNo)}
         </div>
-      </div>
-      <div style={{ width:"100%", aspectRatio:"1/2", borderRadius:"10px", overflow:"hidden", backgroundColor:"var(--gray-900)" }}>
-        <img src={photo} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
       </div>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         {/* Icon + colored text, no pill background — matches the Dashboard/Sidebar event
@@ -433,7 +445,7 @@ function ReelCard({ det, index, isFocused, onClick }: { det: Detection; index: n
             the solid-fill pill this used before. */}
         <span style={{ display:"flex", alignItems:"center", gap:"4px" }}>
           <TypeIcon type={det.type} color={c} size={12} />
-          <span style={{ fontSize:"11px", fontWeight:600, color:c }}>{det.type}</span>
+          <span style={{ fontSize:"11px", fontWeight:600, color:c }}>{typeLabel(det.type, T[lang])}</span>
         </span>
         {/* Confidence is a match-against-registry score — only meaningful for VIP, since
             Vehicle/Unknown have nothing registered to match against. */}
@@ -495,8 +507,8 @@ function BestFrameReel({ data, focusedId, onFocus, onSelect, filter, onFilterCha
         {dets.length === 0 && (
           <div style={{ gridColumn:"1 / -1", padding:"24px 0", textAlign:"center", color:"var(--gray-400)", fontSize:"12px" }}>{t.noDetections}</div>
         )}
-        {dets.map((det, i) => (
-          <ReelCard key={det.id} det={det} index={i} isFocused={det.id === focusedId} onClick={() => { onFocus(det); onSelect(det); }} />
+        {dets.map(det => (
+          <ReelCard key={det.id} det={det} targetNo={data.detections.findIndex(d => d.id === det.id) + 1} isFocused={det.id === focusedId} onClick={() => { onFocus(det); onSelect(det); }} />
         ))}
       </div>
     </div>
@@ -606,8 +618,8 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
                 box-shadow was getting clipped flush against this row's own right/bottom edge.
                 Padding directly on the scrollable row itself fixes that at every scroll position. */}
             <div style={{ display:"flex", gap:"8px", overflowX:"auto", padding:"2px 10px 8px 2px" }}>
-              {data.detections.filter(d => d.id !== det.id).map((d, i) => (
-                <AlsoCapturedCard key={d.id} det={d} index={i} />
+              {data.detections.filter(d => d.id !== det.id).map(d => (
+                <AlsoCapturedCard key={d.id} det={d} />
               ))}
             </div>
           </>
@@ -928,7 +940,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     boxShadow:"0 1px 6px rgba(24, 17, 39,0.12)",
                     opacity: isFocused ? 1 : 0.85,
                   }}>
-                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)" }}>P-0{i + 1}</span>
+                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)" }}>{targetLabel(i + 1)}</span>
                     {det.type === "VIP" && <TypeIcon type="VIP" color="var(--primary-400)" size={11} solid />}
                     <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-900)" }}>{det.name}</span>
                   </div>
