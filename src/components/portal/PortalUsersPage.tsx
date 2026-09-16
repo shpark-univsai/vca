@@ -1883,7 +1883,11 @@ function UserCountStrip({
           uses them. A guide link is worth having (the role descriptions otherwise live inside a
           select an auditor may not be allowed to open), but it needs something to be attached to,
           and this line is the only place on the page that says all five names in a row. */}
-      <p style={{ fontSize: "11px", color: "var(--gray-500)", margin: "-4px 0 16px" }}>
+      {/* Pulled up against the cards and pushed away from what follows. This line is a breakdown
+          OF those numbers, so it belongs to them — and the gap after it is where the page's next
+          section starts. Equal gaps everywhere is what made this page read as one flat column:
+          hierarchy here is spacing, not another heading. */}
+      <p style={{ fontSize: "11px", color: "var(--gray-500)", margin: "-14px 0 28px" }}>
         {roleCounts.map(([label, count]) => `${label} ${count}`).join(" · ")}
         <span style={{ color: "var(--gray-300)" }}>{"  ·  "}</span>
         <button
@@ -2286,7 +2290,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           a lone underlined phrase at the top of a page reads as a warning or a leftover. It moved
           to the end of the role-distribution caption, where the roles are named one by one and the
           question arises on its own. */}
-      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
+      {/* The toolbar and the table under it are one thing — a list and the controls that narrow it
+          — so they sit close. The distance that matters is the one above this row, not the one
+          inside the pair. */}
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "10px" }}>
       <div style={{ position: "relative", flex: 1, minWidth: "220px", maxWidth: "320px" }}>
         <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>

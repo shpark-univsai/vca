@@ -725,15 +725,22 @@ export interface SummaryCell {
 export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
   if (cells.length === 0) return null;
   return (
-    /* No overflow:hidden. It kept the cells' active tint inside the rounded corners, and clipped
-       the one thing that has to escape — the explanation tooltip, which hangs below its label. The
-       corners are handled by rounding the end cells instead. */
+    /*
+      SEPARATE CARDS, not one slab with dividers between the cells.
+      
+      Fused, the four numbers read as one object — a strip of the page rather than four facts, and
+      nothing in it could be weighted differently from anything else. Every comparable console
+      draws them apart (Deel, Clerk, Mixpanel, StackAI), and the gap is what lets a cell carry its
+      own state: an amber cell now tints a card instead of staining part of a shared panel.
+      
+      No overflow:hidden anywhere. It used to clip the one thing that has to escape — the
+      explanation tooltip, which hangs below its label.
+    */
     <div style={{
-      display: "flex", alignItems: "stretch", flexWrap: "wrap",
-      backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px",
-      marginBottom: "12px",
+      display: "flex", alignItems: "stretch", flexWrap: "wrap", gap: "10px",
+      marginBottom: "20px",
     }}>
-      {cells.map((cell, i) => {
+      {cells.map(cell => {
         // A defect is amber. Anything else is the plain text colour: these cells state a fact
         // rather than raise one, and a coloured figure asks to be acted on. The mark beside it
         // stays grey — with a gray-900 figure next to it there is no risk of the cell reading as
@@ -744,7 +751,7 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
           <>
             <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
               <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                <span style={{ fontSize: "20px", fontWeight: 800, color: accent, lineHeight: "22px" }}>{cell.figure}</span>
+                <span style={{ fontSize: "24px", fontWeight: 800, color: accent, lineHeight: "26px", letterSpacing: "-0.5px" }}>{cell.figure}</span>
                 {cell.unit && <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{cell.unit}</span>}
                 {cell.trend && (
                   /* alignItems center rather than the row's baseline: the arrow is a glyph-sized
@@ -775,17 +782,14 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
           </>
         );
         const shared: React.CSSProperties = {
-          flex: 1, minWidth: "128px",
+          flex: 1, minWidth: "148px",
           display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px",
-          padding: "10px 18px",
-          // gray-200, not the --line hairline every card edge uses: this rule sits inside a white
-          // panel with nothing else to separate the cells, and at #e7e7f1 on white the middle
-          // divider was there in the markup and invisible on the screen.
-          borderLeft: i === 0 ? "none" : "1px solid var(--gray-200)",
-          // The end cells carry the strip's own corners, so a tinted cell does not square them off
-          // now that the container no longer clips.
-          ...(i === 0 ? { borderTopLeftRadius: "12px", borderBottomLeftRadius: "12px" } : null),
-          ...(i === cells.length - 1 ? { borderTopRightRadius: "12px", borderBottomRightRadius: "12px" } : null),
+          // Roomier than it was (10px 18px). These are the page's headline numbers and they were
+          // wearing the padding of a table row.
+          padding: "14px 18px",
+          backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px",
+          // No dividers and no end-cap corners any more: the gap between the cards separates them,
+          // and every card carries all four of its own corners.
         };
         return cell.onClick ? (
           <button
@@ -795,22 +799,16 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
             className="portal-attention-row"
             style={{
               ...shared,
-              // Three sides, not `border: "none"`. A button carries a UA border and has to lose it,
-              // but writing the shorthand here resets the left edge too — and it resets it *after*
-              // the spread has set it, because re-assigning a key in an object literal keeps the
-              // key's original position: borderLeft came from `shared` and `border` came later, so
-              // the divider between two clickable cells was being erased at the last moment. That
-              // is why the strip lost the line between its first two cells and kept the one before
-              // the cell that is a span.
-              borderTop: "none", borderRight: "none", borderBottom: "none",
               cursor: "pointer", fontFamily: "inherit", textAlign: "left",
-              // The selected cell is tinted rather than outlined: on a panel, "this filter is on"
-              // is a state of the cell, not an annotation on its label. The tint follows the tone
-              // — an amber wash under a cell that is not raising a defect would report a fault the
-              // cell never claimed.
+              // The selected cell is tinted rather than outlined: "this filter is on" is a state
+              // of the card, not an annotation on its label. The tint follows the tone — an amber
+              // wash under a cell that is not raising a defect would report a fault it never
+              // claimed. Unselected keeps the card's own white; it used to be `transparent`, which
+              // was invisible while the cells were fused inside one white panel and is a hole in
+              // the row now that each one is its own card.
               backgroundColor: cell.active
                 ? (cell.tone === "warning" ? "var(--warning-100)" : "var(--gray-100)")
-                : "transparent",
+                : "white",
             }}
           >
             {body}
