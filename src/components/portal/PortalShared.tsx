@@ -1070,7 +1070,12 @@ export function Switch({ checked, onChange, label, disabled }: {
  * so a caller can tint it.
  */
 export function SelectedCheckIcon({ size = 14 }: { size?: number }) {
-  return <Check size={size} strokeWidth={1.4} />;
+  // The stroke attribute has to be derived, not typed: `Check` is a lucide glyph, so its 24-unit
+  // box is scaled down to whatever px the caller asks for and a literal 1.4 arrived on screen at
+  // 0.8-0.9px — a tick visibly lighter than the FilterSelect tick that means the same thing.
+  // ICON_STROKE_PX above carries the arithmetic; doing it here means every caller's size is right,
+  // including ones added later.
+  return <Check size={size} strokeWidth={(ICON_STROKE_PX * 24) / size} />;
 }
 
 /**
@@ -1272,10 +1277,15 @@ export function SortableHeader<K extends string>({ label, sortKey, sort, onToggl
   align?: "left" | "right";
 }) {
   const [hovered, setHovered] = useState(false);
-  const headingStyle = { fontSize: "10px", fontWeight: 600, letterSpacing: "0.4px" } as const;
+  // Sentence case and no tracking, for the reason written out on MetricCard's label above: caps and
+  // letter-spacing are a Latin-only device. toUpperCase() leaves a Korean heading untouched while
+  // the 0.4px still spreads the syllables apart, so one component was drawing two different
+  // headings depending on the language — and loose Hangul reads as unfinished, not as an eyebrow.
+  // The colour and the 10px already separate a heading from its rows; the caps were never what did.
+  const headingStyle = { fontSize: "10px", fontWeight: 600 } as const;
   const justify = align === "right" ? "flex-end" : "flex-start";
 
-  if (!sortKey) return <span style={{ ...headingStyle, color: TABLE_HEADER_COLOR, display: "flex", justifyContent: justify }}>{label.toUpperCase()}</span>;
+  if (!sortKey) return <span style={{ ...headingStyle, color: TABLE_HEADER_COLOR, display: "flex", justifyContent: justify }}>{label}</span>;
 
   const active = sort.key === sortKey;
   return (
@@ -1291,7 +1301,7 @@ export function SortableHeader<K extends string>({ label, sortKey, sort, onToggl
         color: active || hovered ? "var(--gray-900)" : TABLE_HEADER_COLOR,
       }}
     >
-      {label.toUpperCase()}
+      {label}
       {active && (
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0, transform: sort.direction === "desc" ? "rotate(180deg)" : "none" }}>
           <path d="M5 8V2M5 2L2.4 4.6M5 2l2.6 2.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>

@@ -254,6 +254,13 @@ export default function PortalShell() {
       const named = PROJECT_TABS.find(t => t.id === tabParam)?.id;
       if (!named) return "overview";
       if (named === "searchlog" && !getComplianceConfig().searchAccessLog) return "overview";
+      // Every flagged tab needs a line here, not just the first one that got written. `requests`
+      // was left out, so ?tab=requests passed straight through while ProjectSidebar hid the rail
+      // entry and PortalProjectDetailPage drew nothing: the breadcrumb said "외부 요청" over an
+      // empty column with nothing selected in the rail, and the only way out was to click some
+      // other tab. complianceConfig's own comment claims this route is covered, which is the
+      // reason the gap survived review — so if another flag joins that file, it joins this list.
+      if (named === "requests" && !getComplianceConfig().externalRequests) return "overview";
       return named as DetailTab;
     },
   );
@@ -286,8 +293,25 @@ export default function PortalShell() {
   const [lang] = usePortalLanguage();
   const t = T[lang];
 
+  /**
+   * ?newProject=1 is a one-shot instruction — it has already opened the wizard in state — so it is
+   * swept out of the address bar before a refresh or a shared link re-opens the wizard for someone
+   * who never asked for it.
+   *
+   * Only that one param, and via history.replaceState like syncUrl above, because this used to be
+   * `router.replace("/portal")` and that threw the WHOLE query string away. The signup wizard
+   * arrives at /portal?newProject=1&teamId=<the team it just made>, and App Router re-renders this
+   * same route without unmounting: showWizard stays true, the wizard stays open, but teamIdParam
+   * is suddenly null — so `currentOrg` fell back to teams[0], and since addTeam appends, a
+   * brand-new team is never teams[0]. The project a customer created in their first minutes was
+   * filed under whichever team happened to be first in the list. Nothing threw; both halves had a
+   * perfectly good team, just not the same one. ?type= was dropped by the same line.
+   */
   useEffect(() => {
-    if (newProjectParam) router.replace("/portal");
+    if (!newProjectParam || typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("newProject");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
