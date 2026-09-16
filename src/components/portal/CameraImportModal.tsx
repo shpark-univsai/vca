@@ -8,7 +8,7 @@ import { useToast } from "../Toast";
 import { BORDER } from "./PortalShared";
 import {
   buildCameraImportRows, decodeSpreadsheetBytes, importableRows, isBlocking, looksLikeXlsx, parseDelimited,
-  type CameraImportIssue, type ParsedCameraRow,
+  type CameraImportIssue, type CameraImportMode, type ParsedCameraRow,
 } from "@/lib/cameraImport";
 
 /**
@@ -154,6 +154,10 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
   useEscapeKey(onClose);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  // What the file is for. Explicit, because "update if the code exists" would let a file meant to
+  // add twelve cameras rewrite the stream config of everything already registered — see
+  // CameraImportMode.
+  const [mode, setMode] = useState<CameraImportMode>("add");
   const [dragging, setDragging] = useState(false);
   const [fileError, setFileError] = useState<FileError | null>(null);
   const [parsed, setParsed] = useState<{ rows: ParsedCameraRow[]; unmapped: string[]; fileName: string } | null>(null);
@@ -180,7 +184,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
     // is one id space, and a code reused on another site is how a detection lands on the wrong
     // street. addCameras applies the same rule, so a project-scoped check here would show green
     // for rows it then refuses.
-    const { rows, missingColumns, unmappedHeaders } = buildCameraImportRows(table, cameras.map(c => c.code));
+    const { rows, missingColumns, unmappedHeaders } = buildCameraImportRows(table, cameras.map(c => c.code), mode);
     if (missingColumns.length > 0) {
       const label: Record<string, string> = { name: t.colName, code: t.colCode, rtspUrl: t.colRtsp };
       setFileError(table.length === 0
@@ -210,9 +214,11 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
     ],
   ]);
 
-  const okRows = parsed ? importableRows(parsed.rows) : [];
-  const badRows = parsed?.rows.filter(r => r.issues.some(isBlocking)) ?? [];
-  const warnRows = parsed?.rows.filter(r => !r.issues.some(isBlocking) && r.issues.length > 0) ?? [];
+  const okRows = parsed ? importableRows(parsed.rows, mode) : [];
+  // Arrows, not a bare `isBlocking` reference: Array.prototype passes the index as the second
+  // argument, which would land in the `mode` parameter.
+  const badRows = parsed?.rows.filter(r => r.issues.some(i => isBlocking(i, mode))) ?? [];
+  const warnRows = parsed?.rows.filter(r => !r.issues.some(i => isBlocking(i, mode)) && r.issues.length > 0) ?? [];
   // What will actually be registered, after the licence has its say. Stated before the button is
   // pressed: a file of 300 rows against 40 free channels is a fact the reader should meet here,
   // not in the result screen.
@@ -222,7 +228,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
     if (!parsed) return;
     const skipped: SkippedRow[] = [];
     parsed.rows.forEach(row => {
-      const blocking = row.issues.filter(isBlocking);
+      const blocking = row.issues.filter(i => isBlocking(i, mode));
       if (blocking.length > 0) skipped.push({ row, reasons: blocking.map(issueText) });
     });
 
@@ -361,7 +367,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
                 ))}
               </div>
               {parsed.rows.map((r, i) => {
-                const blocking = r.issues.filter(isBlocking);
+                const blocking = r.issues.filter(i => isBlocking(i, mode));
                 const bad = blocking.length > 0;
                 const warn = !bad && r.issues.length > 0;
                 return (

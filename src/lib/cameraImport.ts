@@ -28,20 +28,52 @@ export type CameraImportIssue =
   | "duplicate-in-file"
   | "duplicate-in-register"
   | "bad-coordinates"
-  | "no-coordinates";
+  | "no-coordinates"
+  | "not-in-register";
 
 /**
- * The one issue that does not block an import.
+ * What the file is FOR. The same spreadsheet means two different things depending on this, and
+ * the issues invert between them, so it is a parameter rather than something inferred.
  *
- * A camera with no coordinates is a real camera that cannot be drawn on the map. Refusing it
- * would mean an installer who has RTSP URLs but not a survey cannot start, which is backwards —
- * the map placement is the thing that gets filled in later, not the camera. So it imports, and
- * it says so, and the row is counted separately so nobody discovers it as an empty map.
+ * "add" — these are new cameras. A code already in the register is a collision and blocks.
+ * "fill-coordinates" — these are cameras we already have, and the file carries the survey that
+ *   was not available on install day. A code already in the register is the POINT; a code that
+ *   matches nothing blocks instead.
+ *
+ * WHY THIS IS A MODE AND NOT AUTOMATIC. "Update the row if the code already exists" is the
+ * obvious shortcut and it is destructive: the file an installer re-drops to add twelve new
+ * cameras would silently rewrite the name, RTSP URL, IP and credentials of every camera already
+ * registered under a matching code — working streams, reconfigured by a paste. The operator has
+ * to say which of the two things they are doing, and then only what that mode promises changes.
  */
-export const CAMERA_IMPORT_WARNINGS: CameraImportIssue[] = ["no-coordinates"];
+export type CameraImportMode = "add" | "fill-coordinates";
 
-export function isBlocking(issue: CameraImportIssue): boolean {
-  return !CAMERA_IMPORT_WARNINGS.includes(issue);
+/**
+ * Issues that do not block, per mode. Everything else blocks.
+ *
+ * In "add": a camera with no coordinates is a real camera that cannot be drawn on the map.
+ * Refusing it would mean an installer who has RTSP URLs but not a survey cannot start, which is
+ * backwards — the map placement is the thing that gets filled in later, not the camera. So it
+ * imports, and it says so, and the row is counted separately so nobody discovers it as an empty
+ * map. That is also what makes "fill-coordinates" necessary: the deferral has to have a way back.
+ *
+ * In "fill-coordinates" the same absence blocks, because a row with no coordinates has nothing to
+ * fill and a "no change" row reported as imported is a lie. Name and stream are not read at all
+ * in this mode, so their absence is not an issue either — the file only needs code + coordinates,
+ * which is what an exported register with two columns filled in looks like.
+ */
+const WARNINGS_BY_MODE: Record<CameraImportMode, CameraImportIssue[]> = {
+  "add": ["no-coordinates"],
+  // Nothing is merely a warning here. A row with no coordinates has nothing to fill, and a row
+  // naming no registered camera has nothing to fill it into — both are refusals, not notes.
+  "fill-coordinates": [],
+};
+
+/** @deprecated Read WARNINGS_BY_MODE through isBlocking — kept so existing callers keep compiling. */
+export const CAMERA_IMPORT_WARNINGS: CameraImportIssue[] = WARNINGS_BY_MODE["add"];
+
+export function isBlocking(issue: CameraImportIssue, mode: CameraImportMode = "add"): boolean {
+  return !WARNINGS_BY_MODE[mode].includes(issue);
 }
 
 export interface ParsedCameraRow {
@@ -109,8 +141,13 @@ function parseCoord(raw: string, max: number): number | null | undefined {
 export function buildCameraImportRows(
   table: { cells: string[]; line: number }[],
   existingCodes: string[],
+  mode: CameraImportMode = "add",
 ): CameraParseResult {
-  if (table.length === 0) return { rows: [], missingColumns: [...REQUIRED], unmappedHeaders: [] };
+  // "fill-coordinates" reads two things and ignores the rest, so it must not demand the rest. The
+  // file this mode is built for is the register exported back out with the survey pasted in, and
+  // asking that file for an RTSP URL it already has on record is how a working path gets refused.
+  const required = mode === "add" ? REQUIRED : (["code", "lat", "lng"] as CameraColumnKey[]);
+  if (table.length === 0) return { rows: [], missingColumns: [...required], unmappedHeaders: [] };
 
   const [header, ...body] = table;
   const columnOf: Partial<Record<CameraColumnKey, number>> = {};
@@ -125,7 +162,7 @@ export function buildCameraImportRows(
     else if (raw.trim() !== "") unmappedHeaders.push(raw.trim());
   });
 
-  const missingColumns = REQUIRED.filter(k => columnOf[k] === undefined);
+  const missingColumns = required.filter(k => columnOf[k] === undefined);
   if (missingColumns.length > 0) return { rows: [], missingColumns, unmappedHeaders };
 
   // Codes are the register's key and the id space the app matches detections against, so a
@@ -145,14 +182,24 @@ export function buildCameraImportRows(
     const rtspUrl = at("rtspUrl");
     const issues: CameraImportIssue[] = [];
 
-    if (!name) issues.push("missing-name");
+    // Name and stream are what "add" needs and what "fill-coordinates" never touches.
+    if (mode === "add" && !name) issues.push("missing-name");
     if (!code) issues.push("missing-code");
-    if (!rtspUrl) issues.push("missing-rtsp");
+    if (mode === "add" && !rtspUrl) issues.push("missing-rtsp");
 
     const key = code.toLowerCase();
     if (code) {
-      if (takenInRegister.has(key)) issues.push("duplicate-in-register");
-      else if (seenInFile.has(key)) issues.push("duplicate-in-file");
+      // The register check reverses with the mode, and it is the same fact read two ways: in
+      // "add" a known code is a collision; in "fill-coordinates" a known code is the match, and an
+      // UNKNOWN one is the problem. A row naming a camera we do not have cannot be filled in, and
+      // quietly adding it would turn a survey paste into a registration — the file carries no
+      // stream for it, so it would create a camera that can never connect.
+      const known = takenInRegister.has(key);
+      if (known && mode === "add") issues.push("duplicate-in-register");
+      if (!known && mode === "fill-coordinates") issues.push("not-in-register");
+      // Checked in both modes: one code twice in one file is ambiguous either way. Two rows
+      // claiming to survey the same camera do not agree on where it is.
+      if (seenInFile.has(key)) issues.push("duplicate-in-file");
       else seenInFile.add(key);
     }
 
@@ -179,9 +226,15 @@ export function buildCameraImportRows(
   return { rows, missingColumns: [], unmappedHeaders };
 }
 
-/** Rows that can actually be added — nothing blocking. Warnings do not disqualify. */
-export function importableRows(rows: ParsedCameraRow[]): ParsedCameraRow[] {
-  return rows.filter(r => !r.issues.some(isBlocking));
+/**
+ * Rows that can actually be committed — nothing blocking for this mode. Warnings do not disqualify.
+ *
+ * Note the arrow: `.some(isBlocking)` passes Array.prototype's index as the second argument, so a
+ * bare reference would hand `1` to the `mode` parameter. The compiler catches it here because the
+ * types disagree, which is the only reason `mode` is not optional-by-accident.
+ */
+export function importableRows(rows: ParsedCameraRow[], mode: CameraImportMode = "add"): ParsedCameraRow[] {
+  return rows.filter(r => !r.issues.some(i => isBlocking(i, mode)));
 }
 
 export { decodeSpreadsheetBytes, looksLikeXlsx, parseDelimited } from "./rosterImport";
