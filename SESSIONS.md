@@ -13,7 +13,7 @@
 
 | 세션 | 잡은 파일 | 상태 |
 |---|---|---|
-| vca-84 | `src/lib/vcaStore.ts` · `src/lib/mockData.ts` · `src/components/MapView.tsx` · `src/components/Sidebar.tsx` · `src/components/BestFramePage.tsx` | 앞 넷 커밋 완료, BestFramePage 착수 |
+| vca-84 | — (아무것도 안 잡고 있음) | `vcaStore.ts`·`mockData.ts` 커밋 완료하고 비웠습니다 |
 | vca-cf | `src/components/portal/**` 여덟 파일 — `PortalShared` · `ProjectRequestsTab` · `ProjectVipTab` · `ProjectActivityTab` · `ProjectSearchLogTab` · `ProjectCamerasTab` · `ProjectServerTab` · `PortalUsersPage` | 여섯 탭의 표를 같은 규칙으로(rv8). 서브에이전트 둘이 파일을 갈라 병렬 |
 
 **규칙 — 오늘 이것 때문에 사고가 났습니다.**
@@ -75,6 +75,33 @@ git diff <파일> | grep '^[+-]'     # 내용까지 본다
   id를 싣지 않습니다. 대장 §C에 백엔드 항목으로 올렸습니다.
 - 곁가지 결함(기록만): `DISTRICTS`는 모듈 상수인데 카메라는 프로젝트 단위라 **학교 사이트가
   싱가포르 행정구역 17개를 그립니다.** 서버가 구역 목록을 줄 때 같이 잡습니다.
+
+### 감사행은 `clientAudit()`으로만 만듭니다 (`bfc6b61`)
+
+`AuditEvent.recordedBy: "server" | "client"`가 **필수**입니다. 직접 객체 리터럴로 감사행을
+만들지 마세요 — `clientAudit({...})`을 쓰면 `id`와 `recordedBy: "client"`가 자동입니다.
+
+- **`recordedBy`는 파라미터가 아닙니다.** 프론트엔드가 `"server"`를 쓰는 건 위조 여지라서
+  타입 레벨에서 막았습니다. 브라우저가 "서버가 이걸 봤다"고 주장할 수 있는 감사 로그는
+  감사 로그가 아닙니다.
+- `"server"`는 시드 배열 `AUDIT_LOG` 19행에만 있습니다(서버가 쓸 행을 흉내내는 자리).
+- 작성 지점 68곳이 전부 헬퍼를 지나므로, 그 목록이 그대로 **"프로덕션에서 서버로 옮길
+  감사행 목록"**입니다.
+- 화면 표시(`"client"` 행에 "브라우저 보고 · 서버 미관측")는 vca-cf가 `ProjectActivityTab`에서.
+  로드 직후 분포는 **server 19 / client 0**이고 새로고침하면 client가 전부 사라집니다.
+
+### 앱 권한은 문을 닫아도 남습니다 (`faedeb5`·`dfaa3a7`)
+
+두 규칙이 스토어에 들어갔습니다. 되돌리지 마세요.
+
+1. **`updatePortalUserAccess`는 권한을 지우지 않습니다.** 예전엔 앱 접근을 빼면
+   `appSearch`·`appExport`·`appScreens`를 비웠는데, 다시 켜면 "프리셋을 따르는 화면 0개
+   계정"이 됐고 커스텀 계정은 복구 불가였습니다. **표시가 틀렸으면 표시를 고칩니다** —
+   표가 `appSearch && appAccess`를 같이 읽습니다.
+2. **권한을 한 개씩 바꾸면 프리셋에서 이탈합니다.** `setAppGrant`·`setAppSearch`가
+   `detachedFromPreset(user)`를 지납니다(패치 + 감사행 둘 다 돌려줍니다). 호출부에서
+   `startCustomGrants`를 먼저 부를 필요 없습니다 — 불러도 이중 로그는 안 납니다.
+   `presetId`는 일부러 남깁니다.
 
 ### 초대 토큰과 등록일 (`8005bbb`, vca-cf 작업)
 
