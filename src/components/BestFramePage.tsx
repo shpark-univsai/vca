@@ -403,6 +403,51 @@ function registerToCams(cams: StoreCamera[], camData: Record<string, CamData>, p
     };
   });
 }
+
+/**
+ * Which registered camera a deep-link hint names — or none, when saying would be a guess.
+ *
+ * Both deep links into this page (Dashboard's device popup "View Live", and the map popup /
+ * joint-evidence panel's "Analyze Frame") arrive as a place string, and both used to resolve it
+ * with a two-way substring test: `loc.includes(hint) || hint.includes(loc)`. The second direction
+ * is what made it dangerous. A hint of "Bishan 3" contains the feed location "Bishan", so the
+ * deep link opened CAM-BLK-037 — the camera named "Bishan 2" — and an operator judged Bishan 3
+ * from another camera's live picture. The first direction is no safer on its own: several
+ * cameras share a feed location ("Toa payoh", "Novena", "Kallang" each cover two), and `.find()`
+ * silently answered with whichever came first in roster order.
+ *
+ * So each tier below is an EXACT equality and each must be UNIQUE. Ambiguity is not resolved by
+ * position; it falls through, and a hint that resolves to nothing is left to the caller's own
+ * no-match path. The hints really are camera identities: "View Live" passes nearestZoneName(),
+ * which is a camera `name` from the register, and LiveEvent.location is a site name drawn from
+ * those same names — so the name tier is the one that carries most of them.
+ *
+ *  1. the camera's curated feed location equals the hint  (e.g. "Novena, Singapore")
+ *  2. the camera's registered name equals the hint        (e.g. "Geylang NC2", "Bishan 3")
+ *  3. exactly one feed location starts with the hint
+ *
+ * A camera matched at tier 2 or 3 may have no curated footage behind it; it then shows
+ * DEFAULT_DATA, the same empty feed as any other camera with nothing authored for it. That is
+ * the point — the right camera with no footage beats the wrong camera with someone else's.
+ */
+function cameraForLocationHint(
+  cams: Camera[],
+  camData: Record<string, CamData>,
+  hint: string,
+): Camera | undefined {
+  const want = hint.trim().toLowerCase();
+  if (!want) return undefined;
+  // Cameras the curated feeds did not reach (the bulk-generated majority) have no entry here and
+  // read as "". Kept as an explicit guard rather than relied on: "" is a prefix of every string,
+  // so any test that ever compares in the other direction matches all of them at once — which is
+  // exactly how the old `hint.includes(loc)` branch behaved.
+  const locOf = (c: Camera) => camData[c.id]?.location.trim().toLowerCase() ?? "";
+  const onlyOne = (matches: Camera[]) => (matches.length === 1 ? matches[0] : undefined);
+  return onlyOne(cams.filter(c => locOf(c) !== "" && locOf(c) === want))
+    ?? onlyOne(cams.filter(c => c.name.trim().toLowerCase() === want))
+    ?? onlyOne(cams.filter(c => locOf(c) !== "" && locOf(c).startsWith(want)));
+}
+
 /**
  * The sidebar's Video list / Image list, built from the project's uploads.
  *
@@ -1087,13 +1132,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
     setPrevFocusLocation(focusLocation ?? null);
     if (focusLocation) {
       const hint = focusLocation.toLowerCase();
-      const match = normalCams.find(c => {
-        // Cameras with no real CAM_DATA entry (the bulk-generated ~1000) fall back to "" here —
-        // "" is a substring of every string, so without this guard the very first such camera
-        // would silently "match" any unmatched hint instead of correctly falling through to no-match.
-        const loc = siteCamData[c.id]?.location.toLowerCase();
-        return !!loc && (loc.includes(hint) || hint.includes(loc));
-      });
+      const match = cameraForLocationHint(normalCams, siteCamData, focusLocation);
       if (match) {
         setNormalCams(prev => prev.map(c => ({ ...c, checked: c.id === match.id })));
         setVideoCams(prev => prev.map(c => ({ ...c, checked: false })));
@@ -1133,14 +1172,12 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
   if ((analyzeFrameLocation ?? null) !== prevAnalyzeFrameLocation) {
     setPrevAnalyzeFrameLocation(analyzeFrameLocation ?? null);
     if (analyzeFrameLocation) {
-      const hint = analyzeFrameLocation.toLowerCase();
-      const match = normalCams.find(c => {
-        // Cameras with no real CAM_DATA entry (the bulk-generated ~1000) fall back to "" here —
-        // "" is a substring of every string, so without this guard the very first such camera
-        // would silently "match" any unmatched hint instead of correctly falling through to no-match.
-        const loc = siteCamData[c.id]?.location.toLowerCase();
-        return !!loc && (loc.includes(hint) || hint.includes(loc));
-      });
+      // Same judgement as the focusLocation block above, and from the same helper rather than a
+      // second copy of it: this was the same matching expression written out twice, and two
+      // copies of a rule are one edit away from the two entry points disagreeing about which
+      // camera a place name means. What differs here is only the no-match path — a toast, not a
+      // synthesized tile, because this entry point exists to land on an analysis and there is none.
+      const match = cameraForLocationHint(normalCams, siteCamData, analyzeFrameLocation);
       if (match) {
         setNormalCams(prev => prev.map(c => ({ ...c, checked: c.id === match.id })));
         setVideoCams(prev => prev.map(c => ({ ...c, checked: false })));
