@@ -9,7 +9,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { useToast } from "../Toast";
-import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto, MEASURE_TIGHT } from "./PortalShared";
+import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SEARCH_FIELD, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TableEmpty, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
 
 type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires";
@@ -65,7 +65,6 @@ interface VipDict {
   filtersActive: (n: number) => string;
   noSearchResults: string;
   noVips: string;
-  noVipsHint: string;
   registered: (date: string) => string;
   viewGrid: string;
   viewTable: string;
@@ -233,9 +232,8 @@ const T: Record<"en" | "ko", VipDict> = {
     allPriorities: "All priorities",
     noGroup: "No group",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
-    noSearchResults: "No VIPs match this search.",
+    noSearchResults: "No VIPs match these conditions.",
     noVips: "No VIPs registered for this project yet.",
-    noVipsHint: "Register somebody, or import a list — each person becomes a face the cameras on this project match against.",
     registered: (date: string) => `Registered ${date}`,
     viewGrid: "Grid",
     viewTable: "Table",
@@ -402,9 +400,8 @@ const T: Record<"en" | "ko", VipDict> = {
     allPriorities: "전체 우선순위",
     noGroup: "그룹 없음",
     filtersActive: (n: number) => `필터 ${n}개`,
-    noSearchResults: "검색 결과와 일치하는 VIP가 없습니다.",
+    noSearchResults: "조건에 맞는 VIP가 없습니다.",
     noVips: "이 프로젝트에 등록된 VIP가 아직 없습니다.",
-    noVipsHint: "한 명씩 등록하거나 목록을 가져오면 됩니다 — 등록된 한 사람이 이 프로젝트의 카메라가 대조하는 얼굴 하나가 됩니다.",
     registered: (date: string) => `등록일 ${date}`,
     viewGrid: "그리드",
     viewTable: "테이블",
@@ -1428,6 +1425,16 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
   // invent a distinction the registry does not make.
   const activeFilterCount = (groupFilter ? 1 : 0) + (priorityFilter === "ALL" ? 0 : 1) + (healthFilter ? 1 : 0);
   const clearFilters = () => { setGroupFilter(null); setPriorityFilter("ALL"); setHealthFilter(null); };
+  /*
+   * What the list says when it has nothing to show.
+   *
+   * The search box used to decide this on its own, so filtering by group or priority down to an
+   * empty intersection printed "no VIPs registered for this project yet" over a registry holding
+   * 123 of them — while the chip two inches above it said a filter was on.
+   */
+  const emptyText = q || activeFilterCount > 0
+    ? t.noSearchResults
+    : vipTab === "individuals" ? t.noIndividuals : t.noVips;
   const sortValue = (person: Person, key: VipSortKey) => {
     switch (key) {
       case "name": return person.name.toLowerCase();
@@ -1773,8 +1780,8 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
         },
       ]} />}
 
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-      <div style={{ position: "relative", flex: 1, maxWidth: "320px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: TOOLBAR_GAP }}>
+      <div style={{ position: "relative", ...SEARCH_FIELD }}>
         <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
         </span>
@@ -1884,12 +1891,12 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
 
       {vipTab === "groups" ? (
         projectGroups.length === 0 ? (
-          <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", padding: "32px", textAlign: "center" }}>
+          <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, padding: "32px", textAlign: "center" }}>
             <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>{q ? t.noSearchResults : t.noGroups}</p>
           </div>
         ) : (
-          <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW }}>
-            <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: GROUP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "16px", borderTopRightRadius: "16px" }}>
+          <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
+            <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: GROUP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
               {[t.colGroup, t.colMembers, t.colPriority, t.colNote, ""].map((h, i) => (
                 <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
               ))}
@@ -1938,19 +1945,8 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
             })}
           </div>
         )
-      ) : projectPersons.length === 0 ? (
-        <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", padding: "32px", textAlign: "center" }}>
-          {/* An empty registry and a filter that matched nothing are different situations, and
-              the first one deserves to say what would fill it. */}
-          <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
-            {q ? t.noSearchResults : vipTab === "individuals" ? t.noIndividuals : t.noVips}
-          </p>
-          {!q && vipTab !== "individuals" && (
-            <p style={{ fontSize: "12px", color: "var(--gray-300)", lineHeight: 1.5, marginTop: "6px", maxWidth: MEASURE_TIGHT, marginInline: "auto" }}>{t.noVipsHint}</p>
-          )}
-        </div>
       ) : view === "table" ? (
-        <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW }}>
+        <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
           {/* Floating over the list rather than pushing it down: the rows being acted on must stay
               where they were when they were picked. A centred pill, not a full-width band — fixed
               positioning is relative to the window and a band would run under the rail. */}
@@ -2007,7 +2003,7 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               shell's scroller, at top:0 — no measuring, no fixed positioning, and it works because
               nothing between here and that scroller clips its overflow. zIndex 2 so rows pass
               beneath rather than over, and the gray-50 fill is what makes "beneath" invisible. */}
-          <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: categoriesEnabled ? (showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID) : (showGroupColumn ? VIP_GRID_WITH_GROUP_NO_CAT : VIP_GRID_NO_CAT), columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "16px", borderTopRightRadius: "16px" }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: categoriesEnabled ? (showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID) : (showGroupColumn ? VIP_GRID_WITH_GROUP_NO_CAT : VIP_GRID_NO_CAT), columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
             <input
               type="checkbox"
               checked={allVisibleSelected}
@@ -2037,13 +2033,13 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               </span>
             ))}
           </div>
-          {projectPersons.map((person, i) => {
+          {projectPersons.length === 0 ? <TableEmpty text={emptyText} /> : projectPersons.map((person, i) => {
             const isLast = i === projectPersons.length - 1;
             return (
               <div key={person.id} style={{
                 display: "grid", gridTemplateColumns: categoriesEnabled ? (showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID) : (showGroupColumn ? VIP_GRID_WITH_GROUP_NO_CAT : VIP_GRID_NO_CAT), columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
                 borderBottom: isLast ? "none" : BORDER,
-                borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
+                borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
               }}>
                 <input
                   type="checkbox"
@@ -2176,6 +2172,12 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
               </div>
             );
           })}
+        </div>
+      ) : projectPersons.length === 0 ? (
+        /* The grid's empty state is a card of its own, where the table's sits inside one: a grid
+           of faces has no column headings to keep standing. */
+        <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS }}>
+          <TableEmpty text={emptyText} />
         </div>
       ) : (
         /* gridAutoRows 1fr on top of the fixed slots inside each card. The slots are what make the

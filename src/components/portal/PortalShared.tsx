@@ -1316,8 +1316,11 @@ export function sortRows<T, K extends string>(
 export function SortableHeader<K extends string>({ label, sortKey, sort, onToggle, align }: {
   label: string;
   sortKey?: K;
-  sort: SortState<K>;
-  onToggle: (key: K) => void;
+  /** Both optional, because a heading with no sortKey never reads them — a table whose columns do
+   *  not sort at all had to invent a sort state to render its headings, and an invented one is a
+   *  value somebody will eventually believe. */
+  sort?: SortState<K>;
+  onToggle?: (key: K) => void;
   /** Right for a column whose cells are right-aligned — a heading that stays left while its data
    *  sits at the other end of the cell reads as two different columns. */
   align?: "left" | "right";
@@ -1331,7 +1334,11 @@ export function SortableHeader<K extends string>({ label, sortKey, sort, onToggl
   const headingStyle = { fontSize: "10px", fontWeight: 600 } as const;
   const justify = align === "right" ? "flex-end" : "flex-start";
 
-  if (!sortKey) return <span style={{ ...headingStyle, color: TABLE_HEADER_COLOR, display: "flex", justifyContent: justify }}>{label}</span>;
+  // A heading is plain when it has no key to sort by — and also when the table gave it no sort
+  // state to read, which is how a table with no sorting at all uses this.
+  if (!sortKey || !sort || !onToggle) {
+    return <span style={{ ...headingStyle, color: TABLE_HEADER_COLOR, display: "flex", justifyContent: justify }}>{label}</span>;
+  }
 
   const active = sort.key === sortKey;
   return (

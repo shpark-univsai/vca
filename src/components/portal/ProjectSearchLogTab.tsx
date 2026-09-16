@@ -6,8 +6,8 @@ import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import {
-  BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR,
-  ActiveFilterCount, FilterSelect, FIELD_STYLE, SortableHeader, SummaryStrip, sortRows, useTableSort, MEASURE } from "./PortalShared";
+  BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
+  ActiveFilterCount, FilterSelect, FIELD_STYLE, SortableHeader, SummaryStrip, TableEmpty, sortRows, useTableSort, MEASURE } from "./PortalShared";
 import { Eye, FileOutput, ShieldAlert } from "lucide-react";
 
 /**
@@ -54,7 +54,6 @@ const T = {
     intro: "Every person look-up run from the monitoring app.",
     introWithPurpose: "Every person look-up run from the monitoring app, with the purpose the operator declared.",
     empty: "No look-ups recorded yet.",
-    emptyHint: "A row appears here each time an operator searches for a person in the app. Nothing is written in advance.",
     // The app's own names for its screens. An unknown code is printed as-is rather than guessed
     // at — a wrong screen name in an audit row is worse than a code the reader can look up.
     surfaceName: { live: "Live monitoring", reid: "Re-ID", redmap: "Redmap", redface: "RedFace" } as Record<string, string>,
@@ -79,7 +78,6 @@ const T = {
     intro: "모니터링 앱에서 실행된 인물 조회입니다.",
     introWithPurpose: "모니터링 앱에서 실행된 인물 조회와, 그때 관제요원이 밝힌 목적입니다.",
     empty: "기록된 조회가 없습니다.",
-    emptyHint: "앱에서 인물을 조회할 때마다 한 줄씩 쌓입니다. 미리 채워두는 것은 없습니다.",
     surfaceName: { live: "실시간 관제", reid: "Re-ID", redmap: "레드맵", redface: "RedFace" } as Record<string, string>,
     colAt: "시각", colActor: "조회자", colPurpose: "목적", colReference: "참조번호",
     colTarget: "조회 대상", colSurface: "화면", colResults: "결과", colIp: "위치",
@@ -258,7 +256,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
         ]} />
       )}
 
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: TOOLBAR_GAP }}>
         {/* Gone with the columns: a filter whose only option is "all" narrows nothing. */}
         {/* First in the row, because it is the question an auditor arrives with. */}
         <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -290,11 +288,11 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
         </button>
       </div>
 
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW }}>
+      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
         <div style={{
           position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: grid,
           columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)",
-          borderBottom: BORDER, borderTopLeftRadius: "16px", borderTopRightRadius: "16px",
+          borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS,
           color: TABLE_HEADER_COLOR,
         }}>
           {(columns.map(c => ({
@@ -312,10 +310,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
         </div>
 
         {visible.length === 0 ? (
-          <div style={{ padding: "40px 20px", textAlign: "center" }}>
-            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-500)" }}>{t.empty}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.emptyHint}</p>
-          </div>
+          <TableEmpty text={t.empty} />
         ) : visible.map((r: SearchAccessRecord, i) => (
           <div key={r.id} style={{
             display: "grid", gridTemplateColumns: grid, columnGap: TABLE_COLUMN_GAP,

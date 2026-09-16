@@ -5,8 +5,8 @@ import { useVcaStore, type AuditEvent } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import {
-  BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR,
-  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TextField, sortRows, useTableSort, MEASURE } from "./PortalShared";
+  BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SEARCH_FIELD, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
+  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, TextField, sortRows, useTableSort, MEASURE } from "./PortalShared";
 import { FileOutput, History, UserCog, CalendarClock } from "lucide-react";
 
 /**
@@ -47,9 +47,7 @@ const T = {
   en: {
     intro: "Every change made to this project from the console, newest first. Policy changes made for the whole institution appear here too.",
     empty: "No activity recorded yet.",
-    emptyHint: "A row appears here each time somebody changes something on this project — a camera, a VIP entry, a role, a setting.",
     noMatch: "No activity matches these filters.",
-    noMatchHint: "Widen the date range, or clear the operator and search filters.",
     colAt: "When", colActor: "Who", colMessage: "What changed",
     searchPlaceholder: "Search what changed",
     filterAllActors: "Everyone",
@@ -65,9 +63,7 @@ const T = {
   ko: {
     intro: "콘솔에서 이 프로젝트에 가해진 모든 변경입니다. 기관 전체에 적용되는 정책 변경도 함께 나옵니다.",
     empty: "기록된 변경이 없습니다.",
-    emptyHint: "누군가 이 프로젝트에서 무언가를 바꿀 때마다 한 줄씩 쌓입니다 — 카메라, VIP, 역할, 설정.",
     noMatch: "조건에 맞는 기록이 없습니다.",
-    noMatchHint: "기간을 넓히거나 담당자·검색 조건을 해제해 보세요.",
     colAt: "시각", colActor: "담당자", colMessage: "변경 내용",
     searchPlaceholder: "변경 내용 검색",
     filterAllActors: "전체",
@@ -182,8 +178,8 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
         },
       ]} />
 
-      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
-        <div style={{ position: "relative", flex: 1, minWidth: "200px", maxWidth: "320px" }}>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
+        <div style={{ position: "relative", ...SEARCH_FIELD }}>
           <TextField value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
         </div>
         <FilterSelect value={range} onChange={setRange} options={[
@@ -208,11 +204,11 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
         </button>
       </div>
 
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW }}>
+      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
         <div style={{
           position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: GRID,
           columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)",
-          borderBottom: BORDER, borderTopLeftRadius: "16px", borderTopRightRadius: "16px",
+          borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS,
           color: TABLE_HEADER_COLOR,
         }}>
           {([
@@ -228,14 +224,7 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
           /* Two different empty states. "Nothing has happened here" and "nothing matches what you
              asked for" send the reader to different places, and one message for both sends half
              of them to the wrong one. */
-          <div style={{ padding: "40px 20px", textAlign: "center" }}>
-            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-500)" }}>
-              {projectEntries.length === 0 ? t.empty : t.noMatch}
-            </p>
-            <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>
-              {projectEntries.length === 0 ? t.emptyHint : t.noMatchHint}
-            </p>
-          </div>
+          <TableEmpty text={projectEntries.length === 0 ? t.empty : t.noMatch} />
         ) : visible.map((a: AuditEvent, i) => (
           <div key={a.id} style={{
             display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP,

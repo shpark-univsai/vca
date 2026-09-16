@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip, usePortalEditAccess } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip, usePortalEditAccess } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import RosterImportModal from "./RosterImportModal";
@@ -97,10 +97,8 @@ const T = {
     colAppSearch: "Person Search",
     colLastLogin: "Last Login",
     colStatus: "Status",
-    emptySearch: "No users match this search.",
     emptyNoUsers: "No users have access to this project yet.",
     emptyFiltered: "Nothing matches the current filter.",
-    emptyClear: "Clear filters",
 
     // Permission / status / MFA display labels
     permOwner: "Owner",
@@ -392,10 +390,8 @@ const T = {
     colAppSearch: "인물 검색",
     colLastLogin: "마지막 로그인",
     colStatus: "상태",
-    emptySearch: "검색 결과와 일치하는 사용자가 없습니다.",
     emptyNoUsers: "이 프로젝트에 접근 권한이 있는 사용자가 아직 없습니다.",
     emptyFiltered: "지금 조건에 맞는 항목이 없습니다.",
-    emptyClear: "조건 해제",
 
     // Permission / status / MFA display labels
     permOwner: "최고관리자",
@@ -2507,8 +2503,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       {/* The toolbar and the table under it are one thing — a list and the controls that narrow it
           — so they sit close. The distance that matters is the one above this row, not the one
           inside the pair. */}
-      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "10px" }}>
-      <div style={{ position: "relative", flex: 1, minWidth: "220px", maxWidth: "320px" }}>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
+      <div style={{ position: "relative", ...SEARCH_FIELD }}>
         <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
         </span>
@@ -2671,7 +2667,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           card's rounded ones, but that also clips any row's RowActionsMenu dropdown that opens
           past the container's bottom edge (invisible, not just cut off). Radius the header row
           itself instead. */}
-      <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
+      <div style={{ backgroundColor: "white", border: BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
         {/* Column widths, and why they are these: the two columns that are usually "—" (Person
             Search, MFA) and Status, whose badge is a word, were each wider than their content, and
             the width had to come from somewhere — it came from Team and Projects, which are the
@@ -2679,7 +2675,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             cell with a hand's width of nothing to its right. Narrowing those three moves Status
             right, up against the actions menu where it belongs, and gives the names their room
             back. */}
-        <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+        <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
           {/* Projects and MFA carry no sortKey: a user belongs to several projects, so there is no
               single value to order by, and MFA is display-only mock data it would be misleading to
               let anyone rank people with. */}
@@ -2705,21 +2701,11 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} align={h.align} />
           ))}
         </div>
-        {/* Per tab: each half answers for itself, and neither can speak for the other's rows. */}
+        {/* Per tab: each half answers for itself, and neither can speak for the other's rows.
+            "Nothing matches what you asked for" and "there is nothing here" send the reader to
+            two different places, and one message for both sends half of them wrong. */}
         {(peopleTab === "accounts" ? scopedUsers.length : visibleRoster.length) === 0 && (
-          <div style={{ padding: "32px 16px", textAlign: "center", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}>
-            {/* "Nothing matches what you asked for" and "there is nothing here" send the reader
-                to two different places, and one message for both sends half of them wrong. */}
-            <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
-              {narrowed ? t.emptyFiltered : peopleTab === "accounts" ? t.emptyNoUsers : t.rosterEmpty}
-            </p>
-            {narrowed && (
-              <button className="portal-btn-quiet" onClick={() => { setStatusFilter(null); setSearch(""); }}
-                style={{ marginTop: "10px", padding: "6px 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                {t.emptyClear}
-              </button>
-            )}
-          </div>
+          <TableEmpty text={narrowed ? t.emptyFiltered : peopleTab === "accounts" ? t.emptyNoUsers : t.rosterEmpty} />
         )}
         {(peopleTab === "accounts" ? scopedUsers : []).map((u, i) => {
           const isLast = i === scopedUsers.length - 1;
@@ -2730,7 +2716,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           <div key={u.id} style={{
             display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
             borderBottom: isLast ? "none" : BORDER,
-            borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
+            borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
           }}>
             <div style={{ minWidth: 0 }}>
               <p title={u.name} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</p>
@@ -2956,7 +2942,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             <div key={entry.employeeId} style={{
               display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
               borderBottom: isLast ? "none" : BORDER,
-              borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
+              borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
             }}>
               {/* The second line is the employee number, not an address: a roster row often has no
                   address at all (that is the reason this path exists), and the number is what the

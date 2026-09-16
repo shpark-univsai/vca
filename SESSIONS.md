@@ -14,7 +14,7 @@
 | 세션 | 잡은 파일 | 상태 |
 |---|---|---|
 | vca-84 | `src/lib/vcaStore.ts` · `src/lib/mockData.ts` · `src/components/MapView.tsx` · `src/components/Sidebar.tsx` · `src/components/BestFramePage.tsx` | 앞 넷 커밋 완료, BestFramePage 착수 |
-| vca-cf | `src/components/portal/**` (일곱 파일) | `PortalUsersPage` 남음 |
+| vca-cf | `src/components/portal/**` 여덟 파일 — `PortalShared` · `ProjectRequestsTab` · `ProjectVipTab` · `ProjectActivityTab` · `ProjectSearchLogTab` · `ProjectCamerasTab` · `ProjectServerTab` · `PortalUsersPage` | 여섯 탭의 표를 같은 규칙으로(rv8). 서브에이전트 둘이 파일을 갈라 병렬 |
 
 **규칙 — 오늘 이것 때문에 사고가 났습니다.**
 
@@ -67,6 +67,20 @@ git diff <파일> | grep '^[+-]'     # 내용까지 본다
 
 ## 3. 정해진 것 (다시 논의하지 말 것)
 
+- **검증은 종료코드가 아니라 로그를 읽습니다.** `npx tsc --noEmit | head` 뒤의 `$?`는 `head`의
+  것입니다 — 두 세션이 각자 이걸로 "통과"를 잘못 보고했고, 한 번은 타입 에러가 있는 채로
+  커밋했습니다. 그리고 `tsc --noEmit`이 0이어도 `next build`는 잡습니다(tsconfig가 다릅니다).
+  커밋 전 검증은 `npm run build > /tmp/out 2>&1; echo $?` 처럼 파이프 없이 종료코드를 받고
+  로그를 읽습니다.
+- **화면이 주장하는 사건은 실제로 일어나야 합니다.** 판별 질문 하나 — 이 문장이 말하는 일이
+  일어났는가. "방금 확인함"(조회한 적 없음) · "재연결됨"(브라우저는 RTSP를 못 되살림) ·
+  "초대장 발송됨"(아무 데도 안 보냄) · "레코더와 서버가 이 숫자대로 지웁니다"(어디에도 전달
+  안 함)가 전부 같은 모양이었습니다. 없는 사실보다 틀린 사실이 나쁩니다 — 아무 말도 못 들은
+  사람은 가서 확인하지만, "방금"이라고 들은 사람은 묻기를 그만둡니다. 아직 없는 기능은
+  화면으로 명세를 보이되(HANDOFF 주석), 이미 일어났다고 말하지 않습니다.
+- **채울 수 없는 칸은 그리지 않습니다.** 영원히 빈 열은 자리표시자가 아니라 화면이 못 지키는
+  약속이고, 행이 쌓이면 읽는 사람은 기능이 반쯤 고장 났다고 결론짓습니다. 정책 스위치가 끄는
+  것(조회 목적)은 스위치를, 서버가 아직 없는 것(IP)은 데이터를 보고 판단합니다.
 - **폴백은 결과가 그럴듯할수록 위험합니다.** 모르는 값에 기본값을 넣지 말고 타입에 부재를
   만듭니다. 필수 필드가 코드에게 값을 발명하게 강요하면 고칠 곳은 호출부가 아니라 타입입니다.
 - **이름·라벨·구역명으로 엔티티를 되찾지 않습니다.** 조인 키는 id뿐입니다. 이름은 유일하지

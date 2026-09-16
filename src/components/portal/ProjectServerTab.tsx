@@ -7,7 +7,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { SummaryStrip, CARD_BORDER, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch, usePortalEditAccess, ConfirmModal, FieldError } from "./PortalShared";
+import { SummaryStrip, CARD_BORDER, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, TableEmpty, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch, usePortalEditAccess, ConfirmModal, FieldError } from "./PortalShared";
 
 // Ordered as the deployed Add Server dialog orders them, so an operator who has used that one
 // finds each entry where their hand already goes. Its list opens with "All", which this one does
@@ -873,8 +873,8 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
 
           {/* Centred for the same reason as the Input Sources toolbar: the controls carry their own
               height, so anything unstyled dropped in here would draw itself against the top edge. */}
-          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
-            <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
+            <div style={{ position: "relative", ...SEARCH_FIELD }}>
               <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
               </span>
@@ -900,58 +900,55 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
             </button>
           </div>
 
-          {visibleServers.length === 0 ? (
-            <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", padding: "32px", textAlign: "center" }}>
-              <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
-                {projectServers.length === 0 ? t.emptyNoServers : t.emptyNoMatch}
-              </p>
+          {/* One card whether or not there is anything in it: the column headings are the table,
+              and they stay true when the rows underneath are filtered away.
+
+              No overflow:hidden on the container — it would clip a RowActionsMenu dropdown that
+              opens past the bottom edge (the last row's menu becomes invisible, not just cut
+              off). Header/last-row corners are radiused directly instead. */}
+          <div style={{ backgroundColor: "white", border: BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
+            <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
+              {([
+                { label: t.colStatus, key: "status" },
+                { label: t.colName, key: "name" },
+                { label: t.colIp, key: "ip" },
+                { label: t.colType, key: "type" },
+                { label: t.colSpec },
+                { label: "" },
+              ] as { label: string; key?: ServerSortKey }[]).map((h, i) => (
+                <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
+              ))}
             </div>
-          ) : (
-            // No overflow:hidden on the container — it would clip a RowActionsMenu dropdown that
-            // opens past the bottom edge (the last row's menu becomes invisible, not just cut
-            // off). Header/last-row corners are radiused directly instead.
-            <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
-              <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
-                {([
-                  { label: t.colStatus, key: "status" },
-                  { label: t.colName, key: "name" },
-                  { label: t.colIp, key: "ip" },
-                  { label: t.colType, key: "type" },
-                  { label: t.colSpec },
-                  { label: "" },
-                ] as { label: string; key?: ServerSortKey }[]).map((h, i) => (
-                  <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
-                ))}
-              </div>
-              {pageServers.map((server, i) => {
-                const statusColor = server.status === "success" ? "var(--success-400)"
-                  : server.status === "error" ? "var(--danger-400)" : "var(--gray-400)";
-                const statusLabel = server.status === "success" ? st.success
-                  : server.status === "error" ? st.error : st.unchecked;
-                const isLast = i === pageServers.length - 1;
-                return (
-                  <div key={server.id} style={{
-                    display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
-                    borderBottom: isLast ? "none" : BORDER,
-                    borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: statusColor, flexShrink: 0 }} />
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: statusColor }}>{statusLabel}</span>
-                    </div>
-                    <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{server.name}</span>
-                    <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace" }}>{server.port ? `${server.ip}:${server.port}` : server.ip}</span>
-                    <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{server.type}</span>
-                    <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{server.specification ?? "—"}</span>
-                    <RowActionsMenu actions={[
-                      { label: t.edit, onClick: () => setEditingServer(server), disabled: !mayEdit, reason: readOnlyReason },
-                      { label: t.remove, onClick: () => handleDelete(server), danger: true, disabled: !mayEdit, reason: readOnlyReason },
-                    ]} />
+            {visibleServers.length === 0 ? (
+              <TableEmpty text={projectServers.length === 0 ? t.emptyNoServers : t.emptyNoMatch} />
+            ) : pageServers.map((server, i) => {
+              const statusColor = server.status === "success" ? "var(--success-400)"
+                : server.status === "error" ? "var(--danger-400)" : "var(--gray-400)";
+              const statusLabel = server.status === "success" ? st.success
+                : server.status === "error" ? st.error : st.unchecked;
+              const isLast = i === pageServers.length - 1;
+              return (
+                <div key={server.id} style={{
+                  display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
+                  borderBottom: isLast ? "none" : BORDER,
+                  borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: statusColor, flexShrink: 0 }} />
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: statusColor }}>{statusLabel}</span>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{server.name}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace" }}>{server.port ? `${server.ip}:${server.port}` : server.ip}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{server.type}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{server.specification ?? "—"}</span>
+                  <RowActionsMenu actions={[
+                    { label: t.edit, onClick: () => setEditingServer(server), disabled: !mayEdit, reason: readOnlyReason },
+                    { label: t.remove, onClick: () => handleDelete(server), danger: true, disabled: !mayEdit, reason: readOnlyReason },
+                  ]} />
+                </div>
+              );
+            })}
+          </div>
 
           {visibleServers.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "12px", flexWrap: "wrap", gap: "10px" }}>

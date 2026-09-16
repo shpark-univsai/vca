@@ -8,7 +8,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { CARD_BORDER, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
+import { CARD_BORDER, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -119,7 +119,6 @@ const T = {
     colZone: "Zone",
     colRtspStream: "RTSP Stream",
     colStatus: "Status",
-    emptyAll: "No cameras connected to this project yet.",
     emptyFiltered: "No cameras match these filters.",
     aiCameraBadge: "AI Camera",
     cctvBadge: "CCTV",
@@ -265,7 +264,6 @@ const T = {
     colZone: "구역",
     colRtspStream: "RTSP 스트림",
     colStatus: "상태",
-    emptyAll: "아직 이 프로젝트에 연결된 카메라가 없습니다.",
     emptyFiltered: "이 필터와 일치하는 카메라가 없습니다.",
     aiCameraBadge: "AI 카메라",
     cctvBadge: "CCTV",
@@ -1399,10 +1397,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           (CONTROL_HEIGHT), so stretch looked fine until a bare <span> joined them — the selection
           count stretched to the row's 36px and drew its text at the top of that box, sitting a
           third of a line above the Delete button beside it. */}
-      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
-        <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
+        <div style={{ position: "relative", ...SEARCH_FIELD }}>
           <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.22"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
           </span>
           <input
             value={search}
@@ -1580,9 +1578,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           scroll underneath. Rendered here (still inside the fixed/sticky block) as the top half of
           the card; the data rows below are the bottom half, in normal flow, meeting it with no
           border between them so the two halves read as one continuous card. */}
-      {effectiveView === "table" && visibleRows.length > 0 && (
-        <div style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: "12px", borderTopRightRadius: "12px", boxShadow: PANEL_SHADOW }}>
-          <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+      {effectiveView === "table" && (
+        <div style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
+          <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
             {/* The thumbnail, address and AI-engine columns carry no sortKey — a picture has no
                 order, an address sorts by whatever the IP happens to start with, and AI engines is
                 a set per camera rather than one value. */}
@@ -1610,10 +1608,16 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       </div>
 
       {visibleRows.length === 0 ? (
-        <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "12px", padding: "32px", textAlign: "center" }}>
-          <p style={{ fontSize: "13px", color: "var(--gray-400)" }}>
-            {projectCameras.length + projectUploads.length === 0 ? t.emptyNoSources : t.emptyFiltered}
-          </p>
+        <div style={{
+          backgroundColor: "white", boxShadow: PANEL_SHADOW,
+          // In table view this is the bottom half of the card the column headings above opened, so
+          // it takes no top border and only the bottom corners — the same edges the rows draw.
+          // The grid has no headings, so there it is a card of its own.
+          ...(effectiveView === "table"
+            ? { borderLeft: BORDER, borderRight: BORDER, borderBottom: BORDER, borderBottomLeftRadius: CARD_RADIUS, borderBottomRightRadius: CARD_RADIUS }
+            : { border: BORDER, borderRadius: CARD_RADIUS }),
+        }}>
+          <TableEmpty text={projectCameras.length + projectUploads.length === 0 ? t.emptyNoSources : t.emptyFiltered} />
         </div>
       ) : effectiveView === "table" ? (
         // No overflow:hidden on the container — it would clip a RowActionsMenu dropdown that opens
@@ -1626,7 +1630,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             const rowStyle: React.CSSProperties = {
               display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
               borderBottom: isLast ? "none" : BORDER,
-              borderBottomLeftRadius: isLast ? "12px" : undefined, borderBottomRightRadius: isLast ? "12px" : undefined,
+              borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
             };
             /**
              * The whole row opens the camera, and lights up under the pointer.
@@ -1851,7 +1855,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             // instead, which is all that hiding was doing.
             return (
               <div key={cam.id} style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
-                <button onClick={() => setInspectingCameraId(cam.id)} style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", border: "none", padding: 0, cursor: "pointer", display: "block", backgroundColor: "var(--gray-900)", overflow: "hidden", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+                <button onClick={() => setInspectingCameraId(cam.id)} style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", border: "none", padding: 0, cursor: "pointer", display: "block", backgroundColor: "var(--gray-900)", overflow: "hidden", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
                   <img src={cam.thumbnail || DEFAULT_THUMBNAIL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: online ? 1 : 0.4 }} />
                   <span style={{
                     position: "absolute", top: "8px", left: "8px", fontSize: "10px", fontWeight: 600, padding: "4px 8px", borderRadius: "999px",

@@ -9,7 +9,7 @@ import {
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import { Eraser, Video } from "lucide-react";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TextField, FilterSelect, ConfirmModal, HelpTip, usePortalEditAccess, MEASURE, MEASURE_TIGHT } from "./PortalShared";
+import { BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP, TableEmpty, SortableHeader, TextField, FilterSelect, ConfirmModal, HelpTip, usePortalEditAccess, MEASURE } from "./PortalShared";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 /**
@@ -50,7 +50,6 @@ const T = {
     newErasure: "Log an erasure request",
     filterAll: "All", filterOpen: "Open", filterFootage: "Footage", filterErasure: "Erasure",
     empty: "Nothing has been asked of this project.",
-    emptyHint: "When somebody outside asks — a case officer wanting footage, an insurer, a lawyer, or a person asking to be removed — log it here before anything is handed over or deleted.",
     colKind: "Kind", colWho: "Who", colFiled: "Filed", colState: "State", colOpen: "",
     kindFootage: "Footage", kindErasure: "Erasure",
     fStatus: { received: "Awaiting decision", approved: "Approved, not released", refused: "Refused", released: "Released" } as Record<string, string>,
@@ -132,7 +131,6 @@ const T = {
     newErasure: "삭제 요청 접수",
     filterAll: "전체", filterOpen: "열린 건", filterFootage: "영상 제공", filterErasure: "삭제",
     empty: "이 프로젝트에 들어온 요청이 없습니다.",
-    emptyHint: "밖에서 누가 요구하면 — 영상을 원하는 수사관, 보험사, 변호인, 또는 지워달라는 본인 — 무엇을 내주거나 지우기 전에 여기에 먼저 남기세요.",
     colKind: "종류", colWho: "요청인", colFiled: "접수", colState: "상태", colOpen: "",
     kindFootage: "영상 제공", kindErasure: "삭제 요청",
     fStatus: { received: "결정 대기", approved: "승인됨 · 미제공", refused: "거절됨", released: "제공됨" } as Record<string, string>,
@@ -303,7 +301,7 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
           "erasure request", which said one of them is the page's main action — this tab exists
           precisely because they are the same act filed from two directions, and neither outranks
           the other. Both quiet, both marked, and the purple goes back to meaning something. */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBottom: "12px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBottom: TOOLBAR_GAP }}>
         {/* Kind is a filter, not a tab. "What is open" is the question somebody actually arrives
             with, and it does not care which of the two registers the row came from. */}
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
@@ -340,17 +338,17 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
         </div>
       </div>
 
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW }}>
+      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
         {rows.length === 0 ? (
-          <div style={{ padding: "36px 24px", textAlign: "center" }}>
-            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.empty}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px", maxWidth: MEASURE_TIGHT, marginInline: "auto" }}>{t.emptyHint}</p>
-          </div>
+          <TableEmpty text={t.empty} />
         ) : (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: "12px", padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
+            {/* The shared header, not a local copy of it. This row used to draw its own — same
+                size and weight, different colour and no letter-spacing — so column headings read
+                as one thing on five tabs and as another here. */}
+            <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS, color: TABLE_HEADER_COLOR }}>
               {[t.colKind, t.colWho, t.colFiled, t.colState, t.colOpen].map((h, i) => (
-                <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{h}</span>
+                <span key={i}><SortableHeader label={h} /></span>
               ))}
             </div>
             {rows.map((row, i) => {
@@ -362,7 +360,7 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
                 : row.kind === "footage" && row.req.status === "approved" ? STATE_TONE.progress : STATE_TONE.open;
               return (
                 <div key={row.id} style={{
-                  display: "grid", gridTemplateColumns: GRID, columnGap: "12px", padding: "12px 16px",
+                  display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px",
                   alignItems: "center", borderBottom: i === rows.length - 1 ? "none" : BORDER,
                 }}>
                   <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>
