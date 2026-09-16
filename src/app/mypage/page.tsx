@@ -24,8 +24,11 @@ const T = {
   en: {
     comingSoon: "Coming soon",
     close: "Close",
-    passwordChanged: "Password changed",
-    passwordChangedBody: "Your password has been updated.",
+    // Not "Password changed". Verbatim from Portal's own change-password modal
+    // (PortalSettingsPage), which refuses to claim this for the same reason.
+    passwordNotWired: "Not connected yet. A password typed here is not saved.",
+    passwordNotSaved: "Password not changed",
+    passwordNotSavedBody: "Ask whoever runs your installation to change it for now.",
     done: "Done",
     changePassword: "Change password",
     currentPassword: "Current password",
@@ -53,9 +56,10 @@ const T = {
     security: "Security & access control",
     passwordSettings: "Password settings",
     passwordChange: "Password change",
-    changedJustNow: "Last changed just now",
-    // HANDOFF NOTE: kept for when the account record carries a real timestamp. Do not wire it to
-    // a constant again — that is what it was doing.
+    // HANDOFF NOTE: no "last changed" line is drawn at all until the account record carries a
+    // real timestamp — the server has to send it. Do not wire this to a constant (it was fixed at
+    // 45 days) and do not wire it to "just now" off a click either: nothing here saves a password,
+    // so this session changed nothing to be "just now".
     changedDaysAgo: (n: number) => `Last changed ${n} days ago`,
     change: "Change",
     sessions: "Active login sessions",
@@ -73,8 +77,9 @@ const T = {
   ko: {
     comingSoon: "준비 중",
     close: "닫기",
-    passwordChanged: "비밀번호가 변경되었습니다",
-    passwordChangedBody: "새 비밀번호로 바뀌었습니다.",
+    passwordNotWired: "아직 서버에 연결되지 않아, 여기서 입력한 비밀번호는 저장되지 않습니다.",
+    passwordNotSaved: "비밀번호는 바뀌지 않았습니다",
+    passwordNotSavedBody: "변경은 설치를 담당한 곳으로 요청하세요.",
     done: "확인",
     changePassword: "비밀번호 변경",
     currentPassword: "현재 비밀번호",
@@ -102,7 +107,6 @@ const T = {
     security: "보안 및 접근 권한",
     passwordSettings: "비밀번호 설정",
     passwordChange: "비밀번호 변경",
-    changedJustNow: "방금 변경했습니다",
     changedDaysAgo: (n: number) => `${n}일 전에 변경했습니다`,
     change: "변경",
     sessions: "접속 중인 기기",
@@ -333,7 +337,7 @@ function fieldBorder(active: boolean) {
 // in-page modal (same field/validation logic as the auth flow's /password-setup, which is a
 // different case: first-time setup, not an already-logged-in user changing theirs) instead of
 // navigating to a full standalone route.
-function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+function PasswordChangeModal({ onClose }: { onClose: () => void }) {
   const [lang] = useLanguage();
   const t = T[lang];
   const [step, setStep] = useState<"current" | "new" | "done">("current");
@@ -366,8 +370,14 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
 
   const handleSubmit = () => {
     if (!canSubmit) return;
+    // Validates what a browser can validate and then has nowhere to send it, so the last step
+    // says that instead of a green tick. Same call, same wording as Portal's own change-password
+    // modal (PortalSettingsPage): a plausible "Password changed" is indistinguishable from a real
+    // one, and the person would walk away believing it.
+    //
+    // HANDOFF NOTE: submits nowhere. The real call is a POST carrying the current and the new
+    // password, and its response is what turns this step back into a success line.
     setStep("done");
-    onSuccess();
   };
 
   return (
@@ -384,15 +394,12 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
         display: "flex", flexDirection: "column", gap: "20px",
       }}>
         {step === "done" ? (
+          /* No tick and no green. The circle said "done" before the sentence did, and it was the
+             loudest thing in the modal. */
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", padding: "12px 0" }}>
-            <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "var(--success-100)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M5 12.5L9.5 17L19 6" stroke="var(--success-400)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
             <div style={{ textAlign: "center" }}>
-              <p style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--gray-900)" }}>{t.passwordChanged}</p>
-              <p style={{ margin: "4px 0 0", fontSize: "13px", fontWeight: 600, color: "var(--gray-500)" }}>{t.passwordChangedBody}</p>
+              <p style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--gray-900)" }}>{t.passwordNotSaved}</p>
+              <p style={{ margin: "4px 0 0", fontSize: "13px", fontWeight: 600, color: "var(--gray-500)" }}>{t.passwordNotSavedBody}</p>
             </div>
             <button
               onClick={onClose}
@@ -411,6 +418,15 @@ function PasswordChangeModal({ onClose, onSuccess }: { onClose: () => void; onSu
                 </svg>
               </button>
             </div>
+
+            {/* Said before the typing rather than after it, on both steps — the person should
+                learn that this goes nowhere before composing a password and entering it twice,
+                not in the notice that follows. Amber, because a quiet grey line is not enough
+                weight to stop somebody believing a form that otherwise behaves exactly like a
+                working one. Portal's own modal carries the same line. */}
+            <p style={{ margin: "-8px 0 0", fontSize: "11px", lineHeight: 1.45, fontWeight: 600, color: "var(--warning-500)" }}>
+              {t.passwordNotWired}
+            </p>
 
             {step === "current" ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -609,7 +625,6 @@ export default function MyPage() {
     router.replace(canGoToPortal ? "/portal" : "/login");
   }, [locked, canGoToPortal, router]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordJustChanged, setPasswordJustChanged] = useState(false);
   const [showThresholdModal, setShowThresholdModal] = useState(false);
   const [sessionsTerminated, setSessionsTerminated] = useState(false);
   const otherSessions = LOGIN_SESSIONS.filter(sn => !sn.current);
@@ -728,16 +743,13 @@ export default function MyPage() {
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "var(--gray-50)", borderRadius: "10px", padding: "12px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                       <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.28px" }}>{t.passwordChange}</span>
-                      {/* Only when it actually happened here. The other branch was
-                          `changedDaysAgo(PASSWORD_AGE_DAYS)` with the constant fixed at 45, so the
-                          console told every operator the same invented fact about their own
-                          password. "방금 변경했습니다" is true — this session did it — and when the
-                          console does not know, it says nothing rather than a number. */}
-                      {passwordJustChanged && (
-                        <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.2px" }}>
-                          {t.changedJustNow}
-                        </span>
-                      )}
+                      {/* No second line. It was `changedDaysAgo(PASSWORD_AGE_DAYS)` with the
+                          constant fixed at 45, so the console told every operator the same
+                          invented fact about their own password; the fix after that drew "방금
+                          변경했습니다" once the modal had been through — and the modal saves no
+                          password, so nothing had been changed just now either. The console does
+                          not know when this password was last changed. See changedDaysAgo's
+                          HANDOFF NOTE for what the server has to send. */}
                     </div>
                     <button
                       onClick={() => setShowPasswordModal(true)}
@@ -840,10 +852,7 @@ export default function MyPage() {
         </div>
       </div>
       {showPasswordModal && (
-        <PasswordChangeModal
-          onClose={() => setShowPasswordModal(false)}
-          onSuccess={() => setPasswordJustChanged(true)}
-        />
+        <PasswordChangeModal onClose={() => setShowPasswordModal(false)} />
       )}
       {showThresholdModal && (
         <ThresholdModal
