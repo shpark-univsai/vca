@@ -2508,6 +2508,34 @@ serverId: "srv-1",
       maker: "Hanwha",
       resolution: "FHD (1920×1080)",
     })),
+  /**
+   * ONE CAMERA WITH NO POSITION, and it goes last on purpose.
+   *
+   * Camera.lat/lng became optional because all three doors that register a camera can leave them
+   * empty — the CSV import says so out loud ("the map placement is the thing that gets filled in
+   * later, not the camera"). But every seeded camera had coordinates, so nothing in the product
+   * ever rendered the absent case: not the map's filter, not a route's missing stop, not a scope
+   * picker's "not on the map" group. A state the seeds never produce is a state QA never sees,
+   * and this repo has already lost one that way — ee4b04c built a "not on the map" column that
+   * showed nothing but 0 until 7af49e0 deleted it.
+   *
+   * LAST IN THE ARRAY, not first. CAMERAS[0] used to be the silent fallback for an unresolved
+   * name (see cameraIdForSeedHit), and a camera with no position sitting at index 0 would have
+   * turned that fault into a worse one. The fallback is gone now, but the ordering dependency is
+   * worth not re-creating.
+   *
+   * Offline, because a camera nobody has surveyed is usually a camera nobody has finished
+   * installing. Its zone is filled in — the register knows where it belongs organisationally,
+   * which is exactly the split this state is about: a place in the list, no place on the map.
+   */
+  {
+    id: "cam-depot-2", projectId: "proj-sg", code: "CAM-DEP-002", name: "Depot Bay 2",
+    ip: "10.20.9.42", mac: "00:1B:44:11:5D:22", rtspUrl: "rtsp://10.20.9.42:554/stream1",
+    status: "offline", location: "Depot Bay 2", zone: "Kallang",
+    serverId: "srv-1",
+    thumbnail: "",
+    maker: "Hanwha", resolution: "FHD (1920×1080)",
+  },
 ];
 
 /**

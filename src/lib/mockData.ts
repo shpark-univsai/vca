@@ -235,8 +235,11 @@ interface RawVipHit {
   location: string;
   cameraLabel?: string;
   timestamp: string;
-  lat: number;
-  lng: number;
+  /** Absent when the camera has no surveyed position — a hit's coordinate IS its camera's, so it
+   *  is missing under exactly the same condition (see Camera.lat). Required until now, which is
+   *  why no seed could express the case the product has to handle. */
+  lat?: number;
+  lng?: number;
 }
 
 /**
@@ -333,6 +336,21 @@ const RAW_VIP_HITS: RawVipHit[] = [
   { id: "5",  name: "Michael Tan",      confidence: 76.9, location: "Bugis MRT",      timestamp: minutesAgo(22), lat: 1.3006, lng: 103.8561 },
   { id: "6",  name: "Michael Tan",      confidence: 73.3, location: "Jurong East",    timestamp: minutesAgo(9),  lat: 1.3329, lng: 103.7436 },
   { id: "7",  name: "Priya Nair",       confidence: 77.8, location: "Tampines Hub",   timestamp: minutesAgo(15), lat: 1.3528, lng: 103.9440 },
+  /**
+   * A TRAIL WITH A STOP THAT CANNOT BE DRAWN — the case nothing in the seeds could produce.
+   *
+   * Priya Nair passes Tampines Hub, then Depot Bay 2, then Bedok MRT. The middle camera is in the
+   * register and has no coordinates (see CAMERA_SEEDS' note on why one seed camera has none), so
+   * this hop carries none either. That makes three stops of which the map can place two, and it
+   * is what finally exercises the absent-position path end to end: the route's gap, the missing
+   * stop number, the district tally that must not count it, and the scope picker's "not on the
+   * map" group. None of that had ever rendered.
+   *
+   * Deliberately the MIDDLE stop. First or last would test a narrower thing — a gap needs a
+   * drawable stop on each side to be a gap at all.
+   */
+  { id: "7b", name: "Priya Nair",       confidence: 80.4, location: "Depot Bay 2",    timestamp: minutesAgo(11) },
+  { id: "7c", name: "Priya Nair",       confidence: 83.1, location: "Bedok MRT",      timestamp: minutesAgo(6),  lat: 1.3240, lng: 103.9302 },
   // ONE REGISTER, AND THIS PAIR BROKE IT. `cameraIdForLocation` joined on `location` alone, so
   // "Geylang" + "NC1" never matched the register's "Geylang NC1" — and "NC2" named a camera that
   // did not exist. Both fell through to CAMERAS[0] (Novena): a Geylang trail filed against a
