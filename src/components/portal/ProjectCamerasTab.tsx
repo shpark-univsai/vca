@@ -151,7 +151,7 @@ const T = {
     markOffline: "Mark offline",
     undoOfflineMark: "Undo offline mark",
     toastCameraAddedTitle: "Camera added",
-    toastCameraAddedDesc: (name: string) => `${name} connected to this project.`,
+    toastCameraAddedDesc: (name: string) => `${name} registered. No connection confirmed yet.`,
     toastCameraUpdatedTitle: "Camera updated",
     toastMarkedOfflineTitle: "Marked offline",
     toastOfflineMarkUndoneTitle: "Offline mark removed",
@@ -298,7 +298,9 @@ const T = {
     markOffline: "오프라인으로 표시",
     undoOfflineMark: "오프라인 표시 취소",
     toastCameraAddedTitle: "카메라 추가됨",
-    toastCameraAddedDesc: (name: string) => `${name} 카메라가 이 프로젝트에 연결되었습니다.`,
+    // Not "연결되었습니다". The same call writes status: "offline" and attempts no connection —
+    // the row it creates says 최초 응답 대기 while the toast said the opposite.
+    toastCameraAddedDesc: (name: string) => `${name}을(를) 등록했습니다. 아직 연결을 확인하지 못했습니다.`,
     toastCameraUpdatedTitle: "카메라 정보 수정됨",
     toastMarkedOfflineTitle: "오프라인으로 표시됨",
     toastOfflineMarkUndoneTitle: "오프라인 표시 취소됨",
@@ -387,7 +389,9 @@ function useStickyHeader<T extends HTMLElement>() {
 
 // Badge icons for the metric cards, at the size the Overview's badges use.
 
-const DEFAULT_THUMBNAIL = "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80";
+// DEFAULT_THUMBNAIL was here — a stock office corridor stamped onto every camera registered
+// through Portal and then captioned 최근 프레임. Removed with its call sites; Camera.thumbnail is
+// optional now and an unphotographed camera draws an empty frame.
 type CameraSortKey = "name" | "server" | "resolution" | "zone" | "status";
 
 /**
@@ -1034,7 +1038,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       username: values.username.trim() || undefined, serverId: values.serverId || undefined,
       // Offline, not a claim. Portal has not reached this address and will not until camera
       // polling lands — the same starting state the setup wizard's first camera gets.
-      ip: values.ip.trim(), mac: "", status: "offline", thumbnail: DEFAULT_THUMBNAIL,
+      // NO THUMBNAIL. It used to be stamped with DEFAULT_THUMBNAIL — a stock photo of an office
+      // corridor — and the cards then label it 최근 프레임. Portal has never reached the camera at
+      // this point (the row is written `status: "offline"` on the very same line), so an installer
+      // sees a picture under "last frame" and reads it as the cabling working.
+      ip: values.ip.trim(), mac: "", status: "offline",
       // Blank means not surveyed, not the equator. See Camera.lat.
       ...(values.lat.trim() === "" || values.lng.trim() === ""
         ? { lat: undefined, lng: undefined }
@@ -1808,7 +1816,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               <div key={row.id} {...rowInteraction}>
                 {checkbox}
                 <button {...stopRowClick} onClick={() => setInspectingCameraId(cam.id)} style={{ width: "40px", height: "40px", borderRadius: "8px", overflow: "hidden", backgroundColor: "var(--gray-100)", border: "none", cursor: "pointer", padding: 0 }}>
-                  <img src={cam.thumbnail || DEFAULT_THUMBNAIL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  {cam.thumbnail
+                    ? <img src={cam.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : <div style={{ width: "100%", height: "100%", backgroundColor: "var(--gray-100)" }} />}
                 </button>
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.name}</p>
@@ -1906,7 +1916,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             return (
               <div key={cam.id} style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
                 <button onClick={() => setInspectingCameraId(cam.id)} style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", border: "none", padding: 0, cursor: "pointer", display: "block", backgroundColor: "var(--gray-900)", overflow: "hidden", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
-                  <img src={cam.thumbnail || DEFAULT_THUMBNAIL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: online ? 1 : 0.4 }} />
+                  {cam.thumbnail
+                    ? <img src={cam.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: online ? 1 : 0.4 }} />
+                    : <div style={{ width: "100%", height: "100%", backgroundColor: "var(--gray-100)" }} />}
                   <span style={{
                     position: "absolute", top: "8px", left: "8px", fontSize: "10px", fontWeight: 600, padding: "4px 8px", borderRadius: "999px",
                     backgroundColor: cam.status === "online" ? "rgba(22,163,74,0.9)" : cam.status === "error" ? "rgba(244,63,94,0.9)" : "rgba(148,163,184,0.9)", color: "white",

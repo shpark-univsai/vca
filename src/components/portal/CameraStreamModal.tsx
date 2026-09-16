@@ -115,7 +115,11 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
         <div style={{ padding: "12px 20px 20px", display: "flex", flexDirection: "column", gap: "16px" }}>
           {/* Preview */}
           <div style={{ position: "relative", borderRadius: "12px", overflow: "hidden", aspectRatio: "16 / 9", backgroundColor: "var(--gray-900)" }}>
-            <img src={camera.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: online ? 1 : 0.4 }} />
+            {/* Nothing rather than somebody else's corridor. A camera registered through Portal
+                has no captured frame, and this box is captioned as one. */}
+            {camera.thumbnail && (
+              <img src={camera.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: online ? 1 : 0.4 }} />
+            )}
             {/* The badge says what the frame is: a still until somebody presses play, live once the
                 server is streaming. It read "LIVE" over a static thumbnail before, which is the
                 one thing this frame is definitely not. */}
@@ -204,7 +208,13 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
             {([
               [t.zone, camera.zone || "—", <MapIcon key="z" size={11} strokeWidth={2.2} />],
               [t.location, camera.location || "—", <MapPin key="l" size={11} strokeWidth={2.2} />],
-              [t.protocol, camera.protocol ?? "TCP", <Network key="p" size={11} strokeWidth={2.2} />],
+              // "—" like its neighbours, not "TCP". `Camera.protocol` is optional and NOTHING in
+              // the repository ever sets it — not the seed, not the add form, not the edit form —
+              // so the fallback made every camera in the product read TCP. An engineer chasing a
+              // dropping stream reads that as a fact about this device and rules out a transport
+              // problem. Zone, location and coordinates in this same list already say "—" when
+              // they are unknown; this line was the only one filling the gap with a value.
+              [t.protocol, camera.protocol ?? "—", <Network key="p" size={11} strokeWidth={2.2} />],
               [t.coordinates, camera.lat !== undefined && camera.lng !== undefined ? `${camera.lat}, ${camera.lng}` : "—", <Crosshair key="c" size={11} strokeWidth={2.2} />],
               // The server does the analysis, so which one this camera is attached to is the
               // difference between a stream being watched and a stream being carried. It appeared

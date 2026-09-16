@@ -201,7 +201,15 @@ export interface Camera {
   lastSeenAt?: string;
   location: string;
   zone: string;
-  thumbnail: string;
+  /**
+   * The last frame the server captured. OPTIONAL — a camera registered through Portal has none.
+   *
+   * It was required, so the add form filled it with a stock photo of an office corridor on the
+   * same line that wrote `status: "offline"`, and the cards then captioned it 최근 프레임. An
+   * installer saw a picture under "last frame" and read it as the cabling working. Same shape as
+   * lat/lng above: a required field made the code invent a value, so the fix is in the type.
+   */
+  thumbnail?: string;
   /**
    * Where it is, when somebody has surveyed it. ABSENT IS A REAL STATE, not zero.
    *

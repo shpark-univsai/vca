@@ -198,7 +198,11 @@ const T = {
     language: "Portal language",
     languageNote: "Portal only. The monitoring app keeps its own, set from My Page there.",
     password: "Password",
-    passwordSetAgo: "Set 3 months ago",
+    // No figure. This was "Set 3 months ago" — the same words for every account, unchanged the
+    // moment after you press 비밀번호 변경 beside it, in a value slot whose neighbours are all real
+    // (name, e-mail, role, team). A reader deciding whether they are inside a 90-day rotation has
+    // nothing else to go on. PortalUser carries no passwordSetAt, so absence is the honest answer.
+    passwordSetAgo: "Last set: not recorded",
     changePassword: "Change password",
     currentPassword: "Current password",
     verifyStep: "Confirm it is you",
@@ -316,7 +320,7 @@ const T = {
     language: "Portal 화면 언어",
     languageNote: "Portal에만 적용됩니다. 모니터링 앱은 별도이고, 앱의 마이페이지에서 정합니다.",
     password: "비밀번호",
-    passwordSetAgo: "3개월 전 설정",
+    passwordSetAgo: "마지막 변경 시점 기록 없음",
     changePassword: "비밀번호 변경",
     currentPassword: "현재 비밀번호",
     verifyStep: "본인 확인",
