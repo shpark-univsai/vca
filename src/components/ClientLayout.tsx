@@ -20,7 +20,7 @@ import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
 import {
   useVcaStore, currentPortalUser, screensFor,
-  camerasInProject, getActiveProjectId, useActiveProjectId, watchedPersonsInProject,
+  camerasInProject, hasPosition, getActiveProjectId, useActiveProjectId, watchedPersonsInProject,
   type AppScreen, type Camera,
 } from "@/lib/vcaStore";
 import { useLanguage } from "@/lib/i18n";
@@ -66,9 +66,13 @@ const SIDEBAR_POSITION_KEY = "vca-sidebar-position";
 // cannot check in Portal — and the map's ping matched positions against that pool while the device
 // list counted the register, so the same site had two camera populations with two different
 // counts. One register (decided 2026-09-10).
+// A detection also has to land somewhere the map can draw: the event carries lat/lng, and a
+// camera whose position nobody has surveyed yet has none to give. Registering such a camera is
+// allowed on purpose (see Camera.lat), so this filters rather than assuming.
 function simulationCameras(projectId: string) {
   return camerasInProject(useVcaStore.getState().cameras, projectId)
-    .filter(c => runStateOf(c.status) === "running");
+    .filter(c => runStateOf(c.status) === "running")
+    .filter(hasPosition);
 }
 
 function hashStringToIndex(s: string, mod: number): number {
@@ -87,7 +91,11 @@ function hashStringToIndex(s: string, mod: number): number {
 // regular cameras (deterministic from their id, so stable across ticks/reloads) keeps most
 // sightings repeating at the same camera (stays a plain VIP row) and bounds any real trail to at
 // most those 3 cameras, instead of growing unbounded.
-function regularCamerasForPerson(personId: string, pool: Camera[]): Camera[] {
+// The pool is already narrowed to cameras that have a position (see simulationCameras), and the
+// return type says so — a simulated detection carries lat/lng, so losing the narrowing here would
+// only push the same question one line down.
+type PlacedCamera = Camera & { lat: number; lng: number };
+function regularCamerasForPerson(personId: string, pool: PlacedCamera[]): PlacedCamera[] {
   return [
     pool[hashStringToIndex(personId, pool.length)],
     pool[hashStringToIndex(`${personId}-alt1`, pool.length)],

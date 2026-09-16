@@ -6,7 +6,7 @@ import { LiveEvent, Device, TrackingHop, nearestDistrict, getFacePhoto, formatTi
   DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD } from "@/lib/mockData";
 import {
   vcaEventsToLiveEvents,
-  useProjectEvents, useProjectCameras, todaysDetectionHits, type Camera,
+  useProjectEvents, useProjectCameras, todaysDetectionHits, hasPosition, type Camera,
 } from "@/lib/vcaStore";
 import { useCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
 import { useApiData } from "@/hooks/useApiData";
@@ -565,7 +565,12 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
 
   // Registered cameras' real lat/lng — the exact CCTV install point, distinct from a zone
   // marker's own (approximate, district-level) coordinate.
-  const cameras = useProjectCameras();
+  // Only the ones that have a place. A camera whose position nobody has surveyed is a real
+  // registered camera (Camera.lat says why) but there is no honest pin for it — the old required
+  // fields meant it arrived as 0,0 and was drawn in the Atlantic. Everything geographic on this
+  // screen reads this list; the device list and the register still read the full one.
+  const allCameras = useProjectCameras();
+  const cameras = useMemo(() => allCameras.filter(hasPosition), [allCameras]);
   // Camera run state comes from one place — see lib/realtime/cameraStatus.ts. The backend owns the
   // realtime layer and replaces that module's body at intake; nothing here changes.
   const cameraStatus = useCameraStatus();
@@ -1278,6 +1283,10 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
     if (!pinnedDevice) return;
 
     import("leaflet").then(({ default: L }) => {
+      // A device the register has no position for cannot be pinned: there is nowhere to fly to.
+      // Returning leaves the previous marker cleared by this effect's own teardown, which is the
+      // honest outcome — the alternative was flying to 0,0 and dropping a pin off West Africa.
+      if (!hasPosition(pinnedDevice)) return;
       const { lat, lng } = pinnedDevice;
       map.flyTo([lat, lng], 15, { duration: 0.8, easeLinearity: 0.5 });
 

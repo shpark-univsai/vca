@@ -232,10 +232,12 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
         code: row.code, name: row.name, rtspUrl: row.rtspUrl,
         zone: row.zone, location: row.location,
         ip: row.ip, mac: row.mac,
-        // Zero is a real coordinate, so the map has to distinguish "not surveyed" from "on the
-        // equator". Cameras without a position are registered at 0,0 and the result screen says
-        // they will not appear until one is set — see doneNoCoordsNote.
-        lat: row.lat ?? 0, lng: row.lng ?? 0,
+        // Zero is a real coordinate, so "not surveyed" cannot be written as 0,0 — that is a point
+        // in the Gulf of Guinea, and the maps drew a pin there. The Add form's own comment warned
+        // about exactly this and then this line did it for every row an installer had no survey
+        // for. Camera.lat is optional now, so absence is written as absence; the result screen
+        // still says these will not appear until a position is set (doneNoCoordsNote).
+        ...(row.lat !== undefined && row.lng !== undefined ? { lat: row.lat, lng: row.lng } : {}),
         status: "offline" as const,
         thumbnail: "",
       })),

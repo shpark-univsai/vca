@@ -7,7 +7,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useOnValueChange } from "@/hooks/useOnValueChange";
 import { useToast } from "./Toast";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
-import { camerasInProject, canExportEvidence, canSearchInApp, judgementFor, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
+import { camerasInProject, canExportEvidence, hasPosition, canSearchInApp, judgementFor, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { buildEvidenceManifest, evidenceFilename, saveManifest } from "@/lib/evidence";
 import { siteTimeZone } from "@/lib/time";
@@ -235,7 +235,11 @@ type HitShape = Omit<HitResult, "camera" | "location" | "mapLabel" | "lat" | "ln
  * somewhere else. Sites with fewer cameras than the trail has stops will revisit a camera, which
  * is what actually happens when someone doubles back past one.
  */
-function bindHitsToCameras(shapes: HitShape[], cams: Camera[]): HitResult[] {
+function bindHitsToCameras(shapes: HitShape[], allCams: Camera[]): HitResult[] {
+  // A trail is a route drawn on a map, so a hit can only be bound to a camera that has a place.
+  // A registered camera with no survey yet (see Camera.lat) would have arrived here as 0,0 back
+  // when the fields were required, putting a step of the route in the Atlantic.
+  const cams = allCams.filter(hasPosition);
   if (cams.length === 0) return [];
   // Spread across the roster instead of taking the first N: the register is ordered by district,
   // so consecutive entries are neighbours and a trail built from cams[0..2] was three cameras on

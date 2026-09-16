@@ -200,8 +200,21 @@ export interface Camera {
   location: string;
   zone: string;
   thumbnail: string;
-  lat: number;
-  lng: number;
+  /**
+   * Where it is, when somebody has surveyed it. ABSENT IS A REAL STATE, not zero.
+   *
+   * These were required, so the two doors that register cameras both wrote `?? 0` for a camera
+   * whose position nobody had measured yet — and 0,0 is a real coordinate in the Gulf of Guinea.
+   * The Add form's own comment already warned about exactly this ("a camera silently placed in
+   * the Gulf of Guinea rather than a form saying the number is wrong") and then the CSV import
+   * did it anyway, for every row an installer had RTSP URLs but no survey for.
+   *
+   * The import is right to accept those rows — see cameraImport's note on why refusing them is
+   * backwards. What it cannot do is invent a position. So absence is representable here, and
+   * every map filters on `hasPosition` rather than drawing a pin in the Atlantic.
+   */
+  lat?: number;
+  lng?: number;
   // RTSP transport protocol, set from Portal's Add/Edit Camera form. Optional/cosmetic — nothing
   // downstream branches on this yet since there's no real stream to actually transport.
   protocol?: "TCP" | "UDP";
@@ -1527,6 +1540,18 @@ export function watchedPersonsInProject(persons: Person[], projectId: string, no
 }
 
 /** This site's cameras. */
+/**
+ * Whether this camera can be drawn — and therefore whether it can be picked on a map.
+ *
+ * Every caller that plots cameras has to ask, because a camera with no survey is a real camera
+ * that simply is not anywhere yet. Callers that need the pickable set (a scope picker's map half)
+ * use this too, and must show the rest somewhere else: a camera nobody can reach on the map is
+ * one nobody can grant, and that has to be visible rather than quietly absent.
+ */
+export function hasPosition<T extends { lat?: number; lng?: number }>(c: T): c is T & { lat: number; lng: number } {
+  return typeof c.lat === "number" && typeof c.lng === "number";
+}
+
 export function camerasInProject(cameras: Camera[], projectId: string): Camera[] {
   return cameras.filter(c => c.projectId === projectId);
 }

@@ -6,7 +6,7 @@ import { Search, Crown } from "lucide-react";
 import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, getFacePhoto, formatTimeAgo, nearestDistrict } from "@/lib/mockData";
 import {
   useVcaStore, vcaEventsToLiveEvents, todaysDetectionHits, districtTally,
-  useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras,
+  useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras, hasPosition,
 } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useOnValueChange } from "@/hooks/useOnValueChange";
@@ -1258,7 +1258,7 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
         )}
         {paginated.map((device, i) => {
           const isPinned = device.id === pinnedDeviceId;
-          const zone = nearestZoneName(device.lat, device.lng, cameras, t.unknownZone);
+          const zone = nearestZoneName(device.lat, device.lng, cameras.filter(hasPosition), t.unknownZone);
           return (
             <div key={device.id} ref={i === 0 ? firstRowRef : undefined}>
             <div
@@ -1315,7 +1315,10 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
 /* ── Collapsed sidebar (60px) ── */
 // Devices only carry lat/lng, not a location name — approximate one from the nearest
 // registered camera zone rather than inventing a label with no data behind it.
-function nearestZoneName(lat: number, lng: number, cameras: { name: string; lat: number; lng: number }[], unknown = "Unknown"): string {
+// Takes the point as possibly-absent: a device with no surveyed position has no nearest anything,
+// and answering "Unknown" is the truthful result rather than measuring from 0,0.
+function nearestZoneName(lat: number | undefined, lng: number | undefined, cameras: { name: string; lat: number; lng: number }[], unknown = "Unknown"): string {
+  if (lat === undefined || lng === undefined) return unknown;
   let best = cameras[0];
   let bestDist = Infinity;
   for (const c of cameras) {
@@ -1485,7 +1488,7 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
         } else {
           const device = hovered.item as Device;
           const isLive = device.status === "Live";
-          const zone = nearestZoneName(device.lat, device.lng, cameras, t.unknownZone);
+          const zone = nearestZoneName(device.lat, device.lng, cameras.filter(hasPosition), t.unknownZone);
           return (
             <div style={{ position:"fixed", ...(position === "right" ? { right:"64px" } : { left:"64px" }), top: clampedTop, zIndex:1000, width:"180px", backgroundColor:"var(--gray-900)", border:"1px solid var(--gray-700)", borderRadius:"12px", padding:"10px", boxShadow:"0 4px 20px rgba(24, 17, 39,0.2)", pointerEvents:"none" }}>
               <div style={{ fontSize:"10px", color:"var(--gray-400)", marginBottom:"3px" }}>{zone}</div>

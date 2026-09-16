@@ -1019,8 +1019,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       // Offline, not a claim. Portal has not reached this address and will not until camera
       // polling lands — the same starting state the setup wizard's first camera gets.
       ip: values.ip.trim(), mac: "", status: "offline", thumbnail: DEFAULT_THUMBNAIL,
-      lat: values.lat.trim() === "" ? 0 : Number(values.lat),
-      lng: values.lng.trim() === "" ? 0 : Number(values.lng),
+      // Blank means not surveyed, not the equator. See Camera.lat.
+      ...(values.lat.trim() === "" || values.lng.trim() === ""
+        ? { lat: undefined, lng: undefined }
+        : { lat: Number(values.lat), lng: Number(values.lng) }),
     });
     setShowAdd(false);
     showToast({ variant: "success", title: t.toastCameraAddedTitle, desc: t.toastCameraAddedDesc(values.name.trim()) });
@@ -1033,8 +1035,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
       maker: values.maker, model: values.model.trim() || undefined,
       username: values.username.trim() || undefined, serverId: values.serverId || undefined,
-      lat: values.lat.trim() === "" ? 0 : Number(values.lat),
-      lng: values.lng.trim() === "" ? 0 : Number(values.lng),
+      // Blank means not surveyed, not the equator. See Camera.lat.
+      ...(values.lat.trim() === "" || values.lng.trim() === ""
+        ? { lat: undefined, lng: undefined }
+        : { lat: Number(values.lat), lng: Number(values.lng) }),
     });
     setEditingCamera(null);
     showToast({ variant: "success", title: t.toastCameraUpdatedTitle, desc: values.name.trim() });

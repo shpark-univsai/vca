@@ -189,8 +189,10 @@ export interface Device {
   name: string;
   type: string;
   ip: string;
-  lat: number;
-  lng: number;
+  /** Optional for the same reason Camera's are: a registered camera may have no survey yet, and
+   *  it still belongs in the device list. Readers derive nothing from a missing position. */
+  lat?: number;
+  lng?: number;
   lastSeen: string;
 }
 
