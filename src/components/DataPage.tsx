@@ -517,12 +517,31 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
           {/* AI attrs */}
           <div>
             <p style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-900)", marginBottom:"8px" }}>{T[lang].attrClassification}</p>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"8px" }}>
+            {/* ONE CELL, because one is all this detection carries.
+                Three more sat here — 상의 색상 "흰 재킷", 하의 색상 "어두운 포인트", 소지품
+                "검정 핸드백" — and every one of them was a string literal, so every person the
+                system had ever detected wore a white jacket and carried a black handbag.
+                The values existed the whole time — REID_DATA carries topColor/bottomColor/
+                shoesColor per person — and `reidToMatchItem` was dropping them, so the cells had
+                nothing to bind and somebody filled the gap with constants. They are carried
+                through now and each cell draws ONLY where a value arrived.
+
+                HANDOFF NOTE: a detection with no apparel shows no apparel cell. Never restore a
+                default here: the whole failure was a default that read as a measurement.
+
+                Gender is no longer colour-coded either. It was #ec4899 for F, which is not one of
+                the 32 tokens, and colouring an inferred attribute makes it read like a status
+                badge — the same visual language the screen uses for facts it measured. */}
+            {/* Flex, not a four-column grid. The grid was sized to the four cells that used to be
+                here, so removing three left one cell a quarter of the width with three empty
+                tracks beside it — a row that looks like it failed to load. This lays out whatever
+                it is given and grows again when real attributes arrive. */}
+            <div style={{ display:"flex", flexWrap:"wrap", gap:"8px" }}>
               {([
-                [T[lang].genderAge, `${attr(item.gender==="F"?"Female":"Male", lang)} | ${item.age}`, item.gender==="F"?"#ec4899":"var(--primary-400)"],
-                [T[lang].topColor, attr("White Jacket", lang), "var(--gray-700)"],
-                [T[lang].bottomColor, attr("Dark Accent", lang), "var(--gray-700)"],
-                [T[lang].belongings, attr("Black Handbag", lang), "var(--gray-700)"],
+                [T[lang].genderAge, `${attr(item.gender==="F"?"Female":"Male", lang)} | ${item.age}`, "var(--gray-700)"],
+                ...(item.topColor ? [[T[lang].topColor, attr(item.topColor, lang), "var(--gray-700)"]] : []),
+                ...(item.bottomColor ? [[T[lang].bottomColor, attr(item.bottomColor, lang), "var(--gray-700)"]] : []),
+                ...(item.shoesColor ? [[T[lang].shoesColor, attr(item.shoesColor, lang), "var(--gray-700)"]] : []),
               ] as [string,string,string][]).map(([label,val,color]) => (
                 <div key={label} style={{ padding:"8px 10px", borderRadius:"10px", backgroundColor:"var(--gray-50)", border:BORDER }}>
                   <p style={{ fontSize:"10px", color:"var(--gray-400)", fontWeight:600, marginBottom:"2px" }}>{label}</p>
@@ -905,7 +924,10 @@ function reidToMatchItem(p: (typeof REID_DATA)[number]): MatchItem {
   // when status==="VIP"; buildTargetResultRows always sets it null), `.similarity` is the actual
   // Re-ID match confidence every row carries. Reading `.score` used to silently produce 0% for
   // any caller that didn't separately re-patch `.similarity` back in afterward.
-  return { id:p.id, face:p.url, body:p.url, cam:p.cam, date:p.date, time:p.time, similarity:p.similarity, gender:p.gender as "M"|"F", age:p.age, plate:p.plate, status:p.status };
+  // Apparel rides along. It was dropped here, which is why DetailModal had nothing to show and
+  // somebody filled the gap with three constants.
+  return { id:p.id, face:p.url, body:p.url, cam:p.cam, date:p.date, time:p.time, similarity:p.similarity, gender:p.gender as "M"|"F", age:p.age, plate:p.plate, status:p.status,
+    topColor:p.topColor, bottomColor:p.bottomColor, shoesColor:p.shoesColor };
 }
 
 const LIVE_FEED_STATUS_CYCLE: ReIDStatus[] = ["VIP","Unknown","Unknown"];
