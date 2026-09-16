@@ -749,6 +749,10 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           confirmLabel={t.deleteConfirmLabel}
           cancelLabel={t.renameCancel}
           danger
+          // 본문이 길다: 문단 둘 + 마지막 프로젝트 경고 + 이름 되쓰기 칸. 짧은 화면에서 이
+          // 확인창이 자기 버튼을 밖으로 밀어냈다. 본문에 드롭다운이 없으므로 스크롤이
+          // 잘라낼 목록도 없다 — 그게 이 prop이 옵트인인 이유다(PortalShared 참조).
+          bodyScrolls
           confirmDisabled={deleteEcho.trim() !== project.name}
           onClose={() => setConfirmingDelete(false)}
           onConfirm={() => {

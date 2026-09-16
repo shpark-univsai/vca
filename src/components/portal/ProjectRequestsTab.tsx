@@ -692,6 +692,10 @@ function ReleaseModal({ t, onClose, onRelease }: {
     <ConfirmModal
       title={t.releaseTitle} body={t.rRedactionNote}
       confirmLabel={t.rConfirm} cancelLabel={t.cancel} confirmDisabled={!can}
+      // 입력 넷(제공 방법·제공 대상·비식별 여부·비식별 방법)이라 짧은 화면에서 버튼이
+      // 밀려났다. 드롭다운은 없다. 종결 확인창(아래)에는 주지 않는다 — 입력이 하나뿐이라
+      // 도달하지 않는 제한을 더하는 것뿐이다.
+      bodyScrolls
       onClose={onClose}
       onConfirm={() => onRelease({
         releaseMethod: method.trim(),
