@@ -517,14 +517,17 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
           {/* AI attrs */}
           <div>
             <p style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-900)", marginBottom:"8px" }}>{T[lang].attrClassification}</p>
-            {/* ONE CELL, because one is all this detection carries.
-                Three more sat here — 상의 색상 "흰 재킷", 하의 색상 "어두운 포인트", 소지품
-                "검정 핸드백" — and every one of them was a string literal, so every person the
-                system had ever detected wore a white jacket and carried a black handbag.
-                The values existed the whole time — REID_DATA carries topColor/bottomColor/
-                shoesColor per person — and `reidToMatchItem` was dropping them, so the cells had
-                nothing to bind and somebody filled the gap with constants. They are carried
-                through now and each cell draws ONLY where a value arrived.
+            {/* Three cells sat here as string literals — 상의 색상 "흰 재킷", 하의 색상 "어두운
+                포인트", 소지품 "검정 핸드백" — so every person the system had ever detected wore a
+                white jacket and carried a black handbag, on the screen an operator uses to narrow
+                a search BY clothes.
+                A first pass replaced them with topColor/bottomColor/shoesColor. That removed the
+                lie but bound nothing: REID_DATA never sets those three, so the cells could never
+                render and the comment here claimed the values "existed the whole time". They did
+                not. What the rows carry is `apparel` (garment type) and `prop` (one carried item),
+                cycled per person — and the grid's own filters already read exactly those two
+                (:2718), so showing them makes the modal agree with what the operator filtered by.
+                Each cell draws ONLY where a value arrived; `prop` is null for half the rows.
 
                 HANDOFF NOTE: a detection with no apparel shows no apparel cell. Never restore a
                 default here: the whole failure was a default that read as a measurement.
@@ -539,6 +542,8 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
             <div style={{ display:"flex", flexWrap:"wrap", gap:"8px" }}>
               {([
                 [T[lang].genderAge, `${attr(item.gender==="F"?"Female":"Male", lang)} | ${item.age}`, "var(--gray-700)"],
+                ...(item.apparel ? [[T[lang].labelApparel, attr(item.apparel, lang), "var(--gray-700)"]] : []),
+                ...(item.prop ? [[T[lang].labelProps, attr(item.prop, lang), "var(--gray-700)"]] : []),
                 ...(item.topColor ? [[T[lang].topColor, attr(item.topColor, lang), "var(--gray-700)"]] : []),
                 ...(item.bottomColor ? [[T[lang].bottomColor, attr(item.bottomColor, lang), "var(--gray-700)"]] : []),
                 ...(item.shoesColor ? [[T[lang].shoesColor, attr(item.shoesColor, lang), "var(--gray-700)"]] : []),
@@ -926,8 +931,12 @@ function reidToMatchItem(p: (typeof REID_DATA)[number]): MatchItem {
   // any caller that didn't separately re-patch `.similarity` back in afterward.
   // Apparel rides along. It was dropped here, which is why DetailModal had nothing to show and
   // somebody filled the gap with three constants.
+  // Apparel rides along. `apparel` (garment type) and `prop` (one carried item) are what the rows
+  // actually carry — the same two the grid's filters read at :2718, so the modal now agrees with
+  // whatever the operator narrowed by. NOT topColor/bottomColor/shoesColor: REID_DATA never sets
+  // those, so reading them typechecks and yields undefined forever. See MatchItem in types/reid.ts.
   return { id:p.id, face:p.url, body:p.url, cam:p.cam, date:p.date, time:p.time, similarity:p.similarity, gender:p.gender as "M"|"F", age:p.age, plate:p.plate, status:p.status,
-    topColor:p.topColor, bottomColor:p.bottomColor, shoesColor:p.shoesColor };
+    apparel:p.apparel, prop:p.prop };
 }
 
 const LIVE_FEED_STATUS_CYCLE: ReIDStatus[] = ["VIP","Unknown","Unknown"];
