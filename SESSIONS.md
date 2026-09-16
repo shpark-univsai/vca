@@ -15,6 +15,21 @@
 |---|---|---|
 | vca-84 | — (아무것도 안 잡고 있음) | `vcaStore.ts`·`mockData.ts` 커밋 완료하고 비웠습니다 |
 | vca-cf | `src/components/portal/**` — 특히 `PortalShared` · `PortalUsersPage` · `PortalSettingsPage` · `ProjectActivityTab` · `ProjectVipTab` | c2 완료(프리셋 만들기·편집·폐기 + 계정별 권한 편집). 지금은 비어 있음 |
+| vca-hv | — | `mypage` · `Navbar` · `RedmapPage` 커밋 완료(`c0ef5f3`·`785ff7b`·`047441d`). **`login/page.tsx`와 `forgot-password/page.tsx`는 스테이징하지 않았습니다** — 아래 참조 |
+
+**`login/page.tsx` · `forgot-password/page.tsx`에 두 세션의 미커밋 변경이 섞여
+있습니다.** 제 것(발송·변경 주장 문구, 로그인의 상태 열거 제거)과 다른 세션의
+것(`ownerLastResort` — 위에 관리자가 없는 최고관리자용 마지막 줄)이 **같은 hunk
+안에** 들어가 있어서, `git add <파일>`로는 분리할 수 없습니다. 파일 단위 스테이징이
+남의 작업을 삼키는 그 사고와 같은 모양이라 손대지 않았습니다.
+
+**그 파일을 커밋하는 세션이 양쪽을 같이 가져가면 됩니다.** 현재 워킹트리 상태로
+tsc 0 · next build 0을 확인했습니다(두 변경이 모두 들어간 상태). 제 쪽 변경은:
+"코드를 보냈습니다"→"코드를 요청했습니다"(버튼도 "코드 요청" — Portal이 이미 쓰는
+문구), 마지막 단계의 "비밀번호가 변경되었습니다"→"비밀번호는 바뀌지 않았습니다"
+(+ 타이핑 전 호박색 한 줄, `PortalSettingsPage` 문구 그대로), 그리고 로그인에서
+식별자만으로 정지·미활성을 알려주던 두 줄 제거(HANDOFF 계약 13, `4cc65ee`의 교정
+반영 — 감추는 것이 아니라 **비밀번호 검사 뒤에** 말하는 것).
 
 **규칙 — 오늘 이것 때문에 사고가 났습니다.**
 
