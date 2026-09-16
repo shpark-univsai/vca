@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
-import { canEnterApp, canEnterPortal, canManageAccess, currentPortalUser, isAwaitingFirstContact, registeredDayIn, registryHealth, resolveMailConfig, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
+import { hasPosition, canEnterApp, canEnterPortal, canManageAccess, currentPortalUser, isAwaitingFirstContact, registeredDayIn, registryHealth, resolveMailConfig, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed, zoneHour } from "@/lib/time";
 import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, FacePhoto, usePortalEditAccess } from "./PortalShared";
 import { useToast } from "../Toast";
@@ -74,6 +74,7 @@ const T = {
     attnExpired: "License has expired",
     attnNoMail: "No mail server configured — nobody can be invited",
     attnSoleOwner: "Only one owner account — getting back in would need server access",
+    attnNoCoords: (n: number) => `${n} camera${n === 1 ? "" : "s"} not on the map — no coordinates`,
     attnNoTimeZone: "Time zone never set — every date on this project is a guess",
     attnNoCameras: "No source connected yet",
     attnNoVips: "No VIP registered yet",
@@ -171,6 +172,7 @@ const T = {
     attnExpired: "라이선스가 만료되었습니다",
     attnNoMail: "메일 서버가 설정되지 않았습니다 — 아무도 초대할 수 없습니다",
     attnSoleOwner: "최고관리자가 한 명뿐입니다 — 되돌리려면 서버 접근 권한이 필요합니다",
+    attnNoCoords: (n: number) => `${n}대가 지도에 없습니다 — 좌표 미입력`,
     attnNoTimeZone: "시간대를 정한 적이 없습니다 — 이 프로젝트의 모든 날짜가 추측입니다",
     attnNoCameras: "연결된 소스가 없습니다",
     attnNoVips: "등록된 VIP가 없습니다",
@@ -473,6 +475,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
    * second piece of state — the same handoff, and for the same reason, as inspectCameraId above.
    */
   const [vipHealthFocus, setVipHealthFocus] = useState<VipHealthFilter | null>(null);
+  const [cameraGapFocus, setCameraGapFocus] = useState(false);
   /** Which day of the detections chart the pointer is over, by daysAgo. */
   const [hoverDay, setHoverDay] = useState<number | null>(null);
   /** The full admin-activity log, in a modal — Portal has no page for it (see the note on the
@@ -732,11 +735,17 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
   // Never set, not "set to the value that happens to be the default" — Singapore is a correct
   // answer for a Singapore site, and flagging that would be a false alarm on a finished install.
   const timeZoneUnset = project.timeZone === undefined;
+  /* Registered here and on no map. Read through hasPosition rather than a truthiness test, because
+     0,0 is a real coordinate — the Gulf of Guinea — and a camera parked there is the bug the
+     optional-coordinate change exists to prevent. */
+  const noPositionCount = projectCameras.filter(c => !hasPosition(c)).length;
 
   const attentionItems: {
     key: string; text: string; color: string; tab: DetailTab;
     /** Lands on the VIP tab with this filter already applied — a hundred rows are no help. */
     vipHealth?: VipHealthFilter;
+    /** Same idea on Input Sources: land on the cameras with no coordinates, not on all sixty. */
+    cameraGap?: true;
     /** Opens Settings instead of a project tab, for the one errand whose control lives there. */
     settings?: boolean;
   }[] = [
@@ -773,6 +782,16 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
     // telling the reader every date here is a guess. The control that sets a zone lives in
     // Settings, which is not a DetailTab and cannot be reached by onTabChange.
     ...(timeZoneUnset ? [{ key: "notz", text: t.attnNoTimeZone, color: "var(--warning-500)", tab: "overview" as DetailTab, settings: true }] : []),
+    /* Grey, with the "nothing here yet" notes rather than with the faults. A camera with no
+       coordinate is registered, reachable and recording — it is simply not on the map, which is a
+       gap in the register and not something failing. Amber would have control-room staff report an
+       outage that is not happening; the same reasoning already keeps the Input Sources cell neutral.
+
+       It needs saying HERE because the only place that says it today is a toast in the CSV import,
+       seen once on installation day and then gone. Four of fifteen products checked keep a
+       standing "not placed yet" list for exactly this reason (Avigilon's Devices Not On Map,
+       Genetec's unsynchronised entities, Verkada's Unassigned Devices, Bosch's invisible-on-import). */
+    ...(noPositionCount > 0 ? [{ key: "nocoords", text: t.attnNoCoords(noPositionCount), color: "var(--gray-400)", tab: "cameras" as DetailTab, cameraGap: true as const }] : []),
     ...(projectCameras.length === 0 ? [{ key: "nocams", text: t.attnNoCameras, color: "var(--gray-400)", tab: "cameras" as DetailTab }] : []),
     ...(projectPersons.length === 0 ? [{ key: "novips", text: t.attnNoVips, color: "var(--gray-400)", tab: "vip" as DetailTab }] : []),
   ];
@@ -960,6 +979,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                       onClick={() => {
                         if (item.settings) { onOpenSettings?.(); return; }
                         setVipHealthFocus(item.vipHealth ?? null);
+                        setCameraGapFocus(item.cameraGap ?? false);
                         onTabChange(item.tab);
                       }}
                       style={{
@@ -1737,7 +1757,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
 
         </>
       )}
-      {tab === "cameras" && <ProjectCamerasTab projectId={projectId} openCameraId={inspectCameraId} onCameraOpened={() => setInspectCameraId(null)} />}
+      {tab === "cameras" && <ProjectCamerasTab projectId={projectId} openCameraId={inspectCameraId} onCameraOpened={() => setInspectCameraId(null)} openGapFilter={cameraGapFocus} onGapFilterOpened={() => setCameraGapFocus(false)} />}
       {tab === "vip" && <ProjectVipTab projectId={projectId} openHealthFilter={vipHealthFocus} onHealthFilterOpened={() => setVipHealthFocus(null)} />}
       {tab === "license" && <ProjectLicenseTab projectId={projectId} />}
       {tab === "server" && <ProjectServerTab projectId={projectId} />}

@@ -734,10 +734,19 @@ function csvEscape(value: string): string {
  *   Overview's camera panel, whose rows now open the camera rather than dumping the reader at the
  *   top of this list. Cleared through onCameraOpened so a later visit to the tab opens plain.
  */
-export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpened }: {
+export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpened, openGapFilter, onGapFilterOpened }: {
   projectId: string;
   openCameraId?: string | null;
   onCameraOpened?: () => void;
+  /**
+   * Arrive with the no-coordinate filter already on, sent by the Overview's errand strip.
+   *
+   * Same reason as ProjectVipTab's openHealthFilter: the line above says "six cameras are not on
+   * the map", and landing on all sixty leaves the reader to find which six. Which six IS the
+   * content of the line.
+   */
+  openGapFilter?: boolean;
+  onGapFilterOpened?: () => void;
 }) {
   const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
   const cameras = useVcaStore(s => s.cameras);
@@ -799,6 +808,15 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * it is while the gap is being fixed.
    */
   const [gapFilter, setGapFilter] = useState<"noPosition" | null>(null);
+  /* queueMicrotask for the reason ProjectVipTab spells out at its own copy of this: the parent
+     clears the flag in the same commit, and StrictMode renders this tree twice before it paints. */
+  useEffect(() => {
+    if (!openGapFilter) return;
+    queueMicrotask(() => {
+      setGapFilter("noPosition");
+      onGapFilterOpened?.();
+    });
+  }, [openGapFilter, onGapFilterOpened]);
   // Which kind of source the table is showing. A tab row, not another select in the filter strip:
   // it is the top-level cut of the list, and the counts belong on it.
   const [kindTab, setKindTab] = useState<"ALL" | SourceKind>("ALL");
