@@ -579,7 +579,14 @@ export default function ClientLayout() {
                     position: "absolute", left: "24px", bottom: "24px", zIndex: 900,
                     display: "flex", alignItems: "center", gap: "8px",
                     backgroundColor: "rgba(255,255,255,0.74)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-                    border: "1px solid rgba(226,232,240,0.6)", borderRadius: "999px", padding: "8px 14px",
+                    // HANDOFF NOTE (design system): the fill above is the one colour on this
+                    // screen with no token behind it. globals.css has four elevation/overlay
+                    // roles and none of them is "a glass surface over the map" — the scrims are
+                    // dark, and an opaque --gray-0 here would close the window the comment above
+                    // asks for. The hairline is the token it always was; the 74% white wants a
+                    // --glass-surface added to globals.css, which is a shared file and a design
+                    // call, so it is reported rather than invented here.
+                    border: "1px solid var(--gray-200)", borderRadius: "999px", padding: "8px 14px",
                     boxShadow: "var(--shadow-popover)", cursor: "pointer",
                   }}
                 >
