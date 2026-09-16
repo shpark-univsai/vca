@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import CameraImportModal from "./CameraImportModal";
-import { CircleAlert, FileOutput, Film as FilmIcon, Image as ImageIcon, RotateCw, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
+import { CircleAlert, FileOutput, Film as FilmIcon, Image as ImageIcon, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
 import { useVcaStore, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -15,9 +15,6 @@ const T = {
   en: {
     exportCsv: "Export CSV",
     importCsv: "Import CSV",
-    refresh: "Refresh",
-    checkedJustNow: "checked just now",
-    checkedMinsAgo: (n: number) => `checked ${n} min ago`,
     addCamera: "Add camera",
     online: "Online",
     offline: "Offline",
@@ -167,9 +164,6 @@ const T = {
   ko: {
     exportCsv: "CSV 내보내기",
     importCsv: "CSV 가져오기",
-    refresh: "새로고침",
-    checkedJustNow: "방금 확인함",
-    checkedMinsAgo: (n: number) => `${n}분 전 확인`,
     addCamera: "카메라 추가",
     online: "온라인",
     offline: "오프라인",
@@ -1106,41 +1100,30 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   };
 
   /**
-   * When the fleet's status was last fetched, and a clock to say how long ago that was.
+   * NO "checked N minutes ago" LABEL, and that is the point rather than an omission.
    *
-   * Portal polls — decided by the backend on 2026-09-09 (reply D1). The module publishes status
-   * over MQTT and the server keeps the latest value loaded, so a poll is always the current answer
-   * and costs almost nothing; a browser subscription is the fallback plan, not the v1 shape.
+   * There was one, and it was false. `lastPolledAt` was the moment the page mounted and the
+   * refresh button's entire body was `setLastPolledAt(Date.now())` — so the words counted time
+   * since a fetch that never happened, over figures that came from the store and did not move.
+   * Leave a page open for ten minutes and the numbers stood still while the label walked to
+   * "10 minutes ago", which reads as "these were checked then" and was not true of anything.
    *
-   * Both are set after mount, never during render: a timestamp taken while rendering differs
-   * between the server's HTML and the browser's first pass, and the two would not match.
+   * A wrong fact is worse than a missing one: a reader who is told nothing goes and looks, and a
+   * reader who is told "just now" stops asking.
    *
-   * There is no 30-second interval resetting lastPolledAt. There was, and it fetched nothing:
-   * the value the label measures FROM was being pushed forward by the same timer that was
-   * supposed to make the label move, so polledMinsAgo could never reach 1 and the toolbar read
-   * "checked just now" permanently, over figures that might be hours old. A label that always
-   * says the same thing is worse than a stale one — a stale timestamp at least tells you to
-   * distrust it. The refresh button is now the only writer, so the words measure a real event.
+   * The refresh button went with it. Its whole body was that one setState, so pressing it moved
+   * the label and nothing else — a control that mimes its own action. This product puts screens in
+   * front of the backend to say what it needs, but a button wired to nothing is not a
+   * specification, it is furniture; the note below is the specification.
    *
    * HANDOFF NOTE: pressing refresh is where the fetch goes —
-   * GET /api/portal/projects/{id}/camera-connectivity, answer into the store. Until that exists
-   * the button only re-stamps the clock, which is why it does not claim the figures changed.
+   * GET /api/portal/projects/{id}/camera-connectivity, answer into the store. Portal polls rather
+   * than subscribing: decided by the backend on 2026-09-09 (reply D1), because the module
+   * publishes status over MQTT and the server keeps the latest value loaded, so a poll is always
+   * the current answer and costs almost nothing. Bring the staleness label back with the fetch —
+   * once a real request stamps the clock, "checked N minutes ago" measures something, and a
+   * refresh button without it is a button pressed on a hunch.
    */
-  const [lastPolledAt, setLastPolledAt] = useState<number | null>(null);
-  const [nowMs, setNowMs] = useState<number | null>(null);
-  useEffect(() => {
-    // queueMicrotask, not a bare call: setting state synchronously inside an effect makes React
-    // throw the render away and start again. The same deferral the rest of Portal uses for
-    // clock-dependent values.
-    queueMicrotask(() => { setLastPolledAt(Date.now()); setNowMs(Date.now()); });
-    // Just the label's clock. "3 min ago" does not need per-second accuracy, and a timer that
-    // fires every second to redraw two words is a timer nobody asked for.
-    const clock = setInterval(() => setNowMs(Date.now()), 10_000);
-    return () => clearInterval(clock);
-  }, []);
-  const polledMinsAgo = nowMs !== null && lastPolledAt !== null
-    ? Math.floor((nowMs - lastPolledAt) / 60_000)
-    : null;
 
   const [showImport, setShowImport] = useState(false);
 
@@ -1396,14 +1379,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           miniature with its bulk actions.
         */}
         <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
-          {/* How stale the status figures are, next to the control that refreshes them. Without it
-              a refresh button is a button you press on a hunch — the reader cannot tell whether the
-              screen is a minute old or an hour. Rendered only once the clock is known. */}
-          {polledMinsAgo !== null && (
-            <span style={{ fontSize: "10px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>
-              {polledMinsAgo < 1 ? t.checkedJustNow : t.checkedMinsAgo(polledMinsAgo)}
-            </span>
-          )}
           {/*
             Secondary actions carry no box.
 
@@ -1417,11 +1392,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             borderless icon-and-text, with the one filled button kept for the action that makes
             something. Hover brings a tint back, so the target is still findable by pointing.
           */}
-          <button className="portal-btn-quiet" onClick={() => setLastPolledAt(Date.now())} title={t.refresh} aria-label={t.refresh}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-            <RotateCw size={14} strokeWidth={2.4} />
-            {t.refresh}
-          </button>
           {/* Beside Export, and before it: the first thing a new site does is put a list in,
               and the round trip this reads is the one Export writes. Behind the same edit gate
               as adding a camera — this is the same act, three hundred times. */}
