@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import CameraImportModal from "./CameraImportModal";
-import { CircleAlert, FileOutput, Film as FilmIcon, Image as ImageIcon, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
-import { useVcaStore, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
+import { CircleAlert, FileOutput, Film as FilmIcon, Image as ImageIcon, MapPinOff, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
+import { useVcaStore, hasPosition, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
@@ -43,6 +43,8 @@ const T = {
     healthOfflineWhy: "No answer at all — the address is unreachable. Usually power, cable or network rather than the camera itself.",
     healthError: "refusing the connection",
     healthErrorWhy: "The camera answered and turned us away. Almost always the wrong credentials or a stream path that has changed.",
+    healthNoPosition: "no coordinates yet",
+    healthNoPositionWhy: "The register has the zone but not the latitude and longitude, so this camera is drawn nowhere on the map and nothing it detects can be counted toward a zone. Not a camera fault — the survey line is the part that is missing, and somebody on site fills it in.",
     healthShowOnly: "Show only these",
     healthClear: "Show everything again",
     searchPlaceholder: "Search by camera name, code, RTSP URL, or IP address",
@@ -188,6 +190,8 @@ const T = {
     healthOfflineWhy: "응답이 아예 없습니다. 주소에 닿지 않는 상태로, 대개 카메라보다 전원·케이블·네트워크 문제입니다.",
     healthError: "연결 거부",
     healthErrorWhy: "카메라가 응답은 했지만 접속을 거절했습니다. 거의 항상 계정 정보가 틀렸거나 스트림 경로가 바뀐 경우입니다.",
+    healthNoPosition: "좌표 미등록",
+    healthNoPositionWhy: "구역은 적혀 있지만 위도·경도가 없습니다. 그래서 지도 어디에도 그려지지 않고, 이 카메라가 잡은 탐지는 어느 구역으로도 집계되지 않습니다. 카메라 고장이 아니라 등록부에 측량값이 빠진 것이라, 현장에서 좌표를 재서 채워 넣으면 됩니다.",
     healthShowOnly: "이 항목만 보기",
     healthClear: "전체 다시 보기",
     searchPlaceholder: "카메라 이름, 코드, RTSP URL, IP 주소로 검색",
@@ -776,7 +780,15 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   /**
    * Which "installed but doing nothing" gap the list is narrowed to, if any — set by the summary
    * strip above the table.
+   *
+   * Its own state rather than another value on statusFilter, even though the cell that sets it
+   * sits in the same strip: statusFilter is also bound to the select beside the search box, whose
+   * options are all connection states, so a value that select cannot draw would leave it reading
+   * "All status" over a narrowed table. And it is not a connection state to begin with — a camera
+   * with no coordinates can be online, offline or never-contacted, and it stays whichever of those
+   * it is while the gap is being fixed.
    */
+  const [gapFilter, setGapFilter] = useState<"noPosition" | null>(null);
   // Which kind of source the table is showing. A tab row, not another select in the filter strip:
   // it is the top-level cut of the list, and the counts belong on it.
   const [kindTab, setKindTab] = useState<"ALL" | SourceKind>("ALL");
@@ -866,7 +878,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * skip.
    */
 
-  const activeFilterCount = [zoneFilter, statusFilter].filter(v => v !== "ALL").length;
+  const activeFilterCount = [zoneFilter, statusFilter].filter(v => v !== "ALL").length + (gapFilter === null ? 0 : 1);
   // Selected camera ids. Held as a Set of ids rather than of rows so a selection survives the list
   // being re-sorted or re-filtered underneath it.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -882,7 +894,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     confirmingBulkDelete || uploadPurpose !== null,
   );
 
-  const clearFilters = () => { setZoneFilter("ALL"); setStatusFilter("ALL"); };
+  const clearFilters = () => { setZoneFilter("ALL"); setStatusFilter("ALL"); setGapFilter(null); };
 
   const q = search.trim().toLowerCase();
   const matchingCameras = projectCameras.filter(c => {
@@ -893,7 +905,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       : statusFilter === "awaiting" ? isAwaitingFirstContact(c)
       : statusFilter === "offline" ? c.status === "offline" && !isAwaitingFirstContact(c)
       : c.status === statusFilter;
-    return matchesSearch && matchesZone && matchesStatus;
+    const matchesGap = gapFilter === null || !hasPosition(c);
+    return matchesSearch && matchesZone && matchesStatus && matchesGap;
   });
   const matchingUploads = projectUploads.filter(u => {
     const matchesSearch = !q || u.fileName.toLowerCase().includes(q);
@@ -902,7 +915,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     // honest answer, not showing them as if they had passed a filter they cannot be judged by.
     // A gap filter is a camera question too — a file has no engine, no server and no coordinates,
     // and showing files while one is on would be showing rows that cannot be judged by it.
-    const cameraOnlyFilterSet = zoneFilter !== "ALL";
+    const cameraOnlyFilterSet = zoneFilter !== "ALL" || gapFilter !== null;
     // Status filter is shared but its values are not: "online"/"offline" describe a connection and
     // a file has none, so the same reasoning applies.
     return matchesSearch && !cameraOnlyFilterSet && statusFilter === "ALL";
@@ -994,6 +1007,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const awaitingCount = projectCameras.filter(isAwaitingFirstContact).length;
   const offlineCount = projectCameras.filter(c => c.status === "offline" && !isAwaitingFirstContact(c)).length;
   const errorCount = projectCameras.filter(c => c.status === "error").length;
+  /* Registered here, nowhere on the map. Read through hasPosition rather than a truthiness test:
+     0 is a real coordinate, and `!c.lat` would file the one camera actually sitting on a meridian
+     as unsurveyed — which is the same confusion between "absent" and "zero" that put unsurveyed
+     cameras in the Gulf of Guinea in the first place. */
+  const noPositionCount = projectCameras.filter(c => !hasPosition(c)).length;
   // Anything not yet analysed — queued or mid-run. Both are "not done", and an administrator does
   // the same thing about either: wait, or find out why.
 
@@ -1352,46 +1370,72 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         </div>
       )}
       {(kindTab === "ALL" || kindTab === "camera") && <SummaryStrip cells={[
-        {
-          key: "online" as const, count: onlineCount, label: t.healthConnected, why: t.healthConnectedWhy,
-          unit: t.healthOfFleet(projectCameras.length), tone: "neutral" as const,
-          icon: <VideoIcon size={14} strokeWidth={2.4} />,
-        },
-        {
-          key: "offline" as const, count: offlineCount, label: t.healthOffline, why: t.healthOfflineWhy,
-          unit: undefined, tone: "warning" as const,
-          icon: <VideoOff size={14} strokeWidth={2.4} />,
-        },
-        {
-          key: "error" as const, count: errorCount, label: t.healthError, why: t.healthErrorWhy,
-          unit: undefined, tone: "warning" as const,
-          icon: <CircleAlert size={14} strokeWidth={2.4} />,
-        },
-        {
-          // Neutral, not warning: nothing is wrong with a camera that was registered this morning.
-          key: "awaiting" as const, count: awaitingCount, label: t.healthAwaiting, why: t.healthAwaitingWhy,
-          unit: undefined, tone: "neutral" as const,
-          icon: <Unplug size={14} strokeWidth={2.4} />,
-        },
-      ]
-        // A cell reading "0 refusing the connection" is a click that returns an empty table. The
-        // connected cell stays whatever it says: zero of sixty connected is the loudest thing this
-        // strip could ever report.
-        .filter(item => item.key === "online" || item.count > 0)
-        .map(item => ({
-          key: item.key,
-          icon: item.icon,
-          figure: item.count,
-          unit: item.unit,
-          label: item.label,
-          // Offline and refusing-the-connection are two words apart and two different callouts —
-          // one is an electrician, the other is a password. The underline is where that goes.
-          explanation: item.why,
-          tone: item.tone,
-          active: statusFilter === item.key,
-          title: statusFilter === item.key ? t.healthClear : t.healthShowOnly,
-          onClick: () => setStatusFilter(statusFilter === item.key ? "ALL" : item.key),
-        }))} />}
+        ...[
+          {
+            key: "online" as const, count: onlineCount, label: t.healthConnected, why: t.healthConnectedWhy,
+            unit: t.healthOfFleet(projectCameras.length), tone: "neutral" as const,
+            icon: <VideoIcon size={14} strokeWidth={2.4} />,
+          },
+          {
+            key: "offline" as const, count: offlineCount, label: t.healthOffline, why: t.healthOfflineWhy,
+            unit: undefined, tone: "warning" as const,
+            icon: <VideoOff size={14} strokeWidth={2.4} />,
+          },
+          {
+            key: "error" as const, count: errorCount, label: t.healthError, why: t.healthErrorWhy,
+            unit: undefined, tone: "warning" as const,
+            icon: <CircleAlert size={14} strokeWidth={2.4} />,
+          },
+          {
+            // Neutral, not warning: nothing is wrong with a camera that was registered this morning.
+            key: "awaiting" as const, count: awaitingCount, label: t.healthAwaiting, why: t.healthAwaitingWhy,
+            unit: undefined, tone: "neutral" as const,
+            icon: <Unplug size={14} strokeWidth={2.4} />,
+          },
+        ]
+          // A cell reading "0 refusing the connection" is a click that returns an empty table. The
+          // connected cell stays whatever it says: zero of sixty connected is the loudest thing this
+          // strip could ever report.
+          .filter(item => item.key === "online" || item.count > 0)
+          .map(item => ({
+            key: item.key,
+            icon: item.icon,
+            figure: item.count,
+            unit: item.unit,
+            label: item.label,
+            // Offline and refusing-the-connection are two words apart and two different callouts —
+            // one is an electrician, the other is a password. The underline is where that goes.
+            explanation: item.why,
+            tone: item.tone,
+            active: statusFilter === item.key,
+            title: statusFilter === item.key ? t.healthClear : t.healthShowOnly,
+            onClick: () => setStatusFilter(statusFilter === item.key ? "ALL" : item.key),
+          })),
+        /*
+         * Neutral, for the reason the VIP tab's re-enrolment cell is neutral: amber on this page
+         * means a defect somebody has to go and repair, and this camera may be streaming
+         * perfectly. What is missing is a line in the register — an amber card here would have a
+         * control room raising a hardware ticket for a device that is fine, and sending an
+         * electrician where a surveyor is wanted.
+         *
+         * Hidden at zero like the fault cells above rather than pinned like the connected one: a
+         * strip that permanently carries "0 no coordinates yet" teaches the reader to skip the
+         * row. That is not a hypothetical here — a "not on the map" column built on this page
+         * once showed nothing but 0 for want of a camera to count, and was deleted for it. The
+         * register carries one now (see Camera.lat in the store), so the state is reachable.
+         */
+        ...(noPositionCount > 0 ? [{
+          key: "noPosition",
+          icon: <MapPinOff size={14} strokeWidth={2.4} />,
+          figure: noPositionCount,
+          label: t.healthNoPosition,
+          explanation: t.healthNoPositionWhy,
+          tone: "neutral" as const,
+          active: gapFilter === "noPosition",
+          title: gapFilter === "noPosition" ? t.healthClear : t.healthShowOnly,
+          onClick: () => setGapFilter(gapFilter === "noPosition" ? null : "noPosition"),
+        }] : []),
+      ]} />}
       {/* Search & filters */}
       {/* alignItems center, not the default stretch: every control in this row sets its own height
           (CONTROL_HEIGHT), so stretch looked fine until a bare <span> joined them — the selection

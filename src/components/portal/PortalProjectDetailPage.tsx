@@ -11,7 +11,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
 import type { DetailTab } from "./ProjectSidebar";
 import ProjectCamerasTab from "./ProjectCamerasTab";
-import ProjectVipTab from "./ProjectVipTab";
+import ProjectVipTab, { type VipHealthFilter } from "./ProjectVipTab";
 import ProjectLicenseTab from "./ProjectLicenseTab";
 import ProjectServerTab from "./ProjectServerTab";
 import PortalUsersPage from "./PortalUsersPage";
@@ -455,6 +455,16 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    * reopen a modal nobody asked for.
    */
   const [inspectCameraId, setInspectCameraId] = useState<string | null>(null);
+  /**
+   * Which registry-health bucket the VIP tab should open narrowed to, set by an errand in the
+   * strip below and cleared by the tab once it has applied it.
+   *
+   * The errands carry a tab id and nothing else, which was enough for every one of them except
+   * this: "6 VIP listings have expired" opened a registry of a hundred rows with no way to see the
+   * six, so the red line named work nobody could reach. A tab id cannot say which rows, hence the
+   * second piece of state — the same handoff, and for the same reason, as inspectCameraId above.
+   */
+  const [vipHealthFocus, setVipHealthFocus] = useState<VipHealthFilter | null>(null);
   /** Which day of the detections chart the pointer is over, by daysAgo. */
   const [hoverDay, setHoverDay] = useState<number | null>(null);
   /** The full admin-activity log, in a modal — Portal has no page for it (see the note on the
@@ -665,13 +675,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
    * they are still being matched with no end in sight and nobody has decided that.
    */
   const activeListings = projectPersons.filter(p => !p.releasedAt && p.expiresAt);
-  const unansweredListings = registryHealth(projectId, persons).expiryUnanswered.length;
-  const expiredListings = nowMs === null ? 0
-    // Compared as calendar days in the project's zone, the same unit the VIP row prints. Instants
-    // put the two screens up to a day apart: this counted a listing expired the moment its date
-    // began, while the row said "0 days left" until Math.ceil finally went negative — so the red
-    // "N expired" banner led to a table with nothing expired in it.
-    : activeListings.filter(p => registeredDayIn(p.expiresAt!, projectZone) < dateKeyIn(new Date(nowMs), projectZone)).length;
+  // Both figures out of one call, and neither of them counted here. The registry tab draws its
+  // summary strip from the same function, and the banner and the strip disagreeing about how many
+  // listings have lapsed is exactly how somebody ends up clicking a red line into a table that
+  // shows nothing — which is what a locally-rolled comparison did here for up to a day. todayStr
+  // is the site's calendar day, and it is null until the clock is read after mount: the store
+  // answers that with an empty bucket rather than with a day guessed during render.
+  const registryState = registryHealth(projectId, persons, todayStr);
+  const unansweredListings = registryState.expiryUnanswered.length;
+  const expiredListings = registryState.expired.length;
   const noticeMs = getComplianceConfig().vipExpiryNoticeDays * 86_400_000;
   const expiringListings = nowMs === null ? 0
     : activeListings.filter(p => {
@@ -713,7 +725,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
   // answer for a Singapore site, and flagging that would be a false alarm on a finished install.
   const timeZoneUnset = project.timeZone === undefined;
 
-  const attentionItems: { key: string; text: string; color: string; tab: DetailTab }[] = [
+  const attentionItems: { key: string; text: string; color: string; tab: DetailTab; vipHealth?: VipHealthFilter }[] = [
     ...(offlineCount > 0 ? [{ key: "offline", text: t.attnOffline(offlineCount), color: "var(--danger-400)", tab: "cameras" as DetailTab }] : []),
     // Grey, and below the faults: worth seeing that fifty cameras are still waiting on their first
     // report, not worth the colour that means somebody has to go and fix something.
@@ -723,8 +735,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
     ...(overChannelLimit && channelLimit ? [{ key: "overlimit", text: t.attnOverLimit(projectCameras.length, channelLimit), color: "var(--danger-400)", tab: "license" as DetailTab }] : []),
     // A listing that has run out is a person the console believes it released. It sits with the
     // broken things, not with the reminders: the difference between an expired listing and a
-    // released one is that nobody has looked at the expired one.
-    ...(expiredListings > 0 ? [{ key: "listingsExpired", text: t.attnListingsExpired(expiredListings), color: "var(--danger-400)", tab: "vip" as DetailTab }] : []),
+    // released one is that nobody has looked at the expired one. It is also the only errand here
+    // that carries more than a tab id — see vipHealthFocus: landing on the registry unfiltered
+    // left the reader to find these rows among a hundred, and "which six" is the whole content of
+    // the line.
+    ...(expiredListings > 0 ? [{ key: "listingsExpired", text: t.attnListingsExpired(expiredListings), color: "var(--danger-400)", tab: "vip" as DetailTab, vipHealth: "expired" as const }] : []),
     ...(licenseExpiringSoon && daysUntilExpiry !== null ? [{ key: "expiring", text: t.attnExpiringSoon(daysUntilExpiry), color: "var(--warning-500)", tab: "license" as DetailTab }] : []),
     ...(showAccessRequests && projectAccessRequests.length > 0 ? [{ key: "requests", text: t.attnRequests(projectAccessRequests.length), color: "var(--warning-500)", tab: "users" as DetailTab }] : []),
     // Expiring, in the reminders. The whole point of putting it here is that nobody remembers a
@@ -924,7 +939,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
                   <span key={item.key}>
                     {i > 0 && <span style={{ color: "var(--gray-400)" }}>{" · "}</span>}
                     <button
-                      onClick={() => onTabChange(item.tab)}
+                      onClick={() => { setVipHealthFocus(item.vipHealth ?? null); onTabChange(item.tab); }}
                       style={{
                         border: "none", background: "none", padding: 0, cursor: "pointer",
                         font: "inherit", color: "var(--gray-900)", fontWeight: 600,
@@ -1687,7 +1702,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange }:
         </>
       )}
       {tab === "cameras" && <ProjectCamerasTab projectId={projectId} openCameraId={inspectCameraId} onCameraOpened={() => setInspectCameraId(null)} />}
-      {tab === "vip" && <ProjectVipTab projectId={projectId} />}
+      {tab === "vip" && <ProjectVipTab projectId={projectId} openHealthFilter={vipHealthFocus} onHealthFilterOpened={() => setVipHealthFocus(null)} />}
       {tab === "license" && <ProjectLicenseTab projectId={projectId} />}
       {tab === "server" && <ProjectServerTab projectId={projectId} />}
       {tab === "users" && <PortalUsersPage projectId={projectId} />}

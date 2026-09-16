@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { create } from "zustand";
-import { liveEvents, getFacePhoto, DISTRICTS, nearestDistrict, type EventType, type LiveEvent, type TrackingHop } from "@/lib/mockData";
+import { liveEvents, getFacePhoto, DISTRICTS, districtIdAt, type EventType, type LiveEvent, type TrackingHop } from "@/lib/mockData";
 import {
   isTodaySgt, recentSgtStamp, parseSgtStamp,
   setSiteTimeZoneResolver, FALLBACK_TIME_ZONE,
@@ -3046,6 +3046,26 @@ export function isExpiryUnanswered(person: Person): boolean {
   return person.expiresAt === undefined;
 }
 
+/**
+ * Whether this listing's date has passed, judged on the site's calendar.
+ *
+ * DAYS, NOT INSTANTS, and the same day the row prints. The two screens that ask this used to
+ * disagree for up to a day — the Overview counted a listing expired the moment its date began
+ * while the table still read "0 days left" — so somebody clicking the red banner arrived at a
+ * table with nothing expired in it. One predicate now, for the same reason isExpiryUnanswered is
+ * one: a registry whose summary and table disagree about which rows are over is worse than one
+ * that never says.
+ *
+ * `todayKey` is passed in rather than read here. A day computed during render differs between the
+ * server's frame and the browser's first one, and every clock-reading value in this product is
+ * taken after mount for that reason. A caller with no clock yet passes null and gets false — the
+ * narrower answer, never the wider one.
+ */
+export function isExpired(person: Person, todayKey: string | null): boolean {
+  if (todayKey === null || !person.expiresAt) return false;
+  return person.expiresAt.slice(0, 10) < todayKey;
+}
+
 export interface RegistryHealth {
   missingPhoto: string[];
   /**
@@ -3056,6 +3076,19 @@ export interface RegistryHealth {
    * without anybody choosing that.
    */
   expiryUnanswered: string[];
+  /**
+   * Listings whose date has passed.
+   *
+   * Counted so the Overview's red line has somewhere to lead. It had nowhere: pressing it opened
+   * the registry unfiltered, and there was no way to see only the rows it was talking about among
+   * a hundred others.
+   *
+   * These are already out of the matching set — watchedPersonsInProject drops them — so this is
+   * not an alarm about cameras. It is a queue: each row needs somebody to say whether the purpose
+   * continues (renew the date) or ended (take the row off). Renewing is a real answer and is
+   * audited; it is not a way of hiding the count.
+   */
+  expired: string[];
   embeddingFailed: string[];
   /** Photo replaced, waiting on the model's answer. See Person.reenrolledAt. */
   reenrolling: string[];
@@ -3064,10 +3097,11 @@ export interface RegistryHealth {
   detectedPrev7d: string[];
 }
 
-export function registryHealth(projectId: string, persons: Person[]): RegistryHealth {
+export function registryHealth(projectId: string, persons: Person[], todayKey: string | null = null): RegistryHealth {
   const rows = persons.filter(p => p.projectId === projectId);
   const missingPhoto: string[] = [];
   const expiryUnanswered: string[] = [];
+  const expired: string[] = [];
   const embeddingFailed: string[] = [];
   // Re-submitted and waiting on the model. Separated from embeddingFailed rather than dropped
   // from it: the count going down on a save would claim the new photo works, which nothing here
@@ -3083,6 +3117,8 @@ export function registryHealth(projectId: string, persons: Person[]): RegistryHe
     // unanswered and unmatchable. Released rows are excluded — the listing already ended, and
     // asking for an end date on it is asking about something that is over.
     if (!p.releasedAt && isExpiryUnanswered(p)) expiryUnanswered.push(p.id);
+    // Released rows are excluded here too: a listing somebody ended does not also need ending.
+    if (!p.releasedAt && isExpired(p, todayKey)) expired.push(p.id);
     // Not seeded: a person with no photoUrl has no enrolled face, full stop. The CSV import is
     // where they come from, and this reads the same field the table draws from — so the figure and
     // the rows behind it can never disagree.
@@ -3112,7 +3148,7 @@ export function registryHealth(projectId: string, persons: Person[]): RegistryHe
   for (let i = 0; i + 1 < rows.length && duplicates.length < 2; i += 1) {
     if (seededRandom(i * 8.19 + 3.3) > 0.96) duplicates.push([rows[i].id, rows[i + 1].id]);
   }
-  return { missingPhoto, expiryUnanswered, embeddingFailed, reenrolling, duplicates, detectedLast7d, detectedPrev7d };
+  return { missingPhoto, expiryUnanswered, expired, embeddingFailed, reenrolling, duplicates, detectedLast7d, detectedPrev7d };
 }
 
 /**
@@ -4939,9 +4975,12 @@ export function todaysDetectionHits(events: VcaEvent[]): DetectionHit[] {
  * "nearest camera" would credit a sighting to a camera that did not make it.
  */
 export function districtTally(hits: DetectionHit[], districtId: string): { people: number; cameras: number } {
-  const here = hits.filter(h =>
-    h.lat !== undefined && h.lng !== undefined && nearestDistrict(h.lat, h.lng).id === districtId
-  );
+  // districtIdAt, not nearestDistrict: the second one answers with the closest district however
+  // far away the point is, so a detection outside the grid was credited to whichever district
+  // happened to be nearest. This was the last of six call sites still asking the unbounded
+  // question — and it is the one both the map and the sidebar read, so leaving it would have made
+  // the tally count points the map's own fills no longer do.
+  const here = hits.filter(h => districtIdAt(h.lat, h.lng) === districtId);
   return {
     people: new Set(here.map(h => h.person ?? h.id)).size,
     cameras: new Set(

@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
-import { AlertTriangle, ArrowDownWideNarrow, CalendarOff, Eye, FileOutput, ImageOff, RefreshCw, Users } from "lucide-react";
-import { canSetPolicy, currentPortalUser, defaultVipExpiry, isExpiryUnanswered, registryHealth, useVcaStore, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
+import { AlertTriangle, ArrowDownWideNarrow, CalendarOff, CalendarX, Eye, FileOutput, ImageOff, RefreshCw, Users } from "lucide-react";
+import { canSetPolicy, currentPortalUser, defaultVipExpiry, isExpired, isExpiryUnanswered, registryHealth, useVcaStore, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -79,6 +79,10 @@ interface VipDict {
   toastVipExportDesc: (n: number) => string;
   colPriority: string;
   healthMissingPhoto: string;
+  healthExpired: string;
+  /** Two shapes, because the way a listing ends depends on a switch. See the pair below. */
+  healthExpiredWhy: string;
+  healthExpiredWhyNoRelease: string;
   healthExpiryUnanswered: string;
   healthMissingPhotoWhy: string;
   healthEmbeddingFailed: string;
@@ -247,6 +251,12 @@ const T: Record<"en" | "ko", VipDict> = {
     toastVipExportTitle: "Export complete",
     toastVipExportDesc: (n: number) => `${n} vipRegistry record(s) exported to CSV.`,
     colPriority: "Priority",
+    healthExpired: "end date passed",
+    healthExpiredWhy: "The end date on these listings has gone by, so cameras have stopped matching them. Each one is waiting on a person to say whether the purpose continues — set a new end date — or ended, in which case release the listing.",
+    // The same state, said where releasing is not on the menu. Naming an action this screen does
+    // not carry sends the reader looking for a control that is not there and teaches them the
+    // console is broken — see complianceConfig.personRelease, off for the first release.
+    healthExpiredWhyNoRelease: "The end date on these listings has gone by, so cameras have stopped matching them. Each one is waiting on a person to say whether the purpose continues — set a new end date — or ended, in which case the row comes off the list.",
     healthExpiryUnanswered: "no end date set",
     healthMissingPhoto: "no photo",
     healthMissingPhotoWhy: "On the VIP list with no face attached. A CSV import can add a name without a photo; these people cannot be matched until one is uploaded.",
@@ -415,6 +425,9 @@ const T: Record<"en" | "ko", VipDict> = {
     toastVipExportTitle: "내보내기 완료",
     toastVipExportDesc: (n: number) => `VIP ${n}건을 CSV로 내보냈습니다.`,
     colPriority: "우선순위",
+    healthExpired: "만료일 지남",
+    healthExpiredWhy: "만료일이 지나 카메라가 더 이상 대조하지 않습니다. 목적이 이어지는지(만료일을 새로 지정) 끝났는지(해제) 한 건씩 정해야 합니다.",
+    healthExpiredWhyNoRelease: "만료일이 지나 카메라가 더 이상 대조하지 않습니다. 목적이 이어지는지(만료일을 새로 지정) 끝났는지(목록에서 삭제) 한 건씩 정해야 합니다.",
     healthExpiryUnanswered: "만료일 미지정",
     healthMissingPhoto: "사진 없음",
     healthMissingPhotoWhy: "VIP 목록에는 있지만 얼굴 사진이 없습니다. CSV로 가져오면 사진 없이 이름만 등록될 수 있고, 사진을 올리기 전까지는 매칭되지 않습니다.",
@@ -1245,7 +1258,19 @@ function PersonDetailModal({ t, person, zone, groups, onClose, onEdit, onRemove 
   );
 }
 
-export default function ProjectVipTab({ projectId }: { projectId: string }) {
+/**
+ * Which registry-health bucket the table can be narrowed to. Exported because the Overview points
+ * at one of them: its red "N VIP listings have expired" line used to open this tab unfiltered,
+ * leaving the reader to find those rows among a hundred others, and a warning nobody can reach the
+ * rows of is a warning nobody can act on.
+ */
+export type VipHealthFilter = "expired" | "expiryUnanswered" | "missingPhoto" | "embeddingFailed" | "reenrolling" | "duplicates" | "detected";
+
+export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFilterOpened }: {
+  projectId: string;
+  openHealthFilter?: VipHealthFilter | null;
+  onHealthFilterOpened?: () => void;
+}) {
   const persons = useVcaStore(s => s.persons);
   const personGroups = useVcaStore(s => s.personGroups);
   const projects = useVcaStore(s => s.projects);
@@ -1294,7 +1319,26 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
    * above it. A card that only states a number leaves the reader to find the twelve rows it counted;
    * this makes the number the way to them.
    */
-  const [healthFilter, setHealthFilter] = useState<"expiryUnanswered" | "missingPhoto" | "embeddingFailed" | "reenrolling" | "duplicates" | "detected" | null>(null);
+  const [healthFilter, setHealthFilter] = useState<VipHealthFilter | null>(null);
+  /*
+   * The Overview's errand, applied on the way in.
+   *
+   * Handed over as a prop rather than through a query string, the same way the camera one is: it
+   * is a handoff between two views one component renders, and a query string would survive a
+   * reload and re-narrow a table nobody asked to be narrowed. Cleared through the callback so the
+   * next visit to this tab opens on the whole registry.
+   *
+   * In a microtask rather than straight from the effect body: setting state synchronously there
+   * makes React render this tree twice before it paints.
+   */
+  useEffect(() => {
+    if (!openHealthFilter) return;
+    const bucket = openHealthFilter;
+    queueMicrotask(() => {
+      setHealthFilter(bucket);
+      onHealthFilterOpened?.();
+    });
+  }, [openHealthFilter, onHealthFilterOpened]);
   /**
    * All / Individuals / Groups. Same underlined tab row Input Sources and Users & Permissions use.
    *
@@ -1398,9 +1442,13 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
    */
   // Health is about the list being watched. A released person's unreadable photo is not a
   // defect anybody needs to fix.
-  const health = registryHealth(projectId, persons.filter(p => !p.releasedAt));
+  // todayKey goes in because "expired" is a question about the site's calendar, and the store is
+  // where that judgement lives now — see isExpired. Before the clock is read it is null, and the
+  // store answers with an empty bucket rather than with a day guessed during render.
+  const health = registryHealth(projectId, persons.filter(p => !p.releasedAt), todayKey);
   const duplicateIds = new Set(health.duplicates.flat());
   const healthIds = {
+    expired: new Set(health.expired),
     expiryUnanswered: new Set(health.expiryUnanswered),
     missingPhoto: new Set(health.missingPhoto),
     embeddingFailed: new Set(health.embeddingFailed),
@@ -1730,8 +1778,14 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
           those four rows. */}
       {vipTab !== "groups" && <SummaryStrip cells={[
         ...([
-          // First, because it is the only one of these that is about what the cameras are still
-          // doing rather than about a record being incomplete.
+          // These two before the photo defects, because they are the ones about the listing itself
+          // — whether this person should still be matched at all — rather than about a record being
+          // incomplete. Expired first: a listing that has already lapsed is a sharper fact than one
+          // nobody has dated, and this cell is where the Overview's red line lands.
+          // The explanation follows the switch that decides how a listing ends. With release off
+          // the row menu has no such item, and an explanation naming one would send the reader
+          // hunting for a control the console does not carry.
+          { key: "expired" as const, count: health.expired.length, label: t.healthExpired, why: releaseEnabled ? t.healthExpiredWhy : t.healthExpiredWhyNoRelease, icon: <CalendarX size={14} strokeWidth={2.4} /> },
           { key: "expiryUnanswered" as const, count: health.expiryUnanswered.length, label: t.healthExpiryUnanswered, why: t.expiryUnansweredWhy, icon: <CalendarOff size={14} strokeWidth={2.4} /> },
           { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, why: t.healthMissingPhotoWhy, icon: <ImageOff size={14} strokeWidth={2.4} /> },
           { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed, why: t.healthEmbeddingFailedWhy, icon: <AlertTriangle size={14} strokeWidth={2.4} /> },
@@ -2127,14 +2181,13 @@ export default function ProjectVipTab({ projectId }: { projectId: string }) {
                       </span>
                     );
                     if (!person.expiresAt) return <span style={{ color: "var(--gray-300)" }}>{t.noExpiry}</span>;
-                    // "Expired" is decided on calendar days in the project's zone, which is what
-                    // the Overview counts too. It used to come out of Math.ceil on an instant, and
-                    // Math.ceil(-0.4) is -0 — so for the whole day after a listing lapsed this cell
-                    // still read "0 days left" while the Overview's red banner counted it expired.
-                    // Somebody clicking that banner arrived at a table with nothing expired in it.
-                    const expiryDay = person.expiresAt.slice(0, 10);
-                    const isExpired = todayKey !== null && expiryDay < todayKey;
-                    if (isExpired) return <span style={{ fontWeight: 700, color: "var(--danger-500)" }}>{t.statusExpired}</span>;
+                    // "Expired" is decided on calendar days in the project's zone, by the store's
+                    // isExpired — the one predicate the strip above and the Overview's red line
+                    // also count with. Do not inline the comparison again: three copies of it is
+                    // how this cell came to read "0 days left" for a whole day after a listing
+                    // lapsed while the Overview already counted it expired, so the banner led to a
+                    // table with nothing expired in it.
+                    if (isExpired(person, todayKey)) return <span style={{ fontWeight: 700, color: "var(--danger-500)" }}>{t.statusExpired}</span>;
                     const daysLeft = nowMs === null ? null : Math.ceil((Date.parse(person.expiresAt) - nowMs) / 86_400_000);
                     return (
                       <span style={{ display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" }}>
