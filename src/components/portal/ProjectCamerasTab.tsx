@@ -8,7 +8,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { CARD_BORDER, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError } from "./PortalShared";
+import { CARD_BORDER, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -123,7 +123,6 @@ const T = {
     emptyFiltered: "No cameras match these filters.",
     aiCameraBadge: "AI Camera",
     cctvBadge: "CCTV",
-    toggleStatusTitle: "Toggle status",
     previewAction: "Preview stream",
     editAction: "Edit",
     removeAction: "Remove",
@@ -141,16 +140,14 @@ const T = {
     saveChanges: "Save changes",
     addDevice: "Add device",
     confirmOfflineTitle: "Mark camera offline?",
-    confirmReconnectTitle: "Reconnect camera?",
     confirmOfflineBody: (name: string) => `${name} will show as offline for everyone monitoring this project — make sure the stream is actually down before confirming.`,
-    confirmReconnectBody: (name: string) => `This attempts to reconnect ${name} and marks it online. It doesn't verify the actual hardware, so if it's really still down, someone will need to mark it offline again.`,
     markOffline: "Mark offline",
-    reconnect: "Reconnect",
+    undoOfflineMark: "Undo offline mark",
     toastCameraAddedTitle: "Camera added",
     toastCameraAddedDesc: (name: string) => `${name} connected to this project.`,
     toastCameraUpdatedTitle: "Camera updated",
-    toastReconnectedTitle: "Reconnected",
-    toastDisconnectedTitle: "Disconnected",
+    toastMarkedOfflineTitle: "Marked offline",
+    toastOfflineMarkUndoneTitle: "Offline mark removed",
     toastCameraRemovedTitle: "Camera removed",
     toastExportTitle: "Export complete",
     toastExportDesc: (n: number) => `${n} camera(s) exported to CSV.`,
@@ -272,7 +269,6 @@ const T = {
     emptyFiltered: "이 필터와 일치하는 카메라가 없습니다.",
     aiCameraBadge: "AI 카메라",
     cctvBadge: "CCTV",
-    toggleStatusTitle: "상태 전환",
     previewAction: "스트림 미리보기",
     editAction: "수정",
     removeAction: "삭제",
@@ -290,16 +286,14 @@ const T = {
     saveChanges: "변경사항 저장",
     addDevice: "기기 추가",
     confirmOfflineTitle: "카메라를 오프라인으로 표시하시겠습니까?",
-    confirmReconnectTitle: "카메라를 재연결하시겠습니까?",
     confirmOfflineBody: (name: string) => `${name} 카메라가 이 프로젝트를 모니터링하는 모든 사용자에게 오프라인으로 표시됩니다. 확인하기 전에 실제로 스트림이 끊겼는지 확인하세요.`,
-    confirmReconnectBody: (name: string) => `${name} 카메라의 재연결을 시도하고 온라인으로 표시합니다. 실제 장비 상태까지 확인하지는 않으므로, 여전히 연결이 끊겨 있다면 다시 오프라인으로 표시해야 합니다.`,
     markOffline: "오프라인으로 표시",
-    reconnect: "재연결",
+    undoOfflineMark: "오프라인 표시 취소",
     toastCameraAddedTitle: "카메라 추가됨",
     toastCameraAddedDesc: (name: string) => `${name} 카메라가 이 프로젝트에 연결되었습니다.`,
     toastCameraUpdatedTitle: "카메라 정보 수정됨",
-    toastReconnectedTitle: "재연결됨",
-    toastDisconnectedTitle: "연결 해제됨",
+    toastMarkedOfflineTitle: "오프라인으로 표시됨",
+    toastOfflineMarkUndoneTitle: "오프라인 표시 취소됨",
     toastCameraRemovedTitle: "카메라 삭제됨",
     toastExportTitle: "내보내기 완료",
     toastExportDesc: (n: number) => `카메라 ${n}대가 CSV로 내보내졌습니다.`,
@@ -652,28 +646,28 @@ function CameraFormModal({
   );
 }
 
+/**
+ * Confirms one direction, because there is only one. This took a `nextStatus` and carried a second
+ * set of strings for going the other way — "Reconnect camera?", "This attempts to reconnect ... and
+ * marks it online" — which described an attempt that never happened; see markCameraOffline for why
+ * that direction is gone. A dialog with one outcome does not need to be told which outcome it is.
+ */
 function ConfirmStatusModal({
-  camera, nextStatus, onClose, onConfirm, t,
+  camera, onClose, onConfirm, t,
 }: {
   camera: Camera;
-  nextStatus: "online" | "offline";
   onClose: () => void;
   onConfirm: () => void;
   t: (typeof T)["en"] | (typeof T)["ko"];
 }) {
   useEscapeKey(onClose);
-  const goingOffline = nextStatus === "offline";
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "380px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "20px" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
-            {goingOffline ? t.confirmOfflineTitle : t.confirmReconnectTitle}
-          </p>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px" }}>
-            {goingOffline ? t.confirmOfflineBody(camera.name) : t.confirmReconnectBody(camera.name)}
-          </p>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.confirmOfflineTitle}</p>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px" }}>{t.confirmOfflineBody(camera.name)}</p>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
@@ -682,10 +676,10 @@ function ConfirmStatusModal({
           <button onClick={onConfirm}
             style={{
               padding: "10px 16px", borderRadius: "8px", border: "none",
-              backgroundColor: goingOffline ? "var(--danger-400)" : "var(--gray-900)", color: "white",
+              backgroundColor: "var(--danger-400)", color: "white",
               fontSize: "13px", fontWeight: 700, cursor: "pointer",
             }}>
-            {goingOffline ? t.markOffline : t.reconnect}
+            {t.markOffline}
           </button>
         </div>
       </div>
@@ -1044,10 +1038,76 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     showToast({ variant: "success", title: t.toastCameraUpdatedTitle, desc: values.name.trim() });
   };
 
-  const toggleStatus = (cam: Camera) => {
-    const next = cam.status === "online" ? "offline" : "online";
-    setCameraStatus(cam.id, next);
-    showToast({ variant: next === "online" ? "success" : "default", title: next === "online" ? t.toastReconnectedTitle : t.toastDisconnectedTitle, desc: cam.name });
+  /**
+   * Marking a camera offline is a human report. There is no "mark it back online".
+   *
+   * This was a two-way toggle. Its other direction was called "Reconnect", wrote `online` onto the
+   * record and toasted "Reconnected" — a past-tense claim about a device this console had never
+   * spoken to. Nothing in a browser can revive an RTSP stream, so the click's only real effect was
+   * to make a dark camera look live: the Overview's offline count dropped, the "needs attention"
+   * banner item disappeared and the red offline mark in the breadcrumb cleared, for everyone
+   * watching, on the strength of nobody having checked anything. The confirm dialog tried to soften
+   * it with "this attempts to reconnect", which was untrue the same way — nothing was attempted
+   * either; there was no request, no RTSP handshake and nothing waiting for an answer.
+   *
+   * CameraStreamModal deleted its copy of this button for exactly these reasons, and its comment
+   * says "the page-level one went for the same reason". It had not gone. This is that removal.
+   *
+   * What survives is the half a person can honestly witness: somebody stood in front of a monitor,
+   * saw the feed was dark, and said so. That is a report about what a human saw, not a command to a
+   * device, so the action is named for what it does to the RECORD and the toast says "Marked
+   * offline" rather than "Disconnected" — this console does not disconnect anything either.
+   *
+   * The way back is an undo of that report, not a recovery of the camera, and it is offered only
+   * for marks made in this session (`manualOfflineMarks`): only the person who made a mark can know
+   * it was the wrong row. An offline flag from anywhere else is not this screen's to clear — it has
+   * no way to find out whether that camera came back, and writing `online` on a hunch is precisely
+   * the false success the Reconnect button was. The undo restores the value the record held before
+   * the mark rather than assuming `online`, so it can never invent a state the record never had.
+   *
+   * HANDOFF NOTE: a real reconnect control needs a camera API that can ask a device to come back —
+   * POST /api/portal/cameras/{id}/reconnect, answering with the outcome of the attempt (reached /
+   * refused / timed out) and not with an ack, and the status in the store written from that answer
+   * rather than from the click. It is the same shape as the connectivity poll in the HANDOFF note
+   * further down and wants the same decision: whichever of the two lands is what makes "online" a
+   * fact instead of a wish. Until one of them exists, the button cannot honestly exist either.
+   */
+  // Cameras a person marked offline during this visit, against the status the record carried
+  // before the mark. Session-scoped on purpose — see above.
+  const [manualOfflineMarks, setManualOfflineMarks] = useState<Record<string, CameraStatus>>({});
+
+  const markCameraOffline = (cam: Camera) => {
+    setManualOfflineMarks(prev => ({ ...prev, [cam.id]: cam.status }));
+    setCameraStatus(cam.id, "offline");
+    showToast({ variant: "default", title: t.toastMarkedOfflineTitle, desc: cam.name });
+  };
+
+  const undoOfflineMark = (cam: Camera) => {
+    const previous = manualOfflineMarks[cam.id];
+    if (previous === undefined) return;
+    setManualOfflineMarks(prev => { const next = { ...prev }; delete next[cam.id]; return next; });
+    setCameraStatus(cam.id, previous);
+    showToast({ variant: "default", title: t.toastOfflineMarkUndoneTitle, desc: cam.name });
+  };
+
+  /**
+   * The row menu's status item: one entry, or none at all.
+   *
+   * Offered only against a record that currently claims the camera is live, because that is the
+   * only claim a person watching a monitor can contradict. An "error" row already says the camera
+   * refused the connection and an "awaiting first contact" row has never claimed anything, so
+   * there is nothing there for a human report to correct — and the old toggle, whose result was
+   * unconditionally `online`, turned both of those into "Online" on one click: a four-state column
+   * driven by a two-state switch.
+   */
+  const statusMenuActions = (cam: Camera): RowAction[] => {
+    if (cam.status === "online") {
+      return [{ label: t.markOffline, onClick: () => setConfirmingStatusCam(cam), disabled: !mayEdit, reason: readOnlyReason }];
+    }
+    if (manualOfflineMarks[cam.id] !== undefined) {
+      return [{ label: t.undoOfflineMark, onClick: () => undoOfflineMark(cam), disabled: !mayEdit, reason: readOnlyReason }];
+    }
+    return [];
   };
 
   // Confirmed, like the bulk delete beside it. One route to an irreversible action should not
@@ -1676,6 +1736,20 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             }
 
             const cam = row.camera;
+            const awaiting = isAwaitingFirstContact(cam);
+            const statusLabel = cam.status === "online" ? t.online
+              : cam.status === "error" ? t.statusError
+              : awaiting ? t.statusAwaiting
+              : t.offline;
+            // Four states, and only two of them coloured — the reasoning is on the cell below.
+            const statusText = cam.status === "error" ? "var(--danger-400)"
+              : cam.status === "offline" && !awaiting ? "var(--warning-500)"
+              : "var(--gray-500)";
+            const statusWeight = statusText === "var(--gray-500)" ? 600 : 700;
+            const statusDot = cam.status === "online" ? "var(--success-400)"
+              : cam.status === "error" ? "var(--danger-400)"
+              : awaiting ? "var(--gray-300)"
+              : "var(--warning-400)";
             return (
               <div key={row.id} {...rowInteraction}>
                 {checkbox}
@@ -1718,31 +1792,45 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   <p style={{ fontSize: "11px", color: "var(--gray-500)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.ip}</p>
                   <p style={{ fontSize: "11px", color: "var(--gray-600)", fontFamily: "monospace" }}>{cam.resolution ?? "—"}</p>
                 </div>
-                {/* The status pill is also the control that changes it. For a reader who cannot
-                    change it, it goes back to being a pill. */}
-                <button onClick={() => mayEdit && setConfirmingStatusCam(cam)} disabled={!mayEdit} title={readOnlyReason} style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", cursor: mayEdit ? "pointer" : "default", padding: 0 }}>
-                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0, backgroundColor: cam.status === "online" ? "var(--success-400)" : cam.status === "error" ? "var(--danger-400)" : "var(--gray-400)" }} />
-                  {/* Three states, three words. Error is the only one in danger red: offline is a
-                      camera that stopped talking, which is common and often expected, while an
-                      error is the server being refused — something typed wrong that somebody can
-                      fix from this screen. */}
-                  <span style={{
-                    fontSize: "12px", fontWeight: 700,
-                    color: cam.status === "online" ? "var(--success-400)" : cam.status === "error" ? "var(--danger-400)" : "var(--gray-400)",
-                  }}>
-                    {cam.status === "online" ? t.online : cam.status === "error" ? t.statusError : isAwaitingFirstContact(cam) ? t.statusAwaiting : t.offline}
-                  </span>
-                </button>
+                {/* A chip that is read, not a control that is pressed.
+                    This cell was a <button> styled `background: none; border: none; padding: 0` —
+                    indistinguishable from the plain text in the cells either side of it, and yet a
+                    click on it changed a status everyone monitoring the project can see. Nothing
+                    announced it as pressable, so the only way to find out was to hit it by
+                    accident, and what it wrote was unconditionally `online` even on the rows that
+                    were not merely offline. What a person may still do to a status lives in that
+                    row's ⋯ menu now, beside Edit and Remove, under a label that names it.
+
+                    Grey for online, and that is the correction rather than a loss of signal. Online
+                    rendered as success-400 at weight 700 across 51 of 59 rows: a green that covers
+                    a table is not a signal, it is the table's background — the same conclusion the
+                    deepfake verdicts above reached ("colouring either would make three verdicts
+                    read as three alarms") and the one ProjectVipTab reached about an amber pill on
+                    119 of 123 rows. It also left the eight rows worth finding as the faintest thing
+                    on screen, at gray-400. So the expected state is quiet and the exceptions carry
+                    the colour: amber for a camera that stopped answering, red for one refusing the
+                    connection — still the sharper of the two, because a refusal is something typed
+                    wrong that somebody can fix from this screen. A camera that has never reported
+                    stays grey: that is not a fault, it is where every camera sits between being
+                    added and its first report (see isAwaitingFirstContact).
+
+                    The dot keeps its colour on all four, because the dot is what an eye runs down a
+                    column on and 6px of green is a mark rather than a wash. */}
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0, backgroundColor: statusDot }} />
+                  <span style={{ fontSize: "12px", fontWeight: statusWeight, color: statusText }}>{statusLabel}</span>
+                </span>
                 {/* Preview first: it is the item somebody reaches for most and the only one that
                     answers "is this camera actually seeing anything". The thumbnail opens the same
                     modal, but a thumbnail is not a control anyone is told about — a named item in
                     the menu is. */}
                 <span {...stopRowClick}>
                 {/* Preview stays open to everybody — looking at a camera is the auditor's job.
-                    Only the two that change something take the gate. */}
+                    Only the items that change something take the gate. */}
                 <RowActionsMenu actions={[
                   { label: t.previewAction, onClick: () => setInspectingCameraId(cam.id) },
                   { label: t.editAction, onClick: () => setEditingCamera(cam), disabled: !mayEdit, reason: readOnlyReason },
+                  ...statusMenuActions(cam),
                   { label: t.removeAction, onClick: () => handleDelete(cam), danger: true, disabled: !mayEdit, reason: readOnlyReason },
                 ]} />
                 </span>
@@ -1785,7 +1873,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     <span style={{ fontSize: "10px", color: "var(--gray-400)", flexShrink: 0 }}>{cam.zone}</span>
                     <RowActionsMenu actions={[
                       { label: t.editAction, onClick: () => setEditingCamera(cam), disabled: !mayEdit, reason: readOnlyReason },
-                      { label: t.toggleStatusTitle, onClick: () => setConfirmingStatusCam(cam), disabled: !mayEdit, reason: readOnlyReason },
+                      ...statusMenuActions(cam),
                       { label: t.removeAction, onClick: () => handleDelete(cam), danger: true, disabled: !mayEdit, reason: readOnlyReason },
                     ]} />
                   </div>
@@ -1890,9 +1978,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       {confirmingStatusCam && (
         <ConfirmStatusModal
           camera={confirmingStatusCam}
-          nextStatus={confirmingStatusCam.status === "online" ? "offline" : "online"}
           onClose={() => setConfirmingStatusCam(null)}
-          onConfirm={() => { toggleStatus(confirmingStatusCam); setConfirmingStatusCam(null); }}
+          onConfirm={() => { markCameraOffline(confirmingStatusCam); setConfirmingStatusCam(null); }}
           t={t}
         />
       )}
