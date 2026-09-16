@@ -14,6 +14,7 @@ import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, FIELD_FOCUS, 
 import { usePortalLanguage } from "@/lib/i18n";
 import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import RosterImportModal from "./RosterImportModal";
+import CameraScopePicker from "./CameraScopePicker";
 import {
   ROSTER_T, RosterCodeCell, RosterEntryModal, IssueConfirmModal, RemoveConfirmModal, PrintSheet,
   exportRosterCsv,
@@ -146,6 +147,9 @@ const T = {
     changeRole: "Change Portal role",
     changeAccess: "Change where they sign in",
     changeGrants: "Change app screens",
+    changeScope: "Change which cameras",
+    reasonNoScopeWithoutApp: "This account cannot reach the app, so there are no cameras to narrow.",
+    reasonNoCamerasToScope: "No cameras are registered on this account's projects yet.",
     reasonNoAppScreens: "This account has no app access — there are no screens to grant or to search on.",
     generateTempPassword: "Generate temporary password",
     // "user" is redundant in a menu that opens from a user's own row — the row already says who.
@@ -459,6 +463,9 @@ const T = {
     changeRole: "Portal 역할 변경",
     changeAccess: "로그인 위치 변경",
     changeGrants: "앱 화면 권한 변경",
+    changeScope: "볼 수 있는 카메라 변경",
+    reasonNoScopeWithoutApp: "앱에 접근할 수 없는 계정이라 좁힐 카메라가 없습니다.",
+    reasonNoCamerasToScope: "이 계정의 프로젝트에 등록된 카메라가 아직 없습니다.",
     reasonNoAppScreens: "앱 접근이 없는 계정입니다 — 지정하거나 검색할 화면이 없습니다.",
     generateTempPassword: "임시 비밀번호 생성",
     resetPassword: "비밀번호 재설정",
@@ -2360,6 +2367,21 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const [changingRoleFor, setChangingRoleFor] = useState<PortalUser | null>(null);
   const [changingAccessFor, setChangingAccessFor] = useState<PortalUser | null>(null);
   const [changingGrantsFor, setChangingGrantsFor] = useState<PortalUser | null>(null);
+  const [scopingFor, setScopingFor] = useState<PortalUser | null>(null);
+  const allCameras = useVcaStore(s => s.cameras);
+  /**
+   * The cameras a scope for this account may name — the ones in the projects it actually holds.
+   *
+   * Not `camerasInProject(activeProjectId)`: an account can hold several projects, and a scope
+   * that only ever listed the project the administrator happens to be looking at would silently
+   * drop the account's cameras on every other site the moment it was saved.
+   *
+   * Not `camerasVisibleTo` either. That reads the SIGNED-IN user's own scope, so an administrator
+   * who is themselves narrowed could only grant a subset of their own view — the register is the
+   * unrestricted answer for Portal, which is the rule stated on that function.
+   */
+  const scopableCamerasFor = (u: PortalUser) =>
+    allCameras.filter(c => u.projectIds.includes(c.projectId));
   // Raw slice out of the selector, lookup built in a memo — a selector that returns a new object
   // every call re-renders forever, which is how this page last broke.
   const allPresetsHere = useVcaStore(s => s.accessPresets);
@@ -3030,6 +3052,25 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                   : undefined,
                 onClick: () => setChangingGrantsFor(u),
               },
+              {
+                /* Third in the same run, because it answers the third question about one account:
+                   the door (where they sign in), what is behind it (which screens), then how much
+                   of the site those screens show. Orthogonal to the preset by design — a preset
+                   carries screens and verbs and never cameras, because the same job title watches
+                   different cameras at every installation.
+
+                   Refused without the app for the reason the sentence gives, same as the row
+                   above. Also refused when the account's projects hold no cameras at all: a
+                   picker with nothing in it would let somebody "narrow" a scope to the empty set
+                   and lock the account out of a site that simply has not been provisioned yet. */
+                label: t.changeScope,
+                disabled: !manageAccess || !u.appAccess || scopableCamerasFor(u).length === 0,
+                reason: !manageAccess ? t.reasonNotOwner
+                  : !u.appAccess ? t.reasonNoScopeWithoutApp
+                  : scopableCamerasFor(u).length === 0 ? t.reasonNoCamerasToScope
+                  : undefined,
+                onClick: () => setScopingFor(u),
+              },
               ...(mailAvailable && u.status === "invited" ? [{
                 label: t.resendInvite,
                 disabled: !manageAccess,
@@ -3267,6 +3308,13 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       )}
       {changingGrantsFor && (
         <AppGrantModal user={changingGrantsFor} onClose={() => setChangingGrantsFor(null)} />
+      )}
+      {scopingFor && (
+        <CameraScopePicker
+          user={scopingFor}
+          cameras={scopableCamerasFor(scopingFor)}
+          onClose={() => setScopingFor(null)}
+        />
       )}
       {changingAccessFor && (
         <AccessChangeModal
