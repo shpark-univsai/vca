@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LiveEvent, Device, TrackingHop, nearestDistrict, getFacePhoto, formatTimeAgo,
   DISTRICT_ALERT_THRESHOLD_KEY, DISTRICT_MODERATE_THRESHOLD_KEY,
-  DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD } from "@/lib/mockData";
+  DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD, districtIdAt } from "@/lib/mockData";
 import {
   vcaEventsToLiveEvents,
   useProjectEvents, useProjectCameras, todaysDetectionHits, hasPosition, type Camera,
@@ -686,9 +686,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         const home = districts?.find(d => d.id === districtFilter);
         if (home) {
           const camerasHere = cameras.filter(c => nearestDistrict(c.lat, c.lng).id === home.id);
-          const count = todaysHits.filter(h =>
-            h.lat !== undefined && h.lng !== undefined && nearestDistrict(h.lat, h.lng).id === home.id
-          ).length;
+          const count = todaysHits.filter(h => districtIdAt(h.lat, h.lng) === home.id).length;
           const icon = L.divIcon({
             html: districtPillHtml(
               home.label, count, camerasHere.length,
@@ -726,8 +724,12 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         // todaysDetectionHits applies, against the same events. A trail through three cameras in
         // this district is three pins here, not none.
         const now = new Date();
-        const inDistrictToday = (lat: number, lng: number, timestamp: string) =>
-          isTodaySgt(new Date(timestamp), now) && nearestDistrict(lat, lng).id === districtFilter;
+        // Takes the point as possibly-absent and answers no. A sighting on a camera with no
+        // surveyed position belongs to no district — measuring from 0,0 put it in whichever
+        // district happens to be nearest the equator, silently, and the count read as real.
+        const inDistrictToday = (lat: number | undefined, lng: number | undefined, timestamp: string) =>
+          lat !== undefined && lng !== undefined
+          && isTodaySgt(new Date(timestamp), now) && nearestDistrict(lat, lng).id === districtFilter;
         const hits: LiveEvent[] = recentEvents
           .flatMap(ev => {
             if (ev.type === "Tracking" && ev.path?.length) {
@@ -757,8 +759,12 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         // Several hits at one camera would stack into an unreadable pile of identical pins, so
         // one pin per spot carries the newest hit. The full list is in the sidebar, which this
         // same click has already filtered to this district.
-        const bySpot = new Map<string, typeof hits>();
-        hits.forEach(ev => {
+        // inDistrictToday already dropped the unplaced ones, but the type cannot know that, and
+        // asserting it with `!` would be the same lie in a shorter form. One filter, and every
+        // reader below (spot keys, marker positions, the quiet-dot overlap test) is narrowed.
+        const placedHits = hits.filter(hasPosition);
+        const bySpot = new Map<string, typeof placedHits>();
+        placedHits.forEach(ev => {
           const key = `${ev.lat.toFixed(4)},${ev.lng.toFixed(4)}`;
           const at = bySpot.get(key);
           if (at) at.push(ev); else bySpot.set(key, [ev]);
@@ -900,10 +906,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // Already today-only and already VIP-only (Tracking is a VIP view, not a category) —
           // so this filters on place alone. A hit with no coordinate cannot be placed in a
           // district and is left out rather than guessed at.
-          const count = todaysHits.filter(h =>
-            h.lat !== undefined && h.lng !== undefined &&
-            nearestDistrict(h.lat, h.lng).id === district.id
-          ).length;
+          const count = todaysHits.filter(h => districtIdAt(h.lat, h.lng) === district.id).length;
           // A district with a working camera but zero detections is pure noise ("nothing happened
           // here") — maps that show location pins/badges (Airbnb, Kayak, Expedia, Zillow — checked
           // via Mobbin) only ever put a pin where there's actually something to report, never a
@@ -979,6 +982,10 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
             : [{ t: ev.timestamp, lat: ev.lat, lng: ev.lng }];
           stamps.forEach(({ t: at, lat, lng }) => {
             if (nowMs - new Date(at).getTime() > RECENT_VIP_WINDOW_MS) return;
+            // No coordinate, no key. A camera is marked "recently pinged" by matching its own
+            // position against these, so a 0,0 key would have marked whatever camera sits
+            // closest to 0,0 — or nothing, which is the same thing said less honestly.
+            if (lat === undefined || lng === undefined) return;
             recentVipKeys.add(coordKey(lat, lng));
           });
         });
@@ -1075,9 +1082,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
       // So the bounds come from the hits themselves. maxZoom keeps a single sighting from filling
       // the screen at street level, and the padding leaves room for the pin's own height (the
       // marker is anchored at its tip, so its face and chip extend above and below the point).
-      const spots = todaysHits.filter(h =>
-        h.lat !== undefined && h.lng !== undefined && nearestDistrict(h.lat, h.lng).id === districtFilter
-      );
+      const spots = todaysHits.filter(h => districtIdAt(h.lat, h.lng) === districtFilter).filter(hasPosition);
       if (spots.length > 0) {
         map.flyToBounds(spots.map(h => [h.lat as number, h.lng as number]), {
           maxZoom: DISTRICT_FOCUS_ZOOM,
@@ -1231,6 +1236,9 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
       }
 
       // ── VIP (or Tracking with no path data): single pin + detail popup ──
+      // Nowhere to fly to, and nowhere to put the pin. The row still opens in the list — this
+      // effect is only the map half, and the previous pin is already cleared by its teardown.
+      if (!hasPosition(selectedEvent)) return;
       const { lat, lng } = selectedEvent;
 
       map.flyTo([lat, lng], 15, { duration: 0.8, easeLinearity: 0.5 });

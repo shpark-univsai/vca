@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Search, Crown } from "lucide-react";
-import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, getFacePhoto, formatTimeAgo, nearestDistrict } from "@/lib/mockData";
+import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, getFacePhoto, formatTimeAgo, nearestDistrict, districtIdAt } from "@/lib/mockData";
 import {
   useVcaStore, vcaEventsToLiveEvents, todaysDetectionHits, districtTally,
   useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras, hasPosition,
@@ -683,7 +683,7 @@ function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null
   // got here by its event coordinate rather than by a hop (a Tracking row whose path is empty),
   // and a row with no location line at all would be worse than one naming the wrong district.
   const lastHop = (districtHopFilter
-    ? hops.find(h => nearestDistrict(h.lat ?? event.lat, h.lng ?? event.lng).id === districtHopFilter)
+    ? hops.find(h => districtIdAt(h.lat ?? event.lat, h.lng ?? event.lng) === districtHopFilter)
     : undefined) ?? hops[0];
   // "N cameras" must count DISTINCT cameras, not raw hits — a person re-visiting their same
   // regular camera many times over the day is still a single camera in that count.
@@ -934,8 +934,8 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
   // anyone who left.
   const byLocation = districtFilter
     ? byType.filter(e =>
-        nearestDistrict(e.lat, e.lng).id === districtFilter
-        || !!e.path?.some(hop => nearestDistrict(hop.lat ?? e.lat, hop.lng ?? e.lng).id === districtFilter))
+        districtIdAt(e.lat, e.lng) === districtFilter
+        || !!e.path?.some(hop => districtIdAt(hop.lat ?? e.lat, hop.lng ?? e.lng) === districtFilter))
     : locationFilter
       ? byType.filter(e => e.location.toLowerCase().includes(locationFilter.toLowerCase()))
       : byType;

@@ -74,6 +74,19 @@ export const DISTRICTS: District[] = [
  * still have shown confident numbers, in the wrong districts, for the customer deciding where to
  * install cameras next. The cosine factor below costs one multiplication and removes the trap.
  */
+/**
+ * The district id for a point that may not exist.
+ *
+ * Callers hold coordinates that can be absent — a sighting on a camera nobody has surveyed. They
+ * used to pass `?? 0`, and `nearestDistrict(0, 0)` answers with a real Singapore district, so an
+ * unplaced sighting was counted into whichever one sits nearest the equator. There is no district
+ * for a point that is nowhere, and this says so instead of picking one.
+ */
+export function districtIdAt(lat: number | undefined, lng: number | undefined): string | undefined {
+  if (lat === undefined || lng === undefined) return undefined;
+  return nearestDistrict(lat, lng).id;
+}
+
 export function nearestDistrict(lat: number, lng: number): District {
   // Longitude degrees shrink toward the poles; latitude degrees do not. Scaling Δlng by cos(lat)
   // makes the two comparable, which is what turns this from a coordinate difference into a
@@ -150,8 +163,17 @@ export interface LiveEvent {
   type: EventType;
   /** Present only for type "Tracking" — the multi-camera re-id trail shown instead of a single photo row. */
   path?: TrackingHop[];
-  lat: number;
-  lng: number;
+  /**
+   * Where it happened — absent when the camera has no surveyed position (see Camera.lat).
+   *
+   * These were required, so every converter wrote `?? 0` and a detection on an unplaced camera
+   * became a detection in the Gulf of Guinea. Worse than the pin: `nearestDistrict(0, 0)` cheerfully
+   * returns a Singapore district, so the hit was also COUNTED into whichever one happens to be
+   * nearest the equator. MapView already tested `lat !== undefined` in four places; the fill made
+   * those tests dead code.
+   */
+  lat?: number;
+  lng?: number;
 }
 
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];

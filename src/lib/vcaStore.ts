@@ -3112,7 +3112,10 @@ const VIP_ACTIVITY_WINDOW_MS = 24 * 60 * 60 * 1000;
 // (and still shown) via VIP_ACTIVITY_WINDOW_MS above.
 const TRACKING_CLASSIFICATION_WINDOW_MS = 20 * 60 * 1000;
 
-interface LiveHit { location: string; cameraLabel?: string; timestamp: string; confidence: number; lat: number; lng: number }
+// lat/lng optional for the same reason LiveEvent's are: a hit on a camera nobody has placed has
+// no place either, and filling it with 0 both drew it in the Atlantic and counted it into a
+// district. Readers that plot or measure filter on hasPosition.
+interface LiveHit { location: string; cameraLabel?: string; timestamp: string; confidence: number; lat?: number; lng?: number }
 
 function hitCameraKey(h: { cameraLabel?: string; location?: string }): string {
   return `${h.location ?? ""}::${h.cameraLabel ?? ""}`;
@@ -3133,9 +3136,9 @@ function personHitHistory(events: VcaEvent[], personName: string, nowMs: number)
       // so using it for every hop collapsed a trail across three districts onto the newest one.
       // A hop written before TrackingHop carried coordinates has none; it falls back to the
       // event's, which is the old behaviour and the best guess available for it.
-      hits.push(...e.personPath.map(p => ({ location: p.location, cameraLabel: p.cameraLabel, timestamp: p.timestamp, confidence: p.confidence ?? 0, lat: p.lat ?? e.lat ?? 0, lng: p.lng ?? e.lng ?? 0 })));
+      hits.push(...e.personPath.map(p => ({ location: p.location, cameraLabel: p.cameraLabel, timestamp: p.timestamp, confidence: p.confidence ?? 0, lat: p.lat ?? e.lat, lng: p.lng ?? e.lng })));
     } else {
-      hits.push({ location: e.location ?? "", cameraLabel: e.cameraLabel, timestamp: e.timestamp, confidence: e.confidence ?? 0, lat: e.lat ?? 0, lng: e.lng ?? 0 });
+      hits.push({ location: e.location ?? "", cameraLabel: e.cameraLabel, timestamp: e.timestamp, confidence: e.confidence ?? 0, lat: e.lat, lng: e.lng });
     }
   });
   return hits
@@ -3976,7 +3979,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const personName = event.personName;
       const otherEvents = state.events.filter(e => e.personName !== personName);
       const history = personHitHistory(state.events, personName, new Date(event.timestamp).getTime());
-      const newHit: LiveHit = { location: event.location, cameraLabel: event.cameraLabel, timestamp: event.timestamp, confidence: event.confidence ?? 0, lat: event.lat ?? 0, lng: event.lng ?? 0 };
+      const newHit: LiveHit = { location: event.location, cameraLabel: event.cameraLabel, timestamp: event.timestamp, confidence: event.confidence ?? 0, lat: event.lat, lng: event.lng };
 
       // Session-merge against only the MOST RECENT prior hit, and only if it's the same camera —
       // a return visit after being seen elsewhere in between must NOT merge into that older
@@ -4674,8 +4677,8 @@ export function vcaEventsToLiveEvents(events: VcaEvent[]): LiveEvent[] {
       path: e.personPath,
       timestamp: e.timestamp,
       type: e.personType,
-      lat: e.lat ?? 0,
-      lng: e.lng ?? 0,
+      lat: e.lat,
+      lng: e.lng,
     }));
 }
 
