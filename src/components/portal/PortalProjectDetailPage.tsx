@@ -773,7 +773,25 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
     // Setup, between the reminders and the "nothing here yet" notes. Amber rather than grey:
     // each of these means a capability is dead, not that a list is empty.
     ...(mailMissing ? [{ key: "nomail", text: t.attnNoMail, color: "var(--warning-500)", tab: "server" as DetailTab }] : []),
-    ...(teamOwners <= 1 ? [{ key: "soleowner", text: t.attnSoleOwner, color: "var(--warning-500)", tab: "users" as DetailTab }] : []),
+    /* Grey, not amber, and moved out of the "capability is dead" group above — by that group's
+       own rule. A sole owner is not a dead capability: every screen works, every permission can
+       be granted, nothing is refused. It is a RISK, and the strip's amber is reserved for
+       something that has stopped working (no mail server means nobody can be invited at all).
+
+       It also fires on 100% of installations from the first minute, because every install starts
+       with one owner. An advisory that is always on is furniture, not a warning — this repo has
+       that failure on record, where a green "online" chip repeated on 51 of 59 rows became the
+       background and the offline row nobody was meant to miss came out quietest.
+
+       Research agrees with the weight: Entra, AWS, 1Password and Bitwarden all RECOMMEND a second
+       administrator and not one of them enforces it. 1Password's own sentence is the same as ours
+       — "You can't recover your own account, so make sure you add at least one other person to
+       the Owners group."
+
+       The consequence is severe, and severity is not the same as urgency on this screen. The
+       shell banner that also carried this was removed with this change; the fact now lives in one
+       place, which is what makes it readable. */
+    ...(teamOwners <= 1 ? [{ key: "soleowner", text: t.attnSoleOwner, color: "var(--gray-400)", tab: "users" as DetailTab }] : []),
     // Above the setup notes, below the licence: a door opened from outside the product's rules is
     // not a "nothing here yet" note. Shows only while the recovered account is the only owner —
     // once a normally-granted one exists, the recovery served its purpose.

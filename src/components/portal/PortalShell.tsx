@@ -15,7 +15,7 @@ import PortalSettingsPage from "./PortalSettingsPage";
 import PortalAccountMenu from "./PortalAccountMenu";
 import { ToastProvider, useToast } from "../Toast";
 import { getComplianceConfig } from "@/lib/complianceConfig";
-import { useVcaStore, canEnterApp, canManageAccess, currentPortalUser, SIGNED_IN_USER, type ProjectType, type Team } from "@/lib/vcaStore";
+import { useVcaStore, canEnterApp, currentPortalUser, SIGNED_IN_USER, type ProjectType, type Team } from "@/lib/vcaStore";
 import AccessGate, { denialFor } from "@/components/AccessGate";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
@@ -270,36 +270,31 @@ export default function PortalShell() {
    * the field's own comment forbids.
    */
   const recoveredOwner = realRecoveredOwner || searchParams.get("demo") === "recovered";
-  /*
-   * The other half of the same story, and the half that can still be acted on.
-   *
-   * These two banners were the wrong way round. The recovery HAS happened one — nothing left to
-   * decide, the account is already standing in — ran across every screen, while the one that is
-   * still preventable (one owner, no second) sat inside Users & Permissions, a tab you reach by
-   * going looking for it. So the only notice a person could act on was the one they had to find.
-   *
-   * Same count as the in-tab banner: canManageAccess over active accounts, which is what
-   * isLastActiveAdmin guards. Counting admins made that banner wrong in both directions and the
-   * shell must not reintroduce the bug by counting differently.
-   *
-   * Only for somebody who can fix it. Promoting an owner is an owner-only act, so an operator or
-   * a read-only admin would get a strip across every screen about a thing they cannot touch —
-   * and the in-tab banner, which they can at least read on purpose, still tells them.
-   */
-  const oneOwnerLeft = useVcaStore(s =>
-    s.portalUsers.filter(u => canManageAccess(u.permission) && u.status === "active").length <= 1);
-  /*
-   * Never both at once. `realRecoveredOwner` is by definition a case of `oneOwnerLeft` — it is a
-   * recovered account with no other active owner — so stacking them would put two warning strips
-   * above the bar asking for the same thing in two voices. The recovered one wins: it says
-   * everything this one says and adds where the account came from.
-   *
-   * ?demo=soleOwner for the same reason ?demo=recovered exists above: it reads the URL and never
-   * the store, so reviewing the banner cannot be done by arranging an installation that actually
-   * has one owner left.
-   */
-  const soleOwner = !recoveredOwner
-    && ((oneOwnerLeft && !!me && canManageAccess(me.permission)) || searchParams.get("demo") === "soleOwner");
+  /* THE SOLE-OWNER ADVISORY IS NOT DRAWN HERE ANY MORE, and it should not come back.
+
+     It was a non-dismissible amber strip above every Portal screen, and it fired on 100% of
+     installations from the first minute — every install starts with one owner. An advisory that is
+     always on is furniture, not a warning: this repo has that failure on record already, where a
+     green "online" chip repeated on 51 of 59 rows became the background and the offline row
+     nobody was meant to miss came out quietest.
+
+     It also made one fact render in THREE places — this strip, the fuller banner on
+     Users & Permissions (which is where naming a second owner actually happens), and the Overview
+     attention item. The comment that used to sit here already knew about the second and hid the
+     strip on that tab; the third was missed.
+
+     The asymmetry the old comment described was real: the preventable notice was buried while the
+     already-happened one was global. The correction over-shot. It now lives in two places that do
+     different jobs — grey on the Overview strip where it is discoverable, and the banner on
+     Users & Permissions where the fix is. Amber stays reserved for a capability that has stopped
+     working, and a sole owner refuses nothing: every screen works, every permission can still be
+     granted. Severity of consequence is not urgency on this screen, and the research agrees with
+     the lighter weight — Entra, AWS, 1Password and Bitwarden all RECOMMEND a second administrator
+     and not one of them enforces it.
+
+     `?demo=soleOwner` still reaches the Users & Permissions banner, so the state stays reviewable.
+     `oneOwnerLeft` went with the strip; the in-tab banner does its own count. */
+
 
   const [tab, setTabState] = useState<DetailTab>(
     // A tab the rail does not offer is not a tab you can land on, so a bookmarked ?tab= for one
@@ -529,46 +524,11 @@ export default function PortalShell() {
           <span>{T[lang].recoveredOwner}</span>
         </div>
       )}
-      {/*
-        Still preventable, so it is said where it will be seen.
-
-        The banner below the bar in Users & Permissions says the same thing at more length and is
-        the one to read; this strip's job is to get somebody to that tab, because a warning about a
-        single point of failure is worthless on a screen nobody opens unless they already suspect
-        something. Same ground and same icon as the recovered notice above it — the two are the two
-        halves of one condition, before and after — and only ever one of them is on screen.
-
-        It carries the way out as a button rather than a sentence, because unlike the recovery this
-        IS a thing the console can do: promoting a second owner is an ordinary permission change on
-        the tab the button opens. Nothing here claims to restore anything.
-
-        Hidden while that tab is the screen — the fuller banner is already there, and repeating it
-        two inches above itself reads as a rendering fault. The button only appears where it would
-        work: with no project there is no rail and no Users & Permissions to open, so the strip
-        drops to the sentence alone rather than offering a click that goes nowhere.
-      */}
-      {soleOwner && !(!showAccount && teamProjects.length > 0 && tab === "users") && (
-        <div style={{
-          flexShrink: 0, display: "flex", alignItems: "flex-start", gap: "10px",
-          padding: "10px 32px", backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
-          fontSize: "12px", fontWeight: 600, lineHeight: 1.5,
-        }}>
-          <span style={{ display: "flex", flexShrink: 0, marginTop: "2px" }}><ShieldAlert size={14} strokeWidth={2.4} /></span>
-          <span>{T[lang].soleOwner}</span>
-          {teamProjects.length > 0 && (
-            <button
-              onClick={() => { setShowWizard(false); setShowAccount(false); setTab("users"); }}
-              style={{
-                flexShrink: 0, marginLeft: "auto", background: "none", border: "none", padding: 0,
-                cursor: "pointer", fontFamily: "inherit", fontSize: "12px", fontWeight: 800,
-                color: "var(--warning-500)", textDecoration: "underline", whiteSpace: "nowrap",
-              }}
-            >
-              {T[lang].soleOwnerAction}
-            </button>
-          )}
-        </div>
-      )}
+      {/* The sole-owner strip that used to be here is gone on purpose. The reasoning is with
+          the removed state above — in short: it fired on every installation from the first
+          minute, it made one fact render in three places, and amber here is reserved for a
+          capability that has stopped working. It now lives grey on the Overview strip and as the
+          banner on Users & Permissions, which is where a second owner actually gets named. */}
       {/* No rule under it, and 10px shorter than it was. The bar and the page are the same
           primary-50 ground, so a hairline between them was drawing a box around chrome that has
           nothing to separate — the crumb and the account button read as the top of the page, which
