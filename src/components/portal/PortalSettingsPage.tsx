@@ -126,7 +126,10 @@ const T = {
     categoryCount: (n: number) => (n === 1 ? "1 category in use" : `${n} categories in use`),
     categoryManage: "Manage categories",
     categoryNone: "No categories yet.",
-    categoryAdd: "Add a category",
+    // "New category", the word the modal this button opens already uses for the same move
+    // (VipCategories.catNew), and the word the two sections below it use — New purpose, New
+    // preset. A category is something an institution writes, not a device somebody adds.
+    categoryAdd: "New category",
     projectTitle: "Project",
     projectName: "Name",
     rename: "Rename",
@@ -248,7 +251,7 @@ const T = {
     categoryCount: (n: number) => `사용 중인 분류 ${n}개`,
     categoryManage: "분류 관리",
     categoryNone: "아직 만든 분류가 없습니다.",
-    categoryAdd: "분류 추가",
+    categoryAdd: "분류 만들기",
     projectTitle: "프로젝트",
     projectName: "이름",
     rename: "이름 변경",
@@ -291,7 +294,9 @@ const T = {
     presetTitle: "앱 권한 프리셋",
     presetIntro: "앱 권한을 이름으로 묶어 둔 것입니다. 같은 직무에 같은 화면을 두 번 줄 수 있게 합니다. 하나를 고치면 그것을 따르는 계정 전부에 닿고, 따로 지정한 계정은 건드리지 않습니다.",
     presetEmpty: "아직 프리셋이 없습니다. 하나도 없으면 초대할 때마다 화면을 하나씩 골라야 합니다.",
-    presetNew: "프리셋 추가",
+    // 만들기, like 사유 만들기 two sections up and 팀 만들기 · 프로젝트 만들기 elsewhere: 추가 is for
+    // putting a thing that exists into a list (카메라 추가, 서버 추가), and a preset is authored here.
+    presetNew: "프리셋 만들기",
     presetLabelField: "이름",
     presetLabelPlaceholder: "운영자 · 조사자 · 감독자",
     presetDescField: "무엇을 위한 것인가",
@@ -841,7 +846,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
 
       {active === "categories" && myTeamId && (
         <CardSection heading={t.categoryTitle} icon={<Tag size={15} strokeWidth={2.2} />}>
-          {/* Nothing to manage yet, so the word is "add".
+          {/* Nothing to manage yet, so the button offers to make the first one.
               "Manage categories" beside "0 categories in use" offered to administer an empty list,
               which reads as a dead end — and the count said the same nothing twice. The dashed box
               is the shape the rest of Portal uses for "this is empty on purpose, not broken", and

@@ -15,7 +15,7 @@ import PortalSettingsPage from "./PortalSettingsPage";
 import PortalAccountMenu from "./PortalAccountMenu";
 import { ToastProvider, useToast } from "../Toast";
 import { getComplianceConfig } from "@/lib/complianceConfig";
-import { useVcaStore, canEnterApp, currentPortalUser, SIGNED_IN_USER, type ProjectType, type Team } from "@/lib/vcaStore";
+import { useVcaStore, canEnterApp, canManageAccess, currentPortalUser, SIGNED_IN_USER, type ProjectType, type Team } from "@/lib/vcaStore";
 import AccessGate, { denialFor } from "@/components/AccessGate";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
@@ -32,6 +32,8 @@ const T = {
     requestNoManager: "No account manager is recorded for this team. Contact whoever handled your installation.",
     fleetTitle: (online: number, offline: number) => `${online} cameras online, ${offline} offline — open Input Sources`,
     recoveredOwner: "This account was made an owner by the recovery path, not by anyone granting it. Name a real owner and this notice goes away on its own.",
+    soleOwner: "Only one owner can sign in. If that account is lost, nothing in this console can restore it — the way back is on the server this is installed on.",
+    soleOwnerAction: "Name a second owner",
   },
   ko: {
     noTeam: "팀 없음", expand: "사이드바 펼치기", collapse: "사이드바 접기",
@@ -44,6 +46,8 @@ const T = {
     requestNoManager: "이 팀에 등록된 담당자가 없습니다. 설치를 담당한 곳으로 문의하세요.",
     fleetTitle: (online: number, offline: number) => `카메라 ${online}대 온라인, ${offline}대 오프라인 — 입력 소스 열기`,
     recoveredOwner: "이 계정은 누가 권한을 준 것이 아니라 복구 경로로 최고관리자가 되었습니다. 정식 최고관리자를 지정하면 이 안내는 저절로 사라집니다.",
+    soleOwner: "로그인할 수 있는 최고관리자가 한 명뿐입니다. 이 계정을 잃으면 이 콘솔로는 되돌릴 수 없고, 이 시스템이 설치된 서버에서만 복구할 수 있습니다.",
+    soleOwnerAction: "최고관리자 한 명 더 지정하기",
   },
 } as const;
 
@@ -266,6 +270,36 @@ export default function PortalShell() {
    * the field's own comment forbids.
    */
   const recoveredOwner = realRecoveredOwner || searchParams.get("demo") === "recovered";
+  /*
+   * The other half of the same story, and the half that can still be acted on.
+   *
+   * These two banners were the wrong way round. The recovery HAS happened one — nothing left to
+   * decide, the account is already standing in — ran across every screen, while the one that is
+   * still preventable (one owner, no second) sat inside Users & Permissions, a tab you reach by
+   * going looking for it. So the only notice a person could act on was the one they had to find.
+   *
+   * Same count as the in-tab banner: canManageAccess over active accounts, which is what
+   * isLastActiveAdmin guards. Counting admins made that banner wrong in both directions and the
+   * shell must not reintroduce the bug by counting differently.
+   *
+   * Only for somebody who can fix it. Promoting an owner is an owner-only act, so an operator or
+   * a read-only admin would get a strip across every screen about a thing they cannot touch —
+   * and the in-tab banner, which they can at least read on purpose, still tells them.
+   */
+  const oneOwnerLeft = useVcaStore(s =>
+    s.portalUsers.filter(u => canManageAccess(u.permission) && u.status === "active").length <= 1);
+  /*
+   * Never both at once. `realRecoveredOwner` is by definition a case of `oneOwnerLeft` — it is a
+   * recovered account with no other active owner — so stacking them would put two warning strips
+   * above the bar asking for the same thing in two voices. The recovered one wins: it says
+   * everything this one says and adds where the account came from.
+   *
+   * ?demo=soleOwner for the same reason ?demo=recovered exists above: it reads the URL and never
+   * the store, so reviewing the banner cannot be done by arranging an installation that actually
+   * has one owner left.
+   */
+  const soleOwner = !recoveredOwner
+    && ((oneOwnerLeft && !!me && canManageAccess(me.permission)) || searchParams.get("demo") === "soleOwner");
 
   const [tab, setTabState] = useState<DetailTab>(
     // A tab the rail does not offer is not a tab you can land on, so a bookmarked ?tab= for one
@@ -493,6 +527,46 @@ export default function PortalShell() {
         }}>
           <span style={{ display: "flex", flexShrink: 0, marginTop: "2px" }}><ShieldAlert size={14} strokeWidth={2.4} /></span>
           <span>{T[lang].recoveredOwner}</span>
+        </div>
+      )}
+      {/*
+        Still preventable, so it is said where it will be seen.
+
+        The banner below the bar in Users & Permissions says the same thing at more length and is
+        the one to read; this strip's job is to get somebody to that tab, because a warning about a
+        single point of failure is worthless on a screen nobody opens unless they already suspect
+        something. Same ground and same icon as the recovered notice above it — the two are the two
+        halves of one condition, before and after — and only ever one of them is on screen.
+
+        It carries the way out as a button rather than a sentence, because unlike the recovery this
+        IS a thing the console can do: promoting a second owner is an ordinary permission change on
+        the tab the button opens. Nothing here claims to restore anything.
+
+        Hidden while that tab is the screen — the fuller banner is already there, and repeating it
+        two inches above itself reads as a rendering fault. The button only appears where it would
+        work: with no project there is no rail and no Users & Permissions to open, so the strip
+        drops to the sentence alone rather than offering a click that goes nowhere.
+      */}
+      {soleOwner && !(!showAccount && teamProjects.length > 0 && tab === "users") && (
+        <div style={{
+          flexShrink: 0, display: "flex", alignItems: "flex-start", gap: "10px",
+          padding: "10px 32px", backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
+          fontSize: "12px", fontWeight: 600, lineHeight: 1.5,
+        }}>
+          <span style={{ display: "flex", flexShrink: 0, marginTop: "2px" }}><ShieldAlert size={14} strokeWidth={2.4} /></span>
+          <span>{T[lang].soleOwner}</span>
+          {teamProjects.length > 0 && (
+            <button
+              onClick={() => { setShowWizard(false); setShowAccount(false); setTab("users"); }}
+              style={{
+                flexShrink: 0, marginLeft: "auto", background: "none", border: "none", padding: 0,
+                cursor: "pointer", fontFamily: "inherit", fontSize: "12px", fontWeight: 800,
+                color: "var(--warning-500)", textDecoration: "underline", whiteSpace: "nowrap",
+              }}
+            >
+              {T[lang].soleOwnerAction}
+            </button>
+          )}
         </div>
       )}
       {/* No rule under it, and 10px shorter than it was. The bar and the page are the same

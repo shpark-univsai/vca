@@ -34,8 +34,10 @@ const T = {
     errRtsp: "A stream address starts with rtsp://",
     errLat: "Latitude runs from -90 to 90.",
     errLng: "Longitude runs from -180 to 180.",
-    offlineSuffix: (n: number) => `${n} offline`,
-    onlineCountLabel: (n: number) => `${n} online`,
+    // offlineSuffix and onlineCountLabel were here and nothing ever rendered them — the summary
+    // strip builds its cells from healthOffline/healthConnected plus healthOfFleet. Two spare
+    // ways of saying a number that is already said on screen is what a copy review keeps filing
+    // bugs against, so they are gone rather than kept in step with the live pair.
     confirmDeleteCamTitle: (name: string) => `Remove ${name}?`,
     confirmDeleteCamBody: "The camera comes off this project along with its zone, its server assignment and its place on the map. Recorded detections stay.",
     healthConnected: "connected",
@@ -108,7 +110,8 @@ const T = {
     fieldServerNone: "Not assigned",
     fieldLat: "Latitude",
     fieldLng: "Longitude",
-    clearFilters: "Clear all filters",
+    // No clearFilters label: ActiveFilterCount is a chip that clears on its own ×, and this
+    // string was never rendered. A wording nobody reads drifts from the ones they do.
     selectedCount: (n: number) => `${n} selected`,
     bulkClearSelection: "Clear selection",
     bulkMoveToZone: "Move to zone",
@@ -126,7 +129,9 @@ const T = {
     colServer: "Server",
     colResolution: "Resolution",
     colZone: "Zone",
-    colRtspStream: "RTSP Stream",
+    // No colRtspStream: this table's address column prints the IP and the resolution (see
+    // colAddress and the row that fills it), so a heading naming the stream URL was both unused
+    // and untrue. One column, one name.
     colStatus: "Status",
     emptyFiltered: "No cameras match these filters.",
     aiCameraBadge: "AI Camera",
@@ -151,7 +156,9 @@ const T = {
     fieldRtspUrl: "Connection — RTSP URL *",
     fieldMaker: "Maker",
     cancel: "Cancel",
-    saveChanges: "Save changes",
+    // One word, both languages. Every other save in Portal is "Save" / "저장" — the server form,
+    // the roster, the categories — and this was the only 변경사항 저장 among nine plain 저장.
+    saveChanges: "Save",
     addDevice: "Add",
     confirmOfflineTitle: "Mark camera offline?",
     confirmOfflineBody: (name: string) => `${name} will show as offline for everyone monitoring this project — make sure the stream is actually down before confirming.`,
@@ -191,8 +198,6 @@ const T = {
     errRtsp: "스트림 주소는 rtsp:// 로 시작합니다.",
     errLat: "위도는 -90에서 90 사이입니다.",
     errLng: "경도는 -180에서 180 사이입니다.",
-    offlineSuffix: (n: number) => `${n} 오프라인`,
-    onlineCountLabel: (n: number) => `온라인 ${n}`,
     confirmDeleteCamTitle: (name: string) => `${name}을(를) 삭제할까요?`,
     confirmDeleteCamBody: "이 프로젝트에서 카메라가 빠지고, 존·서버 배정·지도 위 위치도 함께 사라집니다. 기록된 탐지는 남습니다.",
     healthConnected: "연결됨",
@@ -265,7 +270,6 @@ const T = {
     fieldServerNone: "미지정",
     fieldLat: "위도",
     fieldLng: "경도",
-    clearFilters: "필터 모두 지우기",
     selectedCount: (n: number) => `${n}대 선택됨`,
     bulkClearSelection: "선택 해제",
     bulkMoveToZone: "구역 이동",
@@ -281,7 +285,6 @@ const T = {
     colServer: "서버",
     colResolution: "해상도",
     colZone: "구역",
-    colRtspStream: "RTSP 스트림",
     colStatus: "상태",
     emptyFiltered: "이 필터와 일치하는 카메라가 없습니다.",
     aiCameraBadge: "AI 카메라",
@@ -300,7 +303,7 @@ const T = {
     fieldRtspUrl: "연결 — RTSP URL *",
     fieldMaker: "제조사",
     cancel: "취소",
-    saveChanges: "변경사항 저장",
+    saveChanges: "저장",
     addDevice: "추가",
     confirmOfflineTitle: "카메라를 오프라인으로 표시하시겠습니까?",
     confirmOfflineBody: (name: string) => `${name} 카메라가 이 프로젝트를 모니터링하는 모든 사용자에게 오프라인으로 표시됩니다. 확인하기 전에 실제로 스트림이 끊겼는지 확인하세요.`,

@@ -323,7 +323,9 @@ const T: Record<"en" | "ko", VipDict> = {
     expiryUnansweredWhy: "Nobody has set an end date on this listing. It is still being matched, and will be until somebody decides otherwise.",
     releaseAction: "Release from VIP",
     reinstateAction: "Put back on the VIP list",
-    reinstateTitle: (name: string) => `Put ${name} back on the vipRegistry?`,
+    // "the VIP list", not the store's name for it. Same leak the export toast above records,
+    // and the toast this dialog fires already says "Back on the VIP list".
+    reinstateTitle: (name: string) => `Put ${name} back on the VIP list?`,
     reinstateBody: "They go back on the matching list. The release and this reversal both stay in the activity log.",
     reinstateReasonPlaceholder: "Released in error · Listing renewed",
     reinstateConfirm: "Reinstate",
@@ -426,7 +428,11 @@ const T: Record<"en" | "ko", VipDict> = {
   },
   ko: {
     bulkUpload: "일괄 업로드",
-    registerVip: "VIP 등록하기",
+    // The bare noun, the way the sidebar tab and the Overview's button both already say it
+    // ("VIP 등록"): three controls that land on this same list were wearing two names. Korean
+    // chrome in this product ends in a noun — 저장 · 삭제 · 승인 — and 하기 was the last verb form
+    // left in it.
+    registerVip: "VIP 등록",
     searchPlaceholder: "VIP 이름으로 검색",
     sortByPriority: "우선순위순",
     allGroups: "전체 그룹",
@@ -1621,7 +1627,9 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${projects.find(pr => pr.id === projectId)?.name ?? "project"}-vipRegistry.csv`;
+    // The file lands in somebody's downloads folder, so it is named the way the other exports
+    // are — -cameras.csv, -staff-roster.csv — rather than after the identifier in the store.
+    a.download = `${projects.find(pr => pr.id === projectId)?.name ?? "project"}-vip-registry.csv`;
     a.click();
     URL.revokeObjectURL(url);
     showToast({ variant: "success", title: t.toastVipExportTitle, desc: t.toastVipExportDesc(rows.length) });
