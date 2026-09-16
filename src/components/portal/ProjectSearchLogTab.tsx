@@ -202,7 +202,8 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
     // same unkept promise one screen further out, and it is the copy that leaves the building.
     const header = [t.csvAt, t.csvActor, t.csvActorEmail, ...(purposeAsked ? [t.csvPurpose, t.csvReference] : []), t.csvTarget, t.csvSurface, t.csvResults, ...(showIp ? [t.csvIp] : [])];
     const body = visible.map(r => [
-      r.at, r.actor, r.actorEmail, ...(purposeAsked ? [r.purposeLabel ?? "", r.reference ?? ""] : []), r.target, r.surface,
+      r.at, r.actor, r.actorEmail, ...(purposeAsked ? [r.purposeLabel ?? "", r.reference ?? ""] : []), r.target,
+      t.surfaceName[r.surface] ?? r.surface,
       r.resultCount === undefined ? "" : String(r.resultCount), ...(showIp ? [r.ip ?? ""] : []),
     ]);
     const csv = [header, ...body].map(row => row.map(csvEscape).join(",")).join("\n");
