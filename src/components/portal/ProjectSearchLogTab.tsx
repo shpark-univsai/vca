@@ -54,6 +54,7 @@ const T = {
     intro: "Every person look-up run from the monitoring app.",
     introWithPurpose: "Every person look-up run from the monitoring app, with the purpose the operator declared.",
     empty: "No look-ups recorded yet.",
+    noMatch: "No look-ups match these filters.",
     // The app's own names for its screens. An unknown code is printed as-is rather than guessed
     // at — a wrong screen name in an audit row is worse than a code the reader can look up.
     surfaceName: { live: "Live monitoring", reid: "Re-ID", redmap: "Redmap", redface: "RedFace" } as Record<string, string>,
@@ -78,6 +79,7 @@ const T = {
     intro: "모니터링 앱에서 실행된 인물 조회입니다.",
     introWithPurpose: "모니터링 앱에서 실행된 인물 조회와, 그때 관제요원이 밝힌 목적입니다.",
     empty: "기록된 조회가 없습니다.",
+    noMatch: "조건에 맞는 조회 기록이 없습니다.",
     surfaceName: { live: "실시간 관제", reid: "Re-ID", redmap: "레드맵", redface: "RedFace" } as Record<string, string>,
     colAt: "시각", colActor: "조회자", colPurpose: "목적", colReference: "참조번호",
     colTarget: "조회 대상", colSurface: "화면", colResults: "결과", colIp: "위치",
@@ -310,7 +312,12 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
         </div>
 
         {visible.length === 0 ? (
-          <TableEmpty text={t.empty} />
+          /* Two sentences, and on this tab the difference is the whole point. "Nobody has looked
+             anybody up here" and "your date range and actor filter matched nothing" send an
+             auditor to opposite conclusions, and the first one is an answer they might write down.
+             The other five list tabs already separate these; the audit log was the one that did
+             not. */
+          <TableEmpty text={projectRecords.length === 0 ? t.empty : t.noMatch} />
         ) : visible.map((r: SearchAccessRecord, i) => (
           <div key={r.id} style={{
             display: "grid", gridTemplateColumns: grid, columnGap: TABLE_COLUMN_GAP,

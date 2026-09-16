@@ -196,7 +196,9 @@ const T = {
     // Temporary password modal — confirm step
     tempModalTitle: "Generate temporary password",
     tempForLabel: "FOR",
-    mailConsequenceSend: (email: string) => `A reset code is sent to ${email}. You never see it.`,
+    // Not "is sent" — nothing leaves the building yet (see the HANDOFF note in `generate`), and
+    // the toast that follows already says so. The console asks the relay; the relay delivers.
+    mailConsequenceSend: (email: string) => `A reset code is requested for ${email}. You never see it.`,
     mailConsequenceUserSets: "They set their own password with it, so nobody else knows what they choose.",
     mailConsequenceTtl: (min: number) => `The code stops working after ${min} minutes.`,
     mailConsequenceInvalidates: "Any reset code already on its way to them stops working.",
@@ -216,7 +218,7 @@ const T = {
     tempHandoverTitle: "HANDING IT OVER",
     tempHandover: "Read it out on the internal line, or hand it over in person or on internal messenger.",
     resetPassword: "Reset password",
-    sendCode: "Send code",
+    sendCode: "Request code",
     deliveryQuestion: "How will you reach them?",
     deliveryMailTitle: "Send it by email",
     deliveryMailHow: "To their own mailbox",
@@ -289,7 +291,7 @@ const T = {
     projectsModalIntro: (name: string) => `Which of this team's projects ${name} may open. A project they are not given stops appearing in their app.`,
     projectsModalNoneWarning: "At least one project. An account with no projects signs in to an empty app with no sign that anything was taken away — suspend the account instead.",
     projectsUpdatedTitle: "Projects updated",
-    sendInvite: "Send Invite",
+    sendInvite: "Create invite link",
     inviteCreatedTitle: "Account created",
     // On the panel that carries the link, in all three places one is made.
     inviteLinkNote: "Nothing has been sent — hand this link over yourself. It is not shown again, and making a new one from the row menu retires this one.",
@@ -437,7 +439,7 @@ const T = {
     reasonNoAppScreens: "앱 접근이 없는 계정입니다 — 지정하거나 검색할 화면이 없습니다.",
     generateTempPassword: "임시 비밀번호 생성",
     resetPassword: "비밀번호 재설정",
-    sendCode: "코드 전송",
+    sendCode: "코드 요청",
     deliveryQuestion: "어떻게 전달하시겠어요?",
     deliveryMailTitle: "이메일로 보낼게요",
     deliveryMailHow: "본인 메일함으로",
@@ -508,7 +510,7 @@ const T = {
     // Temporary password modal — confirm step
     tempModalTitle: "임시 비밀번호 생성",
     tempForLabel: "대상",
-    mailConsequenceSend: (email: string) => `재설정 코드가 ${email} 로 발송됩니다. 관리자는 코드를 보지 않습니다.`,
+    mailConsequenceSend: (email: string) => `${email} 앞으로 재설정 코드를 요청합니다. 관리자는 코드를 보지 않습니다.`,
     mailConsequenceUserSets: "사용자가 그 코드로 본인 비밀번호를 직접 정하므로, 아무도 그 비밀번호를 알지 못합니다.",
     mailConsequenceTtl: (min: number) => `코드는 ${min}분 후 만료됩니다.`,
     mailConsequenceInvalidates: "이미 발송된 재설정 코드가 있으면 그 코드는 사용할 수 없게 됩니다.",
@@ -558,7 +560,7 @@ const T = {
     projectsModalIntro: (name: string) => `${name} 님이 열 수 있는 이 팀의 프로젝트입니다. 주지 않은 프로젝트는 앱에서 보이지 않습니다.`,
     projectsModalNoneWarning: "최소 한 개는 있어야 합니다. 프로젝트가 없는 계정은 아무것도 없는 앱에 로그인하게 되고, 무엇이 회수됐는지 알 방법이 없습니다. 그럴 땐 계정을 정지하세요.",
     projectsUpdatedTitle: "프로젝트가 변경되었습니다",
-    sendInvite: "초대 보내기",
+    sendInvite: "초대 링크 만들기",
     inviteCreatedTitle: "계정이 만들어졌습니다",
     inviteLinkNote: "발송된 것은 없습니다 — 이 링크를 직접 전달하세요. 다시 볼 수 없고, 행 메뉴에서 새로 만들면 이 링크는 못 쓰게 됩니다.",
 

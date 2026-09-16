@@ -30,6 +30,9 @@ const T = {
     greetAfternoon: (name: string) => `Good afternoon, ${name}`,
     greetEvening: (name: string) => `Good evening, ${name}`,
     chipHealthy: "Healthy",
+    // A site with no cameras is not a healthy site. Neutral, not a warning: an empty register is
+    // a gap somebody has to fill, not a fault anybody has to respond to.
+    chipNoCameras: "None registered",
     chipAttention: (n: number) => `${n} offline`,
     chipNewThisMonth: (n: number) => `+${n} this month`,
     chipAccessSplit: (portal: number, app: number) => `${portal} portal · ${app} app`,
@@ -114,7 +117,7 @@ const T = {
     recentAdminActivity: "Recent Admin Activity",
     noAdminActivity: "No admin activity yet.",
     agoSuffix: " ago",
-    toastApprovedTitle: "Access approved — invite sent",
+    toastApprovedTitle: "Access approved — account created",
     toastDismissedTitle: "Request dismissed",
   },
   ko: {
@@ -126,6 +129,7 @@ const T = {
     greetAfternoon: (name: string) => `안녕하세요, ${name}님`,
     greetEvening: (name: string) => `좋은 저녁이에요, ${name}님`,
     chipHealthy: "정상",
+    chipNoCameras: "등록 없음",
     chipAttention: (n: number) => `오프라인 ${n}`,
     chipNewThisMonth: (n: number) => `이번 달 +${n}`,
     chipAccessSplit: (portal: number, app: number) => `Portal ${portal} · 앱 ${app}`,
@@ -205,7 +209,7 @@ const T = {
     recentAdminActivity: "최근 관리자 활동",
     noAdminActivity: "아직 관리자 활동이 없습니다.",
     agoSuffix: " 전",
-    toastApprovedTitle: "접근 승인됨 — 초대장 발송됨",
+    toastApprovedTitle: "접근 승인됨 — 계정이 만들어졌습니다",
     toastDismissedTitle: "요청 거절됨",
   },
 } as const;
@@ -1000,7 +1004,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
               label={t.cameraConnectivity} icon={VideoIcon}
               iconBg={offlineCount > 0 ? "var(--danger-100)" : "var(--gray-100)"}
               iconColor={offlineCount > 0 ? "var(--danger-400)" : "var(--gray-700)"}
-              chip={offlineCount === 0
+              /* Three states, not two. `offlineCount === 0` was answering "is anything wrong",
+                 and a site with no cameras at all passes that test — so a brand-new project read
+                 "정상 · 0 / 0대 연결됨 · 온라인 0%", the console telling somebody their empty
+                 register is fine. Nothing and everything-fine are not the same screen. */
+              chip={projectCameras.length === 0
+                ? <StateChip text={t.chipNoCameras} color="var(--gray-400)" />
+                : offlineCount === 0
                 ? <StateChip text={t.chipHealthy} color="var(--gray-500)" />
                 : <StateChip text={t.chipAttention(offlineCount)} color="var(--danger-400)" />}
               onClick={() => onTabChange("cameras")}
@@ -1010,6 +1020,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                   and made the bar too short to show anything but "roughly half". Full width it is
                   a measure again, and pushed to the bottom (marginTop auto on the block below) it
                   lines up across all four cards whatever height the row settles at. */}
+              {projectCameras.length === 0 ? (
+                /* One sentence instead of a figure and a bar. "0" over an empty bar
+                   captioned "0%" is three ways of drawing a measurement never taken. */
+                <p style={{ fontSize: "13px", color: "var(--gray-400)", lineHeight: 1.5, margin: 0 }}>{t.noCamerasYet}</p>
+              ) : (
+              <>
               <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
                 <span style={{ display: "flex", alignItems: "baseline", gap: "4px", flexShrink: 0, whiteSpace: "nowrap" }}>
                   {/* The figure is gray-900, the words after it gray-400 — one step lighter than
@@ -1042,6 +1058,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                     four times inside one card. */}
                 <BarStats left={t.statOnlineShare(onlineShare)} right="" />
               </div>
+              </>
+              )}
               {/* The online/offline legend that used to sit under a rule here is gone: "51 / 59
                   connected" already gives both numbers, the bar's red segment shows the share, and
                   a non-zero offline count is a line in the "things to do" strip above. */}
