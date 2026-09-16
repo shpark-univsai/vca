@@ -209,6 +209,31 @@
   box-sizing: border-box;
 }
 
+/* ── Form controls do not inherit the typeface ────────────────
+   The browser's own stylesheet gives button/input/select/textarea a font of its choosing and
+   ignores what `body` set, so every one of them renders in the UA face — Arial here — while the
+   rest of the app is SUIT. It is not obvious as a wrong font; it reads as TOO BOLD, because Arial
+   has no 600 or 800 and the components ask for both. The browser then synthesises the weight by
+   smearing the glyphs, which is visibly heavier and muddier than SUIT's real variable axis.
+
+   Measured 2026-09-16 against the backend team's port of this app: its login buttons compute
+   `Arial` at weights 600/700/800 ("Log in", "한국어", "Forgot password?"), and "the font looks
+   oddly thick" was how it was reported. The port is not at fault — it dropped nothing. This rule
+   never existed; the codebase compensated with `fontFamily: "inherit"` written inline a hundred
+   times, so any screen whose author forgot it had the bug, and a port that rewrote those screens
+   lost the compensation along with them.
+
+   font-family, not the `font` shorthand: `font: inherit` would also take font-size, and the
+   controls that rely on the UA's 13.333px default would jump to the body's 16px and resize.
+   ── */
+button,
+input,
+select,
+textarea,
+optgroup {
+  font-family: inherit;
+}
+
 /* ── Focus ring ───────────────────────────────────────────────
    Most inputs in the app never reset `outline`, so a focused field was drawing the browser's own
    focus ring — a blue that belongs to no palette here and sits badly next to the purple. One rule
