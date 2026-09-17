@@ -73,21 +73,6 @@ const T = {
      * ones beside it. `spotSummary` below already had the ternary; this site just never got it.
      */
     peopleAt: (n: number) => `${n} ${n === 1 ? "person" : "people"} today`,
-    /**
-     * The picked district's own line: who was seen, and on how many of its cameras.
-     *
-     * Spelt out in words rather than compressed the way the collapsed pill's figures are. This
-     * one is read once, deliberately, after a click — not scanned across seventeen pills — so
-     * the constraint that forced "VIP ×12 · 5 cams" into single characters does not apply, and
-     * the two figures here are exactly the pair that gets misread when unlabelled.
-     *
-     * `cameras` is how many of this district's cameras actually caught somebody, NOT how many
-     * are installed — the opposite of the figure above it, which is why both carry their nouns.
-     */
-    districtSummary: (people: number, cameras: number) =>
-      // "on 1 of its cameras", not "camera" — the "N of its X" construction takes the plural
-      // whatever N is, because X is the set being drawn from, not the thing being counted.
-      `${people} ${people === 1 ? "person" : "people"} on ${cameras} of its cameras`,
     live: "LIVE",
     out: "OUT",
     offline: "OFFLINE",
@@ -132,7 +117,6 @@ const T = {
     // 한국어는 이 자리에서 수를 세는 조사가 따로 없어 1명도 그대로 맞습니다. 다섯 글자로
     // 영어보다 짧으니 알약이 밀릴 일도 없습니다.
     peopleAt: (n: number) => `오늘 ${n}명`,
-    districtSummary: (people: number, cameras: number) => `카메라 ${cameras}대에서 ${people}명`,
     live: "정상",
     out: "중단",
     offline: "중단",
@@ -217,6 +201,18 @@ function cameraDotTooltipHtml(cam: Camera, lang: AppLanguage): string {
 // zoomed in past it shows the per-camera recent-activity dots instead — the same breakpoint
 // idea as RedmapMap's tracking-route decluttering, just gating which layer draws at all.
 const CLUSTER_ZOOM_BREAKPOINT = 14;
+/**
+ * How recent a detection has to be for its dot to PULSE.
+ *
+ * Motion means "recently" everywhere in this product, so the ring is the one mark on this map
+ * that makes a claim about now — and it has to be a claim the data supports. "Today" is too
+ * coarse: a hit from nine hours ago is not recent even though it is still today.
+ *
+ * Module scope because BOTH dot layers answer to it. It used to live inside the zoomed-in camera
+ * branch, and the picked-district branch — which draws the same `recentPingHtml` ring — had no
+ * time gate at all, so every hit spot in a selected district pulsed however old it was.
+ */
+const RECENT_VIP_WINDOW_MS = 60 * 60 * 1000;
 /** Where a district pill flies you to. One past the cluster breakpoint, so the pills give way to
  *  the per-camera layer as part of the same movement rather than needing a second zoom. */
 const DISTRICT_FOCUS_ZOOM = 15;
@@ -598,6 +594,68 @@ function routeBubbleTailHtml(centerY: number, fillColor: string, borderColor: st
         border-top:7px solid transparent;border-bottom:7px solid transparent;border-right:8px solid ${fillColor};"></div>`;
 }
 
+/**
+ * Brings a just-opened popup fully inside the map, centred — but only when it does not already
+ * fit.
+ *
+ * A popup here is anchored below its own content and grows upward (the detail card is up to
+ * ~470px tall), so a dot near the top edge opened a card that ran off the map: measured 310px of
+ * card with 270px of it above the container's top, leaving about 40px readable. The popup had
+ * nowhere to go and nothing moved.
+ *
+ * WHY NOT `autoPan: true`. Leaflet's own auto-pan does the MINIMUM move that fits the popup, so
+ * a card clipped at the top ends up flush against the top with its close button in the corner —
+ * technically visible, still the worst place on the map to read something. Centred was what was
+ * asked for, and centred is also what makes the pan legible: the map moved, and the thing you
+ * pressed is now in the middle. (`autoPan: false` was never a decision, for the record — it
+ * arrived uncommented with the first commit, `218ba1f`, and the district-spot popup copied it in
+ * `9f42874`. It stays false now because this function does the job instead, and two things
+ * panning the same map would fight.)
+ *
+ * WHY NOT `keepInView`. That one re-pans whenever the popup drifts out as the map is DRAGGED,
+ * which takes the map away from the operator mid-gesture. Bringing a popup in when it opens is a
+ * response to a click; pulling it back while somebody is dragging is the map overriding them.
+ *
+ * WHY CONDITIONAL. Centring unconditionally would jerk the map on every dot click, including the
+ * dozens that open in clear space — and this file has a standing objection to the map moving on
+ * its own (see the flyTo notes and the viewport-anchored no-coordinates control, which exists
+ * precisely so one line of text does not travel with the tiles). So: if it fits with a margin,
+ * nothing happens. This also means the two flyTo cases below, which already centre their own
+ * marker and normally have room, are untouched until a short viewport actually clips them.
+ *
+ * THE WHOLE POPUP, not the marker. Centring the marker leaves a tall card still hanging over the
+ * top edge — the card is what has to be read, so the card's own box is what gets centred.
+ */
+function centerPopupIfClipped(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  map: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  popup: any,
+): void {
+  // Absent when the popup was closed again before this ran (the flyTo callers below are one
+  // animation late), and the popup element is only measurable once Leaflet has attached it.
+  const el: HTMLElement | undefined = popup?.getElement?.();
+  if (!el || !el.isConnected) return;
+  const container: HTMLElement | undefined = map?.getContainer?.();
+  if (!container) return;
+  const box = el.getBoundingClientRect();
+  const view = container.getBoundingClientRect();
+  if (box.width === 0 || box.height === 0) return;
+  // Enough that the card does not read as touching the edge. The map's own furniture is in the
+  // corners (zoom control top-right, the detections button bottom-left) and a centred popup
+  // clears both, so this margin is about the edge and nothing else.
+  const MARGIN = 12;
+  const fits = box.top >= view.top + MARGIN && box.bottom <= view.bottom - MARGIN
+    && box.left >= view.left + MARGIN && box.right <= view.right - MARGIN;
+  if (fits) return;
+  // panBy moves the map BY this offset, which moves the content the other way — so handing it
+  // the popup's own distance from centre is what lands the popup on the centre.
+  const dx = (box.left + box.width / 2) - (view.left + view.width / 2);
+  const dy = (box.top + box.height / 2) - (view.top + view.height / 2);
+  if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+  map.panBy([dx, dy], { animate: true, duration: 0.3 });
+}
+
 interface MapViewProps {
   selectedEvent?: LiveEvent | null;
   onCameraSelect?: (label: string | null) => void;
@@ -936,15 +994,40 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
             .values()];
           // The count rides beside the dot, not on it. It is a number about a place now, so there
           // is no portrait for it to be misread as being about.
-          const countPill = people > 1
+          //
+          // `> 0`, not `> 1`, and that matters now that the ring has a time gate above. A spot
+          // whose newest sighting is older than the hour draws the quiet grey dot, and a quiet
+          // grey dot with no figure beside it is exactly what a camera with nothing to report all
+          // day looks like — so without a figure on it, "one person here this morning" and "nobody
+          // here at all" became the same marker. It is also the threshold the camera layer has
+          // always used (see peopleAt, whose singular branch exists for this), so one figure now
+          // appears under the same rule on both layers of this map.
+          const countPill = people > 0
             ? `<div style="position:absolute;left:13px;top:-11px;padding:1px 6px;border-radius:999px;
                   background:var(--gray-900);border:1.5px solid white;font-family:'SUIT',sans-serif;
                   font-size:10px;font-weight:800;color:white;letter-spacing:-0.2px;white-space:nowrap">
                  ${t.peopleAt(people)}
                </div>`
             : "";
+          /**
+           * THE RING IS A CLAIM ABOUT NOW, so it is gated on the same hour the camera layer uses.
+           *
+           * Every spot here pulsed before, and the set of spots is deliberately TODAY's (see the
+           * filter above — a pill reading 7 that opens onto two pins is a pill that lied). Those
+           * two facts together had the map running an expanding ring, which means "just now"
+           * everywhere in this product, over a detection that could be nine hours old. The
+           * zoomed-in camera layer had got this right all along; this branch had no time gate at
+           * all, and `globals.css`'s own note on the deleted VIP flash leans on the claim that
+           * this ring carries "a real one-hour window" — which was true of one of the two layers
+           * drawing it.
+           *
+           * The spot keeps its count pill either way: "somebody was here today" and "somebody is
+           * here now" are both worth drawing, and separating them is exactly what the quiet dot
+           * plus a figure already says on the camera layer.
+           */
+          const isRecent = now.getTime() - new Date(newest.timestamp).getTime() <= RECENT_VIP_WINDOW_MS;
           const icon = L.divIcon({
-            html: `<div style="position:relative">${recentPingHtml(VIP_PING_COLOR)}${countPill}</div>`,
+            html: `<div style="position:relative">${isRecent ? recentPingHtml(VIP_PING_COLOR) : quietCameraDotHtml()}${countPill}</div>`,
             iconSize: [1, 1],
             iconAnchor: [0, 0],
             className: "vca-zone-icon",
@@ -978,7 +1061,11 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
             .addTo(group)
             .bindPopup(getPopupHTML(newest, lang) + spotSummary + othersHtml, {
               offset: [0, -14], className: "vca-custom-popup", closeButton: true, autoPan: false, maxWidth: 280,
-            });
+            })
+            // This is the case that was reported: the dots sit wherever their cameras are, so one
+            // near the top edge opened a card with no room above it. Nothing flies here — the
+            // click only opens a popup — so there is no animation for the pan to fight.
+            .on("popupopen", (e: { popup: unknown }) => centerPopupIfClipped(mapInstanceRef.current, e.popup));
         });
 
         // The district's cameras with nothing to report today — the denominator, drawn.
@@ -1032,8 +1119,38 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         // (see Sidebar's EventsList). Same derivation — districtTally in vcaStore — so the map and
         // the list cannot come to disagree about one district.
       } else if (zoom <= CLUSTER_ZOOM_BREAKPOINT) {
-        // ── Zoomed out: one pill per district ──
-        districts.forEach((district) => {
+        // ── Zoomed out: one pill per district — unless a row is selected ──
+        //
+        // A SELECTED ROW AND THE PILL LAYER ARE TWO DIFFERENT QUESTIONS, and they were being
+        // drawn on top of each other. "How busy is each district today" is the ambient one; "where
+        // did this one person go" is the one the operator just asked by clicking. Only the second
+        // was asked for, and it lost.
+        //
+        // Lost literally, and systematically rather than by bad luck. A Tracking selection's
+        // flyTo goes to zoom 14 and this layer draws at `zoom <= CLUSTER_ZOOM_BREAKPOINT`, which
+        // IS 14 — so every trail lands exactly on the zoom where the pills are still on. And the
+        // pills win the paint: their stacking offset is `count * 2000` (measured at 32427 for
+        // Novena, 20529 for Geylang) against a trail node's `1000 + i * 100` (1519). Measured on
+        // one selection: the trail-end "last seen" card had 1709px² of itself under the Novena
+        // pill and another 1238px² under Geylang's, and the Bedok stop 1527px² under Bedok's. The
+        // covered part is the card's own text.
+        //
+        // HIDDEN, NOT DIMMED. Lowering the pill layer's opacity would fix the emphasis and not the
+        // collision — two overlapping labels at any opacity are two labels in the same pixels, and
+        // it is the trail card's words that were being painted over.
+        //
+        // THE COST, STATED: a district with no camera at all draws its own pill ("no camera"), and
+        // that pill is the one a coverage decision is looking for — see districtPillHtml. While a
+        // row is selected it is not on the map. It comes back on the same click that clears the
+        // selection (this effect lists selectedEvent, so deselecting redraws immediately), and a
+        // selection is a thing the operator is holding open on purpose, not a state the map gets
+        // stuck in.
+        //
+        // ONLY THIS BRANCH. The picked-district branch above keeps its single home pill even with
+        // a row selected: there it is the only thing naming which district you are in and the way
+        // back out, and blanking it would put back the "zoomed out with a district picked and no
+        // label anywhere on the map" bug that a158c1f fixed.
+        if (!selectedEvent) districts.forEach((district) => {
           // The register answers this, not the geometry — districtIdForCameraZone. Read from
           // allCameras rather than the hasPosition-filtered list: a camera's district comes from
           // its zone, so one that was never surveyed still belongs to the district it was
@@ -1108,7 +1225,6 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         // smart-city project) and made the zoomed-in map disagree with every other count on
         // screen. The VIP ticker now stamps its detections onto register cameras too, so ping
         // coordinates line up here without a second pool to match against.
-        const RECENT_VIP_WINDOW_MS = 60 * 60 * 1000;
         const nowMs = Date.now();
         const coordKey = (lat: number, lng: number) => `${lat.toFixed(4)},${lng.toFixed(4)}`;
         // A TRACKING ROW IS A VIP WHO MOVED, and `ev.type !== "VIP"` dropped every one of them —
@@ -1186,7 +1302,10 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
     });
 
     return () => { cancelled = true; };
-  }, [recentEvents, todaysHits, cameras, zoom, mapReady, alertThreshold, moderateThreshold, districts, lang, districtFilter, cameraStatus, t]);
+    // selectedEvent is here so that clearing the selection puts the district pills back on the
+    // same tick the trail comes off. Without it this layer would keep whatever it drew when it
+    // last ran, and a map that stays stripped after a deselect is worse than the overlap was.
+  }, [recentEvents, todaysHits, cameras, zoom, mapReady, alertThreshold, moderateThreshold, districts, lang, districtFilter, cameraStatus, t, selectedEvent]);
 
   // ── District selection → zoom into that district ───────────────
   // Clicking a pill was a list filter and nothing more: the map stayed at island zoom with every
@@ -1418,9 +1537,13 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         if (nodes.length >= 2 && !lastSegmentIsGap) {
           const a = nodes[nodes.length - 2];
           const b = nodes[nodes.length - 1];
-          const t = 0.35;
-          const arrowLat = a.lat + (b.lat - a.lat) * t;
-          const arrowLng = a.lng + (b.lng - a.lng) * t;
+          // NOT `t`. That is the translation dictionary in every other line of this component,
+          // and a local `t` holding 0.35 shadows it for the rest of this block — so the next
+          // person to add a label here gets `0.35.somethingOrOther` and a runtime error, or
+          // worse, reaches for a different name and splits the dictionary.
+          const along = 0.35;
+          const arrowLat = a.lat + (b.lat - a.lat) * along;
+          const arrowLng = a.lng + (b.lng - a.lng) * along;
           const bearing = (Math.atan2(b.lng - a.lng, b.lat - a.lat) * 180) / Math.PI;
           const arrowIcon = L.divIcon({
             html: `<svg width="14" height="14" viewBox="0 0 14 14" style="display:block;transform:rotate(${bearing}deg)"><path d="M7 1L12.5 12H1.5Z" fill="var(--type-tracking)"/></svg>`,
@@ -1443,6 +1566,30 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           const isLast = node.isTrailEnd;
           void i;
           const size = isLast ? 44 : 36;
+
+          /**
+           * OFF-PALETTE, ON PURPOSE UNTIL THE LIBRARY ANSWERS — do not "tidy" this into a token.
+           *
+           * Two literals below are `--type-tracking` (#6d9300) with an invented alpha:
+           * `box-shadow: 0 0 0 10px rgba(109,147,0,0.15)` on the trail-end circle and
+           * `drop-shadow(0 4px 10px rgba(109,147,0,0.25))` on its card. They RENDER — measured in
+           * Chrome as `rgba(109, 147, 0, 0.15) 0px 0px 0px 10px` — so unlike the deleted VIP halo
+           * this is a layer that has really been on screen all along, not a dead declaration.
+           *
+           * There is no translucent step among the 32 tokens, and inventing an alpha is the one
+           * move the design system forbids — which is the reason the VIP halo was not brought
+           * back this morning. So this is the same debt, and it is recorded rather than patched:
+           * a token for it belongs in Figma first (see the note on --line and the shadow styles in
+           * globals.css asking for exactly that), and picking a value here would make the code the
+           * source of truth for a colour the library has not agreed to.
+           *
+           * NOT the same case as the `rgba(24, 17, 39, ...)` shadows elsewhere in this file. Those
+           * are gray-900 at an alpha, which is the documented recipe the shipped shadow tokens are
+           * themselves built from (`--shadow-modal` / `--shadow-popover` / `--shadow-raised`), and
+           * globals.css says in as many words that shadows whose OFFSETS are bespoke "stay written
+           * out; there are four and they are not a scale". A neutral drop shadow is depth. A green
+           * one is the type colour being used as emphasis, which is a palette decision.
+           */
 
           const circleHtml = isLast
             ? `<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--type-tracking);display:flex;align-items:center;justify-content:center;
@@ -1556,6 +1703,17 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         className: "",
       });
       const pinMarker = L.marker([lat, lng], { icon: pinIcon }).addTo(map);
+      // THE SELECTION WINS WHERE IT TOUCHES A CAMERA DOT.
+      //
+      // Neither this pin nor the camera dots asked for an offset, and Leaflet's base z-index for
+      // a marker is its pixel Y — so both landed on the same number (measured: a dot at 440 is
+      // its own y) and which one covered the other was DOM insertion order. The pin lands on its
+      // camera's own coordinate whenever the detection came off the live ticker, which is exactly
+      // where the dot is, so the two touch in the ordinary case rather than a rare one.
+      //
+      // Small enough not to enter the district pills' band (`count * 2000`): those draw at a zoom
+      // this pin's flyTo leaves behind, and their count-ordered stacking is a decision of its own.
+      pinMarker.setZIndexOffset(600);
       pinMarkerRef.current = pinMarker;
 
       const popup = L.popup({
@@ -1569,6 +1727,11 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         .setContent(getPopupHTML(selectedEvent, lang))
         .openOn(map);
       popupRef.current = popup;
+      // AFTER the flight, not during it. The popup opens while the flyTo above is still running,
+      // and panning a map mid-flyTo fights the animation that is already moving it. The flight
+      // centres the marker, which usually leaves the card room — so on a normal viewport this is
+      // a no-op, and on a short one it rescues the same clipping the dot popups had.
+      map.once("moveend", () => centerPopupIfClipped(mapInstanceRef.current, popup));
 
       popup.on("remove", () => {
         if (pinMarkerRef.current) {
@@ -1622,6 +1785,11 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         .setContent(getDevicePopupHTML(pinnedDevice, cam, lang, onGoLiveCam !== undefined))
         .openOn(map);
       devicePopupRef.current = popup;
+      // Same rule for the third popup, so all three behave alike. This one is ~90px tall and its
+      // flyTo centres the pin, so it has never actually clipped — the call is here because the
+      // next person to shorten this map's container should not have to find out which popups were
+      // wired up and which were missed.
+      map.once("moveend", () => centerPopupIfClipped(mapInstanceRef.current, popup));
     });
   }, [pinnedDevice, mapReady, lang]);
 
