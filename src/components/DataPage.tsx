@@ -398,6 +398,16 @@ const DATA_TAB_SCREEN: Record<DataTab, AppScreen> = {
   "Re-ID Analysis": "reid",
   "RedFace": "redface",
 };
+/**
+ * What `tab=` says while this screen is the one on show. A NavTab value, owned by ClientLayout,
+ * which is why it is spelled out here rather than imported — ClientLayout imports this file, so
+ * the import would only go the other way.
+ *
+ * Named rather than inlined because the URL effect below asserts it, and a rename on the other
+ * side has to be findable from here: if these two ever disagree, the address stops naming the
+ * screen it is showing, which is the bug that effect exists to fix.
+ */
+const DATA_TAB_PARAM = "DATA";
 const DATA_TAB_SLUGS: Record<DataTab, string> = {
   "Live Monitoring": "live",
   "Re-ID Analysis": "reid",
@@ -5870,20 +5880,33 @@ export default function DataPage({ onGoRedmap, onGoRedmapFrame, onGoAnalyzeFrame
   // `window.location.search` is the live query at the moment the effect runs, which is what both
   // the guard and the merge need. `searchParams` stays in the deps — that is still what wakes this
   // effect when the URL changes underneath it; it just no longer supplies the value.
+  //
+  // AND IT WRITES `tab` TOO, which is what finally closes the case the two notes above left open:
+  // clicking the top-level DATA tab from another tab rendered Data while the address still named
+  // the tab you left (measured `?tab=DASHBOARD&sub=live`), so a person on Data could copy a link
+  // that reopens Dashboard.
+  //
+  // Reading the live query was not enough, and the measurement says why: `router.replace` had not
+  // touched the address bar at all when this effect ran. Traced every frame for 2s after the
+  // click, the address went `/?tab=DASHBOARD` -> `/?tab=DASHBOARD&sub=live` and `tab=DATA` never
+  // appeared once. The live query WAS the stale query, so no merge — from a snapshot or from
+  // `window.location` — could have carried a value that had not been written yet.
+  //
+  // So this writer owns the whole query instead of merging into a race, which is what both notes
+  // above concluded the honest fix was. It can: `tab=DATA` is not a guess here, it is the
+  // condition under which this component is mounted at all — ClientLayout renders Data only when
+  // that is the active tab, and an effect only runs while mounted. Whichever `replace` lands last
+  // now names the right tab, because neither writer copies a tab it does not know.
+  //
+  // This is NOT the reverted attempt the note above warns about. That one DEFERRED the write until
+  // the address agreed, which depends on a later render arriving and left the two writes to
+  // interleave. Asserting is unconditional and idempotent — same result whichever order they land
+  // in, and no write at all once the address already says this.
   useEffect(() => {
     const slug = DATA_TAB_SLUGS[activeTab];
     const live = new URLSearchParams(window.location.search);
-    // NOT ALSO GATED ON `tab`, AND THAT IS A DELIBERATE STOP RATHER THAN AN OVERSIGHT.
-    // Reading the live query fixes the case that matters — a sub-screen choice now survives
-    // leaving Data and coming back. One case is left: clicking the top-level DATA tab from another
-    // tab still leaves the address naming the tab you left (`?tab=DASHBOARD&sub=live`), because
-    // `router.replace` does not land synchronously and both writers can be mid-flight at once. The
-    // screen is right; only a copied link is wrong.
-    // Skipping the write until the URL agreed was tried and measured WORSE — the two writes then
-    // interleaved differently and the tab came out wrong in a new way. The honest fix is for one
-    // writer to own the whole query rather than two merging into it, which is a change to how
-    // ClientLayout and this page share the URL, not a guard in here.
-    if (live.get("sub") === slug) return;
+    if (live.get("sub") === slug && live.get("tab") === DATA_TAB_PARAM) return;
+    live.set("tab", DATA_TAB_PARAM);
     live.set("sub", slug);
     router.replace(`${pathname}?${live.toString()}`, { scroll: false });
   }, [activeTab, searchParams, pathname, router]);
