@@ -261,7 +261,24 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
       .navbar-dropdown-item--danger:hover{background-color:var(--danger-100)}
       .navbar-dropdown-item--danger:hover::before{background-color:var(--danger-400)}
       .navbar-logo-btn{transition:opacity .15s}
-      @media (max-width: 1400px){ .navbar-cam-status{display:none} }
+      /* The header keeps its tabs centred at every width, so the two side groups have to fit an
+         equal share. They give way in least-useful-first order, and the thresholds come from
+         measurement, not taste: the tab row is 512px and the right group 351px, so everything
+         fits above about 1262px and something has to go below it. The left group already dropped
+         its camera counts at 1400. Bell and settings never go — they are the only things here you
+         press. */
+      /* display:none carries !important on all four, and that is not decoration: three of these
+         elements have an inline display:flex, which beats a stylesheet rule outright. Measured —
+         .navbar-date is a bare span with no inline display and hid correctly; .navbar-region and
+         .navbar-clock did not, and neither did .navbar-cam-status, which means THAT rule had never
+         worked since the day it was written. It is why the camera counts were still on screen on a
+         small laptop, sitting under the tab row, which is what was reported.
+         (No backticks in this comment on purpose: it lives inside a template literal, and one
+         backtick here ends the literal and breaks the file. That happened twice today.) */
+      @media (max-width: 1400px){ .navbar-cam-status{display:none !important} }
+      @media (max-width: 1280px){ .navbar-region{display:none !important} }
+      @media (max-width: 1150px){ .navbar-date{display:none !important} }
+      @media (max-width: 1000px){ .navbar-clock{display:none !important} }
       .navbar-logo-btn:hover{opacity:.8}
     `}</style>
     {/* A THREE-COLUMN GRID, not a flex row with the tabs floated over it.
@@ -269,13 +286,19 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
         kept the centre whether or not there was room, drew on top of both neighbours, and took
         their clicks. On a small laptop that meant the first tab sitting on the camera counts, and
         the clock and settings covered and unpressable.
-        `1fr auto 1fr` gives the same TRUE viewport centring (the outer tracks are equal, so the
-        middle one is centred on the window, not on the leftover space) and reserves the space for
-        real: when the tabs need more room the outer tracks give it up instead of being covered.
-        It also retires a hardcoded number — see the note on the left group. */}
+        `minmax(0,1fr) auto minmax(0,1fr)` gives TRUE viewport centring — the outer tracks are
+        equal, so the middle one is centred on the window rather than on whatever space is left —
+        and reserves the space for real: when the tabs need more room the outer tracks give it up
+        instead of being covered. It also retires a hardcoded number (see the left group's note).
+        `minmax(0, …)` rather than a bare `1fr`, and that is the part that keeps the promise: a
+        plain `1fr` track will not shrink below its content, so the right group — which is wider
+        than the left at every width — would force its own track past its share and push the
+        middle off centre. Measured before this: centred to 1150px, then drifting, 107px off at
+        900. With `minmax(0, …)` the tracks stay equal and the right group has to fit instead,
+        which is what the media queries below arrange. */}
     <nav style={{
       height: "62px", backgroundColor: "white", borderBottom: BORDER,
-      display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", padding: "0 24px",
+      display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "center", padding: "0 24px",
       flexShrink: 0, zIndex: 5000, position: "relative",
     }}>
       {/* ── Left: logo + AI status ── */}
@@ -426,13 +449,16 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
       </div>
 
       {/* ── Right: location + date/time + icons ── */}
-      {/* `justifySelf: end` keeps it against the window edge now that its track is a full third
-          rather than whatever a flex spacer left over. `flexShrink: 0` stays: the clock and the
-          two icon buttons are targets, and a target that shrinks is a target you miss. */}
-      <div style={{ display: "flex", alignItems: "center", gap: "20px", flexShrink: 0, justifySelf: "end" }}>
+      {/* `justifySelf: end` keeps it against the window edge now that its track is a full third.
+          `minWidth: 0` lets the track hold it to an equal share — without it this group is what
+          pushes the tabs off centre. Nothing here shrinks by squashing, though: it gets narrower
+          by DROPPING items, in the order below, because the clock and the two icon buttons are
+          targets and a squashed target is a target you miss. Measured at 1440: 351px total —
+          region 82, date+time 153, buttons 76, gaps 40. */}
+      <div style={{ display: "flex", alignItems: "center", gap: "20px", minWidth: 0, justifySelf: "end" }}>
         {/* Location — drawn only for a site that has one on record. */}
         {location && (
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <div className="navbar-region" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <svg width="16" height="16" viewBox="0 0 18 18" fill="none" style={{ flexShrink:0 }}>
             <path d="M9.45075 16.3492C10.8457 15.1447 15 11.2448 15 7.5C15 5.9087 14.3679 4.38258 13.2426 3.25736C12.1174 2.13214 10.5913 1.5 9 1.5C7.4087 1.5 5.88258 2.13214 4.75736 3.25736C3.63214 4.38258 3 5.9087 3 7.5C3 11.2448 7.15425 15.1447 8.54925 16.3492C8.67921 16.447 8.8374 16.4998 9 16.4998C9.1626 16.4998 9.32079 16.447 9.45075 16.3492Z" stroke="var(--gray-800)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M9 9.75C10.2426 9.75 11.25 8.74264 11.25 7.5C11.25 6.25736 10.2426 5.25 9 5.25C7.75736 5.25 6.75 6.25736 6.75 7.5C6.75 8.74264 7.75736 9.75 9 9.75Z" stroke="var(--gray-800)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -444,7 +470,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
         )}
 
         {/* Date/time */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <div className="navbar-clock" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ flexShrink:0 }}>
             <g clipPath="url(#clip0_253_9638)">
               <path d="M9.99999 18.3327C14.6024 18.3327 18.3333 14.6017 18.3333 9.99935C18.3333 5.39698 14.6024 1.66602 9.99999 1.66602C5.39762 1.66602 1.66666 5.39698 1.66666 9.99935C1.66666 14.6017 5.39762 18.3327 9.99999 18.3327Z" stroke="var(--gray-900)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -456,7 +482,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
               </clipPath>
             </defs>
           </svg>
-          <span style={{ fontWeight: 600, fontSize: "13px", color: "var(--gray-900)", letterSpacing: "-0.26px", lineHeight: 1 }}>{currentDate}</span>
+          <span className="navbar-date" style={{ fontWeight: 600, fontSize: "13px", color: "var(--gray-900)", letterSpacing: "-0.26px", lineHeight: 1 }}>{currentDate}</span>
           {/* No timezone label here on purpose, and the clock is not pinned to one either: since
               2026-09-09 lib/time.ts resolves every date, hour and clock string from the site on
               screen (Project.timeZone, falling back to Asia/Singapore only when a project carries
