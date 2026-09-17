@@ -577,7 +577,21 @@ const trackingCount = liveEvents.filter((e) => e.type === "Tracking").length;
 // (decided 2026-09-09), and one number the mock cannot support is easier to read as a placeholder
 // than two that check out against each other.
 export const dashboardStats = {
-  vipTargets: 12,
+  // `vipTargets: 12` sat here and nothing read it. Deleted 2026-09-17, which is the opposite
+  // call to the rest of this object (`tracking` below, the seeded deltas, `currentDate`) and
+  // the difference is where the figure comes from: the person registry is the system of record
+  // for who is enrolled, so the Sidebar's "Registered VIPs" tile counts it directly
+  // (useEventCounts, `persons.filter(p => p.type === "VIP")`) and measured 121 on screen while
+  // this said 12. Same deletion as `aiRunning`/`aiStopped` just below, for the same reason: a
+  // count typed in beside a list it is not derived from is how this file ended up with three
+  // figures that disagreed with each other.
+  //
+  // Undefined-but-present was the other option and is worse HERE than it was for the clock
+  // below: that pair stays because Navbar still reads it through `??` and removing the keys
+  // would be a type error in another file, whereas this has no reader to keep compiling. And
+  // `getDashboardStats()` spreads this whole object, so every key here is on the stand-in
+  // payload's wire — leaving the name invites the next reader to take the payload's count
+  // instead of the registry's, which is the 12-against-121 split coming straight back.
   // `aiRunning: 42` / `aiStopped: 34` used to sit here, read only by the app header. They named
   // something that does not exist — no camera in this product carries per-camera AI state — and
   // the two figures summed to 76, which matched neither the camera list nor the device list. They
