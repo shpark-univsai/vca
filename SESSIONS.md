@@ -26,10 +26,6 @@
 | vca-84/M | `DataPage.tsx` | J가 남긴 보라 선택 표시 둘 — `.vca-simple-select-option`(감정·인종 필터, `!important` 얽힘)과 `.vca-peak-card`(RedFace, 보라가 블록 제목과 일치) |
 | vca-84/N | `mockData.ts` | 읽는 곳이 0개인 죽은 스텁 둘 — `dashboardStats.tracking`, `vipTargets: 12`(화면은 121을 보여줌) |
 | vca-84/O | `ClientLayout.tsx` | `?tab=DATA`가 첫 페인트를 못 넘겨 `?tab=DASHBOARD`로 떨어지고 하위탭이 덮어씀 — 딥링크가 튕깁니다 |
-| vca-84/P | `portal/PortalUsersPage.tsx` · `ProjectRosterTab.tsx` · `ProjectRequestsTab.tsx` · `RosterImportModal.tsx` | **UX 리뷰** — 포털 사용자·권한. 어색·부족·불친절한 것 위주, 목업 데이터는 전제 |
-| vca-84/Q | `portal/ProjectVipTab.tsx` · `ProjectCamerasTab.tsx` · `CameraImportModal.tsx` | **UX 리뷰** — 포털 VIP 등록·입력 소스 |
-| vca-84/R | `BestFramePage.tsx` · `BestFrameDetailPage.tsx` | **UX 리뷰** — 앱 베스트 프레임 |
-| vca-84/S | `app/{login,signup,register,password-setup,forgot-password,gate,request-access,mypage}/page.tsx` | **UX 리뷰** — 인증 화면들과 마이페이지 |
 | vca-cf | — (비었습니다) | **세션 종료.** 인수인계 때 "에이전트 미커밋 변경 있음"으로 넘겼는데, 그 뒤 에이전트가 끝나 제가 검증하고 `0f75742`로 올렸습니다. **남은 미커밋 없습니다.** 붙일 곳 하나 남김: `bodyScrolls`를 `PortalSettingsPage.tsx:741`(프로젝트 삭제)에 전달 — `AccessChangeModal`에는 절대 주지 말 것(주석에 이유 있음) |
 | vca-hv | — 종료 | `mypage`·`Navbar`·`RedmapPage` 커밋 완료. 섞였던 두 auth 파일은 `4d51589`로 정리됨 |
 
