@@ -47,6 +47,14 @@ export interface AuthConfig {
    *   "Reset password"): a temporary password read out by phone or in person, or a setup code on
    *   paper. /forgot-password says so instead of asking for an address, and Portal hides its
    *   mail-dependent actions. Both halves are built.
+   *
+   * NEITHER BRANCH COVERS THE OWNER, and no third value should be added for them. Both describe a
+   * person standing above the account — a mail server or an administrator — and the installation's
+   * top account has neither. Their way back in is a call to the supplier who installed the system,
+   * decided 2026-09-17 and stated on both screens (the `ownerLastResort` line in /login and
+   * /forgot-password). That decision is about the owner alone: it is NOT a reason to move this
+   * field to "adminOnly", which would take self-service recovery away from every ordinary user who
+   * still has mail and an administrator.
    */
   passwordRecovery: "emailCode" | "adminOnly";
   /**
@@ -56,6 +64,13 @@ export interface AuthConfig {
    *
    * Null renders a generic line rather than a made-up extension: an invented contact is worse than
    * none, because someone will try it.
+   *
+   * THE CUSTOMER'S DESK, and therefore not the owner's way back in. Filling this in answers
+   * everyone who has an administrator above them; the owner has none, and at a single-site
+   * installation this desk is the locked-out person's own. The owner's line names the supplier
+   * instead, and names them by role rather than reading any field — see `ownerLastResort` in
+   * /login and /forgot-password. So the two lines do not share a value, and this one should not be
+   * repurposed to hold ours.
    */
   supportContact: string | null;
   /** Accept an employee number as well as an email at the login prompt. Deployments with no mail

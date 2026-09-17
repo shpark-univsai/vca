@@ -17,6 +17,12 @@ const T = {
     adminTitle: "Contact your administrator",
     adminSub: "This system can’t send reset emails",
     whoToContact: "WHO TO CONTACT",
+    // The value under that label when supportContact is unset, which it is in a default build.
+    // It was a bare English literal in both places it appears, so the Korean screen printed a
+    // Korean label ("문의할 곳") over an English desk name — measured in the browser, both
+    // languages, 2026-09-17. Same wording as the login screen's `securityTeam`, because the two
+    // screens name the same desk. Generic on purpose: an invented extension is worse than none.
+    securityTeam: "Your security operations team",
     adminRemedies: "They’ll give you a temporary password or a setup code.",
     backToLogin: "Back to log in",
     haveCode: "Already have a code?",
@@ -64,11 +70,14 @@ const T = {
     // Every remedy this screen offers routes through somebody standing above you. The installation's
     // top administrator has nobody there, and when supportContact is unset the fallback beside it
     // names "your security operations team" — which at a single-site installation is the locked-out
-    // person's own desk, so the dead end reads as an instruction. This says where the way back
-    // actually is: the machine the system is installed on, held by whoever administers it. No
-    // command and no button, because the console has neither — and a screen that implied it could
-    // restore an account would be promising a control that does not exist.
-    ownerLastResort: "No administrator above you? The owner account is restored on the server this is installed on, by whoever administers that machine — not from this screen.",
+    // person's own desk, so the dead end reads as an instruction.
+    //
+    // So it names the supplier instead, which as of 2026-09-17 is the decided path: the product
+    // builds no owner recovery of its own, and the supplier reissues a temporary password the way
+    // the installation got its first one. Wording matched to the login screen's line of the same
+    // name — the same person reads both, one after the other, and two descriptions of one path
+    // would read as two paths. No command and no button, because the console has neither.
+    ownerLastResort: "No administrator above you? Ask the supplier that installed this system to issue the owner a temporary password again — their contact is in your installation documents.",
   },
   ko: {
     errIdentifier: "사번 또는 이메일 주소를 입력해주세요.",
@@ -76,6 +85,7 @@ const T = {
     adminTitle: "관리자에게 문의해주세요",
     adminSub: "이 시스템은 재설정 메일을 보낼 수 없습니다",
     whoToContact: "문의할 곳",
+    securityTeam: "보안 관제 담당자",
     adminRemedies: "임시 비밀번호나 설정 코드를 받게 됩니다.",
     backToLogin: "로그인으로 돌아가기",
     haveCode: "이미 코드를 받으셨나요?",
@@ -116,7 +126,7 @@ const T = {
     passwordNotWired: "아직 서버에 연결되지 않아, 여기서 입력한 비밀번호는 저장되지 않습니다.",
     doneTitle: "비밀번호는 바뀌지 않았습니다",
     doneSub: "변경은 설치를 담당한 곳으로 요청하세요.",
-    ownerLastResort: "위에 문의할 관리자가 없나요? 최고관리자 계정은 이 시스템이 설치된 서버에서, 그 서버를 관리하는 사람이 복구합니다 — 이 화면에서는 할 수 없습니다.",
+    ownerLastResort: "위에 문의할 관리자가 없나요? 이 시스템을 설치한 공급사에 최고관리자 임시 비밀번호 재발급을 요청하세요 — 연락처는 설치 인수 문서에 있습니다.",
   },
 } as const;
 
@@ -409,7 +419,7 @@ function ForgotPasswordFlow() {
                 }}>
                   <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{t.whoToContact}</p>
                   <p style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>
-                    {authConfig.supportContact ?? "Your security operations team"}
+                    {authConfig.supportContact ?? t.securityTeam}
                   </p>
                   <div style={{ height: "1px", backgroundColor: "var(--gray-200)", margin: "2px 0" }} />
                   {/* Both of Portal's no-mail options, in the order it offers them. This used to name
@@ -421,8 +431,10 @@ function ForgotPasswordFlow() {
                   {/* The card above answers everyone with an administrator over them. The one
                       account that has none is the one this card cannot help, and it is also the
                       account whose loss stops the whole installation — so it gets the last line
-                      rather than nothing at all. Inside the same card, quieter than the remedies,
-                      because most people reading this are not that person. */}
+                      rather than nothing at all: the same remedy as everybody else's (a temporary
+                      password, handed over by a person) asked of the supplier instead of an
+                      administrator. Inside the same card, quieter than the remedies, because most
+                      people reading this are not that person. */}
                   <div style={{ height: "1px", backgroundColor: "var(--gray-200)", margin: "2px 0" }} />
                   <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px", lineHeight: 1.5 }}>
                     {t.ownerLastResort}
@@ -526,7 +538,7 @@ function ForgotPasswordFlow() {
                   </p>
                   <div style={{ height: "1px", backgroundColor: "var(--danger-200)", margin: "2px 0" }} />
                   <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                    {authConfig.supportContact ?? "Your security operations team"}
+                    {authConfig.supportContact ?? t.securityTeam}
                   </p>
                 </div>
 

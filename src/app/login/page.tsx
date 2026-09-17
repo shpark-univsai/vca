@@ -46,10 +46,19 @@ const T = {
     contactGeneric: "For an account or access, contact your security operations team.",
     // The one person neither line above can help. The installation's top administrator has nobody
     // above them to contact, and when supportContact is unset the generic line sends them to their
-    // own desk — so the dead end reads as an instruction. This says where the way back actually is
-    // (the machine this is installed on) and says plainly that it is not here: the console cannot
-    // restore an account, and copy implying otherwise would promise a control that does not exist.
-    ownerLastResort: "No administrator above you? The owner account is restored on the server this is installed on, by whoever administers that machine — not from this screen.",
+    // own desk — so the dead end reads as an instruction.
+    //
+    // It names the supplier, because as of today that IS the recovery path (decided 2026-09-17):
+    // there is no owner-recovery mechanism in the product and none is coming, and the supplier
+    // reissues a temporary password the same way the installation received its first one. A line
+    // that did not name them would name nobody, since this one sentence is the whole path.
+    //
+    // "The supplier that installed this system", not our own name and not an address: an
+    // installation bought through an integrator was installed by the integrator, and the seeded
+    // desk in vcaStore (SUPPORT_CONTACT) sits behind the login wall — unreachable by exactly the
+    // person reading this. Where their contact is written down is the one thing this screen can
+    // honestly point at, and it is not a control this screen pretends to have.
+    ownerLastResort: "No administrator above you? Ask the supplier that installed this system to issue the owner a temporary password again — their contact is in your installation documents.",
   },
   ko: {
     title: "로그인",
@@ -77,7 +86,7 @@ const T = {
     ],
     contactNamed: (who: string) => <>계정이나 접근 권한은 <strong style={{ color: "var(--gray-500)" }}>{who}</strong>에게 문의해주세요.</>,
     contactGeneric: "계정이나 접근 권한은 보안 관제 담당자에게 문의해주세요.",
-    ownerLastResort: "위에 문의할 관리자가 없나요? 최고관리자 계정은 이 시스템이 설치된 서버에서, 그 서버를 관리하는 사람이 복구합니다 — 이 화면에서는 할 수 없습니다.",
+    ownerLastResort: "위에 문의할 관리자가 없나요? 이 시스템을 설치한 공급사에 최고관리자 임시 비밀번호 재발급을 요청하세요 — 연락처는 설치 인수 문서에 있습니다.",
   },
 } as const;
 
@@ -498,10 +507,10 @@ function LoginForm() {
                     build: authConfig reads NEXT_PUBLIC_SUPPORT_CONTACT and falls back to null) the
                     generic phrase names the security operations desk, which at a single-site
                     installation is the locked-out person themselves. So the dead end gets its own
-                    sentence, and it points at the host rather than at a button: recovery runs on
-                    the server, never over the network, and this screen must not suggest it can do
-                    it. Quieter than the line above it — most people reading this screen are not
-                    the owner. */}
+                    sentence, and it points at the supplier rather than at a button: the product
+                    offers the owner no way back in, by decision, and the way back is a call to
+                    whoever installed it. Quieter than the line above it — most people reading this
+                    screen are not the owner. */}
                 <p style={{ margin: "8px 0 0", textAlign: "center", fontSize: "11px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.22px", lineHeight: 1.5 }}>
                   {t.ownerLastResort}
                 </p>
