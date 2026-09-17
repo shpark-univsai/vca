@@ -52,13 +52,27 @@ const T = {
      */
     alsoHere: (n: number) => `${n} more here today`,
     /**
-     * The headcount beside a camera dot, when more than one person was caught there.
+     * The headcount beside a camera dot or a district spot.
      *
      * Carries its noun. The figure sat on a portrait before and was read as being about that
      * face ("caught 3 times"); beside a dot it is about the dot, and the word removes the last
      * bit of guessing about what is being counted.
+     *
+     * CARRIES ITS WINDOW TOO, and that is not decoration — the comment at the camera layer's
+     * own `peopleByCamera` defends running two time windows on one dot by saying "the ping is a
+     * moving thing and says 'just now', the figure is a written thing and says 'today'". That
+     * defence only holds if the figure actually says today. It didn't: the label was a bare
+     * count, so an unscoped number sat beside a pulsing ring on a live-monitoring map and the
+     * ring was the only thing on the dot with a stated window. Both layers count today only —
+     * the camera layer from `todaysDetectionHits`, the district layer through `inDistrictToday`
+     * — so the word is true on both, and one string serves both call sites.
+     *
+     * The plural branch is not politeness. The camera layer draws this at `people > 0`, not
+     * `> 1`, so "1 people" was on screen — measured on one map: 3 of 11 pills. A figure that is
+     * visibly broken is a figure an operator stops trusting, and that discredits the correct
+     * ones beside it. `spotSummary` below already had the ternary; this site just never got it.
      */
-    peopleAt: (n: number) => `${n} people`,
+    peopleAt: (n: number) => `${n} ${n === 1 ? "person" : "people"} today`,
     /**
      * The picked district's own line: who was seen, and on how many of its cameras.
      *
@@ -114,7 +128,10 @@ const T = {
     camerasDown: "전부 중단",
     spotSummary: (people: number, hits: number) => `이 지점 오늘 ${people}명 · ${hits}건`,
     alsoHere: (n: number) => `이 지점의 다른 ${n}명`,
-    peopleAt: (n: number) => `${n}명`,
+    // 범위를 앞에 둡니다 — 바로 위 spotSummary("이 지점 오늘 …")가 이미 세운 어순이고,
+    // 한국어는 이 자리에서 수를 세는 조사가 따로 없어 1명도 그대로 맞습니다. 다섯 글자로
+    // 영어보다 짧으니 알약이 밀릴 일도 없습니다.
+    peopleAt: (n: number) => `오늘 ${n}명`,
     districtSummary: (people: number, cameras: number) => `카메라 ${cameras}대에서 ${people}명`,
     live: "정상",
     out: "중단",
@@ -396,34 +413,58 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
   `;
 }
 
-function getMarkerHTML(type: string, photoUrl: string): string {
-  const color = type === "VIP" ? "var(--primary-400)" : "var(--type-tracking)";
-  /**
-   * INTENT: a flashing glow around a VIP pin, static for other event types. NEITHER IS ON SCREEN.
-   *
-   * The two halo divs below build their fill as `${color}14` / `${color}26` — a hex alpha suffix
-   * appended to the colour. That works for a literal (`#5a3dfb` + `14`), and `color` has been a
-   * token since the palette landed, so the declaration resolves to `background: var(--primary-400)14`.
-   * `var()` substitution is not string concatenation: the suffix makes the whole declaration
-   * invalid and the browser drops it. Measured in Chrome 2026-09-16 — the suffixed div computes
-   * `rgba(0, 0, 0, 0)` while the bare token gives `rgb(90, 61, 251)`. So `.vca-vip-flash` animates
-   * two fully transparent circles, and has since the day the colours became tokens.
-   *
-   * Note this is NOT the same trap as var() inside an SVG attribute, which does work here (202
-   * places rely on it). This one is about concatenating onto a var() in a CSS value.
-   *
-   * LEFT IN PLACE DELIBERATELY, because restoring it is a design decision and not a bug fix:
-   * there is no translucent step of the primary ramp among the 32 tokens, and inventing an alpha
-   * is the one move the design system forbids. `--primary-100/200` would paint a large opaque disc
-   * over the map rather than a glow. So the choice is a new token or no halo, and that belongs to
-   * whoever owns the palette. The markup and the keyframes (globals.css `.vca-vip-flash`) are kept
-   * so the intent is still legible when that call is made.
-   */
-  const flashClass = type === "VIP" ? "vca-vip-flash" : "";
+/**
+ * The pin for the selected detection: face photo, coloured casing, tail, dot.
+ *
+ * DELETED: two halo circles behind the photo and the `.vca-vip-flash` keyframes that pulsed
+ * them. They never rendered. The fill was built as `${color}14` / `${color}26` — a hex alpha
+ * suffix appended to the colour — which works for a literal (`#5a3dfb` + `14`) and stopped
+ * working the day the palette became tokens (`975248e`, 2026-08-25), because the declaration
+ * then resolved to `background: var(--primary-400)14`. `var()` substitution is not string
+ * concatenation: the suffix invalidates the whole declaration and the browser drops it. Measured
+ * in Chrome — `rgba(0, 0, 0, 0)`. So the halo worked for the 15 days between `218ba1f` and
+ * `975248e`, and animated two fully transparent circles for the 23 after.
+ *
+ * (NOT the same trap as var() inside an SVG attribute, which does work here — 202 places rely
+ * on it. This one was about concatenating onto a var() in a CSS value.)
+ *
+ * NOT RESTORED, AND NO TRANSLUCENT TOKEN WAS REQUESTED. Three reasons, none of them the missing
+ * token:
+ *
+ * 1. A pulse here would claim liveness about a record. This pin is drawn for a SELECTED past
+ *    detection carrying a wall-clock timestamp, and every other pulse in the product is gated on
+ *    a fact about now (`.vca-alert-ping` on RECENT_VIP_WINDOW_MS, Best Frame's dot and label glow
+ *    on a VIP still in frame). This one had no time gate at all — only `type === "VIP"`.
+ * 2. Worse, the pixel was already taken. The pin lands on its camera's own coordinate and the
+ *    flyTo goes to zoom 15, past CLUSTER_ZOOM_BREAKPOINT, so the camera-dot layer is live and its
+ *    `.vca-alert-ping` is running on the same point in the same `--primary-400` — saying
+ *    "somebody was seen at this camera in the last hour", which for a morning selection is a
+ *    different detection. Two purple pulses on one point at 0.9s and 1.6s, one of them unfounded,
+ *    and no way to tell which meant what. `globals.css`'s `.vca-auth-pulse` note already wrote
+ *    the rule: borrowing the blink vocabulary costs the real blinks their meaning.
+ * 3. The original rationale never matched this screen. `218ba1f` sold it as making VIP arrivals
+ *    "easy to spot on the map at a glance" — but this function had exactly one call site in that
+ *    same commit, the selected event, as it still does. There was never a scanning problem here:
+ *    the selection is the operator's own click, the map flies to it, and it is the only face
+ *    among ~60 markers with a detail card opening over it.
+ *
+ * The `type` parameter went with them. It only ever arrived as "VIP": a Tracking LiveEvent always
+ * carries a path of 2+ hops (both producers gate on `distinctCameras.size >= 2` — mockData's
+ * deriveLiveEvents and vcaStore's addEvent — and vcaEventsToLiveEvents passes `personPath`
+ * straight through), and the hops branch at the call site returns before reaching this pin. So
+ * `var(--type-tracking)` was unreachable here and a dead token-coloured branch is how the next
+ * reader concludes there is a live design decision to honour.
+ *
+ * STILL MISSING, and deliberately not fixed here because it is a different question: every other
+ * map object gets a white casing and a soft shadow so it survives a customer's own basemap (see
+ * `.vca-map-dot` and the note above it — delivered tiles "may be anything from near-white to a
+ * dense colour map"). This pin has neither. That needs no new token, and it is contrast rather
+ * than emphasis, which is why it is not a replacement for the halo.
+ */
+function getMarkerHTML(photoUrl: string): string {
+  const color = "var(--primary-400)";
   return `
     <div style="width:42px;height:56px;position:relative;display:flex;flex-direction:column;align-items:center">
-      <div class="${flashClass}" style="position:absolute;left:50%;bottom:0;width:92px;height:92px;border-radius:50%;background:${color}14;transform:translate(-50%,50%);z-index:0"></div>
-      <div class="${flashClass}" style="position:absolute;left:50%;bottom:0;width:60px;height:60px;border-radius:50%;background:${color}26;transform:translate(-50%,50%);z-index:0"></div>
       <div style="width:40px;height:40px;border-radius:50%;border:2.5px solid ${color};background:var(--gray-100);overflow:hidden;position:relative;z-index:2">
         <img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />
       </div>
@@ -1497,7 +1538,10 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         return;
       }
 
-      // ── VIP (or Tracking with no path data): single pin + detail popup ──
+      // ── VIP: single pin + detail popup ──
+      // Only VIP reaches here. A Tracking row always carries 2+ hops (see getMarkerHTML's note),
+      // so the branch above has already returned — this used to say "or Tracking with no path
+      // data", describing a state no producer can make.
       // Nowhere to fly to, and nowhere to put the pin. The row still opens in the list — this
       // effect is only the map half, and the previous pin is already cleared by its teardown.
       if (!hasPosition(selectedEvent)) return;
@@ -1506,7 +1550,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
       map.flyTo([lat, lng], 15, { duration: 0.8, easeLinearity: 0.5 });
 
       const pinIcon = L.divIcon({
-        html: getMarkerHTML(selectedEvent.type, getFacePhoto(selectedEvent.id)),
+        html: getMarkerHTML(getFacePhoto(selectedEvent.id)),
         iconSize: [42, 56],
         iconAnchor: [21, 50],
         className: "",

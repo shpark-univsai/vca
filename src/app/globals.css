@@ -558,17 +558,13 @@ body {
   animation: vca-alert-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
-/* Flashing glow behind a VIP's map pin when they're detected (Dashboard map) — the halo divs
-   it's applied to are already positioned with `transform: translate(-50%, 50%)` inline, so the
-   keyframe must include that same translate alongside the scale, or the animation would
-   overwrite it and the halo would jump off-center. */
-@keyframes vca-vip-flash {
-  0%, 100% { transform: translate(-50%, 50%) scale(1); opacity: 0.9; }
-  50% { transform: translate(-50%, 50%) scale(1.2); opacity: 0.25; }
-}
-.vca-vip-flash {
-  animation: vca-vip-flash 0.9s ease-in-out infinite;
-}
+/* DELETED: `vca-vip-flash`, the 0.9s glow behind the selected detection's map pin. It animated
+   two transparent circles for 23 days (the fill was `var(--primary-400)14`, which is invalid),
+   and it is not coming back as a valid colour either — the pin's camera already carries
+   `.vca-alert-ping` on the same pixel in the same purple with a real one-hour window, and a
+   second pulse there, faster than that one and gated on nothing, would be the blink-vocabulary
+   mistake the `.vca-auth-pulse` note below describes. Reasoning in full at MapView's
+   getMarkerHTML. Nothing on the map pulses for a selection now; pulses mean "recently". */
 
 /* Best Frame camera tile with a VIP detection — the camera-label chip in the tile's top-left
    corner blinks as a quiet, lasting indicator that a VIP is still in frame (a louder tile-wide
