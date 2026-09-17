@@ -1098,6 +1098,10 @@ interface VcaStoreState {
   clearSetupCode: (userId: string) => void;
   removePortalUser: (userId: string) => void;
   requestAccess: (request: Omit<AccessRequest, "id" | "requestedAt">) => void;
+  /** Mints one invited account per request and returns the new ids, in the order the requests sit
+   *  in the store — the callers pair them with their own copy of that list by index. All or
+   *  nothing: returns `[]` without creating anything if any of the requests names a project this
+   *  store no longer holds, because the account's team is only knowable through it. */
   approveAccessRequests: (requestIds: string[]) => string[];
   dismissAccessRequest: (requestId: string) => void;
   addTeam: (team: Omit<Team, "id">) => string;
@@ -1126,7 +1130,9 @@ interface VcaStoreState {
   issueRegistrationCodes: (employeeIds: string[]) => void;
   reissueRegistrationCode: (employeeId: string) => void;
   /** Someone finished /register with their roster code: burn the code and give them the account it
-   *  was issued against. Returns the new user's id, or null if the code was not usable. */
+   *  was issued against. Returns the new user's id, or null if the code was not usable — which
+   *  includes the row naming a project this store no longer holds, since that project is the only
+   *  route to the team the account would belong to. Null mutates nothing: the code stays live. */
   activateRosterEntry: (employeeId: string) => string | null;
   removeRosterEntry: (employeeId: string) => void;
   logRosterCodeViewed: (employeeId: string) => void;
@@ -4764,26 +4770,69 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   approveAccessRequests: (requestIds) => {
     const state = get();
     const toApprove = state.accessRequests.filter(r => requestIds.includes(r.id));
-    const newUsers: PortalUser[] = toApprove.map(r => {
+    /*
+     * ── THE TEAM COMES OFF THE PROJECT, OR NOBODY IS APPROVED ─────────────────────────────────
+     *
+     * This line read `project?.teamId ?? state.teams[0]?.id ?? ""`, which is the same shape as
+     * the `?? CAMERAS[0].id` that went nine months unnoticed in the seed join (8005bbb): a
+     * request naming a project this store does not hold got an account filed under whichever
+     * team happens to sit first in the list. With one team seeded that is always the right
+     * answer, so no screen could ever reveal it — and on an installation with two customers it
+     * files an account, a project id and a working /password-setup link under the WRONG
+     * customer. The team is this product's tenancy boundary, so there is no more expensive field
+     * in the object to guess at.
+     *
+     * An AccessRequest carries no team of its own (see the interface — name, email, projectId,
+     * reason), so the project it names is the only route to one. When that project is gone the
+     * team is not knowable here, and the answer is to create nothing rather than to invent
+     * something plausible. PortalUser.teamId stays required on purpose: an account with no team
+     * would drop out of every team-scoped list in Portal while still being able to sign in,
+     * which is worse than not creating it. Absence belongs in the type when the value is
+     * genuinely unknown to everyone; here it is known to the server and unknowable only to a
+     * call that has lost its project.
+     *
+     * ALL OR NOTHING, and that is not squeamishness — it is what keeps the caller honest.
+     * PortalUsersPage pairs the ids returned here with its own filtered copy of the same list BY
+     * INDEX (its comment spells the assumption out) and mints one invite link per pair. Skipping
+     * one request mid-list would shift every id after it and put a working sign-in link under
+     * another person's name and address — a worse failure than the one being fixed. So either
+     * every requested id is approved and the result stays 1:1 with the input, or nothing is
+     * approved and this returns empty.
+     *
+     * Unreachable today, which is the point: removeProject deletes the accessRequests of the
+     * project it closes, so nothing in the console can make an orphaned request. A fallback that
+     * costs nothing while it is unreachable lies the first time it is not, and the lie is
+     * invisible because it looks like a measurement.
+     *
+     * HANDOFF NOTE: the refusal is silent on screen. The rows stay in the queue, which is true —
+     * they were not approved — but nothing says why, because a `string[]` has nowhere to carry a
+     * reason. If the backend can produce a request whose project is gone, this needs a reason on
+     * the way out and a line on the screen; the queue is in PortalUsersPage and
+     * PortalProjectDetailPage.
+     */
+    const approvable: { request: AccessRequest; project: Project }[] = [];
+    for (const r of toApprove) {
       const project = state.projects.find(p => p.id === r.projectId);
-      return {
-        id: `user-${++portalUserSeq}`,
-        name: r.name,
-        email: r.email,
-        teamId: project?.teamId ?? state.teams[0]?.id ?? "",
-        projectIds: [r.projectId],
-        // Someone who asked for access to a project is asking to use it, not to administer it.
-        permission: "none",
-        appAccess: true,
-        status: "invited",
-        // A TOKEN, MINTED HERE. Approving used to create the account and stop, so every approved
-        // person was unreachable: /password-setup looks accounts up by inviteToken and there was
-        // none. The single-invite path minted one separately, which hid the hole — approve one
-        // request and the toast carried a working link, approve five and none of them existed.
-        inviteToken: mintInviteToken(),
-        inviteTokenIssuedAt: new Date().toISOString(),
-      };
-    });
+      if (!project) return [];
+      approvable.push({ request: r, project });
+    }
+    const newUsers: PortalUser[] = approvable.map(({ request: r, project }) => ({
+      id: `user-${++portalUserSeq}`,
+      name: r.name,
+      email: r.email,
+      teamId: project.teamId,
+      projectIds: [r.projectId],
+      // Someone who asked for access to a project is asking to use it, not to administer it.
+      permission: "none",
+      appAccess: true,
+      status: "invited",
+      // A TOKEN, MINTED HERE. Approving used to create the account and stop, so every approved
+      // person was unreachable: /password-setup looks accounts up by inviteToken and there was
+      // none. The single-invite path minted one separately, which hid the hole — approve one
+      // request and the toast carried a working link, approve five and none of them existed.
+      inviteToken: mintInviteToken(),
+      inviteTokenIssuedAt: new Date().toISOString(),
+    }));
     const auditEntries: AuditEvent[] = toApprove.map(r => clientAudit({
       projectId: r.projectId,
       message: `Access request approved for ${r.name} — invited`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
@@ -4939,13 +4988,51 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     const state = get();
     const entry = state.staffRoster.find(r => r.employeeId === employeeId);
     if (!entry || effectiveCodeStatus(entry) !== "unused") return null;
+    /*
+     * THE ROSTER ROW'S PROJECT IS THE ONLY ROUTE TO A TEAM, SO NO PROJECT MEANS NO ACCOUNT.
+     *
+     * `teamId` read `project?.teamId ?? state.teams[0]?.id ?? ""` — the `?? CAMERAS[0].id` shape
+     * from 8005bbb, one field further in. A roster row pointing at a project this store does not
+     * hold minted a REAL account, active on first use and possibly `permission: "admin"`, filed
+     * under whichever team sits first in the list. With one team seeded the guess is always
+     * right, so nothing reveals it; with two customers on one installation it puts an
+     * administrator inside the wrong customer's tenancy, where the wrong people can see and
+     * manage them. A RosterEntry carries employeeId, name, department, projectId and permission
+     * and no team of its own, so when the project is gone the team is not knowable here.
+     *
+     * Refusing, not inventing, and not throwing. `null` is this action's existing word for "the
+     * code was not usable" (see the declaration), and refusing this way mutates nothing: the code
+     * is not burned and the row stays "unused", so an administrator can still see the row and the
+     * person can still register once the project situation is fixed. Throwing is what
+     * cameraIdForSeedHit does, and it is right there because that runs at module load in front of
+     * a developer; this runs under somebody's fingers on /register, where a crash loses the
+     * password they just typed and tells them nothing they can act on.
+     *
+     * PortalUser.teamId stays required. This is the case where the repo's own rule — a required
+     * field that forces the code to invent a value is a type problem — does not apply: the value
+     * is not unknown in general, it is unknowable only to a call whose project has vanished, and
+     * an account with no team at all would be invisible to every team-scoped list in Portal while
+     * still being able to sign in. See removeProject: accounts belong to the team, not the
+     * project, which is exactly why one has to have a team.
+     *
+     * Unreachable today: removeProject deletes the staffRoster rows of the project it closes, so
+     * nothing in the console leaves an orphaned row behind. That is what kept the fallback
+     * invisible, not what made it safe.
+     *
+     * HANDOFF NOTE: the other half of this is in /register, and it is not in this file.
+     * `savePassword` (src/app/register/page.tsx) calls this and ignores the return, then shows
+     * the "done" step — so a refusal here reads on screen as a successful registration. That was
+     * already true of the `effectiveCodeStatus` refusal above it. The real call is one
+     * transaction on the server, and the screen has to say what it answered.
+     */
     const project = state.projects.find(p => p.id === entry.projectId);
+    if (!project) return null;
     const id = `user-${++portalUserSeq}`;
     // The address is optional on a roster row — a site with no mail has none — and an account
     // without one is normal here: they sign in with the employee number.
     const user: PortalUser = {
       id, name: entry.name, email: entry.email ?? "", employeeId: entry.employeeId,
-      teamId: project?.teamId ?? state.teams[0]?.id ?? "",
+      teamId: project.teamId,
       projectIds: [entry.projectId],
       // The roster's own permission field is a two-value thing ("admin" | "operator") describing
       // what the person is being hired onto the system as, not a Portal console role. Its
