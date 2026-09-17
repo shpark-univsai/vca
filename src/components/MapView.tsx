@@ -85,8 +85,11 @@ const T = {
      *
      * Both layers count today only — the camera layer from `todaysDetectionHits`, the district
      * layer through `inDistrictToday` — so the window is true wherever it is shown. Only the
-     * camera layer has a hover to show it in: the district-spot marker binds a POPUP, and that
-     * popup's `spotSummary` line already says "today" with both figures.
+     * camera layer has a hover to show it in: the district-spot marker binds a POPUP, whose
+     * `spotSummary` line already says "today" with both figures — though only above one
+     * detection, which is that line's own gate. At exactly one, the window on that layer is the
+     * card's "LAST SEEN <time ago>" and nothing else. Left as it is rather than printing "here
+     * today: 1 person · 1 detection" under a card that has just said both.
      *
      * The plural branch is not politeness. The camera layer draws this at `people > 0`, not
      * `> 1`, so "1 people" was on screen — measured on one map: 3 of 11 pills. A figure that is
