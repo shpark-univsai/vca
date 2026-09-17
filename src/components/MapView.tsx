@@ -1459,7 +1459,33 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           L.marker([cam.lat, cam.lng], { icon })
             .addTo(group)
             .bindTooltip(cameraDotTooltipHtml(cam, lang), { direction: "top", offset: [0, -14], className: "vca-camera-tooltip", opacity: 1 })
-            .on("click", () => onCameraSelectRef.current?.(cam.location));
+            /**
+             * `cam.name`, NOT `cam.location` — two fields with the same name in different value
+             * spaces, and the wrong one emptied this filter on every camera in the register.
+             *
+             * What this hands over becomes `locationFilter`, and the events list tests it as
+             * `e.location.toLowerCase().includes(locationFilter.toLowerCase())`. A camera's
+             * `location` is the site-qualified form ("Orchard MRT, Singapore"); an event's is the
+             * bare one ("Orchard MRT"). So the containment ran the wrong way — it needs the filter
+             * to be the SHORTER string — and `"orchard mrt".includes("orchard mrt, singapore")` is
+             * false. Every one of proj-sg's cameras carries the ", Singapore" suffix, so clicking
+             * any dot opened a list of nothing, directly under a pill saying "4 people today".
+             *
+             * A REGRESSION, not an original gap: `ce97923` rewrote this layer from event markers
+             * to register markers and carried `.location` across with it (`ev.location` →
+             * `cam.location`). Both types have the field, so it compiled and nothing errored.
+             *
+             * `cam.name` is the canonical space for this filter, not a guess: the sidebar's own
+             * location picker is built from exactly this (`Sidebar.tsx`, `cameras.map(c => c.name)`),
+             * so the two ways of setting the filter now agree.
+             *
+             * STILL A STRING MATCH, and that is the remaining weakness. Two cameras whose names
+             * share a prefix ("Geylang NC1" / "Geylang NC2") make substring containment ambiguous
+             * — the same trap `ad81437` fixed on Best Frame by matching exactly and refusing when
+             * ambiguous. The real fix is a camera id on the hit, which the contract does not carry
+             * yet (HANDOFF: TrackingHop.cameraId).
+             */
+            .on("click", () => onCameraSelectRef.current?.(cam.name));
         });
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
