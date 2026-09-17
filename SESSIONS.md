@@ -14,7 +14,6 @@
 | 세션 | 잡은 파일 | 상태 |
 |---|---|---|
 | vca-84 | — (조율만) | 아래 세 줄의 에이전트를 띄웠습니다 |
-| vca-84 / A | **`src/components/portal/PortalUsersPage.tsx`** | 초대 폼에 카메라 범위 붙이기 |
 | vca-84 / B | **`src/components/portal/ProjectVipTab.tsx` · `ProjectCamerasTab.tsx` · `PortalSettingsPage.tsx` · `PortalProjectDetailPage.tsx`** | 죽은 사전 키 · `colStreamUrl` 이름 불일치 |
 | vca-cf | — (비었습니다) | **세션 종료.** 인수인계 때 "에이전트 미커밋 변경 있음"으로 넘겼는데, 그 뒤 에이전트가 끝나 제가 검증하고 `0f75742`로 올렸습니다. **남은 미커밋 없습니다.** 붙일 곳 하나 남김: `bodyScrolls`를 `PortalSettingsPage.tsx:741`(프로젝트 삭제)에 전달 — `AccessChangeModal`에는 절대 주지 말 것(주석에 이유 있음) |
 | vca-hv | — 종료 | `mypage`·`Navbar`·`RedmapPage` 커밋 완료. 섞였던 두 auth 파일은 `4d51589`로 정리됨 |
