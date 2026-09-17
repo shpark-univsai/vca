@@ -172,6 +172,34 @@ function escapeOnclickArg(s: string): string {
   return escapeHtml(escapeAttr(s));
 }
 
+/**
+ * A match confidence as a printable figure, or nothing at all.
+ *
+ * THE HONEST FALLBACK FOR A MISSING CONFIDENCE IS NO FIGURE, NOT A ZERO. This is the same rule as
+ * the coordinates: `?? 0` on a lat/lng put a pin in the Gulf of Guinea, and `?? 0` on a confidence
+ * prints "0%", which is not an absence — it is a specific claim that the system recognised this
+ * face at no confidence whatsoever. The popup printed `${event.confidence}%` unguarded.
+ *
+ * ZERO IS HOW AN ABSENCE ARRIVES HERE, which is why the test is on the value rather than on a flag.
+ * `LiveEvent.confidence` is a required `number` (mockData.ts), so nothing upstream can hand this
+ * function `undefined` even when that is the truth: the absent case reaches it as a 0 written by
+ * one of the fills — `vcaEventsToLiveEvents`'s `?? 0` at the store boundary, or the placeholder 0
+ * both producers write on a Tracking row (deriveLiveEvents and addEvent), where the real figures
+ * live one per hop and the trail as a whole has no confidence to state. No detector reports a 0%
+ * match AS a match, so there is no reading of 0 here that is a measurement.
+ *
+ * AND IT IS NOT UNIVERSALLY TRUE, so it is scoped. A 0 would be a real value for a detection with
+ * nothing to match against — a vehicle, an unidentified person — and `EventType` here is
+ * "VIP" | "Tracking" only (mockData.ts:241), so that case cannot reach this map; Best Frame's own
+ * detection type is where Vehicle/Unknown live, and it renders its own figures. The day those
+ * types join LiveEvent, the value stops being able to carry the distinction and the field has to
+ * become optional — which is a change to mockData.ts and to every consumer of it (Sidebar, Navbar,
+ * BestFrame), not to this file.
+ */
+function confidenceFigure(confidence: number): string | null {
+  return Number.isFinite(confidence) && confidence > 0 ? `${confidence}%` : null;
+}
+
 // Recent-activity ping — a fixed-size dot with an expanding/fading ring around it (same visual
 // as the old 100+-count zone alert), shown at every location with an actual live/tracked
 // detection. Replaces the old always-on, hardcoded zone-count pills so the default map only
@@ -442,6 +470,7 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
   const typeColor = event.type === "VIP" ? "var(--primary-400)" : "var(--type-tracking)";
   const typeBg = event.type === "VIP" ? "var(--primary-50)" : "var(--type-tracking-100)";
   const photoUrl = getFacePhoto(event.id);
+  const confidence = confidenceFigure(event.confidence);
   const vipBadge = event.type === "VIP"
     ? `<div style="background:var(--primary-50);border-radius:10px;padding:2px 8px;display:flex;align-items:center;gap:3px;flex-shrink:0">
          <span style="font-size:9px;font-weight:700;color:var(--primary-400)">VIP</span>
@@ -487,9 +516,14 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
           <span style="font-size:10px;color:var(--gray-400);display:block;margin-top:4px;letter-spacing:-0.2px">${t.captured}</span>
         </div>
         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-top:20px">
-          <div style="width:44px;border-top:1.5px dashed var(--gray-300)"></div>
-          <span style="font-size:11px;font-weight:700;color:var(--gray-500);letter-spacing:-0.22px">${event.confidence}%</span>
-          <div style="width:44px;border-top:1.5px dashed var(--gray-300)"></div>
+          ${confidence === null
+            // No figure: the two rules become one, and the card still shows that these two
+            // pictures are the same match. A "0%" here would say the system matched this face at
+            // no confidence at all, which is a specific claim and a false one.
+            ? `<div style="width:44px;border-top:1.5px dashed var(--gray-300)"></div>`
+            : `<div style="width:44px;border-top:1.5px dashed var(--gray-300)"></div>
+               <span style="font-size:11px;font-weight:700;color:var(--gray-500);letter-spacing:-0.22px">${confidence}</span>
+               <div style="width:44px;border-top:1.5px dashed var(--gray-300)"></div>`}
         </div>
         <div style="text-align:center">
           <div style="width:60px;height:60px;border-radius:8px;background:var(--info-200);display:flex;align-items:center;justify-content:center">
@@ -1153,7 +1187,10 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                      </div>
                      <span style="font-size:12px;font-weight:700;color:var(--gray-900);letter-spacing:-0.24px;
                                   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${escapeHtml(ev.name)}</span>
-                     <span style="font-size:11px;font-weight:600;color:var(--gray-500);flex-shrink:0">${ev.confidence}%</span>
+                     ${/* Dropped entirely where no confidence was recorded, rather than printed as
+                          "0%" — see confidenceFigure. The name and the time are the two things
+                          this row is for, and they carry it on their own. */ ""}
+                     ${confidenceFigure(ev.confidence) === null ? "" : `<span style="font-size:11px;font-weight:600;color:var(--gray-500);flex-shrink:0">${confidenceFigure(ev.confidence)}</span>`}
                      <span style="font-size:10px;color:var(--gray-400);flex-shrink:0;white-space:nowrap">${formatTimeAgo(ev.timestamp, lang)}</span>
                    </div>`).join("")}
                </div>`

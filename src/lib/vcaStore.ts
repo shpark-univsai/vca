@@ -3454,7 +3454,16 @@ const TRACKING_CLASSIFICATION_WINDOW_MS = 20 * 60 * 1000;
 // lat/lng optional for the same reason LiveEvent's are: a hit on a camera nobody has placed has
 // no place either, and filling it with 0 both drew it in the Atlantic and counted it into a
 // district. Readers that plot or measure filter on hasPosition.
-interface LiveHit { location: string; cameraLabel?: string; timestamp: string; confidence: number; lat?: number; lng?: number }
+//
+// `confidence` is optional for exactly the same reason, and it was the last `?? 0` left in this
+// function's neighbourhood. A hit whose confidence nobody recorded has no confidence, and 0 is not
+// that: it prints as "0%" wherever a hit is shown, which claims the system matched this person at
+// no confidence at all. Both fields it flows into are already optional (TrackingHop.confidence,
+// VcaEvent.confidence), so the fills here were inventing a number to satisfy this line and nothing
+// else. The one deliberate `?? 0` that remains is at the LiveEvent boundary in
+// vcaEventsToLiveEvents, where the field is required by a type this file does not own — the map
+// reads that 0 back as "no figure" rather than printing it (see MapView's confidenceFigure).
+interface LiveHit { location: string; cameraLabel?: string; timestamp: string; confidence?: number; lat?: number; lng?: number }
 
 function hitCameraKey(h: { cameraLabel?: string; location?: string }): string {
   return `${h.location ?? ""}::${h.cameraLabel ?? ""}`;
@@ -3479,9 +3488,9 @@ function personHitHistory(events: VcaEvent[], personName: string, nowMs: number)
       // where this person was seen LAST, so lending it to an earlier hop puts that stop at the
       // newest camera. 57b7282 fixed exactly this for the route drawing and the same line
       // survived here. Absent stays absent; readers that place or count filter on it.
-      hits.push(...e.personPath.map(p => ({ location: p.location, cameraLabel: p.cameraLabel, timestamp: p.timestamp, confidence: p.confidence ?? 0, lat: p.lat, lng: p.lng })));
+      hits.push(...e.personPath.map(p => ({ location: p.location, cameraLabel: p.cameraLabel, timestamp: p.timestamp, confidence: p.confidence, lat: p.lat, lng: p.lng })));
     } else {
-      hits.push({ location: e.location ?? "", cameraLabel: e.cameraLabel, timestamp: e.timestamp, confidence: e.confidence ?? 0, lat: e.lat, lng: e.lng });
+      hits.push({ location: e.location ?? "", cameraLabel: e.cameraLabel, timestamp: e.timestamp, confidence: e.confidence, lat: e.lat, lng: e.lng });
     }
   });
   return hits
@@ -4353,7 +4362,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const personName = event.personName;
       const otherEvents = state.events.filter(e => e.personName !== personName);
       const history = personHitHistory(state.events, personName, new Date(event.timestamp).getTime());
-      const newHit: LiveHit = { location: event.location, cameraLabel: event.cameraLabel, timestamp: event.timestamp, confidence: event.confidence ?? 0, lat: event.lat, lng: event.lng };
+      const newHit: LiveHit = { location: event.location, cameraLabel: event.cameraLabel, timestamp: event.timestamp, confidence: event.confidence, lat: event.lat, lng: event.lng };
 
       // Session-merge against only the MOST RECENT prior hit, and only if it's the same camera —
       // a return visit after being seen elsewhere in between must NOT merge into that older
@@ -5156,6 +5165,14 @@ export function vcaEventsToLiveEvents(events: VcaEvent[]): LiveEvent[] {
       id: e.personId ?? e.id,
       name: e.personName ?? "Unknown",
       description: e.personDescription,
+      // THE ONE REMAINING FILL, AND IT IS NOT A DECISION MADE HERE. `LiveEvent.confidence` is a
+      // required `number` (mockData.ts), so a hit whose confidence nobody recorded cannot cross
+      // this boundary as an absence — it has to arrive as something, and 0 is the value the rest
+      // of the app already reads as "no figure was recorded" (both producers write it on a
+      // Tracking row for exactly that reason). Readers must not print it: the map's
+      // confidenceFigure drops the number instead of rendering "0%". Making the field optional is
+      // the real fix and it reaches mockData.ts plus Sidebar and Navbar, which is why it is
+      // written down here rather than done from this file.
       confidence: e.confidence ?? 0,
       location: e.location ?? "",
       cameraLabel: e.cameraLabel,
