@@ -32,7 +32,6 @@ const T = {
     allLocations: "All locations",
     liveAnalytics: "Live analytics",
     all: "All",
-    vipOnly: "VIP only",
     /**
      * The picked district's figures, beside the list they describe.
      *
@@ -41,9 +40,14 @@ const T = {
      * are not the same kind of thing: one counts people, the other counts cameras that caught
      * one (NOT cameras installed there; that figure is on the map's collapsed pill, and the two
      * are opposite claims).
+     *
+     * And it says WHEN. Both figures come from todaysDetectionHits, so both are today's — but on
+     * a live-monitoring screen an unstated window is read as "now", and this chip appears from a
+     * click on a map pill that states its own ("3 people today", MapView's peopleAt). The same
+     * figure was saying two different things two components apart.
      */
     districtTally: (people: number, cameras: number) =>
-      `${people} ${people === 1 ? "person" : "people"} · ${cameras} camera${cameras === 1 ? "" : "s"}`,
+      `Today: ${people} ${people === 1 ? "person" : "people"} · ${cameras} camera${cameras === 1 ? "" : "s"}`,
     seenAtCameras: (n: number) => `Seen at ${n} different camera${n === 1 ? "" : "s"}`,
     stopsOnTrail: (n: number) => `${n} stops on this trail`,
     stops: (n: number) => `${n} stops`,
@@ -88,8 +92,7 @@ const T = {
     allLocations: "전체 장소",
     liveAnalytics: "실시간 분석",
     all: "전체",
-    vipOnly: "VIP만",
-    districtTally: (people: number, cameras: number) => `${people}명 · 카메라 ${cameras}대`,
+    districtTally: (people: number, cameras: number) => `오늘 ${people}명 · 카메라 ${cameras}대`,
     seenAtCameras: (n: number) => `서로 다른 카메라 ${n}대에서 검출`,
     stopsOnTrail: (n: number) => `이 이동 경로에서 ${n}곳 경유`,
     stops: (n: number) => `${n}곳 경유`,
@@ -165,10 +168,22 @@ const PAGE_BTN: React.CSSProperties = {
 };
 
 /* ── Shared subcomponents ── */
-// Compares against the same time yesterday. Detection-count trend direction isn't clearly
-// "good" or "bad" here, so this stays neutral gray rather than red/green — the ▲/▼ arrow
-// alone (driven by `down`) conveys the up/down, no color needed.
-function DeltaBadge({ delta, deltaPct, down }: { delta: number; deltaPct: number; down: boolean }) {
+/**
+ * The comparison against the same time yesterday, when there is one.
+ *
+ * Detection-count trend direction isn't clearly "good" or "bad" here, so this stays neutral gray
+ * rather than red/green — the ▲/▼ arrow alone (driven by `down`) conveys the up/down, no color
+ * needed.
+ *
+ * Rendered only once the figure has arrived. It used to fall back to `{delta:0,deltaPct:0}` for
+ * the window before the request resolves, and a zero is not a missing figure: measured on every
+ * mount and every site switch, both tiles read "▲ 0 (0%)" for 250ms — the screen stating that
+ * nothing has changed since yesterday, which is a comparison it had not made. Same rule as
+ * AvailabilityDonut three hundred lines down, which spells out why absent is not zero, and the
+ * same shape as the `?? 0` this codebase bans for coordinates.
+ */
+interface StatTrend { delta: number; deltaPct: number; down: boolean }
+function DeltaBadge({ delta, deltaPct, down }: StatTrend) {
   return (
     <div style={{ display:"flex", gap:"4px", alignItems:"center" }}>
       <svg width="8" height="7" viewBox="0 0 8 7" style={{ flexShrink:0, transform: down ? "none" : "rotate(180deg)" }}>
@@ -182,7 +197,11 @@ function DeltaBadge({ delta, deltaPct, down }: { delta: number; deltaPct: number
 // Per Figma (node 154:23572): 6px between the label row and the count block, then 4px
 // *inside* that block between the count and the delta — not one flat gap across all three,
 // which over-tallens the row and throws off the divider line's height next to it.
-function StatCol({ icon, label, labelColor = "var(--gray-600)", labelFontSize = 12, count, delta, deltaPct, down }: { icon?: React.ReactNode; label:string; labelColor?:string; labelFontSize?:number; count:number; delta:number; deltaPct:number; down:boolean }) {
+// `count` is optional for the same reason `trend` is: the Infrastructure tiles read a figure that
+// arrives from a request, and a zero drawn while it is in flight says every camera on the site is
+// unlinked. Measured on mount: "Linked cams 0 / Out cams 0" for 250ms at a site with 52 linked.
+// A dash, like the availability gauge beside them.
+function StatCol({ icon, label, labelColor = "var(--gray-600)", labelFontSize = 12, count, trend }: { icon?: React.ReactNode; label:string; labelColor?:string; labelFontSize?:number; count?:number; trend?: StatTrend }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
       <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
@@ -190,8 +209,8 @@ function StatCol({ icon, label, labelColor = "var(--gray-600)", labelFontSize = 
         <span style={{ fontSize:`${labelFontSize}px`, fontWeight:600, color:labelColor }}>{label}</span>
       </div>
       <div style={{ display:"flex", flexDirection:"column", gap:"2px" }}>
-        <span style={{ fontSize:"24px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.4px", lineHeight:"30px" }}>{count}</span>
-        <DeltaBadge delta={delta} deltaPct={deltaPct} down={down} />
+        <span style={{ fontSize:"24px", fontWeight:800, color: count === undefined ? "var(--gray-400)" : "var(--gray-900)", letterSpacing:"-0.4px", lineHeight:"30px" }}>{count === undefined ? "—" : count}</span>
+        {trend && <DeltaBadge delta={trend.delta} deltaPct={trend.deltaPct} down={trend.down} />}
       </div>
     </div>
   );
@@ -428,7 +447,6 @@ function useEventCounts() {
   // site at once.
   const countsProjectId = useActiveProjectId();
   const { data: dashboardStats } = useApiData(() => getDashboardStats(countsProjectId), [countsProjectId]);
-  const flatDelta = { delta: 0, deltaPct: 0, down: false };
   // "Today's detections" opens the Dashboard's detection-activity chart (see EventsSummary's
   // onToggleDetectionChart below), so it needs to count the same way that chart does — every
   // individual hit today, unrolling a Tracking row's whole multi-camera history — not
@@ -437,9 +455,24 @@ function useEventCounts() {
   const todaysHitCount = todaysDetectionHits(storeEvents).length;
   return {
     vipTargets: persons.filter(p => p.type === "VIP").length,
-    vipMatch: { ...(dashboardStats?.vipMatch ?? flatDelta), count: detections.filter(e => e.type === "VIP").length },
-    tracking: { ...(dashboardStats?.tracking ?? flatDelta), count: detections.filter(e => e.type === "Tracking").length },
-    eventsToday: { ...(dashboardStats?.eventsToday ?? flatDelta), count: todaysHitCount },
+    /**
+     * HANDOFF NOTE — this count is narrower than its label, and the decision is the user's.
+     *
+     * `type === "VIP"` counts the rows that were NOT collapsed into a Tracking row, so every VIP
+     * who moved between cameras is missing from a tile labelled "VIP detections". It is the same
+     * filter that was taken out of the district pill and out of this file's own district filter
+     * (see EventsList) for exactly that reason, and it is the last one left on this screen.
+     * Measured on 2026-09-17 at 10:21: the tile read 48 while 58 VIP detections had been recorded
+     * today, and as the live ticker promoted people to Tracking it fell to 41 against 62.
+     *
+     * Not repaired here because the repair picks what the tile is FOR. Counting every VIP hit
+     * makes it identical to "Today's detections" beside it; the pair that carries two facts is
+     * PEOPLE and DETECTIONS — "VIPs seen today" (distinct `person` among todaysDetectionHits, the
+     * same count the district chip already shows) next to "Today's detections" (hits). That is
+     * the recommendation, and it is a rename, so it waits for a yes.
+     */
+    vipMatch: { count: detections.filter(e => e.type === "VIP").length, trend: dashboardStats?.vipMatch },
+    eventsToday: { count: todaysHitCount, trend: dashboardStats?.eventsToday },
   };
 }
 
@@ -538,9 +571,17 @@ function EventsSummary({ onPersonSelect, onToggleDetectionChart }: { onPersonSel
         />
       )}
       <div style={{ display:"flex", alignItems:"center", gap:"16px", borderTop:BORDER, borderBottom:BORDER, padding:"12px 0", minHeight:"78px", boxSizing:"border-box" }}>
-        {/* This one opens the chart below, not "Today's detections" — the chart is specifically
-            about VIP detection volume over the day, so the click target should be the stat that
-            actually names what it's showing. */}
+        <div style={{ flex:1, minWidth:0 }}>
+          <StatCol icon={<VipStatIcon />} label={t.vipDetections} labelColor="var(--gray-700)" labelFontSize={13} count={vipMatch.count} trend={vipMatch.trend} />
+        </div>
+        <div style={{ width:"1px", backgroundColor:"var(--gray-200)", alignSelf:"stretch", flexShrink:0 }} />
+        {/* The chart opens from THIS tile, the one whose figure it plots.
+            It hung off "VIP detections" before, and the two numbers are not the same question:
+            that tile counts rows of type VIP, the chart plots every hit today (both go through
+            todaysDetectionHits — see useEventCounts). Measured at 10:21 on 2026-09-17: pressing a
+            tile that read 41 opened a panel titled "VIP detections today" drawing 62 dots. A
+            number that changes when you click it reads as one of the two being wrong, and the
+            reader cannot tell which. */}
         <div
           onClick={onToggleDetectionChart}
           onMouseEnter={() => setIsDetectionsHovered(true)}
@@ -551,11 +592,7 @@ function EventsSummary({ onPersonSelect, onToggleDetectionChart }: { onPersonSel
             borderRadius:"8px", padding:"4px", margin:"-4px", transition:"background-color 0.15s",
           }}
         >
-          <StatCol icon={<VipStatIcon />} label={t.vipDetections} labelColor="var(--gray-700)" labelFontSize={13} count={vipMatch.count} delta={vipMatch.delta} deltaPct={vipMatch.deltaPct} down={vipMatch.down} />
-        </div>
-        <div style={{ width:"1px", backgroundColor:"var(--gray-200)", alignSelf:"stretch", flexShrink:0 }} />
-        <div style={{ flex:1, minWidth:0 }}>
-          <StatCol icon={<EventsTodayStatIcon />} label={t.todaysDetections} labelColor="var(--gray-600)" labelFontSize={13} count={eventsToday.count} delta={eventsToday.delta} deltaPct={eventsToday.deltaPct} down={eventsToday.down} />
+          <StatCol icon={<EventsTodayStatIcon />} label={t.todaysDetections} labelColor="var(--gray-600)" labelFontSize={13} count={eventsToday.count} trend={eventsToday.trend} />
         </div>
       </div>
     </div>
@@ -995,7 +1032,13 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
             style={{ display:"flex", alignItems:"center", gap:"5px", background:"var(--gray-100)", border:"none", borderRadius:"999px", padding:"5px 10px", cursor:"pointer", marginBottom:"12px" }}
           >
             <LocationPinIcon color="var(--gray-600)" />
-            <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-800)" }}>{districtLabel} · {t.vipOnly}</span>
+            {/* The district's name, and nothing about what kind of row it keeps.
+                It read "<district> · VIP only", which named the `e.type === "VIP"` filter that
+                was taken OUT of this chip's own filter (see byLocation below, and the same
+                removal in MapView): a trail is a VIP who moved, and the district filter now keeps
+                those on purpose. So the chip claimed a narrowing it does not do — and with the
+                Tracking pill active it said "VIP only" over a list of nothing but Tracking. */}
+            <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-800)" }}>{districtLabel}</span>
             {/* The two figures that used to sit on a pill left behind on the map after the click.
                 Here they are beside the list they describe, and they come from districtTally in
                 vcaStore — the same derivation the map uses, so the panel and the map cannot come
@@ -1118,12 +1161,15 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
   const { data: dashboardStats } = useApiData(() => getDashboardStats(activeProjectId), [cameras, activeProjectId]);
   const { data: devicesData, error: devicesError, refetch: refetchDevices } = useApiData(() => getDevices(activeProjectId), [cameras, activeProjectId]);
   const devices = devicesData ?? [];
-  const linkedCams = dashboardStats?.linkedCams ?? { count: 0, delta: 0, deltaPct: 0, down: false };
-  const offlineCams = dashboardStats?.offlineCams ?? { count: 0, delta: 0, deltaPct: 0, down: false };
+  // Undefined until fetched, like `availability` below — the tile draws no trend rather than a
+  // "0 (0%)" that claims yesterday's figure was the same. See DeltaBadge.
+  const linkedCams = dashboardStats?.linkedCams;
+  const offlineCams = dashboardStats?.offlineCams;
   // Undefined until the figure has been fetched, NOT `?? 0` — see AvailabilityDonut.
   const availability = dashboardStats?.availability;
-  const linkedCount  = devices.filter(d => d.status === "Live").length;
-  const offlineCount = devices.filter(d => d.status === "Off").length;
+  // Undefined until the list has arrived — see StatCol. `devices` keeps its [] for the rows.
+  const linkedCount  = devicesData ? devicesData.filter(d => d.status === "Live").length : undefined;
+  const offlineCount = devicesData ? devicesData.filter(d => d.status === "Off").length : undefined;
 
   // No reason a page should ever look emptier than the space available for it — measure how tall
   // the list container actually is and how tall one row actually renders at, and fill the page
@@ -1173,11 +1219,11 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
         </div>
         <div style={{ display:"flex", alignItems:"flex-start", borderTop:BORDER, borderBottom:BORDER, padding:"12px 0", minHeight:"78px", boxSizing:"border-box" }}>
           <div style={{ flex:1 }}>
-            <StatCol icon={<LinkedCamsIcon />} label={t.linkedCams} labelFontSize={13} count={linkedCount} delta={linkedCams.delta} deltaPct={linkedCams.deltaPct} down={linkedCams.down} />
+            <StatCol icon={<LinkedCamsIcon />} label={t.linkedCams} labelFontSize={13} count={linkedCount} trend={linkedCams} />
           </div>
           <div style={{ width:"1px", backgroundColor:"var(--gray-200)", alignSelf:"stretch", flexShrink:0 }} />
           <div style={{ flex:1, paddingLeft:"14px" }}>
-            <StatCol icon={<OfflineCamsIcon />} label={t.outCams} labelFontSize={13} count={offlineCount} delta={offlineCams.delta} deltaPct={offlineCams.deltaPct} down={offlineCams.down} />
+            <StatCol icon={<OfflineCamsIcon />} label={t.outCams} labelFontSize={13} count={offlineCount} trend={offlineCams} />
           </div>
           <div style={{ width:"1px", backgroundColor:"var(--gray-200)", alignSelf:"stretch", flexShrink:0 }} />
           <div style={{ flex:1, paddingLeft:"14px", display:"flex", flexDirection:"column", alignItems:"center" }}>

@@ -123,6 +123,23 @@ function regularCamerasForPerson(personId: string, pool: Camera[]): Camera[] {
 function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void }) {
   const { showToast } = useToast();
   const [lang] = useLanguage();
+  /**
+   * The two moving parts held in refs, so the timer below can arm ONCE.
+   *
+   * `onNavigate` is rebuilt on every render of ClientLayout (it closes over the filter setters),
+   * and `lang` changed the arming too. The effect's cleanup clears the pending timeout, so every
+   * re-render of the layout threw away the wait so far and started a fresh 15-30 seconds: while
+   * anybody was using the screen the detection feed stalled, and a shift spent opening and
+   * closing the chart or the sidebar — both ClientLayout state — would never see a detection at
+   * all. On a console whose whole job is to report what is happening, that failure is invisible:
+   * a quiet feed looks exactly like a quiet street.
+   *
+   * Same pattern MapView uses for its own click handlers, and for the same reason.
+   */
+  const onNavigateRef = useRef(onNavigate);
+  useEffect(() => { onNavigateRef.current = onNavigate; }, [onNavigate]);
+  const langRef = useRef(lang);
+  useEffect(() => { langRef.current = lang; }, [lang]);
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const scheduleNext = () => {
@@ -177,15 +194,18 @@ function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void
             lng: camera.lng,
             photoUrl: getFacePhoto(liveEvent.id),
           });
+          // Read at fire time, not at arm time — the timer is armed once now (see the refs
+          // above), so the alert is written in whatever language is on screen when it arrives.
+          const alertLang = langRef.current;
           showToast({
             variant: "warning",
-            title: T[lang].vipDetected,
+            title: T[alertLang].vipDetected,
             // Match confidence in the alert itself: it decides whether this is worth acting on
             // right now, and it was already computed above for the event record while the toast —
             // the thing the operator actually sees first — left it out.
             desc: `${person.name} · ${camera.name} · ${confidence}%`,
-            actionLabel: T[lang].viewOnMap,
-            onAction: () => onNavigate(liveEvent),
+            actionLabel: T[alertLang].viewOnMap,
+            onAction: () => onNavigateRef.current(liveEvent),
           });
         }
         scheduleNext();
@@ -193,9 +213,11 @@ function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void
     };
     scheduleNext();
     return () => clearTimeout(timer);
-    // `lang` is a dependency because the toast is written in it. Re-arming the timer on a language
-    // change costs one skipped interval and keeps the next alert in the language on screen.
-  }, [onNavigate, showToast, lang]);
+    // No dependencies on purpose: `onNavigate` and `lang` are read through the refs above, and
+    // `showToast` is already stable (a useCallback over a stable dismiss — see Toast.tsx). A
+    // dependency here is a cancelled detection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showToast]);
   return null;
 }
 

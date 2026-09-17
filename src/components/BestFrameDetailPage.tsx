@@ -1114,7 +1114,10 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
             </div>
           </div>
 
-          <div style={{ padding:"8px 16px 0", position:"relative" }}>
+          {/* 4px of top padding, not 8: the thumbnail and its time label move up as a pair so the
+              scrollbar below them is not squeezed against the labels. See the paddingBottom note
+              on the strip itself — the two numbers are one adjustment. */}
+          <div style={{ padding:"4px 16px 0", position:"relative" }}>
             {/* Thumbnail strip — horizontally scrollable. There are more sampled frames
                 (THUMB_COUNT) than fit on screen at once, each a fixed width rather than a
                 flex:1 cell, so the row overflows and scrolls instead of shrinking every
@@ -1125,8 +1128,14 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                 TOP of the box, where overflow:auto clips it and no scroll can reach it — the
                 thumbnails simply come out with their tops shaved off.
                 paddingBottom clears the 6px horizontal scrollbar (.vca-thin-scrollbar), which
-                otherwise sits on top of the time labels. */}
-            <div className="vca-thin-scrollbar" style={{ position:"relative", paddingBottom:"10px", zIndex:2, display:"flex", alignItems:"flex-end", gap:"4px", overflowX:"auto" }}>
+                otherwise sits on top of the time labels.
+
+                16px, not 10. The scrollbar is 6px, so 10 left it 4px below the time labels and the
+                strip read as if it had no bottom edge — the scrollbar looked like part of the row
+                rather than a control under it. 16 gives the same 10px of clearance the labels have
+                above them, and with the 4px taken off this block's top padding the thumbnail and
+                its label sit slightly higher as a pair, which is what the room comes from. */}
+            <div className="vca-thin-scrollbar" style={{ position:"relative", paddingBottom:"16px", zIndex:2, display:"flex", alignItems:"flex-end", gap:"4px", overflowX:"auto" }}>
               {thumbFrames.map((sec, i) => {
                 const isSelected = i === centerThumbIdx;
                 const vipCount = vipByThumb.get(i) ?? 0;

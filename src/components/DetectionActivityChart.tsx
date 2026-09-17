@@ -152,23 +152,49 @@ export default function DetectionActivityChart({ onHide }: { onHide?: () => void
     return counts;
   }, [todayVipEvents]);
 
+  /**
+   * The last hour of today that has actually happened. Nothing is drawn to the right of it.
+   *
+   * The chart used to draw all 24 hours whatever the time, so at 10:21 the afternoon and evening
+   * were thirteen bars at the floor height and a trend line running flat along zero to midnight.
+   * That is the chart asserting a quiet evening before the evening — and the evening peak is the
+   * busiest part of this deployment's day (see HOURLY_VIP_HIT_TARGETS in mockData).
+   *
+   * The averaging suffered the same way, and worse, because the line's right end is the mark an
+   * operator reads as "right now": measured at 10:21, hours 9 and 10 held 11 and 20 detections,
+   * and the three-hour window at hour 10 divided their sum by three anyway — the third hour being
+   * one with no detections for the reason that it had not arrived, which pulls the trend down by a
+   * third at exactly the point it is read. The line now ends at the current hour, and every window
+   * it averages is made of hours that exist.
+   *
+   * Read at render rather than in a memo: this component only ever mounts on the client (the
+   * chart is behind a toggle that starts closed), and it re-renders on every detection, which is
+   * a finer grain than the hour this needs.
+   */
+  const lastElapsedHour = sgtHour(new Date());
+
   const yMax = useMemo(() => Math.max(2, Math.ceil(Math.max(...hourlyCounts, 1) * 1.2)), [hourlyCounts]);
   const yTicks = [0, 0.2, 0.4, 0.6, 0.8].map(f => Math.round(yMax * f));
   const yForCount = (count: number) => CHART_HEIGHT - (count / yMax) * CHART_HEIGHT;
 
+  // Only over the hours that have happened — see lastElapsedHour. Both the slice and the window
+  // bound, since an average taken at the edge of the elapsed day must not reach past it.
   const movingAverage = useMemo(() => {
     const half = Math.floor(MOVING_AVERAGE_WINDOW_HOURS / 2);
-    return hourlyCounts.map((_, i) => {
-      const window = hourlyCounts.slice(Math.max(0, i - half), Math.min(24, i + half + 1));
+    const elapsed = hourlyCounts.slice(0, lastElapsedHour + 1);
+    return elapsed.map((_, i) => {
+      const window = elapsed.slice(Math.max(0, i - half), Math.min(elapsed.length, i + half + 1));
       return window.reduce((a, b) => a + b, 0) / window.length;
     });
-  }, [hourlyCounts]);
+  }, [hourlyCounts, lastElapsedHour]);
 
   const linePoints = movingAverage.map((avg, hour) => ({ x: xForHour(hour, width), y: yForCount(avg) }));
   const linePath = smoothPath(linePoints);
   // Area fill: the trend line's own path, closed along the top edge — so the wash only ever
   // covers the region above the line, following its curve, instead of a flat rectangle.
-  const areaPath = linePoints.length > 0
+  // Two points minimum, which is also smoothPath's own floor: in the first hour of the day there
+  // is one point and no line, and a path opening with L instead of M is not a shape.
+  const areaPath = linePoints.length > 1
     ? `${linePath} L ${linePoints[linePoints.length - 1].x},0 L ${linePoints[0].x},0 Z`
     : "";
 
@@ -322,13 +348,23 @@ export default function DetectionActivityChart({ onHide }: { onHide?: () => void
               <line key={i} x1={0} y1={yForCount(tick)} x2={width} y2={yForCount(tick)} stroke="var(--gray-200)" strokeWidth={1} />
             ))}
 
-            {/* Baseline volume bars — one per hour, the exact real count (capped visually to 30%
-                of the chart's height purely as a style choice: muted bars sitting behind the
-                prominent line, same yMax scale, not a different number). */}
+            {/* Baseline volume bars — one per hour, on the y axis's own scale.
+                They used to be multiplied by 0.3 to keep them visually subordinate to the trend
+                line. The comment that did it claimed "same yMax scale, not a different number",
+                and 0.3 IS a different scale: measured at 10:21 with 20 detections in hour 10, the
+                bar stood 40px tall on an axis where that height reads 6. A mark under a value axis
+                is measured against it whether or not it was meant to be. Subordinate is a matter
+                of ink — muted gray behind the line and the dots — not of height.
+
+                Nothing at all for an hour with no detections, and nothing for an hour that has not
+                happened yet (see lastElapsedHour). The old 2px floor drew a mark for both:
+                measured, an hour with 1 detection and an hour with 0 were the same 2px, and so
+                were the thirteen hours of the day still to come. */}
             {hourlyCounts.map((count, hour) => {
+              if (hour > lastElapsedHour || count === 0) return null;
               const barWidth = (width / 24) * 0.55;
               const x = xForHour(hour, width) - barWidth / 2;
-              const barHeight = Math.max(2, (count / yMax) * CHART_HEIGHT * 0.3);
+              const barHeight = (count / yMax) * CHART_HEIGHT;
               return (
                 <rect key={hour} x={x} y={CHART_HEIGHT - barHeight} width={barWidth} height={barHeight} rx={1} fill="var(--gray-300)" />
               );
