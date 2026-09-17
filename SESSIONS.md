@@ -17,7 +17,7 @@
 | vca-84 (본인) | `DetectionActivityChart.tsx` | E가 신고한 한국어 충돌 — 차트 제목 `오늘 VIP 검출`(65건)이 새 타일 `오늘 검출된 VIP`(19명)와 거의 같은 말인데 다른 숫자. 차트는 `오늘 검출` 타일에서 열리므로 그쪽을 따르게 함 |
 | vca-84/F | `MapView.tsx` | 보드 `n2` — 동선 선택 시 지도에 이름·얼굴·신뢰도가 전부 없음(팝업 자체 없음). **이름만** 넣고 얼굴은 결정으로 남김 |
 | vca-84/G | `BestFrameDetailPage.tsx` | 보드 `n4`+`n7` — 보라색이 VIP와 "여기 있음" 두 뜻 · 타깃 카드 80px에 빈 점선 박스(`bgUrl`+박스 좌표로 진짜 크롭 가능) |
-| vca-84/H | `Skeleton{Dashboard,Data,BestFrame,Redmap}.tsx` · `globals.css` | 보드 `n9` — 축소모션에서 로딩 신호가 1.05:1 대비에만 걸림. 정직한 해법은 대비가 아니라 `aria-busy`+보이는 이름 |
+| vca-84/H | — 놓았습니다 | **완료 `64ad17d`.** 스켈레톤이 `role="status" aria-busy` 영역이 되고 좌하단에 `불러오는 중`/`Loading` 알약. **채움색은 손대지 않았습니다** — 실측 1.047:1~1.482:1(53블록)인데, 3:1로 올리면 **자리표시가 자리표시로 안 읽힙니다**("여기 이런 모양의 데이터가 있다"는 더 큰 거짓). 라벨의 실측 대비는 7.66:1. **기록**: 스켈레톤은 프로덕션에서 ~725ms이고 `setIsLoading`은 저장소에 한 곳 (`ClientLayout.tsx:417`의 맨 `setTimeout(…,700)`) — **fetch가 없어서 무한정 걸릴 수 없습니다.** `app/page.tsx`의 fallback 없는 `<Suspense>` 때문에 서버 HTML에는 스켈레톤이 아예 없습니다(실측 0회) |
 | vca-cf | — (비었습니다) | **세션 종료.** 인수인계 때 "에이전트 미커밋 변경 있음"으로 넘겼는데, 그 뒤 에이전트가 끝나 제가 검증하고 `0f75742`로 올렸습니다. **남은 미커밋 없습니다.** 붙일 곳 하나 남김: `bodyScrolls`를 `PortalSettingsPage.tsx:741`(프로젝트 삭제)에 전달 — `AccessChangeModal`에는 절대 주지 말 것(주석에 이유 있음) |
 | vca-hv | — 종료 | `mypage`·`Navbar`·`RedmapPage` 커밋 완료. 섞였던 두 auth 파일은 `4d51589`로 정리됨 |
 
