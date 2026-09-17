@@ -542,7 +542,6 @@ export default function ClientLayout() {
               onLocationClear={() => setLocationFilter(null)}
               onLocationSelect={(loc) => { setLocationFilter(loc); setDistrictFilter(null); }}
               districtFilter={districtFilter}
-              onDistrictClear={() => setDistrictFilter(null)}
               onPinDevice={setPinnedDevice}
               pinnedDeviceId={pinnedDevice?.id ?? null}
               onToggleDetectionChart={() => setShowDetectionChart(v => !v)}

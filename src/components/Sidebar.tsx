@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Search, Crown } from "lucide-react";
 import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, getFacePhoto, formatTimeAgo, districtIdAt } from "@/lib/mockData";
 import {
-  useVcaStore, vcaEventsToLiveEvents, todaysDetectionHits, districtTally,
+  vcaEventsToLiveEvents, todaysDetectionHits,
   useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras, type Camera,
 } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -41,22 +41,6 @@ const T = {
     allLocations: "All locations",
     liveAnalytics: "Live analytics",
     all: "All",
-    /**
-     * The picked district's figures, beside the list they describe.
-     *
-     * Spelt out with both nouns. They are the pair a reader mixes up when unlabelled — a bare
-     * "2 · 2" next to a district name gets read as whichever order the reader expects — and they
-     * are not the same kind of thing: one counts people, the other counts cameras that caught
-     * one (NOT cameras installed there; that figure is on the map's collapsed pill, and the two
-     * are opposite claims).
-     *
-     * And it says WHEN. Both figures come from todaysDetectionHits, so both are today's — but on
-     * a live-monitoring screen an unstated window is read as "now", and this chip appears from a
-     * click on a map pill that states its own ("3 people today", MapView's peopleAt). The same
-     * figure was saying two different things two components apart.
-     */
-    districtTally: (people: number, cameras: number) =>
-      `Today: ${people} ${people === 1 ? "person" : "people"} · ${cameras} camera${cameras === 1 ? "" : "s"}`,
     seenAtCameras: (n: number) => `Seen at ${n} different camera${n === 1 ? "" : "s"}`,
     stopsOnTrail: (n: number) => `${n} stops on this trail`,
     stops: (n: number) => `${n} stops`,
@@ -101,7 +85,6 @@ const T = {
     allLocations: "전체 장소",
     liveAnalytics: "실시간 분석",
     all: "전체",
-    districtTally: (people: number, cameras: number) => `오늘 ${people}명 · 카메라 ${cameras}대`,
     seenAtCameras: (n: number) => `서로 다른 카메라 ${n}대에서 검출`,
     stopsOnTrail: (n: number) => `이 이동 경로에서 ${n}곳 경유`,
     stops: (n: number) => `${n}곳 경유`,
@@ -970,12 +953,11 @@ interface EventsListProps {
   onLocationClear?: () => void;
   onLocationSelect?: (location: string) => void;
   districtFilter?: string | null;
-  onDistrictClear?: () => void;
   personFilter?: string | null;
   onPersonClear?: () => void;
 }
 
-function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocationClear, onLocationSelect, districtFilter, onDistrictClear, personFilter, onPersonClear }: EventsListProps) {
+function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocationClear, onLocationSelect, districtFilter, personFilter, onPersonClear }: EventsListProps) {
   const [lang] = useLanguage();
   const t = T[lang];
   const [filter, setFilter] = useState<FilterType>("All");
@@ -988,8 +970,6 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
   // lib/api/dashboard.ts. Falls back to the raw district id (still a valid, if less pretty,
   // label) for the brief pre-fetch window.
   const { data: districts } = useApiData(() => getDistricts(), []);
-  const districtLabel = districtFilter ? districts?.find(d => d.id === districtFilter)?.label ?? districtFilter : null;
-  const districtTallyHere = districtTally(todaysDetectionHits(districtEvents), districtFilter ?? "");
 
   const byType = filter === "All" ? liveEvents
     : liveEvents.filter(e => {
@@ -1056,32 +1036,31 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
             <span style={{ fontSize:"12px", color:"var(--primary-400)", fontWeight:700 }}>✕</span>
           </button>
         )}
-        {/* A district is a place, so the chip below is grey — where the person-filter chip above
-            names a person and keeps the purple. That is the whole rule: purple marks somebody, and
-            everything else on this panel is a filter the operator set. */}
-        {districtLabel && (
-          <button
-            onClick={onDistrictClear}
-            style={{ display:"flex", alignItems:"center", gap:"5px", background:"var(--gray-100)", border:"none", borderRadius:"999px", padding:"5px 10px", cursor:"pointer", marginBottom:"12px" }}
-          >
-            <LocationPinIcon color="var(--gray-600)" />
-            {/* The district's name, and nothing about what kind of row it keeps.
-                It read "<district> · VIP only", which named the `e.type === "VIP"` filter that
-                was taken OUT of this chip's own filter (see byLocation below, and the same
-                removal in MapView): a trail is a VIP who moved, and the district filter now keeps
-                those on purpose. So the chip claimed a narrowing it does not do — and with the
-                Tracking pill active it said "VIP only" over a list of nothing but Tracking. */}
-            <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-800)" }}>{districtLabel}</span>
-            {/* The two figures that used to sit on a pill left behind on the map after the click.
-                Here they are beside the list they describe, and they come from districtTally in
-                vcaStore — the same derivation the map uses, so the panel and the map cannot come
-                to disagree about one district. */}
-            <span style={{ fontSize:"11px", fontWeight:600, color:"var(--gray-500)" }}>
-              {t.districtTally(districtTallyHere.people, districtTallyHere.cameras)}
-            </span>
-            <span style={{ fontSize:"12px", color:"var(--gray-600)", fontWeight:700 }}>✕</span>
-          </button>
-        )}
+        {/* DELETED (2026-09-17, asked for): the grey district chip that sat here —
+            "📍 Novena · Today: 8 people · 3 cameras · ✕". Its figures came from districtTally and
+            its two dictionary entries went with it.
+
+            THREE THINGS WENT WITH IT, on purpose, and none of them was replaced:
+
+            1. The district's figures are no longer anywhere once you are zoomed in. They had
+               moved here FROM a map pill that was deleted for being a leftover; the pill that
+               still carries them (districtPillHtml) only draws while zoomed out past
+               CLUSTER_ZOOM_BREAKPOINT, which picking a district zooms past.
+            2. There is no way to clear a district filter from this panel. The place control above
+               opens the CAMERA picker and does not clear a district — choosing a camera swaps one
+               filter for the other. The remaining exits are zooming back out to the district pill
+               and pressing it again, or switching project/tab.
+            3. The row above still reads "All" while a district filter is active, because it reads
+               `locationFilter` only and the two filters are mutually exclusive. That was the
+               original complaint about this area and it was deliberately left as it is.
+
+            `onDistrictClear` went too, all the way back to ClientLayout: with no consumer it was
+            a prop chain across two files that lint flagged and that the next reader would have
+            taken for a live wiring. `setDistrictFilter(null)` is still there if a clear is wanted
+            back — that is the one line to re-expose.
+
+            The person-filter chip above STAYS — it names a PERSON, a different axis, and keeps the
+            purple. This one named a place. */}
         <div style={{ display:"flex", gap:"6px" }}>
           {FILTERS.map(id => {
             const active = filter === id;
@@ -1626,7 +1605,6 @@ interface SidebarProps {
   onLocationClear?: () => void;
   onLocationSelect?: (location: string) => void;
   districtFilter?: string | null;
-  onDistrictClear?: () => void;
   onPinDevice?: (device: Device | null) => void;
   pinnedDeviceId?: string | null;
   isCollapsed?: boolean;
@@ -1635,7 +1613,7 @@ interface SidebarProps {
   position?: "left" | "right";
 }
 
-export default function Sidebar({ onEventSelect, selectedEventId, locationFilter, onLocationClear, onLocationSelect, districtFilter, onDistrictClear, onPinDevice, pinnedDeviceId, isCollapsed, onToggleDetectionChart, position = "left" }: SidebarProps) {
+export default function Sidebar({ onEventSelect, selectedEventId, locationFilter, onLocationClear, onLocationSelect, districtFilter, onPinDevice, pinnedDeviceId, isCollapsed, onToggleDetectionChart, position = "left" }: SidebarProps) {
   const [lang] = useLanguage();
   const t = T[lang];
   const [activeTab, setActiveTab] = usePersistedSidebarTab();
@@ -1705,7 +1683,6 @@ export default function Sidebar({ onEventSelect, selectedEventId, locationFilter
             onLocationClear={onLocationClear}
             onLocationSelect={onLocationSelect}
             districtFilter={districtFilter}
-            onDistrictClear={onDistrictClear}
             personFilter={personFilter}
             onPersonClear={() => setPersonFilter(null)}
           />
