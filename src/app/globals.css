@@ -737,7 +737,27 @@ body {
    either freezes a frame that still makes the claim, or is marked as one whose own resting frame
    already makes it.
    Two earlier blocks (auth pulse, route line) were merged into this one. It sits after every rule
-   it overrides: a media query adds no specificity, so it wins only by coming later. */
+   it overrides: a media query adds no specificity, so it wins only by coming later.
+
+   NO IN-SCREEN SWITCH, AND THAT IS A DECISION — deferred to a later version by the owner
+   (2026-09-17). Do not add one without asking them again.
+
+   The open gap, stated honestly, because it was once written down stronger than it is: WCAG SC
+   2.2.2 (Pause, Stop, Hide) is Level A and wants a MECHANISM ON THE SCREEN for motion that starts
+   by itself, runs past five seconds and sits beside other content — the map's detection pulse is
+   all three, and this media query is not that mechanism (it answers SC 2.3.3, Level AAA). So the
+   criterion is genuinely unmet.
+
+   What was missing from that argument, and is the reason it waits: NOBODY HAS ASKED THIS PRODUCT
+   FOR WCAG CONFORMANCE. It is in no contract line and in none of the sixteen backend answers.
+   And the query below already serves the people who need less movement AND have set the OS
+   preference, which on managed control-room workstations is most of them. A switch adds the
+   people who need it and have not set it, a set nobody here has sized.
+
+   So it is one line of value against an unknown, and it is cheap later: the shape is a toggle in
+   My Page -> System preferences beside Interface language (a row that already persists per user),
+   stamping an attribute on the root element that this block keys off ALONGSIDE the media query.
+   If a procurement checklist ever names Level A, this is the gap it will land on. */
 @media (prefers-reduced-motion: reduce) {
   /* Left as a faint outer wash rather than removed: the emphasis it carries is the point, and the
      motion was only how it was delivered. */
