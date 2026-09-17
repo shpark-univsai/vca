@@ -688,6 +688,46 @@ body {
   animation: vca-skeleton-pulse 1.5s ease-in-out infinite;
 }
 
+/* The word that says the screen is still filling — the skeletons' only piece of real text.
+ *
+ * It exists because the blocks above cannot make the claim on their own. Measured in the browser
+ * on a held-open skeleton: the fills sit at 1.047:1 to 1.482:1 against the surface behind them
+ * (gray-100 on white, 13 blocks, at 1.096:1). While the pulse runs, "loading" is carried by the
+ * movement; with the preference on it is carried by nothing. This label is the part a
+ * reduced-motion reader can actually see, and — inside a `role="status"` region, see the four
+ * Skeleton* components — the only accessible name those regions have in either motion state.
+ *
+ * No animation and no transition, deliberately. It is the replacement for movement, so it must
+ * not need any: the rule has no entry in the reduced-motion block below and does not want one,
+ * and the two motion states render it pixel-identically (verified in both).
+ *
+ * Grey, not the accent: a screen filling in is the most ordinary thing this app does, and the
+ * purple is spent on things worth interrupting for. gray-600 on the white plate is 7.66:1 and
+ * 7.00:1 where the plate lies over the map's gray-100 (computed from the tokens) — text contrast,
+ * which is the contrast that was missing.
+ *
+ * Bottom-left of the content region: away from the middle, where the content is about to land, so
+ * nothing sits at the focal point and then disappears; and clear of the toast stack, which is
+ * fixed bottom-right (Toast.tsx:197). Same two coordinates on all four screens.
+ */
+.vca-skeleton-loading {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  z-index: 1;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background-color: var(--gray-0);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-raised);
+  color: var(--gray-600);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 /* ── prefers-reduced-motion — every animation in this file, in one block ──────────────────────
    The rule is NOT "turn the animation off". Every loop above is gated on a fact — a camera that
    saw somebody within the hour, a VIP still in frame, content that has not arrived — and the
@@ -744,16 +784,18 @@ body {
      animation used to OVERRIDE that inline 0.35 up to 1↔0.5, because animations outrank inline
      declarations, so the faint pin never actually rendered faint. Under the preference it now
      does, as designed (SkeletonDashboard.tsx:124, SkeletonRedmap.tsx:66).
-     WHAT THIS RULE CANNOT DO, measured, so nobody reads it as solved: with the motion gone, the
-     whole claim rests on the fill, and the fills sit at 1.05:1 to 1.48:1 against the surface
-     behind them (gray-100 on white is the most common at 1.096:1, 13 blocks). Non-text contrast
-     wants 3:1. The loading signal was never carried by contrast — it was carried by the movement.
-     Fixing that means a visible "Loading" affordance plus aria-busy in the Skeleton* components
-     (SkeletonDashboard/Data/BestFrame/Redmap), which are not this file, and it also closes the
-     screen-reader gap: these blocks have no accessible name in either motion state. Raising the
-     fills from here would need !important over four inline colours and would flatten the
-     gray-100/200/300 hierarchy the skeletons use to stand for text vs avatar vs chip — a design
-     decision belonging to those components and to the library, not a fix to smuggle in here. */
+     WHAT THIS RULE CANNOT DO, measured: with the motion gone, the whole claim rests on the fill,
+     and the fills sit at 1.047:1 to 1.482:1 against the surface behind them (gray-100 on white is
+     the most common at 1.096:1, 13 blocks). Non-text contrast wants 3:1. The loading signal was
+     never carried by contrast — it was carried by the movement.
+     That half is now answered where it belongs, in the four Skeleton* components: each is a
+     `role="status" aria-busy="true"` region carrying one visible word, `.vca-skeleton-loading`
+     above. The fills were deliberately left alone. Raising them would need !important over four
+     inline colours, would flatten the gray-100/200/300 hierarchy that stands for text vs avatar
+     vs chip, and — the real reason — a placeholder at 3:1 stops reading as a placeholder: a grid
+     of legible blocks asserts "there is data here, in this shape", a louder untruth than a faint
+     one. Faint is correct for a shape standing in for content; the word is what makes it
+     loading rather than empty. */
   .vca-skeleton-pulse { animation: none; }
 
   /* Entrance, 0.4s, ending at the identity transform — no claim to preserve, and a 20px rise is

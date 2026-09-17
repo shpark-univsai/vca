@@ -1,3 +1,13 @@
+"use client";
+
+import { useLanguage } from "@/lib/i18n";
+
+/** Region shape and copy: see the note at the top of SkeletonDashboard.tsx. */
+const T = {
+  en: { loading: "Loading" },
+  ko: { loading: "불러오는 중" },
+} as const;
+
 function Bone({ w, h, color = "var(--gray-200)", radius = "4px" }: { w: string; h: string; color?: string; radius?: string }) {
   return <div className="vca-skeleton-pulse" style={{ width: w, height: h, backgroundColor: color, borderRadius: radius, flexShrink: 0 }} />;
 }
@@ -33,7 +43,7 @@ function SidebarSectionSkeleton({ labelW, rows }: { labelW: string; rows: string
 
 function SidebarSkeleton() {
   return (
-    <div style={{ width: "240px", flexShrink: 0, backgroundColor: "white", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div aria-hidden="true" style={{ width: "240px", flexShrink: 0, backgroundColor: "white", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ padding: "24px 12px 10px" }}>
         <Bone w="110px" h="20px" color="var(--gray-300)" />
       </div>
@@ -89,10 +99,12 @@ function CameraGridSkeleton() {
 }
 
 export default function SkeletonBestFrame() {
+  const [lang] = useLanguage();
   return (
-    <div style={{ flex: 1, display: "flex", overflow: "hidden", backgroundColor: "white", minHeight: 0, minWidth: 0 }}>
+    <div role="status" aria-busy="true" style={{ flex: 1, display: "flex", overflow: "hidden", backgroundColor: "white", minHeight: 0, minWidth: 0, position: "relative" }}>
+      <span className="vca-skeleton-loading">{T[lang].loading}</span>
       <SidebarSkeleton />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0 }}>
+      <div aria-hidden="true" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0 }}>
         <FilterRowSkeleton />
         <CameraGridSkeleton />
       </div>

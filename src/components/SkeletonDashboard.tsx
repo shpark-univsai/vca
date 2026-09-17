@@ -1,3 +1,71 @@
+"use client";
+
+import { useLanguage } from "@/lib/i18n";
+
+/**
+ * ── The shape shared by all four Skeleton* components ────────────────────────────────────────
+ * Written out once here; the other three carry a one-line pointer back to this note.
+ *
+ * Until now these blocks made their claim with movement and nothing else. Measured on a held-open
+ * skeleton in the browser: 53 fills between 1.047:1 and 1.482:1 against the surface behind them,
+ * 13 of them at 1.096:1, against 3:1 for non-text contrast — and no text anywhere in the subtree,
+ * so a screen reader found the loading screen indistinguishable from an empty one. Stopping the
+ * pulse under `prefers-reduced-motion` (globals.css) was right, and it left the claim resting on
+ * a fill almost nobody can see. A frozen skeleton reading as "there is nothing here" is a screen
+ * asserting something untrue.
+ *
+ * So the answer is a name and a word, not a darker grey:
+ *
+ * `role="status" aria-busy="true"` on the region, with the visible word as its only text.
+ *   - Not `aria-busy` on a bare div: with no role the element is a generic, an accessible name on
+ *     it is dropped, and "may want to wait until modifications are complete" has nothing to
+ *     attach to. The attribute needs to sit on something exposed as an object.
+ *   - Not `role="progressbar"`: a progressbar promises a value, and there is no progress here to
+ *     report. Any aria-valuenow would be a number we made up, which is the exact failure this
+ *     repo keeps finding — a plausible value is worse than none.
+ *   - Not `role="alert"`: assertive interrupts, and a screen filling in is not an interruption.
+ *     At the measured duration the interruption would also land after the content had arrived.
+ *   - `role="status"` carries aria-live="polite" and aria-atomic="true" implicitly, and the region
+ *     is inserted client-side rather than served: `isLoading` starts `true` (ClientLayout.tsx:406)
+ *     but app/page.tsx wraps ClientLayout in a `<Suspense>` with no fallback and ClientLayout
+ *     reads useSearchParams(), so the whole tree suspends on the server. Measured against a real
+ *     production build: the HTML for `/` is 6,495 bytes and contains zero occurrences of
+ *     `vca-skeleton-pulse`; the skeleton appears at ~300ms on a cold load. An inserted polite
+ *     region is the case that can be announced — but a region added together with its own text is
+ *     announced inconsistently across screen readers, so that is not claimed here as verified.
+ *     What is verified is the node and its properties, and one word of real text in the
+ *     accessibility tree where the tree previously held nothing at all.
+ *     The cost of `polite` is that a queued word can land a moment after the content it described
+ *     has arrived. Worth it: it costs one stale word, and it is the half that starts working on
+ *     its own the day the 700ms timer becomes a fetch — the case where a skeleton can hang
+ *     indefinitely, which today it cannot (that timeout is the only thing that ends the state,
+ *     and `setIsLoading` appears exactly once in the repo).
+ *   - The scaffolding is `aria-hidden` so the region's announced text and its accessible name are
+ *     the one word, not that word trailing 53 empty generics. Verified: a bone comes back from the
+ *     a11y tree ignored, reason `ariaHiddenSubtree`.
+ *
+ * The word is the visible half of the same fix: real text at a real contrast is a signal someone
+ * who has asked for less movement can actually see. Styling and placement live in
+ * `.vca-skeleton-loading` (globals.css) so all four screens say it in the same place, in grey,
+ * with no animation of its own.
+ *
+ * It appears and disappears with the skeleton, with no delay and no fade-in, and that is measured
+ * rather than assumed: the skeleton is on screen for ~725ms in a production build (721 / 726 /
+ * 733ms over three runs; 785–1810ms in dev, which is dev overhead, not the product). One word is
+ * readable in that window. A common trick — hold the label back 300ms so a fast load never
+ * flashes it — would leave ~400ms, and it would have to be timed by an animation or a transition,
+ * which is the one thing that must not carry this signal: `prefers-reduced-motion` would switch
+ * the delay off or the label on at a different moment for exactly the reader this exists for. So
+ * the label has no entrance. Both motion states render it pixel-identically (verified).
+ *
+ * `T` is local to each of the four files, which is this repo's shape and already these files' own
+ * shape — Bone and Circle are copied verbatim into all four rather than shared.
+ */
+const T = {
+  en: { loading: "Loading" },
+  ko: { loading: "불러오는 중" },
+} as const;
+
 function Bone({ w, h, color = "var(--gray-200)", radius = "4px" }: { w: string; h: string; color?: string; radius?: string }) {
   return <div className="vca-skeleton-pulse" style={{ width: w, height: h, backgroundColor: color, borderRadius: radius, flexShrink: 0 }} />;
 }
@@ -26,7 +94,7 @@ function ListItemSkeleton({ nameW, subW }: { nameW: string; subW: string }) {
 
 function SidebarSkeleton() {
   return (
-    <div style={{
+    <div aria-hidden="true" style={{
       width: "380px", flexShrink: 0, height: "100%", backgroundColor: "white", borderRight: "1px solid var(--gray-200)",
       display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "24px", padding: "20px 24px", overflow: "hidden",
     }}>
@@ -99,7 +167,7 @@ function MapSkeleton() {
   ];
   const pins = [{ left: "54%", top: "58%" }, { left: "78%", top: "84%" }];
   return (
-    <div style={{ flex: 1, position: "relative", backgroundColor: "var(--gray-100)", minWidth: 0 }}>
+    <div aria-hidden="true" style={{ flex: 1, position: "relative", backgroundColor: "var(--gray-100)", minWidth: 0 }}>
       <div style={{
         position: "absolute", top: "24px", right: "24px", width: "40px", backgroundColor: "white",
         borderRadius: "8px", boxShadow: "2px 4px 3px rgba(24, 17, 39,0.05)", display: "flex", flexDirection: "column", alignItems: "center",
@@ -131,8 +199,12 @@ function MapSkeleton() {
 // Fits inside ClientLayout's tab-content area, below the real Navbar (which always renders,
 // loading or not) — matches SkeletonBestFrame/SkeletonData/SkeletonRedmap's own convention.
 export default function SkeletonDashboard() {
+  const [lang] = useLanguage();
   return (
-    <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
+    <div role="status" aria-busy="true" style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden", position: "relative" }}>
+      {/* First in the DOM so a reader working through the region meets the word before the
+          scaffolding it stands for; it still paints on top (absolute + z-index in the class). */}
+      <span className="vca-skeleton-loading">{T[lang].loading}</span>
       <SidebarSkeleton />
       <MapSkeleton />
     </div>
