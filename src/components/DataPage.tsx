@@ -4223,7 +4223,16 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
           <ResetIconSm /> {t.resetFilters}
         </button>
         <div style={{ display:"flex", gap:"8px" }}>
-          <button onClick={onCancel} style={{ padding:"8px 12px", borderRadius:"8px", border:"1px solid var(--gray-300)", backgroundColor:"white", fontSize:"13px", fontWeight:700, color:"var(--gray-600)", cursor:"pointer" }}>{t.cancel}</button>
+          {/* Guarded like the other two, which it should have been all along.
+              `onCancel` is undefined on the very first open, when RedFace has no target yet and
+              there is nothing to go back to — the note on this component's props says so, and the
+              subtitle and the ✕ in the header both already test for it. This button did not, so
+              the first screen drew a Cancel with `onClick={undefined}`: it rendered, it took the
+              press, and nothing happened. A control that answers a click by doing nothing is
+              worse than no control, because the operator concludes the screen is stuck. */}
+          {onCancel && (
+            <button onClick={onCancel} style={{ padding:"8px 12px", borderRadius:"8px", border:"1px solid var(--gray-300)", backgroundColor:"white", fontSize:"13px", fontWeight:700, color:"var(--gray-600)", cursor:"pointer" }}>{t.cancel}</button>
+          )}
           <button disabled={!selectedObj} onClick={() => selectedObj && onConfirm(selectedObj)} style={{ padding:"8px 12px", borderRadius:"8px", border:"none",
             backgroundColor: selectedObj ? "var(--primary-400)" : "var(--primary-200)", color:"white", fontSize:"13px", fontWeight:700,
             cursor: selectedObj ? "pointer" : "default" }}>
