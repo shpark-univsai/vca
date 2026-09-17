@@ -840,7 +840,11 @@ function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null
         </div>
       </div>
       {isSelected && (
-        <div style={{ display:"flex", flexDirection:"column", padding:"0 16px 12px 60px" }}>
+        /* 10px of top padding, not 0: the selected row above this carries a grey fill, and at 0
+           the first stop's camera chip sat flush against its bottom edge — the trail read as part
+           of that block rather than as the list it opens. 10 matches the row's own vertical
+           padding, so the gap above the first stop equals the gap inside the row. */
+        <div style={{ display:"flex", flexDirection:"column", padding:"10px 16px 12px 60px" }}>
           {/* The badge counts cameras, this list counts stops, and the two differ whenever someone
               doubles back — three cameras can produce four rows with one name appearing twice,
               which reads as a miscount unless the timeline says which number it is showing. The
