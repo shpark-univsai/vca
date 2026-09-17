@@ -13,7 +13,8 @@
 
 | 세션 | 잡은 파일 | 상태 |
 |---|---|---|
-| vca-84/E | `Sidebar.tsx` · `mockData.ts` | 보드 `n1`+`n5` — "VIP 검출" 타일이 움직인 VIP를 빼고 셈(48 대 58) · 시드 추세가 자기가 앉은 숫자와 산술 불일치 |
+| vca-84/E | — 놓았습니다 | **완료 `5aa96d8`.** 타일이 `오늘 검출된 VIP`(사람 19) + `오늘 검출`(건수 65)로 갈렸고, 못 지킬 `deltaPct`는 다섯 시드에서 삭제(SYSTEM 탭 둘도 같은 산술 오류였음). **기록**: `dashboardStats.tracking`과 `vipTargets: 12`는 **읽는 곳이 0개**인 죽은 스텁이고 화면 숫자(121)와 어긋납니다 |
+| vca-84 (본인) | `DetectionActivityChart.tsx` | E가 신고한 한국어 충돌 — 차트 제목 `오늘 VIP 검출`(65건)이 새 타일 `오늘 검출된 VIP`(19명)와 거의 같은 말인데 다른 숫자. 차트는 `오늘 검출` 타일에서 열리므로 그쪽을 따르게 함 |
 | vca-84/F | `MapView.tsx` | 보드 `n2` — 동선 선택 시 지도에 이름·얼굴·신뢰도가 전부 없음(팝업 자체 없음). **이름만** 넣고 얼굴은 결정으로 남김 |
 | vca-84/G | `BestFrameDetailPage.tsx` | 보드 `n4`+`n7` — 보라색이 VIP와 "여기 있음" 두 뜻 · 타깃 카드 80px에 빈 점선 박스(`bgUrl`+박스 좌표로 진짜 크롭 가능) |
 | vca-84/H | `Skeleton{Dashboard,Data,BestFrame,Redmap}.tsx` · `globals.css` | 보드 `n9` — 축소모션에서 로딩 신호가 1.05:1 대비에만 걸림. 정직한 해법은 대비가 아니라 `aria-busy`+보이는 이름 |
