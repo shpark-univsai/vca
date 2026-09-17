@@ -127,6 +127,26 @@ export interface DetailProps {
  */
 const DET_COLOR: Record<DetType, string> = { VIP: "var(--primary-400)", Vehicle: "var(--type-vehicle)", Unknown: "var(--gray-600)" };
 
+/**
+ * SELECTION AND FOCUS: "you are here", never "this is a VIP".
+ *
+ * Every mark this constant now feeds was --primary-400 — the same purple DET_COLOR.VIP paints a
+ * VIP box, the VIP crown and the timeline's VIP count chip with. On a screen whose whole subject
+ * is VIP detection that made one colour say two things: the selected timeline thumbnail read as a
+ * VIP frame, the focus ring on a Vehicle box read as a VIP hit, and the answer to "but that isn't
+ * a VIP detection, is it?" was no. It also spent purple far past the 5-10% this product holds
+ * itself to — ten marks on one screen, most of them permanently on.
+ *
+ * --gray-900 is what the rest of the product already selects with: the All filter chip below, the
+ * Track on Map / Redmap buttons, Portal's focus outline in globals.css. Against the timeline's
+ * greyscale thumbnails and against white it is the darkest step there is, so it reads harder at
+ * 3px than the purple did. One constant, so the reel, the feed and the timeline cannot drift into
+ * three different "selected".
+ *
+ * Purple that stays purple: DET_COLOR.VIP, the VIP boxes and crowns, the VIP filter chip's own
+ * fill, and the play button (a primary action, not a selection).
+ */
+const SELECTED = "var(--gray-900)";
 
 // AVATAR (four stock portraits) and VEHICLE_PHOTO (one stock car) were declared here and dealt
 // out to the reel cards and the "caught in this frame together" cards by LIST POSITION. Two lists,
@@ -514,7 +534,7 @@ function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detect
         // Mirrors whichever detection is focused on the camera feed — clicking a box there (or
         // this card) keeps the two in sync, matching each other's "focused" outline rather than
         // this being its own independent selection state.
-        outline: isFocused ? "2px solid var(--primary-400)" : hovered ? "1px solid var(--gray-300)" : "none",
+        outline: isFocused ? `2px solid ${SELECTED}` : hovered ? "1px solid var(--gray-300)" : "none",
         backgroundColor: hovered && !isFocused ? "var(--gray-50)" : "transparent",
         transition: "background-color 0.15s ease",
       }}
@@ -832,8 +852,10 @@ function TrackDateCalendar({ selected, onPick }: { selected: string; onPick: (da
           const isFuture = key > todayKey;
           return (
             <button key={i} disabled={isFuture} onClick={() => onPick(key)} style={{
-              width:"28px", height:"28px", borderRadius:"50%", border: isToday && !isSelected ? "1px solid var(--primary-400)" : "none",
-              backgroundColor: isSelected ? "var(--primary-400)" : "transparent",
+              // Both marks are positional — the day you picked, and where today is — so both are
+              // SELECTED. Purple here would be the third thing on this screen wearing the VIP colour.
+              width:"28px", height:"28px", borderRadius:"50%", border: isToday && !isSelected ? `1px solid ${SELECTED}` : "none",
+              backgroundColor: isSelected ? SELECTED : "transparent",
               color: isSelected ? "white" : isFuture ? "var(--gray-300)" : "var(--gray-900)",
               fontSize:"12px", fontWeight: isSelected ? 700 : 500, cursor: isFuture ? "default" : "pointer",
             }}>{day}</button>
@@ -1047,12 +1069,12 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     top:det.top, left:det.left, width:det.width, height:det.height,
                     // detBoxBorder, shared with the box each reel card draws on its own crop.
                     border: detBoxBorder(det),
-                    // A separate purple ring for "this is the focused one" — independent of the
-                    // box's own type color (VIP purple / Vehicle-Unknown blue) — is what actually
-                    // matches the reel card's purple focus outline on the right. Reusing the
-                    // type color for focus meant a blue (non-VIP) box and its purple-outlined
-                    // card didn't read as the same linked item.
-                    boxShadow: isFocused ? "0 0 0 3px var(--primary-400)" : "none",
+                    // A ring for "this is the focused one", in the neutral SELECTED rather than
+                    // the box's own type colour — reusing the type colour for focus meant a blue
+                    // (non-VIP) box and its outlined card didn't read as the same linked item.
+                    // It was purple, which on a screen about VIP detection made the focus ring on
+                    // a Vehicle box look like a VIP hit. Matches the reel card's outline.
+                    boxShadow: isFocused ? `0 0 0 3px ${SELECTED}` : "none",
                     borderRadius:"3px", boxSizing:"border-box",
                     transition:"border-color 0.15s, box-shadow 0.15s",
                   }}
@@ -1225,6 +1247,11 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                               onClick={() => { col.pick(v); setTimeOpen(false); }}
                               style={{ display:"block", width:"100%", padding:"5px 16px", border:"none", cursor:"pointer",
                                 fontSize:"12px", fontWeight: v === col.current ? 800 : 600, fontFamily:"monospace",
+                                // LEFT PURPLE ON PURPOSE, and the only mark on this screen that is.
+                                // Its row fill comes from .vca-picker-option[data-on] in globals.css,
+                                // shared with four pickers in Data monitoring; neutralising the text
+                                // here alone would leave half a mark, and the fill is not this file's
+                                // to change. Whoever takes the class to SELECTED takes this line too.
                                 color: v === col.current ? "var(--primary-400)" : "var(--gray-700)" }}>
                               {String(v).padStart(2, "0")}
                             </button>
@@ -1271,7 +1298,9 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   }}>
                     <div style={{
                       width:"100%", aspectRatio:"8/5", boxSizing:"border-box",
-                      border: isSelected ? "3px solid var(--primary-400)" : "1.5px solid var(--gray-200)",
+                      // The frame you are on, not a frame with a VIP in it — the crown chip and
+                      // the alert marker inside the thumbnail are what say that, in purple and red.
+                      border: isSelected ? `3px solid ${SELECTED}` : "1.5px solid var(--gray-200)",
                       borderRadius:"8px",
                     }}>
                       <div style={{ width:"100%", height:"100%", overflow:"hidden", borderRadius: isSelected ? "6px" : "7px", position:"relative", backgroundColor:"var(--gray-800)" }}>
@@ -1298,7 +1327,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     </div>
                     {/* Full absolute HH:MM:SS per thumbnail — clearer than a relative offset
                         when frames are only 2 seconds apart, where "+2s"/"+4s" all look alike. */}
-                    <span style={{ fontSize:"10px", fontWeight:600, color: isSelected ? "var(--primary-400)" : "var(--gray-500)", fontFamily:"monospace" }}>
+                    <span style={{ fontSize:"10px", fontWeight:600, color: isSelected ? SELECTED : "var(--gray-500)", fontFamily:"monospace" }}>
                       {secToHHMMSS(sec)}
                     </span>
                   </div>
@@ -1308,9 +1337,10 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
           </div>
 
           {/* Hour bar / Minute bar — a two-tier coarse navigator (pick the hour, then pick the
-              minute within it), moved below the thumbnail strip. Both reuse the same purple
-              highlight as the rest of this timeline (bg var(--primary-100) / border var(--primary-400)), not a
-              separate accent color. No persistent "Hour 14"/"active number" label sitting on
+              minute within it), moved below the thumbnail strip. Both carry the same mark as the
+              rest of this timeline — SELECTED on a white fill, where they used to reuse the purple
+              highlight (bg --primary-100 / border --primary-400) this whole screen was marking
+              selection with. No persistent "Hour 14"/"active number" label sitting on
               the bar itself — instead, hovering any segment pops the same pill+pointer tooltip
               used for the selected thumbnail's time badge above, which already reads clearly on
               first sight there. */}
@@ -1324,8 +1354,8 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       onMouseEnter={() => setHoveredHour(h)}
                       onMouseLeave={() => setHoveredHour(prev => (prev === h ? null : prev))}
                       style={{
-                      flex:1, height:"22px", padding:0, border: active ? "1px solid var(--primary-400)" : "none",
-                      borderRadius:"4px", backgroundColor: active ? "var(--primary-100)" : "var(--gray-200)", cursor:"pointer",
+                      flex:1, height:"22px", padding:0, border: active ? `1px solid ${SELECTED}` : "none",
+                      borderRadius:"4px", backgroundColor: active ? "var(--gray-0)" : "var(--gray-200)", cursor:"pointer",
                       boxSizing:"border-box",
                     }} />
                   );
@@ -1336,10 +1366,10 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   position:"absolute", bottom:"calc(100% + 6px)", left:`${((hoveredHour + 0.5) / HOURS_IN_DAY) * 100}%`, transform:"translateX(-50%)",
                   display:"flex", flexDirection:"column", alignItems:"center", pointerEvents:"none", zIndex:5,
                 }}>
-                  <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"4px 10px", borderRadius:"999px", fontFamily:"monospace", whiteSpace:"nowrap" }}>
+                  <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:SELECTED, padding:"4px 10px", borderRadius:"999px", fontFamily:"monospace", whiteSpace:"nowrap" }}>
                     {lang === "ko" ? `${pad2(hoveredHour)}${t.hour}` : `${t.hour} ${pad2(hoveredHour)}`}
                   </span>
-                  <span style={{ width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:"6px solid var(--primary-400)", marginTop:"-2px" }} />
+                  <span style={{ width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:`6px solid ${SELECTED}`, marginTop:"-2px" }} />
                 </div>
               )}
             </div>
@@ -1359,8 +1389,8 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       onMouseEnter={() => setHoveredMinute(m)}
                       onMouseLeave={() => setHoveredMinute(prev => (prev === m ? null : prev))}
                       style={{
-                      flex:1, height:"14px", padding:0, border: active ? "1px solid var(--primary-400)" : "none",
-                      borderRadius:"2px", backgroundColor: active ? "var(--primary-100)" : "var(--gray-200)", cursor:"pointer",
+                      flex:1, height:"14px", padding:0, border: active ? `1px solid ${SELECTED}` : "none",
+                      borderRadius:"2px", backgroundColor: active ? "var(--gray-0)" : "var(--gray-200)", cursor:"pointer",
                       boxSizing:"border-box",
                     }} />
                   );
@@ -1371,10 +1401,10 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   position:"absolute", bottom:"calc(100% + 6px)", left:`${((hoveredMinute + 0.5) / MINUTES_IN_HOUR) * 100}%`, transform:"translateX(-50%)",
                   display:"flex", flexDirection:"column", alignItems:"center", pointerEvents:"none", zIndex:5,
                 }}>
-                  <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"4px 10px", borderRadius:"999px", fontFamily:"monospace", whiteSpace:"nowrap" }}>
+                  <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:SELECTED, padding:"4px 10px", borderRadius:"999px", fontFamily:"monospace", whiteSpace:"nowrap" }}>
                     {lang === "ko" ? `${pad2(hoveredMinute)}${t.minute}` : `${t.minute} ${pad2(hoveredMinute)}`}
                   </span>
-                  <span style={{ width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:"6px solid var(--primary-400)", marginTop:"-2px" }} />
+                  <span style={{ width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:`6px solid ${SELECTED}`, marginTop:"-2px" }} />
                 </div>
               )}
             </div>
