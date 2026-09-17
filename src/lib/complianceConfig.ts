@@ -57,6 +57,23 @@ export interface ComplianceConfig {
    */
   personRelease: boolean;
   /**
+   * Whether the console can delete a project.
+   *
+   * On, an owner can end a project from Settings and everything filed under it goes with it. Off,
+   * the section is not drawn at all — not drawn rather than disabled, because a control that
+   * answers a click by doing nothing is worse than no control.
+   *
+   * OFF FOR THE FIRST RELEASE, and the reason is that the server side of it is undecided rather
+   * than unbuilt. One rule is settled — the search log must NOT go with the project (contract 6:
+   * the thing an audit asks for first cannot be the thing a deletion removes) — and the rest is
+   * not: registered people, cameras, audit rows and invite tokens each have to be kept or dropped
+   * deliberately. A delete that runs before those are decided is the one action on this console
+   * nobody can undo, so it waits for the cascade to be written down.
+   *
+   * On, when that day comes, restores the whole section; nothing about it was removed.
+   */
+  projectDelete: boolean;
+  /**
    * Whether the institution classifies its listings.
    *
    * On, every registration picks a category the institution defined — and the category decides how
@@ -182,6 +199,12 @@ export function getComplianceConfig(): ComplianceConfig {
      * Turning it on restores all of it; the categories and their colours are still in the store.
      */
     vipCategories: false,
+    /**
+     * Off (2026-09-17). Conservative for the first release — see the interface comment. The owner
+     * permission check stays in place underneath, so turning this on gives the section back to
+     * exactly the people who had it.
+     */
+    projectDelete: false,
     /**
      * 365 days (2026-09-15). Placeholder for a number the deployment's retention rule decides —
      * see the interface comment.

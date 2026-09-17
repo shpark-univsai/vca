@@ -443,7 +443,10 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   // Owner only, deliberately narrower than mayEdit. Deleting a site takes away every camera,
   // every listed person and every roster row at once — that is role-granting weight, not
   // settings weight. See canManageAccess.
-  const mayDeleteProject = me ? canManageAccess(me.permission) : true;
+  // Two gates, and they answer different questions: the permission asks whether THIS PERSON may
+  // end a project, the switch asks whether THIS DEPLOYMENT offers it at all. Off for the first
+  // release because the server's cascade is undecided — see complianceConfig.projectDelete.
+  const mayDeleteProject = getComplianceConfig().projectDelete && (me ? canManageAccess(me.permission) : true);
   const isLastProjectInTeam = project ? projects.filter(p => p.teamId === project.teamId).length === 1 : false;
   const myTeam = me ? teams.find(tm => tm.id === me.teamId) : undefined;
   /*
