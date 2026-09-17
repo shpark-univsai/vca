@@ -95,9 +95,26 @@ const T = {
      *
      * No warning colour. A missing coordinate is a blank in the camera register, not a camera
      * fault, and in a control room yellow gets a fault reported that nobody can find.
+     *
+     * AND NO COUNT, in either language. The many-stop form used to end in a bare `· 3` in English
+     * and a `3곳` in Korean, and the figure was wrong in both for the same reason: the missing
+     * numbers inside one gap are always CONTIGUOUS — the call site builds them with
+     * `for (n = prev.num + 1; n < cur.num; n++)` — so `01–03` already says there are three of
+     * them, and the chip's own tooltip then names each one with its time. Three statements of one
+     * fact, of which the range and the names are the two anybody asked for.
+     *
+     * The English figure was also unitless, which is the defect `hitsMark` and `peopleAt` above
+     * exist to avoid. Deleting it answers that without adding a word, so the question was never
+     * "what unit should the 3 get".
+     *
+     * The two forms now differ only in what the numbers are — one stop, or a range of them — which
+     * is what keeps two chips on one map from counting differently. A trail-wide figure does still
+     * exist and it is a DIFFERENT quantity: `noCoordsSummary` counts every unplaced stop on the
+     * trail, including a missing first or last one, which has no chip at all. Adding chips up
+     * could therefore never have matched it; now there is nothing to add up.
      */
     noCoordsChipOne: (num: string) => `${num} No coordinates`,
-    noCoordsChipMany: (from: string, to: string, n: number) => `${from}–${to} No coordinates · ${n}`,
+    noCoordsChipMany: (from: string, to: string) => `${from}–${to} No coordinates`,
     noCoordsWhy: "No coordinates on record, so it cannot be drawn",
     /**
      * The one line over the map, shown only when the chips can't carry the message on their own —
@@ -129,7 +146,10 @@ const T = {
     lastSeen: "마지막 검출",
     fullTrace: "레드맵에서 전체 경로 보기",
     noCoordsChipOne: (num: string) => `${num} 좌표 없음`,
-    noCoordsChipMany: (from: string, to: string, n: number) => `${from}–${to} 좌표 없음 ${n}곳`,
+    // 개수를 뺀 이유는 영어와 다릅니다. 이쪽은 단위가 없던 적이 없습니다 — `3곳`은 세는 말을 달고
+    // 있었습니다. 뺀 이유는 번호가 연속이라 `01–03`이 이미 "세 곳"이라고 말한다는 것 하나입니다.
+    // 영어만 고치고 여기를 두면 한 지도의 알약 둘 중 한쪽만 개수를 셉니다.
+    noCoordsChipMany: (from: string, to: string) => `${from}–${to} 좌표 없음`,
     noCoordsWhy: "좌표가 등록되지 않아 지도에 표시할 수 없습니다",
     noCoordsSummary: (missing: number, total: number) => `${total}곳 중 ${missing}곳은 좌표가 없어 지도에 없습니다`,
   },
@@ -1709,7 +1729,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           const nums = gap.missing.map(n => String(n).padStart(2, "0"));
           const chipText = nums.length === 1
             ? t.noCoordsChipOne(nums[0])
-            : t.noCoordsChipMany(nums[0], nums[nums.length - 1], nums.length);
+            : t.noCoordsChipMany(nums[0], nums[nums.length - 1]);
           // Content-sized icon, the same shape the district pills use: a 1x1 marker box with the
           // real width coming from the chip's own `white-space:nowrap`, centred by its transform.
           const chipIcon = L.divIcon({
