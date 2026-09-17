@@ -14,7 +14,7 @@
 | 세션 | 잡은 파일 | 상태 |
 |---|---|---|
 | vca-84 (본인) | `vcaStore.ts`의 `isLastActiveAdmin` 위 주석 블록만 | `0d1db7f`이 기각한 `vca-admin recover-owner` 설계가 아직 "콘솔이 제공해야 할 것"으로 적혀 있음 — 기각 표시. **다른 곳은 안 건드립니다** |
-| vca-84/B | `MapView.tsx` | 대시보드 지도 정밀 검토. 확인된 세 건: 줌아웃 카드(검출 수) → 줌인 알약(사람 수) 사이에 잇는 말 없음 · Tracking 선택은 지도에 얼굴을 전혀 안 그림 · 경로 끝 노드에 팔레트 밖 `rgba(109,147,0,0.15)` 반투명 헤일로 |
+| vca-84/B | `MapView.tsx` | **커밋 완료(`6e1fb08`), 파일 놓았습니다.** 고친 것: 선택한 동선 위에 구역 알약이 덮여 그려진 것(실측 4,474px²) · 위쪽 점 팝업이 화면 밖(270px) · 구역 화면 링에 시간 문 없음 · 선택 핀 z-index · 죽은 `districtSummary` · `const t = 0.35` 섀도잉. **판단 필요 3건은 코드에 안 넣고 남김**: ① 경로 끝 노드의 `rgba(109,147,0,…)`는 주석으로만 기록 — 32색에 반투명 단계가 없어 Figma가 먼저 답해야 함(`rgba(24,17,39,…)`는 섀도 토큰과 같은 조리법이라 다른 건임) ② Tracking 선택은 지도에 **얼굴도 이름도 신뢰도도** 없음(팝업 자체가 없음, 실측) — 경로 끝에만 넣을지 결정 필요 ③ 줌아웃 알약의 창(window)이 무표기 — 카메라 알약은 "today"를 말하는데 알약은 `×`로 단위만 표시 |
 | vca-84/C | `Sidebar.tsx` · `DetectionActivityChart.tsx` · `ClientLayout.tsx` | 대시보드 사이드바·차트·셸 정밀 검토 |
 | vca-84/D | `globals.css` · `Navbar.tsx` · `DataPage.tsx` | `prefers-reduced-motion` — 지키는 곳 2개, 무한 애니메이션 7개 무방비 |
 | vca-84 (본인) | `BestFrameDetailPage.tsx` | 타깃 카드가 너무 작음 — 데이터 모니터링 화면의 카드 디자인으로 교체. `DataPage.tsx`는 **읽기만** 합니다(D 소유) |
