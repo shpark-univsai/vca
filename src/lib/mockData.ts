@@ -567,7 +567,6 @@ const eventsTodayCount = liveEvents.length;
 // groups by name too (see DetectionHit.person for why a name is the weakest acceptable identity,
 // and what the server must send instead).
 const vipsTodayCount = new Set(liveEvents.map((e) => e.name)).size;
-const trackingCount = liveEvents.filter((e) => e.type === "Tracking").length;
 
 // `delta` and `down` compare against the same time yesterday. There is no `deltaPct` any more:
 // each entry carried one (`delta: 4, deltaPct: 1.5`), and the counts these sit under became real
@@ -598,12 +597,11 @@ export const dashboardStats = {
   // were the camera run state all along, which `linkedCams`/`offlineCams` below already hold, so
   // the header reads those instead of a second pair that could disagree with them.
   vipsToday:       { count: vipsTodayCount,      delta: 4,  down: true },
-  // Nothing reads this one — the Sidebar row is two tiles (people, detections) and neither takes
-  // its trend from here. Kept, not deleted: whether a third tile counts trails at all is the
-  // user's call (a trail is a VIP who moved, so it would be a subset of `vipsToday` beside it,
-  // and this file has form for two counts of the same thing being on screen at once). Left where
-  // a reader looking for the stub's shape will find it, rather than resurrected from memory.
-  tracking:        { count: trackingCount,       delta: 4,  down: true },
+  // `tracking` sat here and nothing read it. Deleted 2026-09-17 on the owner's call, asked and
+  // answered: "동선을 세는 수는 의미가 없어보여". They are right about what it would have said —
+  // a trail is a VIP who moved, so the tile would have been a subset of `vipsToday` right beside
+  // it, and two counts of the same people is how a dashboard starts lying quietly. The sidebar
+  // row stays two tiles: people, detections. Do not add a third without asking them again.
   eventsToday:     { count: eventsTodayCount,    delta: 3,  down: false },
   // count is overwritten by getDashboardStats() from the actual device list — the 48/48 that used
   // to be typed here disagreed with the list it sat beside. Only the deltas are still seeded:
