@@ -58,21 +58,44 @@ const T = {
      * face ("caught 3 times"); beside a dot it is about the dot, and the word removes the last
      * bit of guessing about what is being counted.
      *
-     * CARRIES ITS WINDOW TOO, and that is not decoration — the comment at the camera layer's
-     * own `peopleByCamera` defends running two time windows on one dot by saying "the ping is a
-     * moving thing and says 'just now', the figure is a written thing and says 'today'". That
-     * defence only holds if the figure actually says today. It didn't: the label was a bare
-     * count, so an unscoped number sat beside a pulsing ring on a live-monitoring map and the
-     * ring was the only thing on the dot with a stated window. Both layers count today only —
-     * the camera layer from `todaysDetectionHits`, the district layer through `inDistrictToday`
-     * — so the word is true on both, and one string serves both call sites.
+     * That part is not negotiable: "3" alone among camera dots is a bare "3 what?".
+     *
+     * BUT NOT ITS WINDOW, any more. It read "3 people today" and the word came off by decision —
+     * it was repeated on every pill on the screen (measured: nine at once on one view), and
+     * "today" is a property of this whole LAYER, not of each dot. A fact that is true of every
+     * mark on a layer is one the layer states once, not once per mark.
+     *
+     * NOT because it crowded. That was claimed and then measured, and the claim was false: with
+     * the word, this pill was 81.6px in English and 48.5px in Korean, against 103.4–109.6px for
+     * the district pills sitting beside it on the same map. The crowding recorded in `hitsMark`
+     * above is real, but that is a COMPOSITE pill — label, figure, unit and camera count
+     * competing in one box — and its history was carried onto this one-figure pill without being
+     * re-measured. Do not re-justify this on width.
+     *
+     * THE WINDOW STILL HAS TO BE SAID SOMEWHERE, because a bare number beside a pulsing ring
+     * reads as "now", and the ring means the LAST HOUR while the figure means TODAY (see
+     * `peopleByCamera`, which defends running two windows on one dot on exactly that ground). It
+     * moved to the camera dot's own hover, as `peopleToday` below: the glance gets the count, the
+     * hover gets the whole statement.
+     *
+     * AND ITS KNOWN COST, which this change does not fix: a hover cannot fix a glance — the
+     * people who misread the figure are the people who never hover. That objection was put
+     * against this move and it is accepted, not answered. If it bites, the answer is a stated
+     * window for the layer, one line and once, not the word back on every dot.
+     *
+     * Both layers count today only — the camera layer from `todaysDetectionHits`, the district
+     * layer through `inDistrictToday` — so the window is true wherever it is shown. Only the
+     * camera layer has a hover to show it in: the district-spot marker binds a POPUP, and that
+     * popup's `spotSummary` line already says "today" with both figures.
      *
      * The plural branch is not politeness. The camera layer draws this at `people > 0`, not
      * `> 1`, so "1 people" was on screen — measured on one map: 3 of 11 pills. A figure that is
      * visibly broken is a figure an operator stops trusting, and that discredits the correct
      * ones beside it. `spotSummary` below already had the ternary; this site just never got it.
      */
-    peopleAt: (n: number) => `${n} ${n === 1 ? "person" : "people"} today`,
+    peopleAt: (n: number) => `${n} ${n === 1 ? "person" : "people"}`,
+    /** The same headcount with the window the pill no longer carries — see peopleAt. Hover only. */
+    peopleToday: (n: number) => `${n} ${n === 1 ? "person" : "people"} today`,
     live: "LIVE",
     out: "OUT",
     offline: "OFFLINE",
@@ -130,10 +153,13 @@ const T = {
     camerasDown: "전부 중단",
     spotSummary: (people: number, hits: number) => `이 지점 오늘 ${people}명 · ${hits}건`,
     alsoHere: (n: number) => `이 지점의 다른 ${n}명`,
-    // 범위를 앞에 둡니다 — 바로 위 spotSummary("이 지점 오늘 …")가 이미 세운 어순이고,
-    // 한국어는 이 자리에서 수를 세는 조사가 따로 없어 1명도 그대로 맞습니다. 다섯 글자로
-    // 영어보다 짧으니 알약이 밀릴 일도 없습니다.
-    peopleAt: (n: number) => `오늘 ${n}명`,
+    // 알약에서 "오늘"을 뗍니다 — 이유는 영어 peopleAt 주석에 적힌 그것 그대로이고, 한국어만
+    // 다를 이유가 없습니다(폭은 상관이 없었습니다 — 48.5px이었습니다). 세는 말 `명`은 남습니다:
+    // 점 옆의 숫자가 무엇을 센 것인지는 한국어에서도 이 한 글자가 말합니다.
+    peopleAt: (n: number) => `${n}명`,
+    // 호버로 옮긴 온전한 문장. 범위를 앞에 둡니다 — 위 spotSummary("이 지점 오늘 …")가 이미
+    // 세운 어순이고, 한국어는 이 자리에서 수를 세는 조사가 따로 없어 1명도 그대로 맞습니다.
+    peopleToday: (n: number) => `오늘 ${n}명`,
     live: "정상",
     out: "중단",
     offline: "중단",
@@ -261,9 +287,27 @@ function quietCameraDotHtml(): string {
 // and sourced from Camera's own fields (a Camera and a System-panel Device are separate mock
 // pools in this app, not joinable by anything reliable — see the camera-data-pool-consolidation
 // notes elsewhere — so this reads Camera's own status/zone rather than trying to cross-reference).
-function cameraDotTooltipHtml(cam: Camera, lang: AppLanguage): string {
+function cameraDotTooltipHtml(cam: Camera, lang: AppLanguage, people: number): string {
   const t = T[lang];
   const isLive = runStateOf(cam.status) === "running";
+  /**
+   * TODAY'S HEADCOUNT, WITH ITS WINDOW. The pill on the dot carries the bare figure now (see
+   * peopleAt), so this hover is where the sentence is completed — and the tooltip had no figure
+   * at all before, only name, status and zone.
+   *
+   * Hidden at zero rather than shown as "0 people today". A camera with nobody at it is already
+   * saying that by wearing the quiet dot and no pill; a written zero reads as a measurement,
+   * which for a camera whose hits attach by neither label nor coordinate would be a false one.
+   * The no-detection call site below passes 0 for exactly that reason.
+   *
+   * Above the zone, not below it: name and zone are the camera's identity and belong together,
+   * and the hairline marks that what follows is a finding rather than a field. `--line` is the
+   * same rule the popups' own dividers use.
+   */
+  const peopleLine = people > 0
+    ? `<span style="font-size:11px;font-weight:700;color:var(--gray-700);white-space:nowrap;
+          border-top:1px solid var(--line);margin-top:2px;padding-top:4px">${t.peopleToday(people)}</span>`
+    : "";
   return `
     <div style="font-family:'SUIT',system-ui,sans-serif;padding:8px 10px;display:flex;flex-direction:column;gap:3px;min-width:120px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -273,6 +317,7 @@ function cameraDotTooltipHtml(cam: Camera, lang: AppLanguage): string {
         </span>
       </div>
       <span style="font-size:10px;font-weight:600;color:var(--gray-500);white-space:nowrap">${escapeHtml(cam.zone || cam.location)}</span>
+      ${peopleLine}
     </div>`;
 }
 
@@ -1284,7 +1329,10 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
             });
             L.marker([cam.lat, cam.lng], { icon })
               .addTo(group)
-              .bindTooltip(cameraDotTooltipHtml(cam, lang), {
+              // 0, and not a count this branch could look up: these are the district's cameras
+              // that caught NOBODY today — that is the filter directly above, and the whole
+              // reason they are drawn. See cameraDotTooltipHtml on why zero stays unwritten.
+              .bindTooltip(cameraDotTooltipHtml(cam, lang, 0), {
                 direction: "top", offset: [0, -10], className: "vca-camera-tooltip", opacity: 1,
               });
           });
@@ -1438,10 +1486,15 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
          *
          * The number is TODAY while the ping is the LAST HOUR, and those do not collide because
          * they are different channels: the ping is a moving thing and says "just now", the figure
-         * is a written thing and says "today". A second number would collide; an animation does
-         * not. So a camera that was busy this morning and quiet since keeps its figure on a quiet
-         * dot, which is the state the old view could not express at all — it drew that camera
-         * exactly like one that has seen nobody all day.
+         * is a written thing. A second number would collide; an animation does not. So a camera
+         * that was busy this morning and quiet since keeps its figure on a quiet dot, which is the
+         * state the old view could not express at all — it drew that camera exactly like one that
+         * has seen nobody all day.
+         *
+         * THE FIGURE NO LONGER SAYS "today" ON THE DOT. It reads "3 people", and the window moved
+         * to this dot's hover — `peopleAt` carries that decision and the objection it accepts. So
+         * read the paragraph above as it now stands: the two channels are still different, but
+         * only the ring states its window at a glance, and the figure's window is one hover away.
          *
          * Attached by the camera's own label, or by an exact coordinate, and by nothing else. A
          * seeded hit that carries neither attaches to no camera and is left out of every figure
@@ -1478,7 +1531,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           });
           L.marker([cam.lat, cam.lng], { icon })
             .addTo(group)
-            .bindTooltip(cameraDotTooltipHtml(cam, lang), { direction: "top", offset: [0, -14], className: "vca-camera-tooltip", opacity: 1 })
+            .bindTooltip(cameraDotTooltipHtml(cam, lang, people), { direction: "top", offset: [0, -14], className: "vca-camera-tooltip", opacity: 1 })
             /**
              * `cam.name`, NOT `cam.location` — two fields with the same name in different value
              * spaces, and the wrong one emptied this filter on every camera in the register.
