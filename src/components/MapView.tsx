@@ -1564,7 +1564,6 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
            * somewhere else is the one wrong line here that a reader would act on.
            */
           const isLast = node.isTrailEnd;
-          void i;
           const size = isLast ? 44 : 36;
 
           /**
