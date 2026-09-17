@@ -265,14 +265,12 @@ const T = {
     // does not move, the banner stays, and the product reads as broken. The comment over the
     // condition already recorded that the COUNT was fixed to owners; the sentence was not.
     // Korean was worse: this family called one role 관리자, 최고관리자 and 소유자 in four strings.
-    soleAdminTitle: "Only one owner can sign in",
     /* Was "there is no way back in", which is no longer true and was arguably never quite true:
        the server promotes its seed account to owner on boot when no active owner is left. What IS
        true is that the way back is not in Portal — it needs somebody with access to the machine,
        which on an isolated site may be a different company and a scheduled visit. The named
        recovery command is deliberately absent until it exists; naming it now would be a promise
        this console cannot keep. */
-    soleAdminBody: "Granting permissions is an owner-only power, and there is no supplier account behind this installation. If this one account is locked out, nobody here can grant anything — recovering it takes someone with access to the server itself, not Portal. Make a second person an owner.",
     // Two sentences, because this renders as a footnote inside a dropdown. The reasoning behind the
     // rule — with nobody in this role no one can grant permissions and there is no way back in —
     // belongs in isLastActiveAdmin's comment, not in a 280px menu.
@@ -505,8 +503,6 @@ const T = {
     setupBadgeExpired: "설치 코드 만료",
     viewSetupCode: "설치 코드 보기",
     setupExpires: (days: number) => `${days}일 후 만료`,
-    soleAdminTitle: "로그인 가능한 최고관리자가 한 명입니다",
-    soleAdminBody: "권한 부여는 최고관리자만 할 수 있고, 이 설치에는 공급사 계정이 없습니다. 이 한 계정이 잠기면 여기서는 아무도 권한을 부여할 수 없습니다 — 되돌리는 일은 Portal이 아니라 서버에 접근할 수 있는 사람의 몫입니다. 두 번째 최고관리자를 지정하세요.",
     lastAdminReason: "로그인할 수 있는 유일한 최고관리자입니다. 다른 사람을 먼저 최고관리자로 지정하세요.",
     lastAdminRoleFixed: "유일한 최고관리자입니다 — 다른 최고관리자가 생기기 전까지 역할을 바꿀 수 없습니다.",
     reactivateUser: "재활성화",
@@ -2715,38 +2711,24 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
 
   return (
     <div>
-      {/* Stays up until a second administrator exists. Not dismissible: it is not a tip, it is a
-          single point of failure with no recovery path — the supplier has no account here, so
-          losing the one administrator ends the customer's ability to grant anything. Counted across
-          all users, not the filtered view.
+      {/* THE SOLE-OWNER WARNING WAS HERE AND IS GONE (2026-09-17, owner's call).
+          Do not bring it back, and do not write another one.
 
-          Counted through canManageAccess, not `permission === "admin"`. The power the sentence
-          describes — granting permissions — is the owner's, which is what isLastActiveAdmin
-          guards against losing. Counting admins made the banner wrong in both directions: it
-          disappeared when a second ADMIN was promoted (still one owner, still no recovery) and
-          it stayed up when a second OWNER was, which is exactly the fix it was asking for. */}
-      {portalUsers.filter(u => canManageAccess(u.permission) && u.status === "active").length <= 1 && (
-        <div style={{
-          display: "flex", gap: "12px", alignItems: "flex-start",
-          padding: "14px 16px", borderRadius: "12px", marginBottom: "16px",
-          backgroundColor: "var(--warning-100)", border: "1px solid var(--warning-200)",
-        }}>
-          <span style={{ display: "flex", flexShrink: 0, marginTop: "1px", color: "var(--warning-500)" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 1.8 1.5 13.2h13L8 1.8Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-              <path d="M8 6v3.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-              <circle cx="8" cy="11.2" r="0.75" fill="currentColor"/>
-            </svg>
-          </span>
-          <div>
-            <p style={{ fontSize: "13px", fontWeight: 800, color: "var(--gray-900)" }}>{t.soleAdminTitle}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.5, marginTop: "3px" }}>
-              {t.soleAdminBody}
-            </p>
-          </div>
-        </div>
-      )}
+          It told the administrator to "make a second person an owner", which is a proposal this
+          project already REJECTED — forcing two owners was decided against, and this banner was
+          the last place still asking for it. Its reasoning had also gone stale: it said recovery
+          "takes someone with access to the server itself, not Portal", and that is no longer
+          true. The answer, decided the same day: a locked owner phones the supplier who installed
+          the system and is issued a temporary password (HANDOFF contract 12). The customer needs
+          no second owner, and the vendor needs no account here.
 
+          A banner that names a single point of failure with no remedy is worth its space. One that
+          names a remedy the project has ruled out is worse than nothing: it asks for a change that
+          will be refused, and every admin who reads it distrusts the next warning too.
+
+          The GUARD is a different thing and stays: `isLastActiveAdmin` still refuses to demote or
+          suspend the last owner. A reissued password recovers an owner who is locked out; nothing
+          recovers an installation with zero owners, so that door stays shut. */}
 
       {/* Top-level cut of the list, with counts on the tabs — the same underlined row Input Sources
           uses for its kinds. */}
