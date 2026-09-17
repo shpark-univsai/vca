@@ -5330,45 +5330,53 @@ export function districtTally(hits: DetectionHit[], districtId: string): { peopl
  * builds no path: lose both and the installation is in exactly the same place, with no way back
  * that the product itself offers. A second owner is worth having; it is not the answer to this.
  *
- * ── HANDOFF: THE RECOVERY PATH, AND WHY IT BELONGS ON THE SERVER ──────────────────────────────
+ * ── THE RECOVERY PATH: THE SUPPLIER REISSUES. WE BUILD NOTHING. ───────────────────────────────
  *
- * An account can be lost. The server cannot — this product is installed on the customer's own
- * machine and somebody can reach a console on it. So server access is the credential of last
- * resort, and every comparable product recovers exactly there: Keycloak's `kc.sh bootstrap-admin`,
- * Confluence's password restore, Grafana's CLI reset. None of them offer it over HTTP, and neither
- * should we — a recovery route reachable from the network is a back door with a friendly name.
+ * DECIDED 2026-09-17, and this section used to specify the opposite. What stood here was a
+ * finished design for a host-only command — `docker compose exec admin vca-admin recover-owner
+ * <email>` — modelled on Keycloak's `kc.sh bootstrap-admin`, Confluence's password restore and
+ * Grafana's CLI reset. It was never delivered to the backend, and it is now **rejected, not
+ * pending**. A lost owner phones the supplier that installed the system and the supplier issues
+ * the owner a temporary password again, using the mechanism that already exists.
  *
- * Half of it already exists in the admin service. DefaultAdminSeeder promotes the seed account
- * back to owner at boot when no active owner is left. Three holes to close:
+ * FOUR THINGS NOT TO REBUILD, because each of them was written down here as the plan at some
+ * point: the `recover-owner` command; a printed or sealed recovery key; forcing an installation to
+ * keep two owner accounts (considered and rejected 2026-09-15 — see the paragraph above, it lowers
+ * the odds and builds no path); and any self-service or network-reachable owner recovery. The last
+ * one is the only part of the old reasoning that survives unchanged: a recovery route reachable
+ * from HTTP is a back door with a friendly name.
+ *
+ * `PortalUser.recoveredAt` and Portal's `recoveredOwner` banner (PortalShell) were outputs of that
+ * command. The contract ask for the field is withdrawn. Nothing lies today — no writer sets it, so
+ * the banner draws nothing — but it is dead weight on a rejected mechanism and clearing it is ours
+ * to do, not a contract item.
+ *
+ * WHAT IS STILL TRUE AND WORTH KEEPING. DefaultAdminSeeder in the admin service promotes the seed
+ * account back to owner at boot when no active owner is left, and it has three gaps:
  *
  *   1. It only promotes an account that still exists (`findByEmail(...).ifPresent`). If the seed
  *      account was deleted, the run is a silent no-op — the branch that creates one fires only on
  *      a completely empty user table.
  *   2. It does not touch the password. The deploy guide tells the installer to change it at first
  *      login, so promoting that account gets nobody in.
- *   3. It writes `log.warn` and nothing else. An owner regaining rights is precisely the event an
- *      audit asks about, and it belongs in the audit log with the rest.
+ *   3. It writes `log.warn` and nothing else.
  *
- * What the console should offer, run on the host rather than over the network:
+ * Gap 2 is why the supplier's act is a REISSUE rather than a promotion: boot promotion alone opens
+ * no door. Gap 3 still matters — an owner regaining access is precisely the event an audit asks
+ * about, and that row must be written by the SERVER. The frontend cannot fake it and should not
+ * try: `clientAudit` takes `Omit<AuditEvent, "id" | "recordedBy">`, so `"server"` is unsayable
+ * from the browser by construction. A browser-authored "the owner was recovered" is a note to
+ * self, not an audit trail.
  *
- *   docker compose exec admin vca-admin recover-owner <email>
- *
- *   - creates the account if it is gone, and sets it owner + active either way
- *   - prints a temporary password to stdout ONCE. Not into .env: the file outlives the incident
- *     and the password in it would still open the door a year later
- *   - sets must-change-at-next-login
- *   - writes an audit entry, and sets `PortalUser.recoveredAt` so the console can say so
- *   - idempotent, and it says what it changed
- *
- * The last point is Keycloak's real lesson, and the reason for `recoveredAt`: an account made this
- * way is marked temporary and expected to be cleaned up. Keycloak keeps a banner and a log line on
- * it until it is removed. Ours puts a banner across the top of Portal for as long as the recovered
- * account is the only owner (PortalShell, `recoveredOwner`) — a door opened from outside the rules
- * should not quietly become the installation's normal state. It has no dismiss button, because
- * dismissing it is the failure this exists to prevent.
+ * THE OPEN QUESTION IS NOT TECHNICAL. The approver moved from the customer to us: whoever answers
+ * that phone hands over owner access. So the question that needs an answer before this path is
+ * real is "what establishes that the caller is entitled to act for the owner?" — without one, this
+ * is owner access for the price of a phone call. Bosch's signed authorization letter exists for
+ * exactly this. It is the one item on the supplier-admin agenda.
  *
  * Do NOT solve this with email. `authConfig.passwordRecovery` already has two conditions because
- * some sites have no mail at all, and those are the same sites where a console is the only way in.
+ * some sites have no mail at all — and this decision is NOT grounds to flip it, which governs
+ * every user rather than the owner.
  */
 export function isLastActiveAdmin(users: PortalUser[], userId: string): boolean {
   const target = users.find(u => u.id === userId);
