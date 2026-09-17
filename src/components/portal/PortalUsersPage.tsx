@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Asterisk, ClipboardList, MailQuestion, Users2, UserMinus, UserX, ClipboardPlus, Download, KeyRound, Printer, Upload} from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, APP_SCREENS, type AccessPreset, type AppScreen, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, APP_SCREENS, type AccessPreset, type AppScreen, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
@@ -296,6 +296,13 @@ const T = {
     accessLabel: "Where they sign in",
     permissionLabel: "Portal role",
     projectsLabel: "Projects",
+    scopeLabel: "Cameras",
+    scopeNoProject: "Tick a project to see how many cameras that is.",
+    scopeNoCameras: "No cameras are registered on the ticked projects yet.",
+    scopeStartsAll: (n: number) => `Every camera on these projects — ${n} today, and any added later. The next step can narrow that.`,
+    scopeHeldAll: (n: number) => `Every camera on their projects — ${n} today, and any added later.`,
+    scopeHeldSome: (n: number, total: number) => `${n} of ${total} cameras.`,
+    scopePick: "Choose cameras",
     // WHAT THE SITE CAN REACH, NOT A SEND THAT DOES NOT HAPPEN. These three lines used to read
     // "Invite will be sent by external email…" — a future-tense promise made one button before the
     // panel that says, in as many words, that nothing has been sent and the link is handed over by
@@ -577,6 +584,13 @@ const T = {
     accessLabel: "어디로 로그인하나",
     permissionLabel: "Portal 역할",
     projectsLabel: "프로젝트",
+    scopeLabel: "카메라 범위",
+    scopeNoProject: "프로젝트를 고르면 몇 대인지 나옵니다.",
+    scopeNoCameras: "고른 프로젝트에 등록된 카메라가 아직 없습니다.",
+    scopeStartsAll: (n: number) => `이 프로젝트의 카메라 전부 — 지금 ${n}대, 나중에 추가되는 것도 포함합니다. 좁히는 것은 다음 단계에서 합니다.`,
+    scopeHeldAll: (n: number) => `담당 프로젝트의 카메라 전부 — 지금 ${n}대, 나중에 추가되는 것도 포함합니다.`,
+    scopeHeldSome: (n: number, total: number) => `${total}대 중 ${n}대.`,
+    scopePick: "카메라 고르기",
     mailNoteBoth: "선택한 프로젝트 중 인터넷이 차단된 사이트가 있습니다 — 그쪽에서는 사이트 내부 메일함 주소로만 연락이 닿습니다.",
     mailNoteIsolated: "이 프로젝트의 사이트는 인터넷이 차단되어 있습니다 — 사이트 내부 메일함 주소로만 연락이 닿습니다.",
     cancel: "취소",
@@ -772,10 +786,18 @@ function InviteLinkRow({ name, email, url }: { name: string; email: string; url:
  * DO NOT PUT THIS BACK IN A TOAST. A toast is for something that happened; this is something the
  * administrator still has to carry somewhere.
  */
-function InviteLinkPanel({ title, links, onClose }: {
+function InviteLinkPanel({ title, links, onClose, children }: {
   title: string;
   links: InviteLink[];
   onClose: () => void;
+  /**
+   * Anything the account still needs before the administrator walks away, under the link.
+   *
+   * Only the single invite passes one (the camera scope row). The bulk approval above hands over
+   * five links at once and has no account in particular to say it about, so it passes nothing and
+   * the panel is what it always was.
+   */
+  children?: React.ReactNode;
 }) {
   useEscapeKey(onClose);
   const [lang] = usePortalLanguage();
@@ -797,6 +819,7 @@ function InviteLinkPanel({ title, links, onClose }: {
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {links.map(l => <InviteLinkRow key={l.url} name={l.name} email={l.email} url={l.url} />)}
           </div>
+          {children}
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
           <button className="portal-btn-primary" onClick={onClose}
@@ -809,6 +832,25 @@ function InviteLinkPanel({ title, links, onClose }: {
   );
 }
 
+/**
+ * The cameras a scope may name: the ones in the projects the account holds (or, on the invite
+ * form, the projects that have been ticked for it).
+ *
+ * Not `camerasInProject(activeProjectId)`: an account can hold several projects, and a scope that
+ * only ever listed the project the administrator happens to be looking at would silently drop the
+ * account's cameras on every other site the moment it was saved.
+ *
+ * Not `camerasVisibleTo` either. That reads the SIGNED-IN user's own scope, so an administrator
+ * who is themselves narrowed could only grant a subset of their own view — the register is the
+ * unrestricted answer for Portal, which is the rule stated on that function.
+ *
+ * At module scope because three places ask it now — the row menu, the invite form's summary and
+ * the invite result step — and three copies of one filter drift the first time one is corrected.
+ */
+function scopableCameras(cameras: Camera[], projectIds: string[]): Camera[] {
+  return cameras.filter(c => projectIds.includes(c.projectId));
+}
+
 function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: string; onClose: () => void }) {
   useEscapeKey(onClose);
   const teams = useVcaStore(s => s.teams);
@@ -816,11 +858,16 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const allUsers = useVcaStore(s => s.portalUsers);
   const addPortalUser = useVcaStore(s => s.addPortalUser);
   const issueInviteToken = useVcaStore(s => s.issueInviteToken);
+  const allCameras = useVcaStore(s => s.cameras);
   const [lang] = usePortalLanguage();
   const t = T[lang];
   /** The account this form just made, or null while it is still a form. Holding it here rather
    *  than closing on submit is what keeps the link reachable — see InviteLinkPanel. */
   const [issued, setIssued] = useState<InviteLink | null>(null);
+  /** Its id, kept beside the link so the result step can name the account to the scope picker.
+   *  Not folded into InviteLink: the bulk panel shares that type and has no use for an id. */
+  const [issuedId, setIssuedId] = useState<string | null>(null);
+  const [scoping, setScoping] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   // Defaults to the team that owns the project this page is scoped to — not teams[0]. With more
@@ -911,6 +958,8 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   // internet-isolated site can't reach an external mail provider, so that one routes through the
   // project's internal mailbox instead. See the 2026-08-28 backend-meeting decision this mirrors.
   const selectedProjects = teamProjects.filter(p => projectIds.includes(p.id));
+  /** What the ticked projects hold today — the number the scope row says out loud. */
+  const draftScopable = scopableCameras(allCameras, projectIds);
   const hasIsolated = selectedProjects.some(isNetworkIsolated);
   const hasReachable = selectedProjects.some(p => !isNetworkIsolated(p));
   // Only when a site constrains the address. The all-connected case had a line of its own
@@ -957,6 +1006,11 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
     const grants = !resolved.appAccess ? {}
       : chosen ? grantsOfPreset(chosen)
       : { appScreens: customScreens, appSearch: customSearch, appExport: customExport };
+    // NO `cameraIds` HERE, DELIBERATELY. Absent is not "unanswered" — it is the answer "every
+    // camera on this account's projects", and it is the only answer that keeps including cameras
+    // installed next month. Handing over today's full list instead would look identical on the
+    // day it was saved and quietly exclude every camera added after it. Narrowing is the explicit
+    // act on the result step below, against the account that by then exists.
     const id = addPortalUser({
       name: name.trim(), email: email.trim(), teamId, projectIds,
       permission: resolved.permission, appAccess: resolved.appAccess, status: "invited",
@@ -971,11 +1025,61 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
     // Cannot be null — the account was created on the line above — but a "?token=null" link would
     // look like a working one and reach nothing, which is worse than no link at all.
     if (!token) return;
+    // Set with the link, not before it: these two are what the result step is, and an id left
+    // behind by a return that never produced a link would outlive the attempt it came from.
+    setIssuedId(id);
     setIssued({ name: name.trim(), email: email.trim(), url: `/password-setup?token=${token}` });
   };
 
   if (issued) {
-    return <InviteLinkPanel title={t.inviteCreatedTitle} links={[issued]} onClose={onClose} />;
+    /**
+     * WHY THE SCOPE IS NARROWED HERE AND NOT ON THE FORM.
+     *
+     * `CameraScopePicker` writes its own answer: it calls `setCameraScope(user.id, …)`, and that
+     * action looks the account up by id and returns the state untouched when it finds nothing.
+     * A draft has no id, so reusing the picker on the form would have produced a control that
+     * ticks, saves, toasts and changes nothing — the one outcome worse than not offering it.
+     * The alternative was a second picker with its own list, grouping and empty rule, drifting
+     * from the real one the day either is corrected. So the form states where the account starts
+     * (see the row in the left column) and the answer is collected one step later, against the
+     * account that now exists, by the same picker the row menu opens. The person inviting never
+     * has to find the row in the table, which is what they were doing before.
+     *
+     * The audit log comes along for free: `setCameraScope` writes an entry, and a scope handed to
+     * `addPortalUser` would have been a narrowing with no record of who narrowed it.
+     */
+    const created = issuedId ? allUsers.find(u => u.id === issuedId) ?? null : null;
+    const scopable = created ? scopableCameras(allCameras, created.projectIds) : [];
+    return (
+      <>
+        <InviteLinkPanel title={t.inviteCreatedTitle} links={[issued]} onClose={onClose}>
+          {/* Same two conditions as the row menu item, for the same reasons: no app door means no
+              cameras to narrow, and an empty picker would let somebody save the empty set on a
+              site that simply has not been provisioned yet. */}
+          {created && created.appAccess && scopable.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", justifyContent: "space-between", padding: "12px 14px", borderRadius: "10px", border: BORDER }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.scopeLabel}</p>
+                <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "2px" }}>
+                  {created.cameraIds === undefined
+                    ? t.scopeHeldAll(scopable.length)
+                    : t.scopeHeldSome(created.cameraIds.length, scopable.length)}
+                </p>
+              </div>
+              <button onClick={() => setScoping(true)}
+                style={{ flexShrink: 0, padding: "7px 11px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                {t.scopePick}
+              </button>
+            </div>
+          )}
+        </InviteLinkPanel>
+        {/* Over the link panel rather than instead of it (320 against its 310), so closing the
+            picker puts the reader back on the only copy of the link. */}
+        {scoping && created && (
+          <CameraScopePicker user={created} cameras={scopable} onClose={() => setScoping(false)} />
+        )}
+      </>
+    );
   }
 
   return (
@@ -992,7 +1096,11 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           project chips, and the project chips ARE a scope picker. Camera scope is one notch
           narrower than they are, and the column then reads as one chain — team, which door, which
           project, which cameras inside it. The right column answers a different question: which
-          screens, which actions. */}
+          screens, which actions.
+          WHAT LANDED THERE IS THE SUMMARY, NOT THE PICKER. The picker writes by user id and a
+          draft has none (the result step's note has the whole argument), so the left column
+          carries the one-line state and the picker opens over the result panel. The arithmetic
+          above is why a future attempt at an inline list belongs in the left column too. */}
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "880px", width: "100%", margin: "auto", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "18px 24px 14px", borderBottom: "1px solid var(--gray-200)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.modalTitle}</p>
@@ -1070,6 +1178,32 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "8px" }}>{mailTransportNote}</p>
             )}
           </div>
+          {/* CAMERAS — stated here, chosen one step later. See the long note on the result step
+              for why the picker cannot be opened on a draft: it writes by user id, and a draft
+              has none. What this row is for is the question NOT being invisible — an account is
+              created here with every camera on its projects, and somebody who never learns that
+              does not know a scope exists to narrow. Last in the column because it is one notch
+              inside the project chips above it, and those chips decide what it can name.
+              Not asked of a Portal-only account: it has no app to watch cameras in.
+
+              ONE PARAGRAPH, THREE STATES, NO SECOND LINE. The promise that a narrowing step is
+              coming sits inside `scopeStartsAll`, which is the branch taken only when the ticked
+              projects hold at least one camera — the same condition the result step's button is
+              rendered under (`accessMode !== "portalOnly"` is exactly `appAccess`, see
+              applyAccessMode), so the promise cannot outlive the control it points at. It was a
+              second 11px line in a third grey; the note directly above this one is 12px
+              gray-500, and a column that says small things in two sizes reads as two kinds of
+              importance it does not have. */}
+          {accessMode !== "portalOnly" && (
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.scopeLabel}</label>
+              <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>
+                {projectIds.length === 0 ? t.scopeNoProject
+                  : draftScopable.length === 0 ? t.scopeNoCameras
+                  : t.scopeStartsAll(draftScopable.length)}
+              </p>
+            </div>
+          )}
           </div>
 
           {/* RIGHT COLUMN — what this account may reach.
@@ -2369,19 +2503,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const [changingGrantsFor, setChangingGrantsFor] = useState<PortalUser | null>(null);
   const [scopingFor, setScopingFor] = useState<PortalUser | null>(null);
   const allCameras = useVcaStore(s => s.cameras);
-  /**
-   * The cameras a scope for this account may name — the ones in the projects it actually holds.
-   *
-   * Not `camerasInProject(activeProjectId)`: an account can hold several projects, and a scope
-   * that only ever listed the project the administrator happens to be looking at would silently
-   * drop the account's cameras on every other site the moment it was saved.
-   *
-   * Not `camerasVisibleTo` either. That reads the SIGNED-IN user's own scope, so an administrator
-   * who is themselves narrowed could only grant a subset of their own view — the register is the
-   * unrestricted answer for Portal, which is the rule stated on that function.
-   */
-  const scopableCamerasFor = (u: PortalUser) =>
-    allCameras.filter(c => u.projectIds.includes(c.projectId));
+  /** The cameras a scope for this account may name — the rule is on `scopableCameras`. */
+  const scopableCamerasFor = (u: PortalUser) => scopableCameras(allCameras, u.projectIds);
   // Raw slice out of the selector, lookup built in a memo — a selector that returns a new object
   // every call re-renders forever, which is how this page last broke.
   const allPresetsHere = useVcaStore(s => s.accessPresets);
