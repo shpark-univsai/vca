@@ -1617,6 +1617,14 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
            * on the map — the same mistake the district view made with portraits (see the
            * "CAMERAS, not portraits" note above) in a different medium.
            *
+           * THE RESIDUAL, STATED: when the newest hop has no coordinate this card is not drawn at
+           * all (see `isLast` above), so such a trail still has no name anywhere on the map. The
+           * fix is not to slide the name onto the last DRAWN stop — that stop is not where the
+           * person was last seen, and a name over it would say it was. Somewhere viewport-anchored
+           * (beside the "N of M points have no coordinates" control, which is already the only
+           * thing on screen for this case) is the honest place for it, and that is a decision
+           * about that control rather than about this card.
+           *
            * NO FACE, and that is not an omission to be tidied up later. A portrait is a claim
            * about a PERSON, this file has twice decided what such a claim costs on a map, and
            * Best Frame removed its stock portraits outright because they were being dealt out by
