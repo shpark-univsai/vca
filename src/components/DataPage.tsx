@@ -5,7 +5,6 @@ import type { MatchItem, ReIDStatus } from "@/types/reid";
 import {
   CAMERA_CODES, canSearchInApp, judgementFor, screensFor, type DetectionVerdict,
   useActiveProjectId, useProjectCameras, useVcaStore, getActiveProjectId, personsInProject,
-  VIP_SESSION_WINDOW_MS,
   type AppScreen, type Camera, type Person,
 } from "@/lib/vcaStore";
 import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
@@ -140,16 +139,6 @@ const T = {
     noCandidatesMatch: "No candidates match the current filters",
     chooseTargetOrFilter: "Choose a target or set a filter to see candidates",
     close: "Close",
-    /**
-     * A burst of captures folded into one card.
-     *
-     * "3 frames" was the first wording and nobody could tell what it meant on a card that is
-     * itself one capture — the reader has no reason to know a detector fires per frame. So the
-     * label says what was COUNTED and what DID it: this camera caught this person three times on
-     * one pass. Short form on the card (136px of room), the sentence on hover.
-     */
-    framesShort: (n: number) => `caught ${n}\u00d7`,
-    framesFolded: (n: number) => `This camera caught the same person ${n} times going past. One card, ${n} captures.`,
     prevPage: "Previous page",
     nextPage: "Next page",
     sharedFramesTitle: "Every frame holding both the primary target and this associate",
@@ -313,8 +302,6 @@ const T = {
     noCandidatesMatch: "현재 조건에 맞는 후보가 없습니다",
     chooseTargetOrFilter: "대상을 고르거나 조건을 설정하면 후보가 나타납니다",
     close: "닫기",
-    framesShort: (n: number) => `${n}회 포착`,
-    framesFolded: (n: number) => `이 카메라가 지나가는 같은 사람을 ${n}번 잡았습니다. 카드 한 장, 포착 ${n}회.`,
     prevPage: "이전 페이지",
     nextPage: "다음 페이지",
     sharedFramesTitle: "기준 대상과 이 동행자가 함께 잡힌 모든 프레임",
@@ -641,7 +628,7 @@ function HoverActionBtn({ label, icon, color, onClick }:
   );
 }
 
-function MonitorCard({ p, onClick, showCam = false, fill = false, frameCount = 1, onNavigateTab, onGoRedmap, onGoRedmapFrame }: { p: (typeof REID_DATA)[number]; onClick: () => void; showCam?: boolean; fill?: boolean; frameCount?: number; onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number]) => void; onGoRedmap?: () => void; onGoRedmapFrame?: (url: string, label: string) => void }) {
+function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab, onGoRedmap, onGoRedmapFrame }: { p: (typeof REID_DATA)[number]; onClick: () => void; showCam?: boolean; fill?: boolean; onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number]) => void; onGoRedmap?: () => void; onGoRedmapFrame?: (url: string, label: string) => void }) {
   const [lang] = useLanguage();
   const t = T[lang];
   const status = REID_STATUS_STYLE[p.status];
@@ -731,16 +718,10 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, frameCount = 1
             timestamp sits on the same baseline on every card whether or not the identity line
             wraps — and so it reads as the card's footer instead of a third sentence. */}
         <div style={{ display:"flex", alignItems:"baseline", gap:"4px", marginTop:"auto", minWidth:0 }}>
+          {/* One card is one capture, so the timestamp is the whole footer. A grey "caught 3×"
+              pill used to sit beside it, counting the frames folded into this card; both it and
+              the folding are gone — see collapseBursts' epitaph below cardTimestamp. */}
           <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-600)", letterSpacing:"-0.2px" }}>{cardTimestamp(p.date, p.time)}</span>
-          {/* Says that frames were folded together, so a collapsed burst cannot be mistaken for a
-              single capture — and so the count the wall shows still adds up to what the camera
-              recorded. Only when there is something to say: one frame needs no number. */}
-          {frameCount > 1 && (
-            <span title={t.framesFolded(frameCount)} style={{ fontSize:"10px", fontWeight:700, color:"var(--gray-500)",
-              backgroundColor:"var(--gray-100)", borderRadius:"999px", padding:"0 5px", letterSpacing:"-0.2px", flexShrink:0 }}>
-              {t.framesShort(frameCount)}
-            </span>
-          )}
         </div>
       </div>
       <div style={{ position:"absolute", right:"6px", bottom:"40px", width:"60px", height:"60px",
@@ -913,7 +894,6 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
       ) : (
       <div style={{ display:"flex", flexWrap:"wrap", gap:"12px" }}>
         {items.map(p => <MonitorCard key={p.id} p={p} onClick={() => onCardClick(p.id)} showCam={isAll} fill
-          frameCount={(p as { frameCount?: number }).frameCount ?? 1}
           onNavigateTab={onNavigateTab} onGoRedmap={onGoRedmap} onGoRedmapFrame={onGoRedmapFrame} />)}
       </div>
       )}
@@ -988,8 +968,11 @@ const LIVE_FEED_CAPTURE_INTERVAL_MS = 45_000;
  * walking past, not three arrivals. A detector fires per frame; a wall that draws per frame shows
  * one passage as a row of duplicates and pushes the other people off the screen.
  *
- * So the seed produces bursts, and collapseBursts below is what the screen does about it. Faking
- * an interval that never repeats would have kept the screen looking fine and wrong.
+ * So the seed produces bursts, and the wall draws every one of them. It used to fold them into
+ * one card per passage; that fold is gone (the reasoning sits where it used to, below
+ * cardTimestamp) because it could only work by reading a track id the API does not send. Faking
+ * an interval that never repeats would still keep the screen looking fine and wrong, so the
+ * bursts stay in the seed.
  */
 const BURST_FRAMES = 3;
 const BURST_GAP_MS = 2_000;
@@ -1009,47 +992,52 @@ const BURST_GAP_MS = 2_000;
  * to have matched. That was a real defect left as minor in the 2026-09-10 review: a site with zero
  * registered people still badged a third of its wall VIP.
  */
-/**
- * One card per passage, not per frame.
+/*
+ * DELETED: `collapseBursts`, which folded a burst of frames into one card, and the grey
+ * "caught 3x" pill that told you it had.
  *
- * A detector fires on every frame it sees somebody in, so one person walking past a camera
- * arrives as several captures seconds apart. Drawn one-per-card that reads as several arrivals,
- * and it pushes the other people off the screen — the wall spends its space repeating its most
- * recent subject.
+ * The pill was read as "this is the third time this person has been captured" by the person who
+ * commissioned the screen, and their objection was that you cannot know that at the moment of
+ * capture. They were right about something sharper than the wording. The fold's own comment
+ * admitted where its knowledge came from: it keyed on `subjectKey`, which is "a passage
+ * identifier standing in for a track id the API does not yet have". A detector fires per frame
+ * and a tracker is what says "these frames are one subject". Without one, the wall cannot tell
+ * three frames of one person from three strangers a second apart — the mock only knew because it
+ * generated them. So the fold, and every number the pill printed, rested on knowledge no
+ * deployment supplies. A plausible value that reads as true is this repo's signature defect.
  *
- * The window is the one the sidebar already uses for the same question (VIP_SESSION_WINDOW_MS,
- * 2 minutes): same subject, same camera, inside the window is one visit.
+ * AND IT BROKE ITS OWN RULE. The fold's comment drew the line itself: "an unidentified capture
+ * cannot [be collapsed] — two strangers at one camera a second apart are two people, and merging
+ * them on the strength of 'both unidentified' would erase one." But the line was never held on
+ * this wall. It keyed on `subjectKey ?? name`, and makeLiveItem sets `subjectKey` on EVERY item
+ * while `personName` is `matched?.name` — undefined for everything that is not a registry hit. So
+ * the unidentified captures, the ones the rule protected, were exactly the ones being merged, and
+ * the pill was putting a count on it. Only items with no subjectKey at all (the static REID_DATA
+ * arrays, off this screen) ever took the honest path.
  *
- * WHAT COUNTS AS "SAME SUBJECT" IS THE LIMIT HERE. A named match can be collapsed, because the
- * register says who it is. An unidentified capture cannot — two strangers at one camera a second
- * apart are two people, and merging them on the strength of "both unidentified" would erase one.
- * So those are left alone, and the wall still shows bursts of Unknown. That is not a gap in this
- * function; it is what the data can support, and the honest version of it. It closes when a
- * detection carries a stable per-subject id (HANDOFF contract 7) rather than only a name.
+ * The pill could not go on its own. Its comment said why it existed — "so a collapsed burst
+ * cannot be mistaken for a single capture, and so the count the wall shows still adds up to what
+ * the camera recorded" — so deleting only the pill would have left the wall drawing one card
+ * where the camera recorded three, with nothing saying so. Both went. Now one card is one
+ * capture, no badge is needed, and the count adds up by construction.
+ *
+ * THE COST IS REAL AND WAS MEASURED, not estimated. On the All Cameras wall with 52 running
+ * cameras: 2,119 cards with the fold, 6,279 without — 2,080 of those cards were folds of exactly
+ * 3. A single camera's wall goes from 40 seeded cards to 120. That is what a tracker-less
+ * detector actually produces, and the density is the honest shape of it until contract 7 lands.
+ *
+ * The seed still produces bursts, deliberately — see BURST_FRAMES above. Flattening them there
+ * would make the wall look calm and would be the "faking an interval that never repeats" that
+ * comment already rejects. Note also that only the SEEDED cards were ever bursts: the live ticker
+ * calls makeLiveItem with index 0, so every ticking capture gets a unique `subjectKey` and was
+ * already drawn as its own card. Measured over 8s of ticking: badged cards held at 2,080 while
+ * the total climbed 2,119 -> 2,223. With the 300-per-camera cap the seeded frames age out in
+ * roughly twelve minutes, after which the pill had nothing left to label.
+ *
+ * `subjectKey` STAYS on the item, unread. It is the shape a real detection will carry, the mock
+ * already produces it correctly, and it is the field that makes folding honest the day the API
+ * delivers a per-subject id. Deleting it would only have to be rebuilt.
  */
-function collapseBursts<T extends { subjectKey?: string; personName?: string; cam: string; date: string; time: string }>(
-  items: T[],
-): (T & { frameCount: number })[] {
-  const out: (T & { frameCount: number })[] = [];
-  const lastOf = new Map<string, T & { frameCount: number }>();
-  items.forEach(item => {
-    // The tracker's subject when there is one, the register's name otherwise. A capture with
-    // neither stays its own card: two strangers at one camera a second apart are two people, and
-    // folding them on the strength of "both unidentified" would erase one of them.
-    const subject = item.subjectKey ?? (item.personName ? `name::${item.personName}` : null);
-    if (!subject) { out.push({ ...item, frameCount: 1 }); return; }
-    const key = `${item.cam}::${subject}`;
-    const prev = lastOf.get(key);
-    const at = new Date(`${item.date}T${item.time}`).getTime();
-    const prevAt = prev ? new Date(`${prev.date}T${prev.time}`).getTime() : NaN;
-    if (prev && Math.abs(prevAt - at) <= VIP_SESSION_WINDOW_MS) { prev.frameCount += 1; return; }
-    const kept = { ...item, frameCount: 1 };
-    lastOf.set(key, kept);
-    out.push(kept);
-  });
-  return out;
-}
-
 function makeLiveItem(seed: number, camId: string, index: number, vipRegistry: Person[]): (typeof REID_DATA)[number] {
   // Everything identifying is keyed to the PASSAGE, not the frame, so a burst is one person seen
   // three times rather than three strangers who happened to arrive two seconds apart. `seed`
@@ -1078,9 +1066,10 @@ function makeLiveItem(seed: number, camId: string, index: number, vipRegistry: P
      * STANDS IN FOR A TRACK ID THE API DOES NOT YET HAVE. A detector fires per frame and a
      * tracker is what says "these frames are one subject"; without it the wall cannot tell three
      * frames of one person from three strangers a second apart, and must draw all three. The mock
-     * knows because it generated them, so the screen can show what the collapsed wall is supposed
-     * to look like — but the behaviour is only reachable in a real deployment once a detection
-     * carries a per-subject id (see HANDOFF, contract 7).
+     * knew because it generated them — which is why the wall no longer folds at all, and why the
+     * "caught 3x" pill that counted the folded frames is gone with it. This field is kept and
+     * unread: it is the shape a real detection will carry, and folding only becomes honest once
+     * one does (see HANDOFF, contract 7).
      */
     subjectKey: `${camId}::${passageSeed}`,
     date: formatCapturedDate(capturedAt),
@@ -1766,9 +1755,11 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   const allItems = Object.values(feed).flat();
   const detailItem = detailId !== null ? allItems.find(p => p.id===detailId) ?? null : null;
   const onlineCameraCodes = useCameraStatus().running.map(c => c.code);
-  const camDetailItems = collapseBursts(openCam === ALL_CAMERAS_ID
+  // One card per capture. No folding — see the note below cardTimestamp for why the fold and its
+  // "caught 3x" badge were removed together.
+  const camDetailItems = openCam === ALL_CAMERAS_ID
     ? onlineCameraCodes.flatMap(code => feed[code] ?? [])
-    : feed[openCam] ?? []);
+    : feed[openCam] ?? [];
 
   return (
     <div style={{ flex:1, display:"flex", gap:"12px", overflow:"hidden", padding:"20px 24px 12px", backgroundColor:"var(--gray-100)", boxSizing:"border-box" }}>
@@ -2635,7 +2626,12 @@ export const REID_DATA = PERSONS.map((p, i) => ({
    * so an unidentified capture stays unidentified instead of borrowing somebody's name.
    */
   personName:  undefined as string | undefined,
-  /** See makeLiveItem — a passage identifier standing in for a track id. Absent outside the wall. */
+  /**
+   * See makeLiveItem — a passage identifier standing in for a track id. Absent outside the wall.
+   * NOTHING READS IT. Its one reader was collapseBursts, deleted along with the "caught 3x" pill;
+   * it is kept because it is the shape a real detection will carry (HANDOFF contract 7) and is
+   * what folding would need in order to be honest.
+   */
   subjectKey:  undefined as string | undefined,
   status:      REID_STATUS_CYCLE[i % REID_STATUS_CYCLE.length] as ReIDStatus,
   gender:      REID_GENDER_CYCLE[i % REID_GENDER_CYCLE.length],
