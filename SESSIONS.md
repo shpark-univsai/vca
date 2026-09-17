@@ -21,6 +21,11 @@
 | vca-84/I | — 놓았습니다 | **완료 `51c3c31`·`8591eaf`·`3319c4f`·`9a46d6f`.** 동선은 `flyToBounds`로 담고(`TRAIL_FIT_MAX_ZOOM=18`, `TRAIL_ONE_SPOT_ZOOM=15`, 패딩은 실측 가구에서 유도하고 **⌊축/3⌋로 상한**), **동선에 카드는 하나** — 중간 정거장은 번호만 두고 위치·시각은 호버 툴팁. 이스케이프는 **텍스트 14곳**(5곳이 아님) + onclick 3곳에 `escapeOnclickArg`. `?? 0` 신뢰도 제거. **남긴 결정**: `LiveEvent.confidence`를 옵셔널로 만들면 `mockData`·`Sidebar`·`Navbar` 4파일에 닿음 · `path`를 2개 이상 튜플 타입으로 · 카드 옆면 뒤집기 |
 | vca-84 (본인) | — 놓았습니다 | 구역 칩 삭제(사용자 요청). **헤더는 손대지 않기로 결정** — 필터 중에도 `All`로 남고, 구역 필터를 사이드바에서 지울 방법이 없어지고, 구역 숫자가 줌인 상태에서 화면에 없어집니다. 셋 다 코드 주석에 적었습니다. `districtTally` 사전 두 항목·`districtLabel`·`onDistrictClear` 체인(ClientLayout까지)이 같이 죽어서 정리했습니다 |
 | vca-84/J | — 놓았습니다 | **완료 `81721ba`.** 고른 줄이 `--gray-100` + 3px `--gray-900` 세로줄(41e858e의 3px 어휘와 같음). `border-left`가 아니라 `inset box-shadow`인 이유: 행이 인라인 `border: none`이라 진짜 테두리는 라벨을 3px 밀어냅니다. **정정**: 데이터 모니터링 픽커는 4개가 아니라 **2개**(호출부 4곳, 컴포넌트 2개), 클래스가 걸친 화면은 5개가 아니라 **3개**. **호버는 원래도 채움색으로 구분되지 않았습니다** — `primary-100` 대 `gray-50`이 1.08:1이고 색조가 그 일을 하고 있었습니다. 이제 세로줄이 구분하고 글자 대비가 5.33:1 → 16.69:1. **남긴 결정 3건**: `.vca-simple-select-option`(감정·인종 필터, `!important` 얽힘) · `.vca-peak-card`(RedFace, 그 보라가 블록 자기 제목과 일치) · 두 드롭다운의 **닫힌 상태** 보라(컨트롤 자기 정체성으로 읽어 범위 밖) |
+| vca-84/K | `Sidebar.tsx` | `TrackingEventRow`에 `aria-pressed`·`role="button"`·`tabIndex` 없음 — 동선 행은 키보드로 닿지 않습니다(VipEventRow엔 셋 다 있음). 프로브가 두 번 실증 |
+| vca-84/L | `MapView.tsx` | `noCoordsChipMany`의 영어가 단위 없는 `· 3`(한국어는 `좌표 없음 3곳`), 그리고 양쪽 다 중복 — 빠진 번호는 항상 연속이라 `from–to`가 이미 개수를 정합니다 |
+| vca-84/M | `DataPage.tsx` | J가 남긴 보라 선택 표시 둘 — `.vca-simple-select-option`(감정·인종 필터, `!important` 얽힘)과 `.vca-peak-card`(RedFace, 보라가 블록 제목과 일치) |
+| vca-84/N | `mockData.ts` | 읽는 곳이 0개인 죽은 스텁 둘 — `dashboardStats.tracking`, `vipTargets: 12`(화면은 121을 보여줌) |
+| vca-84/O | `ClientLayout.tsx` | `?tab=DATA`가 첫 페인트를 못 넘겨 `?tab=DASHBOARD`로 떨어지고 하위탭이 덮어씀 — 딥링크가 튕깁니다 |
 | vca-cf | — (비었습니다) | **세션 종료.** 인수인계 때 "에이전트 미커밋 변경 있음"으로 넘겼는데, 그 뒤 에이전트가 끝나 제가 검증하고 `0f75742`로 올렸습니다. **남은 미커밋 없습니다.** 붙일 곳 하나 남김: `bodyScrolls`를 `PortalSettingsPage.tsx:741`(프로젝트 삭제)에 전달 — `AccessChangeModal`에는 절대 주지 말 것(주석에 이유 있음) |
 | vca-hv | — 종료 | `mypage`·`Navbar`·`RedmapPage` 커밋 완료. 섞였던 두 auth 파일은 `4d51589`로 정리됨 |
 
