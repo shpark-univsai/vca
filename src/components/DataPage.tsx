@@ -5853,12 +5853,39 @@ export default function DataPage({ onGoRedmap, onGoRedmapFrame, onGoAnalyzeFrame
   // DURING render (a seeded card's tab jump compares during render), and a router.replace() from
   // there is a side effect in the wrong phase. The guard means this only
   // fires when the two actually disagree, so it can't loop on its own href change.
+  //
+  // AND IT MERGES ONTO THE LIVE QUERY, not onto this render's snapshot of it. That distinction is
+  // the whole of a measured bug: two writers each rebuilt the entire query string from a partial
+  // view, so whichever `replace` landed last erased the other's parameter.
+  //
+  // The sequence: clicking the top-level DATA tab calls ClientLayout's `setActivePage`, which sets
+  // `tab`; this effect then mounts and writes `sub`. But `useSearchParams()` hands back the value
+  // from the render that scheduled the effect, and at that moment ClientLayout's write has not
+  // re-rendered anything — so the snapshot still names the OLD tab, and writing it back undid the
+  // click. Measured before: from `?tab=DASHBOARD`, clicking Data rendered Data while the address
+  // became `?tab=DASHBOARD&sub=live`. The screen was right and the link was wrong, so copying the
+  // address reopened the Dashboard. (`setActivePage`'s half of it was fixed in `df9ca71`; read
+  // that note too, so this does not get solved twice in two places.)
+  //
+  // `window.location.search` is the live query at the moment the effect runs, which is what both
+  // the guard and the merge need. `searchParams` stays in the deps — that is still what wakes this
+  // effect when the URL changes underneath it; it just no longer supplies the value.
   useEffect(() => {
     const slug = DATA_TAB_SLUGS[activeTab];
-    if (searchParams.get("sub") === slug) return;
-    const next = new URLSearchParams(searchParams.toString());
-    next.set("sub", slug);
-    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    const live = new URLSearchParams(window.location.search);
+    // NOT ALSO GATED ON `tab`, AND THAT IS A DELIBERATE STOP RATHER THAN AN OVERSIGHT.
+    // Reading the live query fixes the case that matters — a sub-screen choice now survives
+    // leaving Data and coming back. One case is left: clicking the top-level DATA tab from another
+    // tab still leaves the address naming the tab you left (`?tab=DASHBOARD&sub=live`), because
+    // `router.replace` does not land synchronously and both writers can be mid-flight at once. The
+    // screen is right; only a copied link is wrong.
+    // Skipping the write until the URL agreed was tried and measured WORSE — the two writes then
+    // interleaved differently and the tab came out wrong in a new way. The honest fix is for one
+    // writer to own the whole query rather than two merging into it, which is a change to how
+    // ClientLayout and this page share the URL, not a guard in here.
+    if (live.get("sub") === slug) return;
+    live.set("sub", slug);
+    router.replace(`${pathname}?${live.toString()}`, { scroll: false });
   }, [activeTab, searchParams, pathname, router]);
   // Carries a Live Monitoring card's data into whichever tab its hover-action button targets,
   // so that tab lands on real results for that person instead of a bare, empty search form.
