@@ -163,6 +163,23 @@ export function useToast() {
   return ctx;
 }
 
+/**
+ * How many toasts may stand at once.
+ *
+ * There was no ceiling, and at the normal pace there did not need to be: a toast clears itself
+ * after 5s and the detection ticker fires every 15-30s, so one is on screen at a time. The pile
+ * only appears when detections arrive faster than they clear — which a real installation does
+ * whenever a camera catches several people at once, and which was reproduced here by speeding the
+ * clock up to verify the alert's wording. Twelve cards stacked off the top of the window, the
+ * oldest unreadable behind the newest.
+ *
+ * Three, because a toast is a glance and four is a list. The NEWEST are kept and the oldest is
+ * dropped: an alert feed is only useful forward, and an operator reading a card from ten seconds
+ * ago while three more arrive is reading the wrong one. A dropped card's own dismiss timer still
+ * fires later against an id that is gone, which `dismiss` filters out harmlessly.
+ */
+const MAX_TOASTS = 3;
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const nextId = useRef(0);
@@ -173,7 +190,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const showToast = useCallback((opts: ToastOptions) => {
     const id = nextId.current++;
-    setToasts(prev => [...prev, { ...opts, id }]);
+    setToasts(prev => [...prev, { ...opts, id }].slice(-MAX_TOASTS));
     setTimeout(() => dismiss(id), 5000);
   }, [dismiss]);
 
