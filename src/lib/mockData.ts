@@ -387,9 +387,11 @@ function todayAt(hour: number, minute: number): string {
 // Locations deliberately reuse the 8 hand-authored cameras above (Novena/Geylang NC1/Orchard MRT/
 // Bugis MRT/Tampines Hub/Bedok MRT/Queenstown/Jurong East) with their exact lat/lng — those are
 // the only camera `name`s in CAMERAS with no numeric suffix, so they're the only location strings
-// cameraIdForLocation() in vcaStore.ts can actually resolve to their real camera instead of
-// silently falling back to CAMERAS[0]. A made-up "Serangoon"/"Bishan" etc. would look fine here
-// but attribute every one of these hits to the wrong camera app-wide.
+// cameraIdForSeedHit() in vcaStore.ts can resolve without a cameraLabel beside them. A made-up
+// "Serangoon"/"Bishan" used to look fine here and attribute every one of these hits to the wrong
+// camera app-wide, via a `?? CAMERAS[0].id` that has since been replaced by a throw (8005bbb) —
+// so the same mistake now stops the app on first load instead of misfiling a surveillance
+// subject's site. Loud, on purpose; the names still have to match the register.
 const DAY_VIP_IDENTITIES: { name: string; location: string; lat: number; lng: number }[] = [
   { name: "Wei Ling Koh",   location: "Queenstown",   lat: 1.2942, lng: 103.8060 },
   { name: "Daniel Ho",      location: "Geylang NC1",  lat: 1.3148, lng: 103.8778 },
@@ -587,8 +589,37 @@ export const dashboardStats = {
   // come from. Zero here rather than a seeded percentage: a figure typed in beside counts it
   // cannot be derived from is how this file ended up with three contradictory numbers before.
   availability: 0,
-  currentDate: "2026-07-02",
-  currentTime: "16:32:15",
+  /*
+   * ── THE HEADER CLOCK, AND WHY THERE IS NO VALUE FOR IT HERE ─────────────────────────────────
+   *
+   * These held "2026-07-02" and "16:32:15" — a date ten weeks in the past and a wall-clock time,
+   * and Navbar renders them as the current date and the current time (Navbar.tsx:169-170, the
+   * chip beside the bell). A constant displayed as now is the "방금 확인함" shape: the reader
+   * stops asking, because they were told.
+   *
+   * THIS IS NOT A SEED ANCHOR, which is the thing worth being sure about before touching it.
+   * Everything in this file that means "today" is already written on the real clock — todayAt()
+   * and generateDayVipHits() both call new Date() — so nothing was dated relative to these two,
+   * and deleting them drifts no seeded row out of "today". Their only reader is that chip.
+   *
+   * Nor are they the seeded deltas thirty lines above, which stay (decided 2026-09-09). A delta
+   * says out loud that it is a comparison the mock cannot make yet; a clock says it is now.
+   *
+   * Undefined rather than deleted, and the difference is a file boundary, not a judgement:
+   * Navbar reads `dashboardStats?.currentDate ?? ""`, so undefined already lands on the empty
+   * string it wrote for the case where it has no clock yet, while removing the keys outright
+   * would be a type error over there. Navbar has the honest machinery — `sgNow`, ticking every
+   * second, read through the site's zone (lib/time.ts). Whoever edits it next can drop the two
+   * `?? dashboardStats?.current*` fallbacks and then these two lines go with them.
+   *
+   * It was probably never on screen: Navbar sets `sgNow` in a mount effect, while these arrive
+   * through getDashboardStats()'s 250ms mockDelay, so the real clock is always ticking before
+   * the fallback has anything to offer. Unobservable is not harmless — `?? CAMERAS[0].id` was
+   * unobservable for nine months (8005bbb), because a plausible wrong answer looks exactly like
+   * the right one.
+   */
+  currentDate: undefined as string | undefined,
+  currentTime: undefined as string | undefined,
   location: "Singapore",
 };
 
