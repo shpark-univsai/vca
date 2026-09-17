@@ -1859,27 +1859,39 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           const size = isLast ? 44 : 36;
 
           /**
-           * OFF-PALETTE, ON PURPOSE UNTIL THE LIBRARY ANSWERS — do not "tidy" this into a token.
+           * ON PALETTE, AND KEPT — the palette owner answered this (2026-09-17). Do not delete it,
+           * and do not "tidy" it into a token that does not exist.
            *
-           * Two literals below are `--type-tracking` (#6d9300) with an invented alpha:
+           * Two literals below are `--type-tracking` (#6d9300) at an opacity:
            * `box-shadow: 0 0 0 10px rgba(109,147,0,0.15)` on the trail-end circle and
            * `drop-shadow(0 4px 10px rgba(109,147,0,0.25))` on its card. They RENDER — measured in
            * Chrome as `rgba(109, 147, 0, 0.15) 0px 0px 0px 10px` — so unlike the deleted VIP halo
            * this is a layer that has really been on screen all along, not a dead declaration.
            *
-           * There is no translucent step among the 32 tokens, and inventing an alpha is the one
-           * move the design system forbids — which is the reason the VIP halo was not brought
-           * back this morning. So this is the same debt, and it is recorded rather than patched:
-           * a token for it belongs in Figma first (see the note on --line and the shadow styles in
-           * globals.css asking for exactly that), and picking a value here would make the code the
-           * source of truth for a colour the library has not agreed to.
+           * IT WAS RAISED AS PALETTE DEBT AND THAT WAS THE WRONG READING. The owner's reason,
+           * in their words: this is *an existing colour with an opacity applied* — so it is not a
+           * new colour, and the rule it was filed under ("do not invent a step; the library
+           * decides") does not reach it. An alpha on a token that is already in the 32 is a use
+           * of that token. What the rule forbids is a hue or a step that is not derived from one.
            *
-           * NOT the same case as the `rgba(24, 17, 39, ...)` shadows elsewhere in this file. Those
-           * are gray-900 at an alpha, which is the documented recipe the shipped shadow tokens are
-           * themselves built from (`--shadow-modal` / `--shadow-popover` / `--shadow-raised`), and
-           * globals.css says in as many words that shadows whose OFFSETS are bespoke "stay written
-           * out; there are four and they are not a scale". A neutral drop shadow is depth. A green
-           * one is the type colour being used as emphasis, which is a palette decision.
+           * The second reason, and why it is here at all: the glow is part of how the map says
+           * WHICH STOP IS THE LATEST. That is the reason it stays and the reason it is not decoration: the trail end
+           * is marked three ways (filled circle, white numeral, the card anchored to it) and this
+           * is the fourth, the one that reads before any of them at a glance across the map.
+           * Anyone removing it is removing an emphasis, not a flourish, and owes the screen a
+           * replacement for it.
+           *
+           * The VIP halo went the other way this morning and the two are not in conflict — that
+           * one was deleted because it rendered NOTHING for 23 days, so there was no layer to keep
+           * and nothing on screen changed. Here something would.
+           *
+           * WHERE THE LINE IS — it is not the property, it is the source of the colour. The
+           * shipped shadow tokens (`--shadow-modal` / `--shadow-popover` / `--shadow-raised`) are
+           * themselves gray-900 at an alpha, and globals.css says shadows with bespoke offsets
+           * "stay written out; there are four and they are not a scale". Same recipe here, green
+           * instead of grey. What still goes to the library first is a colour that is NOT one of
+           * the 32 — a different hue, or a lightness step between two of them. Reaching for a
+           * token and turning it down is allowed; making a colour up is not.
            */
 
           const circleHtml = isLast
