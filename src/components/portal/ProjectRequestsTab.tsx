@@ -178,8 +178,8 @@ const T = {
     dispo: { erase: "지움", retain: "보존", undecided: "미정", "out-of-reach": "콘솔 소관 아님" } as Record<ErasureDisposition, string>,
     cat: {
       watchlist: "VIP 등록과 등록 사진",
-      detections: "이 사람을 지목한 검출 이력",
-      judgements: "그 검출에 대한 관제요원 판단",
+      detections: "이 사람을 지목한 감지 이력",
+      judgements: "그 감지에 대한 관제요원 판단",
       searchLog: "이 사람을 조회한 기록",
       footageReleases: "이 사람에 대해 제공한 영상 기록",
       auditLog: "이 사람을 언급한 변경 기록",
@@ -189,7 +189,7 @@ const T = {
     why: {
       watchlist: "요청의 본체이고, 콘솔이 할 줄 아는 일입니다 — VIP에서 해제하는 것은 이미 있는 감사되는 동작입니다.",
       detections: "열려 있습니다. 지우면 시스템이 이 사람에 대해 무엇을 했는지의 기록이 사라지고, 남기면 잊혀지길 요청한 사람의 생체정보 파생 기록을 계속 갖게 됩니다. 양쪽 다 근거가 있습니다.",
-      judgements: "열려 있고, 위 검출에 묶여 있습니다 — 판단이 그 대상인 검출보다 오래 살 수는 없습니다.",
+      judgements: "열려 있고, 위 감지에 묶여 있습니다 — 판단이 그 대상인 감지보다 오래 살 수는 없습니다.",
       searchLog: "보존하고, 그건 이 사람을 위한 것입니다. 누가 어떤 사유로 이 사람을 조회했는지의 기록이라, 본인 요청으로 지우면 본인의 증거가 사라집니다.",
       footageReleases: "보존합니다. 이 사람에 대한 영상이 제3자에게 나간 기록이고, 바로 그 사람이 민원을 낼 때 필요한 것입니다.",
       auditLog: "보존합니다. 그에 이르기까지를 지우는 삭제는 삭제가 아니라 은폐입니다.",

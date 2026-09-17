@@ -7,7 +7,7 @@ import { useLanguage } from "@/lib/i18n";
 // The one word this map draws itself, on the card marking the most recent sighting. Inline rather
 // than in a file dictionary: the markup is built as an HTML string for Leaflet, so there is no
 // component here to hold a `t`.
-const LAST_SEEN = { en: "LAST SEEN", ko: "마지막 검출" } as const;
+const LAST_SEEN = { en: "LAST SEEN", ko: "마지막 감지" } as const;
 
 export interface TrackingHit {
   lat: number;

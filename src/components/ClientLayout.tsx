@@ -46,7 +46,7 @@ const T = {
     collapseSidebar: "Collapse sidebar",
   },
   ko: {
-    vipDetected: "VIP 검출",
+    vipDetected: "VIP 감지",
     viewOnMap: "지도에서 보기",
     priorityText: { normal: "일반", high: "높음", very_high: "매우 높음" } as Record<"normal" | "high" | "very_high", string>,
     expandSidebar: "사이드바 펼치기",

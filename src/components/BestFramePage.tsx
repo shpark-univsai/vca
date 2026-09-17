@@ -68,11 +68,11 @@ const T = {
     noCamMatch: (q: string) => `“${q}”에 해당하는 카메라가 없습니다`,
     selectedOf: (n: number, max: number) => `${max}대 중 ${n}대 선택`,
     resetSelection: "선택 해제",
-    vipNow: "지금 VIP 검출",
+    vipNow: "지금 VIP 감지",
     pinPanel: "패널 고정",
     unpinPanel: "고정 해제",
     close: "닫기",
-    liveSnapshot: "실시간 검출",
+    liveSnapshot: "실시간 감지",
     photosNotWired: "대조 얼굴과 등록 사진이 아직 실려 오지 않습니다",
     liveSnapshotHint: "카메라가 방금 잡은 프레임입니다",
     noDbMatch: "등록 DB 없음",
@@ -82,7 +82,7 @@ const T = {
     liveCamera: "실시간 카메라",
     typeNetwork: "네트워크",
     typeFile: "파일",
-    noDetections: "검출 없음",
+    noDetections: "감지 없음",
     unknownTarget: "미확인 대상",
     detail: (n: number) => `속성 ${n}`,
     group: "그룹",
@@ -807,7 +807,7 @@ function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState
       <div style={{ display:"flex", gap:"12px", backgroundColor:"var(--gray-50)", borderRadius:"16px", padding:"12px" }}>
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"8px", width:"96px", flexShrink:0 }}>
           {/* Empty, not a stock face. Both sides of this comparison were the SAME constant —
-              AVATAR[0] for people, CAR_IMG for vehicles — captioned 실시간 검출 and 등록 DB with a
+              AVATAR[0] for people, CAR_IMG for vehicles — captioned 실시간 감지 and 등록 DB with a
               match percentage between them. The panel was inviting the operator to confirm an
               identity by eye against a picture of somebody else. See the long note in
               BestFrameDetailPage, which had the same pair. */}

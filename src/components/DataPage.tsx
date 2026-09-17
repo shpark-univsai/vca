@@ -241,7 +241,7 @@ const T = {
     switchPrimary: "대상 바꾸기",
     framesCount: (n: number) => `프레임 ${n}장`,
     pageRange: (a: number, b: number, n: number) => `${n}건 중 ${a}–${b}`,
-    colCoCaptures: "동반검출",
+    colCoCaptures: "동반감지",
     analyzeFrame: "프레임 분석",
     agoOf: (d: string) => `${d} 전`,
     reidObject: (id: string) => `Re-ID 객체 #REC-${id}`,
@@ -257,7 +257,7 @@ const T = {
     todayAt: (time: string) => `오늘 ${time}`,
     peakLocationTip: (here: number, total: number) => `같이 찍힌 ${total}장 중 ${here}장이 이곳에서 촬영됐습니다 — 누르면 그 장면만 봅니다`,
     peakTimeTip: (here: number, total: number, pct: number, bucket: string) => `같이 찍힌 ${total}장 중 ${here}장(${pct}%)이 ${bucket}에 촬영됐습니다 — 누르면 그 장면만 봅니다`,
-    sortByCoCaptures: (asc: boolean) => `동반검출 ${asc ? "적은 순" : "많은 순"}으로 정렬`,
+    sortByCoCaptures: (asc: boolean) => `동반감지 ${asc ? "적은 순" : "많은 순"}으로 정렬`,
     primaryBadge: "대상",
     plate: "번호판",
     labelCamera: "카메라",
@@ -315,9 +315,9 @@ const T = {
     colTier: "단계",
     colStatus: "상태",
     colLocations: "장소 수",
-    colPeakLocation: "최다 검출 장소",
-    colPeakTime: "최다 검출 시간",
-    colSpan: "검출 기간",
+    colPeakLocation: "최다 감지 장소",
+    colPeakTime: "최다 감지 시간",
+    colSpan: "감지 기간",
     colAction: "동작",
     fullBody: "전신",
     selectPrimaryTarget: "기준 대상 선택",
@@ -340,7 +340,7 @@ const T = {
     coCaptures: (n: number) => `함께 잡힘 ${n}회`,
     viewFrames: "프레임 보기",
     tier: (n: number) => `${n}단계 연결`,
-    lastSeenAt: (when: string, place: string) => `마지막 검출 ${when} · ${place}`,
+    lastSeenAt: (when: string, place: string) => `마지막 감지 ${when} · ${place}`,
     viewPyramid: "단계별로 배치해서 보기",
     viewGrid: "정렬 가능한 표로 보기",
     pyramidAndZone: "단계 · 구역",
@@ -4331,11 +4331,11 @@ type PyramidRow = { key:string; weight:number; nodes:RedfaceNode[]; meta: TierMe
 // The label chips go white in exchange — a danger-100 chip on a danger-100 field was invisible.
 const ZONE_TINT = (token: string) => `color-mix(in srgb, var(${token}) 70%, white)`;
 const PYRAMID_TIER_META: Record<"tier1"|"tier2"|"tier3", TierMeta> = {
-  tier1: { bg:ZONE_TINT("--danger-200"), labelBg:"rgba(255,255,255,0.85)", labelColor:"var(--danger-500)", label:{ en:"TIER 1 · RED ZONE", ko:"1단계 · 적색 구간" }, sublabel:{ en:">100 CO-CAPTURES", ko:"동반검출 100건 초과" },
+  tier1: { bg:ZONE_TINT("--danger-200"), labelBg:"rgba(255,255,255,0.85)", labelColor:"var(--danger-500)", label:{ en:"TIER 1 · RED ZONE", ko:"1단계 · 적색 구간" }, sublabel:{ en:">100 CO-CAPTURES", ko:"동반감지 100건 초과" },
     nodeSize:52, nodeBorder:3, nodeColor:"var(--danger-400)", step:16, lineWidth:1.4, dashFlow:true, lineOpacity:0.85 },
-  tier2: { bg:ZONE_TINT("--warning-200"), labelBg:"rgba(255,255,255,0.85)", labelColor:"var(--warning-500)", label:{ en:"TIER 2 · ORANGE ZONE", ko:"2단계 · 주황 구간" }, sublabel:{ en:"10-99 CO-CAPTURES", ko:"동반검출 10~99건" },
+  tier2: { bg:ZONE_TINT("--warning-200"), labelBg:"rgba(255,255,255,0.85)", labelColor:"var(--warning-500)", label:{ en:"TIER 2 · ORANGE ZONE", ko:"2단계 · 주황 구간" }, sublabel:{ en:"10-99 CO-CAPTURES", ko:"동반감지 10~99건" },
     nodeSize:52, nodeBorder:2, nodeColor:"var(--warning-400)", step:11, lineWidth:1, dashed:true, lineOpacity:0.7 },
-  tier3: { bg:ZONE_TINT("--gray-200"), labelBg:"rgba(255,255,255,0.85)", labelColor:"var(--gray-700)", label:{ en:"TIER 3 · SLATE ZONE", ko:"3단계 · 회색 구간" }, sublabel:{ en:"<10 CO-CAPTURES", ko:"동반검출 10건 미만" },
+  tier3: { bg:ZONE_TINT("--gray-200"), labelBg:"rgba(255,255,255,0.85)", labelColor:"var(--gray-700)", label:{ en:"TIER 3 · SLATE ZONE", ko:"3단계 · 회색 구간" }, sublabel:{ en:"<10 CO-CAPTURES", ko:"동반감지 10건 미만" },
     // Same 52px as Tier 2. Tier 3 was drawn smaller to signal a weaker link, but the faces here
     // will be low-resolution CCTV crops in practice, and 42px left too little of them to tell
     // people apart — which is the one thing these nodes are for.

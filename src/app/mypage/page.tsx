@@ -89,7 +89,7 @@ const T = {
     mismatch: "비밀번호가 일치하지 않습니다. 다시 입력해주세요.",
     updatePassword: "비밀번호 변경",
     thresholdsTitle: "지도 경보 기준",
-    thresholdsBody: "지도의 구역 배지가 빨강(경보) 또는 남색(주의)으로 바뀌는 데 필요한 당일 VIP 검출 수입니다.",
+    thresholdsBody: "지도의 구역 배지가 빨강(경보) 또는 남색(주의)으로 바뀌는 데 필요한 당일 VIP 감지 수입니다.",
     alertRed: "경보 (빨강)",
     moderateNavy: "주의 (남색)",
     saveChanges: "변경 사항 저장",

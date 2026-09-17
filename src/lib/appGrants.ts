@@ -46,14 +46,14 @@ export const APP_GRANT_LABELS = {
     screenName: { live: "실시간 관제", bestframe: "베스트 프레임", redmap: "레드맵", reid: "Re-ID 분석", redface: "RedFace" } as Record<AppScreen, string>,
     screenDesc: {
       live: "지금 들어오는 카메라 화면",
-      bestframe: "검출이 남긴 프레임을 열어 본다",
+      bestframe: "감지가 남긴 프레임을 열어 본다",
       redmap: "지도에서 동선을 따라간다",
       reid: "다른 카메라에서 같은 사람을 찾는다",
-      redface: "얼굴로 지난 검출을 찾는다",
+      redface: "얼굴로 지난 감지를 찾는다",
     } as Record<AppScreen, string>,
     verbSearch: "인물 검색",
     verbSearchDesc: "그 사람이 어디를 지나갔는지 되짚는다",
     verbExport: "증거 내보내기",
-    verbExportDesc: "검출을 파일로 꺼낸다",
+    verbExportDesc: "감지 기록을 파일로 꺼낸다",
   },
 } as const;

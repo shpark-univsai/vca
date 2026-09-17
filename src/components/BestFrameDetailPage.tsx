@@ -49,31 +49,31 @@ const T = {
   },
   ko: {
     all: "전체",
-    noDetections: "검출 없음",
+    noDetections: "감지 없음",
     multiTrackHistory: "다중 트랙 이벤트 기록",
-    multiTrackHint: "이 카메라가 검출한 모든 트랙의 이벤트입니다",
+    multiTrackHint: "이 카메라가 감지한 모든 트랙의 이벤트입니다",
     vehicle: "차량",
     unknown: "미확인",
     reelTitle: "베스트 프레임 목록",
-    reelSub: "현재 프레임에서 검출된 대상",
-    inspectionDetail: "검출 상세",
+    reelSub: "현재 프레임에서 감지된 대상",
+    inspectionDetail: "감지 상세",
     close: "닫기",
-    liveCapture: "실시간 검출",
+    liveCapture: "실시간 감지",
     liveCaptureHint: "카메라가 방금 잡은 프레임입니다",
     enrolledDb: "등록 DB",
     enrolledDbHint: "등록 데이터베이스의 기준 사진입니다",
     registeredAs: "등록 정보:",
     cameraName: "카메라",
-    eventTime: "검출 시각",
+    eventTime: "감지 시각",
     analysisResults: "분석 결과",
-    noAttributes: "검출에 인상착의 속성이 아직 실려 오지 않습니다.",
-    photosNotWired: "검출이 대조에 쓴 얼굴과 등록 사진을 아직 싣지 않습니다.",
+    noAttributes: "감지 기록에 인상착의 속성이 아직 실려 오지 않습니다.",
+    photosNotWired: "감지 기록에 대조에 쓴 얼굴과 등록 사진이 아직 실려 오지 않습니다.",
     attrBasic: "기본",
     noRegistration: "등록 정보 없음",
     attrTop: "상의",
     attrBottom: "하의",
     attrAddons: "소지품",
-    alsoCaptured: "같은 프레임에서 함께 검출됨",
+    alsoCaptured: "같은 프레임에서 함께 감지됨",
     back: "돌아가기",
     trackOnMap: "지도에서 추적",
     bestFrame: "베스트 프레임",
@@ -685,7 +685,7 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
         <div style={{ display:"flex", alignItems:"flex-end", gap:"8px", marginBottom:"14px" }}>
           {/* NO FACES HERE UNTIL THEY ARE THIS PERSON'S.
               Two fixed image files used to sit on either side of the match percentage, captioned
-              실시간 검출 and 등록 DB, with a tooltip calling the right one "the reference photo in
+              실시간 감지 and 등록 DB, with a tooltip calling the right one "the reference photo in
               the enrolled database". They were the same two pictures for every detection in the
               product — press any card and the same stranger appeared, with only the number
               changing. An operator's job at this panel is to confirm an identity by eye, and the

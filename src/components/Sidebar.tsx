@@ -28,6 +28,20 @@ const T = {
     close: "Close",
     /**
      * The left half of the pair below: this one counts PEOPLE, "Today's detections" counts hits.
+     *
+     * KOREAN CARRIES THE UNIT AND ENGLISH DOES NOT, on purpose (owner's call, 2026-09-17).
+     * The tiles print a bare number with no unit beside it, and these two count the SAME people
+     * two ways — 19 people, 65 sightings of them. English is safe because "detections" is a
+     * plural count noun: the label already says what is being counted. `감지` is not — `오늘 감지`
+     * over `65` beside `오늘 감지된 VIP` over `19` reads as 65 more of something, so the Korean
+     * says `건수`. A candidate that was rejected for exactly this: `오늘 감지된 얼굴`, which reads
+     * as 65 distinct faces and would have made the pair say "19 VIPs plus 46 other people".
+     *
+     * The word itself changed from `검출` to `감지` on the same call, everywhere in the app (56
+     * sites) rather than in these two tiles — the event rows right underneath say
+     * `카메라 3대에서 감지`, and one screen with two words for one thing is worse than either
+     * word. Portal keeps `자동 감지` (server ping) and `화재 감지` (a license feature): those are
+     * the machine sensing its own world, not a camera catching a person.
      * Both say "today" out loud because both are windowed to it (todaysDetectionHits), and on a
      * live-monitoring screen an unstated window is read as "now" — the same reason districtTally
      * below states its own.
@@ -79,13 +93,13 @@ const T = {
     noVips: "등록된 VIP 대상이 없습니다.",
     registeredOn: (date: string) => `${date} 등록`,
     close: "닫기",
-    vipsSeenToday: "오늘 검출된 VIP",
-    todaysDetections: "오늘 검출",
+    vipsSeenToday: "오늘 감지된 VIP",
+    todaysDetections: "오늘 감지 건수",
     selectLocation: "장소 선택",
     allLocations: "전체 장소",
     liveAnalytics: "실시간 분석",
     all: "전체",
-    seenAtCameras: (n: number) => `서로 다른 카메라 ${n}대에서 검출`,
+    seenAtCameras: (n: number) => `서로 다른 카메라 ${n}대에서 감지`,
     stopsOnTrail: (n: number) => `이 이동 경로에서 ${n}곳 경유`,
     stops: (n: number) => `${n}곳 경유`,
     stopsAcross: (stops: number, cams: number) => `카메라 ${cams}대에서 ${stops}곳 경유`,
@@ -93,9 +107,9 @@ const T = {
     return: "재방문",
     tracking: "동선 추적",
     filterAll: "전체",
-    filterVip: "VIP 검출",
+    filterVip: "VIP 감지",
     filterTracking: "동선 추적",
-    noEvents: "현재 검출된 이벤트가 없습니다.",
+    noEvents: "현재 감지된 이벤트가 없습니다.",
     rangeOf: (from: number, to: number, total: number) => `${total}건 중 ${from} – ${to}`,
     goToPage: "페이지 이동",
     prevPage: "이전 페이지",

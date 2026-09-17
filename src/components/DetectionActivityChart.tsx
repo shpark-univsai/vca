@@ -89,23 +89,27 @@ const DOT_RADIUS_PX = 2.5;
  * NAMED AFTER THE TILE IT OPENS FROM, plus the one thing it adds.
  *
  * This said "VIP detections today" / `오늘 VIP 검출` until 2026-09-17, and in Korean that had become
- * a third phrase in a family of three. The sidebar's tiles are now `오늘 검출된 VIP` (people, 19)
- * and `오늘 검출` (detections, 65). This panel plots the SECOND of those — it opens from that tile
- * and draws that tile's number — but `오늘 VIP 검출` reads closest to the FIRST one, so the label
+ * a third phrase in a family of three. The sidebar's tiles are `오늘 감지된 VIP` (people, 19) and
+ * `오늘 감지 건수` (sightings, 65). This panel plots the SECOND of those — it opens from that tile
+ * and draws that tile's number — but `오늘 VIP 검출` read closest to the FIRST one, so the label
  * pointed at 19 while the chart drew 65. Two near-identical Korean strings a few pixels apart
  * carrying different figures is this codebase's signature defect in miniature: nothing errors,
  * and the screen is confidently wrong.
  *
- * So it echoes its own tile (`오늘 검출` / "Today's detections") and adds `시간대별` / "by hour",
- * which is what this panel uniquely is and what its own x axis (`0시`, `1시`, …) already shows.
+ * So it echoes its own tile (`오늘 감지 건수` / "Today's detections") and adds `시간대별` / "by
+ * hour". It carries the tile's `건수` for the tile's reason: the Korean noun does not say whether
+ * it counts people or sightings, and this panel is the one that draws the sightings.
+ * (`검출` became `감지` app-wide on 2026-09-17 — see the note on these tiles in Sidebar.tsx.)
+ * `시간대별` is
+ * what this panel uniquely is and what its own x axis (`0시`, `1시`, …) already shows.
  * "VIP" comes out of both languages: the tile it mirrors does not say it either, and the count is
- * the same hits, so a fourth wording of "VIP 검출" would only re-open the collision.
+ * the same hits, so a fourth wording of "VIP 감지" would only re-open the collision.
  *
  * The window stays stated. The axis is hours-of-a-day with no date on it, so dropping `오늘` would
  * leave a live-monitoring panel whose figure has no window — the same gap the camera pill was
  * fixed for this morning.
  */
-export const DETECTION_CHART_TITLE = { en: "Today's detections by hour", ko: "오늘 시간대별 검출" } as const;
+export const DETECTION_CHART_TITLE = { en: "Today's detections by hour", ko: "오늘 시간대별 감지 건수" } as const;
 
 const T = {
   en: { allCameras: "All cameras", title: DETECTION_CHART_TITLE.en, minimize: "Minimize chart" },

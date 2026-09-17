@@ -151,7 +151,7 @@ const T = {
     chooseTitle: "어디로 가시겠습니까?",
     remember: "이 단말에서 기억하기",
     appName: "모니터링 앱",
-    appWhat: "실시간 카메라, 검출, 검색",
+    appWhat: "실시간 카메라, 감지, 검색",
     portalName: "Portal",
     portalWhat: "카메라, 사용자, 라이선스, 감사 로그",
     deniedAppTitle: "이 계정에는 모니터링 앱 권한이 없습니다",
