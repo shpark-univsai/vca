@@ -26,6 +26,7 @@
 | vca-84/M | `DataPage.tsx` | J가 남긴 보라 선택 표시 둘 — `.vca-simple-select-option`(감정·인종 필터, `!important` 얽힘)과 `.vca-peak-card`(RedFace, 보라가 블록 제목과 일치) |
 | vca-84/N | — 놓았습니다 | **완료 `806dcbc`.** 화면이 121이라 적는 자리에 목업이 12를 들고 있던 것을 지웠습니다(읽는 곳 0개, 동적 접근까지 확인). `tracking`은 **그대로 뒀습니다** — 그 주석이 이미 "세 번째 타일을 둘지는 사용자 결정"이라고 적어놨고 그 값은 실제 이벤트에서 파생돼 화면과 모순되지 않습니다 |
 | vca-84/O | `ClientLayout.tsx` | `?tab=DATA`가 첫 페인트를 못 넘겨 `?tab=DASHBOARD`로 떨어지고 하위탭이 덮어씀 — 딥링크가 튕깁니다 |
+| vca-84 (본인) | `Navbar.tsx` | 작은 화면에서 헤더가 겹침 — 탭 행이 `position:absolute`로 중앙에 떠 있어 자리가 없으면 양옆을 덮고 클릭까지 먹습니다. 왼쪽의 `calc(50% - 236px)`는 탭 폭을 손으로 추정한 값이고 탭 개수는 권한에 따라 변합니다 |
 | vca-cf | — (비었습니다) | **세션 종료.** 인수인계 때 "에이전트 미커밋 변경 있음"으로 넘겼는데, 그 뒤 에이전트가 끝나 제가 검증하고 `0f75742`로 올렸습니다. **남은 미커밋 없습니다.** 붙일 곳 하나 남김: `bodyScrolls`를 `PortalSettingsPage.tsx:741`(프로젝트 삭제)에 전달 — `AccessChangeModal`에는 절대 주지 말 것(주석에 이유 있음) |
 | vca-hv | — 종료 | `mypage`·`Navbar`·`RedmapPage` 커밋 완료. 섞였던 두 auth 파일은 `4d51589`로 정리됨 |
 

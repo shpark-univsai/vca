@@ -264,16 +264,28 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
       @media (max-width: 1400px){ .navbar-cam-status{display:none} }
       .navbar-logo-btn:hover{opacity:.8}
     `}</style>
+    {/* A THREE-COLUMN GRID, not a flex row with the tabs floated over it.
+        The tab row used to be `position:absolute; left:50%` — out of the flow entirely — so it
+        kept the centre whether or not there was room, drew on top of both neighbours, and took
+        their clicks. On a small laptop that meant the first tab sitting on the camera counts, and
+        the clock and settings covered and unpressable.
+        `1fr auto 1fr` gives the same TRUE viewport centring (the outer tracks are equal, so the
+        middle one is centred on the window, not on the leftover space) and reserves the space for
+        real: when the tabs need more room the outer tracks give it up instead of being covered.
+        It also retires a hardcoded number — see the note on the left group. */}
     <nav style={{
       height: "62px", backgroundColor: "white", borderBottom: BORDER,
-      display: "flex", alignItems: "center", padding: "0 24px",
+      display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", padding: "0 24px",
       flexShrink: 0, zIndex: 5000, position: "relative",
     }}>
       {/* ── Left: logo + AI status ── */}
-      {/* Hard ceiling rather than hope: the tab row is absolutely centred, so a left group that
-          grows past half-the-window-minus-half-the-tabs would slide under it. 236px is half the
-          tab row plus a margin; the project name truncates inside whatever is left. */}
-      <div className="navbar-left" style={{ display: "flex", alignItems: "center", gap: "16px", minWidth: 0, maxWidth: "calc(50% - 236px)", overflow: "hidden" }}>
+      {/* No ceiling any more. This carried `maxWidth: calc(50% - 236px)`, and its own note called
+          236 "half the tab row plus a margin" — a number nobody can keep true, because the tab row
+          is built from `allowedTabs` (a permission-trimmed list, so between one and four tabs) and
+          the Korean labels are longer than the English ones. Too small and the left group slid
+          under the tabs; too large and the project name truncated for nothing. The grid track now
+          measures the tabs instead of guessing them, so this only needs to be allowed to shrink. */}
+      <div className="navbar-left" style={{ display: "flex", alignItems: "center", gap: "16px", minWidth: 0, overflow: "hidden" }}>
         {/* Logo — click returns to the Dashboard, same convention as any app's home button */}
         <button
           className="navbar-logo-btn"
@@ -374,13 +386,9 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
         </div>
       </div>
 
-      <div style={{ flex: 1 }} />
-
-      {/* ── Center: tabs (absolute center) ── */}
+      {/* ── Center: tabs (the grid's middle track, centred on the window) ── */}
       <div style={{
-        position: "absolute", left: "50%", top: 0,
-        transform: "translateX(-50%)",
-        display: "flex", alignItems: "center", height: "62px",
+        display: "flex", alignItems: "center", height: "62px", justifySelf: "center",
       }}>
         {TABS.filter(tab => allowedTabs === undefined || allowedTabs.includes(tab.id)).map((tab) => {
           const active = activeTab === tab.id;
@@ -417,10 +425,11 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
         })}
       </div>
 
-      <div style={{ flex: 1 }} />
-
       {/* ── Right: location + date/time + icons ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "20px", flexShrink: 0 }}>
+      {/* `justifySelf: end` keeps it against the window edge now that its track is a full third
+          rather than whatever a flex spacer left over. `flexShrink: 0` stays: the clock and the
+          two icon buttons are targets, and a target that shrinks is a target you miss. */}
+      <div style={{ display: "flex", alignItems: "center", gap: "20px", flexShrink: 0, justifySelf: "end" }}>
         {/* Location — drawn only for a site that has one on record. */}
         {location && (
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
