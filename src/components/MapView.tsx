@@ -135,10 +135,41 @@ const T = {
   },
 } as const;
 
-// Leaflet popups are raw HTML strings, not React — values dropped into an inline onclick="...('...')"
-// attribute need their quotes escaped so a name/label containing one can't break the attribute.
+/**
+ * TWO ESCAPES, BECAUSE THERE ARE TWO CONTEXTS. Everything Leaflet draws here is a raw HTML string
+ * rather than React, so every value this file interpolates is being handed to a parser.
+ *
+ * `escapeHtml` is for a value that becomes TEXT — a person's name, a camera's name, a zone, a
+ * district's label. It is the entity encoding, and it is what keeps `<`, `&` and a quote from
+ * being read as markup instead of as characters.
+ *
+ * `escapeAttr` below is for the argument of an inline `onclick="f('…')"`, and it is a different
+ * problem with a different answer: it backslash-escapes for a JAVASCRIPT STRING LITERAL. A value
+ * there passes through two decoders — the HTML attribute parser first, the JS parser second — so
+ * entity-encoding alone does not protect it (`&#39;` is decoded back to `'` before the JS is ever
+ * parsed, and the literal then ends early), and backslash-escaping alone does not protect the
+ * attribute (a `"` in the value still closes it). The onclick sites therefore compose both, in
+ * that order: JS-escape, then entity-encode what that produced.
+ *
+ * WHY THIS MATTERS ON MOCK DATA. Nothing here is exploitable today, because these names are seeds.
+ * But they are the fields the server and the CSV import fill, and a camera register is typed by
+ * people — so "the values happen to be safe" is a property of this week's fixture, not of the
+ * code. A single escaped site is also worse than none: it is how the next reader concludes the
+ * pattern is already handled (which is why the `onclick` argument was escaped and the fourteen
+ * text sites were not).
+ */
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, c =>
+    c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === '"' ? "&quot;" : "&#39;");
+}
+
 function escapeAttr(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+/** The onclick-argument treatment: a JS string literal, then the attribute that carries it. */
+function escapeOnclickArg(s: string): string {
+  return escapeHtml(escapeAttr(s));
 }
 
 // Recent-activity ping — a fixed-size dot with an expanding/fading ring around it (same visual
@@ -188,12 +219,12 @@ function cameraDotTooltipHtml(cam: Camera, lang: AppLanguage): string {
   return `
     <div style="font-family:'SUIT',system-ui,sans-serif;padding:8px 10px;display:flex;flex-direction:column;gap:3px;min-width:120px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-        <span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.24px;white-space:nowrap">${cam.name}</span>
+        <span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.24px;white-space:nowrap">${escapeHtml(cam.name)}</span>
         <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:999px;flex-shrink:0;color:${isLive ? "var(--success-400)" : "var(--danger-400)"};background:${isLive ? "var(--success-100)" : "var(--danger-100)"}">
           ${isLive ? t.live : t.offline}
         </span>
       </div>
-      <span style="font-size:10px;font-weight:600;color:var(--gray-500);white-space:nowrap">${cam.zone || cam.location}</span>
+      <span style="font-size:10px;font-weight:600;color:var(--gray-500);white-space:nowrap">${escapeHtml(cam.zone || cam.location)}</span>
     </div>`;
 }
 
@@ -401,7 +432,7 @@ function districtPillHtml(
       align-items:center;gap:1px;background:${bg};${border}border-radius:10px;padding:5px 10px;
       font-family:'SUIT',system-ui,sans-serif;color:${textColor};box-shadow:${shadow};
       white-space:nowrap;letter-spacing:-0.2px">
-    <span style="font-size:11px;font-weight:600;opacity:0.78">${label}</span>
+    <span style="font-size:11px;font-weight:600;opacity:0.78">${escapeHtml(label)}</span>
     <span style="display:inline-flex;align-items:baseline">${secondLine}</span>
   </div>`;
 }
@@ -430,7 +461,7 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
             <path d="M1.5 15.7578V12.7578" stroke="var(--gray-600)" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M5.25 7H5.25729" stroke="var(--gray-600)" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.24px;line-height:1.3">${event.location}${event.cameraLabel ? ` · ${event.cameraLabel}` : ""}</span>
+          <span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.24px;line-height:1.3">${escapeHtml(event.location)}${event.cameraLabel ? ` · ${escapeHtml(event.cameraLabel)}` : ""}</span>
         </div>
         <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;margin-top:1px">
           ${/* The green dot means "this is happening now", so it only belongs on a sighting that
@@ -445,7 +476,7 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
 
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
         ${vipBadge}
-        <span style="font-size:13px;font-weight:700;color:var(--gray-900);letter-spacing:-0.26px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${event.name}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--gray-900);letter-spacing:-0.26px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(event.name)}</span>
       </div>
 
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
@@ -474,7 +505,7 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
         <span style="position:absolute;bottom:8px;left:10px;font-size:9px;color:rgba(255,255,255,0.85);font-weight:700;letter-spacing:0.5px">${t.capturedFrame}</span>
       </div>
 
-      <button onclick="window.__vcaGoAnalyzeFrame && window.__vcaGoAnalyzeFrame('${escapeAttr(event.location)}')"
+      <button onclick="window.__vcaGoAnalyzeFrame && window.__vcaGoAnalyzeFrame('${escapeOnclickArg(event.location)}')"
         style="margin-top:10px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
         background:var(--gray-900);color:white;border:none;border-radius:6px;padding:8px 0;
         font-family:'SUIT',system-ui,sans-serif;font-size:11px;font-weight:700;cursor:pointer">
@@ -602,7 +633,7 @@ function getDevicePopupHTML(device: Device, cam: Camera | undefined, lang: AppLa
   return `
     <div style="font-family:'SUIT',system-ui,sans-serif;width:200px;padding:12px 14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-right:18px;gap:8px">
-        <span style="font-size:13px;font-weight:800;color:var(--gray-900);letter-spacing:-0.26px">${device.name}</span>
+        <span style="font-size:13px;font-weight:800;color:var(--gray-900);letter-spacing:-0.26px">${escapeHtml(device.name)}</span>
         <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;color:${isLive ? "var(--success-400)" : "var(--danger-400)"};background:${isLive ? "var(--success-100)" : "var(--danger-100)"};flex-shrink:0">
           ${isLive ? t.live : t.out}
         </span>
@@ -610,14 +641,14 @@ function getDevicePopupHTML(device: Device, cam: Camera | undefined, lang: AppLa
       ${zone === null ? "" : `
       <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6.3 10.9C7.23 10.1 10 7.5 10 5c0-2.21-1.79-4-4-4S2 2.79 2 5c0 2.5 2.77 5.1 3.7 5.9.09.06.19.1.3.1s.21-.04.3-.1Z" stroke="var(--gray-500)" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="5" r="1.5" stroke="var(--gray-500)"/></svg>
-        <span style="font-size:11px;font-weight:600;color:var(--gray-600)">${zone}</span>
+        <span style="font-size:11px;font-weight:600;color:var(--gray-600)">${escapeHtml(zone)}</span>
       </div>`}
       ${outSince !== null ? `
       <div style="display:flex;align-items:center;gap:5px">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="var(--danger-400)" stroke-linecap="round"/><path d="M6 3v3l2 1.5" stroke="var(--danger-400)" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span style="font-size:11px;font-weight:600;color:var(--danger-400)">${t.outSince(outSince)}</span>
       </div>` : !isLive || !canGoLive || !cam ? "" : `
-      <button onclick="window.__vcaGoLiveCam && window.__vcaGoLiveCam('${escapeAttr(cam.name)}')"
+      <button onclick="window.__vcaGoLiveCam && window.__vcaGoLiveCam('${escapeOnclickArg(cam.name)}')"
         style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
         background:var(--gray-900);color:white;border:none;border-radius:6px;padding:7px 0;
         font-family:'SUIT',system-ui,sans-serif;font-size:11px;font-weight:700;cursor:pointer">
@@ -634,7 +665,7 @@ function getDeviceMarkerHTML(name: string, isLive: boolean): string {
     <div style="display:flex;flex-direction:column;align-items:center">
       <div style="display:flex;align-items:center;gap:5px;background:var(--gray-900);border-radius:999px;padding:5px 10px;box-shadow:0 2px 10px rgba(24, 17, 39,0.2);white-space:nowrap">
         <div style="width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0"></div>
-        <span style="font-family:'SUIT',system-ui,sans-serif;font-size:11px;font-weight:800;color:white;letter-spacing:-0.2px">${name}</span>
+        <span style="font-family:'SUIT',system-ui,sans-serif;font-size:11px;font-weight:800;color:white;letter-spacing:-0.2px">${escapeHtml(name)}</span>
       </div>
       <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid var(--gray-900);margin-top:-1px"></div>
     </div>
@@ -1121,7 +1152,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                        <img src="${getFacePhoto(ev.id)}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />
                      </div>
                      <span style="font-size:12px;font-weight:700;color:var(--gray-900);letter-spacing:-0.24px;
-                                  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${ev.name}</span>
+                                  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${escapeHtml(ev.name)}</span>
                      <span style="font-size:11px;font-weight:600;color:var(--gray-500);flex-shrink:0">${ev.confidence}%</span>
                      <span style="font-size:10px;color:var(--gray-400);flex-shrink:0;white-space:nowrap">${formatTimeAgo(ev.timestamp, lang)}</span>
                    </div>`).join("")}
@@ -1618,7 +1649,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                    const hop = hops[n - 1];
                    const name = hop.location + (hop.cameraLabel ? ` ${hop.cameraLabel}` : "");
                    const prefix = gap.missing.length > 1 ? `${String(n).padStart(2, "0")} ` : "";
-                   return `<span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.24px;white-space:nowrap">${prefix}${name} · ${formatTimeAgo(hop.timestamp, lang)}</span>`;
+                   return `<span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.24px;white-space:nowrap">${prefix}${escapeHtml(name)} · ${formatTimeAgo(hop.timestamp, lang)}</span>`;
                  }).join("")}
                  <span style="font-size:10px;font-weight:600;color:var(--gray-500);white-space:nowrap">${t.noCoordsWhy}</span>
                </div>`,
@@ -1760,9 +1791,9 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                      ${t.lastSeen}
                    </div>
                    <div style="background:white;padding:8px 12px 10px;white-space:nowrap">
-                     <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${selectedEvent.name}</div>
-                     <div style="font-size:13px;color:var(--gray-500);margin-top:2px"><span style="font-weight:600;color:var(--gray-700)">${node.label}</span> · ${node.time}</div>
-                     ${onGoRedmapTrace === undefined ? "" : `<div onclick="window.__vcaGoRedmapTrace && window.__vcaGoRedmapTrace('${escapeAttr(selectedEvent.name)}')"
+                     <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${escapeHtml(selectedEvent.name)}</div>
+                     <div style="font-size:13px;color:var(--gray-500);margin-top:2px"><span style="font-weight:600;color:var(--gray-700)">${escapeHtml(node.label)}</span> · ${node.time}</div>
+                     ${onGoRedmapTrace === undefined ? "" : `<div onclick="window.__vcaGoRedmapTrace && window.__vcaGoRedmapTrace('${escapeOnclickArg(selectedEvent.name)}')"
                        style="margin-top:6px;padding-top:6px;border-top:1px solid var(--gray-100);display:flex;align-items:center;gap:4px;
                        font-size:12px;font-weight:700;color:var(--type-tracking);cursor:pointer">
                        ${t.fullTrace}
@@ -1774,7 +1805,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
             : `<div style="position:relative;background:white;border:1px solid var(--gray-200);border-radius:16px;padding:10px 14px;white-space:nowrap;
                           font-family:'SUIT',sans-serif;box-shadow:0 4px 10px rgba(24, 17, 39,0.08)">
                  ${tailHtml}
-                 <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${node.label}</div>
+                 <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${escapeHtml(node.label)}</div>
                  <div style="font-size:13px;color:var(--gray-500);margin-top:2px">${node.time}</div>
                </div>`;
 
