@@ -560,10 +560,22 @@ export const liveEvents: LiveEvent[] = deriveLiveEvents(RAW_VIP_HITS);
 // is what keeps "Events today" here, the Data tab's list length and RedFace associate counts all
 // reporting the same number for the same underlying data.
 const eventsTodayCount = liveEvents.length;
-const vipMatchCount = liveEvents.filter((e) => e.type === "VIP").length;
+// PEOPLE, matching the Sidebar tile that asks this question (useEventCounts' `vipsToday`, renamed
+// 2026-09-17): distinct people seen, not rows. `liveEvents.filter(type === "VIP").length` stood
+// here, which counts only the people who were NOT collapsed into a Tracking trail — the same
+// narrower-than-its-label count the tile was fixed for. Distinct names, because deriveLiveEvents
+// groups by name too (see DetectionHit.person for why a name is the weakest acceptable identity,
+// and what the server must send instead).
+const vipsTodayCount = new Set(liveEvents.map((e) => e.name)).size;
 const trackingCount = liveEvents.filter((e) => e.type === "Tracking").length;
 
-// delta/deltaPct/down are all compared against the same time yesterday.
+// `delta` and `down` compare against the same time yesterday. There is no `deltaPct` any more:
+// each entry carried one (`delta: 4, deltaPct: 1.5`), and the counts these sit under became real
+// while the pair stayed seeded, so the tile printed "4 (1.5%)" under 48 — and 4 of 48 is 8.3%.
+// See DeltaBadge in Sidebar.tsx for why the percentage was dropped rather than recomputed from
+// the shown count. The delta stays: it is a placeholder holding the backend's daily series' seat
+// (decided 2026-09-09), and one number the mock cannot support is easier to read as a placeholder
+// than two that check out against each other.
 export const dashboardStats = {
   vipTargets: 12,
   // `aiRunning: 42` / `aiStopped: 34` used to sit here, read only by the app header. They named
@@ -571,9 +583,14 @@ export const dashboardStats = {
   // the two figures summed to 76, which matched neither the camera list nor the device list. They
   // were the camera run state all along, which `linkedCams`/`offlineCams` below already hold, so
   // the header reads those instead of a second pair that could disagree with them.
-  vipMatch:  { count: vipMatchCount, delta: 4,  deltaPct: 1.5, down: true },
-  tracking:        { count: trackingCount,       delta: 4,  deltaPct: 1.5, down: true },
-  eventsToday:     { count: eventsTodayCount,    delta: 3,  deltaPct: 2.1, down: false },
+  vipsToday:       { count: vipsTodayCount,      delta: 4,  down: true },
+  // Nothing reads this one — the Sidebar row is two tiles (people, detections) and neither takes
+  // its trend from here. Kept, not deleted: whether a third tile counts trails at all is the
+  // user's call (a trail is a VIP who moved, so it would be a subset of `vipsToday` beside it,
+  // and this file has form for two counts of the same thing being on screen at once). Left where
+  // a reader looking for the stub's shape will find it, rather than resurrected from memory.
+  tracking:        { count: trackingCount,       delta: 4,  down: true },
+  eventsToday:     { count: eventsTodayCount,    delta: 3,  down: false },
   // count is overwritten by getDashboardStats() from the actual device list — the 48/48 that used
   // to be typed here disagreed with the list it sat beside. Only the deltas are still seeded:
   // they compare against the same time yesterday, and nothing in the mock holds yesterday.
@@ -583,8 +600,8 @@ export const dashboardStats = {
   // trend, so a seeded one left the panel saying nothing true. Here the trend hangs under a count
   // that is now real, and it holds the place the backend's daily series will fill. Do not delete
   // these to match Portal — the difference is deliberate.
-  linkedCams:      { count: 0,  delta: 2,  deltaPct: 0.8, down: false },
-  offlineCams:     { count: 0,  delta: 4,  deltaPct: 1.5, down: true },
+  linkedCams:      { count: 0,  delta: 2,  down: false },
+  offlineCams:     { count: 0,  delta: 4,  down: true },
   // Overwritten by getDashboardStats() from the camera register, the same list the counts above
   // come from. Zero here rather than a seeded percentage: a figure typed in beside counts it
   // cannot be derived from is how this file ended up with three contradictory numbers before.

@@ -26,7 +26,16 @@ const T = {
     noVips: "No VIP targets registered.",
     registeredOn: (date: string) => `Registered ${date}`,
     close: "Close",
-    vipDetections: "VIP detections",
+    /**
+     * The left half of the pair below: this one counts PEOPLE, "Today's detections" counts hits.
+     * Both say "today" out loud because both are windowed to it (todaysDetectionHits), and on a
+     * live-monitoring screen an unstated window is read as "now" — the same reason districtTally
+     * below states its own.
+     *
+     * It said "VIP detections" until 2026-09-17, over a count of un-collapsed VIP rows — a label
+     * naming detections over a figure that was neither all the detections nor all the people.
+     */
+    vipsSeenToday: "VIPs seen today",
     todaysDetections: "Today's detections",
     selectLocation: "Select location",
     allLocations: "All locations",
@@ -86,7 +95,7 @@ const T = {
     noVips: "등록된 VIP 대상이 없습니다.",
     registeredOn: (date: string) => `${date} 등록`,
     close: "닫기",
-    vipDetections: "VIP 검출",
+    vipsSeenToday: "오늘 검출된 VIP",
     todaysDetections: "오늘 검출",
     selectLocation: "장소 선택",
     allLocations: "전체 장소",
@@ -181,15 +190,26 @@ const PAGE_BTN: React.CSSProperties = {
  * nothing has changed since yesterday, which is a comparison it had not made. Same rule as
  * AvailabilityDonut three hundred lines down, which spells out why absent is not zero, and the
  * same shape as the `?? 0` this codebase bans for coordinates.
+ *
+ * NO PERCENTAGE, since 2026-09-17. It read "4 (1.5%)": both figures come from the seed in
+ * mockData, while the count above them is derived from the store — so the three numbers on one
+ * tile failed arithmetic the reader does in their head. 4 under 48 is 8.3%, not 1.5%.
+ *
+ * The percentage is the part that could not be saved. Deriving it from the shown count (4/48 →
+ * 8.3%) would have been honest arithmetic over a placeholder delta, which is worse here than no
+ * arithmetic: the reader checks the division, it checks out, and the conclusion they draw is that
+ * the comparison was measured — so the one invented number becomes the one they stop questioning.
+ * The bare delta claims less, and less is what the mock can support. The percentage comes back
+ * when the backend's daily series arrives, computed from the figures it is shown beside.
  */
-interface StatTrend { delta: number; deltaPct: number; down: boolean }
-function DeltaBadge({ delta, deltaPct, down }: StatTrend) {
+interface StatTrend { delta: number; down: boolean }
+function DeltaBadge({ delta, down }: StatTrend) {
   return (
     <div style={{ display:"flex", gap:"4px", alignItems:"center" }}>
       <svg width="8" height="7" viewBox="0 0 8 7" style={{ flexShrink:0, transform: down ? "none" : "rotate(180deg)" }}>
         <path d="M4 7L0 0H8L4 7Z" fill="var(--gray-600)"/>
       </svg>
-      <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-600)", lineHeight:"16px" }}>{delta} ({deltaPct}%)</span>
+      <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-600)", lineHeight:"16px" }}>{delta}</span>
     </div>
   );
 }
@@ -210,7 +230,7 @@ function StatCol({ icon, label, labelColor = "var(--gray-600)", labelFontSize = 
       </div>
       <div style={{ display:"flex", flexDirection:"column", gap:"2px" }}>
         <span style={{ fontSize:"24px", fontWeight:800, color: count === undefined ? "var(--gray-400)" : "var(--gray-900)", letterSpacing:"-0.4px", lineHeight:"30px" }}>{count === undefined ? "—" : count}</span>
-        {trend && <DeltaBadge delta={trend.delta} deltaPct={trend.deltaPct} down={trend.down} />}
+        {trend && <DeltaBadge delta={trend.delta} down={trend.down} />}
       </div>
     </div>
   );
@@ -437,9 +457,8 @@ function useEventCounts() {
   // list of that site's detections, so counting every site's would make the number disagree with
   // the rows under it.
   const storeEvents = useProjectEvents();
-  const detections = vcaEventsToLiveEvents(storeEvents);
   const persons = useProjectPersons();
-  // delta/deltaPct/down (yesterday-comparison fields) come from the future-backend stub rather
+  // delta/down (the yesterday-comparison fields) come from the future-backend stub rather
   // than importing the mock object directly — see lib/api/dashboard.ts. Falls back to a flat
   // (no change) delta for the brief window before the fetch resolves.
   // Scoped like everything else here. Only the delta fields are read from it, but an unscoped
@@ -449,30 +468,44 @@ function useEventCounts() {
   const { data: dashboardStats } = useApiData(() => getDashboardStats(countsProjectId), [countsProjectId]);
   // "Today's detections" opens the Dashboard's detection-activity chart (see EventsSummary's
   // onToggleDetectionChart below), so it needs to count the same way that chart does — every
-  // individual hit today, unrolling a Tracking row's whole multi-camera history — not
-  // `detections.length` (one per row, so a person tracked across 10 cameras only counted as 1).
+  // individual hit today, unrolling a Tracking row's whole multi-camera history — not the row
+  // count (one per row, so a person tracked across 10 cameras only counted as 1).
   // Otherwise this number and the chart it opens visibly don't add up to each other.
-  const todaysHitCount = todaysDetectionHits(storeEvents).length;
+  const todaysHits = todaysDetectionHits(storeEvents);
   return {
     vipTargets: persons.filter(p => p.type === "VIP").length,
     /**
-     * HANDOFF NOTE — this count is narrower than its label, and the decision is the user's.
+     * PEOPLE, beside a count of DETECTIONS. Renamed and re-derived 2026-09-17.
      *
-     * `type === "VIP"` counts the rows that were NOT collapsed into a Tracking row, so every VIP
-     * who moved between cameras is missing from a tile labelled "VIP detections". It is the same
-     * filter that was taken out of the district pill and out of this file's own district filter
-     * (see EventsList) for exactly that reason, and it is the last one left on this screen.
-     * Measured on 2026-09-17 at 10:21: the tile read 48 while 58 VIP detections had been recorded
-     * today, and as the live ticker promoted people to Tracking it fell to 41 against 62.
+     * It was `detections.filter(e => e.type === "VIP").length` under a label reading "VIP
+     * detections", and that counts the rows which were NOT collapsed into a Tracking row — so
+     * every VIP who walked between two cameras was missing from a tile naming VIP detections.
+     * Measured at 10:21 that morning: the tile read 48 while 58 VIP detections had been recorded
+     * today, and as the live ticker promoted people to Tracking it fell to 41 against 62 — the
+     * gap widens the longer the screen is left open. It was the last `type === "VIP"` count on
+     * this screen; the same filter had already come out of the map's district pill and out of
+     * this file's district chip, both times because a trail IS a VIP who moved.
      *
-     * Not repaired here because the repair picks what the tile is FOR. Counting every VIP hit
-     * makes it identical to "Today's detections" beside it; the pair that carries two facts is
-     * PEOPLE and DETECTIONS — "VIPs seen today" (distinct `person` among todaysDetectionHits, the
-     * same count the district chip already shows) next to "Today's detections" (hits). That is
-     * the recommendation, and it is a rename, so it waits for a yes.
+     * Counting every VIP hit here instead would have made this tile a second copy of "Today's
+     * detections" beside it. So the pair carries two facts: how many VIPs were seen (here) and
+     * how many detections happened (there). It is the same number districtTally already puts on
+     * the district chip for one district, so one figure means one thing on both surfaces.
+     *
+     * `h.person` is the person's NAME — todaysDetectionHits fills it from `personName`, and NOT
+     * from `personId`, which holds the SIGHTING's id (unique per detection). A Set over
+     * `personId` would return detections wearing the word "people", which is what the first
+     * district pill shipped. See DetectionHit.person for that, and for the server contract that
+     * has to replace a name with a stable per-person id.
+     *
+     * `?? h.id` is deliberate and stays: an unidentified hit counts as ONE person, instead of
+     * every unidentified hit in the site merging into a single nameless person.
+     *
+     * It also states its window now. The old count took whatever was in the store, and only the
+     * seeds all being same-day made that read as "today" — it would have mixed days across
+     * midnight. todaysDetectionHits filters on the site's own clock.
      */
-    vipMatch: { count: detections.filter(e => e.type === "VIP").length, trend: dashboardStats?.vipMatch },
-    eventsToday: { count: todaysHitCount, trend: dashboardStats?.eventsToday },
+    vipsToday: { count: new Set(todaysHits.map(h => h.person ?? h.id)).size, trend: dashboardStats?.vipsToday },
+    eventsToday: { count: todaysHits.length, trend: dashboardStats?.eventsToday },
   };
 }
 
@@ -536,7 +569,7 @@ function VipListModal({ onClose, onPersonSelect }: { onClose: () => void; onPers
 function EventsSummary({ onPersonSelect, onToggleDetectionChart }: { onPersonSelect: (name: string) => void; onToggleDetectionChart?: () => void }) {
   const [lang] = useLanguage();
   const t = T[lang];
-  const { vipTargets, vipMatch, eventsToday } = useEventCounts();
+  const { vipTargets, vipsToday, eventsToday } = useEventCounts();
   // Real enrolled faces from this site's registry — see AvatarStack. A person imported from a CSV
   // has no photo, so they contribute no avatar rather than a placeholder one.
   const vipFaces = useProjectPersons()
@@ -572,16 +605,16 @@ function EventsSummary({ onPersonSelect, onToggleDetectionChart }: { onPersonSel
       )}
       <div style={{ display:"flex", alignItems:"center", gap:"16px", borderTop:BORDER, borderBottom:BORDER, padding:"12px 0", minHeight:"78px", boxSizing:"border-box" }}>
         <div style={{ flex:1, minWidth:0 }}>
-          <StatCol icon={<VipStatIcon />} label={t.vipDetections} labelColor="var(--gray-700)" labelFontSize={13} count={vipMatch.count} trend={vipMatch.trend} />
+          <StatCol icon={<VipStatIcon />} label={t.vipsSeenToday} labelColor="var(--gray-700)" labelFontSize={13} count={vipsToday.count} trend={vipsToday.trend} />
         </div>
         <div style={{ width:"1px", backgroundColor:"var(--gray-200)", alignSelf:"stretch", flexShrink:0 }} />
         {/* The chart opens from THIS tile, the one whose figure it plots.
-            It hung off "VIP detections" before, and the two numbers are not the same question:
-            that tile counts rows of type VIP, the chart plots every hit today (both go through
-            todaysDetectionHits — see useEventCounts). Measured at 10:21 on 2026-09-17: pressing a
-            tile that read 41 opened a panel titled "VIP detections today" drawing 62 dots. A
-            number that changes when you click it reads as one of the two being wrong, and the
-            reader cannot tell which. */}
+            It hung off the VIP tile before, and the two are not the same question: that tile
+            counts people, the chart plots every hit today (both go through todaysDetectionHits —
+            see useEventCounts). Measured at 10:21 on 2026-09-17: pressing a tile that read 41
+            opened a panel titled "VIP detections today" drawing 62 dots. A number that changes
+            when you click it reads as one of the two being wrong, and the reader cannot tell
+            which. */}
         <div
           onClick={onToggleDetectionChart}
           onMouseEnter={() => setIsDetectionsHovered(true)}
