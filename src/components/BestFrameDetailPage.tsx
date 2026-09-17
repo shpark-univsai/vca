@@ -1247,12 +1247,15 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                               onClick={() => { col.pick(v); setTimeOpen(false); }}
                               style={{ display:"block", width:"100%", padding:"5px 16px", border:"none", cursor:"pointer",
                                 fontSize:"12px", fontWeight: v === col.current ? 800 : 600, fontFamily:"monospace",
-                                // LEFT PURPLE ON PURPOSE, and the only mark on this screen that is.
-                                // Its row fill comes from .vca-picker-option[data-on] in globals.css,
-                                // shared with four pickers in Data monitoring; neutralising the text
-                                // here alone would leave half a mark, and the fill is not this file's
-                                // to change. Whoever takes the class to SELECTED takes this line too.
-                                color: v === col.current ? "var(--primary-400)" : "var(--gray-700)" }}>
+                                // SELECTED, like every other mark on this screen. This was the last
+                                // purple one, held back because the row's fill comes from
+                                // .vca-picker-option[data-on] in globals.css — shared with the
+                                // camera dropdowns in Live Monitoring and Re-ID — and grey text on
+                                // a purple row would have been half a mark. That class moved with
+                                // this line: the fill is --gray-100 under a 3px --gray-900 leading
+                                // rule, and the reasoning for the rule (rather than a dark fill)
+                                // is written there.
+                                color: v === col.current ? SELECTED : "var(--gray-700)" }}>
                               {String(v).padStart(2, "0")}
                             </button>
                           ))}

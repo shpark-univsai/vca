@@ -847,7 +847,11 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
               <button className="vca-picker-option" data-on={isAll}
                 onClick={() => { onSwitchCam(ALL_CAMERAS_ID); setPickerOpen(false); }} style={{
                 display:"flex", alignItems:"center", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer", flexShrink:0,
-                fontSize:"13px", fontWeight: isAll ? 700:500, color: isAll ? "var(--primary-400)":"var(--gray-700)",
+                // Grey, not purple: this row says "you are here", and purple on this screen says
+                // VIP — the 2px ring MonitorCard draws on a face crop whose status is VIP. Its
+                // fill and rule come from .vca-picker-option[data-on] in globals.css, where the
+                // reasoning for the whole move is written.
+                fontSize:"13px", fontWeight: isAll ? 700:500, color: isAll ? "var(--gray-900)":"var(--gray-700)",
               }}>
                 {t.allCameras}
               </button>
@@ -859,7 +863,7 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
                   <button key={cam.id} className="vca-picker-option" data-on={cam.code===camId}
                     onClick={() => { onSwitchCam(cam.code); setPickerOpen(false); }} style={{
                     display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer",
-                    fontSize:"13px", fontWeight: cam.code===camId ? 700:500, color: cam.code===camId ? "var(--primary-400)":"var(--gray-700)",
+                    fontSize:"13px", fontWeight: cam.code===camId ? 700:500, color: cam.code===camId ? "var(--gray-900)":"var(--gray-700)",
                   }}>
                     {cam.code}
                     <span style={{ fontSize:"10px", fontWeight:800, color: runStateOf(cam.status)==="running" ? "var(--success-400)" : "var(--gray-400)" }}>
@@ -3276,7 +3280,9 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
           maxHeight:"320px", display:"flex", flexDirection:"column" }}>
           <button className="vca-picker-option" data-on={!value} onClick={() => { onChange(""); setOpen(false); }} style={{
             display:"flex", alignItems:"center", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer", flexShrink:0,
-            fontSize:"13px", fontWeight: !value ? 700:500, color: !value ? "var(--primary-400)":"var(--gray-700)",
+            // Grey for the same reason Live Monitoring's picker is grey — see the note on
+            // .vca-picker-option[data-on] in globals.css, which carries this row's fill and rule.
+            fontSize:"13px", fontWeight: !value ? 700:500, color: !value ? "var(--gray-900)":"var(--gray-700)",
           }}>
             {t.allCameras}
           </button>
@@ -3290,7 +3296,7 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
             <button key={code} className="vca-picker-option" data-on={code===value}
               onClick={() => { onChange(code); setOpen(false); }} style={{
               display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer",
-              fontSize:"13px", fontWeight: code===value ? 700:500, color: code===value ? "var(--primary-400)":"var(--gray-700)",
+              fontSize:"13px", fontWeight: code===value ? 700:500, color: code===value ? "var(--gray-900)":"var(--gray-700)",
             }}>
               {code}
               {/* Same ON/OFF read as Live Monitoring's picker. Whether a camera is up is part of

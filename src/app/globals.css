@@ -851,13 +851,41 @@ body {
 @media (max-width: 1600px) { .vca-tb-hint { display: none; } }
 @media (max-width: 1400px) { .vca-tb-label { display: none; } }
 
-/* Option rows in the Data screens' camera pickers (Live Monitoring and Re-ID). The resting and
-   selected fills live here rather than in each button's style attribute: an inline declaration
-   outranks any stylesheet selector, so a background set inline silently cancels :hover — which is
-   exactly how the navbar tabs ended up with a hover rule that never fired. Only unselected rows
-   respond; the selected row is already where you are. */
+/* Option rows in the three pickers that share this class — Live Monitoring's camera dropdown,
+   Re-ID's camera dropdown, and Best Frame's hour/minute list. The resting and selected fills live
+   here rather than in each button's style attribute: an inline declaration outranks any stylesheet
+   selector, so a background set inline silently cancels :hover — which is exactly how the navbar
+   tabs ended up with a hover rule that never fired. Only unselected rows respond to hover; the
+   selected row is already where you are.
+
+   SELECTED IS GREY, NOT PURPLE (2026-09-17). The fill was --primary-100 under --primary-400 text.
+   41e858e had already moved every other selection and focus mark on Best Frame to --gray-900,
+   because on a screen whose subject is VIP detection the VIP colour was also saying "you are
+   here"; this row was the one mark left behind, parked with a note, because its fill lives here
+   and its text lived in the component, and half a mark is worse than either state. Both move now.
+   The argument carries to the other two screens rather than stopping at Best Frame: Data
+   monitoring paints VIP in the same purple (DataPage's REID_STATUS_STYLE.VIP, the VIP badge on a
+   cluster card, the ring on a VIP face crop), so a purple row there said "VIP" on a list of
+   camera codes.
+
+   A RULE, NOT A DARK FILL. Filled edge to edge in --gray-900 was rendered on all three pickers and
+   looked at: on the 63-row camera list a solid dark band at the top of the panel reads as a panel
+   header rather than as one option among many, and only one row is ever selected, so the mark does
+   not need that much. (It is not a contrast problem — the row's ON/OFF badge measures better on
+   --gray-900 than it did on the purple tint, 5.55:1 against 2.92:1. Weight is the objection.) A
+   --gray-200 fill is legible and quiet, but that exact value already means "not this segment" on
+   Best Frame's own hour and minute bars, on the same screen as this list. So: the darkest step as
+   a 3px rule down the leading edge — the same vocabulary as the 3px --gray-900 border 41e858e put
+   on the timeline thumbnail you are on — over --gray-100, one step up from the hover tint. An
+   inset box-shadow rather than border-left, because these rows carry `border: none` inline and a
+   real border would also shove every selected label 3px sideways.
+
+   HOVER AND SELECTED DO NOT DIFFER BY FILL, and they never did: --primary-100 against --gray-50
+   measured 1.08:1, --gray-100 against --gray-50 measures 1.05:1. Hue was doing that work before,
+   and the rule does it now, with --gray-900 text at 700/800 against --gray-700 at 500/600 behind
+   it (16.69:1 on the tint, where the purple-on-purple was 5.33:1). */
 .vca-picker-option { background-color: #fff; transition: background-color .12s; }
-.vca-picker-option[data-on="true"] { background-color: var(--primary-100); }
+.vca-picker-option[data-on="true"] { background-color: var(--gray-100); box-shadow: inset 3px 0 0 var(--gray-900); }
 .vca-picker-option:not([data-on="true"]):hover { background-color: var(--gray-50); }
 
 /* ── Auth screens ─────────────────────────────────────────────────────
