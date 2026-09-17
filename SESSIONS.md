@@ -13,7 +13,10 @@
 
 | 세션 | 잡은 파일 | 상태 |
 |---|---|---|
-| vca-84 | `MapView.tsx` | 글로우·알약은 커밋 완료. 이어서 **줌아웃 카드 → 줌인 상태의 불일치**를 보고 있습니다(구역 카드는 검출 수, 줌인 알약은 사람 수 — 잇는 말이 없음) |
+| vca-84/A | `authConfig.ts` · `forgot-password/page.tsx` · `login/page.tsx` · `HANDOFF.md` · `.env.example` | **오너 복구는 만들지 않기로 결정됨**(2026-09-17): 셸 명령·인쇄 코드·owner 2명 강제 전부 기각, 대신 벤더(우리 회사) 문의 → 임시비번 재발급. 화면이 "우리"를 실제로 지목해야 함 |
+| vca-84/B | `MapView.tsx` | 대시보드 지도 정밀 검토. 확인된 세 건: 줌아웃 카드(검출 수) → 줌인 알약(사람 수) 사이에 잇는 말 없음 · Tracking 선택은 지도에 얼굴을 전혀 안 그림 · 경로 끝 노드에 팔레트 밖 `rgba(109,147,0,0.15)` 반투명 헤일로 |
+| vca-84/C | `Sidebar.tsx` · `DetectionActivityChart.tsx` · `ClientLayout.tsx` | 대시보드 사이드바·차트·셸 정밀 검토 |
+| vca-84/D | `globals.css` · `Navbar.tsx` · `DataPage.tsx` | `prefers-reduced-motion` — 지키는 곳 2개, 무한 애니메이션 7개 무방비 |
 | vca-cf | — (비었습니다) | **세션 종료.** 인수인계 때 "에이전트 미커밋 변경 있음"으로 넘겼는데, 그 뒤 에이전트가 끝나 제가 검증하고 `0f75742`로 올렸습니다. **남은 미커밋 없습니다.** 붙일 곳 하나 남김: `bodyScrolls`를 `PortalSettingsPage.tsx:741`(프로젝트 삭제)에 전달 — `AccessChangeModal`에는 절대 주지 말 것(주석에 이유 있음) |
 | vca-hv | — 종료 | `mypage`·`Navbar`·`RedmapPage` 커밋 완료. 섞였던 두 auth 파일은 `4d51589`로 정리됨 |
 
