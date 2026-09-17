@@ -276,7 +276,7 @@ const RECENT_VIP_WINDOW_MS = 60 * 60 * 1000;
  *  the per-camera layer as part of the same movement rather than needing a second zoom. */
 const DISTRICT_FOCUS_ZOOM = 15;
 /**
- * How close a selected trail may fly, and where a trail with one drawable stop lands.
+ * Where a trail with nothing to fit lands.
  *
  * A Tracking selection used to fly to its newest stop at a bare `14` — no constant, no comment —
  * and that one number failed in both directions. Measured at 1600x1000, map container x 380-1600:
@@ -284,25 +284,40 @@ const DISTRICT_FOCUS_ZOOM = 15;
  * trail line running off that edge and nothing saying it continued; Michael Tan's three stops left
  * TWO centres outside the frame (x=2021 and x=2300) and drew one stop out of three. At the other
  * end, James Wilson's two Geylang cameras (NC1 -> NC2, 221m apart) landed 22.7px apart while the
- * circles are 44px and 36px across — the two stops sat on top of each other and the 15x17px of
- * line between them was underneath them.
+ * circles are 44px and 36px across — the two stops sat on top of each other, the 15x17px of line
+ * between them was underneath them, and their two cards overlapped across 6,798px².
  *
- * Fitting the trail's own bounds answers the first failure. This cap answers the second, and 17 is
- * chosen on what it does to that Geylang pair: their centres come 185px apart, which clears the
- * 40px of circle radii and also stops the two stop CARDS crossing (each opens 32-219px to the
- * right of its node and spans 22px above to 102px below it, so at 16 — 91px apart — they still
- * overlap). It is two steps past DISTRICT_FOCUS_ZOOM, which fits: picking a district asks which of
- * its cameras caught anybody, picking a trail asks which way one person went, and the second is
- * the closer question.
+ * Fitting the trail's own bounds answers both, and in OPPOSITE directions: a wide trail is pulled
+ * back until every stop is in the frame, and a trail whose stops are one street apart is pushed IN
+ * until they separate, because every zoom level roughly doubles the pixels between them. Which is
+ * why the ceiling below is a ceiling on the fit and not the fix for the crowding — the crowding is
+ * fixed where it is caused, by the stop cards (see the node loop: one card per trail now, the rest
+ * hover). A cap chosen to "stop two dots zooming to street level" would have been the one change
+ * guaranteed to keep them on top of each other.
  *
- * A trail with ONE drawable stop has no rectangle to fit, and it flies to this same number rather
- * than to a second constant: a single-point bounds fits at exactly maxZoom (leaflet 1.9.4 clamps
- * getBoundsZoom's Infinity with `Math.min(options.maxZoom, zoom)` in _getBoundsCenterZoom) and it
- * still takes the padding offset below, so the lone stop is pushed left of centre and its "last
- * seen" card gets the room it needs. Two stops sharing one coordinate land there too — the same
- * picture, and it should be.
+ * WHY THERE IS STILL A CEILING. Past a point the extra levels separate nothing that was still
+ * colliding. What the fit has to clear is the trail-end card: 187px wide, opening 32px to the
+ * right of its node, so a neighbouring stop is covered when it lands within ~219px of it. For the
+ * closest genuine pair in the register — Geylang NC1/NC2, 221m apart — 18 puts 242px between the
+ * centres, which clears that; 19 puts 740px there (measured), which buys nothing and spends the
+ * street context that says WHICH part of Geylang this is. Above that the tile source's own maximum
+ * applies anyway (MAP_MAX_ZOOM, handed to the map by the tile layer), and that is the right home
+ * for that kind of limit: an installation serving its own GIS tiles knows how far in it can draw.
+ *
+ * AND A ZOOM FOR NOTHING-TO-FIT: one drawable stop, or every stop on one coordinate (two camera
+ * labels on one pole). There the bounds are a point, `getBoundsZoom` computes a scale from a
+ * zero-sized rectangle and returns Infinity, and leaflet 1.9.4 hands that to `setView` unless a
+ * `maxZoom` clamps it with `Math.min(options.maxZoom, zoom)` (_getBoundsCenterZoom) — so this is
+ * also the guard against a blank map in the case with the least information. 15 rather than the
+ * ceiling because "one place" already has an answer twice in this file: DISTRICT_FOCUS_ZOOM, and
+ * the zoom a selected VIP pin flies to. One stop of a trail is that same picture.
+ *
+ * WHAT NEITHER NUMBER CAN DO: two cameras metres apart. The fit would need a zoom no tile source
+ * has, and their 36px circles touch whatever it does. That case is a card-and-marker problem, not
+ * a framing one.
  */
-const TRAIL_FOCUS_MAX_ZOOM = 17;
+const TRAIL_FIT_MAX_ZOOM = 18;
+const TRAIL_ONE_SPOT_ZOOM = 15;
 /**
  * The band each edge keeps to itself while a trail is fitted into the map.
  *
@@ -1275,10 +1290,10 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         // `zoom <= CLUSTER_ZOOM_BREAKPOINT`, which IS 14, so EVERY trail lands exactly on the zoom
         // where the pills are still on. That was true of the fixed `14` the selection used to fly
         // to, and it is not true any more: the zoom now comes from the trail's own spread (see
-        // TRAIL_FOCUS_MAX_ZOOM). What the measurements say instead is that it is no longer
+        // TRAIL_FIT_MAX_ZOOM). What the measurements say instead is that it is no longer
         // guaranteed but is still where most trails land — of the four seed trails, Dr. Sarah Chen
         // and Michael Tan land at 13, Priya Nair at 14, and only the two-cameras-in-one-street
-        // James Wilson goes past, to 17. So three of four still land under the breakpoint, and the
+        // James Wilson goes past, to 18. So three of four still land under the breakpoint, and the
         // collision is the ordinary case rather than a certainty. And the
         // pills win the paint: their stacking offset is `count * 2000` (measured at 32427 for
         // Novena, 20529 for Geylang) against a trail node's `1000 + i * 100` (1519). Measured on
@@ -1595,8 +1610,12 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         // coordinate belongs to no rectangle — its gap chip and the bottom-left summary are what
         // say it exists — and stretching the frame toward a place we do not have would be the same
         // invention as the `?? 0` coordinates were.
+        // Two different ceilings for two different situations — see TRAIL_FIT_MAX_ZOOM. A trail
+        // with any spread at all is fitted and only stopped at 18; a trail with none has nothing
+        // to fit and lands at the "one place" zoom instead of at the fit's ceiling.
+        const oneSpot = nodes.every(n => n.lat === nodes[0].lat && n.lng === nodes[0].lng);
         map.flyToBounds(nodes.map(n => [n.lat, n.lng]), {
-          maxZoom: TRAIL_FOCUS_MAX_ZOOM,
+          maxZoom: oneSpot ? TRAIL_ONE_SPOT_ZOOM : TRAIL_FIT_MAX_ZOOM,
           ...trailFitPadding(map.getSize()),
           duration: 0.8,
           easeLinearity: 0.5,
@@ -1767,12 +1786,43 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
             : `<div style="width:${size}px;height:${size}px;border-radius:50%;background:white;border:2px solid var(--type-tracking);display:flex;align-items:center;justify-content:center;
                           font-family:'SUIT',sans-serif;font-size:13px;font-weight:700;color:var(--type-tracking);box-shadow:0 2px 6px rgba(24, 17, 39,0.12)">${num}</div>`;
 
-          const tailCenterY = size / 2;
-          const tailHtml = isLast
-            ? routeBubbleTailHtml(tailCenterY, "var(--type-tracking)", "var(--type-tracking)")
-            : routeBubbleTailHtml(tailCenterY, "white", "var(--gray-200)");
+          const tailHtml = routeBubbleTailHtml(size / 2, "var(--type-tracking)", "var(--type-tracking)");
 
           /**
+           * ONE CARD PER TRAIL, ON THE STOP THAT HAS TO BE READABLE. THE OTHERS ARE JUST NUMBERS.
+           *
+           * Every stop used to carry a card, and the cards covered each other. Measured at
+           * 1600x1000 on the old fixed zoom 14: on the James Wilson trail the trail-end card lay
+           * over stop 01's card across 6,798px² — 84% of that card's own 122x66 — so all that was
+           * readable of stop 01 was the words "Geylang" and a time sticking out from behind. Once
+           * the flight fits the trail's bounds (see TRAIL_ONE_SPOT_ZOOM) that particular pair
+           * comes 185px apart and stops colliding, but framing is only half of it: a divIcon is a
+           * FIXED SIZE and does not shrink as the map zooms in, so any trail whose spread forces a
+           * wider frame brings its cards back together. Measured after the fit: the Michael Tan
+           * trail lands at zoom 13 with stops 01 and 02 142px apart, and stop 01's card covered
+           * stop 02's numbered CIRCLE across 1,116px² — hiding the one mark on this map that gets
+           * spoken out loud ("check point two" over the radio).
+           *
+           * So the intermediate stops keep the number and give up the card. Their place and time
+           * move to a hover tooltip — the same `.vca-camera-tooltip` the camera dots and the
+           * no-coordinates chips on this map already use, so it is a pattern already learnt here
+           * rather than a new one — and they are ALSO already on screen without a hover: the same
+           * click that drew this trail expanded the sidebar row's timeline, which lists every stop
+           * with its camera and its time. The cards were repeating that list in a place where they
+           * could collide; the numbers are the part the list cannot give you, because the number's
+           * whole job is to say WHERE on the map that stop is.
+           *
+           * WHAT THIS COSTS, stated: you can no longer read the intermediate stops' names straight
+           * off the map. Two things that were weighed against it — the sidebar timeline above, and
+           * that a trail of five stops drew five cards, which is a pile rather than a reading.
+           *
+           * NOT SOLVED BY ZOOM, and it cannot be. Two cameras on one pole are metres apart; the
+           * fit runs out at the tile source's own maximum zoom and their circles still touch.
+           * Flipping a card to the side away from its neighbour was the other candidate and it is
+           * a smaller fix than it looks: it needs the tail mirrored, it needs each node to know
+           * where the others landed in pixels (which is only knowable after the flight), and two
+           * stops at almost the same point overlap whichever side they open.
+           *
            * THE TRAIL-END CARD NAMES THE PERSON. Nothing else on this map did.
            *
            * Selecting a Tracking row drew a trail and no identity: no popup at all, no face, no
@@ -1819,8 +1869,9 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
            * worth keeping: the card grows sideways from the stop it is anchored to and no name
            * pushes the time or the link onto another line.
            */
-          const cardHtml = isLast
-            ? `<div style="position:relative;font-family:'SUIT',sans-serif;filter:drop-shadow(0 4px 10px rgba(109,147,0,0.25))">
+          const cardHtml = !isLast
+            ? ""
+            : `<div style="position:relative;font-family:'SUIT',sans-serif;filter:drop-shadow(0 4px 10px rgba(109,147,0,0.25))">
                  ${tailHtml}
                  <div style="position:relative;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;border:1.5px solid var(--type-tracking)">
                    <div style="background:var(--type-tracking);color:white;font-size:11px;font-weight:800;padding:6px 12px;display:flex;align-items:center;gap:4px;white-space:nowrap">
@@ -1838,17 +1889,26 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                      </div>`}
                    </div>
                  </div>
-               </div>`
-            : `<div style="position:relative;background:white;border:1px solid var(--gray-200);border-radius:16px;padding:10px 14px;white-space:nowrap;
-                          font-family:'SUIT',sans-serif;box-shadow:0 4px 10px rgba(24, 17, 39,0.08)">
-                 ${tailHtml}
-                 <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${escapeHtml(node.label)}</div>
-                 <div style="font-size:13px;color:var(--gray-500);margin-top:2px">${node.time}</div>
                </div>`;
 
-          const html = `<div style="display:inline-flex;align-items:flex-start;gap:10px">${circleHtml}${cardHtml}</div>`;
+          const html = isLast
+            ? `<div style="display:inline-flex;align-items:flex-start;gap:10px">${circleHtml}${cardHtml}</div>`
+            : circleHtml;
           const icon = L.divIcon({ html, iconSize: [1, 1], iconAnchor: [size / 2, size / 2], className: "" });
           const marker = L.marker([node.lat, node.lng], { icon }).addTo(map);
+          if (!isLast) {
+            // Where and when, on hover. Two lines, the same shape as this map's camera tooltip —
+            // the camera name in the reading weight and the time under it in the quiet one. Names
+            // are data and stay in their own language. The offset clears the circle's own radius,
+            // since the icon is anchored at the circle's centre.
+            marker.bindTooltip(
+              `<div style="font-family:'SUIT',system-ui,sans-serif;padding:8px 10px;display:flex;flex-direction:column;gap:3px">
+                 <span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.24px;white-space:nowrap">${escapeHtml(node.label)}</span>
+                 <span style="font-size:10px;font-weight:600;color:var(--gray-500);white-space:nowrap">${node.time}</span>
+               </div>`,
+              { direction: "top", offset: [0, -(size / 2 + 4)], className: "vca-camera-tooltip", opacity: 1 },
+            );
+          }
           // Above the camera dots. Every hop now sits exactly on the camera that captured it
           // (hops carry their own coordinates since 57b7282 — before that they all shared the
           // event's, so only one node ever coincided with a dot). The dot is 12px and drawn on
