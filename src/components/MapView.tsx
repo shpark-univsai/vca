@@ -216,6 +216,82 @@ const RECENT_VIP_WINDOW_MS = 60 * 60 * 1000;
 /** Where a district pill flies you to. One past the cluster breakpoint, so the pills give way to
  *  the per-camera layer as part of the same movement rather than needing a second zoom. */
 const DISTRICT_FOCUS_ZOOM = 15;
+/**
+ * How close a selected trail may fly, and where a trail with one drawable stop lands.
+ *
+ * A Tracking selection used to fly to its newest stop at a bare `14` — no constant, no comment —
+ * and that one number failed in both directions. Measured at 1600x1000, map container x 380-1600:
+ * Dr. Sarah Chen's two stops put node 01's centre at x=1995, 395px past the right edge, with the
+ * trail line running off that edge and nothing saying it continued; Michael Tan's three stops left
+ * TWO centres outside the frame (x=2021 and x=2300) and drew one stop out of three. At the other
+ * end, James Wilson's two Geylang cameras (NC1 -> NC2, 221m apart) landed 22.7px apart while the
+ * circles are 44px and 36px across — the two stops sat on top of each other and the 15x17px of
+ * line between them was underneath them.
+ *
+ * Fitting the trail's own bounds answers the first failure. This cap answers the second, and 17 is
+ * chosen on what it does to that Geylang pair: their centres come 185px apart, which clears the
+ * 40px of circle radii and also stops the two stop CARDS crossing (each opens 32-219px to the
+ * right of its node and spans 22px above to 102px below it, so at 16 — 91px apart — they still
+ * overlap). It is two steps past DISTRICT_FOCUS_ZOOM, which fits: picking a district asks which of
+ * its cameras caught anybody, picking a trail asks which way one person went, and the second is
+ * the closer question.
+ *
+ * A trail with ONE drawable stop has no rectangle to fit, and it flies to this same number rather
+ * than to a second constant: a single-point bounds fits at exactly maxZoom (leaflet 1.9.4 clamps
+ * getBoundsZoom's Infinity with `Math.min(options.maxZoom, zoom)` in _getBoundsCenterZoom) and it
+ * still takes the padding offset below, so the lone stop is pushed left of centre and its "last
+ * seen" card gets the room it needs. Two stops sharing one coordinate land there too — the same
+ * picture, and it should be.
+ */
+const TRAIL_FOCUS_MAX_ZOOM = 17;
+/**
+ * The band each edge keeps to itself while a trail is fitted into the map.
+ *
+ * Asymmetric because the furniture is. Measured at 1600x1000, relative to the map container:
+ *  - LEFT: the sidebar collapse toggle overhangs the map's left edge by 31px (34px wide at
+ *    left:-3px, vertically centred), and a stop's circle reaches 22px left of the point it is
+ *    anchored to -> 53, rounded to 56.
+ *  - TOP: the zoom control's box is 90px deep (80px tall at a 10px inset), plus the same 22px of
+ *    circle -> 112.
+ *  - RIGHT: the stop cards open to the RIGHT of their node. The trail-end card measures 187x124
+ *    and starts 32px right of the node's centre (22px of circle + a 10px gap), so it ends at
+ *    +219 -> 232 with a little air for its shadow.
+ *  - BOTTOM: the collapsed "Today's detections by hour" pill occupies the bottom 60px (36px tall
+ *    at a 24px inset) and the trail-end card hangs 102px below its node -> 162, rounded to 164.
+ *
+ * NOT the sidebar itself: it sits beside this container, not over it (measured — the map starts at
+ * x=380 and the sidebar ends at 379), and collapsing it resizes the container instead.
+ *
+ * WHAT THIS DOES NOT COVER, stated. The detection chart EXPANDED measures 1172x270 at a 24px
+ * inset, covering the bottom 294px of the map across its full width; no bounds padding can reserve
+ * that without spending a third of the frame on a panel that is usually shut. And a long name
+ * widens the trail-end card past the 187px above (248px at 28 characters, 292px at 33), so the
+ * reservation runs out exactly where the name is long. Anchoring that card on whichever side has
+ * room is the fix for both, and it is a decision about the card rather than about this flight.
+ */
+const TRAIL_FIT_PADDING_TOP_LEFT: [number, number] = [56, 112];
+const TRAIL_FIT_PADDING_BOTTOM_RIGHT: [number, number] = [232, 164];
+/**
+ * Those two, capped against the container they have to fit inside.
+ *
+ * `getBoundsZoom` subtracts the padding from the container size and divides the bounds by what is
+ * left — so padding wider than the map makes that scale negative, `getScaleZoom` returns NaN, and
+ * nothing in Leaflet catches it: `setView(center, NaN)` leaves a blank map. Not theoretical. This
+ * container is the window minus the 380px sidebar (measured: 1600 -> 1220, 1280 -> 900, 1024 ->
+ * 644, 900 -> 520, 640 -> 260), so a narrow window really does drop below the 288px reserved
+ * across. A third of the axis is the cap: past that the number has stopped being furniture
+ * clearance, and a frame that is slightly tight beats one that is blank.
+ */
+function trailFitPadding(size: { x: number; y: number }): {
+  paddingTopLeft: [number, number];
+  paddingBottomRight: [number, number];
+} {
+  const cap = (want: number, available: number) => Math.min(want, Math.max(0, Math.floor(available / 3)));
+  return {
+    paddingTopLeft: [cap(TRAIL_FIT_PADDING_TOP_LEFT[0], size.x), cap(TRAIL_FIT_PADDING_TOP_LEFT[1], size.y)],
+    paddingBottomRight: [cap(TRAIL_FIT_PADDING_BOTTOM_RIGHT[0], size.x), cap(TRAIL_FIT_PADDING_BOTTOM_RIGHT[1], size.y)],
+  };
+}
 /** The whole-island view a district selection returns to when it is cleared. Matches the map's
  *  own init above, so clearing puts the map back exactly where it started. */
 const OVERVIEW_CENTER: [number, number] = [1.3521, 103.8198];
@@ -1126,9 +1202,16 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         // did this one person go" is the one the operator just asked by clicking. Only the second
         // was asked for, and it lost.
         //
-        // Lost literally, and systematically rather than by bad luck. A Tracking selection's
-        // flyTo goes to zoom 14 and this layer draws at `zoom <= CLUSTER_ZOOM_BREAKPOINT`, which
-        // IS 14 — so every trail lands exactly on the zoom where the pills are still on. And the
+        // Lost literally, and still lost in the common case. This paragraph used to say that a
+        // Tracking selection's flyTo goes to zoom 14 and this layer draws at
+        // `zoom <= CLUSTER_ZOOM_BREAKPOINT`, which IS 14, so EVERY trail lands exactly on the zoom
+        // where the pills are still on. That was true of the fixed `14` the selection used to fly
+        // to, and it is not true any more: the zoom now comes from the trail's own spread (see
+        // TRAIL_FOCUS_MAX_ZOOM). What the measurements say instead is that it is no longer
+        // guaranteed but is still where most trails land — of the four seed trails, Dr. Sarah Chen
+        // and Michael Tan land at 13, Priya Nair at 14, and only the two-cameras-in-one-street
+        // James Wilson goes past, to 17. So three of four still land under the breakpoint, and the
+        // collision is the ordinary case rather than a certainty. And the
         // pills win the paint: their stacking offset is `count * 2000` (measured at 32427 for
         // Novena, 20529 for Geylang) against a trail node's `1000 + i * 100` (1519). Measured on
         // one selection: the trail-end "last seen" card had 1709px² of itself under the Novena
@@ -1429,7 +1512,27 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         if (placedNodes.length === 0) return;
         const nodes = placedNodes;
 
-        map.flyTo([nodes[nodes.length - 1].lat, nodes[nodes.length - 1].lng], 14, { duration: 0.8, easeLinearity: 0.5 });
+        // FIT THE WHOLE TRAIL, not its newest stop at a fixed zoom.
+        //
+        // This flew to `nodes[last]` at a bare 14, which framed one stop and let the rest of the
+        // trail fall where it fell: measured at 1600x1000, Dr. Sarah Chen's stop 01 sat at x=1995
+        // against a map ending at 1600, and Michael Tan's 01 and 02 at x=2021 and x=2300 — one
+        // drawn stop out of three, the line leaving the frame with nothing saying it continued.
+        // The district branch above had this same bug for this same reason, and this is the answer
+        // it already reached (see "FIT TO THE SIGHTINGS, NOT TO THE DISTRICT'S CENTRE"): bounds
+        // over what was actually found, a maxZoom so the degenerate case does not fill the screen
+        // with two dots, and asymmetric padding for the map's furniture.
+        //
+        // The bounds are the DRAWABLE stops, which is what `nodes` already holds. A stop with no
+        // coordinate belongs to no rectangle — its gap chip and the bottom-left summary are what
+        // say it exists — and stretching the frame toward a place we do not have would be the same
+        // invention as the `?? 0` coordinates were.
+        map.flyToBounds(nodes.map(n => [n.lat, n.lng]), {
+          maxZoom: TRAIL_FOCUS_MAX_ZOOM,
+          ...trailFitPadding(map.getSize()),
+          duration: 0.8,
+          easeLinearity: 0.5,
+        });
 
         /**
          * Split the trail into RUNS of stops that really are next to each other, and GAPS.
