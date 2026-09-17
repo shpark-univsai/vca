@@ -213,12 +213,23 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
   return (
     <>
     <style>{`
-      @keyframes live-ping{0%{transform:scale(1);opacity:.8}100%{transform:scale(2.2);opacity:0}}
       /* run-icon and stop-flicker lived here and drove the two camera-status icons on an endless
          loop. Removed 2026-09-11: permanent motion in a header teaches an operator to ignore
-         motion there, and the thing they then also ignore is the alert. Nothing animates in this
-         header now except live-ping, which marks a detection that just happened. */
+         motion there, and the thing they then also ignore is the alert.
+         The live-ping keyframes went with them today, and so did the sentence that used to end
+         this note: it said "nothing animates in this header now except live-ping, which marks a
+         detection that just happened", and that was not true of this file. Nothing here ever
+         referenced the name — grepped, and measured in the browser, where the loaded document
+         exposed the keyframes with no element using them. The ping it described is real but lives
+         elsewhere: .vca-alert-ping in globals.css, on the dashboard MAP, gated on
+         RECENT_VIP_WINDOW_MS. This header animates nothing. */
       @keyframes dropdown-in{from{opacity:0;transform:scale(0.96) translateY(-6px)}to{opacity:1;transform:scale(1) translateY(0)}}
+      /* Both dropdowns set animation in their style attribute, which beats any selector here,
+         so the reduced-motion guard needs !important and a class to hang it on. Nothing is lost by
+         dropping it: the entrance ends at opacity 1 and the identity transform, which is the panel
+         as it is meant to be read. (globals.css holds the guard for every class it defines; this
+         one has to be here because the keyframes and the style attribute are here.) */
+      @media (prefers-reduced-motion: reduce){ .navbar-dropdown{animation:none !important} }
       /* Hover lands on the label and icon, not on a background. A tinted block filling the whole
          62px height of the bar was a bigger object than anything else the header highlights, and it
          had no counterpart anywhere in the app — nothing else paints a full-height band on hover.
@@ -476,7 +487,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
               )}
             </button>
             {notifOpen && (
-              <div style={{
+              <div className="navbar-dropdown" style={{
                 position: "absolute", top: "calc(100% + 8px)", right: 0,
                 width: "300px", backgroundColor: "white",
                 border: "1px solid var(--gray-200)", borderRadius: "12px",
@@ -565,7 +576,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
               <img src="/icons/nav-settings.svg" width={20} height={20} alt="" style={{ display: "block" }} />
             </button>
             {settingsOpen && (
-              <div style={{
+              <div className="navbar-dropdown" style={{
                 position: "absolute", top: "calc(100% + 8px)", right: 0,
                 width: "200px", backgroundColor: "white",
                 border: "1px solid var(--gray-200)", borderRadius: "12px",

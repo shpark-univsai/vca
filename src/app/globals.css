@@ -679,19 +679,6 @@ body {
   70%  { transform: scale(1.34); opacity: 0; }
   100% { transform: scale(1.34); opacity: 0; }
 }
-@media (prefers-reduced-motion: reduce) {
-  /* Left as a faint outer wash rather than removed: the emphasis it carries is the point, and the
-     motion was only how it was delivered. */
-  .vca-auth-pulse { animation: none; opacity: 0.14; }
-}
-
-/* The route still reads as a route without the motion — the dashes say "inferred" on their own.
-   Someone who has asked their system for less movement should not have to watch a line loop on
-   every screen that draws one, and the login panel now draws one too. */
-@media (prefers-reduced-motion: reduce) {
-  .vca-route-line { animation: none; }
-}
-
 /* ── Skeleton loading dashboard ──────────────────────────── */
 @keyframes vca-skeleton-pulse {
   0%, 100% { opacity: 1; }
@@ -699,6 +686,79 @@ body {
 }
 .vca-skeleton-pulse {
   animation: vca-skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* ── prefers-reduced-motion — every animation in this file, in one block ──────────────────────
+   The rule is NOT "turn the animation off". Every loop above is gated on a fact — a camera that
+   saw somebody within the hour, a VIP still in frame, content that has not arrived — and the
+   motion was only how that fact got delivered. Dropping to `animation: none` on such a thing
+   deletes information for exactly the people who asked for less movement, which is the same
+   defect as a screen asserting something untrue, just pointed the other way. So each rule below
+   either freezes a frame that still makes the claim, or is marked as one whose own resting frame
+   already makes it.
+   Two earlier blocks (auth pulse, route line) were merged into this one. It sits after every rule
+   it overrides: a media query adds no specificity, so it wins only by coming later. */
+@media (prefers-reduced-motion: reduce) {
+  /* Left as a faint outer wash rather than removed: the emphasis it carries is the point, and the
+     motion was only how it was delivered. */
+  .vca-auth-pulse { animation: none; opacity: 0.14; }
+
+  /* The route still reads as a route without the motion — the dashes say "inferred" on their own.
+     Someone who has asked their system for less movement should not have to watch a line loop on
+     every screen that draws one, and the login panel now draws one too. */
+  .vca-route-line { animation: none; }
+
+  /* "This camera saw somebody within the last hour" — against 51 quiet dots on the same map.
+     Frozen at its own scale(1) the ring would sit exactly under the 14px dot and disappear, which
+     would leave the ping distinguished by fill colour and 2px of diameter alone. So it is held
+     open as a static halo instead, near the size it spends most of its cycle at. Element opacity,
+     the same device `.vca-auth-pulse` above already uses — no new colour, no alpha on a token; the
+     fill stays `--primary-400`. Deliberately the loudest replacement in this block: it is the one
+     that is nearly an alarm, and an alarm must not end up quieter than the incidental marks. */
+  .vca-alert-ping { animation: none; transform: scale(1.9); opacity: 0.22; }
+
+  /* "A VIP is still in frame." This is the one that cannot just stop: the keyframes' own 0%/100%
+     is a TRANSPARENT border and no shadow, i.e. pixel-identical to a tile with nothing to report
+     (measured — a non-VIP chip computes `rgba(0, 0, 0, 0)` for the same border), so
+     `animation: none` alone would silently delete the signal. The mid-cycle border is made
+     permanent instead. `!important` is load-bearing, not decoration: the chip carries
+     `border: 1.5px solid transparent` in its style attribute (BestFramePage's CameraCard), an
+     inline declaration beats any stylesheet selector, and the blink only ever won because
+     animations outrank inline styles. Border only, no box-shadow — a lasting mark on a tile stays
+     below the map's ping in the hierarchy. */
+  .vca-cam-label-glow { animation: none; border-color: var(--primary-400) !important; }
+
+  /* "Detected right now." Nothing is lost by stopping. The dot is drawn ONLY for a live VIP row
+     (isVipActive, BestFramePage) and its resting frame is scale(1), so a still 7px purple dot on
+     one row out of 68 that otherwise have no dot at all still says it. */
+  .vca-vip-dot-pulse { animation: none; }
+
+  /* "Loading" — the dangerous one, because a frozen skeleton that reads as "nothing here" is a
+     screen confidently asserting something untrue. Stopping is nevertheless the right half of the
+     answer and is strictly better than the alternative: this animation only fades the block
+     (0%/100% opacity 1, 50% opacity 0.5), so its resting frame is the MOST visible state it ever
+     reaches, and leaving it running would show a reduced-motion user an average of 0.75 opacity
+     instead of 1. No `opacity: 1` is written here on purpose — it would be inert (1 is already the
+     cascaded value) and it would be a lie about the two map pins, which carry `opacity: 0.35` in
+     their style attribute and are meant to be fainter. Those are worth knowing about: the
+     animation used to OVERRIDE that inline 0.35 up to 1↔0.5, because animations outrank inline
+     declarations, so the faint pin never actually rendered faint. Under the preference it now
+     does, as designed (SkeletonDashboard.tsx:124, SkeletonRedmap.tsx:66).
+     WHAT THIS RULE CANNOT DO, measured, so nobody reads it as solved: with the motion gone, the
+     whole claim rests on the fill, and the fills sit at 1.05:1 to 1.48:1 against the surface
+     behind them (gray-100 on white is the most common at 1.096:1, 13 blocks). Non-text contrast
+     wants 3:1. The loading signal was never carried by contrast — it was carried by the movement.
+     Fixing that means a visible "Loading" affordance plus aria-busy in the Skeleton* components
+     (SkeletonDashboard/Data/BestFrame/Redmap), which are not this file, and it also closes the
+     screen-reader gap: these blocks have no accessible name in either motion state. Raising the
+     fills from here would need !important over four inline colours and would flatten the
+     gray-100/200/300 hierarchy the skeletons use to stand for text vs avatar vs chip — a design
+     decision belonging to those components and to the library, not a fix to smuggle in here. */
+  .vca-skeleton-pulse { animation: none; }
+
+  /* Entrance, 0.4s, ending at the identity transform — no claim to preserve, and a 20px rise is
+     precisely the movement this preference is about. */
+  .vca-rise-in { animation: none; }
 }
 
 /* My Page's map-alert-threshold sliders — the browser's default range-input chrome draws a

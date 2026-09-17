@@ -4333,6 +4333,21 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateR
       <style>{`
         @keyframes redfaceDashFlow { to { stroke-dashoffset: -20; } }
         .redface-dash-flow { stroke-dasharray: 6; animation: redfaceDashFlow 1.2s linear infinite; }
+        /* Stopping loses nothing here, which is why this one is a plain animation:none while the
+           map's ping and Best Frame's label glow needed a still frame built for them. Measured on
+           the three tiers: which tier a line belongs to is carried entirely by stroke colour,
+           width, dash length and opacity — Tier 1 danger-400 / 1.4px / 6px dashes / 0.85, Tier 2
+           warning-400 / 1px / 3px-3px / 0.7, Tier 3 gray-400 / 0.6px / solid / 0.45. The flow was
+           decoration on top of that, and on a co-capture graph it is decoration that misleads:
+           this pyramid is built from a date-ranged HISTORY, and motion in this product means
+           "recently" (the selection glow deleted from the map pin in b469e94 was removed for
+           making exactly this claim about a record).
+           The guard has to live here rather than in globals.css, and that was measured, not
+           assumed: this <style> is in the body, so the browser sorts it AFTER the globals.css
+           <link> (sheet 3 vs sheet 0). At equal specificity the later sheet wins, so the same rule
+           written in globals.css left animationName at "redfaceDashFlow"; written into this sheet
+           it reads "none". */
+        @media (prefers-reduced-motion: reduce) { .redface-dash-flow { animation: none; } }
         .redface-avatar-hover { transition: transform 0.15s ease; cursor: pointer; }
         .redface-avatar-hover:hover { transform: scale(2.2); z-index: 30; }
       `}</style>
