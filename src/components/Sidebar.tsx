@@ -764,6 +764,28 @@ function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null
     <div>
       <div
         onClick={onClick}
+        // Same treatment as VipEventRow, for the reason written there: selecting a row moves the
+        // map to it, and this was a div with an onClick that no keyboard could reach. A trail row
+        // needed it more than a VIP row does — it is the row that opens a person's whole
+        // multi-camera history, and it was the one row type left out, so a sweep for rows by
+        // [aria-pressed] returned only the VIP ones. That is the hole assistive tech falls into.
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+        // Two states, because one click does two things. They move together here, but they are
+        // different facts and a VIP row can only make the first one:
+        //   aria-pressed  — "this is the selected event", i.e. the map has moved to it. Same
+        //                   meaning and same attribute as VipEventRow, so both kinds of row in
+        //                   this list announce their selection the same way. Clicking a selected
+        //                   row clears the selection (see the onClick EventsList passes in), so
+        //                   it is a toggle rather than a radio and "pressed" is the right word.
+        //   aria-expanded — "the hop-by-hop timeline below is showing". Only a trail row
+        //                   discloses anything, and without this, pressing one inserts a list of
+        //                   stops after it in reading order with nothing announced.
+        // No aria-controls: the timeline is only mounted while expanded, and an IDREF that points
+        // at nothing for the whole collapsed life of the row is worse than no IDREF.
+        aria-pressed={isSelected}
+        aria-expanded={isSelected}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         style={{
