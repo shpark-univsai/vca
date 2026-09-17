@@ -1602,6 +1602,45 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
             ? routeBubbleTailHtml(tailCenterY, "var(--type-tracking)", "var(--type-tracking)")
             : routeBubbleTailHtml(tailCenterY, "white", "var(--gray-200)");
 
+          /**
+           * THE TRAIL-END CARD NAMES THE PERSON. Nothing else on this map did.
+           *
+           * Selecting a Tracking row drew a trail and no identity: no popup at all, no face, no
+           * figure, and the name present only as an argument inside the Redmap link's `onclick`
+           * — measured, "Dr. Sarah Chen" was in the markup and in no pixel. So the map said
+           * "somebody was last seen at Novena a minute ago". Selecting a VIP row, meanwhile,
+           * opens a card with name, badge, portraits and a confidence. A Tracking row is a VIP
+           * who MOVED, which is the more urgent of the two.
+           *
+           * This node and no other. `isTrailEnd` is the one place where "this is who, and this is
+           * where they were last seen" is a single true statement: the other nodes are earlier
+           * sightings, and repeating the name on each of them would put four copies of one person
+           * on the map — the same mistake the district view made with portraits (see the
+           * "CAMERAS, not portraits" note above) in a different medium.
+           *
+           * NO FACE, and that is not an omission to be tidied up later. A portrait is a claim
+           * about a PERSON, this file has twice decided what such a claim costs on a map, and
+           * Best Frame removed its stock portraits outright because they were being dealt out by
+           * list position. The name is the half that is cheap and certain.
+           *
+           * NO `%`. A Tracking event's own `confidence` is 0 — written by both producers
+           * (mockData's deriveLiveEvents and vcaStore's addEvent), not measured — and the real
+           * numbers live one per hop, on the individual sightings. There is therefore no such
+           * thing as "the trail's confidence": the newest hop's number is a fact about that one
+           * frame, and printing it under the person's name would make it a fact about the person.
+           * Per-hop figures on the per-hop nodes would be honest and are a decision for the
+           * product, not a gap to fill here.
+           *
+           * The location was this line and moves down beside the time rather than making way:
+           * "<place> · <time ago>" is one sighting's circumstances and belongs together, so the
+           * card gains an identity without gaining a line. Names are DATA — never translated,
+           * and never truncated either. The card is `white-space:nowrap`, so a long name widens
+           * it rather than wrapping — measured: 187x124 unchanged up to 16 characters, because
+           * the "View Full Trace on Redmap" line below is still the widest thing in the card;
+           * 248px at 28 characters, 292px at 33. The HEIGHT never moves, which is the property
+           * worth keeping: the card grows sideways from the stop it is anchored to and no name
+           * pushes the time or the link onto another line.
+           */
           const cardHtml = isLast
             ? `<div style="position:relative;font-family:'SUIT',sans-serif;filter:drop-shadow(0 4px 10px rgba(109,147,0,0.25))">
                  ${tailHtml}
@@ -1611,8 +1650,8 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                      ${t.lastSeen}
                    </div>
                    <div style="background:white;padding:8px 12px 10px;white-space:nowrap">
-                     <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${node.label}</div>
-                     <div style="font-size:13px;color:var(--gray-500);margin-top:2px">${node.time}</div>
+                     <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${selectedEvent.name}</div>
+                     <div style="font-size:13px;color:var(--gray-500);margin-top:2px"><span style="font-weight:600;color:var(--gray-700)">${node.label}</span> · ${node.time}</div>
                      ${onGoRedmapTrace === undefined ? "" : `<div onclick="window.__vcaGoRedmapTrace && window.__vcaGoRedmapTrace('${escapeAttr(selectedEvent.name)}')"
                        style="margin-top:6px;padding-top:6px;border-top:1px solid var(--gray-100);display:flex;align-items:center;gap:4px;
                        font-size:12px;font-weight:700;color:var(--type-tracking);cursor:pointer">
