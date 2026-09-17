@@ -1144,10 +1144,11 @@ function AllOptionRow({ label, options, value, onChange }: { label:string; optio
 // attributes to filter on.
 const EMOTION_OPTIONS = ["Anger","Disgust","Neutral","Fear","Happiness","Sadness","Surprised"];
 const ETHNIC_GROUP_OPTIONS = ["African American","Indian","Asian","Caucasian"];
-// Same trigger+panel shape as the "Sort associates by" dropdown in RedFace's Associate filter —
-// a custom-built open panel (checkmark + light-purple highlight on the selected row) instead of
-// a native <select>'s browser/OS-drawn list, so it looks identical everywhere rather than however
-// the current OS happens to render native selects.
+// A custom-built open panel (checkmark + a grey highlight on the selected row) instead of a
+// native <select>'s browser/OS-drawn list, so it looks identical everywhere rather than however
+// the current OS happens to render native selects. It used to name RedFace's "Sort associates by"
+// select as the shape it matched; that select no longer exists — sorting moved onto the column it
+// sorts — so the shape stands on its own here and in the camera pickers.
 function SimpleSelect({ value, options, onChange }: { value:string; options:string[]; onChange:(v:string)=>void }) {
   // The values stay English in state — they are what the model reports and what the filter holds
   // — and are translated here, where they are drawn. Its sibling AllOptionRow already did this;
@@ -1162,12 +1163,30 @@ function SimpleSelect({ value, options, onChange }: { value:string; options:stri
     <div ref={ref} style={{ position:"relative", width:"100%" }}>
       <style>{`
         .vca-simple-select-trigger:hover { border-color:var(--primary-300) !important; }
-        /* The option rows set their own background inline (selected vs not), and an inline
-           declaration outranks a plain selector — so this rule did nothing until it carried
-           !important like its neighbours. The selected row keeps its purple on hover: it is
-           already the current value, and graying it would read as losing the selection. */
-        .vca-simple-select-option:hover { background-color:var(--gray-50) !important; }
-        .vca-simple-select-option[data-on="true"]:hover { background-color:var(--primary-100) !important; }
+        /* SELECTED IS GREY, NOT PURPLE (2026-09-17), finishing what 41e858e and 81721ba started.
+           These rows are the same thing as .vca-picker-option in globals.css — one row in an open
+           dropdown, saying "this is the value you are on" — so they take the same mark:
+           --gray-100 under a 3px --gray-900 rule down the leading edge, as an inset box-shadow
+           rather than border-left because the rows carry border:none inline and a real border
+           would shove every selected label 3px sideways. The fill was --primary-100 under
+           --primary-400 text, and this screen paints VIP in that same purple
+           (REID_STATUS_STYLE.VIP, the VIP badge on a cluster card, the ring MonitorCard draws on
+           a VIP face crop), so a purple row on a list of emotions was saying "VIP".
+
+           THE FILLS MOVED OUT OF THE STYLE ATTRIBUTE, and that is what retired two !importants.
+           Neither was defending against the other; both were defending against the row's own
+           inline background. An inline declaration outranks any plain selector, so :hover did
+           nothing until it carried !important — and once it did, it also greyed the selected row,
+           so a second, more specific !important had to put the selected fill back. Declared here,
+           the cascade does it: [data-on] and :not([data-on]):hover cannot both match one row.
+
+           HOVER AND SELECTED STILL DO NOT DIFFER BY FILL, and they never did: --primary-100
+           against --gray-50 measures 1.08:1 and --gray-100 against --gray-50 measures 1.05:1.
+           Hue was doing that work; now the rule does, alongside the checkmark this row has and
+           the picker rows do not, and --gray-900 text at 700 against --gray-700 at 500. */
+        .vca-simple-select-option { background-color:#fff; transition:background-color .12s; }
+        .vca-simple-select-option[data-on="true"] { background-color:var(--gray-100); box-shadow:inset 3px 0 0 var(--gray-900); }
+        .vca-simple-select-option:not([data-on="true"]):hover { background-color:var(--gray-50); }
       `}</style>
       <button onClick={() => setOpen(o => !o)} className="vca-simple-select-trigger" style={{
         display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
@@ -1186,8 +1205,9 @@ function SimpleSelect({ value, options, onChange }: { value:string; options:stri
             return (
               <button key={o || "__all__"} onClick={() => { onChange(o); setOpen(false); }} className="vca-simple-select-option" data-on={active} style={{
                 display:"flex", alignItems:"center", gap:"6px", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer",
-                backgroundColor: active ? "var(--primary-100)" : "white",
-                fontSize:"12px", fontWeight: active ? 700 : 500, color: active ? "var(--primary-400)" : "var(--gray-700)",
+                // No backgroundColor here: both fills live in the class above, and an inline one
+                // outranks it and silently cancels hover and selected both.
+                fontSize:"12px", fontWeight: active ? 700 : 500, color: active ? "var(--gray-900)" : "var(--gray-700)",
               }}>
                 <span style={{ display:"flex", width:"12px", flexShrink:0 }}>
                   {active && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
@@ -5098,20 +5118,46 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
           backgroundColor:"var(--gray-50)", borderRadius:"8px", padding:"10px 12px" }}>
           <PanelHeading title={t.whereWhenCluster} color="var(--primary-400)"
             icon={<AnalysisSparkleIcon />}>{t.relationshipAnalytics}</PanelHeading>
-          {/* Border and fill live in the class, not inline: an inline declaration outranks any
-              stylesheet selector, so setting them here would silently kill :hover and [data-on]. */}
           <style>{`
+            /* Border, fill and the label's resting colour live in the class, not inline: an inline
+               declaration outranks any stylesheet selector, so setting them on the elements would
+               silently kill :hover and [data-on]. That is not hypothetical here — the label's
+               colour WAS inline, so the [data-on] rule below never fired and the only mark a
+               switched-on card ever drew was its border (measured: label rgb(148,163,184) on and
+               off alike). [data-on] is written after :hover on purpose: equal specificity, so
+               source order is what keeps a selected card marked while the pointer is on it.
+
+               ON IS GREY, NOT PURPLE (2026-09-17), finishing 41e858e and 81721ba. A card, not a
+               row, so it does not take the picker rows' leading rule but the mark this product
+               already puts on card- and tab-shaped toggles: this same file lights an active view
+               segment with a white fill and --gray-900 text, and its sub-nav tabs with a 2px
+               --gray-900 underline. Against a --gray-200 resting edge the darkest step is 14.8:1,
+               where the purple was 4.9:1.
+
+               Purple could not carry this state anyway. Each card prints its count in
+               --primary-400 whether the card is on or off, and the block's own heading above them
+               is --primary-400 too, so purple appearing inside a card never told you the card was
+               on. Purple stays where it is a claim about the data rather than about the pointer:
+               that heading (with its sparkle, the block is derived, unlike the recorded "Shared
+               frames" list below it, whose heading is the default grey), the two counts, and the
+               chip that names the active filter down by the pager.
+
+               Hover moved off --primary-300 with it. Left purple, hovering an off card would have
+               drawn a more saturated edge than the on card's, and on this screen that purple is
+               the VIP colour. --gray-200 resting, --gray-400 hover, --gray-900 on is the same
+               three-step neutral ladder .vca-picker-option uses. */
             .vca-peak-card{border:1px solid var(--gray-200);background-color:#fff;transition:border-color .15s}
-            .vca-peak-card:hover{border-color:var(--primary-300)}
-            .vca-peak-card[data-on="true"]{border-color:var(--primary-400)}
-            .vca-peak-card[data-on="true"] .vca-peak-label{color:var(--primary-400)}
+            .vca-peak-label{color:var(--gray-400)}
+            .vca-peak-card:hover{border-color:var(--gray-400)}
+            .vca-peak-card[data-on="true"]{border-color:var(--gray-900)}
+            .vca-peak-card[data-on="true"] .vca-peak-label{color:var(--gray-900)}
           `}</style>
           <div style={{ display:"flex", gap:"10px" }}>
             <button className="vca-peak-card" data-on={focus === "location"}
               onClick={() => toggleFocus("location")}
               title={t.peakLocationTip(topGroup.events.length, events.length)}
               style={{ flex:1, minWidth:0, borderRadius:"8px", padding:"6px 10px", textAlign:"left", cursor:"pointer" }}>
-              <p className="vca-peak-label" style={{ margin:0, fontSize:"10px", color:"var(--gray-400)" }}>{t.colPeakLocation}</p>
+              <p className="vca-peak-label" style={{ margin:0, fontSize:"10px" }}>{t.colPeakLocation}</p>
               {/* The glyph belongs on the value, not the label — a pin next to the words "Peak
                   location" only restates them, next to "Novena" it marks what kind of thing that is. */}
               <p style={{ margin:"3px 0 0", fontSize:"12px", fontWeight:700, color:"var(--gray-900)", display:"flex", alignItems:"center", gap:"4px" }}>
@@ -5125,7 +5171,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
               onClick={() => toggleFocus("time")}
               title={t.peakTimeTip(bucketCount, events.length, pct, timeBucketLabel(bucket, lang))}
               style={{ flex:1, minWidth:0, borderRadius:"8px", padding:"6px 10px", textAlign:"left", cursor:"pointer" }}>
-              <p className="vca-peak-label" style={{ margin:0, fontSize:"10px", color:"var(--gray-400)" }}>{t.colPeakTime}</p>
+              <p className="vca-peak-label" style={{ margin:0, fontSize:"10px" }}>{t.colPeakTime}</p>
               {/* Sun or moon by the bucket itself — a sun beside "night" would be worse than no
                   glyph at all. */}
               <p style={{ margin:"3px 0 0", fontSize:"12px", fontWeight:700, color:"var(--gray-900)", textTransform:"capitalize", display:"flex", alignItems:"center", gap:"4px" }}>
