@@ -127,6 +127,7 @@ export interface DetailProps {
  */
 const DET_COLOR: Record<DetType, string> = { VIP: "var(--primary-400)", Vehicle: "var(--type-vehicle)", Unknown: "var(--gray-600)" };
 
+
 // AVATAR (four stock portraits) and VEHICLE_PHOTO (one stock car) were declared here and dealt
 // out to the reel cards and the "caught in this frame together" cards by LIST POSITION. Two lists,
 // two positions: the same detection was one stranger in the reel and another in the panel it
@@ -136,6 +137,86 @@ const DET_COLOR: Record<DetType, string> = { VIP: "var(--primary-400)", Vehicle:
 // DB_PHOTO / LIVE_CAPTURE_PHOTO were declared here for the same reason and removed the same way —
 // left as names so the next person does not reintroduce them from the files still sitting
 // in /public.
+
+/**
+ * THE ONE PICTURE ON THIS SCREEN THAT IS NOT A STAND-IN: the region of the frame the detector
+ * reported, taken out of the frame it reported it in.
+ *
+ * Nothing above comes back. There is still no photo OF a person here — no stock portrait, no
+ * enrolled photo fetched by name (the join this codebase forbids), no sub-region guessed from a
+ * rule about where faces sit in a picture. `CamData.bgUrl` is the still the boxes are drawn on,
+ * and a detection's `top/left/width/height` are percentages OF THAT STILL — the very values the
+ * overlay boxes on the feed are positioned with, a few hundred lines below. So a card can show
+ * the detector's own answer: that frame, at that place.
+ *
+ * RECONSTRUCTED, NOT RE-CROPPED, so the pixels are the feed's pixels: the inner element IS the
+ * frame — the same 16/9 display box with the same `objectFit:"cover"` image inside it — scaled up
+ * and slid until the reported region lands in the middle of the card's picture area.
+ *
+ * The region is FITTED, never filled. The whole box the detector drew stays visible, and whatever
+ * room the window has left over shows the real frame around it, which is what a surveillance crop
+ * looks like. Filling would crop the region itself, and then something has to decide WHICH part
+ * of it to keep — the top, on the theory that a head is up there. That is the guess that put a
+ * smudge on every card in Data monitoring (see the inset note in DataPage.tsx's MonitorCard), and
+ * it is the same guess the 1.8x "face zoom" removed from this file was making.
+ */
+const FRAME_ASPECT = 16 / 9;
+/** The picture area's own width/height. Keep in step with its `aspectRatio` in ReelCard. */
+const CROP_WINDOW_ASPECT = 1;
+/** How much of its limiting axis the reported box takes up, leaving real frame as a margin around
+ *  it. At 1.0 the drawn box sits flush against the card's edge with its border half-clipped. */
+const CROP_FIT = 0.86;
+
+function pctOf(value: string): number | null {
+  const n = parseFloat(value);
+  return Number.isFinite(n) ? n / 100 : null;
+}
+
+/**
+ * Where to put the reconstructed frame inside the picture area, in percentages of it.
+ *
+ * null when the detection carries no usable box — the card then keeps its empty frame, the same
+ * one a camera with no `bgUrl` gets.
+ */
+function cropFrameStyle(det: Detection, windowAspect: number): CSSProperties | null {
+  const left = pctOf(det.left), top = pctOf(det.top);
+  const w = pctOf(det.width), h = pctOf(det.height);
+  if (left === null || top === null || !w || !h) return null;
+  // The region's aspect in the frame's DISPLAY space (the feed's 16/9 box), not the image file's:
+  // that box is the coordinate space the percentages are given in.
+  const regionAspect = (w * FRAME_ASPECT) / h;
+  // Frame size as a percentage of the picture area, holding the frame's own 16/9 in real pixels —
+  // (fw * areaW) / (fh * areaH) === 16/9, i.e. (fw / fh) * windowAspect === 16/9.
+  let fw: number, fh: number;
+  if (regionAspect >= windowAspect) {
+    fw = (100 * CROP_FIT) / w;                 // the region's width is the limiting axis
+    fh = (fw * windowAspect) / FRAME_ASPECT;
+  } else {
+    fh = (100 * CROP_FIT) / h;                 // its height is
+    fw = (fh * FRAME_ASPECT) / windowAspect;
+  }
+  return {
+    position: "absolute",
+    width: `${fw}%`, height: `${fh}%`,
+    // The region's own edge to zero, then half the leftover pushed back, so it sits centred.
+    left: `${-left * fw - (w * fw - 100) / 2}%`,
+    top: `${-top * fh - (h * fh - 100) / 2}%`,
+  };
+}
+
+/**
+ * The box the detector drew, in the line style the feed draws it in — one function, so a card's
+ * copy of a box and the box on the feed itself cannot drift apart.
+ *
+ * Every box stays clearly visible (not just the focused one) — focus is a separate ring, not a
+ * second colour. VIP always renders in the primary purple: a VIP hit is an identity signal, not a
+ * focus state, so it stays purple whether focused or not. Unknown is dashed because it is the
+ * absence of an identification.
+ */
+function detBoxBorder(det: Detection): string {
+  const color = det.type === "VIP" ? "var(--primary-400)" : "var(--type-vehicle)";
+  return `2px ${det.type === "Unknown" ? "dashed" : "solid"} ${color}`;
+}
 
 /**
  * The model's own words for what it saw, translated only where they are drawn — the same rule
@@ -405,11 +486,23 @@ function AlsoCapturedCard({ det }: { det: Detection }) {
   );
 }
 
-/* ── Reel card ────────────────────────────────────────────────── */
-function ReelCard({ det, targetNo, isFocused, onClick }: { det: Detection; targetNo: number; isFocused: boolean; onClick: () => void }) {
+/* ── Reel card ──────────────────────────────────────────────────
+   Data monitoring's card (MonitorCard in DataPage.tsx): a capture filling the
+   card, a white footer under it, one card per detection.
+
+   Two of that card's parts are deliberately not here. The 60x60 enrolled-face
+   inset needs the enrolled photo, which `Detection` does not carry and which
+   must not be fetched by name. And the footer's third line, the timestamp, is
+   one fact repeated nine times on this screen: a frame's detections all share
+   its one stamp (see CAMERA_FEEDS in BestFramePage.tsx), and that stamp is
+   already on the feed's own plate. ──────────────────────────────── */
+function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detection; targetNo: number; frameUrl?: string; isFocused: boolean; onClick: () => void }) {
   const [lang] = useLanguage();
   const c = DET_COLOR[det.type];
   const [hovered, setHovered] = useState(false);
+  // No frame, no picture. A camera can arrive without a still, and then the card keeps the empty
+  // dashed box below — a missing image has to look like a missing image, not like an empty room.
+  const crop = frameUrl ? cropFrameStyle(det, CROP_WINDOW_ASPECT) : null;
   return (
     <div
       onClick={onClick}
@@ -426,41 +519,68 @@ function ReelCard({ det, targetNo, isFocused, onClick }: { det: Detection; targe
         transition: "background-color 0.15s ease",
       }}
     >
-      {/* A face crop sat on top and a full-body capture below it — the same stock portrait twice,
-          the top one scaled 1.8x to fake a face zoom, chosen by the card's position in the list.
-          Both are gone; see the note where AVATAR was removed. One empty frame is left, holding
-          the target number, so the card still says which box on the feed it belongs to.
-          HANDOFF NOTE: two images per detection bring the stack back — the matched crop and the
-          full-body capture, carried on the detection by id. The plate label style (white on
-          --label-plate) goes back on the label then too; it is for text drawn over imagery, and
-          there is no imagery under it right now. */}
-      <div style={{ position:"relative", width:"100%", aspectRatio:"1/1", borderRadius:"10px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", boxSizing:"border-box" }}>
-        <div style={{ position:"absolute", top:6, left:6, fontSize:"10px", fontWeight:600, color:"var(--gray-500)" }}>
-          {targetLabel(targetNo)}
+      {/* --shadow-raised, the existing token for a surface sitting just off the one behind it. The
+          card it is ported from writes its own 0 3px 8px -2px literal, which is one of the values
+          the elevation tokens were introduced to replace; not this file's to change. */}
+      <div style={{ borderRadius:"8px", overflow:"hidden", backgroundColor:"white",
+        boxShadow:"var(--shadow-raised)" }}>
+        {/* A face crop sat on top of a full-body capture here — the same stock portrait twice, the
+            top one scaled 1.8x to fake a face zoom, both dealt out by the card's position in the
+            list. What draws now is neither: it is this frame at this detection's own coordinates,
+            with the detector's box on it. See cropFrameStyle. */}
+        <div style={{
+          position:"relative", width:"100%", aspectRatio:"1/1", overflow:"hidden", boxSizing:"border-box",
+          ...(crop
+            ? { backgroundColor:"var(--gray-900)" }
+            : { border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)" }),
+        }}>
+          {crop && (
+            <div style={crop}>
+              <img src={frameUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+              {/* The same four percentages the feed positions this detection's box with, against
+                  a reconstruction of the same frame — so the card says which box it is, in a
+                  crop that can hold whoever else was standing nearby. */}
+              <div style={{ position:"absolute", top:det.top, left:det.left, width:det.width, height:det.height,
+                border: detBoxBorder(det), borderRadius:"3px", boxSizing:"border-box" }} />
+            </div>
+          )}
+          {/* Which box on the feed this card belongs to. On imagery it takes the plate treatment
+              every label drawn over footage uses (white on --label-plate); with the empty frame
+              there is nothing under it, so it stays plain grey. */}
+          <div style={{ position:"absolute", top:crop ? 7 : 6, left:crop ? 8 : 6, fontSize:"10px", letterSpacing:"-0.2px",
+            ...(crop
+              ? { fontWeight:800, color:"white", backgroundColor:"var(--label-plate)", padding:"4px 6px", borderRadius:"12px" }
+              : { fontWeight:600, color:"var(--gray-500)" }),
+          }}>
+            {targetLabel(targetNo)}
+          </div>
+        </div>
+        {/* The footer, at Data monitoring's padding. Its height is left to the content rather than
+            pinned: the 76px there buys room for three lines under a photo the footer overlays, and
+            a box pinned too short for its lines is what crushed that card's identity line to zero
+            height. Nothing overlays anything here, so there is no number to get wrong. */}
+        <div style={{ padding:"7px 11px 10px", display:"flex", flexDirection:"column", gap:"2px" }}>
+          {/* Icon + colored text, no pill background — matches the Dashboard/Sidebar event
+              panel's VIP/Tracking badge style (VipBadge/Tracking row in Sidebar.tsx) rather than
+              the solid-fill pill this used before.
+              Confidence is a match-against-registry score — only meaningful for VIP, since
+              Vehicle/Unknown have nothing registered to match against. */}
+          <div style={{ display:"flex", alignItems:"center", gap:"4px" }}>
+            <TypeIcon type={det.type} color={c} size={12} />
+            <span style={{ fontSize:"12px", fontWeight:800, color:c, letterSpacing:"-0.2px" }}>{typeLabel(det.type, T[lang])}</span>
+            {det.type === "VIP" && (
+              <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-600)" }}>{det.confidence}%</span>
+            )}
+          </div>
+          {/* The identity line. Attribute chips (gender, apparel) used to sit under it — with a
+              reel that can grow to a lot of cards, that's more detail than a scanning glance
+              needs; clicking through to Inspection Detail shows the full breakdown. */}
+          <p style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-900)", letterSpacing:"-0.24px",
+            overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", margin:0 }}>
+            {det.name}
+          </p>
         </div>
       </div>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-        {/* Icon + colored text, no pill background — matches the Dashboard/Sidebar event
-            panel's VIP/Tracking badge style (VipBadge/Tracking row in Sidebar.tsx) rather than
-            the solid-fill pill this used before. */}
-        <span style={{ display:"flex", alignItems:"center", gap:"4px" }}>
-          <TypeIcon type={det.type} color={c} size={12} />
-          <span style={{ fontSize:"11px", fontWeight:600, color:c }}>{typeLabel(det.type, T[lang])}</span>
-        </span>
-        {/* Confidence is a match-against-registry score — only meaningful for VIP, since
-            Vehicle/Unknown have nothing registered to match against. */}
-        {det.type === "VIP" && (
-          <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)" }}>{det.confidence}%</span>
-        )}
-      </div>
-      {/* Attribute chips (gender, apparel) used to sit here — with a reel that can grow to a
-          lot of cards, that's more detail than a scanning glance needs; clicking through to
-          Inspection Detail already shows the full attribute breakdown. */}
-      {/* Negative margin pulls this closer to the type/confidence row above — the outer gap that
-          spaces every child evenly was wider than this specific pair needed. */}
-      <p style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)", letterSpacing:"-0.24px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginTop:"-3px" }}>
-        {det.name}
-      </p>
     </div>
   );
 }
@@ -503,12 +623,21 @@ function BestFrameReel({ data, focusedId, onFocus, onSelect, filter, onFilterCha
           right on that boundary with no gap — happened first on top (flush against the filter
           chips), then on the sides (flush against the panel edge) — so all four sides carry at
           least 8px clearance now. */}
-      <div style={{ flex:1, overflowY:"auto", padding:"16px", display:"grid", gridTemplateColumns:"repeat(4, 1fr)", columnGap:"14px", rowGap:"16px", alignItems:"start" }}>
+      {/* TWO COLUMNS, NOT FOUR. Four of them in this 380px panel made a 76px card: the names
+          ellipsed at "Dr. Alex W···" and the picture area was too small to be a picture of
+          anything. Two gives 166px, which fits every name in the frame this screen opens on and
+          renders the reported region at roughly its own resolution (a 12%-wide box out of a
+          900px still is ~108px of real pixels) rather than enlarging it into mush.
+          The cost is scrolling, and it is paid by the busiest frame: nine targets are five rows
+          of ~235px against ~555px of visible panel, so a little over two panel-heights. Three
+          columns would fit them in three rows and put the names back in ellipses, which is the
+          thing being fixed. */}
+      <div style={{ flex:1, overflowY:"auto", padding:"16px", display:"grid", gridTemplateColumns:"repeat(2, 1fr)", columnGap:"14px", rowGap:"16px", alignItems:"start" }}>
         {dets.length === 0 && (
           <div style={{ gridColumn:"1 / -1", padding:"24px 0", textAlign:"center", color:"var(--gray-400)", fontSize:"12px" }}>{t.noDetections}</div>
         )}
         {dets.map(det => (
-          <ReelCard key={det.id} det={det} targetNo={data.detections.findIndex(d => d.id === det.id) + 1} isFocused={det.id === focusedId} onClick={() => { onFocus(det); onSelect(det); }} />
+          <ReelCard key={det.id} det={det} targetNo={data.detections.findIndex(d => d.id === det.id) + 1} frameUrl={data.bgUrl} isFocused={det.id === focusedId} onClick={() => { onFocus(det); onSelect(det); }} />
         ))}
       </div>
     </div>
@@ -906,12 +1035,6 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
             {data.detections.map((det, i) => {
               const isFocused = det.id === focusedDet.id;
               if (selectedPerson && !isFocused) return null;
-              const isDash = det.type === "Unknown";
-              // Every box stays clearly visible (not just the focused one) — focus is conveyed by
-              // border width/label opacity below, not by switching to a second, off-palette blue.
-              // VIP boxes always render in the primary purple — a VIP hit is an identity signal,
-              // not just a focus state, so it stays purple whether focused or not.
-              const borderColor = det.type === "VIP" ? "var(--primary-400)" : "var(--type-vehicle)";
               return (
                 <div key={det.id}
                   // Just focuses — the same "highlight, don't commit" action as clicking this
@@ -922,7 +1045,8 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   style={{
                     position:"absolute", zIndex:10, cursor:"pointer",
                     top:det.top, left:det.left, width:det.width, height:det.height,
-                    border:`2px ${isDash ? "dashed" : "solid"} ${borderColor}`,
+                    // detBoxBorder, shared with the box each reel card draws on its own crop.
+                    border: detBoxBorder(det),
                     // A separate purple ring for "this is the focused one" — independent of the
                     // box's own type color (VIP purple / Vehicle-Unknown blue) — is what actually
                     // matches the reel card's purple focus outline on the right. Reusing the
