@@ -36,12 +36,19 @@ const T = {
   en: {
     vipDetected: "VIP detected",
     viewOnMap: "View on map",
+    /**
+     * The registry's own words for the priority, copied rather than reworded.
+     * ProjectVipTab already prints exactly these three for the same field, and a level that reads
+     * "High" on the portal and "Elevated" in the alert is two names for one thing.
+     */
+    priorityText: { normal: "Normal", high: "High", very_high: "Very High" } as Record<"normal" | "high" | "very_high", string>,
     expandSidebar: "Expand sidebar",
     collapseSidebar: "Collapse sidebar",
   },
   ko: {
     vipDetected: "VIP 검출",
     viewOnMap: "지도에서 보기",
+    priorityText: { normal: "일반", high: "높음", very_high: "매우 높음" } as Record<"normal" | "high" | "very_high", string>,
     expandSidebar: "사이드바 펼치기",
     collapseSidebar: "사이드바 접기",
   },
@@ -157,7 +164,8 @@ function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void
         // The camera pool is scoped too. Picking the person's site correctly and then stamping the
         // detection onto a camera from another one would move the bug rather than fix it.
         const projectId = getActiveProjectId();
-        const persons = watchedPersonsInProject(useVcaStore.getState().persons, projectId, Date.now());
+        const storeNow = useVcaStore.getState();
+        const persons = watchedPersonsInProject(storeNow.persons, projectId, Date.now());
         const onlineCameras = simulationCameras(projectId);
         if (persons.length > 0 && onlineCameras.length > 0) {
           const person = persons[Math.floor(Math.random() * persons.length)];
@@ -203,7 +211,31 @@ function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void
             // Match confidence in the alert itself: it decides whether this is worth acting on
             // right now, and it was already computed above for the event record while the toast —
             // the thing the operator actually sees first — left it out.
-            desc: `${person.name} · ${camera.name} · ${confidence}%`,
+            //
+            // PRIORITY AND GROUP RIDE ALONG, because "is this worth turning round for" is the
+            // question the toast exists to answer and the name alone does not answer it. Both come
+            // off the person object this ticker already picked out of the register — no lookup by
+            // name, which is the join this codebase forbids.
+            //
+            // Priority is ALWAYS printed, including "normal". The registry hides a normal priority
+            // as "nothing to say", and that is right on a table you are reading; on an alert that
+            // arrives unbidden every 15-30s a fixed shape is what makes it readable at a glance,
+            // and a missing word would have to be decoded as "normal" rather than read.
+            // `?? "normal"` matches the registry's own default for an unset field.
+            //
+            // The group is printed only when the person is in one, because most are not. It is the
+            // group's NAME, not its priority: PersonGroup carries a priorityLabel of its own and
+            // the two can disagree (a "normal" person inside a "high" delegation), and the one
+            // that is true of the person in front of the camera is the person's. The group name is
+            // what turns "who" into "why they matter" — it is the institution's own word for the
+            // list this person is on.
+            desc: [
+              person.name,
+              T[alertLang].priorityText[person.priorityLabel ?? "normal"],
+              person.groupId ? storeNow.personGroups.find(g => g.id === person.groupId)?.name : undefined,
+              camera.name,
+              `${confidence}%`,
+            ].filter(Boolean).join(" · "),
             actionLabel: T[alertLang].viewOnMap,
             onAction: () => onNavigateRef.current(liveEvent),
           });
