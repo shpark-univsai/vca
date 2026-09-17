@@ -340,10 +340,57 @@ export default function ClientLayout() {
   /** Where somebody goes when the screen they asked for is not theirs. Dashboard rides on the
    *  app door, so this always resolves. */
   const firstAllowedTab: NavTab = VALID_TABS.find(tabAllowed) ?? "DASHBOARD";
+  /**
+   * Moving tab sets `tab=` and leaves every other parameter standing.
+   *
+   * It used to write `?tab=${tab}` as the ENTIRE query string, and the app has a second parameter:
+   * DataPage keeps which of its three sub-screens is open in `sub=` (see its own note — "the
+   * sub-tab rides the URL the way the top-level tab already does"). Rebuilding the query from
+   * nothing here deleted it, so leaving Data and coming back always landed on Live Monitoring
+   * however the person had got there, and the address copied out of the bar reopened the wrong
+   * one — the URL was the only record of that choice.
+   *
+   * It also put the two writers in a race neither can win. DataPage mirrors `sub=` from an effect
+   * that rebuilds the query from ITS OWN snapshot of the parameters, so with both sides writing a
+   * whole query string the later write erases the earlier side's parameter. Carrying `sub=`
+   * through means that, where it is already the right value, DataPage's effect sees nothing to
+   * change and does not write at all — which is most of the moves between tabs.
+   *
+   * NOT the whole of that race: arriving on Data with no `sub=` at all still leaves DataPage a
+   * write to make, and it makes it from a snapshot that predates this one — see the HANDOFF NOTE
+   * below.
+   */
   const setActivePage = (tab: NavTab) => {
     setActivePageState(tab);
-    router.replace(`${pathname}?tab=${tab}`, { scroll: false });
+    const next = new URLSearchParams(searchParams.toString());
+    next.set("tab", tab);
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
   };
+  /*
+   * HANDOFF NOTE (needs DataPage.tsx, which another session holds) — the address bar can still
+   * name a tab other than the one on screen.
+   *
+   * Measured: on `/?tab=DASHBOARD`, clicking Data renders Data and leaves the address at
+   * `/?tab=DASHBOARD&sub=live`. This side writes `tab=DATA`; DataPage then mounts, finds no
+   * `sub=`, and writes `sub=live` onto the parameters it captured during ITS first render — which
+   * still say `tab=DASHBOARD`, because a router.replace() from this side has not re-rendered
+   * anything yet. The second write lands last and carries the stale tab with it.
+   *
+   * So a person on Data can copy an address that reopens Dashboard. That is the whole of the
+   * "a link to a Data screen does not open that screen" report: `?tab=DATA` typed in by hand
+   * opens Data correctly (measured, first paint and after settling, fresh load and reload). It is
+   * the address the app HANDS them that is wrong.
+   *
+   * The half that belongs here is done — this writer no longer destroys a parameter it does not
+   * own. The other half is DataPage's mirror effect building its query from the render's
+   * `searchParams` instead of from the live ones; both writers have to merge rather than rebuild,
+   * or one of them has to own the whole query.
+   *
+   * NOT the access gate, which was the first suspicion. `heldScreens` is settled on the very
+   * first render — the store is seeded synchronously from a module constant with no persistence,
+   * no localStorage and no fetch — so the gate never sees "we do not know yet" and never moves
+   * anybody off a tab they hold. No spurious `setRefusedScreen` exists to fix.
+   */
 
   // The app's door, mirroring PortalShell's. An account without appAccess could type `/` and walk
   // straight in — Portal had a guard and this side had none, so the two halves of one permission
