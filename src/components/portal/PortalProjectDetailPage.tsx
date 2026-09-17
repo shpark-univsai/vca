@@ -45,7 +45,6 @@ const T = {
     connectedSuffix: (n: number) => `/ ${n} connected`,
     online: "Online",
     offline: "Offline",
-    statusError: "Error",
     licenseSubscription: "License subscription",
     channelsUsedSuffix: (limit: number | string) => `/ ${limit} channels used`,
     vipTargetDb: "VIP / target database",
@@ -78,12 +77,8 @@ const T = {
     attnNoTimeZone: "Time zone never set — every date on this project is a guess",
     attnNoCameras: "No source connected yet",
     attnNoVips: "No VIP registered yet",
-    accessSplitLabel: (portal: number, app: number) => `Portal: ${portal} | App: ${app}`,
     cameraStatusTitle: "Camera status",
     seeAllActivity: (n: number) => `All ${n} ${n === 1 ? "entry" : "entries"}`,
-    activityLogTitle: "Admin activity",
-    activityLogEmpty: "Nothing has been changed in this project yet.",
-    close: "Close",
     colLastSignal: "Last signal",
     registeredOn: (d: string) => `Registered ${d}`,
     // This card is the page's answer to "is this deployment working". Deliberately not joined by a
@@ -93,13 +88,16 @@ const T = {
     // streaming is the health question; who walked past is not.
     colCamera: "Camera",
     colZone: "Zone",
-    colStreamUrl: "Address",
+    // Was colStreamUrl, which named something this cell has never printed: it renders Camera.ip
+    // and nothing else. The cameras tab keys the same field colAddress too, but heads its column
+    // "Connection info" because it prints the resolution on a second line under the address. One
+    // field, one key; the two headings differ because the two cells do.
+    colAddress: "Address",
     colStatus: "Status",
     noCamerasYet: "No cameras connected to this project yet.",
     openCamera: "Open this camera",
     trendTitle: "Detections",
     trendPeriod: "last 7 days",
-    todaySuffix: "today",
     vsYesterday: (pct: number) => `${pct > 0 ? "+" : ""}${pct}% vs previous 7 days`,
     weekTotalHint: (todayTotal: string) => `Includes today so far: ${todayTotal}`,
     todaySoFar: "Today",
@@ -143,7 +141,6 @@ const T = {
     connectedSuffix: (n: number) => `/ ${n}대 연결됨`,
     online: "온라인",
     offline: "오프라인",
-    statusError: "오류",
     licenseSubscription: "라이선스 구독",
     channelsUsedSuffix: (limit: number | string) => `/ ${limit}채널 사용`,
     vipTargetDb: "VIP DB",
@@ -176,23 +173,18 @@ const T = {
     attnNoTimeZone: "시간대를 정한 적이 없습니다 — 이 프로젝트의 모든 날짜가 추측입니다",
     attnNoCameras: "연결된 소스가 없습니다",
     attnNoVips: "등록된 VIP가 없습니다",
-    accessSplitLabel: (portal: number, app: number) => `Portal: ${portal} | 앱: ${app}`,
     cameraStatusTitle: "카메라 상태",
     seeAllActivity: (n: number) => `전체 ${n}건 보기`,
-    activityLogTitle: "관리자 활동",
-    activityLogEmpty: "이 프로젝트에서 변경된 것이 아직 없습니다.",
-    close: "닫기",
     colLastSignal: "마지막 신호",
     registeredOn: (d: string) => `${d} 등록`,
     colCamera: "카메라",
     colZone: "구역",
-    colStreamUrl: "주소",
+    colAddress: "주소",
     colStatus: "상태",
     noCamerasYet: "이 프로젝트에 연결된 카메라가 아직 없습니다.",
     openCamera: "이 카메라 열기",
     trendTitle: "탐지",
     trendPeriod: "지난 7일",
-    todaySuffix: "건 오늘",
     vsYesterday: (pct: number) => `직전 7일 대비 ${pct > 0 ? "+" : ""}${pct}%`,
     weekTotalHint: (todayTotal: string) => `진행 중인 오늘 ${todayTotal}건 포함`,
     todaySoFar: "오늘",
@@ -1521,7 +1513,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                           order and no way to change it, so this is a statement rather than a
                           control — but a list ordered by a column nobody told you about is a list
                           whose order looks arbitrary. */}
-                      {[t.colCamera, t.colZone, t.colStreamUrl, t.colLastSignal, t.colStatus, ""].map(h => (
+                      {[t.colCamera, t.colZone, t.colAddress, t.colLastSignal, t.colStatus, ""].map(h => (
                         <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>
                           {h.toUpperCase()}{h === t.colLastSignal ? " ↑" : ""}
                         </span>

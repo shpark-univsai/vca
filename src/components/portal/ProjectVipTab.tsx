@@ -142,23 +142,6 @@ interface VipDict {
   releaseReasonPlaceholder: string;
   releaseConfirm: string;
   releasedToast: string;
-  catModalTitle: string;
-  catEdit: string;
-  catModalIntro: string;
-  catEmpty: string;
-  catNew: string;
-  catLabelField: string;
-  catLabelPlaceholder: string;
-  catValidDays: string;
-  catValidDaysNone: string;
-  catRequiresBasis: string;
-  catColor: string;
-  catArchive: string;
-  catArchived: string;
-  catArchiveNote: string;
-  catCreate: string;
-  catSave: string;
-  catOwnerOnly: string;
   healthReachLabel: string;
   healthReachWhy: string;
   healthReachTrend: (prev: number) => string;
@@ -336,23 +319,6 @@ const T: Record<"en" | "ko", VipDict> = {
     releaseReasonPlaceholder: "Found · Arrested · Listed in error",
     releaseConfirm: "Release",
     releasedToast: "Released from VIP",
-    catModalTitle: "VIP categories",
-    catEdit: "Edit",
-    catModalIntro: "The words are yours, not ours.",
-    catEmpty: "No categories yet. People can still be registered; they are listed as unclassified.",
-    catNew: "New category",
-    catLabelField: "Name",
-    catLabelPlaceholder: "What your organisation calls it",
-    catValidDays: "Default duration (days)",
-    catValidDaysNone: "No default end date",
-    catRequiresBasis: "Require a basis when listing under this",
-    catColor: "Colour",
-    catArchive: "Retire",
-    catArchived: "Retired",
-    catArchiveNote: "Retired categories cannot be chosen again. People already listed under them keep the label.",
-    catCreate: "Create",
-    catSave: "Save",
-    catOwnerOnly: "Only the owner can change this list.",
     healthReachLabel: "people detected · 7 days",
     healthReachWhy: "How many people on the VIP list were seen at least once in the last 7 days — people, not detections. One person passing a camera twenty times counts once here.",
     healthReachTrend: (prev: number) => `vs ${prev} people last week`,
@@ -513,23 +479,6 @@ const T: Record<"en" | "ko", VipDict> = {
     releaseReasonPlaceholder: "발견 · 검거 · 착오 등록",
     releaseConfirm: "해제",
     releasedToast: "VIP에서 해제했습니다",
-    catModalTitle: "VIP 분류",
-    catEdit: "수정",
-    catModalIntro: "쓰는 말은 저희 것이 아니라 기관의 것입니다.",
-    catEmpty: "아직 분류가 없습니다. 그래도 등록은 됩니다 — 미분류로 올라갑니다.",
-    catNew: "분류 만들기",
-    catLabelField: "이름",
-    catLabelPlaceholder: "기관에서 부르는 이름",
-    catValidDays: "기본 유효기간 (일)",
-    catValidDaysNone: "기본 만료일 없음",
-    catRequiresBasis: "이 분류로 등록할 때 근거를 필수로",
-    catColor: "색",
-    catArchive: "사용 중지",
-    catArchived: "중지됨",
-    catArchiveNote: "중지한 분류는 다시 고를 수 없습니다. 이미 등록된 사람의 표시는 그대로 남습니다.",
-    catCreate: "만들기",
-    catSave: "저장",
-    catOwnerOnly: "이 목록은 최고관리자만 바꿀 수 있습니다.",
     healthReachLabel: "지난 7일간 탐지된 인원",
     healthReachWhy: "VIP 목록에 있는 사람 중 최근 7일 안에 한 번이라도 잡힌 인원 수입니다. 탐지 건수가 아니라 사람 수라서, 한 사람이 카메라 앞을 스무 번 지나가도 1로 셉니다.",
     healthReachTrend: (prev: number) => `지난주 ${prev}명`,
