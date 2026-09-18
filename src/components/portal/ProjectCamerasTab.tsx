@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import CameraImportModal from "./CameraImportModal";
-import { CircleAlert, FileInput, FileOutput, Film as FilmIcon, Image as ImageIcon, MapPinOff, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
+import CameraMapPanel from "./CameraMapPanel";
+import { CircleAlert, FileInput, FileOutput, MapPin, Film as FilmIcon, Image as ImageIcon, MapPinOff, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
 import { useVcaStore, hasPosition, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -15,6 +16,8 @@ const T = {
   en: {
     exportCsv: "Export CSV",
     importCsv: "Import CSV",
+    openMap: "Map",
+    openMapWhy: "Where this project's cameras are, drawn from their coordinates.",
     addCamera: "Add camera",
     /* ONE NAME PER STATE, and these four are it. The summary cards used to say "connected /
        offline / refusing the connection / awaiting first contact" while the table and the filter
@@ -187,6 +190,8 @@ const T = {
   ko: {
     exportCsv: "CSV 내보내기",
     importCsv: "CSV 가져오기",
+    openMap: "지도",
+    openMapWhy: "등록된 좌표로 이 프로젝트의 카메라 위치를 그립니다.",
     addCamera: "카메라 추가",
     online: "연결됨",
     offline: "오프라인",
@@ -1378,6 +1383,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    */
 
   const [showImport, setShowImport] = useState(false);
+  /* The map, as a panel over the screen rather than a second view of the list — see
+     CameraMapPanel for why the thing it replaces (the grid) was a worse table. */
+  const [showMap, setShowMap] = useState(false);
 
   const exportCsv = () => {
     const header = [t.csvHeaderName, t.csvHeaderCode, t.csvHeaderZone, t.csvHeaderLocation, t.csvHeaderRtspUrl, t.csvHeaderStatus];
@@ -1665,6 +1673,16 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           {/* Beside Export, and before it: the first thing a new site does is put a list in,
               and the round trip this reads is the one Export writes. Behind the same edit gate
               as adding a camera — this is the same act, three hundred times. */}
+          {/* Left of the file actions: this one only looks, and looking comes before changing —
+              the same order Preview takes in the row menu. Open to a read-only account for the
+              same reason. Only on the tabs that hold cameras: a file has no coordinates. */}
+          {showCameraColumns && (
+            <button className="portal-btn-quiet" onClick={() => setShowMap(true)} title={t.openMapWhy}
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              <MapPin size={14} strokeWidth={2.4} />
+              {t.openMap}
+            </button>
+          )}
           {mayEdit && (
             <button className="portal-btn-quiet" onClick={() => setShowImport(true)}
               style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
@@ -2180,6 +2198,16 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           off monitoring at once, and there is no restore. Says what actually happens and what does
           not, because "are you sure?" alone leaves people guessing about the recordings. */}
       {showImport && <CameraImportModal projectId={projectId} onClose={() => setShowImport(false)} />}
+      {showMap && (
+        <CameraMapPanel
+          cameras={projectCameras}
+          onClose={() => setShowMap(false)}
+          onInspect={id => { setShowMap(false); setInspectingCameraId(id); }}
+          /* Straight to the rows that cannot be drawn — the panel says how many and this is the
+             way to them, which is the same move the 좌표 미등록 cell above the table makes. */
+          onShowUnpositioned={() => { setKindTab("camera"); setGapFilter("noPosition"); }}
+        />
+      )}
 
       {confirmingBulkDelete && (
         <div onClick={e => { if (e.target === e.currentTarget) setConfirmingBulkDelete(false); }}
