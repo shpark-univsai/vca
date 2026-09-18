@@ -38,6 +38,11 @@ const T = {
     teamNameLabel: "Team name",
     teamNamePlaceholder: "Northgate Education Trust",
     createTeam: "Create team",
+    // Shown instead of the field when this deployment does not let the customer make teams
+    // (complianceConfig.teamSelfService, off for the first release). Same situation, different
+    // next step: there is nothing to press, so the screen says who knows when it arrives.
+    noTeamWaitingTitle: "This installation is not set up yet",
+    noTeamWaitingBody: "A team holds this installation's projects, users and mail settings. It is created during installation, along with the sites it holds, rather than from this console.",
   },
   ko: {
     eyebrow: "프로젝트",
@@ -58,6 +63,8 @@ const T = {
     teamNameLabel: "팀 이름",
     teamNamePlaceholder: "Northgate Education Trust",
     createTeam: "팀 만들기",
+    noTeamWaitingTitle: "아직 설정되지 않은 설치본입니다",
+    noTeamWaitingBody: "팀은 이 설치본의 프로젝트, 사용자, 메일 설정을 담습니다. 담을 현장과 함께 설치 과정에서 만들어지기 때문에, 이 콘솔에서는 만들지 않습니다.",
   },
 } as const;
 
@@ -98,7 +105,13 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
   const t = T[lang];
   const [teamName, setTeamName] = useState("");
   const [nameFocused, setNameFocused] = useState(false);
-  const askTeam = noTeam && !!onCreateTeam;
+  /* Three things have to be true to ask for a name: there is no team, the caller can make one,
+     and this deployment offers making one at all. The third is new (2026-09-18): on-premise, a
+     team arrives with the installation like the sites it holds, so the panel below states the
+     situation and names who to ask instead of holding out a field that creates a container the
+     customer cannot fill. */
+  const askTeam = noTeam && !!onCreateTeam && getComplianceConfig().teamSelfService;
+  const waitForInstall = noTeam && !askTeam;
 
   /* Only the preparations this installation actually has a screen for.
      Both of these are hidden by a compliance switch — vipCategories and requireSearchPurpose are
@@ -112,6 +125,38 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
     ...(compliance.vipCategories ? [{ label: t.prepCategories, why: t.prepCategoriesWhy }] : []),
     ...(compliance.requireSearchPurpose ? [{ label: t.prepPurposes, why: t.prepPurposesWhy }] : []),
   ];
+
+  if (waitForInstall) {
+    return (
+      // Same centred panel as the ask-for-a-name case: one situation, and in this case nothing to
+      // do about it. The card is the projects one from below, reworded for a team, because the
+      // useful thing on a waiting screen is the name of whoever can say when it arrives.
+      <div style={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: "480px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <span style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            width: "56px", height: "56px", borderRadius: "16px",
+            backgroundColor: "white", border: BORDER, color: "var(--gray-500)",
+          }}>
+            <Users size={24} strokeWidth={1.4} />
+          </span>
+          <p style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)", marginTop: "20px", textAlign: "center" }}>{t.noTeamWaitingTitle}</p>
+          <p style={{ fontSize: "14px", color: "var(--gray-500)", marginTop: "8px", textAlign: "center", lineHeight: 1.5 }}>
+            {t.noTeamWaitingBody}
+          </p>
+          <div style={{ marginTop: "24px", padding: "16px 18px", backgroundColor: "white", border: BORDER, borderRadius: "12px", width: "100%", boxSizing: "border-box" }}>
+            {accountManager ? (<>
+              <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{t.contactManager.toUpperCase()}</p>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "4px" }}>{accountManager.name}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{accountManager.email}</p>
+            </>) : (
+              <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.noManager}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (askTeam) {
     const canSubmit = teamName.trim().length > 0;

@@ -74,6 +74,33 @@ export interface ComplianceConfig {
    */
   projectDelete: boolean;
   /**
+   * Whether the customer may create and delete TEAMS from this console.
+   *
+   * Off means the "New team" entry in the team switcher and the "Delete this team" section in
+   * Team settings are not drawn, and the first-team landing stops asking for a name and says who
+   * to contact instead. Renaming stays — a team whose name is wrong is a team nobody can fix
+   * otherwise.
+   *
+   * OFF FOR THE FIRST RELEASE, and the reason came from the palette of the deployment rather than
+   * from the code: THIS IS AN ON-PREMISE PRODUCT AND A SITE ARRIVES BY INSTALLATION. A project is
+   * a licensed site whose channels and term come from the contract, which is why the projects
+   * empty state already says it is set up during installation and why the customer-facing path is
+   * a REQUEST (RequestProjectModal), not a wizard. A team the customer can create is therefore a
+   * container they cannot fill: they make it, and the only thing inside is a sentence telling them
+   * to phone us.
+   *
+   * Delete rides along with create for a reason worth writing down: `removeTeam` already refuses a
+   * team that holds any project, so the only thing deletable is an EMPTY team — which is to say,
+   * the mess that self-service creation makes. Take the creation away and the delete has almost
+   * nothing left to clean up, while keeping its cost: it takes that team's accounts with it, and
+   * accounts are the part no install re-creates.
+   *
+   * What this does NOT change: multiple teams per installation is still the model (decided
+   * 2026-09-03) — several teams simply arrive with the installation instead of being made here.
+   * On restores both controls exactly as they were.
+   */
+  teamSelfService: boolean;
+  /**
    * Whether the institution classifies its listings.
    *
    * On, every registration picks a category the institution defined — and the category decides how
@@ -205,6 +232,12 @@ export function getComplianceConfig(): ComplianceConfig {
      * exactly the people who had it.
      */
     projectDelete: false,
+    /**
+     * Off (2026-09-18). On-premise: teams and projects arrive with the installation — see the
+     * interface comment. The owner permission check stays underneath, so turning this on gives
+     * both controls back to exactly the people who had them.
+     */
+    teamSelfService: false,
     /**
      * 365 days (2026-09-15). Placeholder for a number the deployment's retention rule decides —
      * see the interface comment.

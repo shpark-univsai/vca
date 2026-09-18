@@ -5,6 +5,7 @@ import { useVcaStore, canManageAccess, currentPortalUser, type Team } from "@/li
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { Building2, Settings2 } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
+import { getComplianceConfig } from "@/lib/complianceConfig";
 import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH, ConfirmModal, SelectedCheckIcon, TextField } from "./PortalShared";
 import { useToast } from "@/components/Toast";
 
@@ -140,6 +141,14 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
   const portalUsers = useVcaStore(s => s.portalUsers);
   const me = currentPortalUser(portalUsers);
   const mayManageTeam = me ? canManageAccess(me.permission) : true;
+  /*
+   * Two gates answering different questions, like the project-delete pair in Settings: the
+   * permission asks whether THIS PERSON may reshape teams, the switch asks whether THIS
+   * DEPLOYMENT offers making and unmaking them at all. Off for the first release — on-premise,
+   * teams and their sites arrive with the installation (see complianceConfig.teamSelfService).
+   * Renaming stays outside the switch on purpose: a team whose name is wrong has no other fix.
+   */
+  const mayShapeTeams = getComplianceConfig().teamSelfService && mayManageTeam;
   const ref = useRef<HTMLDivElement>(null);
   useEscapeKey(() => setOpen(false), open);
 
@@ -290,6 +299,7 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
             })}
 
             <div style={{ borderTop: BORDER, marginTop: "4px", paddingTop: "4px" }}>
+              {mayShapeTeams && (
               <button
                 onClick={() => { setOpen(false); setShowNewTeam(true); }}
                 onMouseEnter={() => setHovered("__new")}
@@ -306,6 +316,7 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
                 </span>
                 {t.newTeam}
               </button>
+              )}
               {/* Renaming and deleting act on the team you are IN, so they are one entry rather
                   than a kebab on every row — a popover with a menu on each of its own rows is two
                   menus deep before anything happens. */}
@@ -381,6 +392,11 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
  * Deleting is refused while the team still holds projects, and the reason says where to go
  * instead. Cascading would delete several sites from a dropdown in one gesture; each project is
  * deleted from its own Settings screen, where what goes with it is counted first.
+ *
+ * AND THE DELETE SECTION IS NOT DRAWN AT ALL IN THE FIRST RELEASE (complianceConfig
+ * .teamSelfService, off 2026-09-18). With creation gone, the only deletable team is an empty one
+ * — the mess self-service creation used to make — while the cost of the control stays: it takes
+ * that team's accounts with it. Rename is the whole modal until the switch comes on.
  */
 function ManageTeamModal({ team, onClose, onDeleted }: {
   team: Team;
@@ -427,6 +443,9 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
   const ownerElsewhere = portalUsers.some(u => u.teamId !== team.id && u.permission === "owner" && u.status === "active");
   const holdsLastOwner = !ownerElsewhere && portalUsers.some(u => u.teamId === team.id && u.permission === "owner" && u.status === "active");
   const canDelete = projectCount === 0 && !holdsLastOwner;
+  /* Same pair as the switcher's: the deployment switch first, the owner permission behind it.
+     The caller only opens this modal for an owner, so the permission is already true here. */
+  const mayShapeTeams = getComplianceConfig().teamSelfService;
   const canSave = name.trim().length > 0 && name.trim() !== team.name;
 
   return (
@@ -447,6 +466,7 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
               <TextField value={name} onChange={setName} autoFocus />
             </div>
 
+            {mayShapeTeams && (
             <div style={{ borderTop: BORDER, paddingTop: "16px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.deleteTeam}</p>
@@ -466,6 +486,7 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
                 {canDelete ? t.deleteHint : projectCount > 0 ? t.deleteBlocked(projectCount) : t.deleteBlockedLastOwner}
               </p>
             </div>
+            )}
           </div>
 
           <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
