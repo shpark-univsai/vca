@@ -903,8 +903,14 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               <RotateCcw size={14} strokeWidth={2.4} />
               {t.reset}
             </button>
+            {/* `marginLeft: auto` puts this at the right end of the toolbar, which is where every
+                other list in Portal keeps the one thing that MAKES something — left of the row is
+                how you narrow the list, right of it is what you do to it. Without it this button
+                sat wherever the search field and the type filter happened to end (measured at
+                1440px: right edge at 869 against a content edge of 1408 — the middle of the row).
+                Reset deliberately stays on the left: it is a filter control, not an action. */}
             <button className="portal-btn-primary" onClick={() => setShowAdd(true)} disabled={!mayEdit} title={readOnlyReason}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-200)", color: mayEdit ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed", flexShrink: 0 }}>
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-200)", color: mayEdit ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed", flexShrink: 0, marginLeft: "auto" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
               {t.addServer}
             </button>

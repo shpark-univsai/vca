@@ -1558,8 +1558,16 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           view the list, right of it is what you do to it, which is the arrangement the reference
           uses (search and filters left, Import / Add right) and the one this row already had in
           miniature with its bulk actions.
+
+          `marginLeft: auto` is what actually puts it there, and it was missing — this comment
+          described the arrangement while the group sat wherever the filters happened to end
+          (measured at 1440px: the purple button's right edge at 1126 against a content edge of
+          1408, so it read as floating mid-row). Not `justifyContent: space-between` on the
+          toolbar: this row wraps, and on a narrow window space-between spreads whatever lands on
+          the last line. An auto margin pushes only this group, and collapses to nothing once the
+          row wraps.
         */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0, marginLeft: "auto" }}>
           {/*
             Secondary actions carry no box.
 
