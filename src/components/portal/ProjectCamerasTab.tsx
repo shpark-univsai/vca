@@ -1752,6 +1752,17 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           scroll underneath. Rendered here (still inside the fixed/sticky block) as the top half of
           the card; the data rows below are the bottom half, in normal flow, meeting it with no
           border between them so the two halves read as one continuous card. */}
+      {/* ABOVE THE TABLE, and inside the sticky block so it stays reachable (owner's note,
+          2026-09-18: "페이지선택하는게 너무 아래있나..?"). 25 rows is 1700px of table — a pager
+          under it means scrolling to the end of the page every time you want the next page. Up
+          here the range also reads as a caption for the list you are about to read. */}
+      <TablePagination
+        total={visibleRows.length}
+        page={currentPage}
+        rowsPerPage={rowsPerPage}
+        onPage={setPage}
+        onRowsPerPage={setRowsPerPage}
+      />
       {effectiveView === "table" && (
         <div style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
           <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
@@ -2138,14 +2149,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         </div>
       )}
 
-      {/* Under both views, like the VIP registry's. */}
-      <TablePagination
-        total={visibleRows.length}
-        page={currentPage}
-        rowsPerPage={rowsPerPage}
-        onPage={setPage}
-        onRowsPerPage={setRowsPerPage}
-      />
 
       {showAdd && (
         <CameraFormModal title={t.addModalTitle} initial={EMPTY_FORM} isEdit={false} servers={projectServers} onClose={() => setShowAdd(false)} onSubmit={createCamera} t={t} />

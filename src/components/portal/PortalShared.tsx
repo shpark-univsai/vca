@@ -397,6 +397,12 @@ export function TablePagination({ total, page, rowsPerPage, onPage, onRowsPerPag
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "12px", flexWrap: "wrap", gap: "10px" }}>
       <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.showing(rangeStart, rangeEnd, total)}</p>
+      {/* The page buttons and the per-page select are one group at the right end (owner's ask,
+          2026-09-18). They were three groups spread by space-between, which put the page numbers
+          in the middle of the row with nothing either side of them — floating, and a long way from
+          the control that changes how many rows a page holds. Both are about paging; they belong
+          together, and the range stays left as the caption for the list. */}
+      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
         {arrow("prev")}
         {pages.map((n, i) => (n === null ? (
@@ -418,6 +424,7 @@ export function TablePagination({ total, page, rowsPerPage, onPage, onRowsPerPag
         <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.perPage}</span>
         <FilterSelect value={String(rowsPerPage)} onChange={v => { onRowsPerPage(Number(v)); onPage(1); }}
           options={perPageOptions.map(n => ({ value: String(n), label: String(n) }))} fitContent />
+      </div>
       </div>
     </div>
   );

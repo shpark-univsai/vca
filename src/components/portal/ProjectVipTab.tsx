@@ -2244,7 +2244,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={handleBulkUpload} style={{ display: "none" }} />
           {/* Tools follow the tab: registering a face and creating a party are different jobs, and
               a bulk face upload has nothing to do with the list of parties. */}
-          {vipTab === "groups" ? (
+      {vipTab === "groups" ? (
             <button className="portal-btn-primary" onClick={() => setGroupModalFor({ group: null })} disabled={!mayEdit} title={readOnlyReason}
               style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-200)", color: mayEdit ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
@@ -2273,6 +2273,22 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           </>)}
         </div>
       </div>
+      {/* ITS OWN ROW, between the toolbar and the list (owner's note, 2026-09-18: "페이지
+          네이게이션이랑 검색창이랑 필터랑 버튼있는 라인이랑 다른라인에 놔야할것같은데").
+          It went into the toolbar first and that row then held nine controls — search, two
+          filters, a range, five page buttons, a per-page select and three actions — on one line.
+          Above the list rather than under it because 25 rows is over 1700px of table: a pager
+          below meant scrolling to the end of the page to turn it. The range also reads as a
+          caption for the list underneath, which is the reason the table needs no row numbers. */}
+      {vipTab !== "groups" && (
+        <TablePagination
+          total={sortedPersons.length}
+          page={currentPage}
+          rowsPerPage={rowsPerPage}
+          onPage={setPage}
+          onRowsPerPage={setRowsPerPage}
+        />
+      )}
 
       {vipTab === "groups" ? (
         projectGroups.length === 0 ? (
@@ -2475,16 +2491,35 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           {projectPersons.length === 0 ? <TableEmpty text={emptyText} /> : projectPersons.map((person, i) => {
             const isLast = i === projectPersons.length - 1;
             return (
-              <div key={person.id} style={{
+              /*
+               * THE WHOLE ROW OPENS THE PERSON, and lights up under the pointer — the same
+               * interaction Input Sources' rows have (owner's note, 2026-09-18: "입력소스 처럼
+               * 호버해서 클릭해서 상세 띄어지게 … 지금은 이름을 클릭해야하더라구").
+               *
+               * Before this, the only way in was the name — a ~200px target in a 1500px row, with
+               * nothing about the row saying it led anywhere. The controls inside stop the event:
+               * a checkbox is a selection, not a visit, and the ⋯ menu opening the sheet behind
+               * its own dropdown would be absurd.
+               */
+              <div key={person.id}
+                className="portal-attention-row"
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailFor(person)}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDetailFor(person); } }}
+                style={{
                 display: "grid", gridTemplateColumns: categoriesEnabled ? (showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID) : (showGroupColumn ? VIP_GRID_WITH_GROUP_NO_CAT : VIP_GRID_NO_CAT), columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
                 borderBottom: isLast ? "none" : BORDER,
                 borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
+                cursor: "pointer",
               }}>
                 {/* The whole 28px cell is the target, not the 13px box inside it (owner's note,
                     2026-09-18: "선택박스 클릭 영역이 너무 작아"). A label wrapping the input makes
                     the padding clickable without a click handler of its own, and the box itself
                     goes to 15px — the browser default is 13. */}
-                <label style={{
+                <label
+                  onClick={e => e.stopPropagation()}
+                  style={{
                   display: "flex", alignItems: "center", justifyContent: "flex-start",
                   height: "100%", minHeight: "32px", margin: "0 -6px", padding: "0 6px", cursor: "pointer",
                 }}>
@@ -2513,14 +2548,16 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                 {/* Just the name. The expiry tag moved under 등록일, where the other lifecycle
                     date lives (owner's ask: "이름 아래 있는 만료 표시를 등록일 아래로 옮겨줘"). */}
                 <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
-                  <button className="portal-link" onClick={() => setDetailFor(person)} title={person.name}
+                  {/* Text, not a button. The row is the target now, and a button inside it aimed
+                      at the same person is a smaller version of the row — the same reason the grid
+                      cards carry no controls of their own. */}
+                  <span title={person.name}
                     style={{
-                      border: "none", background: "none", padding: 0, cursor: "pointer", textAlign: "left",
-                      fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit",
+                      fontSize: "13px", fontWeight: 700, color: "var(--gray-900)",
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>
                     {person.name}
-                  </button>
+                  </span>
                 </span>
                 {showGroupColumn && (
                   <span style={{ minWidth: 0, fontSize: "12px", color: person.groupId ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -2601,7 +2638,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                 {/* The same overflow menu the roster, users and camera tables use. A lone trash
                     icon was the only row action this table had, which is also why there was no way
                     to edit a VIP from the table at all. */}
-                <div style={{ justifySelf: "end" }}>
+                <div style={{ justifySelf: "end" }} onClick={e => e.stopPropagation()}>
                   <RowActionsMenu actions={[
                     { label: t.editPerson, onClick: () => setEditingPerson(person), disabled: !mayEdit, reason: readOnlyReason },
                     // Release before delete, and delete stays the destructive one. Taking somebody
@@ -2740,18 +2777,6 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
         </div>
       )}
 
-      {/* One pager under both views — the table and the grid page the same list, so the control
-          that says which page you are on cannot belong to one of them. Groups tab has its own
-          short list and does not need it. */}
-      {vipTab !== "groups" && (
-        <TablePagination
-          total={sortedPersons.length}
-          page={currentPage}
-          rowsPerPage={rowsPerPage}
-          onPage={setPage}
-          onRowsPerPage={setRowsPerPage}
-        />
-      )}
 
       {showRegister && <RegisterVipModal t={t} groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} escapeSuspended={managingCategories} projectId={projectId} onClose={() => setShowRegister(false)} onSubmit={register} />}
       {editingPerson && (
