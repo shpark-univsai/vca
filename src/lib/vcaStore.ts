@@ -930,6 +930,8 @@ interface VcaStoreState {
    * by an unrelated registration instead of a mistake and its correction.
    */
   restorePerson: (person: Person) => void;
+  /** The undo for removePersons — the whole batch, same ids. */
+  restorePersons: (persons: Person[]) => void;
   /**
    * A CSV import, as one act.
    *
@@ -961,6 +963,18 @@ interface VcaStoreState {
    * bulk action — two hundred separate lines would evict every entry before them.
    */
   setPersonsExpiry: (personIds: string[], expiresAt: string | null) => void;
+  /** Move several listings into one group, or out of every group with `null`. */
+  setPersonsGroup: (personIds: string[], groupId: string | null) => void;
+  /** Set the same priority on several listings. */
+  setPersonsPriority: (personIds: string[], priorityLabel: NonNullable<Person["priorityLabel"]>) => void;
+  /**
+   * Delete several listings as one act — and hand back what was deleted, so the caller can offer
+   * an undo the way the single delete does.
+   *
+   * One audit entry naming the count, like removeCameras: two hundred lines would evict the rest
+   * of the log, and "47 listings deleted" is the line somebody can actually read a year later.
+   */
+  removePersons: (personIds: string[]) => Person[];
   addPersonGroup: (group: Omit<PersonGroup, "id">) => string;
   updatePersonGroup: (groupId: string, updates: Partial<Omit<PersonGroup, "id">>) => void;
   /**
@@ -4247,6 +4261,65 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           // Both lines stay in the log. An undo is not an erasure of the delete — an audit that
           // shows only the net effect cannot answer "was this person ever off the list".
           message: `VIP ${person.name} restored to the VIP registry (deletion undone)`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  setPersonsGroup: (personIds, groupId) =>
+    set(state => {
+      const ids = new Set(personIds);
+      if (ids.size === 0) return state;
+      const groupName = groupId === null ? null : state.personGroups.find(g => g.id === groupId)?.name ?? groupId;
+      return {
+        persons: state.persons.map(p => (ids.has(p.id) ? { ...p, groupId: groupId ?? undefined } : p)),
+        auditLog: [clientAudit({
+          projectId: state.persons.find(p => ids.has(p.id))?.projectId,
+          message: groupName === null
+            ? `${ids.size} VIP listing(s) removed from their group`
+            : `${ids.size} VIP listing(s) moved to group ${groupName}`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  setPersonsPriority: (personIds, priorityLabel) =>
+    set(state => {
+      const ids = new Set(personIds);
+      if (ids.size === 0) return state;
+      return {
+        persons: state.persons.map(p => (ids.has(p.id) ? { ...p, priorityLabel } : p)),
+        auditLog: [clientAudit({
+          projectId: state.persons.find(p => ids.has(p.id))?.projectId,
+          message: `${ids.size} VIP listing(s) set to priority ${priorityLabel}`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  removePersons: (personIds) => {
+    const ids = new Set(personIds);
+    const removed = get().persons.filter(p => ids.has(p.id));
+    if (removed.length === 0) return [];
+    set(state => ({
+      persons: state.persons.filter(p => !ids.has(p.id)),
+      auditLog: [clientAudit({
+        projectId: removed[0].projectId,
+        message: `${removed.length} VIP listing(s) deleted from the VIP registry`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    }));
+    // The caller needs the rows to put them back — see restorePersons.
+    return removed;
+  },
+  /** The undo for removePersons. Same id, same object, and its own audit line. */
+  restorePersons: (persons) =>
+    set(state => {
+      const have = new Set(state.persons.map(p => p.id));
+      const back = persons.filter(p => !have.has(p.id));
+      if (back.length === 0) return state;
+      return {
+        persons: [...state.persons, ...back].sort((a, b) => a.id.localeCompare(b.id)),
+        auditLog: [clientAudit({
+          projectId: back[0].projectId,
+          message: `${back.length} VIP listing(s) restored to the VIP registry (deletion undone)`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };

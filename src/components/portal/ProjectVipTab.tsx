@@ -109,6 +109,11 @@ interface VipDict {
   toastVipExportDesc: (n: number) => string;
   colPriority: string;
   healthMissingPhoto: string;
+  healthRegistered: string;
+  healthRegisteredWhy: string;
+  healthShowAll: string;
+  healthImportErrors: string;
+  healthImportErrorsWhy: string;
   healthExpired: string;
   /** Two shapes, because the way a listing ends depends on a switch. See the pair below. */
   healthExpiredWhy: string;
@@ -156,6 +161,16 @@ interface VipDict {
   bulkExpiryLabel: string;
   bulkExpiryApply: string;
   bulkExpiryNone: string;
+  bulkGroupLabel: string;
+  bulkGroupNone: string;
+  bulkPriorityLabel: string;
+  bulkDelete: string;
+  bulkDeletedTitle: (n: number) => string;
+  bulkGroupMovedTitle: (n: number) => string;
+  bulkPrioritySetTitle: (n: number) => string;
+  bulkRestoredTitle: (n: number) => string;
+  bulkConfirmDeleteTitle: (n: number) => string;
+  bulkConfirmDeleteBody: string;
   bulkExpirySetTitle: (n: number) => string;
   bulkClearSelection: string;
   releaseAction: string;
@@ -275,6 +290,11 @@ const T: Record<"en" | "ko", VipDict> = {
     // ("vipRegistry" was an identifier that leaked into the sentence.)
     toastVipExportDesc: (n: number) => `${n} VIP(s) exported to CSV.`,
     colPriority: "Priority",
+    healthRegistered: "registered",
+    healthRegisteredWhy: "Everybody on this project's matching list right now. Released rows are not counted; expired ones are, because they are still being matched.",
+    healthShowAll: "Show all",
+    healthImportErrors: "import errors",
+    healthImportErrorsWhy: "Rows a bulk upload left unusable: no photo at all, a photo the model could not read a face out of, or a suspected duplicate of somebody already listed. Open them and fix the file. A single registration cannot end up here — that form refuses a photo it cannot enrol.",
     healthExpired: "end date passed",
     // These sentences stop at the list on purpose. Expiry and release take a person off the
     // matching list, which is a fact about this registry and true the moment it is saved. Whether
@@ -329,6 +349,16 @@ const T: Record<"en" | "ko", VipDict> = {
     bulkExpiryLabel: "Change end date",
     bulkExpiryApply: "Apply",
     bulkExpiryNone: "No end date",
+    bulkGroupLabel: "Group",
+    bulkGroupNone: "No group",
+    bulkPriorityLabel: "Priority",
+    bulkDelete: "Delete",
+    bulkDeletedTitle: (n: number) => `${n} listing(s) deleted`,
+    bulkGroupMovedTitle: (n: number) => `${n} listing(s) moved`,
+    bulkPrioritySetTitle: (n: number) => `Priority set on ${n} listing(s)`,
+    bulkRestoredTitle: (n: number) => `${n} listing(s) restored`,
+    bulkConfirmDeleteTitle: (n: number) => `Delete ${n} listing(s)?`,
+    bulkConfirmDeleteBody: "They come off this project's VIP list. You can undo this from the toast right after.",
     bulkExpirySetTitle: (n: number) => `End date set on ${n} listing(s)`,
     bulkClearSelection: "Clear",
     expiryUnanswered: "No end date set",
@@ -448,6 +478,11 @@ const T: Record<"en" | "ko", VipDict> = {
     toastVipExportTitle: "내보내기 완료",
     toastVipExportDesc: (n: number) => `VIP ${n}명을 CSV로 내보냈습니다.`,
     colPriority: "우선순위",
+    healthRegistered: "등록 인원",
+    healthRegisteredWhy: "지금 이 프로젝트의 대조 명단에 있는 사람 전부입니다. 해제된 사람은 빠지고, 만료된 사람은 들어갑니다 — 아직 대조되고 있으니까요.",
+    healthShowAll: "전체 보기",
+    healthImportErrors: "일괄 업로드 오류",
+    healthImportErrorsWhy: "일괄 업로드가 남긴 쓸 수 없는 행입니다: 사진이 아예 없거나, 사진에서 얼굴을 읽어내지 못했거나, 이미 명단에 있는 사람과 중복으로 의심되는 행. 열어서 파일을 고치면 됩니다. 단건 등록은 여기 들어올 수 없습니다 — 그 폼은 등록할 수 없는 사진을 거절합니다.",
     healthExpired: "만료일 지남",
     healthExpiredWhy: "만료일이 지났습니다. 아직 대조되고 있습니다 — 날짜가 사람을 명단에서 내리지는 않습니다. 계속 둘지(만료일 새로 지정) 내릴지(해제) 한 건씩 정해야 합니다.",
     healthExpiredWhyNoRelease: "만료일이 지났습니다. 아직 대조되고 있습니다 — 날짜가 사람을 명단에서 내리지는 않습니다. 계속 둘지(만료일 새로 지정) 내릴지(삭제) 한 건씩 정해야 합니다.",
@@ -491,6 +526,16 @@ const T: Record<"en" | "ko", VipDict> = {
     bulkExpiryLabel: "만료일 변경",
     bulkExpiryApply: "적용",
     bulkExpiryNone: "무기한으로",
+    bulkGroupLabel: "그룹",
+    bulkGroupNone: "그룹 없음",
+    bulkPriorityLabel: "우선순위",
+    bulkDelete: "삭제",
+    bulkDeletedTitle: (n: number) => `${n}명 삭제됨`,
+    bulkGroupMovedTitle: (n: number) => `${n}명의 그룹을 바꿨습니다`,
+    bulkPrioritySetTitle: (n: number) => `${n}명의 우선순위를 바꿨습니다`,
+    bulkRestoredTitle: (n: number) => `${n}명 되돌렸습니다`,
+    bulkConfirmDeleteTitle: (n: number) => `${n}명을 삭제할까요?`,
+    bulkConfirmDeleteBody: "이 프로젝트의 VIP 목록에서 내려갑니다. 바로 뒤 토스트에서 되돌릴 수 있습니다.",
     bulkExpirySetTitle: (n: number) => `${n}명의 만료일을 정했습니다`,
     bulkClearSelection: "선택 해제",
     expiryUnanswered: "만료일 미지정",
@@ -1385,7 +1430,14 @@ function PersonDetailModal({ t, person, zone, groups, onClose, onEdit, onRemove 
  * leaving the reader to find those rows among a hundred others, and a warning nobody can reach the
  * rows of is a warning nobody can act on.
  */
-export type VipHealthFilter = "expired" | "expiryUnanswered" | "missingPhoto" | "embeddingFailed" | "reenrolling" | "duplicates" | "detected";
+/**
+ * `importErrors` is the union of the three defects a bulk upload leaves behind — no photo, a photo
+ * the model could not read, and a suspected duplicate. They are one card on screen (owner's call,
+ * 2026-09-18: "인식실패랑 중복은 모두 일괄업로드에 경우에만 뜰것같아서 묶어서 표시") because
+ * they arrive together, from the same act, and the reader's next move is the same for all three:
+ * open the rows and fix the file. The individual keys stay for the Overview's deep links.
+ */
+export type VipHealthFilter = "expired" | "expiryUnanswered" | "missingPhoto" | "embeddingFailed" | "reenrolling" | "duplicates" | "detected" | "importErrors";
 
 export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFilterOpened }: {
   projectId: string;
@@ -1417,6 +1469,11 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
   const addPersons = useVcaStore(s => s.addPersons);
   const removePerson = useVcaStore(s => s.removePerson);
   const restorePerson = useVcaStore(s => s.restorePerson);
+  const setPersonsGroup = useVcaStore(s => s.setPersonsGroup);
+  const setPersonsPriority = useVcaStore(s => s.setPersonsPriority);
+  const removePersons = useVcaStore(s => s.removePersons);
+  const restorePersons = useVcaStore(s => s.restorePersons);
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
   const updatePerson = useVcaStore(s => s.updatePerson);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
@@ -1592,6 +1649,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
     reenrolling: new Set(health.reenrolling),
     duplicates: duplicateIds,
     detected: new Set(health.detectedLast7d),
+    importErrors: new Set([...health.missingPhoto, ...health.embeddingFailed, ...duplicateIds]),
   } as const;
   const detectedCount = health.detectedLast7d.length;
   // The same count for the seven days before, which is the only thing that tells a quiet week
@@ -1694,6 +1752,50 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
   const recordListExport = useVcaStore(s => s.recordListExport);
   /** The date in the bulk bar's field. Empty means nothing chosen yet, not "no end date". */
   const [bulkExpiry, setBulkExpiry] = useState("");
+  /*
+   * The selection bar's other three.
+   *
+   * It offered ONLY the expiry, which read as an odd single errand once the expiry date left the
+   * form (owner's question, 2026-09-18: "선택하면 편집이나 삭제가 아니라 만료일변경만 뜨는게
+   * 맞아?"). The bar was not wrong, it was unfinished: what belongs in it is whatever the TABLE
+   * shows and a set of rows can share — group, priority, expiry — plus deleting them.
+   *
+   * "편집" is not one of them. A name and a photo are the two things this form edits and neither
+   * can be shared by a selection; a bulk edit button would open a form with most of its fields
+   * disabled.
+   */
+  const applyBulkGroup = (groupId: string | null) => {
+    const n = visibleSelectedIds.length;
+    setPersonsGroup(visibleSelectedIds, groupId);
+    showToast({
+      variant: "success",
+      title: t.bulkGroupMovedTitle(n),
+      desc: groupId === null ? t.bulkGroupNone : projectGroupsAll.find(g => g.id === groupId)?.name,
+    });
+    clearSelection();
+  };
+  const applyBulkPriority = (priority: NonNullable<Person["priorityLabel"]>) => {
+    const n = visibleSelectedIds.length;
+    setPersonsPriority(visibleSelectedIds, priority);
+    showToast({ variant: "success", title: t.bulkPrioritySetTitle(n), desc: t.priorityText[priority] });
+    clearSelection();
+  };
+  const applyBulkDelete = () => {
+    const removed = removePersons(visibleSelectedIds);
+    if (removed.length === 0) return;
+    showToast({
+      variant: "warning",
+      title: t.bulkDeletedTitle(removed.length),
+      actionLabel: t.undoRemove,
+      onAction: () => {
+        restorePersons(removed);
+        showToast({ variant: "success", title: t.bulkRestoredTitle(removed.length) });
+      },
+    });
+    clearSelection();
+    setConfirmingBulkDelete(false);
+  };
+
   const applyBulkExpiry = (value: string | null) => {
     setPersonsExpiry(visibleSelectedIds, value);
     showToast({
@@ -1976,56 +2078,30 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           under a list of four groups "12 people with an unreadable photo" reads as a fact about
           those four rows. */}
       {vipTab !== "groups" && <SummaryStrip cells={[
-        ...([
-          /*
-           * ORDER: what has run out of time, then what is silently not working, then what is
-           * merely untidy. Reordered 2026-09-18 on the owner's ask ("중요순으로 왼쪽 정렬"),
-           * after reading how other consoles rank the same kind of strip.
-           *
-           * Expired stays first. Vanta's "Needs attention" panel breaks down as Overdue → Due
-           * soon → Needs remediation, and Vapi's Issues strip as Critical → Warning: a deadline
-           * that has already passed leads, in both. Here it is also the sharpest fact on the
-           * screen — somebody is still on a matching list whose basis ran out.
-           *
-           * Then the photo defects, because a VIP the model cannot read is a listing that does
-           * NOTHING while looking complete. That is worse than a record that is untidy, and it
-           * used to sit behind the expiry cells.
-           */
-          { key: "expired" as const, count: health.expired.length, label: t.healthExpired, why: releaseEnabled ? t.healthExpiredWhy : t.healthExpiredWhyNoRelease, icon: <CalendarX size={14} strokeWidth={2.4} /> },
-          { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed, why: t.healthEmbeddingFailedWhy, icon: <AlertTriangle size={14} strokeWidth={2.4} /> },
-          { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, why: t.healthMissingPhotoWhy, icon: <ImageOff size={14} strokeWidth={2.4} /> },
-          { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates, why: t.healthDuplicatesWhy, icon: <Users size={14} strokeWidth={2.4} /> },
-          // Not amber. A photo somebody has already replaced is not an outstanding defect, it is
-          // work in progress, and colouring it the same as the untouched ones would mean the
-          // strip never rewarded doing anything about them.
-          { key: "reenrolling" as const, count: health.reenrolling.length, label: t.healthReenrolling, why: t.healthReenrollingWhy, icon: <RefreshCw size={14} strokeWidth={2.4} />, neutral: true },
-          /*
-           * THE "만료일 미지정" CELL IS GONE (owner's call, 2026-09-18). Do not bring it back.
-           *
-           * It counted people nobody had given an end date, and it was second from the left in
-           * amber over 118 of 122 rows. It went grey and last yesterday; now it goes, because the
-           * thing it counted has stopped being possible to care about: one policy decides the
-           * period (Settings → 프로젝트 → VIP 등록 유효기간), the store stamps it on save, and the
-           * registration form no longer asks. A row with no date now means the DEPLOYMENT has no
-           * rule — which is a settings question, not a hundred-row errand.
-           *
-           * The expired cell above stays, and it is the only expiry cell left: an expired listing
-           * is still being matched (see watchedPersonsInProject) and needs a person to decide.
-           */
-        ].filter(item => item.count > 0).map(item => ({
-          key: item.key,
-          icon: item.icon,
-          figure: item.count,
+        /*
+         * ORDER (owner's call, 2026-09-18): how many are on the list · how many of them were
+         * actually seen · what the last import left broken · and only then the one listing that
+         * has run out of time.
+         *
+         * The first two are the register's own shape and are always drawn, even at zero — they
+         * answer "what have we got" and "is any of it working", which are the questions somebody
+         * opens this screen with. The rest are errands and each one disappears at zero, so a clean
+         * register shows two cells and nothing to do.
+         */
+        {
+          key: "registered",
+          icon: <Users size={14} strokeWidth={2.4} />,
+          figure: activePersons.length,
           unit: t.healthPeopleUnit,
-          label: item.label,
-          // Every label here names a defect in three words. The dotted underline is where the
-          // fourth to fortieth live — including, for the two that are fixable, what fixes them.
-          explanation: item.why,
-          tone: ("neutral" in item && item.neutral ? "neutral" : "warning") as "neutral" | "warning",
-          active: healthFilter === item.key,
-          title: healthFilter === item.key ? t.healthClear : t.healthShowOnly,
-          onClick: () => setHealthFilter(healthFilter === item.key ? null : item.key),
-        }))),
+          label: t.healthRegistered,
+          explanation: t.healthRegisteredWhy,
+          tone: "neutral" as const,
+          // Clicking it clears whatever cell is filtering the list — "show me all of them" is the
+          // only sensible action on a total, and it is the way back from the cells beside it.
+          active: healthFilter === null,
+          title: t.healthShowAll,
+          onClick: () => setHealthFilter(null),
+        },
         {
           key: "reach",
           icon: <Eye size={14} strokeWidth={2.4} />,
@@ -2043,13 +2119,47 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
             : { direction: (reachDelta > 0 ? "up" : "down") as "up" | "down", text: t.healthReachTrend(detectedPrevCount) },
           label: t.healthReachLabel,
           explanation: t.healthReachWhy,
-          // Takes a click like its neighbours. It is not a defect, so it stays neutral rather than
-          // amber, but "which of them actually came this week" is a question worth an answer and a
-          // cell that filters beside two that do not would be the odd one out.
+          tone: "neutral" as const,
           active: healthFilter === "detected",
           title: healthFilter === "detected" ? t.healthClear : t.healthShowOnly,
           onClick: () => setHealthFilter(healthFilter === "detected" ? null : "detected"),
         },
+        ...([
+          /*
+           * THE IMPORT'S LEFTOVERS, AS ONE CELL. No photo, a photo the model could not read, and a
+           * suspected duplicate were three amber cells side by side; all three arrive from the same
+           * act — a CSV of a few hundred rows — and the next move for all three is the same: open
+           * them and fix the file. Single registration cannot produce the first two any more (the
+           * form refuses a photo that will not enrol, and requires one at all), so what is left in
+           * here really is the import's.
+           */
+          {
+            key: "importErrors" as const,
+            count: healthIds.importErrors.size,
+            label: t.healthImportErrors,
+            why: t.healthImportErrorsWhy,
+            icon: <AlertTriangle size={14} strokeWidth={2.4} />,
+          },
+          // Not amber. A photo somebody has already replaced is not an outstanding defect, it is
+          // work in progress, and colouring it the same as the untouched ones would mean the
+          // strip never rewarded doing anything about them.
+          { key: "reenrolling" as const, count: health.reenrolling.length, label: t.healthReenrolling, why: t.healthReenrollingWhy, icon: <RefreshCw size={14} strokeWidth={2.4} />, neutral: true },
+          /* Last, and usually absent: on a register whose period is a year, nothing has run out in
+             the first months. It stays because an expired listing is still being matched and needs
+             a person to decide (see watchedPersonsInProject). */
+          { key: "expired" as const, count: health.expired.length, label: t.healthExpired, why: releaseEnabled ? t.healthExpiredWhy : t.healthExpiredWhyNoRelease, icon: <CalendarX size={14} strokeWidth={2.4} /> },
+        ].filter(item => item.count > 0).map(item => ({
+          key: item.key,
+          icon: item.icon,
+          figure: item.count,
+          unit: t.healthPeopleUnit,
+          label: item.label,
+          explanation: item.why,
+          tone: ("neutral" in item && item.neutral ? "neutral" : "warning") as "neutral" | "warning",
+          active: healthFilter === item.key,
+          title: healthFilter === item.key ? t.healthClear : t.healthShowOnly,
+          onClick: () => setHealthFilter(healthFilter === item.key ? null : item.key),
+        }))),
       ]} />}
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: TOOLBAR_GAP }}>
@@ -2239,6 +2349,27 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     subset. What they lose is the thing that changes rows, and the bar says so
                     rather than showing a dead date field. */}
                 {mayEdit ? (<>
+                  {/* Group and priority, the other two values a set of rows can share. The bar
+                      had only the expiry, which read as a single odd errand — see applyBulkGroup.
+                      Selects rather than buttons: the answer is one of a list, and a list of
+                      buttons for four groups would be the bar's whole width. */}
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", flexShrink: 0, marginLeft: "4px" }}>{t.bulkGroupLabel}</span>
+                  <FilterSelect
+                    value=""
+                    onChange={v => applyBulkGroup(v === "__none" ? null : v)}
+                    options={[
+                      { value: "__none", label: t.bulkGroupNone },
+                      ...projectGroupsAll.map(g => ({ value: g.id, label: g.name })),
+                    ]}
+                    fitContent
+                  />
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", flexShrink: 0 }}>{t.bulkPriorityLabel}</span>
+                  <FilterSelect
+                    value=""
+                    onChange={v => applyBulkPriority(v as NonNullable<Person["priorityLabel"]>)}
+                    options={PRIORITY_LABELS.map(pl => ({ value: pl, label: t.priorityText[pl] }))}
+                    fitContent
+                  />
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", flexShrink: 0 }}>{t.bulkExpiryLabel}</span>
                   <input
                     type="date"
@@ -2263,6 +2394,17 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                   </button>
                 </>) : (
                   <span style={{ fontSize: "12px", color: "var(--gray-400)", flexShrink: 0 }}>{readOnlyReason}</span>
+                )}
+                {/* Delete, at the far end and in danger colour — the one thing on this bar that
+                    cannot be re-typed. It asks first and offers an undo afterwards, the same pair
+                    the single-row delete uses. */}
+                {mayEdit && (
+                  <button
+                    onClick={() => setConfirmingBulkDelete(true)}
+                    style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "1px solid var(--danger-400)", backgroundColor: "transparent", color: "var(--danger-400)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                  >
+                    {t.bulkDelete}
+                  </button>
                 )}
                 <button
                   onClick={clearSelection}
@@ -2599,6 +2741,17 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
         <RegisterVipModal t={t} person={editingPerson}
           photoUnreadable={healthIds.embeddingFailed.has(editingPerson.id) || healthIds.reenrolling.has(editingPerson.id)}
           groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} escapeSuspended={managingCategories} projectId={projectId} onClose={() => setEditingPerson(null)} onSubmit={saveEdit} />
+      )}
+      {confirmingBulkDelete && (
+        <ConfirmModal
+          title={t.bulkConfirmDeleteTitle(visibleSelectedIds.length)}
+          body={t.bulkConfirmDeleteBody}
+          confirmLabel={t.bulkDelete}
+          cancelLabel={t.cancel}
+          danger
+          onClose={() => setConfirmingBulkDelete(false)}
+          onConfirm={applyBulkDelete}
+        />
       )}
       {confirmingRemove && (
         <RemoveVipConfirmModal t={t} person={confirmingRemove} onClose={() => setConfirmingRemove(null)} onConfirm={confirmRemove} />
