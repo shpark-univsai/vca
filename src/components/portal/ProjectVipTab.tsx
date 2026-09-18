@@ -2494,7 +2494,13 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     style={{ accentColor: "var(--gray-900)", cursor: "pointer", width: "15px", height: "15px", margin: 0 }}
                   />
                 </label>
-                <span>{person.priorityLabel ? <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
+                {/* `?? "normal"`, because THERE IS NO THIRD STATE and this cell was inventing one.
+                    Everything else in the product reads an absent priority as 일반 — the filter, the
+                    sort, the CSV export, the registration form's default and the grid card — so a
+                    dash here meant filtering by 일반 returned rows whose own cell looked empty
+                    (owner's question: "우선순위가 없는 경우도 있어?"). The field is optional only
+                    because rows registered before priorities existed carry nothing. */}
+                <span><PriorityTag priority={person.priorityLabel ?? "normal"} text={t.priorityText[person.priorityLabel ?? "normal"]} /></span>
                 {/* 48px, up from 32. A face at 32 in a table is a thumbnail of a thumbnail, and
                     this column exists so the reader can tell one Michael from another. The row's
                     own padding is untouched — the first grid track grew with the picture, so the
