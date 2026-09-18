@@ -1094,6 +1094,21 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const cannotAddSource = channelLimitUnrecorded || atChannelLimit;
   const projectUploads = uploads.filter(u => u.projectId === projectId);
   const projectServers = servers.filter(sv => sv.projectId === projectId);
+  /*
+   * ONLY THE SERVERS A CAMERA CAN ACTUALLY BE ATTACHED TO.
+   *
+   * The picker offered every server on the project, which on this site means it offered
+   * "image store 1" and "database 1" — a camera is not connected to a database. A required field
+   * whose menu contains wrong answers is worse than an optional one: it makes somebody choose,
+   * and every option is equally plausible to a reader who does not know the estate.
+   *
+   * The three that take a stream, by ServerType. Image Store and Database are where results land,
+   * not where a camera reports. Note the full list stays for the TABLE — a camera already
+   * attached to something unusual must still show what it says, or the column would print "—"
+   * for a value the register holds.
+   */
+  const cameraCapableServers = projectServers.filter(sv =>
+    sv.type === "Face Recognition" || sv.type === "AI Camera" || sv.type === "Normal Camera");
 
   useEffect(() => {
     if (!addMenuOpen) return;
@@ -2351,7 +2366,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           title={t.addModalTitle}
           initial={EMPTY_FORM}
           isEdit={false}
-          servers={projectServers}
+          servers={cameraCapableServers}
           onClose={() => { setShowAdd(false); setAddedInSitting(0); setAddRefusal(null); }}
           submitRefusal={addRefusal === null ? null : refusalText(addRefusal)}
           onTouched={() => setAddRefusal(null)}
@@ -2378,7 +2393,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             lat: String(editingCamera.lat ?? ""), lng: String(editingCamera.lng ?? ""),
 
           }}
-          servers={projectServers}
+          servers={cameraCapableServers}
           onClose={() => setEditingCamera(null)}
           onSubmit={saveEdit}
           t={t}

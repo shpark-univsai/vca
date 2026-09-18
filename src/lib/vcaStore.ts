@@ -2622,22 +2622,19 @@ serverId: "srv-1",
     ip: "10.20.4.15", mac: "00:1B:44:11:3A:BB", rtspUrl: "rtsp://10.20.4.15:554/stream1",
     status: "online", location: "Tampines Hub, Singapore", zone: "Tampines",
     thumbnail: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80",
-    lat: 1.3528, lng: 103.9440, maker: "Hikvision", resolution: "4K (3840×2160)",
-  },
+    lat: 1.3528, lng: 103.9440, maker: "Hikvision", resolution: "4K (3840×2160)", serverId: "srv-1" },
   {
     id: "cam-bedok", projectId: "proj-sg", code: "CAM-BDK-001", name: "Bedok MRT",
     ip: "10.20.4.16", mac: "00:1B:44:11:3A:BC", rtspUrl: "rtsp://10.20.4.16:554/stream1",
     status: "offline", location: "Bedok MRT, Singapore", zone: "Bedok",
     thumbnail: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
-    lat: 1.3240, lng: 103.9302, maker: "Dahua", resolution: "FHD (1920×1080)",
-  },
+    lat: 1.3240, lng: 103.9302, maker: "Dahua", resolution: "FHD (1920×1080)", serverId: "srv-1" },
   {
     id: "cam-queenstown", projectId: "proj-sg", code: "CAM-QTN-001", name: "Queenstown",
     ip: "10.20.4.17", mac: "00:1B:44:11:3A:BD", rtspUrl: "rtsp://10.20.4.17:554/stream1",
     status: "online", location: "Queenstown, Singapore", zone: "Queenstown",
     thumbnail: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80",
-    lat: 1.2942, lng: 103.8060, maker: "Hanwha", resolution: "4K (3840×2160)",
-  },
+    lat: 1.2942, lng: 103.8060, maker: "Hanwha", resolution: "4K (3840×2160)", serverId: "srv-5" },
   // Reachable and refusing — see the CameraStatus note. Seeded because the state has to be visible
   // somewhere for the table, the filter and the attention strip to be worth building.
   {
@@ -2646,14 +2643,17 @@ serverId: "srv-1",
     status: "error", location: "Control Room, Singapore", zone: "Marina Bay",
     thumbnail: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80",
     lat: 1.2830, lng: 103.8600, maker: "Hanwha", resolution: "FHD (1920×1080)",
+    /* THE ONE ROW WITH NO SERVER, on purpose. The form now demands one, but a register carried
+       over from an older install has rows that predate the rule — the same reason the coordinate
+       one keeps its blank (see Depot Bay 2). Without it the 서버 column could never render its
+       empty state, and the next person to read this file would take the column for mandatory. */
   },
   {
     id: "cam-jurong-east", projectId: "proj-sg", code: "CAM-JRE-001", name: "Jurong East",
     ip: "10.20.4.18", mac: "00:1B:44:11:3A:BE", rtspUrl: "rtsp://10.20.4.18:554/stream1",
     status: "offline", location: "Jurong East, Singapore", zone: "Jurong East",
     thumbnail: "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=800&q=80",
-    lat: 1.3329, lng: 103.7436, maker: "Hikvision", resolution: "FHD (1920×1080)",
-  },
+    lat: 1.3329, lng: 103.7436, maker: "Hikvision", resolution: "FHD (1920×1080)", serverId: "srv-2" },
   // Bulk-generated, deterministic (seededRandom, not Math.random — see above) — one small batch
   // per district so the Dashboard map's zoomed-out cluster pills have real, non-zero counts to
   // aggregate instead of showing mostly-empty districts. Kept in the 50-60 total camera range on
@@ -2691,6 +2691,20 @@ serverId: "srv-1",
         thumbnail: thumbnails[idx % thumbnails.length],
         lat: Math.round((district.lat + jitterLat) * 10000) / 10000,
         lng: Math.round((district.lng + jitterLng) * 10000) / 10000,
+        /*
+         * EVERY CAMERA REPORTS TO A SERVER, because the form now refuses to register one without
+         * saying which (2026-09-18). This pool had none at all, so the register's 서버 column
+         * printed "—" on fifty-odd of sixty-two rows and read as a column nobody fills in —
+         * which is how it nearly got deleted as "a value identical on every row".
+         *
+         * The three that take a stream, by ServerType: Face Recognition, AI Camera, Normal
+         * Camera. Not the image store and not the database, which is where results land rather
+         * than where a camera reports — the picker refuses those too.
+         *
+         * Deterministic per camera, like everything else in this generator. Weighted toward the
+         * face-recognition node because that is what this deployment is for.
+         */
+        serverId: ["srv-1", "srv-1", "srv-5", "srv-1", "srv-2", "srv-1", "srv-5"][idx % 7],
         maker, resolution,
       };
     });
