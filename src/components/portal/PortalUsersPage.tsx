@@ -2727,8 +2727,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           will be refused, and every admin who reads it distrusts the next warning too.
 
           The GUARD is a different thing and stays: `isLastActiveAdmin` still refuses to demote,
-          suspend or delete the last owner, and deleteTeam refuses to reach the same end by
-          deleting the container.
+          suspend or delete the last owner, and `removeTeam` refuses to reach the same end by
+          deleting the container — Team settings -> Delete this team, which is also greyed out
+          there with the reason on it (TeamSwitcher mirrors the same test).
 
           It is not guarding against a state this product can reach. An installation is handed over
           with its first owner already in it (`/signup` is off on-premise, decided 2026-09-02), and
