@@ -695,11 +695,21 @@ export default function PortalShell() {
          * page floating in the window; 1504 was tight. 1600 leaves ~54px each side — enough that
          * the page has an edge, not so much that it looks parked in the middle.
          *
-         * The cap is on the scrolling element itself rather than on an inner wrapper, because
-         * Input Sources' sticky header measures this container to position its fixed copy — an
-         * inner box would leave the header wider than the content it covers.
+         * THE SCROLLER IS FULL WIDTH AND THE CAP IS ON THE WRAPPER INSIDE IT (2026-09-18).
+         *
+         * It used to be the other way round — `overflow: auto` on the capped, centred box — and on
+         * a wide monitor that made the 480px of space either side of the content a region where the
+         * wheel did nothing, because it belonged to a parent that does not scroll (owner's report:
+         * "표 양쪽 여백에서 마우스 올리고 스크롤해도 스크롤되게 해줘"). Scrolling has to work
+         * wherever the pointer is over the page.
+         *
+         * The reason it was that way is real and is handled: Input Sources' sticky header walks up
+         * to the nearest scrolling ancestor to place its fixed copy. It now takes its left and
+         * width from the header's own box in normal flow instead — see useStickyHeader — so the
+         * fixed copy still lines up with the cards under it rather than with the window.
          */
-        <div style={{ flex: 1, overflow: "auto", padding: "0 32px 32px", width: "100%", maxWidth: "1600px", marginInline: "auto" }}>
+        <div style={{ flex: 1, overflow: "auto" }}>
+          <div style={{ padding: "0 32px 32px", width: "100%", maxWidth: "1600px", marginInline: "auto" }}>
             {showAccount
               ? <PortalSettingsPage projectId={currentProjectId} />
               : teamProjects.length === 0
@@ -710,6 +720,7 @@ export default function PortalShell() {
                   onCreateTeam={createFirstTeam}
                 />
               : <PortalProjectDetailPage projectId={currentProjectId} tab={tab} onTabChange={setTab} onOpenSettings={() => setShowAccount(true)} />}
+          </div>
         </div>
       }
       </div>

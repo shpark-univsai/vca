@@ -345,6 +345,12 @@ function useStickyHeader<T extends HTMLElement>() {
   const [stuck, setStuck] = useState(false);
   const [rect, setRect] = useState<{ left: number; top: number; width: number; padTop: number } | null>(null);
   const [height, setHeight] = useState(0);
+  /* The header's own left and width, taken while it is still in normal flow.
+     They used to come from the scrolling ancestor, which worked while that ancestor WAS the capped,
+     centred content box. The scroller is full width now (see PortalShell: the wheel has to work in
+     the margins too), so measuring it would stretch the fixed copy to the window. The element's own
+     box is the content column by definition. */
+  const boxRef = useRef<{ left: number; width: number } | null>(null);
 
   useEffect(() => {
     const el = contentRef.current;
@@ -371,7 +377,12 @@ function useStickyHeader<T extends HTMLElement>() {
       // Measure the header only while it is still in normal flow. Once fixed, offsetHeight also
       // counts the padTop below, which the container's own padding already provides — a spacer
       // sized to that pushes every row down by that much the moment the header engages.
-      if (!nextStuck) setHeight(el.offsetHeight);
+      if (!nextStuck) {
+        setHeight(el.offsetHeight);
+        // offsetWidth, not the rect's: the rect can carry a fractional width from the centred
+        // wrapper, and a half-pixel makes the fixed copy's edges miss the cards below by a hair.
+        boxRef.current = { left: el.getBoundingClientRect().left, width: el.offsetWidth };
+      }
       setStuck(nextStuck);
       // top sits at the container's own border edge (not +padTop) so the fixed box's background
       // covers the container's top-padding strip too — otherwise that strip shows whatever
@@ -382,7 +393,15 @@ function useStickyHeader<T extends HTMLElement>() {
       // moment this tab's content grew long enough to scroll — which is the moment the header
       // engages — the fixed box became a scrollbar-width wider than the cards below it and its
       // left and right edges stopped lining up with them.
-      setRect({ left: spRect.left + padLeft, top: spRect.top, width: sp.clientWidth - padLeft - padRight, padTop });
+      // top and the top padding still come from the scroller — that is what the header is pinned
+      // against. left and width come from the header's own box.
+      const box = boxRef.current;
+      setRect({
+        left: box ? box.left : spRect.left + padLeft,
+        top: spRect.top,
+        width: box ? box.width : sp.clientWidth - padLeft - padRight,
+        padTop,
+      });
     };
     update();
     sp.addEventListener("scroll", update);
