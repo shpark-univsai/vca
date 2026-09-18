@@ -1049,10 +1049,21 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   // them instead of printing them empty. On the combined tab they stay, because a mixed list has
   // rows that fill them.
   const showCameraColumns = kindTab === "ALL" || kindTab === "camera";
+  /*
+   * The 종류 column only earns its place on the mixed tab. On any single-kind tab every row says
+   * the same word — 62 rows of "카메라", or four of "딥페이크" — and the tab above already says
+   * which kind you picked. Same rule the zone and server columns follow one line up: a column
+   * whose value is identical on every row is not information.
+   */
+  const showKindColumn = kindTab === "ALL";
   const effectiveView = showCameraColumns ? view : "table";
   const GRID = showCameraColumns
-    ? "28px 56px 1.4fr 0.7fr 0.7fr 0.7fr 1.2fr 1fr 0.8fr 70px"
-    : "28px 56px 2fr 0.8fr 1.2fr 0.9fr 70px";
+    ? (showKindColumn
+        ? "28px 56px 1.4fr 0.7fr 0.7fr 0.7fr 1.2fr 1fr 0.8fr 70px"
+        : "28px 56px 1.6fr 0.75fr 0.75fr 1.3fr 1fr 0.85fr 70px")
+    : (showKindColumn
+        ? "28px 56px 2fr 0.8fr 1.2fr 0.9fr 70px"
+        : "28px 56px 2.2fr 1.3fr 1fr 70px");
 
   // Only rows that are actually on screen count as selected. Filtering to Offline while three
   // online cameras are ticked would otherwise leave a delete button armed with rows the person
@@ -1728,17 +1739,19 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             {/* The thumbnail, address and AI-engine columns carry no sortKey — a picture has no
                 order, an address sorts by whatever the IP happens to start with, and AI engines is
                 a set per camera rather than one value. */}
-            <input
-              type="checkbox"
-              checked={allVisibleSelected}
-              onChange={toggleAllVisible}
-              aria-label={t.selectAllLabel}
-              style={{ accentColor: "var(--gray-900)", cursor: "pointer", justifySelf: "start" }}
-            />
+            <label style={{ display: "flex", alignItems: "center", height: "100%", minHeight: "28px", margin: "0 -6px", padding: "0 6px", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={allVisibleSelected}
+                onChange={toggleAllVisible}
+                aria-label={t.selectAllLabel}
+                style={{ accentColor: "var(--gray-900)", cursor: "pointer", width: "15px", height: "15px", margin: 0 }}
+              />
+            </label>
             {([
               { label: "" },
               { label: t.colCamera, key: "name" },
-              { label: t.colSource },
+              ...(showKindColumn ? [{ label: t.colSource }] : []),
               ...(showCameraColumns ? [{ label: t.colServer, key: "server" as CameraSortKey }, { label: t.colZone, key: "zone" as CameraSortKey }] : []),
               { label: t.colAddress },
               { label: t.colStatus, key: "status" },
@@ -1800,15 +1813,25 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               }
               : { style: rowStyle };
             const stopRowClick = { onClick: (e: React.MouseEvent) => e.stopPropagation() };
+            // The whole cell is the target, not the 13px box — same fix the VIP registry got
+            // (2026-09-18). The label makes the padding clickable without a handler of its own,
+            // and stopRowClick stays on it so ticking a row does not also open the row.
             const checkbox = (
-              <input
+              <label
                 {...stopRowClick}
-                type="checkbox"
-                checked={selectedIds.has(row.id)}
-                onChange={() => toggleRow(row.id)}
-                aria-label={row.name}
-                style={{ accentColor: "var(--gray-900)", cursor: "pointer", justifySelf: "start" }}
-              />
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "flex-start",
+                  height: "100%", minHeight: "32px", margin: "0 -6px", padding: "0 6px", cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(row.id)}
+                  onChange={() => toggleRow(row.id)}
+                  aria-label={row.name}
+                  style={{ accentColor: "var(--gray-900)", cursor: "pointer", width: "15px", height: "15px", margin: 0 }}
+                />
+              </label>
             );
 
             if (row.kind !== "camera") {
@@ -1839,12 +1862,14 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                       {[formatDuration(u.durationSec), formatBytes(u.sizeBytes)].filter(Boolean).join(" · ") || "—"}
                     </p>
                   </div>
+                  {showKindColumn && (
                   <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--gray-600)" }}>
                     {u.kind === "image" ? <ImageIcon size={13} strokeWidth={2.58} />
                       : u.kind === "deepfake" ? <ShieldCheck size={13} strokeWidth={2.58} />
                       : <FilmIcon size={13} strokeWidth={2.58} />}
                     {u.kind === "image" ? t.sourceImage : u.kind === "deepfake" ? t.sourceDeepfake : t.sourceVideo}
                   </span>
+                  )}
                   {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}
                   {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}
                   <span style={{ fontSize: "10px", color: "var(--gray-600)", fontFamily: "monospace" }}>{u.resolution ?? "—"}</span>
@@ -1910,10 +1935,12 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.name}</p>
                   <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{cam.code}</p>
                 </div>
+                {showKindColumn && (
                 <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--gray-600)" }}>
                   <VideoIcon size={13} strokeWidth={2.58} />
                   {t.sourceCamera}
                 </span>
+                )}
                 {/* The server, where the maker used to be. A make is settled at purchase and is
                     not what anybody scans a list for; the server is the answer to "why is this one
                     doing nothing", and until now it appeared on no screen at all — not in this

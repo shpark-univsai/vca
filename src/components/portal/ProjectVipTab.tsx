@@ -2423,13 +2423,15 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               nothing between here and that scroller clips its overflow. zIndex 2 so rows pass
               beneath rather than over, and the gray-50 fill is what makes "beneath" invisible. */}
           <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: categoriesEnabled ? (showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID) : (showGroupColumn ? VIP_GRID_WITH_GROUP_NO_CAT : VIP_GRID_NO_CAT), columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
-            <input
-              type="checkbox"
+            <label style={{ display: "flex", alignItems: "center", height: "100%", minHeight: "28px", margin: "0 -6px", padding: "0 6px", cursor: "pointer" }}>
+              <input
+                type="checkbox"
               checked={allVisibleSelected}
               onChange={toggleAllVisible}
               aria-label={t.selectAllLabel}
               style={{ accentColor: "var(--gray-900)", cursor: "pointer", justifySelf: "start" }}
-            />
+              />
+            </label>
             {/* Priority leads, then the face (no sortKey — a face has no order). */}
             <span style={{ paddingLeft: "8px" }}>
               <SortableHeader label={t.colPriority} sortKey="priority" sort={sort} onToggle={toggleSort} />
