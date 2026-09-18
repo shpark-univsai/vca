@@ -995,7 +995,7 @@ function RemoveVipConfirmModal({ t, person, onClose, onConfirm }: { t: VipDict; 
  * that is longer than the space. Only the group tag needs this: a priority is two words at most
  * and is the one of the two that must stay whole.
  */
-function Tag({ label, bg, color, flexible }: { label: string; bg: string; color: string; flexible?: boolean }) {
+function Tag({ label, bg, color, flexible, icon }: { label: string; bg: string; color: string; flexible?: boolean; icon?: React.ReactNode }) {
   return (
     <span
       title={flexible ? label : undefined}
@@ -1010,14 +1010,51 @@ function Tag({ label, bg, color, flexible }: { label: string; bg: string; color:
           : { display: "inline-flex", flexShrink: 0 }),
       }}
     >
-      {label}
+      {icon ? <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>{icon}{label}</span> : label}
     </span>
+  );
+}
+
+/**
+ * The three priorities as a meter, not as three unrelated symbols.
+ *
+ * Bars of rising height with the filled ones counted from the left: one of three, two of three,
+ * three of three. A reader compares two rows without reading either word, which is what the
+ * column is for — and the shape survives both languages, where `일반 / 높음 / 매우 높음` and
+ * `NORMAL / HIGH / VERY HIGH` have different lengths and no shared first letter.
+ *
+ * `currentColor` throughout, so the mark takes the pill's own colour — grey, amber, red — and no
+ * new colour enters the palette. The unfilled bars are the same colour at an opacity, which is an
+ * existing token turned down rather than a value invented here (the rule the trail-end glow was
+ * measured against on 2026-09-18).
+ *
+ * Not arrows, and not a count of exclamation marks: an arrow says "rising", which is a claim about
+ * change over time that a priority does not make, and repeated punctuation reads as shouting at
+ * 10px. Jira's arrows and Linear's bars are the two references here; the bars are the one that
+ * still reads when three of them sit in a column a few pixels apart.
+ */
+function PriorityMark({ level }: { level: NonNullable<Person["priorityLabel"]> }) {
+  const filled = level === "very_high" ? 3 : level === "high" ? 2 : 1;
+  // Heights rise 4 → 7 → 10 inside a 10px box, on a 2px bar with a 1.5px gap: the whole mark is
+  // 8.5px wide, which fits the 18px pill beside 10px text without pushing the padding around.
+  const bars = [
+    { x: 0, y: 6, h: 4 },
+    { x: 3.5, y: 3, h: 7 },
+    { x: 7, y: 0, h: 10 },
+  ];
+  return (
+    <svg width="9" height="10" viewBox="0 0 9 10" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+      {bars.map((b, i) => (
+        <rect key={b.x} x={b.x} y={b.y} width="2" height={b.h} rx="1"
+          fill="currentColor" opacity={i < filled ? 1 : 0.28} />
+      ))}
+    </svg>
   );
 }
 
 function PriorityTag({ priority, text }: { priority: NonNullable<Person["priorityLabel"]>; text: string }) {
   const { bg, color } = PRIORITY_COLOR[priority];
-  return <Tag label={text} bg={bg} color={color} />;
+  return <Tag label={text} bg={bg} color={color} icon={<PriorityMark level={priority} />} />;
 }
 
 /** Add or edit a party. Membership is not set here — a person is put in a group from their own row. */
