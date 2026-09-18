@@ -114,6 +114,8 @@ interface VipDict {
   healthEmbeddingFailedWhy: string;
   healthReenrolling: string;
   photoUnreadableHint: string;
+  photoRejectedTitle: string;
+  photoRejectedHint: string;
   photoReenrollingHint: string;
   healthReenrollingWhy: string;
   healthDuplicates: string;
@@ -287,6 +289,8 @@ const T: Record<"en" | "ko", VipDict> = {
     healthEmbeddingFailedWhy: "A photo is attached, but the model could not read a face out of it — too small, too dark or turned too far. Open the person and replace the photo; that is what clears it.",
     healthReenrolling: "awaiting re-enrolment",
     photoUnreadableHint: "The model could not read a face out of this photo, so this person cannot be matched by any camera. Replace it with a clearer, front-facing picture.",
+    photoRejectedTitle: "Registration failed — the face could not be enrolled",
+    photoRejectedHint: "Nothing was saved. The model could not read a face out of this photo, and a listing without an enrolled face would never match. Replace the photo with a clearer, front-facing picture and register again.",
     photoReenrollingHint: "A replacement photo has been submitted. Until the model answers, this person is still unmatchable.",
     healthReenrollingWhy: "A new photo has been submitted and the model has not answered yet. These people are still unmatchable until it does — a replaced photo is a question re-asked, not a fix confirmed.",
     healthDuplicates: "possible duplicates",
@@ -449,6 +453,8 @@ const T: Record<"en" | "ko", VipDict> = {
     healthEmbeddingFailedWhy: "사진은 있지만 모델이 얼굴을 읽어내지 못했습니다. 너무 작거나 어둡거나 옆을 봤을 때 생깁니다. 해당 인물을 열어 사진을 교체하면 풀립니다.",
     healthReenrolling: "재등록 대기",
     photoUnreadableHint: "이 사진에서 얼굴을 읽어내지 못했습니다. 어느 카메라에서도 이 인물은 매칭되지 않습니다. 정면이 선명한 사진으로 교체하세요.",
+    photoRejectedTitle: "등록 실패 — 얼굴을 등록하지 못했습니다",
+    photoRejectedHint: "저장된 것은 없습니다. 이 사진에서 얼굴을 읽어내지 못했고, 얼굴이 등록되지 않은 명단 항목은 어느 카메라에서도 매칭되지 않습니다. 정면이 선명한 사진으로 교체하고 다시 등록해주세요.",
     photoReenrollingHint: "교체할 사진이 접수되었습니다. 모델의 답이 오기 전까지는 여전히 매칭되지 않습니다.",
     healthReenrollingWhy: "새 사진을 올렸고 모델의 답을 기다리는 중입니다. 답이 오기 전까지는 여전히 매칭되지 않습니다 — 사진 교체는 다시 물어본 것이지, 해결이 확인된 게 아닙니다.",
     healthDuplicates: "중복 의심",
@@ -728,6 +734,31 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
     : photoUnreadable ? "unreadable"
     : "ok";
   const photoInputRef = useRef<HTMLInputElement>(null);
+  /*
+   * REGISTRATION CAN FAIL ON THE PHOTO, and it has to say so here rather than succeeding quietly
+   * (owner's call, 2026-09-18: "사진 인식을 못하면 등록당시에 등록에 실패했다고 떠야해").
+   *
+   * Enrolling a face is the server's answer, not something this browser can compute — so the mock
+   * cannot decide it, and inventing a rule ("images under 10KB fail") would put a made-up reason
+   * behind a real-looking message. The state is therefore reviewable the way this repo reviews its
+   * other refusals: open the registry with `?demo=photoRejected` and the next registration is
+   * refused once. Same convention as /login?demo= and /gate?demo=.
+   *
+   * SERVER CONTRACT (HANDOFF-SERVER §5): a registration whose photo produces no face embedding
+   * must be REFUSED — do not create the person. The row would look complete and match nothing,
+   * which is the failure the "사진 인식 실패" card exists to catch afterwards; at registration
+   * there is somebody standing there who can simply take a better picture.
+   *
+   * The bulk CSV path is the one where this state legitimately arrives late — hundreds of rows
+   * processed after the fact, which is what that card is for.
+   */
+  const [photoRejected, setPhotoRejected] = useState(false);
+  const [demoRejects, setDemoRejects] = useState(false);
+  useEffect(() => {
+    queueMicrotask(() => {
+      try { setDemoRejects(new URLSearchParams(window.location.search).get("demo") === "photoRejected"); } catch { /* no window */ }
+    });
+  }, []);
   /**
    * A photo is required to register and not to edit.
    *
@@ -752,6 +783,8 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
     && (!basisRequired || basis.trim().length > 0);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // A new picture is a new attempt: the refusal was about the last one.
+    setPhotoRejected(false);
     const file = e.target.files?.[0];
     if (!file) return;
     setPhotoPreview(URL.createObjectURL(file));
@@ -842,6 +875,15 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
                 model's complaint belongs against the picture it could not read. */}
             {photoState === "unreadable" && (
               <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoUnreadableHint}</p>
+            )}
+            {/* The refusal, against the picture it is about. Danger-toned and above the other two
+                hints because this one means NOTHING WAS SAVED — the other two describe a row that
+                exists. */}
+            {photoRejected && (
+              <div style={{ marginTop: "8px", padding: "10px 12px", borderRadius: "8px", backgroundColor: "var(--danger-100)", border: "1px solid var(--danger-200)" }}>
+                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{t.photoRejectedTitle}</p>
+                <p style={{ fontSize: "11px", color: "var(--gray-600)", lineHeight: 1.45, marginTop: "4px" }}>{t.photoRejectedHint}</p>
+              </div>
             )}
             {photoState === "reenrolling" && (
               <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoReenrollingHint}</p>
@@ -982,7 +1024,13 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
             {t.cancel}
           </button>
           <button className="portal-btn-primary"
-            onClick={() => valid && onSubmit({
+            onClick={() => {
+              if (!valid) return;
+              // The refusal belongs before anything is created, and it clears the moment a new
+              // photo is chosen (see handlePhotoChange) — a rejection that outlives the picture it
+              // was about is just a stuck error.
+              if (!editing && demoRejects) { setPhotoRejected(true); return; }
+              onSubmit({
               categoryId: categoryId || undefined,
               basis: basis.trim() || undefined,
               // Absent on a new listing, so the store applies the site's policy; on an edit the
@@ -992,7 +1040,8 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
               description: description.trim() || undefined,
               groupId: groupId || undefined,
               photoUrl: photoPreview ?? undefined,
-            })}
+              });
+            }}
             disabled={!valid}
             style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", }}>
             {/* The plus belongs to adding. Saving an edit adds nothing. */}
