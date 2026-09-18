@@ -166,7 +166,6 @@ interface VipDict {
   nameLabel: string;
   namePlaceholder: string;
   priorityLabel: string;
-  facePhotoLabel: string;
   facePhotoLabelRequired: string;
   changePhoto: string;
   uploadPhoto: string;
@@ -334,7 +333,6 @@ const T: Record<"en" | "ko", VipDict> = {
     nameLabel: "Name *",
     namePlaceholder: "Alexander Wright",
     priorityLabel: "Priority",
-    facePhotoLabel: "Face photo",
     facePhotoLabelRequired: "Face photo *",
     changePhoto: "Change",
     uploadPhoto: "Upload photo",
@@ -489,7 +487,6 @@ const T: Record<"en" | "ko", VipDict> = {
     nameLabel: "이름 *",
     namePlaceholder: "홍길동",
     priorityLabel: "우선순위",
-    facePhotoLabel: "얼굴 사진",
     facePhotoLabelRequired: "얼굴 사진 *",
     changePhoto: "변경",
     uploadPhoto: "사진 업로드",
@@ -704,7 +701,16 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
    * upload to fix a spelling would be asking for the expensive half of the work again.
    */
   const valid = name.trim().length > 0
-    && (editing || photoPreview !== null)
+    /*
+     * The record has to END with a photo, which is not the same as demanding a new upload.
+     * `photoPreview` starts as the person's existing photo, so editing a name on somebody already
+     * enrolled passes without touching this field — that was the reason the check used to be
+     * skipped for edits, and it still holds.
+     * What changed: a row that has NO photo (a CSV import, mostly) can no longer be saved without
+     * one, because the label now carries a `*` and a form that stars a field it will happily save
+     * empty is lying. It is also the same fix the "사진 없음" card is asking for.
+     */
+    && photoPreview !== null
     // A category that says a basis is required means it: without one the row has nobody to ask
     // later, and "we will fill it in afterwards" is how a registry ends up with none at all.
     && (!basisRequired || basis.trim().length > 0);
@@ -737,7 +743,14 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
               once it works. */}
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
-              {editing ? t.facePhotoLabel : t.facePhotoLabelRequired}
+              {/* Starred when editing too (owner's ask, 2026-09-18: "이름에는 필수표시 있으니까
+                  사진에도 필수표시가 있어야할것같구"). The mark says what the RECORD needs, not
+                  what you have to retype right now — the name field carries it over a name that is
+                  already filled in, and the photo is the same kind of requirement: a row without a
+                  face is a name no camera can ever match.
+                  It used to drop the star while editing, which made the one form show a starred
+                  name beside an unstarred photo and left the reader guessing which rule applied. */}
+              {t.facePhotoLabelRequired}
             </label>
             <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: "none" }} />
             {/*
@@ -854,9 +867,12 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
                 : t.expiryPolicyNote(expirySource.days)}
             </p>
           </div>
-          {/* Everything an audit asks about is above this line; everything below it is how the
-              list reads afterwards. Shut by default so registering somebody is three fields. */}
-          <div style={{ borderTop: BORDER, paddingTop: "14px" }}>
+          {/* NO RULE ABOVE THIS (owner's ask, 2026-09-18). The toggle is already a break in the
+              form — a chevron and a heavier label after a run of fields — and a line drawn right
+              above it made the split twice, once with a border and once with the control. Shut by
+              default so registering somebody is three fields; everything an audit asks about sits
+              above it either way. */}
+          <div style={{ paddingTop: "4px" }}>
             <button
               type="button"
               onClick={() => setMoreOpen(o => !o)}
