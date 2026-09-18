@@ -109,8 +109,7 @@ interface VipDict {
   manageCategories: string;
   basisLabel: string;
   basisPlaceholder: string;
-  requiredMark: string;
-  optionalMark: string;
+  basisLabelRequired: string;
   expiresLabel: string;
   expiresNote: string;
   noExpiryWarning: string;
@@ -277,9 +276,8 @@ const T: Record<"en" | "ko", VipDict> = {
     categoryNone: "Unclassified",
     manageCategories: "Manage categories",
     basisLabel: "Basis for listing",
+    basisLabelRequired: "Basis for listing *",
     basisPlaceholder: "Case or document reference",
-    requiredMark: "required",
-    optionalMark: "optional",
     expiresLabel: "Listing expires",
     expiresNote: "The listing stops on this date. Expired people stay on the list, marked.",
     noExpiryWarning: "No end date — this person stays a VIP until somebody removes them.",
@@ -437,9 +435,8 @@ const T: Record<"en" | "ko", VipDict> = {
     categoryNone: "미분류",
     manageCategories: "분류 관리",
     basisLabel: "등록 근거",
+    basisLabelRequired: "등록 근거 *",
     basisPlaceholder: "사건번호 · 공문번호 등",
-    requiredMark: "필수",
-    optionalMark: "선택",
     expiresLabel: "등록 만료일",
     expiresNote: "이 날짜에 등록이 끝납니다. 만료된 사람은 목록에 표시된 채로 남습니다.",
     noExpiryWarning: "만료일 없음 — 누군가 내리기 전까지 계속 추적 대상입니다.",
@@ -828,10 +825,18 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
           </div>}
           {/* Only where a category demands one; otherwise it waits below with the rest of the
               optional fields. Nothing is lost either way — it is the same state in both places. */}
+          {/* ONE MARK IN THIS FORM, AND IT MARKS THE MINORITY (2026-09-18, owner's ask: "있을거면
+              다 넣어야할것같아"). There were three treatments at once — `*` on the name and the
+              photo, a red `필수` chip here, a grey `선택` chip on the same field when a category
+              did not demand it, and nothing at all on the four fields below. So the reader could
+              not tell what an unmarked label meant.
+              Required is the minority here (a name, a photo at registration, and this field when
+              the category demands it) while five fields are optional, so the mark goes on what is
+              required and nothing else — the same `*` the name and photo already carry. The reason
+              this one field changes state is still said in words, by the category line above it. */}
           {basisRequired && <div>
-            <label style={{ display: "flex", alignItems: "baseline", gap: "6px", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>
-              {t.basisLabel}
-              <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)" }}>{t.requiredMark}</span>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
+              {t.basisLabelRequired}
             </label>
             <TextField value={basis} onChange={setBasis} placeholder={t.basisPlaceholder} />
           </div>}
@@ -868,10 +873,10 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
             {moreOpen && <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "14px" }}>
               {!basisRequired && (
             <div>
-              <label style={{ display: "flex", alignItems: "baseline", gap: "6px", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>
-                {t.basisLabel}
-                <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--gray-400)" }}>{t.optionalMark}</span>
-              </label>
+              {/* No "선택" chip. It was the only one of five optional fields wearing the word, and
+                  five of them wearing it would be the same word five times over — see the mark
+                  note beside the required copy of this field. */}
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.basisLabel}</label>
               <TextField value={basis} onChange={setBasis} placeholder={t.basisPlaceholder} />
             </div>
               )}
