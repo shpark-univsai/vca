@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Globe, Mail, RotateCcw, ServerCrash, Unplug, Video} from "lucide-react";
+import { CircleAlert, CircleCheck, CircleDashed, Globe, Mail, RotateCcw, ServerCrash, Unplug, Video} from "lucide-react";
 import { resolveMailConfig, isNetworkIsolated, useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
@@ -18,9 +18,48 @@ const SERVER_TYPES: ServerType[] = ["Face Recognition", "Normal Camera", "AI Cam
 // not something an administrator types in — so only the table reads this; kept a top-level dict
 // the same way SERVER_TYPES/API_ENDPOINTS are.
 const STATUS_T = {
-  en: { success: "Success", error: "Error", unchecked: "Not checked" },
-  ko: { success: "성공", error: "오류", unchecked: "확인 안 됨" },
+  en: { success: "Responding", error: "No answer", unchecked: "Not checked" },
+  ko: { success: "정상 응답", error: "응답 없음", unchecked: "확인 안 됨" },
 } as const;
+
+/**
+ * THE STATUS AS A BADGE, the shape the registry's priority column uses (owner's ask, 2026-09-18:
+ * 서버 및 API에서도 상태 컨텐츠에 VIP 맨 앞에 있는 우선순위처럼 뱃지로).
+ *
+ * A dot beside coloured text is the lightest possible mark and it was doing two jobs badly here:
+ * the colour was the only thing separating the three states, and a bare word in the leftmost
+ * column read as a heading for the row rather than a value in it. A pill has an edge, so it reads
+ * as one object with a state — and it carries the same geometry as the priority pill one screen
+ * over (18px tall, 10px/600 text, 999px radius), which is what makes the two screens feel like
+ * one product.
+ *
+ * Every colour is an existing token at its defined step. The mark is `currentColor`, so each
+ * badge's icon takes its own text colour and no new value enters the palette.
+ */
+const STATUS_STYLE = {
+  success: { bg: "var(--success-100)", color: "var(--success-400)" },
+  error: { bg: "var(--danger-100)", color: "var(--danger-500)" },
+  unchecked: { bg: "var(--gray-100)", color: "var(--gray-600)" },
+} as const;
+
+function StatusBadge({ state, label }: { state: keyof typeof STATUS_STYLE; label: string }) {
+  const { bg, color } = STATUS_STYLE[state];
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: "4px", flexShrink: 0,
+      height: "18px", padding: "0 8px", borderRadius: "999px",
+      backgroundColor: bg, color, fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap",
+    }}>
+      {/* One glyph per state rather than a dot for all three: a colour-blind reader gets the
+          difference, and the shapes say which kind of news it is — a tick, an alarm, a dashed
+          ring for the one that is neither. */}
+      {state === "success" ? <CircleCheck size={11} strokeWidth={2.6} />
+        : state === "error" ? <CircleAlert size={11} strokeWidth={2.6} />
+        : <CircleDashed size={11} strokeWidth={2.6} />}
+      {label}
+    </span>
+  );
+}
 
 interface ServerFormValues {
   name: string;
@@ -938,8 +977,8 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
             {visibleServers.length === 0 ? (
               <TableEmpty text={projectServers.length === 0 ? t.emptyNoServers : t.emptyNoMatch} />
             ) : pageServers.map((server, i) => {
-              const statusColor = server.status === "success" ? "var(--success-400)"
-                : server.status === "error" ? "var(--danger-400)" : "var(--gray-400)";
+              const statusState = server.status === "success" ? "success" as const
+                : server.status === "error" ? "error" as const : "unchecked" as const;
               const statusLabel = server.status === "success" ? st.success
                 : server.status === "error" ? st.error : st.unchecked;
               const isLast = i === pageServers.length - 1;
@@ -949,9 +988,8 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                   borderBottom: isLast ? "none" : BORDER,
                   borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
                 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: statusColor, flexShrink: 0 }} />
-                    <span style={{ fontSize: "12px", fontWeight: 700, color: statusColor }}>{statusLabel}</span>
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    <StatusBadge state={statusState} label={statusLabel} />
                   </div>
                   <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{server.name}</span>
                   <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace" }}>{server.port ? `${server.ip}:${server.port}` : server.ip}</span>
