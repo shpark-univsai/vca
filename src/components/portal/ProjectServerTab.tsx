@@ -113,11 +113,25 @@ interface ServerFormValues {
   /** Held as text, like every other field: a half-typed port is "80", and a number input turns
    *  that into a value the moment it is keyed. Parsed on save. */
   port: string;
-  type: ServerType;
+  /**
+   * UNANSWERED IS A STATE, which is why this is not simply a ServerType.
+   *
+   * The add form opened with "Face Recognition" already chosen — the first item of the list, put
+   * there as a default because a select has to show something. But a server's type decides what a
+   * camera may be attached to (see the Add camera form, which narrows its picker by it), and a
+   * value nobody chose is indistinguishable on screen from one somebody did: press save in a hurry
+   * and the register quietly records a face-recognition node where a database was installed.
+   *
+   * So the add form opens with no answer and the save button refuses until there is one (owner's
+   * call, 2026-09-18 — flagged as needing a decision because it changes what the dialog looks like
+   * on open, and the decision was to change it). Editing is untouched: an existing server always
+   * has a type, so the select opens on the real answer there.
+   */
+  type: ServerType | "";
   specification: string;
 }
 
-const EMPTY_FORM: ServerFormValues = { name: "", ip: "", port: "", type: SERVER_TYPES[0], specification: "" };
+const EMPTY_FORM: ServerFormValues = { name: "", ip: "", port: "", type: "", specification: "" };
 
 /**
  * THE ASTERISKS, AUDITED AGAINST WHAT ACTUALLY BLOCKS SAVE (owner's ask, 2026-09-18: the required
@@ -155,6 +169,8 @@ const MODAL_T = {
     serverIp: "Server IP *", serverIpPlaceholder: "192.168.0.36",
     serverPort: "Server Port *", serverPortPlaceholder: "8011",
     serverType: "Server Type",
+    serverTypeRequired: "Server Type *",
+    serverTypePrompt: "Select a type",
     specification: "Specification", specificationPlaceholder: "8 vCPU · 32GB RAM",
     cancel: "Cancel", save: "Save",
   },
@@ -163,6 +179,8 @@ const MODAL_T = {
     serverIp: "서버 IP *", serverIpPlaceholder: "192.168.0.36",
     serverPort: "서버 포트 *", serverPortPlaceholder: "8011",
     serverType: "서버 유형",
+    serverTypeRequired: "서버 유형 *",
+    serverTypePrompt: "선택하세요",
     specification: "사양", specificationPlaceholder: "8 vCPU · 32GB RAM",
     cancel: "취소", save: "저장",
   },
@@ -190,7 +208,7 @@ function ServerFormModal({
      deliberately passes an empty string ("required is the caller's question, not this one's"), so
      the emptiness check belongs here and the range check stays there. */
   const valid = form.name.trim().length > 0 && form.ip.trim().length > 0
-    && form.port.trim().length > 0 && !ipProblem && !portIssue;
+    && form.port.trim().length > 0 && form.type !== "" && !ipProblem && !portIssue;
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
@@ -208,9 +226,19 @@ function ServerFormModal({
             <TextField value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder={t.serverNamePlaceholder} />
           </div>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverType}</label>
+            {/* Starred now, and the star is honest: an unanswered type blocks the save (see
+                ServerFormValues.type). Before this it was the one field on the form that looked
+                answered without anybody answering it. */}
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverTypeRequired}</label>
             <FilterSelect value={form.type} onChange={v => setForm(f => ({ ...f, type: v as ServerType }))}
-              options={SERVER_TYPES.map(ty => ({ value: ty, label: ty }))} />
+              options={[
+                /* The prompt is an option rather than a placeholder because FilterSelect draws its
+                   current value as text: with no entry for "", the closed select would have been
+                   blank and read as broken. It cannot be chosen back into — picking it is picking
+                   nothing, and the button below already says what nothing costs. */
+                ...(form.type === "" ? [{ value: "", label: t.serverTypePrompt }] : []),
+                ...SERVER_TYPES.map(ty => ({ value: ty, label: ty })),
+              ]} />
           </div>
           {/* Address and port on one row: between them they are one thing, and nothing reaches a
               server with only half of it. The dialog this mirrors stacks them; keeping them on one
@@ -956,6 +984,10 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   };
 
   const createServer = (values: ServerFormValues) => {
+    /* The form's own save button is disabled until a type is chosen, and this is the same rule
+       written where the record is made — the button is the UI, this is the rule. It also gives the
+       type a narrowing the store can accept: ServerFormValues.type carries "" for unanswered. */
+    if (values.type === "") return;
     addServer({
       projectId, name: values.name.trim(), ip: values.ip.trim(),
       port: Number(values.port) || undefined,
@@ -966,7 +998,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   };
 
   const saveEdit = (values: ServerFormValues) => {
-    if (!editingServer) return;
+    if (!editingServer || values.type === "") return;
     updateServer(editingServer.id, {
       name: values.name.trim(), ip: values.ip.trim(),
       port: Number(values.port) || undefined,

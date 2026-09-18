@@ -1109,9 +1109,24 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
-      {/* margin auto, not just centring: with the scroll on the backdrop, a form taller than the
-          window has its top cut off under plain align-items centre. */}
+      /*
+       * flex-start, NOT centre — and this was a real bug, not a preference.
+       *
+       * `align-items: center` on a scrolling container centres the sheet and then splits the
+       * overflow between the two ends: the scrollable range starts at the sheet's centred top, so
+       * whatever sticks out ABOVE that point can never be reached. Measured at a 860px window
+       * (owner's report: 와 이거 스크롤이 안 된당): the sheet is 928px, the wheel moved it the
+       * full 100px it had and stopped, and at the bottom of that travel the header had gone to
+       * top: -84 — the footer's buttons and the title could not both be on screen at any scroll
+       * position. `margin: auto` on the sheet made it worse for the same reason, so that is gone
+       * too; the sheet centres horizontally through justifyContent and nothing centres it
+       * vertically any more.
+       *
+       * Short modals now sit at the top of the window instead of the middle. That is the trade,
+       * and it is the right way round: a dialog you can read all of, slightly higher than you
+       * expected, beats a centred one whose buttons are unreachable.
+       */
+      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
       {/* Wider than the other modals on purpose: two columns need the room.
           CAMERA SCOPE GOES IN THE LEFT COLUMN, NOT THIS ONE. An earlier note here said the right
           column was its home, which the arithmetic disproves — the right column already stands at
@@ -1126,14 +1141,37 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           draft has none (the result step's note has the whole argument), so the left column
           carries the one-line state and the picker opens over the result panel. The arithmetic
           above is why a future attempt at an inline list belongs in the left column too. */}
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "880px", width: "100%", margin: "auto", boxShadow: "var(--shadow-modal)" }}>
+      {/*
+        THE DIALOG FITS THE WINDOW, AND THE BUTTONS ARE NEVER THE PART THAT FALLS OFF.
+        
+        Measured at a 912px window, which is an ordinary laptop: the sheet came out 928px tall, so
+        it opened with 취소 and 초대 보내기 sixteen pixels below the fold. Scrolling did reach them
+        — 48px of travel — but a dialog whose primary action is off screen when it opens is asking
+        the reader to go looking for the way out, and the owner read that as the thing not
+        scrolling at all.
+        
+        So the sheet is capped at the window less its 16px gutters and laid out as a column: the
+        heading and the footer keep their height, and the two-column body in between takes what is
+        left and scrolls itself. That is the opposite of the rule this file follows elsewhere
+        ("scroll the backdrop, not the sheet", because a select's dropdown gets clipped by an
+        overflow context) — the exception is bought deliberately: the two selects in this body sit
+        near its top, and a clipped dropdown is recoverable by scrolling while an unreachable
+        submit button is not.
+      */}
+      <div style={{
+        backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "880px", width: "100%",
+        boxShadow: "var(--shadow-modal)",
+        display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 32px)", minHeight: 0,
+      }}>
         <div style={{ padding: "18px 24px 14px", borderBottom: "1px solid var(--gray-200)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.modalTitle}</p>
           <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
           </button>
         </div>
-        <div className="portal-invite-grid">
+        {/* The part that gives, between two that do not. minHeight 0 because a flex child will
+            not shrink below its content without it, which is what made the whole sheet grow. */}
+        <div className="portal-invite-grid" style={{ overflowY: "auto", minHeight: 0 }}>
           <div style={MODAL_BODY_WITH_SELECT}>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
