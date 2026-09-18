@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import CameraImportModal from "./CameraImportModal";
 import CameraMapView from "./CameraMapView";
 import UploadPreviewModal from "./UploadPreviewModal";
-import { CircleAlert, Cpu, FileInput, Gauge, FileOutput, MapPin, Table2, Film as FilmIcon, Image as ImageIcon, MapPinOff, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
+import { CircleAlert, Cpu, FileInput, Gauge, FileOutput, MapPin, ServerOff, Table2, Film as FilmIcon, Image as ImageIcon, MapPinOff, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
 import { useVcaStore, hasPosition, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraAddRefusal, type CameraKind, type ServerType, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -77,6 +77,9 @@ const T = {
     healthErrorWhy: "The camera answered and turned us away. Almost always the wrong credentials or a stream path that has changed.",
     healthChannelsLeft: "channels left",
     healthChannelsLeftWhy: "Of the channels this site's licence grants, this many are still free. Registering a camera takes one, whether it is typed in or imported, and at zero the form refuses.",
+    healthNoServer: "no server assigned",
+    assignServerAction: "Assign a server",
+    healthNoServerWhy: "Nothing is pulling this camera's stream, so it records nothing and matches nobody — the video is discarded as it is produced. The status column still says connected, because the address answers; that is what makes this easy to miss. Assign a server on the camera's row.",
     healthNoPosition: "no coordinates yet",
     healthNoPositionWhy: "The register has the zone but not the latitude and longitude, so this camera is drawn nowhere on the map and nothing it detects can be counted toward a zone. Not a camera fault — the survey line is the part that is missing, and somebody on site fills it in.",
     healthShowOnly: "Show only these",
@@ -273,6 +276,9 @@ const T = {
     healthErrorWhy: "카메라가 응답은 했지만 접속을 거절했습니다. 거의 항상 계정 정보가 틀렸거나 스트림 경로가 바뀐 경우입니다.",
     healthChannelsLeft: "남은 채널",
     healthChannelsLeftWhy: "이 현장의 라이선스가 준 채널 중 아직 비어 있는 수입니다. 카메라를 한 대 등록하면 하나가 줄고, 직접 등록이든 일괄 가져오기든 같습니다. 0이 되면 폼이 거절합니다.",
+    healthNoServer: "서버 미지정",
+    assignServerAction: "서버 지정",
+    healthNoServerWhy: "이 카메라의 스트림을 아무도 끌어가지 않습니다. 그래서 녹화도 탐지도 없고, 영상은 만들어지는 대로 버려집니다. 주소는 응답하니 상태 열에는 「연결됨」으로 보이고, 그래서 놓치기 쉽습니다. 해당 행에서 연결 서버를 지정하세요.",
     healthNoPosition: "좌표 미등록",
     healthNoPositionWhy: "구역은 적혀 있지만 위도·경도가 없습니다. 그래서 지도 어디에도 그려지지 않고, 이 카메라가 잡은 탐지는 어느 구역으로도 집계되지 않습니다. 카메라 고장이 아니라 등록부에 측량값이 빠진 것이라, 현장에서 좌표를 재서 채워 넣으면 됩니다.",
     healthShowOnly: "이 항목만 보기",
@@ -1152,7 +1158,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * with no coordinates can be online, offline or never-contacted, and it stays whichever of those
    * it is while the gap is being fixed.
    */
-  const [gapFilter, setGapFilter] = useState<"noPosition" | null>(null);
+  /* TWO GAPS, NOT ONE. Both are "registered and not doing its job", and they are different jobs to
+     fix — a surveyor fills in coordinates, an installer assigns a server. Hotjar splits the same
+     pair the same way (Not installed / No data received). */
+  const [gapFilter, setGapFilter] = useState<"noPosition" | "noServer" | null>(null);
   /* queueMicrotask for the reason ProjectVipTab spells out at its own copy of this: the parent
      clears the flag in the same commit, and StrictMode renders this tree twice before it paints. */
   useEffect(() => {
@@ -1296,7 +1305,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       : statusFilter === "awaiting" ? isAwaitingFirstContact(c)
       : statusFilter === "offline" ? c.status === "offline" && !isAwaitingFirstContact(c)
       : c.status === statusFilter;
-    const matchesGap = gapFilter === null || !hasPosition(c);
+    const matchesGap = gapFilter === null
+      || (gapFilter === "noPosition" ? !hasPosition(c) : !c.serverId);
     return matchesSearch && matchesZone && matchesStatus && matchesGap;
   });
   const matchingUploads = projectUploads.filter(u => {
@@ -1464,6 +1474,20 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
      as unsurveyed — which is the same confusion between "absent" and "zero" that put unsurveyed
      cameras in the Gulf of Guinea in the first place. */
   const noPositionCount = projectCameras.filter(c => !hasPosition(c)).length;
+  /*
+   * REGISTERED, REACHABLE, AND WATCHED BY NOBODY.
+   *
+   * A camera with no server is not a camera we cannot look at — it is a camera whose video is
+   * being thrown away as it is produced. Nothing pulls the stream, so there is no recording, no
+   * detection, and nothing to go back to later. And the status column says 연결됨 about it, which
+   * is true and is the whole problem: the good half is visible and the useless half is not.
+   *
+   * Counted here for the same reason 좌표 미등록 is: the only way to find these rows was to scan
+   * a column of em dashes. Four products solve it the same way — a count with a denominator
+   * (Deel), the count as the filter (Rox "Needs Attention (5)"), and the row itself naming what is
+   * missing rather than showing a blank (YNAB, Pin, Hotjar).
+   */
+  const noServerCount = projectCameras.filter(c => !c.serverId).length;
   // Anything not yet analysed — queued or mid-run. Both are "not done", and an administrator does
   // the same thing about either: wait, or find out why.
 
@@ -1952,6 +1976,21 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           // No onClick: this is not a filter. There are no "channel" rows to narrow the table to,
           // and a card that looks pressable and does nothing is worse than a card that does not.
         }] : []),
+        ...(noServerCount > 0 ? [{
+          key: "noServer",
+          icon: <ServerOff size={14} strokeWidth={2.4} />,
+          figure: noServerCount,
+          unit: t.healthOfFleet(projectCameras.length),
+          label: t.healthNoServer,
+          explanation: t.healthNoServerWhy,
+          /* Amber, unlike 좌표 미등록's neutral. A camera missing its survey still records and
+             still matches; one missing its server is producing nothing at all, which is a fault
+             somebody has to fix today. */
+          tone: "warning" as const,
+          active: gapFilter === "noServer",
+          title: gapFilter === "noServer" ? t.healthClear : t.healthShowOnly,
+          onClick: () => setGapFilter(gapFilter === "noServer" ? null : "noServer"),
+        }] : []),
         ...(noPositionCount > 0 ? [{
           key: "noPosition",
           icon: <MapPinOff size={14} strokeWidth={2.4} />,
@@ -2423,9 +2462,41 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     doing nothing", and until now it appeared on no screen at all — not in this
                     table and not on the camera's own sheet, where it now sits with the maker. */}
                 {showCameraColumns && (
-                  <span style={{ fontSize: "12px", color: cam.serverId ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {projectServers.find(sv => sv.id === cam.serverId)?.name ?? "—"}
-                  </span>
+                  /* AN EM DASH SAYS "NOTHING HERE"; THIS SAYS WHAT IS MISSING AND HOW TO FIX IT.
+                     The blank was the only way to find a camera nobody is pulling — while the
+                     status column said 연결됨 about the same row. Four products name the gap in
+                     the cell instead (YNAB "This needs a category", Pin "Missing email", Rox
+                     "Enrichment failed"), and Hotjar puts the repair link directly under it
+                     ("Install tracking code"), which is the half that turns a warning into a
+                     next step. Same shape here. */
+                  cam.serverId
+                    ? (
+                      <span style={{ fontSize: "12px", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {projectServers.find(sv => sv.id === cam.serverId)?.name ?? "—"}
+                      </span>
+                    )
+                    : (
+                      <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px", minWidth: 0 }}>
+                        <span style={{
+                          display: "inline-flex", alignItems: "center", gap: "4px", flexShrink: 0,
+                          height: "18px", padding: "0 8px", borderRadius: "999px",
+                          backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
+                          fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap",
+                        }}>
+                          <ServerOff size={11} strokeWidth={2.6} />
+                          {t.healthNoServer}
+                        </span>
+                        {/* The repair, where the problem is. stopRowClick because the row itself
+                            opens the preview, and this is not that. Behind the edit gate: a
+                            read-only account can see the gap and cannot close it. */}
+                        {mayEdit && (
+                          <button {...stopRowClick} onClick={() => setEditingCamera(cam)}
+                            style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "10px", fontWeight: 700, color: "var(--primary-400)", textDecoration: "underline" }}>
+                            {t.assignServerAction}
+                          </button>
+                        )}
+                      </span>
+                    )
                 )}
                 {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{cam.zone}</span>}
                 {/* The IP, not the RTSP URL — and resolution under it, in the same column a file
