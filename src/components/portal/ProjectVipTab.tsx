@@ -2096,9 +2096,12 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           label: t.healthRegistered,
           explanation: t.healthRegisteredWhy,
           tone: "neutral" as const,
-          // Clicking it clears whatever cell is filtering the list — "show me all of them" is the
-          // only sensible action on a total, and it is the way back from the cells beside it.
-          active: healthFilter === null,
+          /* NEVER DRAWN AS SELECTED. `active` paints the cell (gray-100 here), and keying it on
+             "no filter is on" meant the default state of the screen showed this card filled —
+             every visit, with nothing chosen (owner's note: "등록인원 왜 회색으로 칠해져있어?").
+             A total is not a filter, so it has no selected state to show. It still CLICKS: with a
+             cell beside it filtering the list, this is the way back to all of them. */
+          active: false,
           title: t.healthShowAll,
           onClick: () => setHealthFilter(null),
         },
