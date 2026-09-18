@@ -7,6 +7,7 @@ import { CircleAlert, FileInput, FileOutput, MapPin, Table2, Film as FilmIcon, I
 import { useVcaStore, hasPosition, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraAddRefusal, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
+import { formatElapsed } from "@/lib/time";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
 import { useFitRowsPerPage, TablePagination, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
@@ -57,6 +58,9 @@ const T = {
     healthAwaitingWhy: "Registered here, never heard from. Not a fault — this is where every camera sits between being added and its first report. On installation day it is most of the fleet.",
     statusAwaiting: "Awaiting first contact",
     healthOffline: "offline",
+    healthOldestOffline: (hours: number) => hours >= 24 ? `longest ${Math.floor(hours / 24)}d` : `longest ${hours}h`,
+    lastAnswered: (elapsed: string) => `${elapsed} ago`,
+    neverAnswered: "no answer yet",
     healthOfflineWhy: "No answer at all — the address is unreachable. Usually power, cable or network rather than the camera itself.",
     healthError: "refusing the connection",
     healthErrorWhy: "The camera answered and turned us away. Almost always the wrong credentials or a stream path that has changed.",
@@ -227,6 +231,9 @@ const T = {
     healthAwaitingWhy: "여기 등록만 되고 아직 한 번도 응답한 적이 없습니다. 고장이 아니라, 모든 카메라가 등록과 첫 보고 사이에 거치는 자리입니다. 설치 당일에는 대부분이 여기 있습니다.",
     statusAwaiting: "첫 연결 대기",
     healthOffline: "오프라인",
+    healthOldestOffline: (hours: number) => hours >= 24 ? `가장 오래 ${Math.floor(hours / 24)}일` : `가장 오래 ${hours}시간`,
+    lastAnswered: (elapsed: string) => `${elapsed} 전 마지막 응답`,
+    neverAnswered: "아직 응답 없음",
     healthOfflineWhy: "응답이 아예 없습니다. 주소에 닿지 않는 상태로, 대개 카메라보다 전원·케이블·네트워크 문제입니다.",
     healthError: "연결 거부",
     healthErrorWhy: "카메라가 응답은 했지만 접속을 거절했습니다. 거의 항상 계정 정보가 틀렸거나 스트림 경로가 바뀐 경우입니다.",
@@ -1270,8 +1277,30 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   /* Split off the ones nothing has ever reached. Before this, registering a camera added a number
      to a warning cell — so installation day, when fifty are typed in and none is wired yet, read
      as fifty faults. See isAwaitingFirstContact(). */
+  /* Read after mount, never during render — see oldestOfflineDays. */
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
   const awaitingCount = projectCameras.filter(isAwaitingFirstContact).length;
-  const offlineCount = projectCameras.filter(c => c.status === "offline" && !isAwaitingFirstContact(c)).length;
+  const offlineRows = projectCameras.filter(c => c.status === "offline" && !isAwaitingFirstContact(c));
+  const offlineCount = offlineRows.length;
+  /*
+   * HOW LONG THE WORST ONE HAS BEEN DARK.
+   *
+   * "9 오프라인" reads the same whether all nine dropped five minutes ago — a network blip that
+   * will clear itself — or three have been dark a fortnight because somebody unplugged them.
+   * Those are different errands and the count cannot tell them apart. lastSeenAt is already in
+   * the register, so the strip can say which one this is.
+   *
+   * Post-mount only, and null until then: this is a clock read, and a figure that differs between
+   * the server's render and the browser's first one is the hydration mismatch this codebase keeps
+   * paying for (see the registry's 일괄 업로드 오류 cell, fixed today). Absent for the first frame
+   * is the correct answer, not a guess.
+   */
+  const oldestOfflineHours = nowMs === null || offlineRows.length === 0 ? null : offlineRows.reduce((worst, c) => {
+    if (!c.lastSeenAt) return worst;
+    const hours = Math.floor((nowMs - Date.parse(c.lastSeenAt)) / 3_600_000);
+    return Number.isFinite(hours) && hours > worst ? hours : worst;
+  }, 0);
   const errorCount = projectCameras.filter(c => c.status === "error").length;
   /* Registered here, nowhere on the map. Read through hasPosition rather than a truthiness test:
      0 is a real coordinate, and `!c.lat` would file the one camera actually sitting on a meridian
@@ -1678,6 +1707,13 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             key: "offline" as const, count: offlineCount, label: t.healthOffline, why: t.healthOfflineWhy,
             unit: undefined, tone: "warning" as const,
             icon: <VideoOff size={14} strokeWidth={2.4} />,
+            /* Grey and arrowless, in the slot the Overview's trend uses: this is context for the
+               figure, not a second verdict beside it. Hours under a day and days above it, because
+               "가장 오래 0일" says nothing the count did not — and a camera dark for eleven hours
+               is a different errand from one dark for twelve days. */
+            trend: oldestOfflineHours !== null && oldestOfflineHours >= 1
+              ? { direction: "flat" as const, text: t.healthOldestOffline(oldestOfflineHours) }
+              : undefined,
           },
           {
             key: "error" as const, count: errorCount, label: t.healthError, why: t.healthErrorWhy,
@@ -1700,6 +1736,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             icon: item.icon,
             figure: item.count,
             unit: item.unit,
+            trend: "trend" in item ? item.trend : undefined,
             label: item.label,
             // Offline and refusing-the-connection are two words apart and two different callouts —
             // one is an electrician, the other is a password. The underline is where that goes.
@@ -2204,9 +2241,28 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
 
                     The dot keeps its colour on all four, because the dot is what an eye runs down a
                     column on and 6px of green is a mark rather than a wash. */}
-                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0, backgroundColor: statusDot }} />
-                  <span style={{ fontSize: "12px", fontWeight: statusWeight, color: statusText }}>{statusLabel}</span>
+                {/* WHAT WE CAN HONESTLY SAY ABOUT WHY (owner's ask: 연결 상태에 따라 사유도
+                    알 수 있으면 적어주면 좋겠어). The cause of a refusal — wrong credentials, a
+                    stream path that moved — is the server's to report and nothing in the browser
+                    knows it; inventing one would be worse than silence, and the class of cause is
+                    already under the summary cell's dotted label. What the register DOES know is
+                    when the camera last answered, and that is the half of "why" that separates a
+                    network blip from a camera somebody unplugged a fortnight ago. A row that has
+                    never answered says so instead — see isAwaitingFirstContact.
+                    Post-mount only (nowMs): an elapsed figure rendered during the server pass and
+                    again in the browser is a hydration mismatch. */}
+                <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0, backgroundColor: statusDot }} />
+                    <span style={{ fontSize: "12px", fontWeight: statusWeight, color: statusText }}>{statusLabel}</span>
+                  </span>
+                  {awaiting ? (
+                    <span style={{ fontSize: "10px", color: "var(--gray-400)", paddingLeft: "12px" }}>{t.neverAnswered}</span>
+                  ) : nowMs !== null && cam.lastSeenAt ? (
+                    <span style={{ fontSize: "10px", color: "var(--gray-400)", paddingLeft: "12px", whiteSpace: "nowrap" }}>
+                      {t.lastAnswered(formatElapsed(nowMs - Date.parse(cam.lastSeenAt), lang))}
+                    </span>
+                  ) : null}
                 </span>
                 {/* Preview first: it is the item somebody reaches for most and the only one that
                     answers "is this camera actually seeing anything". The thumbnail opens the same

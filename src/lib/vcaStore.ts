@@ -2758,9 +2758,12 @@ serverId: "srv-1",
 /**
  * Last-signal times, seeded onto the cameras above rather than typed into all 59 of them.
  *
- * Online cameras reported within the last few minutes; offline ones stopped somewhere between a
- * quarter of an hour and half a day ago, which is what makes the column worth reading — a camera
- * dark for eleven hours is a different errand from one that dropped during this shift.
+ * Online cameras reported within the last few minutes. Offline ones spread from a few hours to
+ * about a fortnight, because that spread IS the information — nine cameras that all dropped this
+ * morning is a network fault and nine that have been dark for two weeks is a fleet nobody is
+ * maintaining, and a count of nine says neither. The registry's 오프라인 cell reads the worst of
+ * them and prints it ("가장 오래 12일"), which it could not do while every offline camera in the
+ * seed had answered within half a day.
  *
  * Deterministic per camera (the index, not a random), and expressed through auditAt like every
  * other relative timestamp in this file: the value is fixed at module load, so a screen must only
@@ -2768,7 +2771,7 @@ serverId: "srv-1",
  */
 const CAMERAS: Camera[] = CAMERA_SEEDS.map((c, i) => ({
   ...c,
-  lastSeenAt: auditAt(c.status === "online" ? 1 + (i % 5) : 14 + (i * 37) % 700),
+  lastSeenAt: auditAt(c.status === "online" ? 1 + (i % 5) : 60 * (3 + (i * 37) % 300)),
 }));
 
 /**

@@ -53,6 +53,10 @@ const T = {
     showThem: "Show those rows",
     preview: "Preview stream",
     empty: "No camera in this project has coordinates yet, so there is nothing to draw.",
+    zoneUnset: "No zone",
+    zoneCount: (n: number) => `${n} cam${n === 1 ? "" : "s"}`,
+    zoneDown: (n: number) => `${n} down`,
+    zoomHint: "Grouped by zone — zoom in for individual cameras.",
     counted: (drawn: number, total: number) => `${drawn} of ${total} drawn`,
   },
   ko: {
@@ -67,9 +71,67 @@ const T = {
     showThem: "그 행 보기",
     preview: "스트림 미리보기",
     empty: "이 프로젝트에는 좌표가 등록된 카메라가 아직 없어서 그릴 것이 없습니다.",
+    zoneUnset: "구역 미지정",
+    zoneCount: (n: number) => `${n}대`,
+    zoneDown: (n: number) => `${n} 끊김`,
+    zoomHint: "구역별로 묶어 보고 있습니다 — 확대하면 카메라 한 대씩 보입니다.",
     counted: (drawn: number, total: number) => `${total}대 중 ${drawn}대 표시`,
   },
 } as const;
+
+/**
+ * ZOOMED OUT IT IS ZONES, ZOOMED IN IT IS CAMERAS (owner's ask, 2026-09-18: 줌아웃하면 구역별로
+ * 카메라 몇 대씩 있는지 보이게 하고 확대하면 카메라들 지금처럼). Sixty dots at city zoom is a
+ * smear; "Angmokio 12대" is the fact somebody reads at that scale. 14 is the same breakpoint the
+ * app's map clusters at, so the two behave alike.
+ */
+const ZONE_ZOOM_BREAKPOINT = 14;
+/** Where a pill flies you. One past the breakpoint, so the pills give way to the dots as part of
+ *  the same movement rather than needing a second zoom — the app's rule too. */
+const ZONE_FOCUS_ZOOM = ZONE_ZOOM_BREAKPOINT + 1;
+
+/**
+ * GROUPED BY THE REGISTER'S OWN `zone`, NOT by the district geometry.
+ *
+ * The app groups by district and gets it wrong: it re-guesses from coordinates, and on the ten
+ * named cameras here five landed in a neighbour's district (see HANDOFF-SERVER §9-1 — Geylang NC1
+ * answered Kallang, 0.83km away). Worse, five of the register's zone names are in no district
+ * list at all (Queenstown · Jurong East · Orchard · Bugis · Marina Bay), so those cameras would
+ * simply vanish from a district-grouped map — 5 of the 11 hand-registered ones.
+ *
+ * `zone` is what somebody typed when they installed the camera, it is editable and bulk-movable
+ * from this very screen, and it is the answer to "which part of the site is this in". Nothing is
+ * inferred and no camera is dropped: a blank zone gets its own pill rather than disappearing.
+ *
+ * When the backend starts handing down a district id per camera (the decision recorded in §9-1),
+ * this grouping can switch to it — one function, and the pills keep their shape.
+ */
+function groupByZone(cameras: (Camera & { lat: number; lng: number })[], unsetLabel: string) {
+  const byZone = new Map<string, { label: string; cams: (Camera & { lat: number; lng: number })[] }>();
+  cameras.forEach(cam => {
+    const key = (cam.zone ?? "").trim();
+    const entry = byZone.get(key) ?? { label: key === "" ? unsetLabel : key, cams: [] };
+    entry.cams.push(cam);
+    byZone.set(key, entry);
+  });
+  return [...byZone.values()].map(({ label, cams }) => ({
+    label,
+    cams,
+    /* The middle of the cameras themselves, not a district centre we would be borrowing from
+       somewhere else. A pill has to sit on the thing it counts. */
+    lat: cams.reduce((sum, c) => sum + c.lat, 0) / cams.length,
+    lng: cams.reduce((sum, c) => sum + c.lng, 0) / cams.length,
+    down: cams.filter(c => c.status !== "online").length,
+  }));
+}
+
+/** Zone names come from a text field somebody types into, and they go into markup built as a
+ *  string for Leaflet. */
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, ch => (
+    ch === "&" ? "&amp;" : ch === "<" ? "&lt;" : ch === ">" ? "&gt;" : ch === '"' ? "&quot;" : "&#39;"
+  ));
+}
 
 /** The status colours this screen already uses in its table and its summary cells. */
 function statusColor(cam: Camera): string {
@@ -94,6 +156,44 @@ export default function CameraMapView({
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  /* Only so the header can say which mode the reader is in — the layers themselves are swapped
+     inside Leaflet's own handler, without waiting for React. */
+  const [zoom, setZoom] = useState(12);
+
+  /*
+   * AS MUCH ROOM AS THE TABLE TAKES.
+   *
+   * It was `min(62vh, 640px)` and read as a short band under a wide toolbar (owner: 지도가 높이가
+   * 너무 짧아 보이는데, 테이블일 때만큼 넓게 공간을 잡아 사용해도 될 것 같아). A viewport
+   * fraction is the wrong instrument anyway: what is left for the list depends on what is ABOVE
+   * it — the tabs, the summary cells and the toolbar — not on the window's total height. So it is
+   * measured, the same way the table's page size is (see useFitRowsPerPage): take this card's own
+   * top and fill what remains, less the shell's bottom padding.
+   *
+   * Remeasured on resize, unlike the page size — a map has no "choice the reader already made"
+   * to protect, and a map that keeps its old height through a window resize leaves a white band.
+   */
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const measure = () => {
+      const el = cardRef.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top;
+      const BOTTOM_AIR = 40;
+      setHeight(Math.max(380, Math.round(window.innerHeight - top - BOTTOM_AIR)));
+    };
+    const raf = requestAnimationFrame(measure);
+    window.addEventListener("resize", measure);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", measure); };
+  }, []);
+
+  /* Leaflet caches its container's size; grown after init it draws its tiles for the old box and
+     leaves the new strip grey. */
+  useEffect(() => {
+    const map = mapInstanceRef.current as { invalidateSize?: () => void } | null;
+    if (height !== null && map?.invalidateSize) map.invalidateSize();
+  }, [height]);
 
   const placed = useMemo(() => cameras.filter(hasPosition), [cameras]);
   const unplaced = cameras.length - placed.length;
@@ -120,11 +220,15 @@ export default function CameraMapView({
       L.tileLayer(MAP_TILE_URL, tileLayerOptions()).addTo(instance);
       instance.zoomControl.setPosition("topright");
 
+      /* TWO LAYERS BUILT ONCE, SWAPPED ON ZOOM. Rebuilding sixty markers on every wheel notch
+         drops frames and makes the map feel broken; a layer group added and removed does not. */
+      const dotLayer = L.layerGroup();
+      const pillLayer = L.layerGroup();
+
       placed.forEach(cam => {
-        /* A dot, not a pin. Seventeen districts' worth of cameras at city zoom is a field of
-           markers, and a teardrop's point lands below its own centre — which is a lie about
-           where the camera is when the dots are this dense. The ring is the surrounding tile
-           colour so a dot over dark tiles keeps its edge. */
+        /* A dot, not a pin. Sixty cameras at neighbourhood zoom is a field of markers, and a
+           teardrop's point lands below its own centre — which is a lie about where the camera is
+           when the dots are this dense. The white ring keeps a dot's edge over dark tiles. */
         const icon = L.divIcon({
           className: "",
           html: `<span style="display:block;width:12px;height:12px;border-radius:50%;
@@ -133,9 +237,64 @@ export default function CameraMapView({
           iconAnchor: [6, 6],
         });
         L.marker([cam.lat as number, cam.lng as number], { icon, title: cam.name })
-          .addTo(instance)
+          .addTo(dotLayer)
           .on("click", () => setSelected(cam.id));
       });
+
+      groupByZone(placed, t.zoneUnset).forEach(zone => {
+        /* The count, and how many of them are not answering. One figure would make a zone of
+           twelve working cameras and a zone of twelve dead ones the same pill — which is the
+           thing this view exists to tell apart. Amber only when there is something to be amber
+           about; a healthy zone stays plain. */
+        /* ONE LINE, NOT TWO. Eighteen zones inside one city at this zoom collide, and a
+           two-line pill is twice the ground to collide over — a one-camera Kallang was sitting on
+           top of an eight-camera Geylang. The down-count keeps its amber but drops the word:
+           beside a plain total, "3" in amber is unmistakable and the tooltip carries the noun. */
+        const downMark = zone.down > 0
+          ? `<span style="font-size:11px;font-weight:700;color:var(--warning-500)">${zone.down}</span>`
+          : "";
+        const pill = L.divIcon({
+          className: "",
+          html: `<div style="transform:translate(-50%,-50%);display:inline-flex;align-items:baseline;
+                   gap:5px;background:white;border:1px solid var(--gray-200);border-radius:999px;padding:3px 9px;
+                   box-shadow:0 2px 8px rgba(24,17,39,0.14);white-space:nowrap;font-family:inherit;cursor:pointer">
+                   <span style="font-size:10px;font-weight:600;color:var(--gray-500)">${escapeHtml(zone.label)}</span>
+                   <span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.3px">${t.zoneCount(zone.cams.length)}</span>
+                   ${downMark}
+                 </div>`,
+          iconSize: [0, 0],
+          iconAnchor: [0, 0],
+        });
+        L.marker([zone.lat, zone.lng], {
+          icon: pill,
+          title: zone.down > 0 ? `${zone.label} · ${t.zoneCount(zone.cams.length)} · ${t.zoneDown(zone.down)}` : `${zone.label} · ${t.zoneCount(zone.cams.length)}`,
+          /* Where two pills still overlap, the bigger zone wins the top: a one-camera pill hiding
+             an eight-camera one is the worse of the two mistakes. Scaled by 1000 because Leaflet
+             derives a marker's z from its pixel Y — whichever sits further south wins by
+             hundreds, so an offset of "6" never decides anything. */
+          zIndexOffset: zone.cams.length * 1000,
+        })
+          .addTo(pillLayer)
+          .on("click", () => {
+            /* Into the zone, one notch past the breakpoint, so the pill is replaced by its own
+               cameras in a single movement. */
+            const bounds = L.latLngBounds(zone.cams.map(c => [c.lat, c.lng] as [number, number]));
+            instance.fitBounds(bounds, { padding: [56, 56], maxZoom: ZONE_FOCUS_ZOOM });
+          });
+      });
+
+      const applyZoom = () => {
+        const z = instance.getZoom();
+        setZoom(z);
+        if (z > ZONE_ZOOM_BREAKPOINT) {
+          if (instance.hasLayer(pillLayer)) instance.removeLayer(pillLayer);
+          if (!instance.hasLayer(dotLayer)) instance.addLayer(dotLayer);
+        } else {
+          if (instance.hasLayer(dotLayer)) instance.removeLayer(dotLayer);
+          if (!instance.hasLayer(pillLayer)) instance.addLayer(pillLayer);
+        }
+      };
+      instance.on("zoomend", applyZoom);
 
       // Frame what is actually there. A site can be a campus a few hundred metres across, ten
       // kilometres from the city centre the default view opens on.
@@ -143,6 +302,8 @@ export default function CameraMapView({
         const bounds = L.latLngBounds(placed.map(c => [c.lat as number, c.lng as number] as [number, number]));
         instance.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 });
       }
+      // After the fit, not before: which layer belongs on screen depends on the zoom the fit chose.
+      applyZoom();
       map = instance;
       mapInstanceRef.current = instance;
     })();
@@ -160,18 +321,25 @@ export default function CameraMapView({
   const selectedCamera = selected === null ? null : placed.find(c => c.id === selected) ?? null;
 
   return (
-    /* The same card the table draws, at a height that leaves the toolbar and the summary cells
-       above it on screen — a map shorter than this cannot show a city, and a taller one pushes
-       its own legend off the bottom. */
-    <div style={{
+    /* The same card the table draws, filling the same room — see the measurement above. */
+    <div ref={cardRef} style={{
       backgroundColor: "white", border: BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW,
-      display: "flex", flexDirection: "column", overflow: "hidden", height: "min(62vh, 640px)", minHeight: "380px",
+      display: "flex", flexDirection: "column", overflow: "hidden",
+      // Before the measurement lands, a sensible box rather than a collapsed one — this is the
+      // first paint, and a zero-height map would flash.
+      height: height === null ? "560px" : `${height}px`,
     }}>
       <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px", borderBottom: BORDER, flexWrap: "wrap" }}>
         <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-600)" }}>{t.counted(placed.length, cameras.length)}</span>
         <span style={{ flex: 1 }} />
-        {/* The legend is the four words the dots stand for. Four colours with no key is a puzzle,
-            and the table one click away spells them out in a column. */}
+        {/* WHICHEVER MODE IS ON SCREEN, THE HEADER EXPLAINS THAT ONE. A status legend over a map
+            of zone pills describes marks that are not being drawn, and the pills' own numbers are
+            what needs explaining instead — including that zooming in changes what is drawn. */}
+        {zoom <= ZONE_ZOOM_BREAKPOINT ? (
+          <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-500)" }}>{t.zoomHint}</span>
+        ) : (
+        /* The legend is the four words the dots stand for. Four colours with no key is a puzzle,
+           and the table one click away spells them out in a column. */
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
           {([
             { color: "var(--success-400)", label: t.connected },
@@ -185,6 +353,7 @@ export default function CameraMapView({
             </span>
           ))}
         </div>
+        )}
       </div>
 
         <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
