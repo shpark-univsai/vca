@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import CameraImportModal from "./CameraImportModal";
 import CameraMapView from "./CameraMapView";
 import { CircleAlert, FileInput, FileOutput, MapPin, Table2, Film as FilmIcon, Image as ImageIcon, MapPinOff, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
-import { useVcaStore, hasPosition, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
+import { useVcaStore, hasPosition, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraAddRefusal, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
@@ -173,6 +173,9 @@ const T = {
     addAnotherWhy: "Registers this camera and keeps the form open for the next one. What a batch shares — maker, model, credentials, server, zone — stays filled in.",
     addedSoFar: (n: number) => `${n} added`,
     addAnotherAtLimit: "No channel left on the licence.",
+    refusedOverLimit: "The licence has no channel left, so this camera was not registered. Free a channel or ask for more, then try again.",
+    refusedDuplicateCode: "A camera is already registered under this code. Change the name — the code is derived from it.",
+    refusedDuplicateStream: "This project already polls that RTSP URL. Two rows on one stream count the same detections twice, so this one was not registered.",
     closeAfterBatch: "Done",
     confirmOfflineTitle: "Mark camera offline?",
     confirmOfflineBody: (name: string) => `${name} will show as offline for everyone monitoring this project — make sure the stream is actually down before confirming.`,
@@ -320,6 +323,9 @@ const T = {
     addAnotherWhy: "이 카메라를 등록하고 폼을 열어 둔 채 다음 대로 넘어갑니다. 한 묶음이 공유하는 값 — 제조사·모델·계정·연결 서버·구역 — 은 채워진 채로 남습니다.",
     addedSoFar: (n: number) => `${n}대 등록됨`,
     addAnotherAtLimit: "라이선스에 남은 채널이 없습니다.",
+    refusedOverLimit: "라이선스에 남은 채널이 없어 등록하지 않았습니다. 채널을 비우거나 추가한 뒤 다시 시도하세요.",
+    refusedDuplicateCode: "이 코드로 이미 등록된 카메라가 있습니다. 이름을 바꿔주세요 — 코드는 이름에서 만듭니다.",
+    refusedDuplicateStream: "이 프로젝트가 이미 그 RTSP 주소를 보고 있습니다. 한 스트림에 두 행이면 같은 탐지를 두 번 세게 되므로 등록하지 않았습니다.",
     closeAfterBatch: "완료",
     confirmOfflineTitle: "카메라를 오프라인으로 표시하시겠습니까?",
     confirmOfflineBody: (name: string) => `${name} 카메라가 이 프로젝트를 모니터링하는 모든 사용자에게 오프라인으로 표시됩니다. 확인하기 전에 실제로 스트림이 끊겼는지 확인하세요.`,
@@ -561,7 +567,8 @@ function generateCameraCode(name: string, existing: string[]): string {
 }
 
 function CameraFormModal({
-  title, initial, isEdit, servers, onClose, onSubmit, onSubmitAndAnother, addedInSitting = 0, atLimit = false, t,
+  title, initial, isEdit, servers, onClose, onSubmit, onSubmitAndAnother, addedInSitting = 0, atLimit = false,
+  submitRefusal = null, onTouched, t,
 }: {
   title: string;
   initial: CameraFormValues;
@@ -578,6 +585,13 @@ function CameraFormModal({
   addedInSitting?: number;
   /** No channel left on the licence: both save buttons refuse, and the reason is written out. */
   atLimit?: boolean;
+  /** Why the LAST press did not register anything — the store's answer, already in words. The
+   *  form stays open carrying it, because everything the reader typed is still the best draft of
+   *  the camera they meant to add. */
+  submitRefusal?: string | null;
+  /** Clears that message as soon as a field changes: a refusal about the address they have since
+   *  corrected is a message arguing with a form that no longer says what it complained about. */
+  onTouched?: () => void;
   t: (typeof T)["en"] | (typeof T)["ko"];
 }) {
   useEscapeKey(onClose);
@@ -696,7 +710,7 @@ function CameraFormModal({
       <TextField
         key={opts?.remountKey}
         value={form[key]}
-        onChange={v => setForm(f => ({ ...f, [key]: v }))}
+        onChange={v => { onTouched?.(); setForm(f => ({ ...f, [key]: v })); }}
         placeholder={placeholder}
         type={opts?.type}
         inputMode={opts?.inputMode}
@@ -796,22 +810,34 @@ function CameraFormModal({
         {/* Readable text beside the dead button rather than a tooltip on it — the call the licence
             tab's install button already makes, for the same reason: a tooltip on a disabled control
             is unreliable across browsers and this sentence has to be read. */}
-        <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", flexWrap: "wrap" }}>
-          {refused && !valid ? (
-            <p style={{ flex: "1 1 200px", minWidth: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, margin: 0 }}>
+        {/* A COLUMN, because three buttons and a sentence do not fit on one line. They shared a
+            wrapping row and the sentence pushed 취소 up onto its own line, leaving the three
+            buttons split across two rows in no particular order. The message gets the line above
+            and the buttons keep theirs. */}
+        <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", alignItems: "stretch", gap: "10px" }}>
+          {submitRefusal ? (
+            /* Outranks the "something above is empty" line: the form IS filled in — the register
+               refused it, which is a different sentence and the only one that explains why the
+               camera is not in the list. */
+            <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.45, margin: 0 }}>
+              {submitRefusal}
+            </p>
+          ) : refused && !valid ? (
+            <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, margin: 0 }}>
               {t.saveRefused}
             </p>
           ) : atLimit ? (
-            <p style={{ flex: "1 1 200px", minWidth: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, margin: 0 }}>
+            <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, margin: 0 }}>
               {t.addAnotherAtLimit}
             </p>
           ) : addedInSitting > 0 ? (
             /* The form staying open looks identical whether the last one saved or not. The toast
                says so and is gone in four seconds; this reader is still typing. */
-            <p style={{ flex: "1 1 120px", minWidth: 0, fontSize: "11px", fontWeight: 700, color: "var(--success-500)", lineHeight: 1.45, margin: 0 }}>
+            <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--success-500)", lineHeight: 1.45, margin: 0 }}>
               {t.addedSoFar(addedInSitting)}
             </p>
           ) : null}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px" }}>
           <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {/* 닫기 once something has gone in: 취소 would claim it can undo the four cameras
                 already registered. Same distinction the bulk bar draws. */}
@@ -834,6 +860,7 @@ function CameraFormModal({
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
             {isEdit ? t.saveChanges : t.addDevice}
           </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1267,10 +1294,17 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * not — the toast says so too, but a toast is gone in four seconds and this reader is typing.
    */
   const [addedInSitting, setAddedInSitting] = useState(0);
+  /* What the store said no to, if it did. Cleared the moment the form is touched again — see
+     CameraFormModal's submitRefusal prop. */
+  const [addRefusal, setAddRefusal] = useState<CameraAddRefusal | null>(null);
+  const refusalText = (r: CameraAddRefusal) =>
+    r === "over-limit" ? t.refusedOverLimit
+      : r === "duplicate-code" ? t.refusedDuplicateCode
+      : t.refusedDuplicateStream;
   const createCamera = (values: CameraFormValues, keepOpen = false) => {
     // Refused here as well as disabled above: the button is the UI, this is the rule.
     if (cannotAddSource) return;
-    addCamera({
+    const refusal = addCamera({
       projectId, name: values.name.trim(), code: generateCameraCode(values.name.trim(), cameras.map(c => c.code)), rtspUrl: values.rtspUrl.trim(),
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
       maker: values.maker, model: values.model.trim() || undefined,
@@ -1287,6 +1321,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         ? { lat: undefined, lng: undefined }
         : { lat: Number(values.lat), lng: Number(values.lng) }),
     });
+    /* A REFUSAL KEEPS THE FORM OPEN AND SAYS WHY. It used to close on a success toast whatever
+       happened, which is the failure mode that matters: the register is short one camera and
+       nothing on screen disagrees with the person who thinks they just added it. */
+    if (refusal) { setAddRefusal(refusal); return; }
+    setAddRefusal(null);
     if (keepOpen) setAddedInSitting(n => n + 1);
     else setShowAdd(false);
     showToast({ variant: "success", title: t.toastCameraAddedTitle, desc: t.toastCameraAddedDesc(values.name.trim()) });
@@ -2257,7 +2296,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           initial={EMPTY_FORM}
           isEdit={false}
           servers={projectServers}
-          onClose={() => { setShowAdd(false); setAddedInSitting(0); }}
+          onClose={() => { setShowAdd(false); setAddedInSitting(0); setAddRefusal(null); }}
+          submitRefusal={addRefusal === null ? null : refusalText(addRefusal)}
+          onTouched={() => setAddRefusal(null)}
           onSubmit={createCamera}
           onSubmitAndAnother={values => createCamera(values, true)}
           addedInSitting={addedInSitting}

@@ -801,7 +801,19 @@ interface VcaStoreState {
   // events seeded at load are historical and start out already "read".
   lastReadNotifAt: string;
   setCameraStatus: (cameraId: string, status: CameraStatus) => void;
-  addCamera: (camera: Omit<Camera, "id">) => void;
+  /**
+   * Register one camera, or say why not.
+   *
+   * IT USED TO RETURN NOTHING AND REFUSE NOTHING. The bulk path has enforced the channel limit
+   * and code collisions since it was written (see addCameras), and this one just appended — so
+   * the same licence meant a hundred channels through a file and no limit at all through the
+   * form, and the form closed with a success toast either way. "필수값을 다 적었는데 등록이 안
+   * 되는 경우도 있을 것 같은데?" (owner, 2026-09-18) is exactly right, and the honest answer is
+   * that the screen must be able to hear a refusal — the real API certainly has them.
+   *
+   * Returns null when the camera went in, or the reason it did not.
+   */
+  addCamera: (camera: Omit<Camera, "id">) => CameraAddRefusal | null;
   /**
    * Register many cameras at once — installation day, from the installer's own spreadsheet.
    *
@@ -1687,6 +1699,20 @@ export function watchedPersonsInProject(persons: Person[], projectId: string): P
  * use this too, and must show the rest somewhere else: a camera nobody can reach on the map is
  * one nobody can grant, and that has to be visible rather than quietly absent.
  */
+/**
+ * Why a single camera registration was refused.
+ *
+ * "over-limit" — the licence has no channel left. The same rule the import enforces.
+ * "duplicate-code" — the register is one id space, and a code is what a detection is filed
+ *   against; two cameras answering to one code is how a sighting lands on the wrong street.
+ * "duplicate-stream" — this project already polls that exact RTSP URL. Scoped to the project on
+ *   purpose: two sites on separate private networks legitimately both have a camera at
+ *   10.20.4.11, and a global check would refuse the second site's whole fleet. The IP alone is
+ *   NOT a duplicate either — a four-channel encoder is one address and four stream paths, which
+ *   is a normal way to register four cameras.
+ */
+export type CameraAddRefusal = "over-limit" | "duplicate-code" | "duplicate-stream";
+
 export function hasPosition<T extends { lat?: number; lng?: number }>(c: T): c is T & { lat: number; lng: number } {
   return typeof c.lat === "number" && typeof c.lng === "number";
 }
@@ -3704,11 +3730,25 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     }
     return refused;
   },
-  addCamera: (camera) =>
-    set(state => ({
-      cameras: [...state.cameras, { ...camera, id: `cam-${++cameraSeq}` }],
-      auditLog: [clientAudit({ projectId: camera.projectId, message: `Camera ${camera.name} added`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
-    })),
+  addCamera: (camera) => {
+    const state = get();
+    // The same three checks the file path makes, in the same order — see CameraAddRefusal.
+    const project = state.projects.find(p => p.id === camera.projectId);
+    const limit = project ? projectChannelLimit(project) : undefined;
+    const used = state.cameras.filter(c => c.projectId === camera.projectId).length;
+    if (limit === undefined || used >= limit) return "over-limit";
+    const codeKey = camera.code.trim().toLowerCase();
+    if (state.cameras.some(c => c.code.trim().toLowerCase() === codeKey)) return "duplicate-code";
+    const streamKey = camera.rtspUrl.trim().toLowerCase();
+    if (streamKey !== "" && state.cameras.some(c => c.projectId === camera.projectId && c.rtspUrl.trim().toLowerCase() === streamKey)) {
+      return "duplicate-stream";
+    }
+    set(st => ({
+      cameras: [...st.cameras, { ...camera, id: `cam-${++cameraSeq}` }],
+      auditLog: [clientAudit({ projectId: camera.projectId, message: `Camera ${camera.name} added`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    }));
+    return null;
+  },
   updateCamera: (cameraId, updates) =>
     set(state => {
       const cam = state.cameras.find(c => c.id === cameraId);
