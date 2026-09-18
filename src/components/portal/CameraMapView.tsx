@@ -131,133 +131,32 @@ function groupByZone(cameras: (Camera & { lat: number; lng: number })[], unsetLa
 }
 
 /**
- * The outline drawn around a picked zone's cameras (owner's ask, 2026-09-18: 구역 선택했을 때
- * 점선으로 해당 카메라들 묶어서 테두리).
+ * A CAMERA'S DOT, AND WHETHER IT IS ONE OF THE PICKED ONES.
  *
- * A convex hull, not a bounding box: a box around cameras strung along one road claims a
- * rectangle of the city that holds nothing, and the point of the outline is to say which cameras
- * are in the group — not to assert a boundary the register does not have. Monotone chain, which
- * is short enough to read and needs no library.
+ * Picking a zone used to draw a boundary around its cameras — a convex hull, then an offset and
+ * rounded version of one. Both were abandoned (owner, 2026-09-18: 이상하게 되는뎅.. 이거 라인
+ * 지우고 그냥 동그라미들을 선택된 상태라는 걸 표시해주는 걸로). The reason they kept looking
+ * wrong is not the smoothing: three or four points have no shape, so ANY outline drawn through
+ * them is a shape the product invented — a kite over Ang Mo Kio that says nothing true about
+ * where the zone begins. The register knows which cameras are in a zone; it does not know the
+ * zone's border, and drawing one claims it does.
  *
- * Under three points there is no polygon to draw, and the caller falls back to a circle: two
- * cameras would otherwise be a line with no inside, and one would be nothing at all.
+ * So the group is shown on the members instead: the picked zone's dots take a ring, the way a
+ * focus ring marks a selection anywhere else. Nothing is claimed beyond "these are the ones", and
+ * the header's chip says which zone that is.
+ *
+ * The other dots are left alone rather than dimmed. Dimming would hide the thing this map is for
+ * — an offline camera in a neighbouring zone is still the most important dot on screen.
  */
-function convexHull(points: [number, number][]): [number, number][] {
-  if (points.length < 3) return points;
-  const sorted = [...points].sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]));
-  const cross = (o: [number, number], a: [number, number], b: [number, number]) =>
-    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-  const half = (input: [number, number][]) => {
-    const out: [number, number][] = [];
-    for (const p of input) {
-      while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], p) <= 0) out.pop();
-      out.push(p);
-    }
-    return out;
-  };
-  const lower = half(sorted);
-  const upper = half([...sorted].reverse());
-  return [...lower.slice(0, -1), ...upper.slice(0, -1)];
-}
-
-/**
- * The hull, pushed outward and then rounded off.
- *
- * A convex hull runs THROUGH the outermost cameras — the dots sit on the line, which reads as a
- * route between them rather than a boundary around them, and the corners come out as hard spikes.
- * The owner's reference is the other shape: the same group with the line held off the dots and the
- * corners smoothed (2026-09-18, with a before/after of both).
- *
- * Two steps, no geometry library:
- *  1. OFFSET. Each hull vertex moves away from the centroid. The distance is a share of the
- *     group's own size rather than a fixed number of metres — a zone whose cameras sit on one
- *     street and a zone spread over a kilometre both need the line clear of the dots, and a
- *     constant would swallow the first and barely show on the second. Clamped at both ends so a
- *     pair of near-identical coordinates still gets a visible margin.
- *  2. ROUND. Chaikin's corner cutting: every edge gives up its ends at the quarter marks, three
- *     times over. Each pass halves the angle at every corner, and after three the polygon reads as
- *     a curve while still being the polygon Leaflet knows how to draw. No curve primitive needed —
- *     Leaflet's polygon takes points, so the rounding has to live in the points.
- *
- * Longitude is scaled by cos(latitude) throughout: a degree of longitude is shorter than a degree
- * of latitude everywhere but the equator, and offsetting in raw degrees would push the east and
- * west sides further than the north and south ones. At Singapore's latitude that is a 0.03%
- * difference and invisible; the scaling is here because the product is not only deployed there.
- */
-function roundedBoundary(points: [number, number][]): [number, number][] {
-  const hull = convexHull(points);
-  if (hull.length < 3) return hull;
-
-  const centroidLat = hull.reduce((sum, p) => sum + p[0], 0) / hull.length;
-  const centroidLng = hull.reduce((sum, p) => sum + p[1], 0) / hull.length;
-  /* A degree of longitude is shorter than a degree of latitude everywhere but the equator, so all
-     the distance work below happens in a frame where both axes are the same size. At Singapore's
-     latitude the correction is 0.03% and invisible; it is here because the product is not only
-     deployed there. */
-  const lngScale = Math.max(0.2, Math.cos((centroidLat * Math.PI) / 180));
-  const radial = ([lat, lng]: [number, number]) => Math.hypot(lat - centroidLat, (lng - centroidLng) * lngScale);
-  const bearing = ([lat, lng]: [number, number]) => Math.atan2((lng - centroidLng) * lngScale, lat - centroidLat);
-
-  /** Every point pushed away from the centroid by the same distance. */
-  const expand = (ring: [number, number][], by: number) => ring.map(([lat, lng]) => {
-    const dLat = lat - centroidLat;
-    const dLng = (lng - centroidLng) * lngScale;
-    const length = Math.hypot(dLat, dLng);
-    // A point sitting on the centroid has no direction to be pushed in.
-    if (length === 0) return [lat, lng] as [number, number];
-    return [lat + (dLat / length) * by, lng + (dLng / length) * by / lngScale] as [number, number];
-  });
-
-  /* Chaikin's corner cutting: each edge gives up its ends at the quarter marks. TWO passes, not
-     three — every pass both smooths the corner and pulls it further inside the hull, and the
-     third pass was buying a rounder curve at the price of a boundary that had to be inflated to
-     catch its own cameras again. Two reads as a curve at the zoom a pill click lands on. */
-  const smooth = (ring: [number, number][]) => {
-    let current = ring;
-    for (let pass = 0; pass < 2; pass += 1) {
-      const next: [number, number][] = [];
-      for (let i = 0; i < current.length; i += 1) {
-        const [aLat, aLng] = current[i];
-        const [bLat, bLng] = current[(i + 1) % current.length];
-        next.push([aLat + (bLat - aLat) * 0.25, aLng + (bLng - aLng) * 0.25]);
-        next.push([aLat + (bLat - aLat) * 0.75, aLng + (bLng - aLng) * 0.75]);
-      }
-      current = next;
-    }
-    return current;
-  };
-
-  /*
-   * SMOOTH FIRST, THEN OFFSET BY WHAT IS ACTUALLY MISSING.
-   *
-   * The first version did it the other way round — pad the hull, smooth, then grow the whole ring
-   * by 45% at a time until the strays were caught. It contained every camera and it sat far too
-   * far out (owner: 점 가까이 라인이 있을 수 있게): inflating uniformly to rescue ONE sharp
-   * corner pushes the other three sides out by the same amount, and on a zone two kilometres
-   * across that is hundreds of metres of empty ground on every side.
-   *
-   * Measured instead. Corner cutting pulls the curve inside the hull, so the question is how far
-   * inside — per extreme point, radially. Take the worst of those deficits, add one small margin
-   * for the gap the eye wants between a dot and the line, and offset once. No loop, nothing
-   * guessed, and the line ends up as close to the dots as containment allows rather than as far
-   * out as the clumsiest corner demanded.
-   *
-   * The margin is geographic (0.00032° of latitude, about 35m) rather than a share of the group:
-   * it exists to clear the 12px dot, and at the zoom a pill click lands on 35m is roughly seven
-   * pixels — a visible gap that does not grow into a moat on a large zone.
-   */
-  const smoothed = smooth(hull);
-  const deficit = Math.max(0, ...hull.map(vertex => {
-    const target = bearing(vertex);
-    // The smoothed point closest in direction to this vertex is the one standing in front of it.
-    const nearest = smoothed.reduce((best, point) => {
-      const gap = Math.abs(Math.atan2(Math.sin(bearing(point) - target), Math.cos(bearing(point) - target)));
-      return gap < best.gap ? { gap, radius: radial(point) } : best;
-    }, { gap: Infinity, radius: 0 });
-    return radial(vertex) - nearest.radius;
-  }));
-  const MARGIN = 0.00032;
-  return expand(smoothed, deficit + MARGIN);
+function dotHtml(color: string, selected: boolean): string {
+  /* The ring is drawn with the same box-shadow the dot already uses for its white edge, so a
+     selected dot is the unselected one plus two more rings rather than a different object: white
+     at 2px keeps the edge over dark tiles, then primary at 4px, then white again so the ring
+     itself has an edge over a dark street. */
+  const rings = selected
+    ? "0 0 0 2px white, 0 0 0 4px var(--primary-400), 0 0 0 5px rgba(255,255,255,0.9), 0 1px 3px rgba(24,17,39,0.35)"
+    : "0 0 0 2px white, 0 1px 3px rgba(24,17,39,0.35)";
+  return `<span style="display:block;width:12px;height:12px;border-radius:50%;background:${color};box-shadow:${rings};"></span>`;
 }
 
 /** Zone names come from a text field somebody types into, and they go into markup built as a
@@ -290,6 +189,11 @@ export default function CameraMapView({
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
+  /** Every drawn dot, by camera id, so the picked zone's can be re-marked in place. Typed loosely
+   *  for the same reason mapInstanceRef is: Leaflet is imported dynamically, so its types are not
+   *  in scope where this ref is declared. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersRef = useRef<Map<string, any>>(new Map());
   const [selected, setSelected] = useState<string | null>(null);
   /* Only so the header can say which mode the reader is in — the layers themselves are swapped
      inside Leaflet's own handler, without waiting for React. */
@@ -366,20 +270,23 @@ export default function CameraMapView({
       const dotLayer = L.layerGroup();
       const pillLayer = L.layerGroup();
 
+      markersRef.current.clear();
       placed.forEach(cam => {
         /* A dot, not a pin. Sixty cameras at neighbourhood zoom is a field of markers, and a
            teardrop's point lands below its own centre — which is a lie about where the camera is
-           when the dots are this dense. The white ring keeps a dot's edge over dark tiles. */
+           when the dots are this dense. */
         const icon = L.divIcon({
           className: "",
-          html: `<span style="display:block;width:12px;height:12px;border-radius:50%;
-                   background:${statusColor(cam)};box-shadow:0 0 0 2px white, 0 1px 3px rgba(24,17,39,0.35);"></span>`,
+          html: dotHtml(statusColor(cam), false),
           iconSize: [12, 12],
           iconAnchor: [6, 6],
         });
-        L.marker([cam.lat as number, cam.lng as number], { icon, title: cam.name })
+        const marker = L.marker([cam.lat as number, cam.lng as number], { icon, title: cam.name })
           .addTo(dotLayer)
           .on("click", () => setSelected(cam.id));
+        /* Kept so picking a zone can re-mark these dots without rebuilding the map. Rebuilding
+           would re-run the fitBounds below and fight the zoom the pill click just performed. */
+        markersRef.current.set(cam.id, marker);
       });
 
       zones.forEach(zone => {
@@ -476,43 +383,36 @@ export default function CameraMapView({
   }, [positionsKey]);
 
   /*
-   * THE RING, redrawn whenever the pick changes.
+   * THE RING GOES ON THE DOTS, redrawn whenever the pick changes.
    *
-   * Its own effect and its own layer, so picking a zone does not rebuild sixty markers. Dashed and
-   * unfilled: a filled shape reads as an area the product knows the boundary of, and it does not —
-   * this is "these cameras, together", nothing more.
+   * Its own effect and its own pass over the markers we kept, so picking a zone does not rebuild
+   * the map — a rebuild would re-run the initial fitBounds and undo the zoom the pill click just
+   * performed.
+   *
+   * setIcon rather than a second layer: the mark belongs to the dot, and a separate overlay would
+   * have to be kept in step with markers that already know where they are.
    */
   useEffect(() => {
-    const map = mapInstanceRef.current as { addLayer?: (l: unknown) => void; removeLayer?: (l: unknown) => void } | null;
-    if (!map?.addLayer) return;
-    let layer: unknown = null;
+    if (markersRef.current.size === 0) return;
     let cancelled = false;
     (async () => {
-      if (!pickedZone) return;
       const L = (await import("leaflet")).default;
       if (cancelled) return;
-      const points = pickedZone.cams.map(c => [c.lat, c.lng] as [number, number]);
-      const boundary = roundedBoundary(points);
-      const style = {
-        color: "var(--primary-400)", weight: 1.6, dashArray: "5 4",
-        fill: false, interactive: false,
-        /* Leaflet thins a polygon's points at low zoom to save work, which would undo the rounding
-           the moment you zoomed out. The shape is a few dozen points; keep every one. */
-        smoothFactor: 0,
-      };
-      layer = boundary.length >= 3
-        ? L.polygon(boundary, style)
-        /* One or two cameras have no polygon. A circle wide enough to hold them says the same
-           thing — a ring around this group — without pretending to a shape, and it is already the
-           rounded form the rest of this is working toward. 120m so a single camera's ring is
-           visible at the zoom a pill click lands on. */
-        : L.circle([pickedZone.lat, pickedZone.lng], { ...style, radius: Math.max(120, 120 * points.length) });
-      map.addLayer?.(layer);
+      const pickedIds = new Set(pickedZone ? pickedZone.cams.map(c => c.id) : []);
+      placed.forEach(cam => {
+        const marker = markersRef.current.get(cam.id);
+        if (!marker) return;
+        marker.setIcon(L.divIcon({
+          className: "",
+          html: dotHtml(statusColor(cam), pickedIds.has(cam.id)),
+          iconSize: [12, 12],
+          iconAnchor: [6, 6],
+        }));
+      });
     })();
-    return () => {
-      cancelled = true;
-      if (layer && map.removeLayer) map.removeLayer(layer);
-    };
+    return () => { cancelled = true; };
+    // placed is recreated per render; positionsKey is the value that actually changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pickedZone, positionsKey]);
 
   const selectedCamera = selected === null ? null : placed.find(c => c.id === selected) ?? null;
