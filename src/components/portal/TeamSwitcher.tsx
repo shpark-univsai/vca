@@ -25,8 +25,13 @@ const T = {
     create: "Create team",
 
     // Manage team modal
+    // Two names for one entry, and the switch picks. With teamSelfService off this modal holds
+    // exactly one control — the name — so "Team settings" promises a screen of settings that is
+    // not there. It goes back to the broader name on the day delete returns, rather than leaving
+    // a title that will then be too narrow. (Owner's call, 2026-09-18.)
     manageTeam: "Team settings",
     manageTitle: "Team settings",
+    renameTeam: "Rename team",
     renameLabel: "Team name",
     // ASKED AND ANSWERED — leave it as Save (2026-09-18). It was briefly `Rename` / `이름 변경`:
     // this modal IS the rename form, so the button could have named the act. The owner looked at
@@ -65,6 +70,7 @@ const T = {
     // Manage team modal
     manageTeam: "팀 설정",
     manageTitle: "팀 설정",
+    renameTeam: "팀 이름 바꾸기",
     renameLabel: "팀 이름",
     save: "저장",
     renamedToast: "팀 이름이 바뀌었습니다",
@@ -335,7 +341,7 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
                   <span style={{ display: "flex", width: "14px", flexShrink: 0, justifyContent: "center" }}>
                     <Settings2 size={12} strokeWidth={2.4} />
                   </span>
-                  {t.manageTeam}
+                  {mayShapeTeams ? t.manageTeam : t.renameTeam}
                 </button>
               )}
             </div>
@@ -454,7 +460,7 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
         style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
         <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
           <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.manageTitle}</p>
+            <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{mayShapeTeams ? t.manageTitle : t.renameTeam}</p>
             <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
             </button>
