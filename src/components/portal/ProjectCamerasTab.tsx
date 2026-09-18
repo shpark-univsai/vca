@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import CameraImportModal from "./CameraImportModal";
 import CameraMapView from "./CameraMapView";
+import UploadPreviewModal from "./UploadPreviewModal";
 import { CircleAlert, Cpu, FileInput, Gauge, FileOutput, MapPin, Table2, Film as FilmIcon, Image as ImageIcon, MapPinOff, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
 import { useVcaStore, hasPosition, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraAddRefusal, type CameraKind, type ServerType, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { formatElapsed } from "@/lib/time";
+import { forgetUploadFile, rememberUploadFile } from "@/lib/uploadBlobs";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
 import { useFitRowsPerPage, TablePagination, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
@@ -94,6 +96,7 @@ const T = {
     sourceVideo: "Video",
     sourceImage: "Image",
     colAddress: "Connection info",
+    colResolution: "Resolution",
     statusPending: "Queued",
     statusAnalyzing: "Analysing",
     statusDone: "Analysed",
@@ -107,6 +110,7 @@ const T = {
     uploadHint: "MP4, MOV, JPG, PNG. Analysed for faces and shown in Best Frame.",
     uploadChoose: "Choose file",
     toastUploadedTitle: "Uploaded",
+    previewUploadAction: "Play file",
     removeUploadAction: "Remove upload",
     toastUploadRemovedTitle: "Upload removed",
     emptyNoSources: "Nothing registered for this project yet.",
@@ -139,6 +143,8 @@ const T = {
     // because both only ever select the rows on screen.
     selectAllLabel: "Select all rows shown",
     colCamera: "Camera",
+    colSourceName: "Source",
+    colFileName: "File",
     colServer: "Server",
     colZone: "Zone",
     // No colRtspStream: this table's address column prints the IP and the resolution (see
@@ -276,6 +282,7 @@ const T = {
     sourceVideo: "영상",
     sourceImage: "이미지",
     colAddress: "연결 정보",
+    colResolution: "해상도",
     statusPending: "대기",
     statusAnalyzing: "분석 중",
     statusDone: "분석 완료",
@@ -289,6 +296,7 @@ const T = {
     uploadHint: "MP4, MOV, JPG, PNG. 얼굴을 분석해 베스트 프레임에서 볼 수 있습니다.",
     uploadChoose: "파일 선택",
     toastUploadedTitle: "업로드됨",
+    previewUploadAction: "파일 재생",
     removeUploadAction: "업로드 삭제",
     toastUploadRemovedTitle: "업로드가 삭제됨",
     emptyNoSources: "이 프로젝트에 등록된 소스가 없습니다.",
@@ -317,6 +325,8 @@ const T = {
     bulkMovedTitle: (n: number, zone: string) => `카메라 ${n}대를 ${zone}(으)로 이동함`,
     selectAllLabel: "보이는 행 전체 선택",
     colCamera: "카메라",
+    colSourceName: "소스",
+    colFileName: "파일",
     colServer: "서버",
     colZone: "구역",
     colStatus: "상태",
@@ -1086,6 +1096,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   // so actions taken inside the modal (e.g. Reconnect) are reflected immediately instead of
   // showing a stale snapshot captured at the moment the modal opened.
   const [inspectingCameraId, setInspectingCameraId] = useState<string | null>(null);
+  /* The file row's equivalent of the camera preview. Same gesture, different subject: one is a
+     stream somebody is watching, the other a recording that waits to be played. */
+  const [inspectingUploadId, setInspectingUploadId] = useState<string | null>(null);
   /**
    * Opens the camera the Overview's panel handed over, once, and tells the parent it is done so a
    * later visit to this tab opens plain. Effect rather than initial state: this component stays
@@ -1612,13 +1625,18 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const acceptFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const accepted = Array.from(files).filter(f => f.type.startsWith("video/") || f.type.startsWith("image/"));
-    accepted.forEach(f => addUpload({
-      projectId,
-      fileName: f.name,
-      kind: uploadPurpose === "deepfake" ? "deepfake" : f.type.startsWith("image/") ? "image" : "video",
-      sizeBytes: f.size,
-      uploadedBy: SIGNED_IN_USER.name,
-    }));
+    accepted.forEach(f => {
+      const id = addUpload({
+        projectId,
+        fileName: f.name,
+        kind: uploadPurpose === "deepfake" ? "deepfake" : f.type.startsWith("image/") ? "image" : "video",
+        sizeBytes: f.size,
+        uploadedBy: SIGNED_IN_USER.name,
+      });
+      /* The browser already has this file, so the preview can play it for real rather than
+         explaining why it cannot — see lib/uploadBlobs for why the URL is not store state. */
+      rememberUploadFile(id, f);
+    });
     if (accepted.length === 0) return;
     // Land on the tab the files went to, not on ALL: the person just asked a question about these
     // files and the answer is on that list.
@@ -2142,10 +2160,22 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             </label>
             {([
               { label: "" },
-              { label: t.colCamera, key: "name" },
+              /* THE HEADER FOLLOWS WHAT IS UNDER IT. This column holds the row's identity —
+                 a camera's name with its code beneath, a file's name with its length and size —
+                 and it was headed 카메라 on every tab, including the mixed one where half the
+                 rows are files (owner: 이게 카메라 이름인거지?). A file row under a column headed
+                 "카메라" makes the reader check whether they are reading the right table.
+                 소스 on the mixed tab, because that is the noun this screen is named after; 파일
+                 where the rows are only files; 카메라 where they are only cameras. */
+              { label: showCameraColumns ? (showKindColumn ? t.colSourceName : t.colCamera) : t.colFileName, key: "name" },
               ...(showKindColumn ? [{ label: t.colSource }] : []),
               ...(showCameraColumns ? [{ label: t.colServer, key: "server" as CameraSortKey }, { label: t.colZone, key: "zone" as CameraSortKey }] : []),
-              { label: t.colAddress },
+              /* A file has no connection. On the tabs whose rows are all files this cell holds a
+                 resolution and nothing else, so that is what the heading says — same correction
+                 as the name column beside it. On the mixed tab it stays 연결 정보: there it
+                 carries a camera's address and a file's resolution, which is the one thing both
+                 kinds answer — how this source is identified. */
+              { label: showCameraColumns ? t.colAddress : t.colResolution },
               { label: t.colStatus, key: "status" },
               { label: "" },
             ] as { label: string; key?: CameraSortKey }[]).map((h, i) => (
@@ -2201,18 +2231,23 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
              * The controls inside stop the event: a checkbox is a selection, not a visit, and the
              * ⋯ menu opening the camera behind its own dropdown would be absurd.
              */
-            const rowInteraction = row.kind === "camera"
-              ? {
-                className: "portal-attention-row",
-                role: "button",
-                tabIndex: 0,
-                style: { ...rowStyle, cursor: "pointer" },
-                onClick: () => setInspectingCameraId(row.camera.id),
-                onKeyDown: (e: React.KeyboardEvent) => {
-                  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setInspectingCameraId(row.camera.id); }
-                },
-              }
-              : { style: rowStyle };
+            /* BOTH KINDS OF ROW OPEN, because both have somewhere to go. A file row used to be
+               the one row in the table that did not react to a pointer at all (owner: 어쨌든 쟤만
+               호버가 안 되는 게 너무 어색해), which read as a row that had failed to load rather
+               than one with nothing behind it. It does have something behind it: the recording. */
+            const openRow = () => row.kind === "camera"
+              ? setInspectingCameraId(row.camera.id)
+              : setInspectingUploadId(row.upload.id);
+            const rowInteraction = {
+              className: "portal-attention-row",
+              role: "button",
+              tabIndex: 0,
+              style: { ...rowStyle, cursor: "pointer" },
+              onClick: openRow,
+              onKeyDown: (e: React.KeyboardEvent) => {
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openRow(); }
+              },
+            };
             const stopRowClick = { onClick: (e: React.MouseEvent) => e.stopPropagation() };
             // The whole cell is the target, not the 13px box — same fix the VIP registry got
             // (2026-09-18). The label makes the padding clickable without a handler of its own,
@@ -2247,7 +2282,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               const verdictDot = verdict === "manipulated" ? "var(--danger-400)"
                 : verdict === "authentic" ? "var(--gray-900)" : "var(--gray-300)";
               return (
-                <div key={row.id} style={rowStyle}>
+                <div key={row.id} {...rowInteraction}>
                   {checkbox}
                   {/* A file has no live thumbnail to show, so the tile carries its kind instead of
                       a frame we do not have. Inventing a poster image would imply the analysis had
@@ -2308,9 +2343,16 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   </span>
                   {/* In its own span, the way the camera row wraps its menu, so both rows end
                       with one cell and the two ⋯ columns line up. */}
-                  <span>
+                  {/* In its own span, the way the camera row wraps its menu, so both rows end
+                      with one cell and the two ⋯ columns line up. stopRowClick for the same
+                      reason the camera row uses it: opening the preview behind its own dropdown
+                      would be absurd. */}
+                  <span {...stopRowClick}>
                     <RowActionsMenu actions={[
-                      { label: t.removeUploadAction, onClick: () => { removeUpload(u.id); showToast({ variant: "warning", title: t.toastUploadRemovedTitle, desc: u.fileName }); }, danger: true, disabled: !mayEdit, reason: readOnlyReason },
+                      // Named first, like the camera row's Preview: the thumbnail-sized tile is
+                      // not a control anyone is told about, and a row that opens should say so.
+                      { label: t.previewUploadAction, onClick: () => setInspectingUploadId(u.id) },
+                      { label: t.removeUploadAction, onClick: () => { forgetUploadFile(u.id); removeUpload(u.id); showToast({ variant: "warning", title: t.toastUploadRemovedTitle, desc: u.fileName }); }, danger: true, disabled: !mayEdit, reason: readOnlyReason },
                     ]} />
                   </span>
                 </div>
@@ -2580,6 +2622,12 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       {/* Confirmed, not undoable-with-a-toast: removing cameras in bulk takes a whole set of feeds
           off monitoring at once, and there is no restore. Says what actually happens and what does
           not, because "are you sure?" alone leaves people guessing about the recordings. */}
+      {inspectingUploadId && projectUploads.some(u => u.id === inspectingUploadId) && (
+        <UploadPreviewModal
+          upload={projectUploads.find(u => u.id === inspectingUploadId) as UploadedMedia}
+          onClose={() => setInspectingUploadId(null)}
+        />
+      )}
       {showImport && <CameraImportModal projectId={projectId} onClose={() => setShowImport(false)} />}
 
 
