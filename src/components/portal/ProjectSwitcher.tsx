@@ -114,7 +114,11 @@ const T = {
     switchTeam: "Switch team",
     noStarredProjects: "No starred projects yet.",
     noResultsFor: (query: string) => `No results for "${query}".`,
-    cancel: "Cancel",
+    // 닫기, not 취소 / Close, not Cancel. Nothing here is pending: picking a project takes effect
+    // on the row click, and this button only puts the picker away. Cancel promises to undo
+    // something, and there is nothing to undo — the six 닫기 elsewhere in the product are this
+    // same button. (Owner's call, 2026-09-18.)
+    close: "Close",
   },
   ko: {
     selectProject: "프로젝트 선택",
@@ -129,7 +133,7 @@ const T = {
     switchTeam: "팀 변경",
     noStarredProjects: "즐겨찾기한 프로젝트가 없습니다.",
     noResultsFor: (query: string) => `"${query}"에 대한 검색 결과가 없습니다.`,
-    cancel: "취소",
+    close: "닫기",
   },
 } as const;
 
@@ -531,7 +535,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                 onClick={() => setOpen(false)}
                 style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
               >
-                {t.cancel}
+                {t.close}
               </button>
             </div>
           </div>
