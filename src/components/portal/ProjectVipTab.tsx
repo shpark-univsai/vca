@@ -7,7 +7,7 @@ import { canSetPolicy, currentPortalUser, defaultVipExpiry, isExpired, isExpiryU
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
-import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
+import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed } from "@/lib/time";
 import { useToast } from "../Toast";
 import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SEARCH_FIELD, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
@@ -17,8 +17,13 @@ type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires
 // 36px for the actions column, the width RowActionsMenu gets in every other table.
 /*
  * TRACKS FOLLOW THE HEADER ORDER, and the header was reordered on 2026-09-18 — check both
- * together if you touch either. Order: checkbox · face · 이름 · 우선순위 · 등록 근거 · [그룹] ·
- * [분류] · 등록일 · 마지막 탐지 · actions.
+ * together if you touch either. Order: checkbox · 우선순위 · face · 이름 · 등록 근거 · [그룹] ·
+ * [분류] · 마지막 탐지 · 등록일 · actions.
+ *
+ * 우선순위 LEADS THE ROW, before the face (owner's ask: "그룹이 맨앞에가 애매하면 우선순위를
+ * 맨앞에?"). Before rather than after, so the face and the name stay side by side — they are one
+ * thing, and a pill between them splits an identity in half. Linear's issue rows are laid out
+ * exactly this way: checkbox, priority, then what the row is.
  *
  * 우선순위 is a FIXED 96px, not a fraction: the pill is as wide as its longest label ("매우 높음"
  * plus the three-bar meter, measured at 88px) and never wider, so a fractional track just added
@@ -29,13 +34,13 @@ type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires
  * ten characters, and a fraction gave each of them ~114px of which a quarter was empty. The space
  * they gave back goes to 이름 and 등록 근거, which are the two that actually run out of room.
  */
-const VIP_GRID = "28px 48px 1.6fr 96px 1.1fr 0.8fr 100px 100px 36px";
+const VIP_GRID = "28px 96px 48px 1.6fr 1.1fr 0.8fr 110px 110px 36px";
 /** The All tab adds a Group column; the Individuals tab would print "Individual" on every row. */
-const VIP_GRID_WITH_GROUP = "28px 48px 1.35fr 96px 1fr 0.85fr 0.75fr 100px 100px 36px";
+const VIP_GRID_WITH_GROUP = "28px 96px 48px 1.35fr 1fr 0.85fr 0.75fr 110px 110px 36px";
 /** Same two, with the category track dropped — see complianceConfig.vipCategories. The freed
  *  width goes to the name, which is what a reader scans this table by. */
-const VIP_GRID_NO_CAT = "28px 48px 1.9fr 96px 1.2fr 100px 100px 36px";
-const VIP_GRID_WITH_GROUP_NO_CAT = "28px 48px 1.6fr 96px 1.1fr 0.9fr 100px 100px 36px";
+const VIP_GRID_NO_CAT = "28px 96px 48px 1.9fr 1.2fr 110px 110px 36px";
+const VIP_GRID_WITH_GROUP_NO_CAT = "28px 96px 48px 1.6fr 1.1fr 0.9fr 110px 110px 36px";
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -134,6 +139,8 @@ interface VipDict {
   expiringInDays: (n: number) => string;
   /** The nudge on an expired row: how long ago, because "expired" alone does not ask anything. */
   expiredDaysAgo: (n: number) => string;
+  /** Wraps formatElapsed for the 마지막 탐지 column: "1일 02시간" → "1일 02시간 전". */
+  detectedAgo: (elapsed: string) => string;
   noExpiry: string;
   expiryUnanswered: string;
   expiryUnansweredWhy: string;
@@ -302,6 +309,7 @@ const T: Record<"en" | "ko", VipDict> = {
     statusReleased: "Released",
     expiringInDays: (n: number) => `${n}d left`,
     expiredDaysAgo: (n: number) => `Expired ${n}d ago`,
+    detectedAgo: (elapsed: string) => `${elapsed} ago`,
     noExpiry: "No end date",
     // Same words as the cameras table's checkbox, which is the same control doing the same thing —
     // and "shown" stays in both, because both only ever select the rows on screen.
@@ -461,6 +469,7 @@ const T: Record<"en" | "ko", VipDict> = {
     statusReleased: "해제됨",
     expiringInDays: (n: number) => `${n}일 남음`,
     expiredDaysAgo: (n: number) => `만료 ${n}일 지남`,
+    detectedAgo: (elapsed: string) => `${elapsed} 전`,
     noExpiry: "무기한",
     selectAllLabel: "보이는 행 전체 선택",
     selectedCount: (n: number) => `${n}명 선택됨`,
@@ -2186,8 +2195,10 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               aria-label={t.selectAllLabel}
               style={{ accentColor: "var(--gray-900)", cursor: "pointer", justifySelf: "start" }}
             />
-            {/* The photo and the note carry no sortKey — a face has no order, and a free-text note
-                sorted alphabetically answers nothing. */}
+            {/* Priority leads, then the face (no sortKey — a face has no order). */}
+            <span style={{ paddingLeft: "8px" }}>
+              <SortableHeader label={t.colPriority} sortKey="priority" sort={sort} onToggle={toggleSort} />
+            </span>
             <span />
             {([
               /* ORDER: who · how urgent · why they are listed · who with · since when · last seen.
@@ -2197,12 +2208,13 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                  ahead of the priority that decides how an operator reacts. Dates go to the right:
                  a column of numbers is the easy one to scan wherever it sits. */
               { label: t.colName, key: "name" },
-              { label: t.colPriority, key: "priority", indent: true },
               { label: t.basisLabel },
               ...(showGroupColumn ? [{ label: t.colGroup }] : []),
               ...(categoriesEnabled ? [{ label: t.colCategory }] : []),
-              { label: t.colRegistered, key: "registered" },
+              /* 마지막 탐지 before 등록일 (owner's order). Recency is what somebody acts on; the
+                 registration date is an audit fact, and audit facts can sit at the end. */
               { label: t.colLastDetected, key: "lastDetected" },
+              { label: t.colRegistered, key: "registered" },
               /* 등록 근거, not 메모 (owner's ask, 2026-09-18): "그게 더 중요한거면 표에서도
                  메모가 아니라 등록근거를 보여줘야할것같아". Right — the basis is what an audit
                  asks for, which is why it sits under the name in the form; the note is whatever
@@ -2241,6 +2253,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     style={{ accentColor: "var(--gray-900)", cursor: "pointer", width: "15px", height: "15px", margin: 0 }}
                   />
                 </label>
+                <span>{person.priorityLabel ? <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
                 {/* 48px, up from 32. A face at 32 in a table is a thumbnail of a thumbnail, and
                     this column exists so the reader can tell one Michael from another. The row's
                     own padding is untouched — the first grid track grew with the picture, so the
@@ -2248,12 +2261,8 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                 <FacePhoto src={person.photoUrl} size={48} radius="8px" />
                 {/* The name is the way in, as it is in most tables — a narrow target that does not
                     fight the group select two cells over for the same click. */}
-                {/* The name, and under it the one state that needs a person to decide.
-                    The 만료 column is gone (the date is a policy's, not this row's — see the note
-                    on the registration form), but EXPIRED still has to be visible: the listing is
-                    still being matched and somebody has to say whether it should be. So it sits
-                    here as a tag under the name, and it says HOW LONG AGO, because "만료" alone
-                    does not ask anything and "만료 320일 지남" does. */}
+                {/* Just the name. The expiry tag moved under 등록일, where the other lifecycle
+                    date lives (owner's ask: "이름 아래 있는 만료 표시를 등록일 아래로 옮겨줘"). */}
                 <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
                   <button className="portal-link" onClick={() => setDetailFor(person)} title={person.name}
                     style={{
@@ -2263,21 +2272,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     }}>
                     {person.name}
                   </button>
-                  {(() => {
-                    if (!person.expiresAt || !isExpired(person, todayKey)) return null;
-                    const daysAgo = nowMs === null ? null : Math.floor((nowMs - Date.parse(person.expiresAt)) / 86_400_000);
-                    return (
-                      /* Grey, not red. The listing is still being matched and nothing is broken —
-                         it is a question waiting for an answer, and the count in the strip above is
-                         where the colour belongs. Red on a row that is working as designed is the
-                         same mistake as the amber pill that ran down 119 of 123 rows. */
-                      <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap" }}>
-                        {daysAgo === null ? t.statusExpired : t.expiredDaysAgo(daysAgo)}
-                      </span>
-                    );
-                  })()}
                 </span>
-                <span>{person.priorityLabel ? <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
                 <span title={person.basis || undefined} style={{ fontSize: "12px", color: person.basis ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.basis || "—"}</span>
                 {showGroupColumn && (
                   <span style={{ minWidth: 0, fontSize: "12px", color: person.groupId ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -2311,7 +2306,6 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                 {/* The category, in the institution's own word and its own colour. Unclassified
                     says so rather than showing a dash: it is a state somebody chose (or has not
                     got round to), not a missing value. */}
-                <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{person.registeredAt.slice(0, 10)}</span>
                 {/* The same em dash every other empty cell in this table uses, in the same grey as
                     the priority column's. It was the word "Never" first, on the grounds that "not
                     recorded" and "never matched" are different answers — but two rows in three have
@@ -2319,8 +2313,37 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     that are the reason to look. The header names the column and the sort collects
                     these rows together; the dash does not need to carry the sentence. Grey, never
                     amber — never being seen is not a fault (see Person.lastDetectedAt). */}
-                <span style={{ fontSize: "12px", color: person.lastDetectedAt ? "var(--gray-600)" : "var(--gray-300)" }}>
+                <span style={{ display: "flex", flexDirection: "column", gap: "1px", fontSize: "12px", color: person.lastDetectedAt ? "var(--gray-600)" : "var(--gray-300)" }}>
                   {person.lastDetectedAt ? person.lastDetectedAt.slice(0, 10) : "—"}
+                  {/* How long ago, under the date (owner's ask). A date answers "when"; the reader
+                      is asking "recently or not", and 2026-09-08 only answers that if you are
+                      holding today's date in your head. Null until mounted, like every other clock
+                      read on this screen. */}
+                  {person.lastDetectedAt && nowMs !== null && (
+                    <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>
+                      {t.detectedAgo(formatElapsed(nowMs - Date.parse(person.lastDetectedAt), lang))}
+                    </span>
+                  )}
+                </span>
+                {/* The registration date, and under it the expiry if it has lapsed. Both are the
+                    listing's lifecycle, which is why they belong in one cell — the tag used to sit
+                    under the NAME, two columns away from the only other date that describes the
+                    same thing. */}
+                <span style={{ display: "flex", flexDirection: "column", gap: "1px", fontSize: "12px", color: "var(--gray-600)" }}>
+                  {person.registeredAt.slice(0, 10)}
+                  {(() => {
+                    if (!person.expiresAt || !isExpired(person, todayKey)) return null;
+                    const daysAgo = nowMs === null ? null : Math.floor((nowMs - Date.parse(person.expiresAt)) / 86_400_000);
+                    return (
+                      /* Grey, not red. The listing is still being matched and nothing is broken —
+                         it is a question waiting for an answer, and the count in the strip above is
+                         where the colour belongs. Red on a row that is working as designed is the
+                         same mistake as the amber pill that ran down 119 of 123 rows. */
+                      <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap" }}>
+                        {daysAgo === null ? t.statusExpired : t.expiredDaysAgo(daysAgo)}
+                      </span>
+                    );
+                  })()}
                 </span>
                 {/* Expiry, and what has already happened to it.
                     Released and expired rows stay in the list — if they vanished, nobody could tell
