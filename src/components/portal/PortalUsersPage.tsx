@@ -2726,9 +2726,16 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           names a remedy the project has ruled out is worse than nothing: it asks for a change that
           will be refused, and every admin who reads it distrusts the next warning too.
 
-          The GUARD is a different thing and stays: `isLastActiveAdmin` still refuses to demote or
-          suspend the last owner. A reissued password recovers an owner who is locked out; nothing
-          recovers an installation with zero owners, so that door stays shut. */}
+          The GUARD is a different thing and stays: `isLastActiveAdmin` still refuses to demote,
+          suspend or delete the last owner, and deleteTeam refuses to reach the same end by
+          deleting the container.
+
+          It is not guarding against a state this product can reach. An installation is handed over
+          with its first owner already in it (`/signup` is off on-premise, decided 2026-09-02), and
+          no path removes the last one — those refusals ARE why. What the guard is for is narrower
+          and concrete: the demote, suspend and delete controls exist in this screen's row menu, so
+          something has to answer when one of them is aimed at the only owner. A reissued password
+          brings back an owner who is locked out; it cannot appoint one. */}
 
       {/* Top-level cut of the list, with counts on the tabs — the same underlined row Input Sources
           uses for its kinds. */}
