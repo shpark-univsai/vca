@@ -181,18 +181,14 @@ interface VipDict {
   bulkEmptyDesc: string;
   // Tabs and groups
   tabAll: string;
-  tabIndividuals: string;
   tabGroups: string;
   tabAllHint: string;
-  tabIndividualsHint: string;
   tabGroupsHint: string;
   tabReleased: string;
   tabReleasedHint: string;
   addGroup: string;
   colGroup: string;
   colMembers: string;
-  groupNone: string;
-  noIndividuals: string;
   noGroups: string;
   groupModalAddTitle: string;
   groupModalEditTitle: string;
@@ -352,18 +348,14 @@ const T: Record<"en" | "ko", VipDict> = {
     bulkEmptyTitle: "No rows imported",
     bulkSuccessDesc: (count: number, fileName: string) => `${count} VIP(s) registered from ${fileName}.`,
     tabAll: "All",
-    tabIndividuals: "Individuals",
     tabGroups: "Groups",
     tabAllHint: "Every person registered for this project, whether or not they belong to a group.",
-    tabIndividualsHint: "People registered on their own — nobody in a group.",
     tabGroupsHint: "Parties registered together: a visiting delegation, a protection detail. Removing a group keeps its members registered.",
     tabReleased: "Released",
     tabReleasedHint: "Taken off the VIP list, with a record of who did it and why. They are off the matching list — and nothing here has been deleted.",
     addGroup: "Add group",
     colGroup: "Group",
     colMembers: "Members",
-    groupNone: "Individual",
-    noIndividuals: "Everybody registered here belongs to a group.",
     noGroups: "No groups yet.",
     groupModalAddTitle: "Add group",
     groupModalEditTitle: "Edit group",
@@ -512,18 +504,14 @@ const T: Record<"en" | "ko", VipDict> = {
     bulkEmptyTitle: "가져온 행이 없습니다",
     bulkSuccessDesc: (count: number, fileName: string) => `${fileName}에서 VIP ${count}명이 등록되었습니다.`,
     tabAll: "전체",
-    tabIndividuals: "개인",
     tabGroups: "그룹",
     tabAllHint: "이 프로젝트에 등록된 사람 전부입니다. 그룹에 속했는지와 무관합니다.",
-    tabIndividualsHint: "혼자 등록된 사람입니다 — 그룹에 속한 사람은 빠집니다.",
     tabGroupsHint: "함께 등록된 일행입니다: 방문단, 경호 대상. 그룹을 지워도 소속된 사람은 등록된 채로 남습니다.",
     tabReleased: "해제됨",
     tabReleasedHint: "VIP에서 내려온 사람입니다. 누가 언제 왜 내렸는지가 함께 남습니다. 대조 명단에서 내려갔고, 삭제된 것은 아무것도 없습니다.",
     addGroup: "그룹 추가",
     colGroup: "그룹",
     colMembers: "인원",
-    groupNone: "개인",
-    noIndividuals: "여기 등록된 사람은 모두 그룹에 속해 있습니다.",
     noGroups: "아직 그룹이 없습니다.",
     groupModalAddTitle: "그룹 추가",
     groupModalEditTitle: "그룹 편집",
@@ -904,7 +892,9 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
                   <FilterSelect
                     value={groupId}
                     onChange={setGroupId}
-                    options={[{ value: "", label: t.groupNone }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
+                    /* "그룹 없음", the same words the filter uses for the same set. It said
+                       "개인", which read as a third kind of registration next to the group names. */
+                    options={[{ value: "", label: t.noGroup }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
                     footerAction={{ label: t.addGroup, onClick: () => setNewGroupName("") }}
                   />
                 ) : (
@@ -1213,9 +1203,12 @@ function PersonDetailModal({ t, person, zone, groups, onClose, onEdit, onRemove 
           ]} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: BORDER, paddingTop: "12px" }}>
+            {/* A dash, not the word "개인". No group is the absence of a value, and this product
+                does not dress absences up as values — the same rule that keeps 0,0 out of the
+                coordinate fields. */}
             {row(t.colGroup, group
               ? group.name
-              : <span style={{ color: "var(--gray-400)" }}>{t.groupNone}</span>)}
+              : <span style={{ color: "var(--gray-400)" }}>—</span>)}
             {/* Group first, then what qualifies the person, then the note, then when they were
                 enrolled — last because it is the one value nobody comes here to read and the only
                 one that never changes. The time is shown as well: this is the detail view, and on
@@ -1329,7 +1322,22 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
    * people, so the combined tab is a list of people with a Group column — every row fills every
    * column. Individuals is the same list minus anyone in a group; Groups is the parties themselves.
    */
-  const [vipTab, setVipTab] = useState<"all" | "individuals" | "groups" | "released">("all");
+  /*
+   * THERE IS NO "INDIVIDUALS" TAB, and that is a decision (owner's call, 2026-09-18). Do not add
+   * one back.
+   *
+   * It used to sit between All and Groups, counting people with no `groupId`. But having no group
+   * is not a KIND of person — it is the DEFAULT STATE, the way most of a register looks — and a
+   * tab made the absence of a value look like a category. Thirteen products were read for this
+   * (Dropbox, Calendly, Twingate, Asana, Circle, Patreon, Whop, …): every one of them keeps ONE
+   * list of people and, where groups exist, a SEPARATE list of groups. Where those products do
+   * use tabs they split by state or kind — Members / Guests / Invited, Paid / Free — and not one
+   * of them has a tab for "people who are not in a group".
+   *
+   * What replaces it was already here: the group COLUMN on the all-list, and the "그룹 없음"
+   * option in the group filter. Anyone who wants only the ungrouped picks that filter.
+   */
+  const [vipTab, setVipTab] = useState<"all" | "groups" | "released">("all");
   /**
    * Narrows the people list to one group. Set by clicking a group's member count, which is the
    * question that number raises — "who are those three?" — and until now had no answer short of
@@ -1447,7 +1455,6 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
 
   const matchingPersons = (vipTab === "released" ? releasedPersons : activePersons)
     .filter(p => !healthFilter || healthIds[healthFilter].has(p.id))
-    .filter(p => vipTab !== "individuals" || !p.groupId)
     .filter(p => !groupFilter || (groupFilter === "__none" ? !p.groupId : p.groupId === groupFilter))
     .filter(p => priorityFilter === "ALL" || (p.priorityLabel ?? "normal") === priorityFilter)
     .filter(p => !q || p.name.toLowerCase().includes(q));
@@ -1463,14 +1470,11 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
    * empty intersection printed "no VIPs registered for this project yet" over a registry holding
    * 123 of them — while the chip two inches above it said a filter was on.
    */
-  /* Three states, not two. `noIndividuals` says "everyone here is in a group", which is a claim
-     about a register that has people in it — on a project with nobody registered at all it is
-     simply false, and it is the first screen a new site sees. Nothing registered wins over
-     nothing-in-this-tab. */
-  const emptyText = q || activeFilterCount > 0
-    ? t.noSearchResults
-    : activePersons.length === 0 ? t.noVips
-    : vipTab === "individuals" ? t.noIndividuals : t.noVips;
+  /* Two states now that the Individuals tab is gone — there is no longer a tab that can be empty
+     while the register is full. Filtered-to-nothing still has to beat "nothing registered": the
+     chip above says a filter is on, and printing "no VIPs registered yet" over a register of 123
+     was the defect this branch was written for. */
+  const emptyText = q || activeFilterCount > 0 ? t.noSearchResults : t.noVips;
   const sortValue = (person: Person, key: VipSortKey) => {
     switch (key) {
       case "name": return person.name.toLowerCase();
@@ -1712,14 +1716,13 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
       <div style={{ display: "flex", gap: "20px" }}>
         {([
           { id: "all", label: t.tabAll, count: activePersons.length, hint: t.tabAllHint },
-          { id: "individuals", label: t.tabIndividuals, count: activePersons.filter(p => !p.groupId).length, hint: t.tabIndividualsHint },
           { id: "groups", label: t.tabGroups, count: personGroups.filter(g => g.projectId === projectId).length, hint: t.tabGroupsHint },
           // Only once there is something in it. A permanently visible "Released 0" invites the
           // question of whether releasing is something you are supposed to be doing.
           ...(releaseEnabled && releasedPersons.length > 0
             ? [{ id: "released" as const, label: t.tabReleased, count: releasedPersons.length, hint: t.tabReleasedHint }]
             : []),
-        ] as { id: "all" | "individuals" | "groups" | "released"; label: string; count: number; hint: string }[]).map(tab => {
+        ] as { id: "all" | "groups" | "released"; label: string; count: number; hint: string }[]).map(tab => {
           const active = vipTab === tab.id;
           return (
             <Tooltip key={tab.id} text={tab.hint}>
@@ -2133,7 +2136,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     form; this column was the one that did not. */}
                 {showGroupColumn && (
                   <span style={{ minWidth: 0, fontSize: "12px", color: person.groupId ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {personGroups.find(g => g.id === person.groupId)?.name ?? t.groupNone}
+                    {personGroups.find(g => g.id === person.groupId)?.name ?? "—"}
                   </span>
                 )}
                 {/* The category, in the institution's own word and its own colour. Unclassified
