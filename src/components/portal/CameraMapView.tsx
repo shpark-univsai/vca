@@ -57,6 +57,8 @@ const T = {
     zoneCount: (n: number) => `${n} cam${n === 1 ? "" : "s"}`,
     zoneDown: (n: number) => `${n} down`,
     zoomHint: "Grouped by zone — zoom in for individual cameras.",
+    zonePicked: (label: string, n: number) => `${label} · ${n} ringed`,
+    clearZone: "Clear",
     counted: (drawn: number, total: number) => `${drawn} of ${total} drawn`,
   },
   ko: {
@@ -75,6 +77,8 @@ const T = {
     zoneCount: (n: number) => `${n}대`,
     zoneDown: (n: number) => `${n} 끊김`,
     zoomHint: "구역별로 묶어 보고 있습니다 — 확대하면 카메라 한 대씩 보입니다.",
+    zonePicked: (label: string, n: number) => `${label} ${n}대 묶음`,
+    clearZone: "해제",
     counted: (drawn: number, total: number) => `${total}대 중 ${drawn}대 표시`,
   },
 } as const;
@@ -114,7 +118,8 @@ function groupByZone(cameras: (Camera & { lat: number; lng: number })[], unsetLa
     entry.cams.push(cam);
     byZone.set(key, entry);
   });
-  return [...byZone.values()].map(({ label, cams }) => ({
+  return [...byZone.entries()].map(([key, { label, cams }]) => ({
+    key,
     label,
     cams,
     /* The middle of the cameras themselves, not a district centre we would be borrowing from
@@ -123,6 +128,36 @@ function groupByZone(cameras: (Camera & { lat: number; lng: number })[], unsetLa
     lng: cams.reduce((sum, c) => sum + c.lng, 0) / cams.length,
     down: cams.filter(c => c.status !== "online").length,
   }));
+}
+
+/**
+ * The outline drawn around a picked zone's cameras (owner's ask, 2026-09-18: 구역 선택했을 때
+ * 점선으로 해당 카메라들 묶어서 테두리).
+ *
+ * A convex hull, not a bounding box: a box around cameras strung along one road claims a
+ * rectangle of the city that holds nothing, and the point of the outline is to say which cameras
+ * are in the group — not to assert a boundary the register does not have. Monotone chain, which
+ * is short enough to read and needs no library.
+ *
+ * Under three points there is no polygon to draw, and the caller falls back to a circle: two
+ * cameras would otherwise be a line with no inside, and one would be nothing at all.
+ */
+function convexHull(points: [number, number][]): [number, number][] {
+  if (points.length < 3) return points;
+  const sorted = [...points].sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]));
+  const cross = (o: [number, number], a: [number, number], b: [number, number]) =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = (input: [number, number][]) => {
+    const out: [number, number][] = [];
+    for (const p of input) {
+      while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], p) <= 0) out.pop();
+      out.push(p);
+    }
+    return out;
+  };
+  const lower = half(sorted);
+  const upper = half([...sorted].reverse());
+  return [...lower.slice(0, -1), ...upper.slice(0, -1)];
 }
 
 /** Zone names come from a text field somebody types into, and they go into markup built as a
@@ -195,12 +230,18 @@ export default function CameraMapView({
     if (height !== null && map?.invalidateSize) map.invalidateSize();
   }, [height]);
 
+  /* Which zone's cameras are ringed. Set by clicking a pill, cleared from the chip in the header
+     — and it survives zooming in, which is the point: the ring is how the group stays legible
+     once the pills have given way to individual dots. */
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const placed = useMemo(() => cameras.filter(hasPosition), [cameras]);
   const unplaced = cameras.length - placed.length;
   /* Keyed on the coordinates rather than the array, so a re-render from a hover or a language
      change does not yank the view back from wherever the reader has panned to — the same rule
      RedmapMap follows. */
   const positionsKey = placed.map(c => `${c.id}:${c.lat},${c.lng}`).join("|");
+  const zones = useMemo(() => groupByZone(placed, t.zoneUnset), [placed, t.zoneUnset]);
+  const pickedZone = selectedZone === null ? null : zones.find(z => z.key === selectedZone) ?? null;
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -241,17 +282,31 @@ export default function CameraMapView({
           .on("click", () => setSelected(cam.id));
       });
 
-      groupByZone(placed, t.zoneUnset).forEach(zone => {
+      zones.forEach(zone => {
         /* The count, and how many of them are not answering. One figure would make a zone of
            twelve working cameras and a zone of twelve dead ones the same pill — which is the
            thing this view exists to tell apart. Amber only when there is something to be amber
            about; a healthy zone stays plain. */
-        /* ONE LINE, NOT TWO. Eighteen zones inside one city at this zoom collide, and a
-           two-line pill is twice the ground to collide over — a one-camera Kallang was sitting on
-           top of an eight-camera Geylang. The down-count keeps its amber but drops the word:
-           beside a plain total, "3" in amber is unmistakable and the tooltip carries the noun. */
+        /* ONE LINE, NOT TWO. Eighteen zones inside one city at this zoom collide, and a two-line
+           pill is twice the ground to collide over — a one-camera Kallang was sitting on top of an
+           eight-camera Geylang.
+           
+           THE BROKEN COUNT CARRIES THE SAME ICON THE 오프라인 CELL DOES, not the bare number it
+           had first: an amber "2" after a total is a number whose meaning you have to be told
+           (owner: 뱃지 끝에 주황색 글씨가 좀 직관적으로 모를 수 있을 것 같아서). A crossed-out
+           camera is the one mark on this screen that already means "not answering", four cards
+           up, so the pill borrows it rather than inventing a second vocabulary. lucide's video-off
+           path, inlined because this markup is a string Leaflet renders outside React. */
         const downMark = zone.down > 0
-          ? `<span style="font-size:11px;font-weight:700;color:var(--warning-500)">${zone.down}</span>`
+          ? `<span style="display:inline-flex;align-items:center;gap:2px;color:var(--warning-500)">
+               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                 <path d="M10.66 6H14a2 2 0 0 1 2 2v2.5l5.248-3.062A.5.5 0 0 1 22 7.87v8.196"/>
+                 <path d="M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/>
+                 <path d="m2 2 20 20"/>
+               </svg>
+               <span style="font-size:11px;font-weight:700">${zone.down}</span>
+             </span>`
           : "";
         const pill = L.divIcon({
           className: "",
@@ -277,7 +332,9 @@ export default function CameraMapView({
           .addTo(pillLayer)
           .on("click", () => {
             /* Into the zone, one notch past the breakpoint, so the pill is replaced by its own
-               cameras in a single movement. */
+               cameras in a single movement — and ringed, so the group it stood for is still
+               readable once it is gone. */
+            setSelectedZone(zone.key);
             const bounds = L.latLngBounds(zone.cams.map(c => [c.lat, c.lng] as [number, number]));
             instance.fitBounds(bounds, { padding: [56, 56], maxZoom: ZONE_FOCUS_ZOOM });
           });
@@ -318,6 +375,42 @@ export default function CameraMapView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positionsKey]);
 
+  /*
+   * THE RING, redrawn whenever the pick changes.
+   *
+   * Its own effect and its own layer, so picking a zone does not rebuild sixty markers. Dashed and
+   * unfilled: a filled shape reads as an area the product knows the boundary of, and it does not —
+   * this is "these cameras, together", nothing more.
+   */
+  useEffect(() => {
+    const map = mapInstanceRef.current as { addLayer?: (l: unknown) => void; removeLayer?: (l: unknown) => void } | null;
+    if (!map?.addLayer) return;
+    let layer: unknown = null;
+    let cancelled = false;
+    (async () => {
+      if (!pickedZone) return;
+      const L = (await import("leaflet")).default;
+      if (cancelled) return;
+      const points = pickedZone.cams.map(c => [c.lat, c.lng] as [number, number]);
+      const hull = convexHull(points);
+      const style = {
+        color: "var(--primary-400)", weight: 1.6, dashArray: "5 4",
+        fill: false, interactive: false,
+      };
+      layer = hull.length >= 3
+        ? L.polygon(hull, style)
+        /* One or two cameras have no polygon. A circle wide enough to hold them says the same
+           thing — a ring around this group — without pretending to a shape. 120m so a single
+           camera's ring is visible at the zoom a pill click lands on. */
+        : L.circle([pickedZone.lat, pickedZone.lng], { ...style, radius: Math.max(120, 120 * points.length) });
+      map.addLayer?.(layer);
+    })();
+    return () => {
+      cancelled = true;
+      if (layer && map.removeLayer) map.removeLayer(layer);
+    };
+  }, [pickedZone, positionsKey]);
+
   const selectedCamera = selected === null ? null : placed.find(c => c.id === selected) ?? null;
 
   return (
@@ -331,6 +424,23 @@ export default function CameraMapView({
     }}>
       <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px", borderBottom: BORDER, flexWrap: "wrap" }}>
         <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-600)" }}>{t.counted(placed.length, cameras.length)}</span>
+        {/* WHAT THE RING IS AROUND, AND THE WAY OUT OF IT. A dashed shape with nothing naming it
+            is a mark the reader has to reverse-engineer, and once the pills are gone there is
+            nothing else on screen that says which zone was picked. */}
+        {pickedZone && (
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: "6px", padding: "3px 4px 3px 9px",
+            borderRadius: "999px", border: "1px dashed var(--primary-400)", backgroundColor: "var(--primary-50)",
+          }}>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--primary-400)" }}>
+              {t.zonePicked(pickedZone.label, pickedZone.cams.length)}
+            </span>
+            <button onClick={() => setSelectedZone(null)} title={t.clearZone}
+              style={{ display: "flex", padding: "2px", border: "none", background: "none", cursor: "pointer", color: "var(--primary-400)" }}>
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+            </button>
+          </span>
+        )}
         <span style={{ flex: 1 }} />
         {/* WHICHEVER MODE IS ON SCREEN, THE HEADER EXPLAINS THAT ONE. A status legend over a map
             of zone pills describes marks that are not being drawn, and the pills' own numbers are

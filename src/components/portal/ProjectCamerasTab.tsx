@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import CameraImportModal from "./CameraImportModal";
 import CameraMapView from "./CameraMapView";
-import { CircleAlert, FileInput, FileOutput, MapPin, Table2, Film as FilmIcon, Image as ImageIcon, MapPinOff, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
-import { useVcaStore, hasPosition, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraAddRefusal, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
+import { CircleAlert, Cpu, FileInput, Gauge, FileOutput, MapPin, Table2, Film as FilmIcon, Image as ImageIcon, MapPinOff, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
+import { useVcaStore, hasPosition, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraAddRefusal, type CameraKind, type ServerType, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { formatElapsed } from "@/lib/time";
@@ -64,6 +64,8 @@ const T = {
     healthOfflineWhy: "No answer at all — the address is unreachable. Usually power, cable or network rather than the camera itself.",
     healthError: "refusing the connection",
     healthErrorWhy: "The camera answered and turned us away. Almost always the wrong credentials or a stream path that has changed.",
+    healthChannelsLeft: "channels left",
+    healthChannelsLeftWhy: "Of the channels this site's licence grants, this many are still free. Registering a camera takes one, whether it is typed in or imported, and at zero the form refuses.",
     healthNoPosition: "no coordinates yet",
     healthNoPositionWhy: "The register has the zone but not the latitude and longitude, so this camera is drawn nowhere on the map and nothing it detects can be counted toward a zone. Not a camera fault — the survey line is the part that is missing, and somebody on site fills it in.",
     healthShowOnly: "Show only these",
@@ -167,13 +169,19 @@ const T = {
     fieldZone: "Zone",
     fieldZonePlaceholder: "Front Gate",
     fieldRtspUrl: "Connection — RTSP URL *",
+    fieldSourceType: "Source type *",
+    kindNormal: "Normal camera",
+    kindAi: "AI camera",
+    kindNormalWhy: "Hands over a stream for a Face Recognition or Normal Camera node to analyse.",
+    kindAiWhy: "Runs the analysis on the device and reports results, so it reports to an AI Camera node.",
+    fieldServerNoneForKind: "This project has no server that takes this kind of camera yet.",
     fieldMaker: "Maker *",
     cancel: "Cancel",
     // One word, both languages. Every other save in Portal is "Save" / "저장" — the server form,
     // the roster, the categories — and this was the only 변경사항 저장 among nine plain 저장.
     saveChanges: "Save",
     addDevice: "Add",
-    addAnother: "Add and keep going",
+    addAnother: "Add, then next camera",
     addAnotherWhy: "Registers this camera and keeps the form open for the next one. What a batch shares — maker, model, credentials, server, zone — stays filled in.",
     addedSoFar: (n: number) => `${n} added`,
     addAnotherAtLimit: "No channel left on the licence.",
@@ -195,6 +203,7 @@ const T = {
     toastExportDesc: (n: number) => `${n} camera(s) exported to CSV.`,
     csvHeaderName: "Name",
     csvHeaderCode: "Code",
+    csvHeaderKind: "Source type",
     csvHeaderZone: "Zone",
     csvHeaderLocation: "Location",
     csvHeaderRtspUrl: "RTSP URL",
@@ -237,6 +246,8 @@ const T = {
     healthOfflineWhy: "응답이 아예 없습니다. 주소에 닿지 않는 상태로, 대개 카메라보다 전원·케이블·네트워크 문제입니다.",
     healthError: "연결 거부",
     healthErrorWhy: "카메라가 응답은 했지만 접속을 거절했습니다. 거의 항상 계정 정보가 틀렸거나 스트림 경로가 바뀐 경우입니다.",
+    healthChannelsLeft: "남은 채널",
+    healthChannelsLeftWhy: "이 현장의 라이선스가 준 채널 중 아직 비어 있는 수입니다. 카메라를 한 대 등록하면 하나가 줄고, 직접 등록이든 일괄 가져오기든 같습니다. 0이 되면 폼이 거절합니다.",
     healthNoPosition: "좌표 미등록",
     healthNoPositionWhy: "구역은 적혀 있지만 위도·경도가 없습니다. 그래서 지도 어디에도 그려지지 않고, 이 카메라가 잡은 탐지는 어느 구역으로도 집계되지 않습니다. 카메라 고장이 아니라 등록부에 측량값이 빠진 것이라, 현장에서 좌표를 재서 채워 넣으면 됩니다.",
     healthShowOnly: "이 항목만 보기",
@@ -322,11 +333,17 @@ const T = {
     fieldZone: "구역",
     fieldZonePlaceholder: "정문 구역",
     fieldRtspUrl: "연결 — RTSP URL *",
+    fieldSourceType: "소스 종류 *",
+    kindNormal: "일반 카메라",
+    kindAi: "AI 카메라",
+    kindNormalWhy: "스트림을 넘겨서 얼굴인식 또는 일반 카메라 서버가 분석합니다.",
+    kindAiWhy: "장치에서 분석해 결과를 보고하므로 AI 카메라 서버에 붙습니다.",
+    fieldServerNoneForKind: "이 프로젝트에는 이 종류의 카메라를 받는 서버가 아직 없습니다.",
     fieldMaker: "제조사 *",
     cancel: "취소",
     saveChanges: "저장",
     addDevice: "추가",
-    addAnother: "추가하고 계속",
+    addAnother: "추가하고 다음 카메라",
     addAnotherWhy: "이 카메라를 등록하고 폼을 열어 둔 채 다음 대로 넘어갑니다. 한 묶음이 공유하는 값 — 제조사·모델·계정·연결 서버·구역 — 은 채워진 채로 남습니다.",
     addedSoFar: (n: number) => `${n}대 등록됨`,
     addAnotherAtLimit: "라이선스에 남은 채널이 없습니다.",
@@ -350,6 +367,7 @@ const T = {
     toastExportDesc: (n: number) => `카메라 ${n}대가 CSV로 내보내졌습니다.`,
     csvHeaderName: "이름",
     csvHeaderCode: "코드",
+    csvHeaderKind: "소스 종류",
     csvHeaderZone: "구역",
     csvHeaderLocation: "위치",
     csvHeaderRtspUrl: "RTSP URL",
@@ -363,6 +381,15 @@ const T = {
  * spare, and lands well inside the shell's 32px gutter.
  */
 const EDGE_BLEED = 8;
+
+/**
+ * How few free channels counts as "nearly full", and therefore worth a cell.
+ *
+ * Five, because that is about one afternoon's worth of registrations — enough warning to ask for
+ * more channels before a batch stops halfway, and not so early that the cell is on screen for
+ * months. It is a display threshold only: nothing is refused until the licence is actually full.
+ */
+const CHANNELS_LOW = 5;
 
 // CSS position:sticky kept fighting PortalShell's padded scroll container — the header either
 // left a gap a scrolled-past row showed through, or (once patched with a negative-margin/padding
@@ -500,6 +527,9 @@ const MAKERS = ["Hanwha", "Hikvision", "Dahua"];
 // between (backend reply C2, 2026-09-09). See the note above Camera in the store.
 
 interface CameraFormValues {
+  /** Normal or AI — the first thing the previous product's form asked, and what decides which
+   *  servers the picker below can offer. See CameraKind in the store. */
+  kind: CameraKind;
   name: string;
   ip: string;
   location: string;
@@ -534,6 +564,9 @@ interface CameraFormValues {
 }
 
 const EMPTY_FORM: CameraFormValues = {
+  // Most cameras are plain ones, so the common answer is pre-selected — this is a two-way choice
+  // with a clear default, not a question with no answer.
+  kind: "normal",
   name: "", ip: "", location: "", zone: "", rtspUrl: "",
   maker: MAKERS[0], model: "", username: "", password: "",
   serverId: "", lat: "", lng: "",
@@ -580,9 +613,10 @@ function CameraFormModal({
   title: string;
   initial: CameraFormValues;
   isEdit: boolean;
-  /** This project's servers, for the Associated server picker. Empty is a valid state — a project
-   *  can have cameras before it has anywhere to run them. */
-  servers: { id: string; name: string }[];
+  /** This project's servers, for the Associated server picker — with their type, because which
+   *  ones a camera may report to depends on its kind (see serversForKind). Empty is a valid state:
+   *  a project can have cameras before it has anywhere to run them. */
+  servers: { id: string; name: string; type: ServerType }[];
   onClose: () => void;
   onSubmit: (values: CameraFormValues) => void;
   /** Registers and stays open for the next one. Absent on the edit form — there is no "and
@@ -649,7 +683,27 @@ function CameraFormModal({
      camera list before we have installed its server, and a required field with an empty menu is a
      door with no handle. The hint under the field says so rather than the form silently letting it
      pass. */
-  const serverMissing = servers.length > 0 && form.serverId === "";
+  /*
+   * THE SERVERS THIS KIND OF CAMERA CAN REPORT TO.
+   *
+   * An AI camera analyses on the device and reports results, so it belongs to the AI Camera node;
+   * a normal camera hands over a stream, so it belongs to a Face Recognition or Normal Camera
+   * node. Offering all of them let somebody attach a plain camera to the AI node — a pairing the
+   * estate cannot run, and one nothing on this screen would ever have complained about.
+   *
+   * Switching the kind re-checks what is already chosen: a server that no longer fits is cleared
+   * rather than left in place looking accepted (see pickKind).
+   */
+  const serversForKind = servers.filter(sv => form.kind === "ai"
+    ? sv.type === "AI Camera"
+    : sv.type === "Face Recognition" || sv.type === "Normal Camera");
+  const serverMissing = serversForKind.length > 0 && form.serverId === "";
+  const pickKind = (kind: CameraKind) => setForm(f => {
+    const stillFits = servers.some(sv => sv.id === f.serverId && (kind === "ai"
+      ? sv.type === "AI Camera"
+      : sv.type === "Face Recognition" || sv.type === "Normal Camera"));
+    return { ...f, kind, serverId: stillFits ? f.serverId : "" };
+  });
   /*
    * COORDINATES ARE REQUIRED, and this is the field whose absence costs the most.
    *
@@ -752,6 +806,36 @@ function CameraFormModal({
         </div>
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
 
+          {/* FIRST, because it changes what the rest of the form means — and because it is where
+              the previous product asked it. Two boxes rather than a select: there are exactly two
+              answers, they are chosen once, and a select would hide one of them behind a click.
+              Each says what it is under its name — "AI camera" is not self-explanatory to somebody
+              holding an installer's invoice. */}
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldSourceType}</label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              {([
+                { value: "normal" as CameraKind, label: t.kindNormal, why: t.kindNormalWhy },
+                { value: "ai" as CameraKind, label: t.kindAi, why: t.kindAiWhy },
+              ]).map(option => {
+                const on = form.kind === option.value;
+                return (
+                  <button key={option.value} type="button" onClick={() => pickKind(option.value)} title={option.why}
+                    style={{
+                      textAlign: "left", padding: "9px 12px", borderRadius: "10px", cursor: "pointer", fontFamily: "inherit",
+                      border: on ? "1px solid var(--primary-400)" : BORDER,
+                      backgroundColor: on ? "var(--primary-50)" : "white",
+                      color: on ? "var(--primary-400)" : "var(--gray-600)",
+                      display: "flex", alignItems: "center", gap: "7px",
+                    }}>
+                    {option.value === "ai" ? <Cpu size={14} strokeWidth={2.4} /> : <VideoIcon size={14} strokeWidth={2.4} />}
+                    <span style={{ fontSize: "12px", fontWeight: 700 }}>{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {field("name", t.fieldDeviceName, t.fieldDeviceNamePlaceholder, {
             error: refused && nameMissing ? t.errRequired : undefined,
             // Remounted per batch round so autoFocus fires again — see nextInBatch.
@@ -795,12 +879,16 @@ function CameraFormModal({
             {selectField(
               t.fieldServer,
               form.serverId,
-              [{ value: "", label: t.fieldServerNone }, ...servers.map(sv => ({ value: sv.id, label: sv.name }))],
+              [{ value: "", label: t.fieldServerNone }, ...serversForKind.map(sv => ({ value: sv.id, label: sv.name }))],
               v => setForm(f => ({ ...f, serverId: v })),
             )}
             {servers.length === 0
               ? <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.45 }}>{t.fieldServerNoneAvailable}</p>
-              : refused && serverMissing ? <FieldError>{t.errRequired}</FieldError> : null}
+              : serversForKind.length === 0
+                /* There are servers, just none of this kind — a different sentence from "no server
+                   yet", and the one that tells the reader their next move is on the other screen. */
+                ? <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.45 }}>{t.fieldServerNoneForKind}</p>
+                : refused && serverMissing ? <FieldError>{t.errRequired}</FieldError> : null}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
@@ -845,7 +933,12 @@ function CameraFormModal({
             </p>
           ) : null}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px" }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          {/* NO BOX ON THE WAY OUT (owner: 취소는 박스라인을 없애면 어때). Three bordered buttons
+              in a row are three equals, and one of them does nothing to the form — the borders
+              were spending attention on the least consequential control. Bare text, outline,
+              filled: leaving, the batch, the save. The same ladder the toolbar above already
+              climbs, where the secondary actions carry no box either. */}
+          <button className="portal-btn-quiet" onClick={onClose} style={{ padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {/* 닫기 once something has gone in: 취소 would claim it can undo the four cameras
                 already registered. Same distinction the bulk bar draws. */}
             {addedInSitting > 0 ? t.closeAfterBatch : t.cancel}
@@ -853,7 +946,12 @@ function CameraFormModal({
           {/* SECONDARY, AND ONLY WHEN ADDING. Between one camera and a hundred (which is the CSV's
               job) sits the batch somebody types in, and for that the expensive part is reopening
               the form. Left of the primary so the ordinary single add stays the rightmost, biggest
-              target — Stripe and Google Admin put "save and add another" in this same place. */}
+              target — Salesforce's "Save & New" and Google's "저장 후 다른 항목 추가" sit there too.
+              
+              THE LABEL NAMES WHAT COMES NEXT. It read "추가하고 계속" first, and 계속 does not say
+              what continues — the form? the wizard? the day? (owner: 추가하고 계속이라는 버튼으로
+              바로 이해할 수 있는 건가?) Naming the next object is what the established labels all
+              do: Save & New, Save and add another, Create another. */}
           {onSubmitAndAnother && (
             <button className="portal-btn-outline" title={t.addAnotherWhy}
               onClick={() => { if (!valid) { setRefused(true); return; } onSubmitAndAnother(form); nextInBatch(); }}
@@ -1092,10 +1190,13 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    */
   const zeroChannelLicence = channelLimit === 0;
   const cannotAddSource = channelLimitUnrecorded || atChannelLimit;
+  /** What is left to register. Undefined limit is "not licensed", which the banner handles. */
+  const channelsLeft = channelLimit === undefined ? 0 : Math.max(0, channelLimit - channelsUsed);
   const projectUploads = uploads.filter(u => u.projectId === projectId);
   const projectServers = servers.filter(sv => sv.projectId === projectId);
   /*
-   * ONLY THE SERVERS A CAMERA CAN ACTUALLY BE ATTACHED TO.
+   * ONLY THE SERVERS A CAMERA CAN ACTUALLY BE ATTACHED TO — and the form narrows it again by the
+   * camera's kind (see serversForKind there).
    *
    * The picker offered every server on the project, which on this site means it offered
    * "image store 1" and "database 1" — a camera is not connected to a database. A required field
@@ -1246,10 +1347,19 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * whose value is identical on every row is not information.
    */
   const showKindColumn = kindTab === "ALL";
+  /*
+   * ONE TRACK PER CELL, which it was not.
+   *
+   * The camera variants carried a spare fr track between 상태 and the 70px actions column —
+   * left over from the AI-engines column that was deleted. Nothing filled it, so a camera row's
+   * ⋯ menu sat in that spare track while a FILE row, which had one cell more, pushed its menu
+   * into the 70px one: two rows in one table with their last column in different places (owner:
+   * 마지막 꺼만 ... 항목이 달라서 어색해). Counting the cells is the fix, not nudging widths.
+   */
   const GRID = showCameraColumns
     ? (showKindColumn
-        ? "28px 48px 1.4fr 0.7fr 0.7fr 0.7fr 1.2fr 1fr 0.8fr 70px"
-        : "28px 48px 1.6fr 0.75fr 0.75fr 1.3fr 1fr 0.85fr 70px")
+        ? "28px 48px 1.4fr 0.7fr 0.7fr 0.7fr 1.2fr 1fr 70px"
+        : "28px 48px 1.6fr 0.75fr 0.75fr 1.3fr 1fr 70px")
     : (showKindColumn
         ? "28px 48px 2fr 0.8fr 1.2fr 0.9fr 70px"
         : "28px 48px 2.2fr 1.3fr 1fr 70px");
@@ -1349,7 +1459,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     // Refused here as well as disabled above: the button is the UI, this is the rule.
     if (cannotAddSource) return;
     const refusal = addCamera({
-      projectId, name: values.name.trim(), code: generateCameraCode(values.name.trim(), cameras.map(c => c.code)), rtspUrl: values.rtspUrl.trim(),
+      projectId, kind: values.kind, name: values.name.trim(), code: generateCameraCode(values.name.trim(), cameras.map(c => c.code)), rtspUrl: values.rtspUrl.trim(),
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
       maker: values.maker, model: values.model.trim() || undefined,
       username: values.username.trim() || undefined, serverId: values.serverId || undefined,
@@ -1378,6 +1488,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const saveEdit = (values: CameraFormValues) => {
     if (!editingCamera) return;
     updateCamera(editingCamera.id, {
+      kind: values.kind,
       name: values.name.trim(), rtspUrl: values.rtspUrl.trim(), ip: values.ip.trim(),
       location: values.location.trim(), zone: values.zone.trim() || values.location.trim(),
       maker: values.maker, model: values.model.trim() || undefined,
@@ -1549,12 +1660,15 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const [view, setView] = useState<"table" | "map">("table");
 
   const exportCsv = () => {
-    const header = [t.csvHeaderName, t.csvHeaderCode, t.csvHeaderZone, t.csvHeaderLocation, t.csvHeaderRtspUrl, t.csvHeaderStatus];
+    const header = [t.csvHeaderName, t.csvHeaderCode, t.csvHeaderKind, t.csvHeaderZone, t.csvHeaderLocation, t.csvHeaderRtspUrl, t.csvHeaderStatus];
     const rows = projectCameras.map(c => [
       // Three states, not two. A camera refusing the connection is not "a worse offline" —
       // the store's own note says so — and exporting it as Offline hands an auditor a file
       // that disagrees with the screen it came from.
-      c.name, c.code, c.zone, c.location, c.rtspUrl,
+      c.name, c.code,
+      // Absent reads as the ordinary kind, the same way the table's column reads it.
+      c.kind === "ai" ? t.kindAi : t.kindNormal,
+      c.zone, c.location, c.rtspUrl,
       c.status === "online" ? t.online : c.status === "error" ? t.statusError : isAwaitingFirstContact(c) ? t.statusAwaiting : t.offline,
     ]);
     const csv = [header, ...rows].map(row => row.map(csvEscape).join(",")).join("\n");
@@ -1774,6 +1888,33 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
          * once showed nothing but 0 for want of a camera to count, and was deleted for it. The
          * register carries one now (see Camera.lat in the store), so the state is reachable.
          */
+        /*
+         * THE ONE CARD THAT APPEARS WHEN A NUMBER GETS SMALL, not when it gets big.
+         *
+         * Every other errand cell here shows up at one or more and hides at zero. Channels run the
+         * other way: a site with ninety free channels has nothing to think about, and one with two
+         * is about to have a registration refused mid-batch — which became likely the moment
+         * 「추가하고 계속」 existed. Owner's call (2026-09-18): show it only when the headroom is
+         * small, rather than carrying a "62 / 100" cell that is furniture on every other day.
+         *
+         * Zero is left to the amber banner above, which says the whole sentence — a cell reading
+         * "0 남은 채널" beside it would be the same news twice, and the banner is the one that
+         * explains what to do about it.
+         */
+        ...(channelLimit !== undefined && channelsLeft > 0 && channelsLeft <= CHANNELS_LOW ? [{
+          key: "channels",
+          /* Not the CircleAlert the refusal cell uses one card away: two amber cards with one
+             glyph read as two of the same thing. A gauge is what a capacity running out looks
+             like everywhere else. */
+          icon: <Gauge size={14} strokeWidth={2.4} />,
+          figure: channelsLeft,
+          unit: t.healthOfFleet(channelLimit),
+          label: t.healthChannelsLeft,
+          explanation: t.healthChannelsLeftWhy,
+          tone: "warning" as const,
+          // No onClick: this is not a filter. There are no "channel" rows to narrow the table to,
+          // and a card that looks pressable and does nothing is worse than a card that does not.
+        }] : []),
         ...(noPositionCount > 0 ? [{
           key: "noPosition",
           icon: <MapPinOff size={14} strokeWidth={2.4} />,
@@ -2133,7 +2274,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}
                   {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}
                   <span style={{ fontSize: "10px", color: "var(--gray-600)", fontFamily: "monospace" }}>{u.resolution ?? "—"}</span>
-                  {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}
+                  {/* THE ANALYSIS STATE IS THIS ROW'S 상태, not an extra column after it. It used
+                      to print an em dash under 상태 and put the real answer in the next cell —
+                      which is the camera rows' actions column, so every file row's ⋯ ended up one
+                      track further right than every camera row's. A file has a status; it is just
+                      not a connection. */}
                   <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: verdict ? verdictDot : tone.dot, flexShrink: 0 }} />
                     {/* A finished deepfake row says the verdict here instead of "Analysed". The
@@ -2161,9 +2306,13 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                       </>
                     )}
                   </span>
-                  <RowActionsMenu actions={[
-                    { label: t.removeUploadAction, onClick: () => { removeUpload(u.id); showToast({ variant: "warning", title: t.toastUploadRemovedTitle, desc: u.fileName }); }, danger: true, disabled: !mayEdit, reason: readOnlyReason },
-                  ]} />
+                  {/* In its own span, the way the camera row wraps its menu, so both rows end
+                      with one cell and the two ⋯ columns line up. */}
+                  <span>
+                    <RowActionsMenu actions={[
+                      { label: t.removeUploadAction, onClick: () => { removeUpload(u.id); showToast({ variant: "warning", title: t.toastUploadRemovedTitle, desc: u.fileName }); }, danger: true, disabled: !mayEdit, reason: readOnlyReason },
+                    ]} />
+                  </span>
                 </div>
               );
             }
@@ -2199,9 +2348,13 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{cam.code}</p>
                 </div>
                 {showKindColumn && (
+                /* Which kind, not just "camera". An AI camera is a different device with a
+                   different server behind it (see CameraKind), and the column that names the row's
+                   kind is where that belongs. A row registered before the field existed reads as
+                   the ordinary kind rather than as a blank. */
                 <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--gray-600)" }}>
-                  <VideoIcon size={13} strokeWidth={2.58} />
-                  {t.sourceCamera}
+                  {cam.kind === "ai" ? <Cpu size={13} strokeWidth={2.58} /> : <VideoIcon size={13} strokeWidth={2.58} />}
+                  {cam.kind === "ai" ? t.kindAi : t.sourceCamera}
                 </span>
                 )}
                 {/* The server, where the maker used to be. A make is settled at purchase and is
@@ -2382,6 +2535,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           title={t.editModalTitle}
           isEdit
           initial={{
+            // Absent on a row registered before the field existed — read as the ordinary kind,
+            // which is also what the column says about it. See CameraKind.
+            kind: editingCamera.kind ?? "normal",
             name: editingCamera.name, ip: editingCamera.ip, rtspUrl: editingCamera.rtspUrl,
             location: editingCamera.location, zone: editingCamera.zone,
             maker: editingCamera.maker ?? MAKERS[0], model: editingCamera.model ?? "",

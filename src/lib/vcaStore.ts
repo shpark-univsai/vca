@@ -195,11 +195,29 @@ export interface Project {
  * infrastructure metadata and not a wiring decision.
  */
 
+/**
+ * Normal or AI, which is the FIRST thing the previous product's Add New Camera screen asked.
+ *
+ * It matters because a camera's kind decides which server it can report to: an AI camera runs the
+ * analysis on the device and reports results, so it belongs to the AI Camera node; a normal camera
+ * hands over a stream for something else to analyse, so it belongs to a Normal Camera or a Face
+ * Recognition node. Those server types already existed here (see ServerType) with nothing on the
+ * camera side to pair them with, so nothing stopped a plain camera being attached to the AI node —
+ * a combination the estate cannot actually run.
+ *
+ * Optional on the type, not on the form: rows carried over from an install that never asked have
+ * no answer, and "normal" written in by default would be this file inventing the field's value for
+ * somebody else's camera. Readers treat absent as normal and say so where it shows.
+ */
+export type CameraKind = "normal" | "ai";
+
 export interface Camera {
   id: string;
   projectId: string;
   code: string;
   name: string;
+  /** See CameraKind. Absent on rows registered before the field existed. */
+  kind?: CameraKind;
   ip: string;
   mac: string;
   rtspUrl: string;
@@ -1273,7 +1291,14 @@ const PROJECTS: Project[] = [
     // Expiring inside the ninety-day window on purpose, so the licence page's "expiring soon"
     // state is on screen somewhere rather than only in the code. Marina Bay stays years out, so
     // the two states can be compared by switching projects.
-    licensePlan: "Professional", licenseChannelLimit: 40, licenseExpiresAt: "2026-11-20",
+    /* EIGHT CHANNELS FOR SIX CAMERAS, so "nearly full" is a state somebody can see.
+       It was forty, which put the licence so far ahead of the fleet that the registry's 남은 채널
+       cell — the one that appears only when the headroom is small (see CHANNELS_LOW) — could never
+       render on any seeded site. Same reason the register keeps one refusing camera and one
+       unsurveyed one: a state that exists in the code and nowhere on screen is a state nobody can
+       check. Two channels left on a school that has filled the gate, both corridors, the hall, the
+       car park and the rear gate is also just what a small site looks like. */
+    licensePlan: "Professional", licenseChannelLimit: 8, licenseExpiresAt: "2026-11-20",
     computeInstance: "vca.medium", gpuCount: 2, modelVersion: "model_v2_prod", lastMigration: "v2_alert_schema",
     lastBackupAt: auditAt(7 * 60),
     regionName: "Singapore", networkIsolatedDetected: true, regionFlag: "🇸🇬", regionCenterCount: 1, regionSubcenterCount: 0,
@@ -2576,16 +2601,14 @@ const CAMERA_SEEDS: Camera[] = [
     // server's business, not the camera's.
 serverId: "srv-1",
     thumbnail: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80",
-    lat: 1.3202, lng: 103.8440, maker: "Hanwha", resolution: "4K (3840×2160)",
-  },
+    lat: 1.3202, lng: 103.8440, maker: "Hanwha", resolution: "4K (3840×2160)", kind: "normal" as CameraKind },
   {
     id: "cam-geylang", projectId: "proj-sg", code: "CAM-GEY-001", name: "Geylang NC1",
     ip: "10.20.4.12", mac: "00:1B:44:11:3A:B8", rtspUrl: "rtsp://10.20.4.12:554/stream1",
     status: "online", location: "Geylang NC1, Singapore", zone: "Geylang",
     serverId: "srv-1",
     thumbnail: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
-    lat: 1.3148, lng: 103.8778, maker: "Hikvision", resolution: "FHD (1920×1080)",
-  },
+    lat: 1.3148, lng: 103.8778, maker: "Hikvision", resolution: "FHD (1920×1080)", kind: "normal" as CameraKind },
   {
     // NC1 IMPLIES NC2, and a seed trail was already naming it. "Geylang" + "NC2" resolved to
     // nothing and fell through to the first camera in the register, so James Wilson's two-camera
@@ -2599,42 +2622,39 @@ serverId: "srv-1",
     status: "online", location: "Geylang NC2, Singapore", zone: "Geylang",
     serverId: "srv-1",
     thumbnail: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
-    lat: 1.3163, lng: 103.8791, maker: "Hikvision", resolution: "FHD (1920×1080)",
-  },
+    lat: 1.3163, lng: 103.8791, maker: "Hikvision", resolution: "FHD (1920×1080)", kind: "normal" as CameraKind },
   {
     id: "cam-orchard", projectId: "proj-sg", code: "CAM-ORC-001", name: "Orchard MRT",
     ip: "10.20.4.13", mac: "00:1B:44:11:3A:B9", rtspUrl: "rtsp://10.20.4.13:554/stream1",
     status: "online", location: "Orchard MRT, Singapore", zone: "Orchard",
     serverId: "srv-2",
     thumbnail: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80",
-    lat: 1.3044, lng: 103.8321, maker: "Dahua", resolution: "4K (3840×2160)",
-  },
+    lat: 1.3044, lng: 103.8321, maker: "Dahua", resolution: "4K (3840×2160)", kind: "ai" as CameraKind },
   {
     id: "cam-bugis", projectId: "proj-sg", code: "CAM-BGS-001", name: "Bugis MRT",
     ip: "10.20.4.14", mac: "00:1B:44:11:3A:BA", rtspUrl: "rtsp://10.20.4.14:554/stream1",
     status: "online", location: "Bugis MRT, Singapore", zone: "Bugis",
     serverId: "srv-2",
     thumbnail: "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=800&q=80",
-    lat: 1.3006, lng: 103.8561, maker: "Hanwha", resolution: "FHD (1920×1080)",
-  },
+    lat: 1.3006, lng: 103.8561, maker: "Hanwha", resolution: "FHD (1920×1080)", kind: "ai" as CameraKind },
   {
     id: "cam-tampines", projectId: "proj-sg", code: "CAM-TPS-001", name: "Tampines Hub",
     ip: "10.20.4.15", mac: "00:1B:44:11:3A:BB", rtspUrl: "rtsp://10.20.4.15:554/stream1",
     status: "online", location: "Tampines Hub, Singapore", zone: "Tampines",
     thumbnail: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80",
-    lat: 1.3528, lng: 103.9440, maker: "Hikvision", resolution: "4K (3840×2160)", serverId: "srv-1" },
+    lat: 1.3528, lng: 103.9440, maker: "Hikvision", resolution: "4K (3840×2160)", serverId: "srv-1", kind: "normal" as CameraKind },
   {
     id: "cam-bedok", projectId: "proj-sg", code: "CAM-BDK-001", name: "Bedok MRT",
     ip: "10.20.4.16", mac: "00:1B:44:11:3A:BC", rtspUrl: "rtsp://10.20.4.16:554/stream1",
     status: "offline", location: "Bedok MRT, Singapore", zone: "Bedok",
     thumbnail: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
-    lat: 1.3240, lng: 103.9302, maker: "Dahua", resolution: "FHD (1920×1080)", serverId: "srv-1" },
+    lat: 1.3240, lng: 103.9302, maker: "Dahua", resolution: "FHD (1920×1080)", serverId: "srv-1", kind: "normal" as CameraKind },
   {
     id: "cam-queenstown", projectId: "proj-sg", code: "CAM-QTN-001", name: "Queenstown",
     ip: "10.20.4.17", mac: "00:1B:44:11:3A:BD", rtspUrl: "rtsp://10.20.4.17:554/stream1",
     status: "online", location: "Queenstown, Singapore", zone: "Queenstown",
     thumbnail: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80",
-    lat: 1.2942, lng: 103.8060, maker: "Hanwha", resolution: "4K (3840×2160)", serverId: "srv-5" },
+    lat: 1.2942, lng: 103.8060, maker: "Hanwha", resolution: "4K (3840×2160)", serverId: "srv-5", kind: "normal" as CameraKind },
   // Reachable and refusing — see the CameraStatus note. Seeded because the state has to be visible
   // somewhere for the table, the filter and the attention strip to be worth building.
   {
@@ -2653,7 +2673,7 @@ serverId: "srv-1",
     ip: "10.20.4.18", mac: "00:1B:44:11:3A:BE", rtspUrl: "rtsp://10.20.4.18:554/stream1",
     status: "offline", location: "Jurong East, Singapore", zone: "Jurong East",
     thumbnail: "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=800&q=80",
-    lat: 1.3329, lng: 103.7436, maker: "Hikvision", resolution: "FHD (1920×1080)", serverId: "srv-2" },
+    lat: 1.3329, lng: 103.7436, maker: "Hikvision", resolution: "FHD (1920×1080)", serverId: "srv-2", kind: "ai" as CameraKind },
   // Bulk-generated, deterministic (seededRandom, not Math.random — see above) — one small batch
   // per district so the Dashboard map's zoomed-out cluster pills have real, non-zero counts to
   // aggregate instead of showing mostly-empty districts. Kept in the 50-60 total camera range on
@@ -2705,6 +2725,9 @@ serverId: "srv-1",
          * face-recognition node because that is what this deployment is for.
          */
         serverId: ["srv-1", "srv-1", "srv-5", "srv-1", "srv-2", "srv-1", "srv-5"][idx % 7],
+        /* Paired with the server above, not rolled separately: the one on the AI node is the AI
+           camera. A seed that breaks its own rule is a seed that teaches the rule wrong. */
+        kind: (["normal", "normal", "normal", "normal", "ai", "normal", "normal"] as CameraKind[])[idx % 7],
         maker, resolution,
       };
     });
@@ -2733,6 +2756,8 @@ serverId: "srv-1",
       location: `${spot}, Riverside International School`,
       zone: spot === "Car Park" || spot === "Rear Gate" ? "Perimeter" : "Campus",
       serverId: "srv-7",
+      // A face-recognition node analyses the stream, so these are plain cameras. See CameraKind.
+      kind: "normal" as CameraKind,
       thumbnail: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
       lat: Math.round((1.3410 + i * 0.0008) * 10000) / 10000,
       lng: Math.round((103.8080 + i * 0.0011) * 10000) / 10000,
@@ -2765,8 +2790,7 @@ serverId: "srv-1",
     status: "offline", location: "Depot Bay 2", zone: "Kallang",
     serverId: "srv-1",
     thumbnail: "",
-    maker: "Hanwha", resolution: "FHD (1920×1080)",
-  },
+    maker: "Hanwha", resolution: "FHD (1920×1080)", kind: "normal" as CameraKind },
 ];
 
 /**
