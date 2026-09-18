@@ -155,6 +155,9 @@ const T = {
     retentionUnset: "Not decided",
     retentionDaysLabel: (n: number) => `${n} days`,
     retentionNote: "This console deletes nothing. Saving writes the number down here; it does not reach the recorder or the server.",
+    vipRetention: "VIP listing period",
+    vipRetentionNote: "How long a new VIP listing lasts here. It fills the end date on registration, and an expired listing stops raising detections. Listings already on the list keep the date they were given.",
+    vipRetentionInherited: (n: number) => `${n} days — deployment default`,
     purposeTitle: "Search purposes",
     purposeEmpty: "No purposes defined.",
     purposeRequirementOn: "Searches are supposed to record a purpose, and there is nothing to choose. Until one exists, operators search without giving a reason.",
@@ -276,6 +279,9 @@ const T = {
     retentionUnset: "미정",
     retentionDaysLabel: (n: number) => `${n}일`,
     retentionNote: "이 콘솔은 영상을 지우지 않습니다. 저장하면 이 숫자가 여기에 기록될 뿐, 레코더와 서버에는 전달되지 않습니다.",
+    vipRetention: "VIP 등록 유효기간",
+    vipRetentionNote: "이 현장에서 새 VIP 등록이 얼마나 유지되는지입니다. 등록할 때 만료일을 채우고, 만료된 등록은 검출 알림을 올리지 않습니다. 이미 명단에 있는 사람의 날짜는 그대로 둡니다.",
+    vipRetentionInherited: (n: number) => `${n}일 · 배포 기본값`,
     purposeTitle: "조회 목적",
     purposeEmpty: "정의된 사유가 없습니다.",
     purposeRequirementOn: "조회할 때 목적을 기록하도록 되어 있는데 고를 것이 없습니다. 하나라도 만들기 전까지는 사유 없이 조회가 실행됩니다.",
@@ -365,6 +371,21 @@ const RETENTION_OPTIONS = (t: (typeof T)["en"] | (typeof T)["ko"]) => [
   ...[7, 14, 30, 60, 90, 180, 365].map(d => ({ value: String(d), label: t.retentionDaysLabel(d) })),
 ];
 
+/**
+ * The same steps, but the empty choice names the number it falls back to.
+ *
+ * A VIP period is never absent in effect: leave the site unset and the deployment default fills
+ * every registration. So the blank option says which number that is, and only reads as "미정"
+ * where the deployment has no rule either.
+ */
+const VIP_RETENTION_OPTIONS = (t: (typeof T)["en"] | (typeof T)["ko"]) => {
+  const fallback = getComplianceConfig().vipDefaultValidDays;
+  return [
+    { value: "", label: fallback === null ? t.retentionUnset : t.vipRetentionInherited(fallback) },
+    ...[7, 14, 30, 60, 90, 180, 365].map(d => ({ value: String(d), label: t.retentionDaysLabel(d) })),
+  ];
+};
+
 const TIME_ZONE_OPTIONS = [
   { value: "Asia/Singapore", label: "Singapore (UTC+8)" },
   { value: "Asia/Seoul", label: "Seoul (UTC+9)" },
@@ -405,6 +426,11 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const projects = useVcaStore(s => s.projects);
   const setProjectTimeZone = useVcaStore(s => s.setProjectTimeZone);
   const setProjectRetention = useVcaStore(s => s.setProjectRetention);
+  const setProjectVipRetention = useVcaStore(s => s.setProjectVipRetention);
+  /* What the row shows for a site that has not set its own — the deployment's number, not a blank.
+     See the note on the VIP period row. */
+  const vipFallbackDays = getComplianceConfig().vipDefaultValidDays;
+  const inheritedVipRetentionLabel = vipFallbackDays === null ? t.retentionUnset : t.vipRetentionInherited(vipFallbackDays);
   const renameProject = useVcaStore(s => s.renameProject);
   const removeProject = useVcaStore(s => s.removeProject);
   const cameras = useVcaStore(s => s.cameras);
@@ -709,6 +735,39 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 />
               ) : (
                 project.retentionDays === undefined ? t.retentionUnset : t.retentionDaysLabel(project.retentionDays)
+              )}
+            </PairItem>
+            {/* Beside recording retention because it is the same kind of value — the site's, not the
+                viewer's, and audited when it changes — but it is NOT the same promise, and the two
+                notes have to differ. Recording retention is written down and nothing here acts on
+                it. This one acts: it fills the end date on every registration, and an expired
+                listing stops raising detections in the app.
+
+                Why it exists at all: the number was a deploy-time constant, so the console filled
+                every registration's end date from a rule the administrator could not see or
+                change. Verkada has no expiry on a person of interest and removes them by hand;
+                Avigilon keeps retention as a system setting with a days figure. Ours is the second
+                shape, and this row is the setting that shape needs — with manual removal still
+                there in the row menu for the case that cannot wait for a date.
+
+                Owner only, like the rest of this grid. A period is closer to a policy than a
+                preference: it decides how long a face is kept. */}
+            {/* "미정" WOULD BE A LIE HERE, and that is the one difference from the row above.
+                Recording retention genuinely has no value until somebody sets it — nothing applies
+                and nothing deletes. This one always has a value: with the site unset, the
+                deployment default fills every registration's end date, and the registration form
+                says so out loud ("기본 보유기간 — 오늘부터 365일"). So the empty choice is labelled
+                with the number it inherits, and reads as a fallback rather than a blank. */}
+            <PairItem label={t.vipRetention} hint={t.vipRetentionNote}>
+              {maySetPolicy ? (
+                <FilterSelect
+                  value={project.vipRetentionDays === undefined ? "" : String(project.vipRetentionDays)}
+                  onChange={v => setProjectVipRetention(project.id, v === "" ? null : Number(v))}
+                  options={VIP_RETENTION_OPTIONS(t)}
+                  fitContent
+                />
+              ) : (
+                project.vipRetentionDays === undefined ? inheritedVipRetentionLabel : t.retentionDaysLabel(project.vipRetentionDays)
               )}
             </PairItem>
           </PairGrid>

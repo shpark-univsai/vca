@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
 import { AlertTriangle, ArrowDownWideNarrow, CalendarOff, CalendarX, Eye, FileOutput, ImageOff, RefreshCw, Users } from "lucide-react";
-import { canSetPolicy, currentPortalUser, defaultVipExpiry, isExpired, isExpiryUnanswered, registryHealth, useVcaStore, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
+import { canSetPolicy, currentPortalUser, defaultVipExpiry, isExpired, isExpiryUnanswered, registryHealth, useVcaStore, vipRetentionDays, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -598,7 +598,10 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
    * value that quietly re-derives itself against a moving clock is a field that disagrees with
    * what the person looking at it chose.
    */
-  const [policyDate] = useState(() => defaultVipExpiry() ?? null);
+  /* The rule of THIS site, falling back to the deployment default — the same resolution the store
+     uses when it saves, so the date in the field and the date stored cannot drift apart. */
+  const siteRetentionDays = useVcaStore(st => vipRetentionDays(st.projects.find(pr => pr.id === projectId)));
+  const [policyDate] = useState(() => defaultVipExpiry(siteRetentionDays) ?? null);
   /**
    * A new listing opens with the policy's end date already in it; editing keeps whatever the row
    * has, including nothing.
@@ -620,8 +623,8 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
   const expirySource: { label?: string; days: number } | null =
     chosenCategory?.defaultValidDays != null && expiresAt === dateInDays(chosenCategory.defaultValidDays)
       ? { label: chosenCategory.label, days: chosenCategory.defaultValidDays }
-      : compliance.vipDefaultValidDays !== null && expiresAt === policyDate
-        ? { days: compliance.vipDefaultValidDays }
+      : siteRetentionDays !== null && expiresAt === policyDate
+        ? { days: siteRetentionDays }
         : null;
   /**
    * The basis is asked for in the open only where a category demands one. Everywhere else it is a

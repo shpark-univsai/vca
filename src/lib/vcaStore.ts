@@ -125,6 +125,18 @@ export interface Project {
    * letting "saved" read as "footage is now being deleted on this schedule".
    */
   retentionDays?: number;
+  /**
+   * How many days a VIP listing lasts at this site, unless the registrar shortens it or a category
+   * says otherwise. Absent means the site has not decided, and then the deployment default in
+   * complianceConfig applies (see vipRetentionDays() below).
+   *
+   * NOT the same kind of value as `retentionDays` beside it, and the difference is worth stating:
+   * recording retention is a number this console only WRITES DOWN — nothing here deletes video.
+   * This one ACTS. It fills the end date on every registration, and an expired listing stops
+   * raising detections in the app (watchedPersonsInProject). So the screen may promise something
+   * for this one, where for the other it may not.
+   */
+  vipRetentionDays?: number;
   licenseChannelLimit?: number;
   licensePlan?: string;
   // A date string, or the literal "Unlimited" for a plan with no expiry.
@@ -889,6 +901,9 @@ interface VcaStoreState {
   setProjectTimeZone: (projectId: string, timeZone: string) => void;
   /** null clears it back to "not decided". See Project.retentionDays. */
   setProjectRetention: (projectId: string, days: number | null) => void;
+  /** null clears it back to "not decided", and then the deployment default applies. See
+   *  Project.vipRetentionDays — unlike recording retention, this number does something. */
+  setProjectVipRetention: (projectId: string, days: number | null) => void;
   // null clears the override and falls back to the auto-detected value; true/false pins it.
   setNetworkIsolationOverride: (projectId: string, override: boolean | null) => void;
   updateTeamMail: (teamId: string, updates: Pick<Team, "mailDomain" | "smtp">) => void;
@@ -1565,8 +1580,16 @@ export function personsInProject(persons: Person[], projectId: string): Person[]
  * arrives filled in, and what the registrar does is shorten it or clear it. Both sides read this
  * function so the date on screen and the date stored cannot drift apart.
  */
-export function defaultVipExpiry(): string | undefined {
-  const days = getComplianceConfig().vipDefaultValidDays;
+/**
+ * The retention rule in force at a site: its own setting, or the deployment default where the site
+ * has not set one. `null` means there is no rule and a listing registered without an answer stays
+ * unanswered — which is honest, rather than inventing a date nobody chose.
+ */
+export function vipRetentionDays(project: Project | undefined): number | null {
+  return project?.vipRetentionDays ?? getComplianceConfig().vipDefaultValidDays;
+}
+
+export function defaultVipExpiry(days: number | null): string | undefined {
   return days === null ? undefined : new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 }
 
@@ -1581,9 +1604,9 @@ export function defaultVipExpiry(): string | undefined {
  * and it applies to whoever comes in without an answer. An installation with no rule configured
  * leaves the row unanswered, which is honest: nobody was asked and there is nothing to apply.
  */
-function settledExpiry(given: string | null | undefined): string | null | undefined {
+function settledExpiry(given: string | null | undefined, days: number | null): string | null | undefined {
   if (given === null) return null;
-  return given ?? defaultVipExpiry();
+  return given ?? defaultVipExpiry(days);
 }
 
 /**
@@ -4083,6 +4106,35 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
+  /*
+   * Mirrors setProjectRetention, including the audit line carrying the OLD value — "changed to 90"
+   * cannot answer "how long were we keeping faces in March", and for this number that question has
+   * a person attached to it.
+   *
+   * Only NEW registrations move. Changing the rule does not rewrite the end date of anybody
+   * already on the list: those dates were the basis somebody registered them under, and a policy
+   * edit that silently extended a thousand listings would be the console deciding to keep people
+   * longer without anyone choosing it. Shortening them would be worse — a listing could lapse
+   * retroactively, which is a deletion nobody ordered. The bulk "만료일 지정" action is how an
+   * administrator moves existing rows, deliberately and audited.
+   */
+  setProjectVipRetention: (projectId, days) =>
+    set(state => {
+      const project = state.projects.find(p => p.id === projectId);
+      if (!project) return state;
+      const before = project.vipRetentionDays;
+      if (before === (days ?? undefined)) return state;
+      return {
+        projects: state.projects.map(p => (p.id === projectId ? { ...p, vipRetentionDays: days ?? undefined } : p)),
+        auditLog: [clientAudit({
+          projectId,
+          message: days === null
+            ? `VIP listing period cleared (was ${before ?? "unset"} days)`
+            : `VIP listing period changed from ${before ?? "unset"} to ${days} days`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   updateProjectMail: (projectId, updates) =>
     set(state => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)),
@@ -4105,13 +4157,15 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     })),
   addPerson: (person) =>
     set(state => ({
-      persons: [...state.persons, { registeredBy: SIGNED_IN_USER.name, ...person, expiresAt: settledExpiry(person.expiresAt), id: `person-${++personSeq}` }],
+      // The rule of the site this person is being registered at, not a global one: two projects on
+      // one installation can hold people to different periods.
+      persons: [...state.persons, { registeredBy: SIGNED_IN_USER.name, ...person, expiresAt: settledExpiry(person.expiresAt, vipRetentionDays(state.projects.find(pr => pr.id === person.projectId))), id: `person-${++personSeq}` }],
       auditLog: [clientAudit({ projectId: person.projectId, message: `VIP ${person.name} registered`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   addPersons: (persons, source) => {
     if (persons.length === 0) return 0;
     set(state => ({
-      persons: [...state.persons, ...persons.map(pp => ({ registeredBy: SIGNED_IN_USER.name, ...pp, expiresAt: settledExpiry(pp.expiresAt), id: `person-${++personSeq}` }))],
+      persons: [...state.persons, ...persons.map(pp => ({ registeredBy: SIGNED_IN_USER.name, ...pp, expiresAt: settledExpiry(pp.expiresAt, vipRetentionDays(state.projects.find(pr => pr.id === pp.projectId))), id: `person-${++personSeq}` }))],
       auditLog: [clientAudit({
         projectId: persons[0].projectId,
         message: `${persons.length} ${persons.length === 1 ? "person" : "people"} imported from ${source}`,
