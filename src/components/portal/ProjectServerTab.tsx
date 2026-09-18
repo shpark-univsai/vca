@@ -33,12 +33,58 @@ const STATUS_T = {
  * over (18px tall, 10px/600 text, 999px radius), which is what makes the two screens feel like
  * one product.
  *
- * Every colour is an existing token at its defined step. The mark is `currentColor`, so each
- * badge's icon takes its own text colour and no new value enters the palette.
+ * Every colour is an existing token — either at its defined step, or at that step's strength
+ * reduced against white, which is the one derivation this repo allows itself (ZONE_TINT in
+ * DataPage.tsx and the two tinted panels in ProjectSidebar/ProjectSwitcher do the same thing).
+ * The mark is `currentColor`, so each badge's icon takes its own text colour and no new value
+ * enters the palette.
+ *
+ * THE TWO COLOURED FILLS ARE HALF STRENGTH (owner's ask, 2026-09-18: 뱃지 글자가 잘 안 보인다,
+ * 배경을 더 연하게). Half rather than some eyeballed amount because half is a step the palette
+ * already demonstrates: color-mix(in srgb, var(--gray-100) 50%, white) resolves in Chrome to
+ * rgb(248 250 252), and --gray-50 reads back as #f8fafc — the same colour. Half strength is not
+ * a new step, it is the step this ramp already has between 100 and white.
+ *
+ * Measured in Chrome off the computed styles rather than off the token values I expected to be
+ * there, against the white table row the badge actually sits on:
+ *
+ *                     text on its fill        fill against the white row
+ *   정상 응답    2.85:1  ->  3.07:1            1.155  ->  1.074
+ *   응답 없음    4.47:1  ->  4.80:1            1.153  ->  1.073
+ *   확인 안 됨   7.00:1      (untouched)       1.096      (untouched)
+ *
+ * 확인 안 됨 is resolved through the same engine rather than seen on the screen: no seeded server
+ * has an unrecorded status, so that badge does not render in this project and its pair had to be
+ * read off a throwaway element carrying the two variables. The other two were read off the rows.
+ *
+ * The grey is deliberately NOT lightened, and that is what makes these three a set rather than
+ * three applications of one formula. Its text was never the weak one — 7.00:1, the highest of
+ * the three — so mixing it toward white would spend the only thing it has (a fill you can see:
+ * it would drop to 1.046:1, measured) to fix a problem it does not have. Left alone it sits at
+ * 1.096 beside the two new fills at 1.074 and 1.073, so the three badges now weigh the same on
+ * the row; before this the coloured pair was the heavier one by 0.06 and the grey read as a
+ * different family.
+ *
+ * WHAT THIS DOES NOT FIX, AND CANNOT: 정상 응답 still fails 4.5:1. --success-400 (#16a34a) on
+ * PURE WHITE measures 3.296:1, and that is the ceiling for green text anywhere in this palette —
+ * the green ramp stops at 400, so there is no darker step to reach for, and writing one here is
+ * exactly what the note at the top of globals.css forbids. Half strength is still worth doing,
+ * because it carries the 11px glyph across the glyph's own bar: a non-text state indicator needs
+ * 3:1 (WCAG 1.4.11), 2.85 failed that and 3.07 passes it, so the shape that tells the three
+ * states apart is now compliant even though the 10px word beside it is not.
+ *
+ * LIBRARY REQUEST — the success ramp needs a 500, the way danger already has one.
+ * `--success-500: #117937` = hsl(141.9 75% 27%): the same hue and saturation as --success-400
+ * (hsl(142.1 76% 36%)) to within a fifth of a degree and one percent, with only the lightness
+ * moved. Measured 4.77:1 on --success-100 and 5.13:1 on the half-strength fill below, so it
+ * clears 4.5:1 with or without this lightening. Until it is in the Figma library this badge is
+ * as close as the existing tokens go, and the gap is the ramp's, not this file's.
  */
+const HALF_STRENGTH = (token: string) => `color-mix(in srgb, var(${token}) 50%, white)`;
+
 const STATUS_STYLE = {
-  success: { bg: "var(--success-100)", color: "var(--success-400)" },
-  error: { bg: "var(--danger-100)", color: "var(--danger-500)" },
+  success: { bg: HALF_STRENGTH("--success-100"), color: "var(--success-400)" },
+  error: { bg: HALF_STRENGTH("--danger-100"), color: "var(--danger-500)" },
   unchecked: { bg: "var(--gray-100)", color: "var(--gray-600)" },
 } as const;
 
@@ -73,11 +119,41 @@ interface ServerFormValues {
 
 const EMPTY_FORM: ServerFormValues = { name: "", ip: "", port: "", type: SERVER_TYPES[0], specification: "" };
 
+/**
+ * THE ASTERISKS, AUDITED AGAINST WHAT ACTUALLY BLOCKS SAVE (owner's ask, 2026-09-18: the required
+ * markers are wrong). A `*` that does not stop you is a lie, and a field that stops you without
+ * one is a trap, so the marker and the `valid` expression below are written to agree field by
+ * field. What changed and what did not:
+ *
+ * 서버 포트 GAINED ONE, and the rule gained the check to back it. `Server.port`'s own comment in
+ * vcaStore.ts says it plainly — "nothing reaches a server without it, so an address on its own
+ * was never enough to describe one" — and this form's own note beside the IP/port pair says the
+ * same thing in the same words. The form nevertheless saved with the box empty, so the screen's
+ * two most explicit statements about the field were both contradicted by the one line that
+ * decides anything. The port stays OPTIONAL ON THE TYPE (`port?: number`): a record that arrives
+ * from somewhere other than this dialog may legitimately not carry one, and the table already
+ * renders that case (`server.port ? ip:port : ip`). Required is a rule about what a person may
+ * type here, which is not the same question as what the record can hold. Nothing existing is
+ * stranded by it — all eight seeded servers carry a port, so no row becomes unsavable on open.
+ *
+ * 서버 유형 DID NOT gain one, although `Server.type` is the one non-optional field of the four.
+ * The control is a FilterSelect that opens on SERVER_TYPES[0] and offers no way to clear itself,
+ * so there is no state in which it is missing and a `*` on it could never fire. Marking it would
+ * teach the reader that `*` means "the record needs this" on one row and "this will stop you" on
+ * the others, which is how the marker stops being worth reading. (The real problem with that
+ * field is a different one and not a marker's job: a preselected "Face Recognition" means a
+ * hurried operator silently records the wrong type. Fixing that means giving the select an empty
+ * opening state — a change to the control, and to what "Add server" does on open, so it is left
+ * as a decision rather than smuggled in here.)
+ *
+ * 사양 has no marker and blocks nothing, which is correct and is why the field survives the
+ * column change below: it is a note a person may or may not have, not part of an address.
+ */
 const MODAL_T = {
   en: {
     serverName: "Server Name *", serverNamePlaceholder: "FR 2",
     serverIp: "Server IP *", serverIpPlaceholder: "192.168.0.36",
-    serverPort: "Server Port", serverPortPlaceholder: "8011",
+    serverPort: "Server Port *", serverPortPlaceholder: "8011",
     serverType: "Server Type",
     specification: "Specification", specificationPlaceholder: "8 vCPU · 32GB RAM",
     cancel: "Cancel", save: "Save",
@@ -85,7 +161,7 @@ const MODAL_T = {
   ko: {
     serverName: "서버 이름 *", serverNamePlaceholder: "FR 2",
     serverIp: "서버 IP *", serverIpPlaceholder: "192.168.0.36",
-    serverPort: "서버 포트", serverPortPlaceholder: "8011",
+    serverPort: "서버 포트 *", serverPortPlaceholder: "8011",
     serverType: "서버 유형",
     specification: "사양", specificationPlaceholder: "8 vCPU · 32GB RAM",
     cancel: "취소", save: "저장",
@@ -110,7 +186,11 @@ function ServerFormModal({
      Only the two rules that a standard settles are checked here; see fieldChecks.ts. */
   const ipProblem = ipv4Problem(form.ip);
   const portIssue = portProblem(form.port);
-  const valid = form.name.trim().length > 0 && form.ip.trim().length > 0 && !ipProblem && !portIssue;
+  /* Three boxes have to be filled, not two — see the asterisk audit above MODAL_T. portProblem()
+     deliberately passes an empty string ("required is the caller's question, not this one's"), so
+     the emptiness check belongs here and the range check stays there. */
+  const valid = form.name.trim().length > 0 && form.ip.trim().length > 0
+    && form.port.trim().length > 0 && !ipProblem && !portIssue;
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
@@ -701,10 +781,33 @@ const MAIN_T = {
        being read as a live result. Dropping the parenthetical for consistency with the other
        tables would make this column claim the observation those tables have and this one does
        not. */
-    colStatus: "Status (recorded)", colName: "Server Name", colIp: "Server IP", colType: "Server Type", colSpec: "Specification",
+    colStatus: "Status (recorded)", colName: "Server Name", colIp: "Server IP", colType: "Server Type",
+    /* THE FIFTH COLUMN IS THE CAMERA COUNT, NOT 사양 (owner's ask, 2026-09-18: 사양 칸이 전부
+       비어 있다). Measured in the browser before touching it: all six rows of proj-sg printed
+       "—", because `specification` is undefined on all eight seeded servers and nothing writes
+       it but this screen's own form. A column whose value is the same em dash on every row is
+       not information, it is a heading standing over nothing.
+
+       Replaced rather than added to. The count is the one fact about a server that the table
+       never carried — a row said its name, its address and its type, none of which answer "what
+       runs on this thing" — and the delete dialog below has been computing exactly this number
+       for its own "are you sure" all along, where only the person about to delete something ever
+       saw it. Both now read the same map, so the table and the dialog cannot disagree.
+
+       THE FIELD AND THE FORM STAY. A server's spec is real information the moment the backend
+       starts filling it in; what was wrong was a COLUMN spending a sixth of the table's width on
+       a value nobody has recorded yet. When the backend sends specs, that is a column to add
+       back — with rows behind it. */
+    colCameras: "Assigned cameras",
+    cameraCount: (n: number) => `${n}`,
+    /* Zero is the interesting row, so it gets words. "0" in a column of counts reads as a
+       quantity you skim past; a server nothing reports to is the gap the strip above already
+       counts as 카메라 미할당 and lets you filter to, and this is the same fact stated on the row
+       it belongs to. Set in gray-900/700 rather than a warning colour: --warning-500 on the white
+       row measures 3.56:1, which fails 4.5:1 at 12px, and gray-900 is 18.3:1 — the same treatment
+       the delete dialog gives its own copy of this count. */
+    camerasNone: "No cameras assigned",
     edit: "Edit", remove: "Remove", cancel: "Cancel",
-    showingEntries: (start: number, end: number, total: number) => `Showing ${start} to ${end} of ${total} entries`,
-    rowsPerPage: "Rows per page:",
     addServerTitle: "Add server", editServerTitle: "Edit server",
     toastAdded: "Server added", toastUpdated: "Server updated", toastRemoved: "Server removed",
   },
@@ -727,10 +830,11 @@ const MAIN_T = {
     allTypes: "전체 유형", reset: "초기화", addServer: "서버 추가",
     emptyNoServers: "이 프로젝트에 아직 설정된 서버가 없습니다.",
     emptyNoMatch: "필터와 일치하는 서버가 없습니다.",
-    colStatus: "상태(기록)", colName: "서버 이름", colIp: "서버 IP", colType: "서버 유형", colSpec: "사양",
+    colStatus: "상태(기록)", colName: "서버 이름", colIp: "서버 IP", colType: "서버 유형",
+    colCameras: "배정된 카메라",
+    cameraCount: (n: number) => `${n}대`,
+    camerasNone: "아무 카메라도 없음",
     edit: "수정", remove: "삭제", cancel: "취소",
-    showingEntries: (start: number, end: number, total: number) => `전체 ${total}건 중 ${start}–${end}건 표시`,
-    rowsPerPage: "페이지당 행 수:",
     addServerTitle: "서버 추가", editServerTitle: "서버 수정",
     toastAdded: "서버 추가됨", toastUpdated: "서버 수정됨", toastRemoved: "서버 삭제됨",
   },
@@ -776,9 +880,25 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
    * cameras carry), so a figure can never disagree with the rows behind it.
    */
   const projectCameras = cameras.filter(c => c.projectId === projectId);
-  const assignedServerIds = new Set(projectCameras.map(c => c.serverId).filter(Boolean));
+  /**
+   * How many of this project's cameras name each server — counted once for the whole screen.
+   *
+   * Three places want this number now and they used to derive it three ways: the strip's
+   * "카메라 미할당" cell tested a Set of assigned ids, the delete dialog ran its own filter, and
+   * the new camera column would have run that filter again once per visible row (a 60-camera
+   * pass to print one integer, on every render). One pass, one map, so the tile, the column and
+   * the confirmation cannot drift apart — which was the whole reason the strip's own comment
+   * gives for reading these figures off stored fields in the first place.
+   *
+   * `has()` answers the old Set's question exactly: a server is in the map only if at least one
+   * camera named it.
+   */
+  const camerasPerServer = new Map<string, number>();
+  for (const cam of projectCameras) {
+    if (cam.serverId) camerasPerServer.set(cam.serverId, (camerasPerServer.get(cam.serverId) ?? 0) + 1);
+  }
   const erroredServers = projectServers.filter(sv => sv.status === "error");
-  const unusedServers = projectServers.filter(sv => !assignedServerIds.has(sv.id));
+  const unusedServers = projectServers.filter(sv => !camerasPerServer.has(sv.id));
   const gapServers = {
     error: new Set(erroredServers.map(sv => sv.id)),
     noCameras: new Set(unusedServers.map(sv => sv.id)),
@@ -823,8 +943,11 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   const totalPages = Math.max(1, Math.ceil(visibleServers.length / rowsPerPage));
   const currentPage = Math.min(page, totalPages);
   const pageServers = visibleServers.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
-  const rangeStart = visibleServers.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
-  const rangeEnd = Math.min(visibleServers.length, currentPage * rowsPerPage);
+  // The row range this page shows was computed here and read nowhere: TablePagination has
+  // worked it out for itself since the inline pager moved into PortalShared, and it prints it
+  // from its own PAGER_T. The two dictionary entries that fed the old one (showingEntries,
+  // rowsPerPage) went with them — a second translation of a sentence the shared component
+  // already owns is the thing that ends up worded differently from it.
 
   const resetFilters = () => {
     setSearch("");
@@ -854,7 +977,8 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   };
 
   // Confirmed, and it says what goes with it. Removing a server orphans every camera assigned
-  // to it, which is not visible from this table at all.
+  // to it — the table's camera column now says how many that is, and the dialog repeats it
+  // because by then the row is behind the scrim.
   const [confirmingDelete, setConfirmingDelete] = useState<Server | null>(null);
   const handleDelete = (server: Server) => setConfirmingDelete(server);
   const confirmDelete = () => {
@@ -960,7 +1084,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                 { label: t.colName, key: "name" },
                 { label: t.colIp, key: "ip" },
                 { label: t.colType, key: "type" },
-                { label: t.colSpec },
+                { label: t.colCameras },
                 { label: "" },
               ] as { label: string; key?: ServerSortKey }[]).map((h, i) => (
                 <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
@@ -974,6 +1098,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               const statusLabel = server.status === "success" ? st.success
                 : server.status === "error" ? st.error : st.unchecked;
               const isLast = i === pageServers.length - 1;
+              const cameraCount = camerasPerServer.get(server.id) ?? 0;
               return (
                 <div key={server.id} style={{
                   display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
@@ -986,7 +1111,13 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                   <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{server.name}</span>
                   <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace" }}>{server.port ? `${server.ip}:${server.port}` : server.ip}</span>
                   <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{server.type}</span>
-                  <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>{server.specification ?? "—"}</span>
+                  {/* gray-600 like the address and the type beside it, not the gray-400 the spec
+                      column used: that was the weight for a value nobody had recorded, and this
+                      one is as much a fact about the row as the other two. Zero goes the other
+                      way and gets darker — see camerasNone. */}
+                  {cameraCount === 0
+                    ? <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.camerasNone}</span>
+                    : <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{t.cameraCount(cameraCount)}</span>}
                   <RowActionsMenu actions={[
                     { label: t.edit, onClick: () => setEditingServer(server), disabled: !mayEdit, reason: readOnlyReason },
                     { label: t.remove, onClick: () => handleDelete(server), danger: true, disabled: !mayEdit, reason: readOnlyReason },
@@ -1019,10 +1150,12 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
           onConfirm={confirmDelete}
           onClose={() => setConfirmingDelete(null)}
         >
-          {/* The count the table does not show. A server row says nothing about what runs on it,
-              so "are you sure" with no number is a question nobody can answer. */}
+          {/* The same count the row now shows, read off the same map — repeated here on purpose.
+              "Are you sure" with no number is a question nobody can answer, and at this moment
+              the row it refers to is behind a scrim. It is no longer the ONLY place this number
+              appears, which is what made it worth moving into the table. */}
           <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", marginTop: "12px" }}>
-            {t.confirmDeleteCameras(projectCameras.filter(c => c.serverId === confirmingDelete.id).length)}
+            {t.confirmDeleteCameras(camerasPerServer.get(confirmingDelete.id) ?? 0)}
           </p>
         </ConfirmModal>
       )}
