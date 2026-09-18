@@ -7,7 +7,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { SummaryStrip, CARD_BORDER, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, TableEmpty, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch, usePortalEditAccess, ConfirmModal, FieldError } from "./PortalShared";
+import { TablePagination, SummaryStrip, CARD_BORDER, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, TableEmpty, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch, usePortalEditAccess, ConfirmModal, FieldError } from "./PortalShared";
 
 // Ordered as the deployed Add Server dialog orders them, so an operator who has used that one
 // finds each entry where their hand already goes. Its list opens with "All", which this one does
@@ -966,39 +966,16 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
             })}
           </div>
 
-          {visibleServers.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "12px", flexWrap: "wrap", gap: "10px" }}>
-              <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>
-                {t.showingEntries(rangeStart, rangeEnd, visibleServers.length)}
-              </p>
-              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                  style={{ width: "28px", height: "28px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: currentPage === 1 ? "var(--gray-300)" : "var(--gray-600)", cursor: currentPage === 1 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M9 2.9L4.5 7l4.5 4.1" stroke="currentColor" strokeWidth="1.63" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                  <button key={n} onClick={() => setPage(n)}
-                    style={{
-                      width: "28px", height: "28px", borderRadius: "8px", border: "none", cursor: "pointer",
-                      backgroundColor: n === currentPage ? "var(--gray-900)" : "transparent",
-                      color: n === currentPage ? "white" : "var(--gray-600)",
-                      fontSize: "12px", fontWeight: 700,
-                    }}>
-                    {n}
-                  </button>
-                ))}
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                  style={{ width: "28px", height: "28px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: currentPage === totalPages ? "var(--gray-300)" : "var(--gray-600)", cursor: currentPage === totalPages ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M5 2.9L9.5 7l-4.5 4.1" stroke="currentColor" strokeWidth="1.63" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.rowsPerPage}</span>
-                <FilterSelect value={String(rowsPerPage)} onChange={v => setRowsPerPage(Number(v))}
-                  options={[10, 25, 50].map(n => ({ value: String(n), label: String(n) }))} />
-              </div>
-            </div>
-          )}
+          {/* The shared pager (PortalShared.TablePagination). It was forty lines of inline JSX
+              here, printing one button per page — fine for six servers, wrong for the VIP registry
+              that now uses the same component, so it moved and learned to window. */}
+          <TablePagination
+            total={visibleServers.length}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            onPage={setPage}
+            onRowsPerPage={setRowsPerPage}
+          />
         </>
       )}
 

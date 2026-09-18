@@ -9,19 +9,33 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { useToast } from "../Toast";
-import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SEARCH_FIELD, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TableEmpty, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
+import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SEARCH_FIELD, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
 
 type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires";
 
 // 36px for the actions column, the width RowActionsMenu gets in every other table.
-const VIP_GRID = "28px 48px 1.4fr 0.8fr 0.6fr 0.7fr 0.7fr 0.9fr 36px";
+/*
+ * TRACKS FOLLOW THE HEADER ORDER, and the header was reordered on 2026-09-18 — check both
+ * together if you touch either. Order: checkbox · face · 이름 · 우선순위 · 등록 근거 · [그룹] ·
+ * [분류] · 등록일 · 마지막 탐지 · actions.
+ *
+ * 우선순위 is a FIXED 96px, not a fraction: the pill is as wide as its longest label ("매우 높음"
+ * plus the three-bar meter, measured at 88px) and never wider, so a fractional track just added
+ * empty space beside it — which is what it looked like after the reorder handed it the group
+ * column's share (owner's note: "우선순위 가로너비는 지금너무 넓게 잡혀있는것 같아").
+ *
+ * 등록일 and 마지막 탐지 are fixed at 100px for the same reason: the value is always `2026-09-09`,
+ * ten characters, and a fraction gave each of them ~114px of which a quarter was empty. The space
+ * they gave back goes to 이름 and 등록 근거, which are the two that actually run out of room.
+ */
+const VIP_GRID = "28px 48px 1.6fr 96px 1.1fr 0.8fr 100px 100px 36px";
 /** The All tab adds a Group column; the Individuals tab would print "Individual" on every row. */
-const VIP_GRID_WITH_GROUP = "28px 48px 1.3fr 0.75fr 0.75fr 0.55fr 0.65fr 0.65fr 0.8fr 36px";
+const VIP_GRID_WITH_GROUP = "28px 48px 1.35fr 96px 1fr 0.85fr 0.75fr 100px 100px 36px";
 /** Same two, with the category track dropped — see complianceConfig.vipCategories. The freed
  *  width goes to the name, which is what a reader scans this table by. */
-const VIP_GRID_NO_CAT = "28px 48px 1.9fr 0.6fr 0.7fr 0.7fr 0.9fr 36px";
-const VIP_GRID_WITH_GROUP_NO_CAT = "28px 48px 1.7fr 0.85fr 0.55fr 0.65fr 0.65fr 0.8fr 36px";
+const VIP_GRID_NO_CAT = "28px 48px 1.9fr 96px 1.2fr 100px 100px 36px";
+const VIP_GRID_WITH_GROUP_NO_CAT = "28px 48px 1.6fr 96px 1.1fr 0.9fr 100px 100px 36px";
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -1558,11 +1572,29 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
   };
   // The table sorts from its headings. The grid has one order it can offer, because it has a
   // control that says so — see gridPriorityFirst.
-  const projectPersons = view === "table"
+  const sortedPersons = view === "table"
     ? sortRows(matchingPersons, sort, sortValue)
     : gridPriorityFirst
       ? sortRows(matchingPersons, { key: "priority", direction: "desc" }, sortValue)
       : matchingPersons;
+  /*
+   * PAGED, not an endless scroll (owner's ask, 2026-09-18). 122 people is already a list nobody
+   * reaches the end of, and a police roster is thousands — "scroll until you find it" is not a way
+   * to work through a register, and there was no way to say where in it you were.
+   *
+   * Client-side for now: the rows are all in memory either way, so this is the pager the screen
+   * needs before the API has pages. The same component runs Server & API's list.
+   */
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  // Any narrowing changes what page 1 even means, so a filter or a tab switch goes back to it —
+  // otherwise searching from page 5 answers with an empty table.
+  const pagingKey = `${vipTab}|${q}|${groupFilter ?? ""}|${priorityFilter}|${healthFilter ?? ""}|${view}`;
+  const [lastPagingKey, setLastPagingKey] = useState(pagingKey);
+  if (lastPagingKey !== pagingKey) { setLastPagingKey(pagingKey); setPage(1); }
+  const totalPages = Math.max(1, Math.ceil(sortedPersons.length / rowsPerPage));
+  const currentPage = Math.min(page, totalPages);
+  const projectPersons = sortedPersons.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   /**
    * Bulk selection, for the one job this list cannot do a row at a time: answering the expiry
@@ -2158,17 +2190,23 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                 sorted alphabetically answers nothing. */}
             <span />
             {([
+              /* ORDER: who · how urgent · why they are listed · who with · since when · last seen.
+                 (owner's read, 2026-09-18: "표에 항목들 순서가 좀 어색해보여".)
+                 It was name · group · priority · registered · last seen · basis, which put the
+                 value an audit asks for FIRST — the basis — in the last column, and a party name
+                 ahead of the priority that decides how an operator reacts. Dates go to the right:
+                 a column of numbers is the easy one to scan wherever it sits. */
               { label: t.colName, key: "name" },
+              { label: t.colPriority, key: "priority", indent: true },
+              { label: t.basisLabel },
               ...(showGroupColumn ? [{ label: t.colGroup }] : []),
               ...(categoriesEnabled ? [{ label: t.colCategory }] : []),
-              { label: t.colPriority, key: "priority", indent: true },
               { label: t.colRegistered, key: "registered" },
               { label: t.colLastDetected, key: "lastDetected" },
               /* 등록 근거, not 메모 (owner's ask, 2026-09-18): "그게 더 중요한거면 표에서도
                  메모가 아니라 등록근거를 보여줘야할것같아". Right — the basis is what an audit
                  asks for, which is why it sits under the name in the form; the note is whatever
                  somebody felt like typing. One column, and it goes to the one that is asked about. */
-              { label: t.basisLabel },
               { label: "" },
             /* Priority's heading is nudged 8px right — the pill under it carries 8px of its own
                left padding, so a heading flush with the track's edge sat left of every value it
@@ -2187,13 +2225,22 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                 borderBottom: isLast ? "none" : BORDER,
                 borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
               }}>
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(person.id)}
-                  onChange={() => toggleOne(person.id)}
-                  aria-label={person.name}
-                  style={{ accentColor: "var(--gray-900)", cursor: "pointer", justifySelf: "start" }}
-                />
+                {/* The whole 28px cell is the target, not the 13px box inside it (owner's note,
+                    2026-09-18: "선택박스 클릭 영역이 너무 작아"). A label wrapping the input makes
+                    the padding clickable without a click handler of its own, and the box itself
+                    goes to 15px — the browser default is 13. */}
+                <label style={{
+                  display: "flex", alignItems: "center", justifyContent: "flex-start",
+                  height: "100%", minHeight: "32px", margin: "0 -6px", padding: "0 6px", cursor: "pointer",
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(person.id)}
+                    onChange={() => toggleOne(person.id)}
+                    aria-label={person.name}
+                    style={{ accentColor: "var(--gray-900)", cursor: "pointer", width: "15px", height: "15px", margin: 0 }}
+                  />
+                </label>
                 {/* 48px, up from 32. A face at 32 in a table is a thumbnail of a thumbnail, and
                     this column exists so the reader can tell one Michael from another. The row's
                     own padding is untouched — the first grid track grew with the picture, so the
@@ -2220,29 +2267,23 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     if (!person.expiresAt || !isExpired(person, todayKey)) return null;
                     const daysAgo = nowMs === null ? null : Math.floor((nowMs - Date.parse(person.expiresAt)) / 86_400_000);
                     return (
-                      <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--danger-500)", whiteSpace: "nowrap" }}>
+                      /* Grey, not red. The listing is still being matched and nothing is broken —
+                         it is a question waiting for an answer, and the count in the strip above is
+                         where the colour belongs. Red on a row that is working as designed is the
+                         same mistake as the amber pill that ran down 119 of 123 rows. */
+                      <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap" }}>
                         {daysAgo === null ? t.statusExpired : t.expiredDaysAgo(daysAgo)}
                       </span>
                     );
                   })()}
                 </span>
-                {/* A VALUE, NOT A CONTROL. This was a select on every row, so 123 bordered boxes
-                    with dropdown arrows ran down the middle of the table — after the faces, the
-                    loudest thing on the screen, and most of them reading "Individual".
-
-                    Membership is still set from the person rather than from the group (a member
-                    list in the group editor would be a second place that has to agree about who is
-                    in it). What changed is where: the edit form, which already carries it, and the
-                    bulk selection. Every other table in Portal shows values and sends changes to a
-                    form; this column was the one that did not. */}
+                <span>{person.priorityLabel ? <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
+                <span title={person.basis || undefined} style={{ fontSize: "12px", color: person.basis ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.basis || "—"}</span>
                 {showGroupColumn && (
                   <span style={{ minWidth: 0, fontSize: "12px", color: person.groupId ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {personGroups.find(g => g.id === person.groupId)?.name ?? "—"}
                   </span>
                 )}
-                {/* The category, in the institution's own word and its own colour. Unclassified
-                    says so rather than showing a dash: it is a state somebody chose (or has not
-                    got round to), not a missing value. */}
                 {categoriesEnabled && <span style={{ minWidth: 0 }}>
                   {(() => {
                     const cat = person.categoryId ? categoryById.get(person.categoryId) : undefined;
@@ -2258,7 +2299,18 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     );
                   })()}
                 </span>}
-                <span>{person.priorityLabel ? <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} /> : <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}</span>
+                {/* A VALUE, NOT A CONTROL. This was a select on every row, so 123 bordered boxes
+                    with dropdown arrows ran down the middle of the table — after the faces, the
+                    loudest thing on the screen, and most of them reading "Individual".
+
+                    Membership is still set from the person rather than from the group (a member
+                    list in the group editor would be a second place that has to agree about who is
+                    in it). What changed is where: the edit form, which already carries it, and the
+                    bulk selection. Every other table in Portal shows values and sends changes to a
+                    form; this column was the one that did not. */}
+                {/* The category, in the institution's own word and its own colour. Unclassified
+                    says so rather than showing a dash: it is a state somebody chose (or has not
+                    got round to), not a missing value. */}
                 <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{person.registeredAt.slice(0, 10)}</span>
                 {/* The same em dash every other empty cell in this table uses, in the same grey as
                     the priority column's. It was the word "Never" first, on the grounds that "not
@@ -2274,7 +2326,6 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     Released and expired rows stay in the list — if they vanished, nobody could tell
                     which of the two happened, and "it is gone" is the one answer a vipRegistry must
                     never give about somebody it used to hold. */}
-                <span title={person.basis || undefined} style={{ fontSize: "12px", color: person.basis ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.basis || "—"}</span>
                 {/* The same overflow menu the roster, users and camera tables use. A lone trash
                     icon was the only row action this table had, which is also why there was no way
                     to edit a VIP from the table at all. */}
@@ -2415,6 +2466,19 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
             );
           })}
         </div>
+      )}
+
+      {/* One pager under both views — the table and the grid page the same list, so the control
+          that says which page you are on cannot belong to one of them. Groups tab has its own
+          short list and does not need it. */}
+      {vipTab !== "groups" && (
+        <TablePagination
+          total={sortedPersons.length}
+          page={currentPage}
+          rowsPerPage={rowsPerPage}
+          onPage={setPage}
+          onRowsPerPage={setRowsPerPage}
+        />
       )}
 
       {showRegister && <RegisterVipModal t={t} groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} escapeSuspended={managingCategories} projectId={projectId} onClose={() => setShowRegister(false)} onSubmit={register} />}

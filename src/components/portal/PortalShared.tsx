@@ -331,6 +331,113 @@ export function TableEmpty({ text }: { text: string }) {
   );
 }
 
+/**
+ * The pager every long list uses.
+ *
+ * Extracted from Server & API, where it was forty lines of inline JSX, because the VIP registry
+ * needed the same thing (owner's ask, 2026-09-18: "vip 등록화면에 무한스크롤인데, 페이지네비가
+ * 있어야할것같아") and two copies of a pager is two places that drift.
+ *
+ * WINDOWED, unlike the copy it came from. That one printed a button per page, which is fine for
+ * six servers and wrong for a hundred and twenty-two people — thirteen buttons is a second
+ * toolbar. First and last are always reachable, the current page keeps a neighbour on each side,
+ * and the gaps say so with an ellipsis.
+ *
+ * Client-side paging, and that is not the same as the server paging the handover asks for: the
+ * rows are all in memory either way. When the API starts returning pages, this component stays
+ * and the caller changes what it slices — see HANDOFF-SERVER §9.
+ */
+export function TablePagination({ total, page, rowsPerPage, onPage, onRowsPerPage, perPageOptions = [10, 25, 50, 100] }: {
+  total: number;
+  page: number;
+  rowsPerPage: number;
+  onPage: (page: number) => void;
+  onRowsPerPage: (rows: number) => void;
+  perPageOptions?: number[];
+}) {
+  const [lang] = usePortalLanguage();
+  const t = PAGER_T[lang];
+  if (total === 0) return null;
+  const totalPages = Math.max(1, Math.ceil(total / rowsPerPage));
+  const current = Math.min(page, totalPages);
+  const rangeStart = (current - 1) * rowsPerPage + 1;
+  const rangeEnd = Math.min(total, current * rowsPerPage);
+
+  // Every page while they fit, and only then a window. At five pages the windowed form printed
+  // "1 2 … 5", which hides two pages to save nothing — the ellipsis has to be earning its place.
+  const pages: (number | null)[] = [];
+  const wanted = totalPages <= 7
+    ? new Set<number>(Array.from({ length: totalPages }, (_, i) => i + 1))
+    : new Set<number>([1, totalPages, current - 1, current, current + 1]);
+  for (let n = 1; n <= totalPages; n++) {
+    if (!wanted.has(n)) continue;
+    if (pages.length > 0 && n - (pages[pages.length - 1] as number) > 1) pages.push(null);
+    pages.push(n);
+  }
+
+  const arrow = (dir: "prev" | "next") => {
+    const disabled = dir === "prev" ? current === 1 : current === totalPages;
+    return (
+      <button
+        onClick={() => onPage(dir === "prev" ? Math.max(1, current - 1) : Math.min(totalPages, current + 1))}
+        disabled={disabled}
+        title={dir === "prev" ? t.prev : t.next}
+        style={{
+          width: "28px", height: "28px", borderRadius: "8px", border: BORDER, backgroundColor: "white",
+          color: disabled ? "var(--gray-300)" : "var(--gray-600)", cursor: disabled ? "not-allowed" : "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+          <path d={dir === "prev" ? "M9 2.9L4.5 7l4.5 4.1" : "M5 2.9L9.5 7l-4.5 4.1"} stroke="currentColor" strokeWidth="1.63" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+    );
+  };
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "12px", flexWrap: "wrap", gap: "10px" }}>
+      <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.showing(rangeStart, rangeEnd, total)}</p>
+      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        {arrow("prev")}
+        {pages.map((n, i) => (n === null ? (
+          <span key={`gap-${i}`} style={{ width: "20px", textAlign: "center", fontSize: "12px", color: "var(--gray-300)" }}>…</span>
+        ) : (
+          <button key={n} onClick={() => onPage(n)}
+            style={{
+              minWidth: "28px", height: "28px", padding: "0 6px", borderRadius: "8px", border: "none", cursor: "pointer",
+              backgroundColor: n === current ? "var(--gray-900)" : "transparent",
+              color: n === current ? "white" : "var(--gray-600)",
+              fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+            }}>
+            {n}
+          </button>
+        )))}
+        {arrow("next")}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.perPage}</span>
+        <FilterSelect value={String(rowsPerPage)} onChange={v => { onRowsPerPage(Number(v)); onPage(1); }}
+          options={perPageOptions.map(n => ({ value: String(n), label: String(n) }))} fitContent />
+      </div>
+    </div>
+  );
+}
+
+const PAGER_T = {
+  en: {
+    showing: (a: number, b: number, total: number) => `Showing ${a}–${b} of ${total}`,
+    perPage: "Rows per page:",
+    prev: "Previous page",
+    next: "Next page",
+  },
+  ko: {
+    showing: (a: number, b: number, total: number) => `전체 ${total}건 중 ${a}–${b}건 표시`,
+    perPage: "페이지당 행 수:",
+    prev: "이전 페이지",
+    next: "다음 페이지",
+  },
+} as const;
+
 export const MEASURE = "38em";
 export const MEASURE_TIGHT = "30em";
 
