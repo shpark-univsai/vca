@@ -1631,14 +1631,28 @@ export function registeredDayIn(registeredAt: string, timeZone: string): string 
   return dateKeyIn(new Date(registeredAt), timeZone);
 }
 
-export function watchedPersonsInProject(persons: Person[], projectId: string, nowMs: number | null): Person[] {
-  const today = nowMs === null ? null : new Date(nowMs).toISOString().slice(0, 10);
-  return persons.filter(p => {
-    if (p.projectId !== projectId) return false;
-    if (p.releasedAt) return false;
-    if (today !== null && p.expiresAt && p.expiresAt.slice(0, 10) < today) return false;
-    return true;
-  });
+/**
+ * Who this site is watching.
+ *
+ * AN EXPIRED LISTING IS STILL WATCHED, and that is a decision (owner's call, 2026-09-18: 만료는
+ * 안내이고 대조 중단은 사람이 정한다). Do not put the date back in this filter.
+ *
+ * It used to drop anybody whose end date had passed, which made a date the thing that silently
+ * stopped a face being matched. Two reasons that is wrong here:
+ *
+ * 1. **It is a silent failure.** The person stays on the list, looking registered, and no camera
+ *    ever matches them again. Nothing on any screen says why. On a police deployment that is a
+ *    wanted face missed because of a number in a field.
+ * 2. **The console does not get to enforce retention.** Contract 8 already settled this shape for
+ *    recording retention — the console writes the number down, the recorder and the server delete.
+ *    A matching cutoff is the same kind of claim about machines this browser does not talk to.
+ *
+ * So expiry is ADVISORY: the strip says "등록 만료된 VIP N명" and the row says how long ago it
+ * lapsed, and a person decides — extend it, or remove them. `releasedAt` is the opposite and stays
+ * in the filter: that IS a person's decision, already taken.
+ */
+export function watchedPersonsInProject(persons: Person[], projectId: string): Person[] {
+  return persons.filter(p => p.projectId === projectId && !p.releasedAt);
 }
 
 /** This site's cameras. */
@@ -1696,12 +1710,11 @@ export function useProjectEvents(): VcaEvent[] {
 export function useProjectPersons(): Person[] {
   const persons = useVcaStore(s => s.persons);
   const projectId = useActiveProjectId();
-  // Post-mount, like every other clock read: an expiry compared during render cuts at a
-  // different instant on the server than in the browser, and the two frames then disagree about
-  // who is on the list.
-  const [nowMs, setNowMs] = useState<number | null>(null);
-  useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
-  return useMemo(() => watchedPersonsInProject(persons, projectId, nowMs), [persons, projectId, nowMs]);
+  /* No clock any more. It was here because the filter compared an end date, which had to be read
+     post-mount so the server's frame and the browser's first one agreed about who was on the list.
+     Expiry left the filter (see watchedPersonsInProject), and with it the whole hydration problem
+     — release is a stored fact, and a stored fact reads the same in both frames. */
+  return useMemo(() => watchedPersonsInProject(persons, projectId), [persons, projectId]);
 }
 
 /**

@@ -165,7 +165,7 @@ function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void
         // detection onto a camera from another one would move the bug rather than fix it.
         const projectId = getActiveProjectId();
         const storeNow = useVcaStore.getState();
-        const persons = watchedPersonsInProject(storeNow.persons, projectId, Date.now());
+        const persons = watchedPersonsInProject(storeNow.persons, projectId);
         const onlineCameras = simulationCameras(projectId);
         if (persons.length > 0 && onlineCameras.length > 0) {
           const person = persons[Math.floor(Math.random() * persons.length)];

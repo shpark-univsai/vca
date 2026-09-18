@@ -15,13 +15,13 @@ import { VipCategoryModal, categoryTint } from "./VipCategories";
 type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires";
 
 // 36px for the actions column, the width RowActionsMenu gets in every other table.
-const VIP_GRID = "28px 48px 1.2fr 0.8fr 0.6fr 0.7fr 0.7fr 0.8fr 0.8fr 36px";
+const VIP_GRID = "28px 48px 1.4fr 0.8fr 0.6fr 0.7fr 0.7fr 0.9fr 36px";
 /** The All tab adds a Group column; the Individuals tab would print "Individual" on every row. */
-const VIP_GRID_WITH_GROUP = "28px 48px 1.1fr 0.75fr 0.75fr 0.55fr 0.65fr 0.65fr 0.7fr 0.7fr 36px";
+const VIP_GRID_WITH_GROUP = "28px 48px 1.3fr 0.75fr 0.75fr 0.55fr 0.65fr 0.65fr 0.8fr 36px";
 /** Same two, with the category track dropped — see complianceConfig.vipCategories. The freed
  *  width goes to the name, which is what a reader scans this table by. */
-const VIP_GRID_NO_CAT = "28px 48px 1.6fr 0.6fr 0.7fr 0.7fr 0.8fr 0.8fr 36px";
-const VIP_GRID_WITH_GROUP_NO_CAT = "28px 48px 1.4fr 0.85fr 0.55fr 0.65fr 0.65fr 0.7fr 0.7fr 36px";
+const VIP_GRID_NO_CAT = "28px 48px 1.9fr 0.6fr 0.7fr 0.7fr 0.9fr 36px";
+const VIP_GRID_WITH_GROUP_NO_CAT = "28px 48px 1.7fr 0.85fr 0.55fr 0.65fr 0.65fr 0.8fr 36px";
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -118,6 +118,8 @@ interface VipDict {
   statusExpired: string;
   statusReleased: string;
   expiringInDays: (n: number) => string;
+  /** The nudge on an expired row: how long ago, because "expired" alone does not ask anything. */
+  expiredDaysAgo: (n: number) => string;
   noExpiry: string;
   expiryUnanswered: string;
   expiryUnansweredWhy: string;
@@ -250,11 +252,11 @@ const T: Record<"en" | "ko", VipDict> = {
     // anywhere yet — see the HANDOFF note on Person.expiresAt (PUT /v1/provision/vips). Saying
     // "cameras have stopped matching them" is the exact failure that note warns about: the reader
     // believes the person is handled and stops asking.
-    healthExpiredWhy: "The end date on these listings has gone by, so they have come off the matching list. Each one is waiting on a person to say whether the purpose continues — set a new end date — or ended, in which case release the listing.",
+    healthExpiredWhy: "The end date on these listings has gone by. They are STILL being matched — a date does not take anybody off the list, a person does. Each one is waiting on that decision: extend it, or release the listing.",
     // The same state, said where releasing is not on the menu. Naming an action this screen does
     // not carry sends the reader looking for a control that is not there and teaches them the
     // console is broken — see complianceConfig.personRelease, off for the first release.
-    healthExpiredWhyNoRelease: "The end date on these listings has gone by, so they have come off the matching list. Each one is waiting on a person to say whether the purpose continues — set a new end date — or ended, in which case the row comes off the list.",
+    healthExpiredWhyNoRelease: "The end date on these listings has gone by. They are STILL being matched — a date does not take anybody off the list, a person does. Each one is waiting on that decision: extend it, or remove them.",
     healthExpiryUnanswered: "no end date set",
     healthMissingPhoto: "no photo",
     healthMissingPhotoWhy: "On the VIP list with no face attached. A CSV import can add a name without a photo; these people cannot be matched until one is uploaded.",
@@ -285,6 +287,7 @@ const T: Record<"en" | "ko", VipDict> = {
     statusExpired: "Expired",
     statusReleased: "Released",
     expiringInDays: (n: number) => `${n}d left`,
+    expiredDaysAgo: (n: number) => `Expired ${n}d ago`,
     noExpiry: "No end date",
     // Same words as the cameras table's checkbox, which is the same control doing the same thing —
     // and "shown" stays in both, because both only ever select the rows on screen.
@@ -411,8 +414,8 @@ const T: Record<"en" | "ko", VipDict> = {
     toastVipExportDesc: (n: number) => `VIP ${n}명을 CSV로 내보냈습니다.`,
     colPriority: "우선순위",
     healthExpired: "만료일 지남",
-    healthExpiredWhy: "만료일이 지나 대조 명단에서 내려갔습니다. 목적이 이어지는지(만료일을 새로 지정) 끝났는지(해제) 한 건씩 정해야 합니다.",
-    healthExpiredWhyNoRelease: "만료일이 지나 대조 명단에서 내려갔습니다. 목적이 이어지는지(만료일을 새로 지정) 끝났는지(목록에서 삭제) 한 건씩 정해야 합니다.",
+    healthExpiredWhy: "만료일이 지났습니다. 아직 대조되고 있습니다 — 날짜가 사람을 명단에서 내리지는 않습니다. 계속 둘지(만료일 새로 지정) 내릴지(해제) 한 건씩 정해야 합니다.",
+    healthExpiredWhyNoRelease: "만료일이 지났습니다. 아직 대조되고 있습니다 — 날짜가 사람을 명단에서 내리지는 않습니다. 계속 둘지(만료일 새로 지정) 내릴지(삭제) 한 건씩 정해야 합니다.",
     healthExpiryUnanswered: "만료일 미지정",
     healthMissingPhoto: "사진 없음",
     healthMissingPhotoWhy: "VIP 목록에는 있지만 얼굴 사진이 없습니다. CSV로 가져오면 사진 없이 이름만 등록될 수 있고, 사진을 올리기 전까지는 매칭되지 않습니다.",
@@ -443,6 +446,7 @@ const T: Record<"en" | "ko", VipDict> = {
     statusExpired: "만료됨",
     statusReleased: "해제됨",
     expiringInDays: (n: number) => `${n}일 남음`,
+    expiredDaysAgo: (n: number) => `만료 ${n}일 지남`,
     noExpiry: "무기한",
     selectAllLabel: "보이는 행 전체 선택",
     selectedCount: (n: number) => `${n}명 선택됨`,
@@ -860,20 +864,20 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
             </label>
             <TextField value={basis} onChange={setBasis} placeholder={t.basisPlaceholder} />
           </div>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.expiresLabel}</label>
-            <TextField value={expiresAt} onChange={setExpiresAt} type="date" />
-            {/* Three things this line can be saying, and they are not the same sentence: the date
-                came from a rule (so it is a default, edit it if this listing ends sooner), the
-                date was chosen for this person, or there is no date at all — which is the one
-                outcome worth a colour, because nothing ends a listing that has none. */}
-            <p style={{ fontSize: "11px", color: expiresAt ? "var(--gray-400)" : "var(--warning-500)", lineHeight: 1.45, marginTop: "6px" }}>
-              {!expiresAt ? t.noExpiryWarning
-                : expirySource === null ? t.expiresNote
-                : expirySource.label ? t.expiryCategoryNote(expirySource.label, expirySource.days)
-                : t.expiryPolicyNote(expirySource.days)}
-            </p>
-          </div>
+          {/*
+           * NO EXPIRY FIELD, AND THAT IS THE DESIGN (owner's call, 2026-09-18: "등록할때나
+           * 편집할때 만료일을 설정할 필요도 없는거지"). Do not add one back per person.
+           *
+           * One policy decides how long a listing lasts — Settings → 프로젝트 → VIP 등록
+           * 유효기간 — and the store stamps it on save (settledExpiry). Avigilon works this way:
+           * retention is a system setting with a days figure, not a field on the person. Verkada
+           * goes further and has no expiry at all, removing people by hand.
+           *
+           * The case this used to serve — a delegation here for a week — is the bulk action's:
+           * select their rows and use 만료일 지정. That is one deliberate, audited act on a set of
+           * people, instead of a date box on every registration that nobody fills in. 118 of 122
+           * seeded rows had it unanswered, which is what a field everybody skips looks like.
+           */}
           {/* NO RULE ABOVE THIS (owner's ask, 2026-09-18). The toggle is already a break in the
               form — a chevron and a heavier label after a run of fields — and a line drawn right
               above it made the split twice, once with a border and once with the control. Shut by
@@ -952,7 +956,9 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
             onClick={() => valid && onSubmit({
               categoryId: categoryId || undefined,
               basis: basis.trim() || undefined,
-              expiresAt: expiresAt || undefined,
+              // Absent on a new listing, so the store applies the site's policy; on an edit the
+              // row keeps the date it already has (the caller spreads onto the existing person).
+              expiresAt: editing ? (person?.expiresAt ?? undefined) : undefined,
               name: name.trim(), priorityLabel,
               description: description.trim() || undefined,
               groupId: groupId || undefined,
@@ -1863,25 +1869,18 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           // strip never rewarded doing anything about them.
           { key: "reenrolling" as const, count: health.reenrolling.length, label: t.healthReenrolling, why: t.healthReenrollingWhy, icon: <RefreshCw size={14} strokeWidth={2.4} />, neutral: true },
           /*
-           * LAST, AND NOT AMBER — an end date nobody set is the NORMAL state of a register, not a
-           * defect (owner's read, 2026-09-18: "만료일을 지정 안하는경우가 많을것같은데").
+           * THE "만료일 미지정" CELL IS GONE (owner's call, 2026-09-18). Do not bring it back.
            *
-           * It was second from the left in warning amber, over 118 of 122 people. A warning that
-           * fires on 97% of the rows teaches the reader to stop looking at the strip, and the two
-           * cells that DO need an answer (1 expired, 19 unreadable photos) sat next to it wearing
-           * the same colour.
+           * It counted people nobody had given an end date, and it was second from the left in
+           * amber over 118 of 122 rows. It went grey and last yesterday; now it goes, because the
+           * thing it counted has stopped being possible to care about: one policy decides the
+           * period (Settings → 프로젝트 → VIP 등록 유효기간), the store stamps it on save, and the
+           * registration form no longer asks. A row with no date now means the DEPLOYMENT has no
+           * rule — which is a settings question, not a hundred-row errand.
            *
-           * Every comparable list treats "no end date" as an ordinary value, in grey: Grok prints
-           * `No expiry`, WorkOS and Copy.ai `Never`, LangChain a plain grey `Never` chip, and Deel
-           * shows a missing submission deadline as `Not available`. None of them counts it in a
-           * summary. Vanta is the one that does track it — `Needs remediation (no SLA assigned)` —
-           * and it is the LAST of that panel's three rows, which is the arrangement copied here.
-           *
-           * Kept rather than deleted, because on a register of PEOPLE "when should this person
-           * come off the list" is a question a retention audit does ask. It stays countable and
-           * clickable; it just stops shouting.
+           * The expired cell above stays, and it is the only expiry cell left: an expired listing
+           * is still being matched (see watchedPersonsInProject) and needs a person to decide.
            */
-          { key: "expiryUnanswered" as const, count: health.expiryUnanswered.length, label: t.healthExpiryUnanswered, why: t.expiryUnansweredWhy, icon: <CalendarOff size={14} strokeWidth={2.4} />, neutral: true },
         ].filter(item => item.count > 0).map(item => ({
           key: item.key,
           icon: item.icon,
@@ -2165,8 +2164,11 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               { label: t.colPriority, key: "priority", indent: true },
               { label: t.colRegistered, key: "registered" },
               { label: t.colLastDetected, key: "lastDetected" },
-              { label: t.colExpires, key: "expires" },
-              { label: t.colNote },
+              /* 등록 근거, not 메모 (owner's ask, 2026-09-18): "그게 더 중요한거면 표에서도
+                 메모가 아니라 등록근거를 보여줘야할것같아". Right — the basis is what an audit
+                 asks for, which is why it sits under the name in the form; the note is whatever
+                 somebody felt like typing. One column, and it goes to the one that is asked about. */
+              { label: t.basisLabel },
               { label: "" },
             /* Priority's heading is nudged 8px right — the pill under it carries 8px of its own
                left padding, so a heading flush with the track's edge sat left of every value it
@@ -2199,14 +2201,31 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                 <FacePhoto src={person.photoUrl} size={48} radius="8px" />
                 {/* The name is the way in, as it is in most tables — a narrow target that does not
                     fight the group select two cells over for the same click. */}
-                <button className="portal-link" onClick={() => setDetailFor(person)} title={person.name}
-                  style={{
-                    border: "none", background: "none", padding: 0, cursor: "pointer", textAlign: "left",
-                    fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit",
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                  }}>
-                  {person.name}
-                </button>
+                {/* The name, and under it the one state that needs a person to decide.
+                    The 만료 column is gone (the date is a policy's, not this row's — see the note
+                    on the registration form), but EXPIRED still has to be visible: the listing is
+                    still being matched and somebody has to say whether it should be. So it sits
+                    here as a tag under the name, and it says HOW LONG AGO, because "만료" alone
+                    does not ask anything and "만료 320일 지남" does. */}
+                <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
+                  <button className="portal-link" onClick={() => setDetailFor(person)} title={person.name}
+                    style={{
+                      border: "none", background: "none", padding: 0, cursor: "pointer", textAlign: "left",
+                      fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                    {person.name}
+                  </button>
+                  {(() => {
+                    if (!person.expiresAt || !isExpired(person, todayKey)) return null;
+                    const daysAgo = nowMs === null ? null : Math.floor((nowMs - Date.parse(person.expiresAt)) / 86_400_000);
+                    return (
+                      <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--danger-500)", whiteSpace: "nowrap" }}>
+                        {daysAgo === null ? t.statusExpired : t.expiredDaysAgo(daysAgo)}
+                      </span>
+                    );
+                  })()}
+                </span>
                 {/* A VALUE, NOT A CONTROL. This was a select on every row, so 123 bordered boxes
                     with dropdown arrows ran down the middle of the table — after the faces, the
                     loudest thing on the screen, and most of them reading "Individual".
@@ -2255,41 +2274,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     Released and expired rows stay in the list — if they vanished, nobody could tell
                     which of the two happened, and "it is gone" is the one answer a vipRegistry must
                     never give about somebody it used to hold. */}
-                <span style={{ fontSize: "12px", minWidth: 0 }}>
-                  {(() => {
-                    if (person.releasedAt) return <span style={{ fontWeight: 700, color: "var(--gray-500)" }}>{t.statusReleased}</span>;
-                    // Two different empties, and they used to print the same word. `null` is an
-                    // answer somebody gave; an absent value is a question nobody has answered. Both
-                    // are quiet here, and that is a correction: an amber pill on 119 of 123 rows
-                    // was not a warning, it was the table's background. It also buried the three
-                    // rows that DO carry a date, which are the ones worth finding. The count that
-                    // deserves a colour is one number, and it lives in the strip above with a
-                    // filter attached — that is where 119 of something is actionable.
-                    if (isExpiryUnanswered(person)) return (
-                      <span title={t.expiryUnansweredWhy} style={{ color: "var(--gray-400)", borderBottom: "1px dotted var(--gray-300)" }}>
-                        {t.expiryUnanswered}
-                      </span>
-                    );
-                    if (!person.expiresAt) return <span style={{ color: "var(--gray-300)" }}>{t.noExpiry}</span>;
-                    // "Expired" is decided on calendar days in the project's zone, by the store's
-                    // isExpired — the one predicate the strip above and the Overview's red line
-                    // also count with. Do not inline the comparison again: three copies of it is
-                    // how this cell came to read "0 days left" for a whole day after a listing
-                    // lapsed while the Overview already counted it expired, so the banner led to a
-                    // table with nothing expired in it.
-                    if (isExpired(person, todayKey)) return <span style={{ fontWeight: 700, color: "var(--danger-500)" }}>{t.statusExpired}</span>;
-                    const daysLeft = nowMs === null ? null : Math.ceil((Date.parse(person.expiresAt) - nowMs) / 86_400_000);
-                    return (
-                      <span style={{ display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" }}>
-                        <span style={{ color: "var(--gray-600)" }}>{person.expiresAt.slice(0, 10)}</span>
-                        {daysLeft !== null && daysLeft <= getComplianceConfig().vipExpiryNoticeDays && (
-                          <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--warning-500)" }}>{t.expiringInDays(daysLeft)}</span>
-                        )}
-                      </span>
-                    );
-                  })()}
-                </span>
-                <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.description || "—"}</span>
+                <span title={person.basis || undefined} style={{ fontSize: "12px", color: person.basis ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.basis || "—"}</span>
                 {/* The same overflow menu the roster, users and camera tables use. A lone trash
                     icon was the only row action this table had, which is also why there was no way
                     to edit a VIP from the table at all. */}
