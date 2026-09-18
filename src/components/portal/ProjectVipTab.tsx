@@ -836,23 +836,27 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
               footerAction={{ label: t.manageCategories, onClick: onManageCategories }}
             />
           </div>}
-          {/* Only where a category demands one; otherwise it waits below with the rest of the
-              optional fields. Nothing is lost either way — it is the same state in both places. */}
-          {/* ONE MARK IN THIS FORM, AND IT MARKS THE MINORITY (2026-09-18, owner's ask: "있을거면
-              다 넣어야할것같아"). There were three treatments at once — `*` on the name and the
-              photo, a red `필수` chip here, a grey `선택` chip on the same field when a category
-              did not demand it, and nothing at all on the four fields below. So the reader could
-              not tell what an unmarked label meant.
-              Required is the minority here (a name, a photo at registration, and this field when
-              the category demands it) while five fields are optional, so the mark goes on what is
-              required and nothing else — the same `*` the name and photo already carry. The reason
-              this one field changes state is still said in words, by the category line above it. */}
-          {basisRequired && <div>
+          {/*
+           * ALWAYS VISIBLE, AND ABOVE THE FOLD — this is the field an audit asks about first, and
+           * it was hidden under "추가 정보" whenever a category did not demand it (2026-09-18).
+           *
+           * The domain's own products ask for it at creation time, not in an optional drawer:
+           * Verkada Command's "Add Person of Interest" flow asks for a name, a face, THE REASON
+           * for creating the POI, and which People List it joins — reason is one of four, not an
+           * extra. (Verkada's POI has no expiry at all; Avigilon keeps retention as a system-wide
+           * "days to retain" setting rather than a field on the person. Ours keeps the date because
+           * the deployment's retention rule is a contract item, and a policy default fills it.)
+           *
+           * It used to exist as TWO copies of the same input — a required one here and an optional
+           * one in the drawer — which is two places that had to agree about one value. One block
+           * now, and only the label changes.
+           */}
+          <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
-              {t.basisLabelRequired}
+              {basisRequired ? t.basisLabelRequired : t.basisLabel}
             </label>
             <TextField value={basis} onChange={setBasis} placeholder={t.basisPlaceholder} />
-          </div>}
+          </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.expiresLabel}</label>
             <TextField value={expiresAt} onChange={setExpiresAt} type="date" />
@@ -887,15 +891,6 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
               {t.moreDetails}
             </button>
             {moreOpen && <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "14px" }}>
-              {!basisRequired && (
-            <div>
-              {/* No "선택" chip. It was the only one of five optional fields wearing the word, and
-                  five of them wearing it would be the same word five times over — see the mark
-                  note beside the required copy of this field. */}
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.basisLabel}</label>
-              <TextField value={basis} onChange={setBasis} placeholder={t.basisPlaceholder} />
-            </div>
-              )}
               <div>
                 <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.priorityLabel}</label>
                 <FilterSelect
