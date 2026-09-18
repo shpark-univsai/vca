@@ -8,10 +8,10 @@ import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed } from "@/lib/time";
-import { decodeSpreadsheetBytes, looksLikeXlsx, parseDelimited } from "@/lib/rosterImport";
 import { useToast } from "../Toast";
 import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
+import VipImportModal from "./VipImportModal";
 
 type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires";
 
@@ -221,13 +221,6 @@ interface VipDict {
   cancel: string;
   register: string;
   priorityText: Record<NonNullable<Person["priorityLabel"]>, string>;
-  bulkSuccessTitle: string;
-  bulkEmptyTitle: string;
-  bulkSuccessDesc: (count: number, fileName: string) => string;
-  bulkEmptyDesc: string;
-  bulkSkipped: (count: number) => string;
-  bulkXlsxTitle: string;
-  bulkXlsxDesc: string;
   bulkTemplate: string;
   bulkTemplateHint: string;
   bulkTemplateMemoHeader: string;
@@ -425,17 +418,11 @@ const T: Record<"en" | "ko", VipDict> = {
     cancel: "Cancel",
     register: "Register",
     priorityText: { normal: "Normal", high: "High", very_high: "Very High" } as Record<NonNullable<Person["priorityLabel"]>, string>,
-    bulkSuccessTitle: "Bulk upload complete",
-    bulkSkipped: (count: number) => `${count} row${count === 1 ? "" : "s"} skipped (no name)`,
-    bulkXlsxTitle: "That is an Excel file",
-    bulkXlsxDesc: "Save it as CSV UTF-8 first — in Excel, File → Save As → CSV UTF-8 — and upload that.",
     bulkTemplate: "Template",
     bulkTemplateHint: "One person per row: a name, and a note if there is one. A file of bare names works too.",
     bulkTemplateMemoHeader: "Memo",
     bulkTemplateName: "Hong Gildong",
     bulkTemplateMemo: "Escorted at all times",
-    bulkEmptyTitle: "No rows imported",
-    bulkSuccessDesc: (count: number, fileName: string) => `${count} VIP(s) registered from ${fileName}.`,
     tabAll: "All",
     tabGroups: "Groups",
     tabAllHint: "Every person registered for this project, whether or not they belong to a group.",
@@ -468,7 +455,6 @@ const T: Record<"en" | "ko", VipDict> = {
     groupRemovedWithMembersTitle: (members: number) => `Group and ${members} member(s) removed`,
     close: "Close",
     detailNoNote: "No note",
-    bulkEmptyDesc: "Expected CSV rows as \"name,description\".",
     moreDetails: "More details",
     expiryPolicyNote: (days: number) => `Default retention — ${days} days from today.`,
     expiryCategoryNote: (label: string, days: number) => `${label} — ${days} days from today.`,
@@ -613,17 +599,11 @@ const T: Record<"en" | "ko", VipDict> = {
     cancel: "취소",
     register: "등록",
     priorityText: { normal: "일반", high: "높음", very_high: "매우 높음" } as Record<NonNullable<Person["priorityLabel"]>, string>,
-    bulkSuccessTitle: "일괄 업로드 완료",
-    bulkSkipped: (count: number) => `${count}행 건너뜀 (이름 없음)`,
-    bulkXlsxTitle: "엑셀 파일입니다",
-    bulkXlsxDesc: "먼저 CSV UTF-8로 저장해서 올려주세요 — 엑셀에서 파일 → 다른 이름으로 저장 → CSV UTF-8입니다.",
     bulkTemplate: "서식",
     bulkTemplateHint: "한 줄에 한 사람: 이름, 그리고 메모가 있으면 메모. 이름만 적힌 파일도 됩니다.",
     bulkTemplateMemoHeader: "메모",
     bulkTemplateName: "홍길동",
     bulkTemplateMemo: "상시 경호 대상",
-    bulkEmptyTitle: "가져온 행이 없습니다",
-    bulkSuccessDesc: (count: number, fileName: string) => `${fileName}에서 VIP ${count}명이 등록되었습니다.`,
     tabAll: "전체",
     tabGroups: "그룹",
     tabAllHint: "이 프로젝트에 등록된 사람 전부입니다. 그룹에 속했는지와 무관합니다.",
@@ -656,7 +636,6 @@ const T: Record<"en" | "ko", VipDict> = {
     groupRemovedWithMembersTitle: (members: number) => `그룹과 ${members}명을 삭제했습니다`,
     close: "닫기",
     detailNoNote: "메모 없음",
-    bulkEmptyDesc: "CSV 행은 \"이름,설명\" 형식이어야 합니다.",
     moreDetails: "추가 정보",
     expiryPolicyNote: (days: number) => `기본 보유기간 — 오늘부터 ${days}일.`,
     expiryCategoryNote: (label: string, days: number) => `${label} — 오늘부터 ${days}일.`,
@@ -1528,7 +1507,6 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
   const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
   const removePersonGroup = useVcaStore(s => s.removePersonGroup);
   const addPerson = useVcaStore(s => s.addPerson);
-  const addPersons = useVcaStore(s => s.addPersons);
   const removePerson = useVcaStore(s => s.removePerson);
   const restorePerson = useVcaStore(s => s.restorePerson);
   const setPersonsGroup = useVcaStore(s => s.setPersonsGroup);
@@ -1662,7 +1640,9 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
   const todayKey = nowMs === null ? null : dateKeyIn(new Date(nowMs), projectZone);
   const [releaseReason, setReleaseReason] = useState("");
   const { sort, toggle: toggleSort } = useTableSort<VipSortKey>({ key: "registered", direction: "desc" });
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  /* The bulk upload is a modal now, not a file input hidden behind a toolbar button — see
+     VipImportModal for why the write cannot be the first thing that happens. */
+  const [showImport, setShowImport] = useState(false);
 
   const q = search.trim().toLowerCase();
   const allProjectPersons = persons.filter(p => p.projectId === projectId);
@@ -2013,21 +1993,9 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
     setConfirmingRemove(null);
   };
 
-  /**
-   * The header this file is expected to carry, in both languages.
-   *
-   * Keyed off the sheet rather than off the console's UI language, for the reason the camera and
-   * roster imports do the same: the spreadsheet was probably made by somebody other than the
-   * person importing it.
-   */
-  const bulkColumn = (heading: string): "name" | "description" | null => {
-    const normalised = heading.trim().toLowerCase().replace(/\s|_/g, "");
-    if (["name", "fullname", "이름", "성명"].includes(normalised)) return "name";
-    if (["description", "memo", "note", "메모", "비고", "설명"].includes(normalised)) return "description";
-    return null;
-  };
-
-  /** The two columns this import reads, as a file somebody can fill in. */
+  /** The two columns this import reads, as a file somebody can fill in. Written here and handed to
+   *  VipImportModal as well, so the toolbar's 서식 button and the one inside the import modal write
+   *  the same file — and so the sample stays reachable for an account that may not import at all. */
   const downloadBulkTemplate = () => {
     const rows = [[t.colName, t.bulkTemplateMemoHeader], [t.bulkTemplateName, t.bulkTemplateMemo]];
     const csv = rows.map(row => row.map(csvEscape).join(",")).join("\n");
@@ -2038,80 +2006,6 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
     a.download = "vip-import-template.csv";
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  /*
-   * THE BULK PATH, PARSED PROPERLY.
-   *
-   * It used to be `text.split("\n")` and `split(",")` on whatever the browser decoded as UTF-8,
-   * which broke on three ordinary files: a memo containing a comma ("Escorted at all times, two
-   * officers") split into two columns and put half the note in nobody's field; a CSV saved by a
-   * Korean Excel (CP949, which is what "Save as CSV" gives you there) arrived as mojibake names;
-   * and an .xlsx workbook was read as binary and imported as garbage rows. The camera and staff
-   * imports already had all three answers — decodeSpreadsheetBytes with its EUC-KR fallback,
-   * parseDelimited for quoted fields, looksLikeXlsx for the wrong file — so this reads them from
-   * the same place instead of keeping a third parser.
-   *
-   * WHAT IT STILL DOES NOT HAVE: the preview the camera import gives you, where each row's
-   * problem is named before anything is written. This one reports the count it skipped in the
-   * toast and no more. That is the next piece of work on this screen, not a decision.
-   */
-  const handleBulkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    file.arrayBuffer().then(buffer => {
-      if (looksLikeXlsx(file.name, new Uint8Array(buffer.slice(0, 2)))) {
-        showToast({ variant: "warning", title: t.bulkXlsxTitle, desc: t.bulkXlsxDesc });
-        return;
-      }
-      const table = parseDelimited(decodeSpreadsheetBytes(buffer));
-      if (table.length === 0) {
-        showToast({ variant: "warning", title: t.bulkEmptyTitle, desc: t.bulkEmptyDesc });
-        return;
-      }
-      /* A header row if the first line names columns we recognise, and otherwise the first line is
-         data — a file of bare names with no header is the commonest thing an installer hands over
-         and refusing it would be pedantry. */
-      const headerCells = table[0].cells;
-      const mapped = headerCells.map(bulkColumn);
-      const hasHeader = mapped.some(column => column !== null);
-      const nameAt = hasHeader ? Math.max(0, mapped.indexOf("name")) : 0;
-      const memoAt = hasHeader ? mapped.indexOf("description") : 1;
-      const dataRows = hasHeader ? table.slice(1) : table;
-      const at = new Date().toISOString();
-      const named = dataRows
-        .map(row => ({
-          name: (row.cells[nameAt] ?? "").trim(),
-          description: memoAt >= 0 ? (row.cells[memoAt] ?? "").trim() : "",
-        }))
-        .filter(row => row.name.length > 0);
-      const skipped = dataRows.length - named.length;
-      const incoming = named
-        .map(({ name, description }) => ({
-          // No photoUrl. A CSV of names contains no faces, and the import used to hand each row a
-          // stock portrait from the mock pool — which made every bulk-imported person look
-          // registered and matchable when in fact nothing had been enrolled. Those rows are what
-          // the "no photo" figure above the list counts, and the count is only true if the rows
-          // are.
-          name, type: "VIP" as const,
-          registeredAt: at,
-          description: description || undefined,
-          projectId,
-        }));
-      // One store call, so the import is one line in the Activity log instead of two hundred
-      // that evict everything before them. See addPersons.
-      const count = addPersons(incoming, file.name);
-      showToast({
-        variant: count > 0 ? "success" : "warning",
-        title: count > 0 ? t.bulkSuccessTitle : t.bulkEmptyTitle,
-        // The rows that went nowhere, said out loud. "200명 등록" over a file of 214 lines is a
-        // number somebody reconciles against their spreadsheet and cannot explain.
-        desc: count > 0
-          ? (skipped > 0 ? `${t.bulkSuccessDesc(count, file.name)} · ${t.bulkSkipped(skipped)}` : t.bulkSuccessDesc(count, file.name))
-          : t.bulkEmptyDesc,
-      });
-    });
   };
 
   return (
@@ -2361,7 +2255,6 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
             They were a row of their own above the tabs, which is where they ended up when the page
             title was deleted, and buttons with nothing to their left read as floating chrome. */}
         <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
-          <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={handleBulkUpload} style={{ display: "none" }} />
           {/* Tools follow the tab: registering a face and creating a party are different jobs, and
               a bulk face upload has nothing to do with the list of parties. */}
       {vipTab === "groups" ? (
@@ -2373,7 +2266,10 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           ) : (<>
           {/* Export stays open to a read-only account — handing the vipRegistry to an auditor as a
               file is most of what the role is for. Import is what goes. */}
-          <button className="portal-btn-quiet" onClick={() => fileInputRef.current?.click()} disabled={!mayEdit} title={readOnlyReason}
+          {/* Opens the preview instead of the file picker. Picking a file used to BE the import:
+              addPersons ran on the way back from the dialog and the first thing anybody saw was a
+              toast with two numbers in it. */}
+          <button className="portal-btn-quiet" onClick={() => setShowImport(true)} disabled={!mayEdit} title={readOnlyReason}
             style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: mayEdit ? "var(--gray-600)" : "var(--gray-300)", fontSize: "12px", fontWeight: 600, cursor: mayEdit ? "pointer" : "not-allowed" }}>
             <FileInput size={14} strokeWidth={2.4} />
             {t.bulkUpload}
@@ -3003,6 +2899,9 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
       )}
       {groupModalFor && (
         <GroupModal t={t} group={groupModalFor.group} projectId={projectId} onClose={() => setGroupModalFor(null)} />
+      )}
+      {showImport && (
+        <VipImportModal projectId={projectId} onClose={() => setShowImport(false)} onDownloadTemplate={downloadBulkTemplate} />
       )}
       {confirmingGroupRemove && (() => {
         const group = confirmingGroupRemove;
