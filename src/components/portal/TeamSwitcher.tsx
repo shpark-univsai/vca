@@ -27,13 +27,14 @@ const T = {
     manageTeam: "Team settings",
     manageTitle: "Team settings",
     renameLabel: "Team name",
-    // NOT "Save", and this is the one place in Portal that differs — nine other forms commit with
-    // Save / 저장 and stay that way (see ProjectCamerasTab, where a stray 변경사항 저장 was pulled
-    // back into line). Owner's call, 2026-09-18: this modal IS the rename form, so its button can
-    // name the act instead of the act of committing. Elsewhere `변경` OPENS an editor (the photo,
-    // the permission, the camera scope) — naming this one `이름 변경` rather than a bare `변경`
-    // keeps those two senses apart. English is one word, so the footer does not grow.
-    renameAction: "Rename",
+    // ASKED AND ANSWERED — leave it as Save (2026-09-18). It was briefly `Rename` / `이름 변경`:
+    // this modal IS the rename form, so the button could have named the act. The owner looked at
+    // the change and took it back, and the reason is worth keeping: it would have been the ONE
+    // form in Portal that does not commit with Save / 저장 — nine others do, and a stray
+    // 변경사항 저장 in ProjectCamerasTab was already pulled back into that line once. One
+    // exception costs more than it buys. (A bare `변경` was never on the table either: in this
+    // product `변경` OPENS an editor — the photo, the permission, the camera scope.)
+    save: "Save",
     renamedToast: "Team renamed",
     deleteTeam: "Delete this team",
     deleteHint: "Only a team with no projects can be deleted. Delete each project from its own Settings screen first, where what goes with it is listed.",
@@ -64,7 +65,7 @@ const T = {
     manageTeam: "팀 설정",
     manageTitle: "팀 설정",
     renameLabel: "팀 이름",
-    renameAction: "이름 변경",
+    save: "저장",
     renamedToast: "팀 이름이 바뀌었습니다",
     deleteTeam: "이 팀 삭제",
     deleteHint: "프로젝트가 없는 팀만 삭제할 수 있습니다. 각 프로젝트는 자기 설정 화면에서 먼저 지우세요 — 무엇이 함께 지워지는지 거기 적혀 있습니다.",
@@ -478,7 +479,7 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
                 onClose();
               }}
               style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed" }}>
-              {t.renameAction}
+              {t.save}
             </button>
           </div>
         </div>
