@@ -30,17 +30,22 @@ type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires
  * empty space beside it — which is what it looked like after the reorder handed it the group
  * column's share (owner's note: "우선순위 가로너비는 지금너무 넓게 잡혀있는것 같아").
  *
- * 등록일 and 마지막 탐지 are fixed at 100px for the same reason: the value is always `2026-09-09`,
- * ten characters, and a fraction gave each of them ~114px of which a quarter was empty. The space
- * they gave back goes to 이름 and 등록 근거, which are the two that actually run out of room.
+ * 등록일 and 마지막 탐지 are fixed at 110px for the same reason: the value is always `2026-09-09`,
+ * ten characters, plus a line of elapsed time under it.
+ *
+ * 이름 is CAPPED, not a bare fraction: measured across the seeded 101 rows the longest name renders
+ * at 200px ("Muhammad Rizal bin Hassan") and the median at 97px, against a 292px track — so most
+ * of the column was air (owner's note: "이름 가로폭이 저렇게까지 길어야할까?"). minmax(170px,
+ * 220px) fits the longest without an ellipsis and hands the rest to 등록 근거, which holds case
+ * numbers of no fixed length.
  */
-const VIP_GRID = "28px 96px 48px 1.6fr 1.1fr 0.8fr 110px 110px 36px";
+const VIP_GRID = "28px 96px 48px minmax(170px, 220px) 1.5fr 1fr 110px 110px 36px";
 /** The All tab adds a Group column; the Individuals tab would print "Individual" on every row. */
-const VIP_GRID_WITH_GROUP = "28px 96px 48px 1.35fr 1fr 0.85fr 0.75fr 110px 110px 36px";
+const VIP_GRID_WITH_GROUP = "28px 96px 48px minmax(170px, 220px) 1.3fr 1.1fr 0.9fr 110px 110px 36px";
 /** Same two, with the category track dropped — see complianceConfig.vipCategories. The freed
  *  width goes to the name, which is what a reader scans this table by. */
-const VIP_GRID_NO_CAT = "28px 96px 48px 1.9fr 1.2fr 110px 110px 36px";
-const VIP_GRID_WITH_GROUP_NO_CAT = "28px 96px 48px 1.6fr 1.1fr 0.9fr 110px 110px 36px";
+const VIP_GRID_NO_CAT = "28px 96px 48px minmax(170px, 220px) 1fr 110px 110px 36px";
+const VIP_GRID_WITH_GROUP_NO_CAT = "28px 96px 48px minmax(170px, 220px) 1.4fr 1fr 110px 110px 36px";
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -321,7 +326,7 @@ const T: Record<"en" | "ko", VipDict> = {
     // and "shown" stays in both, because both only ever select the rows on screen.
     selectAllLabel: "Select all rows shown",
     selectedCount: (n: number) => `${n} selected`,
-    bulkExpiryLabel: "Set end date",
+    bulkExpiryLabel: "Change end date",
     bulkExpiryApply: "Apply",
     bulkExpiryNone: "No end date",
     bulkExpirySetTitle: (n: number) => `End date set on ${n} listing(s)`,
@@ -483,7 +488,7 @@ const T: Record<"en" | "ko", VipDict> = {
     noExpiry: "무기한",
     selectAllLabel: "보이는 행 전체 선택",
     selectedCount: (n: number) => `${n}명 선택됨`,
-    bulkExpiryLabel: "만료일 지정",
+    bulkExpiryLabel: "만료일 변경",
     bulkExpiryApply: "적용",
     bulkExpiryNone: "무기한으로",
     bulkExpirySetTitle: (n: number) => `${n}명의 만료일을 정했습니다`,
