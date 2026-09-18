@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
-import { AlertTriangle, ArrowDownWideNarrow, CalendarOff, CalendarX, Eye, FileOutput, ImageOff, RefreshCw, Users } from "lucide-react";
-import { canSetPolicy, currentPortalUser, defaultVipExpiry, isExpired, isExpiryUnanswered, registryHealth, useVcaStore, vipRetentionDays, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
+import { AlertTriangle, ArrowDownWideNarrow, CalendarX, Eye, FileInput, FileOutput, RefreshCw, Users } from "lucide-react";
+import { canSetPolicy, currentPortalUser, isExpired, registryHealth, useVcaStore, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -49,11 +49,6 @@ const VIP_GRID_WITH_GROUP_NO_CAT = "28px 96px 48px minmax(170px, 220px) 1fr 1.4f
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
-
-/** A retention period expressed as the date it ends on, in the yyyy-mm-dd a date input takes. */
-function dateInDays(days: number): string {
-  return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
-}
 
 /* A field is quoted when it holds a comma, a quote or a newline, and inner quotes are doubled.
    TODO: this is the fifth copy in Portal (cameras, roster, roster import, search log) — one
@@ -680,41 +675,16 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
   const categoriesEnabled = compliance.vipCategories;
   const [categoryId, setCategoryId] = useState(person?.categoryId ?? "");
   const [basis, setBasis] = useState(person?.basis ?? "");
-  /**
-   * The installation's retention rule, as a date. Null when it has none configured.
-   *
-   * Read once at mount rather than per render: this is the date a field is seeded with, and a
-   * value that quietly re-derives itself against a moving clock is a field that disagrees with
-   * what the person looking at it chose.
-   */
-  /* The rule of THIS site, falling back to the deployment default — the same resolution the store
-     uses when it saves, so the date in the field and the date stored cannot drift apart. */
-  const siteRetentionDays = useVcaStore(st => vipRetentionDays(st.projects.find(pr => pr.id === projectId)));
-  const [policyDate] = useState(() => defaultVipExpiry(siteRetentionDays) ?? null);
-  /**
-   * A new listing opens with the policy's end date already in it; editing keeps whatever the row
-   * has, including nothing.
-   *
-   * The field used to open empty, with an orange line underneath explaining that empty means this
-   * person is watched until somebody removes them. That put the consequential outcome behind the
-   * one action that costs nothing — skipping the field — and a warning does not fix a default, it
-   * just makes it uncomfortable. How long a face is kept is the institution's rule anyway, not a
-   * decision for whoever happens to be typing the name, so the rule fills it in and what the
-   * registrar does here is depart from it deliberately.
-   */
-  const [expiresAt, setExpiresAt] = useState(editing ? (person.expiresAt?.slice(0, 10) ?? "") : (policyDate ?? ""));
+  /* NO EXPIRY FIELD, AND NO EXPIRY STATE.
+     The form used to seed a date from the site's retention rule and let the registrar depart from
+     it. How long a face is kept is the institution's rule, not a decision for whoever happens to
+     be typing the name (owner's call, 2026-09-18: 등록할 때나 편집할 때 만료일을 설정할 필요도
+     없는 거지) — so a new listing submits no date and the store applies the policy (see
+     settledExpiry), while an edit keeps the date the row already has. The seeded state, the line
+     that explained where the date came from, and the per-category override that went with them
+     are all gone: a field nothing reads is a question with no answer.
+     Bulk 만료일 변경 is where a date is still set by hand, on purpose — one act, many rows. */
   const chosenCategory = categories.find(c => c.id === categoryId);
-  /**
-   * Where the date currently in the field came from, when it came from a rule rather than from
-   * this person. Said out loud because a pre-filled date with no explanation reads as a date
-   * somebody already chose for this listing, and nobody edits one of those.
-   */
-  const expirySource: { label?: string; days: number } | null =
-    chosenCategory?.defaultValidDays != null && expiresAt === dateInDays(chosenCategory.defaultValidDays)
-      ? { label: chosenCategory.label, days: chosenCategory.defaultValidDays }
-      : siteRetentionDays !== null && expiresAt === policyDate
-        ? { days: siteRetentionDays }
-        : null;
   /**
    * The basis is asked for in the open only where a category demands one. Everywhere else it is a
    * reference number somebody may or may not have, which is what the section below is for.
@@ -740,12 +710,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
    * with no default (defaultValidDays null) clears the field rather than leaving the previous
    * category's date under a new heading.
    */
-  const pickCategory = (nextId: string) => {
-    setCategoryId(nextId);
-    const next = categories.find(c => c.id === nextId);
-    if (!next) return;
-    setExpiresAt(next.defaultValidDays === null ? "" : dateInDays(next.defaultValidDays));
-  };
+  const pickCategory = (nextId: string) => setCategoryId(nextId);
   /**
    * Making a group without leaving this form.
    *
@@ -1169,43 +1134,37 @@ function Tag({ label, bg, color, flexible, icon }: { label: string; bg: string; 
 }
 
 /**
- * The three priorities as a meter: bars of rising height, filled from the left.
+ * The three priorities as a flag.
  *
- * Tried as three dots and taken back (owner's read, 2026-09-18: 점보다 신호모양이 더 낫다).
- * The dots said "one of three" but flatly — the bars say WHICH one at a glance because the
- * silhouette itself grows, and that is what a column you scan is for. The wifi resemblance is the
- * known cost and it was weighed: the mark sits inside a labelled pill, on a row about a person,
- * in a column headed 우선순위 — the reading is settled by everything around it.
+ * Third mark on this column and the one that stays (owner's call, 2026-09-18, naming the pattern:
+ * 「깃발(Flag) 스타일 — Flag 아이콘 + 색상 구분 + 텍스트, 가장 표준적인 B2B 방식」). The two
+ * before it both said "how much" with their silhouette — three dots, then bars of rising height —
+ * and both bought that at the price of reading as something else: the dots as a rating, the bars
+ * as signal strength. A flag says "flagged", which is what a priority IS, and the level is carried
+ * by the colour and the word beside it, which are the channels this pill already had.
  *
- * `currentColor` throughout, so the mark takes the pill's own colour — grey, amber, red — and no
- * new colour enters the palette. The unfilled bars are the same colour at an opacity, which is an
- * existing token turned down rather than a value invented here.
+ * Drawn by hand rather than taken from lucide at 10px: the icon set strokes in a 24-unit box, and
+ * a 1.5px stroke scaled to 10px turns the pennant into a smudge. A filled pennant holds its shape.
  *
- * Not arrows: an arrow says "rising", a claim about change over time a priority does not make.
- * Not repeated punctuation: at 10px that reads as shouting.
+ * `currentColor`, so the mark takes the pill's own colour — grey 600, amber 500, red 500 — and no
+ * new colour enters the palette. Same glyph at all three levels on purpose: a flag that changed
+ * shape per level would be a second, competing scale beside the colour and the word.
  */
-function PriorityMark({ level }: { level: NonNullable<Person["priorityLabel"]> }) {
-  const filled = level === "very_high" ? 3 : level === "high" ? 2 : 1;
-  // Heights rise 4 → 7 → 10 inside a 10px box, on a 2px bar with a 1.5px gap: the whole mark is
-  // 8.5px wide, which fits the 18px pill beside 10px text without pushing the padding around.
-  const bars = [
-    { x: 0, y: 6, h: 4 },
-    { x: 3.5, y: 3, h: 7 },
-    { x: 7, y: 0, h: 10 },
-  ];
+function PriorityMark() {
   return (
-    <svg width="9" height="10" viewBox="0 0 9 10" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-      {bars.map((b, i) => (
-        <rect key={b.x} x={b.x} y={b.y} width="2" height={b.h} rx="1"
-          fill="currentColor" opacity={i < filled ? 1 : 0.28} />
-      ))}
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
+      {/* The owner's own glyph, path for path. strokeWidth 2.8 rather than its native 1.5: the
+          drawing is a 24-unit box rendered at 12px, and 1.5 scaled down that far comes out at
+          two-thirds of a pixel — the banner disappears into the pill's background. Same
+          correction ICON_STROKE_PX makes everywhere else. */}
+      <path strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
     </svg>
   );
 }
 
 function PriorityTag({ priority, text }: { priority: NonNullable<Person["priorityLabel"]>; text: string }) {
   const { bg, color } = PRIORITY_COLOR[priority];
-  return <Tag label={text} bg={bg} color={color} icon={<PriorityMark level={priority} />} />;
+  return <Tag label={text} bg={bg} color={color} icon={<PriorityMark />} />;
 }
 
 /** Add or edit a party. Membership is not set here — a person is put in a group from their own row. */
@@ -2257,7 +2216,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               file is most of what the role is for. Import is what goes. */}
           <button className="portal-btn-quiet" onClick={() => fileInputRef.current?.click()} disabled={!mayEdit} title={readOnlyReason}
             style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: mayEdit ? "var(--gray-600)" : "var(--gray-300)", fontSize: "12px", fontWeight: 600, cursor: mayEdit ? "pointer" : "not-allowed" }}>
-            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 9.33V1.75M7 1.75 4.08 4.67M7 1.75 9.92 4.67M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <FileInput size={14} strokeWidth={2.4} />
             {t.bulkUpload}
           </button>
           {/* title, the same way the two buttons on either side of it carry their refusal — a

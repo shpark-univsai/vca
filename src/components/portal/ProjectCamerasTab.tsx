@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import CameraImportModal from "./CameraImportModal";
-import { CircleAlert, FileOutput, Film as FilmIcon, Image as ImageIcon, MapPinOff, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
+import { CircleAlert, FileInput, FileOutput, Film as FilmIcon, Image as ImageIcon, MapPinOff, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
 import { useVcaStore, hasPosition, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { useFitRowsPerPage, TablePagination, CARD_BORDER, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
+import { useFitRowsPerPage, TablePagination, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -100,21 +100,21 @@ const T = {
     removeUploadAction: "Remove upload",
     toastUploadRemovedTitle: "Upload removed",
     emptyNoSources: "Nothing registered for this project yet.",
-    gridCamerasOnly: "Grid shows cameras only — switch to Table to see uploaded footage.",
-    fieldIp: "IP address",
+    fieldIp: "IP address *",
     fieldIpPlaceholder: "10.20.4.11",
-    fieldModel: "Model",
+    fieldModel: "Model *",
     fieldModelPlaceholder: "XNP-6400R",
-    fieldUsername: "User ID",
+    fieldUsername: "User ID *",
     fieldUsernamePlaceholder: "Stream account",
-    fieldPassword: "Password",
+    fieldPassword: "Password *",
     fieldPasswordPlaceholder: "Stream password",
     fieldPasswordEditHint: "Leave blank to keep the current password.",
+    fieldServerNoneAvailable: "This project has no server registered yet — add one under Servers & API. A camera can be registered before then.",
     passwordNotStoredHint: "Sent to the server with the camera and never read back — it is not kept in this browser.",
-    fieldServer: "Associated server",
-    fieldServerNone: "Not assigned",
-    fieldLat: "Latitude",
-    fieldLng: "Longitude",
+    fieldServer: "Associated server *",
+    fieldServerNone: "Select a server",
+    fieldLat: "Latitude *",
+    fieldLng: "Longitude *",
     // No clearFilters label: ActiveFilterCount is a chip that clears on its own ×, and this
     // string was never rendered. A wording nobody reads drifts from the ones they do.
     selectedCount: (n: number) => `${n} selected`,
@@ -128,8 +128,6 @@ const T = {
     // Same words as the VIP table's checkbox — one control, one label. "shown" is in both
     // because both only ever select the rows on screen.
     selectAllLabel: "Select all rows shown",
-    viewTable: "Table",
-    viewGrid: "Grid",
     colCamera: "Camera",
     colServer: "Server",
     colZone: "Zone",
@@ -141,22 +139,27 @@ const T = {
     previewAction: "Preview stream",
     editAction: "Edit",
     removeAction: "Remove",
-    // ONE NOUN FOR THIS THING, and it is the one on the tab: Input Sources. Adding one camera
-    // used to walk the reader through five names — 입력 소스 (sidebar) → 카메라 추가 (overview)
-    // → 소스 추가 (this tab) → 입력 장치 추가 (this modal) → 기기 추가 + 기기 이름 (its fields).
-    // Source / camera / input device / device, inside one flow. It is the same class of mistake
-    // as Camera.zone against district: two names for one thing, and nobody can tell they are the
-    // same thing.
-    addModalTitle: "Add source",
-    editModalTitle: "Edit Input Device",
-    fieldDeviceName: "Source name *",
+    // TWO LEVELS, TWO NOUNS, AND NO MORE THAN THAT. The collection is Input Sources — cameras,
+    // footage, images, deepfake submissions — so the tab, the sidebar and the one primary button
+    // (a menu) say "source". What that menu creates is a KIND, and this modal is the camera
+    // branch: every field in it is a camera's (IP, maker, model, RTSP, coordinates), and it can
+    // make nothing else. So it says camera (owner's note, 2026-09-18: "소스추가가 아니라 카메라
+    // 추가 아닐까?").
+    //
+    // The five-name walk this replaced is the thing to stay away from: 입력 소스 (sidebar) →
+    // 카메라 추가 (overview) → 소스 추가 (tab) → 입력 장치 추가 (modal) → 기기 추가 + 기기 이름
+    // (fields). Source / camera / input device / device inside one flow. "입력 장치" was still on
+    // the edit title until now — the same leftover, one noun further along.
+    addModalTitle: "Add camera",
+    editModalTitle: "Edit camera",
+    fieldDeviceName: "Camera name *",
     fieldDeviceNamePlaceholder: "Novena",
     fieldLocation: "Location",
     fieldLocationPlaceholder: "Entrance",
     fieldZone: "Zone",
     fieldZonePlaceholder: "Front Gate",
     fieldRtspUrl: "Connection — RTSP URL *",
-    fieldMaker: "Maker",
+    fieldMaker: "Maker *",
     cancel: "Cancel",
     // One word, both languages. Every other save in Portal is "Save" / "저장" — the server form,
     // the roster, the categories — and this was the only 변경사항 저장 among nine plain 저장.
@@ -256,21 +259,21 @@ const T = {
     removeUploadAction: "업로드 삭제",
     toastUploadRemovedTitle: "업로드가 삭제됨",
     emptyNoSources: "이 프로젝트에 등록된 소스가 없습니다.",
-    gridCamerasOnly: "그리드는 카메라만 보여줍니다 — 업로드한 영상은 테이블에서 볼 수 있습니다.",
-    fieldIp: "IP 주소",
+    fieldIp: "IP 주소 *",
     fieldIpPlaceholder: "10.20.4.11",
-    fieldModel: "모델",
+    fieldModel: "모델 *",
     fieldModelPlaceholder: "XNP-6400R",
-    fieldUsername: "사용자 ID",
+    fieldUsername: "사용자 ID *",
     fieldUsernamePlaceholder: "스트림 계정",
-    fieldPassword: "비밀번호",
+    fieldPassword: "비밀번호 *",
     fieldPasswordPlaceholder: "스트림 비밀번호",
     fieldPasswordEditHint: "비워두면 기존 비밀번호를 그대로 사용합니다.",
+    fieldServerNoneAvailable: "이 프로젝트에 등록된 서버가 아직 없습니다 — 서버 및 API에서 추가하세요. 그 전에도 카메라는 등록할 수 있습니다.",
     passwordNotStoredHint: "카메라와 함께 서버로 전송되며 다시 읽어오지 않습니다 — 브라우저에는 남지 않습니다.",
-    fieldServer: "연결 서버",
-    fieldServerNone: "미지정",
-    fieldLat: "위도",
-    fieldLng: "경도",
+    fieldServer: "연결 서버 *",
+    fieldServerNone: "선택하세요",
+    fieldLat: "위도 *",
+    fieldLng: "경도 *",
     selectedCount: (n: number) => `${n}대 선택됨`,
     bulkClearSelection: "선택 해제",
     bulkMoveToZone: "구역 이동",
@@ -280,8 +283,6 @@ const T = {
     bulkDeletedTitle: (n: number) => `카메라 ${n}대가 삭제됨`,
     bulkMovedTitle: (n: number, zone: string) => `카메라 ${n}대를 ${zone}(으)로 이동함`,
     selectAllLabel: "보이는 행 전체 선택",
-    viewTable: "테이블",
-    viewGrid: "그리드",
     colCamera: "카메라",
     colServer: "서버",
     colZone: "구역",
@@ -290,16 +291,16 @@ const T = {
     previewAction: "스트림 미리보기",
     editAction: "수정",
     removeAction: "삭제",
-    addModalTitle: "소스 추가",
-    editModalTitle: "입력 장치 수정",
-    fieldDeviceName: "소스 이름 *",
+    addModalTitle: "카메라 추가",
+    editModalTitle: "카메라 수정",
+    fieldDeviceName: "카메라 이름 *",
     fieldDeviceNamePlaceholder: "Novena",
     fieldLocation: "위치",
     fieldLocationPlaceholder: "입구",
     fieldZone: "구역",
     fieldZonePlaceholder: "정문 구역",
     fieldRtspUrl: "연결 — RTSP URL *",
-    fieldMaker: "제조사",
+    fieldMaker: "제조사 *",
     cancel: "취소",
     saveChanges: "저장",
     addDevice: "추가",
@@ -588,9 +589,45 @@ function CameraFormModal({
    * a line under its field, and these two just killed the button. Ten fields and no mark on either
    * of them, so the reader's next move is to guess.
    */
-  const nameMissing = form.name.trim().length === 0;
-  const rtspMissing = form.rtspUrl.trim().length === 0;
-  const valid = !nameMissing && !rtspMissing
+  const blank = (v: string) => v.trim().length === 0;
+  const nameMissing = blank(form.name);
+  const rtspMissing = blank(form.rtspUrl);
+  const ipMissing = blank(form.ip);
+  const modelMissing = blank(form.model);
+  const usernameMissing = blank(form.username);
+  /* Demanded when the camera is created and not when it is edited — the password is never stored
+     (see CameraFormValues), so the edit form opens with an empty box, and treating that as missing
+     would make renaming a camera cost a trip to the installer's password list. Blank on an edit
+     means "keep the one the server has", which is what the line under the field says. */
+  const passwordMissing = !isEdit && blank(form.password);
+  /* Only once there is one to pick. This is an on-premises product: a site can be handed its
+     camera list before we have installed its server, and a required field with an empty menu is a
+     door with no handle. The hint under the field says so rather than the form silently letting it
+     pass. */
+  const serverMissing = servers.length > 0 && form.serverId === "";
+  /*
+   * COORDINATES ARE REQUIRED, and this is the field whose absence costs the most.
+   *
+   * Settled 2026-09-18, from how the existing service actually works: a camera's latitude and
+   * longitude are what put it in a district, and a district's VIP figure is the detections of
+   * every camera in it. So a camera with no coordinates is not merely absent from the map — its
+   * detections are absent from every district total, and no screen says "this number was counted
+   * without three cameras". A silent undercount of the figure the customer reads is worse than a
+   * form that refuses to save.
+   *
+   * It was the one pair the previous product left optional (owner's note with its Add New Camera
+   * screenshot: 마지막 값 두 개 빼고는 필수였다), which is exactly how the register ended up with
+   * unsurveyed rows. Two other doors make them too — the CSV import and the provisioning wizard —
+   * and a rule enforced at one of three doors is not a rule. See HANDOFF-SERVER §사람이 정해야
+   * 할 것 2, now answered.
+   *
+   * Absence, not zero: an empty box is missing, and 0,0 is a real point in the Gulf of Guinea.
+   * The latError/lngError checks above keep that distinction.
+   */
+  const latMissing = form.lat.trim().length === 0;
+  const lngMissing = form.lng.trim().length === 0;
+  const valid = !nameMissing && !rtspMissing && !ipMissing && !modelMissing && !usernameMissing
+    && !passwordMissing && !serverMissing && !latMissing && !lngMissing
     && !latError && !lngError && !ipError && !rtspError;
   /*
    * Refused on the press, not while somebody is still typing.
@@ -653,18 +690,25 @@ function CameraFormModal({
             error: refused && nameMissing ? t.errRequired : undefined,
           })}
           {field("ip", t.fieldIp, t.fieldIpPlaceholder, {
-            error: ipShape ? FIELD_CHECK_T[lang][ipShape] : ipCharsBad ? t.errIp : undefined,
+            error: ipShape ? FIELD_CHECK_T[lang][ipShape] : ipCharsBad ? t.errIp : refused && ipMissing ? t.errRequired : undefined,
           })}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             {selectField(t.fieldMaker, form.maker, MAKERS.map(m => ({ value: m, label: m })), v => setForm(f => ({ ...f, maker: v })))}
-            {field("model", t.fieldModel, t.fieldModelPlaceholder)}
+            {field("model", t.fieldModel, t.fieldModelPlaceholder, {
+              error: refused && modelMissing ? t.errRequired : undefined,
+            })}
           </div>
 
           <div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              {field("username", t.fieldUsername, t.fieldUsernamePlaceholder)}
-              {field("password", t.fieldPassword, t.fieldPasswordPlaceholder, { type: "password" })}
+              {field("username", t.fieldUsername, t.fieldUsernamePlaceholder, {
+                error: refused && usernameMissing ? t.errRequired : undefined,
+              })}
+              {field("password", t.fieldPassword, t.fieldPasswordPlaceholder, {
+                type: "password",
+                error: refused && passwordMissing ? t.errRequired : undefined,
+              })}
             </div>
             {/* Says where the password goes, because an empty box on the edit form otherwise reads
                 as "we lost it" rather than "we never had it". */}
@@ -679,16 +723,21 @@ function CameraFormModal({
             error: rtspError ? t.errRtsp : refused && rtspMissing ? t.errRequired : undefined,
           })}
 
-          {selectField(
-            t.fieldServer,
-            form.serverId,
-            [{ value: "", label: t.fieldServerNone }, ...servers.map(sv => ({ value: sv.id, label: sv.name }))],
-            v => setForm(f => ({ ...f, serverId: v })),
-          )}
+          <div>
+            {selectField(
+              t.fieldServer,
+              form.serverId,
+              [{ value: "", label: t.fieldServerNone }, ...servers.map(sv => ({ value: sv.id, label: sv.name }))],
+              v => setForm(f => ({ ...f, serverId: v })),
+            )}
+            {servers.length === 0
+              ? <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.45 }}>{t.fieldServerNoneAvailable}</p>
+              : refused && serverMissing ? <FieldError>{t.errRequired}</FieldError> : null}
+          </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            {field("lat", t.fieldLat, "0.0", { inputMode: "decimal", error: latError ? t.errLat : undefined })}
-            {field("lng", t.fieldLng, "0.0", { inputMode: "decimal", error: lngError ? t.errLng : undefined })}
+            {field("lat", t.fieldLat, "0.0", { inputMode: "decimal", error: latError ? t.errLat : refused && latMissing ? t.errRequired : undefined })}
+            {field("lng", t.fieldLng, "0.0", { inputMode: "decimal", error: lngError ? t.errLng : refused && lngMissing ? t.errRequired : undefined })}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
@@ -851,7 +900,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     });
   }, [openCameraId, onCameraOpened]);
   const [confirmingStatusCam, setConfirmingStatusCam] = useState<Camera | null>(null);
-  const [view, setView] = useState<"table" | "grid">("table");
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [zoneFilter, setZoneFilter] = useState("ALL");
@@ -1056,7 +1104,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
      it is the registry's too — the two tables now show the same 48px tile (owner's note,
      2026-09-18: "vip 화면 테이블 높이로 맞춰줘"). */
   const { listRef, rowsPerPage, setRowsPerPage, perPageOptions } = useFitRowsPerPage(69);
-  const pagingKey = `${kindTab}|${search}|${statusFilter}|${zoneFilter}|${view}`;
+  const pagingKey = `${kindTab}|${search}|${statusFilter}|${zoneFilter}`;
   const [lastPagingKey, setLastPagingKey] = useState(pagingKey);
   if (lastPagingKey !== pagingKey) { setLastPagingKey(pagingKey); setPage(1); }
   const totalPages = Math.max(1, Math.ceil(visibleRows.length / rowsPerPage));
@@ -1078,7 +1126,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * whose value is identical on every row is not information.
    */
   const showKindColumn = kindTab === "ALL";
-  const effectiveView = showCameraColumns ? view : "table";
   const GRID = showCameraColumns
     ? (showKindColumn
         ? "28px 48px 1.4fr 0.7fr 0.7fr 0.7fr 1.2fr 1fr 0.8fr 70px"
@@ -1406,10 +1453,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           fourth select in the filter strip below: which kind of source you are looking at is a
           different question from how you are narrowing that kind, and the counts belong where the
           choice is made. Same arrangement the previous product's INPUT screen used. */}
-      {/* The view switch at the far end of the tab row, not down in the toolbar — the same
-          arrangement the VIP registry uses. It answers the tabs' kind of question (which shape of
-          this list) and is set once and left, while the toolbar below is touched on the way to a
-          particular row. */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "16px", borderBottom: BORDER, marginBottom: "16px" }}>
       <div style={{ display: "flex", gap: "20px" }}>
         {([
@@ -1441,24 +1484,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           );
         })}
       </div>
-        {/* Grid is a wall of camera thumbnails, and an unanalysed file has no frame to put in one.
-            So the toggle is only offered on the tabs where both views can show the same rows —
-            and `effectiveView` below makes sure a Grid choice made earlier does not silently hide
-            the files. */}
-        {showCameraColumns && (
-          <div style={{ display: "flex", alignItems: "center", marginBottom: "8px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px", flexShrink: 0 }}>
-            {(["table", "grid"] as const).map(v => (
-              <button key={v} onClick={() => setView(v)}
-                style={{
-                  padding: "4px 10px", borderRadius: "8px", border: "none", cursor: "pointer", fontFamily: "inherit",
-                  backgroundColor: view === v ? "white" : "transparent", boxShadow: view === v ? PANEL_SHADOW : "none",
-                  fontSize: "10px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
-                }}>
-                {v === "table" ? t.viewTable : t.viewGrid}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/*
@@ -1643,7 +1668,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           {mayEdit && (
             <button className="portal-btn-quiet" onClick={() => setShowImport(true)}
               style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 9.33V1.75M7 1.75 4.08 4.67M7 1.75 9.92 4.67M2.33 9.92v1.17c0 .64.53 1.16 1.17 1.16h7c.64 0 1.17-.52 1.17-1.16V9.92" stroke="var(--gray-600)" strokeWidth="1.22" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <FileInput size={14} strokeWidth={2.4} />
               {t.importCsv}
             </button>
           )}
@@ -1755,8 +1780,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           scroll underneath. Rendered here (still inside the fixed/sticky block) as the top half of
           the card; the data rows below are the bottom half, in normal flow, meeting it with no
           border between them so the two halves read as one continuous card. */}
-      {effectiveView === "table" && (
-        <div ref={listRef} style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
+      <div ref={listRef} style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
           <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
             {/* The thumbnail, address and AI-engine columns carry no sortKey — a picture has no
                 order, an address sorts by whatever the IP happens to start with, and AI engines is
@@ -1787,22 +1811,19 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             ))}
           </div>
         </div>
-      )}
       </div>
 
       {visibleRows.length === 0 ? (
         <div style={{
           backgroundColor: "white", boxShadow: PANEL_SHADOW,
-          // In table view this is the bottom half of the card the column headings above opened, so
-          // it takes no top border and only the bottom corners — the same edges the rows draw.
-          // The grid has no headings, so there it is a card of its own.
-          ...(effectiveView === "table"
-            ? { borderLeft: BORDER, borderRight: BORDER, borderBottom: BORDER, borderBottomLeftRadius: CARD_RADIUS, borderBottomRightRadius: CARD_RADIUS }
-            : { border: BORDER, borderRadius: CARD_RADIUS }),
+          // The bottom half of the card the column headings above opened, so it takes no top
+          // border and only the bottom corners — the same edges the rows draw.
+          borderLeft: BORDER, borderRight: BORDER, borderBottom: BORDER,
+          borderBottomLeftRadius: CARD_RADIUS, borderBottomRightRadius: CARD_RADIUS,
         }}>
           <TableEmpty text={projectCameras.length + projectUploads.length === 0 ? t.emptyNoSources : t.emptyFiltered} />
         </div>
-      ) : effectiveView === "table" ? (
+      ) : (
         // No overflow:hidden on the container — it would clip a RowActionsMenu dropdown that opens
         // past the bottom edge (the last row's menu becomes invisible, not just cut off).
         // Header/last-row corners are radiused directly instead. Top border/radius omitted — the
@@ -2043,54 +2064,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               </div>
             );
           })}
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {kindTab === "ALL" && projectUploads.length > 0 && (
-            <p style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.gridCamerasOnly}</p>
-          )}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "12px" }}>
-          {visibleCameras.map(cam => {
-            const online = cam.status === "online";
-            // The card cannot clip: the ⋯ menu drops out of its top row, and an overflow:hidden
-            // card would cut it off at its own edge. The thumbnail rounds its own top corners
-            // instead, which is all that hiding was doing.
-            return (
-              <div key={cam.id} style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
-                <button onClick={() => setInspectingCameraId(cam.id)} style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", border: "none", padding: 0, cursor: "pointer", display: "block", backgroundColor: "var(--gray-900)", overflow: "hidden", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
-                  {cam.thumbnail
-                    ? <img src={cam.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: online ? 1 : 0.4 }} />
-                    : <div style={{ width: "100%", height: "100%", backgroundColor: "var(--gray-100)" }} />}
-                  <span style={{
-                    position: "absolute", top: "8px", left: "8px", fontSize: "10px", fontWeight: 600, padding: "4px 8px", borderRadius: "999px",
-                    backgroundColor: cam.status === "online" ? "rgba(22,163,74,0.9)" : cam.status === "error" ? "rgba(244,63,94,0.9)" : "rgba(148,163,184,0.9)", color: "white",
-                  }}>
-                    {(cam.status === "online" ? t.online : cam.status === "error" ? t.statusError : isAwaitingFirstContact(cam) ? t.statusAwaiting : t.offline).toUpperCase()}
-                  </span>
-                </button>
-                {/* No footer strip. It carried the AI-engine badges — which for a camera with no
-                    engine printed a bare em dash, so most cards ended in a rule with a dash under
-                    it — and two icon buttons whose meaning you had to hover to learn. The card
-                    now ends where its content ends, and everything you can do to it is behind the
-                    same ⋯ menu the table rows use: one place per row, named actions, and the
-                    destructive one marked. */}
-                <div style={{ padding: "12px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "monospace", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.code}</p>
-                    <span style={{ flex: 1 }} />
-                    <span style={{ fontSize: "10px", color: "var(--gray-400)", flexShrink: 0 }}>{cam.zone}</span>
-                    <RowActionsMenu actions={[
-                      { label: t.editAction, onClick: () => setEditingCamera(cam), disabled: !mayEdit, reason: readOnlyReason },
-                      ...statusMenuActions(cam),
-                      { label: t.removeAction, onClick: () => handleDelete(cam), danger: true, disabled: !mayEdit, reason: readOnlyReason },
-                    ]} />
-                  </div>
-                  <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", marginTop: "2px" }}>{cam.name}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
         </div>
       )}
 

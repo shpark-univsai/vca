@@ -347,6 +347,17 @@ export function TableEmpty({ text }: { text: string }) {
  * rows are all in memory either way. When the API starts returning pages, this component stays
  * and the caller changes what it slices — see HANDOFF-SERVER §9.
  */
+/** Nearest ancestor that actually scrolls — what "the first screen" is measured against. */
+function scrollingAncestor(el: HTMLElement): HTMLElement | null {
+  let node: HTMLElement | null = el.parentElement;
+  while (node) {
+    const overflowY = getComputedStyle(node).overflowY;
+    if (overflowY === "auto" || overflowY === "scroll") return node;
+    node = node.parentElement;
+  }
+  return null;
+}
+
 /**
  * Picks the starting rows-per-page so the pager is ON THE FIRST SCREEN.
  *
@@ -355,43 +366,86 @@ export function TableEmpty({ text }: { text: string }) {
  * change. A default of 25 buries it — 25 rows is 1700px of table on a screen that has ~600px for
  * rows.
  *
- * How: measure where the list starts (the ref goes on the table's own wrapper), take what is left
- * of the window under it, subtract the pager's own row, and keep the largest option that fits.
- * Never below the smallest option — a list of four rows on a tall screen is not an improvement.
+ * MEASURED AGAINST THE SCROLLER, AND THEN CHECKED. The first version read the window's height in
+ * a microtask after mount and trusted the answer. Both halves were wrong: the microtask runs
+ * before the tabs, the summary cards and the toolbar have taken their places, so the list's top
+ * measured ~150px higher than where it ends up, and the window is not what scrolls — the shell's
+ * own scroll box is, and it has padding of its own under the pager. The two errors compounded to
+ * about two and a half rows, so the pager it was supposed to reveal sat just off the bottom and
+ * scrolling to reach it dragged rows under the pinned header (owner's report: "스크롤하면 이렇게
+ * 되네").
  *
- * It measures ONCE, after mount, and stops the moment the reader picks a size: a default that
- * keeps recomputing would move the ground under somebody who has already chosen. It also does not
- * follow window resizes, for the same reason.
+ * So: wait two frames for layout to settle, measure the gap between the list's top and the
+ * scroller's, and then VERIFY — if the scroller still overflows, take off exactly as many rows as
+ * the overflow is worth and look again. At most three passes, and the check is what makes the
+ * promise true rather than approximately true.
+ *
+ * It stops the moment the reader picks a size: a default that keeps recomputing would move the
+ * ground under somebody who has already chosen. It does not follow window resizes either.
  */
 export function useFitRowsPerPage(rowHeight: number, steps: number[] = [25, 50, 100]) {
   const listRef = useRef<HTMLDivElement>(null);
   const [rowsPerPage, setRows] = useState(steps[0]);
   const [fitted, setFitted] = useState<number | null>(null);
   const chosen = useRef(false);
+  /* 0 = nothing measured yet, 1-2 = correcting, 3 = settled. Caps the loop: a list that cannot be
+     made to fit (a short window, a tall toolbar) stops at the floor instead of shrinking forever. */
+  const pass = useRef(0);
+
+  /* A page of three rows on a tiny window is not a list — under this the reader is better off
+     scrolling a little. Above, never more than the first step: past that the pager is off screen
+     again and the point of measuring is lost.
+     It was eight, which is two rows more than a 800px window can hold with the tabs, the cards
+     and the toolbar above the table — so the floor itself pushed the pager off screen, which is
+     the one thing this hook exists to prevent. */
+  const MIN_ROWS = 5;
 
   useEffect(() => {
-    if (chosen.current) return;
+    if (chosen.current || pass.current >= 3) return;
     const el = listRef.current;
     if (!el) return;
-    // queueMicrotask, like every other post-mount read here: measuring during render would run on
-    // the server too, where there is no window.
-    queueMicrotask(() => {
-      const top = el.getBoundingClientRect().top;
-      // What sits between the top of the list card and the bottom of the window: the card's own
-      // heading strip, the pager's row under the card, and a little air.
-      const HEAD = 36, PAGER_ROW = 48, AIR = 8;
-      const room = window.innerHeight - top - HEAD - PAGER_ROW - AIR;
-      // At least eight: a page of three rows on a tiny window is not a list, and the reader can
-      // still scroll a little. Never more than the first step — beyond that the pager is off
-      // screen again and the point is lost.
-      const fits = Math.max(8, Math.min(steps[0], Math.floor(room / rowHeight)));
-      setFitted(fits);
-      setRows(fits);
-    });
-  }, [rowHeight, steps]);
+    let raf = 0;
+    let frames = 0;
+    const measure = () => {
+      if (chosen.current) return;
+      // Two frames, not a microtask: the microtask runs inside the same commit that mounted the
+      // tree, before the rows above this one have been laid out.
+      if (frames < 2) { frames += 1; raf = requestAnimationFrame(measure); return; }
+      const sp = scrollingAncestor(el);
+      if (!sp) { pass.current = 3; return; }
+      if (pass.current === 0) {
+        // What is left under the list's top edge, inside the box that scrolls: minus the card's
+        // own heading strip and minus everything below the rows — the pager's row and the
+        // scroller's bottom padding.
+        const gap = el.getBoundingClientRect().top - sp.getBoundingClientRect().top;
+        const HEAD = 36, PAGER_ROW = 44, BOTTOM_PAD = parseFloat(getComputedStyle(sp).paddingBottom) || 32;
+        const room = sp.clientHeight - gap - HEAD - PAGER_ROW - BOTTOM_PAD;
+        const fits = Math.max(MIN_ROWS, Math.min(steps[0], Math.floor(room / rowHeight)));
+        pass.current = 1;
+        setFitted(fits);
+        setRows(fits);
+        return;
+      }
+      /* WHAT HAS TO BE ON SCREEN IS THE PAGER, NOT THE LAST PIXEL OF THE PAGE. Below the pager
+         sit its own bottom margin and the scroller's bottom padding — empty ground. Counting
+         those as overflow costs a whole row to reveal nothing, so they are slack. */
+      const slack = (parseFloat(getComputedStyle(sp).paddingBottom) || 32) + 8;
+      const over = sp.scrollHeight - sp.clientHeight - slack;
+      if (over > 1 && rowsPerPage > MIN_ROWS) {
+        pass.current += 1;
+        const next = Math.max(MIN_ROWS, rowsPerPage - Math.ceil(over / rowHeight));
+        setFitted(next);
+        setRows(next);
+        return;
+      }
+      pass.current = 3;
+    };
+    raf = requestAnimationFrame(measure);
+    return () => cancelAnimationFrame(raf);
+  }, [rowHeight, steps, rowsPerPage]);
 
   /** Wrap the caller's setter so the reader's choice wins from then on. */
-  const setRowsPerPage = (n: number) => { chosen.current = true; setRows(n); };
+  const setRowsPerPage = (n: number) => { chosen.current = true; pass.current = 3; setRows(n); };
   /* The fitted number joins the menu, because it is the default: a select whose current value is
      not one of its options reads as broken. Deduplicated and sorted, so a window that happens to
      fit exactly 25 does not list 25 twice. */

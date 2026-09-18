@@ -27,6 +27,12 @@ const T = {
     rtspPlaceholder: "Enter your rtsp:// address",
     rtspError: "A stream address starts with rtsp://.",
     rtspTag: "RTSP 1CH",
+    coordsLabel: "Where this camera is",
+    coordsWhy: "Latitude and longitude put the camera in a district, and a district's VIP figure counts the detections of the cameras in it — so a camera without them is missing from that figure with nothing on screen to say so.",
+    latPlaceholder: "Latitude",
+    lngPlaceholder: "Longitude",
+    coordsRequired: "A stream address needs coordinates with it.",
+    coordsBad: "Latitude is -90 to 90, longitude -180 to 180.",
     firstCameraName: "Channel 1",
     deploy: "Create project",
     cancel: "Cancel",
@@ -48,6 +54,12 @@ const T = {
     rtspPlaceholder: "rtsp:// 주소를 입력하세요",
     rtspError: "스트림 주소는 rtsp:// 로 시작합니다.",
     rtspTag: "RTSP 1CH",
+    coordsLabel: "이 카메라의 위치",
+    coordsWhy: "위도·경도가 카메라를 구역에 넣고, 구역의 VIP 숫자는 그 구역 카메라들이 잡은 탐지를 셉니다. 좌표가 없으면 그 숫자에서 빠지는데 화면에는 아무 말도 나오지 않습니다.",
+    latPlaceholder: "위도",
+    lngPlaceholder: "경도",
+    coordsRequired: "스트림 주소를 넣으면 좌표도 함께 필요합니다.",
+    coordsBad: "위도는 -90~90, 경도는 -180~180입니다.",
     firstCameraName: "채널 1",
     deploy: "프로젝트 만들기",
     cancel: "취소",
@@ -94,6 +106,12 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
   const [selectedType, setSelectedType] = useState<ProjectType>(defaultType);
   const [name, setName] = useState("");
   const [rtspUrl, setRtspUrl] = useState("");
+  /* Asked here because this step creates a camera, and a camera without coordinates is one whose
+     detections fall out of every district figure (settled 2026-09-18 — see the same note on the
+     Add camera form). Step 3 as a whole stays optional: no stream address, no camera, nothing to
+     place. Type an address and the pair is required with it. */
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
   const [lang] = usePortalLanguage();
   const t = T[lang];
   /* Step 3 is optional, and whatever is typed there becomes a camera — hostOf() reads the device's
@@ -101,7 +119,15 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
      as one, so the project's first source arrived with a nonsense ip nobody typed. Same rule the
      Add Camera form already applies; the two forms create the same object. */
   const rtspBad = rtspUrl.trim() !== "" && !/^rtsp:\/\/.+/i.test(rtspUrl.trim());
-  const canDeploy = name.trim() !== "" && !rtspBad;
+  const wantsCamera = rtspUrl.trim() !== "";
+  const latNum = lat.trim() === "" ? null : Number(lat);
+  const lngNum = lng.trim() === "" ? null : Number(lng);
+  /* Absence and zero are different answers: an empty box is unsurveyed, 0,0 is a point in the Gulf
+     of Guinea. Checked separately so "not a number" never reads as "not filled in". */
+  const coordsBad = (latNum !== null && (!Number.isFinite(latNum) || latNum < -90 || latNum > 90))
+    || (lngNum !== null && (!Number.isFinite(lngNum) || lngNum < -180 || lngNum > 180));
+  const coordsMissing = wantsCamera && (latNum === null || lngNum === null);
+  const canDeploy = name.trim() !== "" && !rtspBad && !coordsBad && !coordsMissing;
 
   const deploy = () => {
     if (!canDeploy || !teamId) return;
@@ -122,6 +148,9 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
         // coordinates, maker — is asked for there, not in a three-field setup wizard.
         ip: hostOf(rtspUrl.trim()),
         mac: "", location: "", zone: "",
+        // Asked in step 3 now, so the wizard no longer opens a third door onto cameras that sit
+        // in no district. Numbers, not strings — canDeploy has already refused anything else.
+        lat: Number(lat), lng: Number(lng),
         // No status is claimed. Portal has not reached this address and will not until camera
         // polling lands, so "offline" is the honest starting state — the same one a camera added
         // from Input Sources gets before anything answers.
@@ -292,6 +321,38 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
         </div>
 
         {rtspBad && <FieldError>{t.rtspError}</FieldError>}
+
+        {/* The pair, under the address it belongs to and only worth reading once there is one.
+            Hidden until then rather than greyed: an empty step 3 is a complete answer, and two
+            disabled boxes under it would read as work somebody forgot to do. */}
+        {wantsCamera && (
+          <div style={{ marginTop: "12px" }}>
+            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "4px" }}>{t.coordsLabel} *</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-400)", marginBottom: "8px", lineHeight: 1.45 }}>{t.coordsWhy}</p>
+            <div style={{ display: "flex", gap: "12px" }}>
+              {([
+                { value: lat, set: setLat, placeholder: t.latPlaceholder },
+                { value: lng, set: setLng, placeholder: t.lngPlaceholder },
+              ]).map(f => (
+                <input
+                  key={f.placeholder}
+                  value={f.value}
+                  onChange={e => f.set(e.target.value)}
+                  placeholder={f.placeholder}
+                  inputMode="decimal"
+                  style={{
+                    flex: 1, boxSizing: "border-box", height: CONTROL_HEIGHT, padding: "0 12px",
+                    borderRadius: "10px", border: BORDER, backgroundColor: "white",
+                    fontSize: "13px", fontWeight: 600, fontFamily: "inherit",
+                  }}
+                />
+              ))}
+            </div>
+            {coordsBad
+              ? <FieldError>{t.coordsBad}</FieldError>
+              : coordsMissing ? <FieldError>{t.coordsRequired}</FieldError> : null}
+          </div>
+        )}
 
         <button className="portal-btn-primary"
           onClick={deploy}

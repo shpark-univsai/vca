@@ -51,11 +51,19 @@ export type CameraImportMode = "add" | "fill-coordinates";
 /**
  * Issues that do not block, per mode. Everything else blocks.
  *
- * In "add": a camera with no coordinates is a real camera that cannot be drawn on the map.
- * Refusing it would mean an installer who has RTSP URLs but not a survey cannot start, which is
- * backwards — the map placement is the thing that gets filled in later, not the camera. So it
- * imports, and it says so, and the row is counted separately so nobody discovers it as an empty
- * map. That is also what makes "fill-coordinates" necessary: the deferral has to have a way back.
+ * In "add": a camera with no coordinates is a real camera that cannot be drawn on the map AND
+ * whose detections fall out of every district figure — the coordinates are what put a camera in a
+ * district, and a district's VIP count is the detections of the cameras in it (confirmed 2026-09-18
+ * from a customer already running the service). That is a bigger cost than a missing pin, and it
+ * is why the single-camera form now REFUSES to save without them.
+ *
+ * This door still lets them through, deliberately. A three-hundred-row inventory export is exactly
+ * the file that does not have a survey in it yet; refusing it would mean an installer with RTSP
+ * URLs cannot start, which is backwards — the placement is what gets filled in later, not the
+ * camera. So the rule is: one at a time, coordinates are demanded; in bulk they may be deferred,
+ * the row says so, the count is reported separately, and the deferral has a way back — which is
+ * what "fill-coordinates" is for. A deferral nobody can see would be the actual bug, and the
+ * registry's 좌표 미등록 cell plus the map's "not on the map" group are where it stays visible.
  *
  * In "fill-coordinates" the same absence blocks, because a row with no coordinates has nothing to
  * fill and a "no change" row reported as imported is a lie. Name and stream are not read at all
