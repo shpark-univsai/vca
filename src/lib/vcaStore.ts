@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { create } from "zustand";
-import { liveEvents, getFacePhoto, DISTRICTS, districtIdAt, type EventType, type LiveEvent, type TrackingHop } from "@/lib/mockData";
+import { liveEvents, registrySeedEvents, getFacePhoto, DISTRICTS, districtIdAt, type EventType, type LiveEvent, type TrackingHop } from "@/lib/mockData";
 import {
   isTodaySgt, recentSgtStamp, parseSgtStamp,
   setSiteTimeZoneResolver, FALLBACK_TIME_ZONE,
@@ -2949,7 +2949,19 @@ function seededLastDetectedAt(id: string, registeredAt: string): string | undefi
   const day = SEED_TODAY - daysAgo * 86_400_000;
   const enrolled = Date.parse(registeredAt);
   if (Number.isFinite(enrolled) && day < enrolled) return undefined;
-  return new Date(day).toISOString().slice(0, 10);
+  /*
+   * AN INSTANT, NOT A DAY. This returned `.slice(0, 10)` — a date with no time — and the registry
+   * could only ever say "seen on the 8th", which is not what a sighting is: a camera matched
+   * somebody at a moment, and the moment is the useful half (owner's ask, 2026-09-18: 마지막 탐지에
+   * 시각까지).
+   *
+   * Seeded like everything else here, so it is stable across reloads and the server's frame agrees
+   * with the browser's first one. Between 07:00 and 22:00 local, because a city camera matching a
+   * registered face at 04:00 is a different story than the seed means to tell.
+   */
+  const hour = 7 + Math.floor(seededRandom(h * 0.053 + 11.1) * 15);
+  const minute = Math.floor(seededRandom(h * 0.067 + 2.9) * 60);
+  return new Date(day + (hour * 60 + minute) * 60_000).toISOString();
 }
 
 const PERSON_REGISTRY_INFO: Record<string, { registeredAt: string; description: string }> = {
@@ -2960,7 +2972,9 @@ const PERSON_REGISTRY_INFO: Record<string, { registeredAt: string; description: 
 export const PERSONS: Person[] = (() => {
   const seen = new Set<string>();
   const persons: Person[] = [];
-  liveEvents.forEach((e) => {
+  // registrySeedEvents, not liveEvents: the register must hold the same rows at 01:00 and at
+  // 19:00, and liveEvents is cut off at the current hour. See registrySeedEvents in mockData.
+  registrySeedEvents.forEach((e) => {
     // Tracking events are anonymous re-id trails, not identified individuals — they don't
     // belong in the Person registry.
     if (e.type === "Tracking" || seen.has(e.name)) return;
@@ -3018,9 +3032,9 @@ export const PERSONS: Person[] = (() => {
        Registered 2025-09-05, expires 2026-09-05 — exactly 365 days, which is the deployment
        default — so today it is 13 days past. Sorted by 등록일 descending it lands on the last page,
        where the listings that are running out actually are. */
-    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2025-09-05T14:32:00+08:00", lastDetectedAt: "2026-09-08", projectId: "proj-sg", priorityLabel: "high", groupId: "pgroup-1", expiresAt: "2026-09-05" },
-    { id: "person-portal-2", name: "Sarah Lim", type: "VIP", photoUrl: getFacePhoto("person-portal-2"), registeredAt: "2026-08-30T09:05:00+08:00", lastDetectedAt: "2026-09-03", projectId: "proj-sg", priorityLabel: "normal", groupId: "pgroup-1", expiresAt: "2026-09-28" },
-    { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28T17:48:00+08:00", lastDetectedAt: "2026-08-29", projectId: "proj-sg", priorityLabel: "very_high", groupId: "pgroup-2", expiresAt: "2026-10-10" },
+    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2025-09-05T14:32:00+08:00", lastDetectedAt: "2026-09-08T18:42:00+08:00", projectId: "proj-sg", priorityLabel: "high", groupId: "pgroup-1", expiresAt: "2026-09-05" },
+    { id: "person-portal-2", name: "Sarah Lim", type: "VIP", photoUrl: getFacePhoto("person-portal-2"), registeredAt: "2026-08-30T09:05:00+08:00", lastDetectedAt: "2026-09-03T09:17:00+08:00", projectId: "proj-sg", priorityLabel: "normal", groupId: "pgroup-1", expiresAt: "2026-09-28" },
+    { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28T17:48:00+08:00", lastDetectedAt: "2026-08-29T13:05:00+08:00", projectId: "proj-sg", priorityLabel: "very_high", groupId: "pgroup-2", expiresAt: "2026-10-10" },
     { id: "person-portal-4", name: "Rachel Wong", type: "VIP", photoUrl: getFacePhoto("person-portal-4"), registeredAt: "2026-08-25T11:20:00+08:00", projectId: "proj-sg", priorityLabel: "normal" },
   );
   persons.push(...bulkSampleVips());

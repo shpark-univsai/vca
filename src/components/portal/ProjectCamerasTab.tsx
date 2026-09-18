@@ -8,7 +8,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { TablePagination, CARD_BORDER, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
+import { useFitRowsPerPage, TablePagination, CARD_BORDER, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -1052,7 +1052,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * about everything the filters admit, not about the page somebody happens to be looking at.
    */
   const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
+  /* Measured, not fixed — see useFitRowsPerPage. 69px is this table's row height, measured, and
+     it is the registry's too — the two tables now show the same 48px tile (owner's note,
+     2026-09-18: "vip 화면 테이블 높이로 맞춰줘"). */
+  const { listRef, rowsPerPage, setRowsPerPage, perPageOptions } = useFitRowsPerPage(69);
   const pagingKey = `${kindTab}|${search}|${statusFilter}|${zoneFilter}|${view}`;
   const [lastPagingKey, setLastPagingKey] = useState(pagingKey);
   if (lastPagingKey !== pagingKey) { setLastPagingKey(pagingKey); setPage(1); }
@@ -1078,11 +1081,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const effectiveView = showCameraColumns ? view : "table";
   const GRID = showCameraColumns
     ? (showKindColumn
-        ? "28px 56px 1.4fr 0.7fr 0.7fr 0.7fr 1.2fr 1fr 0.8fr 70px"
-        : "28px 56px 1.6fr 0.75fr 0.75fr 1.3fr 1fr 0.85fr 70px")
+        ? "28px 48px 1.4fr 0.7fr 0.7fr 0.7fr 1.2fr 1fr 0.8fr 70px"
+        : "28px 48px 1.6fr 0.75fr 0.75fr 1.3fr 1fr 0.85fr 70px")
     : (showKindColumn
-        ? "28px 56px 2fr 0.8fr 1.2fr 0.9fr 70px"
-        : "28px 56px 2.2fr 1.3fr 1fr 70px");
+        ? "28px 48px 2fr 0.8fr 1.2fr 0.9fr 70px"
+        : "28px 48px 2.2fr 1.3fr 1fr 70px");
 
   // Only rows that are actually on screen count as selected. Filtering to Offline while three
   // online cameras are ticked would otherwise leave a delete button armed with rows the person
@@ -1752,19 +1755,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           scroll underneath. Rendered here (still inside the fixed/sticky block) as the top half of
           the card; the data rows below are the bottom half, in normal flow, meeting it with no
           border between them so the two halves read as one continuous card. */}
-      {/* ABOVE THE TABLE, and inside the sticky block so it stays reachable (owner's note,
-          2026-09-18: "페이지선택하는게 너무 아래있나..?"). 25 rows is 1700px of table — a pager
-          under it means scrolling to the end of the page every time you want the next page. Up
-          here the range also reads as a caption for the list you are about to read. */}
-      <TablePagination
-        total={visibleRows.length}
-        page={currentPage}
-        rowsPerPage={rowsPerPage}
-        onPage={setPage}
-        onRowsPerPage={setRowsPerPage}
-      />
       {effectiveView === "table" && (
-        <div style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
+        <div ref={listRef} style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
           <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
             {/* The thumbnail, address and AI-engine columns carry no sortKey — a picture has no
                 order, an address sorts by whatever the IP happens to start with, and AI engines is
@@ -1885,7 +1877,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   {/* A file has no live thumbnail to show, so the tile carries its kind instead of
                       a frame we do not have. Inventing a poster image would imply the analysis had
                       already looked at it. */}
-                  <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "40px", height: "40px", borderRadius: "8px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)" }}>
+                  <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", borderRadius: "8px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)" }}>
                     {u.kind === "image" ? <ImageIcon size={18} strokeWidth={1.87} />
                       : u.kind === "deepfake" ? <ShieldCheck size={18} strokeWidth={1.87} />
                       : <FilmIcon size={18} strokeWidth={1.87} />}
@@ -1960,7 +1952,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             return (
               <div key={row.id} {...rowInteraction}>
                 {checkbox}
-                <button {...stopRowClick} onClick={() => setInspectingCameraId(cam.id)} style={{ width: "40px", height: "40px", borderRadius: "8px", overflow: "hidden", backgroundColor: "var(--gray-100)", border: "none", cursor: "pointer", padding: 0 }}>
+                {/* 48px, the same tile the registry's face column uses: two tables one click
+                    apart whose rows are 61px and 69px read as two different tables, and the
+                    height follows the picture (owner's note: "vip 화면 테이블 높이로 맞춰줘"). */}
+                <button {...stopRowClick} onClick={() => setInspectingCameraId(cam.id)} style={{ width: "48px", height: "48px", borderRadius: "8px", overflow: "hidden", backgroundColor: "var(--gray-100)", border: "none", cursor: "pointer", padding: 0 }}>
                   {cam.thumbnail
                     ? <img src={cam.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     : <div style={{ width: "100%", height: "100%", backgroundColor: "var(--gray-100)" }} />}
@@ -2149,6 +2144,17 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         </div>
       )}
 
+
+      {/* Under the list, like the VIP registry's — and outside the sticky block, which is only
+          the tabs, the toolbar and the column headings. */}
+      <TablePagination
+        total={visibleRows.length}
+        page={currentPage}
+        rowsPerPage={rowsPerPage}
+        onPage={setPage}
+        onRowsPerPage={setRowsPerPage}
+        perPageOptions={perPageOptions}
+      />
 
       {showAdd && (
         <CameraFormModal title={t.addModalTitle} initial={EMPTY_FORM} isEdit={false} servers={projectServers} onClose={() => setShowAdd(false)} onSubmit={createCamera} t={t} />

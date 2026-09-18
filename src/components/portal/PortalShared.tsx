@@ -347,6 +347,58 @@ export function TableEmpty({ text }: { text: string }) {
  * rows are all in memory either way. When the API starts returning pages, this component stays
  * and the caller changes what it slices — see HANDOFF-SERVER §9.
  */
+/**
+ * Picks the starting rows-per-page so the pager is ON THE FIRST SCREEN.
+ *
+ * Owner's ask (2026-09-18): somebody opening the registry for the first time should SEE the pager
+ * without scrolling, so they learn that the list is paged and that the page size is theirs to
+ * change. A default of 25 buries it — 25 rows is 1700px of table on a screen that has ~600px for
+ * rows.
+ *
+ * How: measure where the list starts (the ref goes on the table's own wrapper), take what is left
+ * of the window under it, subtract the pager's own row, and keep the largest option that fits.
+ * Never below the smallest option — a list of four rows on a tall screen is not an improvement.
+ *
+ * It measures ONCE, after mount, and stops the moment the reader picks a size: a default that
+ * keeps recomputing would move the ground under somebody who has already chosen. It also does not
+ * follow window resizes, for the same reason.
+ */
+export function useFitRowsPerPage(rowHeight: number, steps: number[] = [25, 50, 100]) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const [rowsPerPage, setRows] = useState(steps[0]);
+  const [fitted, setFitted] = useState<number | null>(null);
+  const chosen = useRef(false);
+
+  useEffect(() => {
+    if (chosen.current) return;
+    const el = listRef.current;
+    if (!el) return;
+    // queueMicrotask, like every other post-mount read here: measuring during render would run on
+    // the server too, where there is no window.
+    queueMicrotask(() => {
+      const top = el.getBoundingClientRect().top;
+      // What sits between the top of the list card and the bottom of the window: the card's own
+      // heading strip, the pager's row under the card, and a little air.
+      const HEAD = 36, PAGER_ROW = 48, AIR = 8;
+      const room = window.innerHeight - top - HEAD - PAGER_ROW - AIR;
+      // At least eight: a page of three rows on a tiny window is not a list, and the reader can
+      // still scroll a little. Never more than the first step — beyond that the pager is off
+      // screen again and the point is lost.
+      const fits = Math.max(8, Math.min(steps[0], Math.floor(room / rowHeight)));
+      setFitted(fits);
+      setRows(fits);
+    });
+  }, [rowHeight, steps]);
+
+  /** Wrap the caller's setter so the reader's choice wins from then on. */
+  const setRowsPerPage = (n: number) => { chosen.current = true; setRows(n); };
+  /* The fitted number joins the menu, because it is the default: a select whose current value is
+     not one of its options reads as broken. Deduplicated and sorted, so a window that happens to
+     fit exactly 25 does not list 25 twice. */
+  const perPageOptions = [...new Set([...(fitted === null ? [] : [fitted]), ...steps])].sort((a, b) => a - b);
+  return { listRef, rowsPerPage, setRowsPerPage, perPageOptions };
+}
+
 export function TablePagination({ total, page, rowsPerPage, onPage, onRowsPerPage, perPageOptions = [10, 25, 50, 100] }: {
   total: number;
   page: number;
@@ -395,11 +447,17 @@ export function TablePagination({ total, page, rowsPerPage, onPage, onRowsPerPag
   };
 
   return (
-    /* Space under it as well as over it. The pager sits ABOVE the list now, so with only a top
-       margin the page buttons ended up hard against the table's heading strip — two bands of
-       controls with nothing between them (owner's note: "페이지 선택하는거 바로아래 공간이 너무
-       좁아"). 12px each side, the same step the toolbar above uses. */
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "12px 0", flexWrap: "wrap", gap: "10px" }}>
+    /*
+     * Space over it, less under it, and the row aligned to its BOTTOM edge.
+     *
+     * Two notes from the owner pulled in opposite directions and both were right: the page buttons
+     * needed room under them ("바로아래 공간이 너무 좁아") and the range text needed less
+     * ("이거는 아래 표랑 지금보다 더 가까워도될것같을"). They are in one row, so a single margin
+     * cannot do both — `flex-end` can. The 28px controls and the 16px line now share a bottom
+     * edge, which lifts the text's own gap to the table by the difference and leaves the buttons
+     * where they were. The text then reads as the table's caption, sitting just above it.
+     */
+    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", margin: "12px 0 8px", flexWrap: "wrap", gap: "10px" }}>
       <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.showing(rangeStart, rangeEnd, total)}</p>
       {/*
        * ONE CONTROL AT THE RIGHT END, after Employment Hero's table footer — `‹ 1 › 20 / page`.

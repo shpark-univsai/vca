@@ -421,10 +421,14 @@ const HOURLY_VIP_HIT_TARGETS = [
 // Only up to the current hour — later hours today genuinely haven't happened yet, so leaving
 // them at zero is correct (not a gap to fill); a real deployment fills them in as the day
 // actually progresses, exactly like this will on its own tomorrow.
-function generateDayVipHits(): RawVipHit[] {
+//
+// `untilHour` exists for the one reader that must NOT move with the clock: the VIP register is
+// seeded from these people, and a register whose rows appear one by one through the day is a
+// register the server and the browser disagree about. See allDayVipHits below.
+function generateDayVipHits(untilHour?: number): RawVipHit[] {
   // The same clock todayAt writes on, so "up to the current hour" means the current hour of the
   // day these hits are stamped in — not of the machine reading them.
-  const nowHour = zoneHour(new Date(), FALLBACK_TIME_ZONE);
+  const nowHour = untilHour ?? zoneHour(new Date(), FALLBACK_TIME_ZONE);
   const hits: RawVipHit[] = [];
   for (let hour = 0; hour <= nowHour; hour++) {
     const target = HOURLY_VIP_HIT_TARGETS[hour];
@@ -544,6 +548,27 @@ function deriveLiveEvents(hits: RawVipHit[]): LiveEvent[] {
 }
 
 export const liveEvents: LiveEvent[] = deriveLiveEvents(RAW_VIP_HITS);
+
+/**
+ * THE SAME PEOPLE, WITHOUT THE CLOCK — what the VIP register is seeded from.
+ *
+ * liveEvents is deliberately cut off at the current hour, and a register built from it inherits
+ * that cut: which sighting first introduced a given name depends on what time it is, the register
+ * keys a person off that sighting's id, and everything seeded from the id (the face, the
+ * registration date, whether the photo is one of the unreadable ones) moves with the hour.
+ *
+ * On the server that hour is whenever the module was loaded; in the browser it is now. So the two
+ * rendered two different registers — caught as a hydration mismatch on the registry's summary
+ * strip (「일괄 업로드 오류」 counted 22 on the server and 23 in the browser, 2026-09-18).
+ *
+ * The whole day, always, fixes it: the same twelve identities in the same order at every hour of
+ * every reading. The detections themselves still stop at the current hour — that cut is honest,
+ * a register that only lists the people already seen today is not.
+ */
+export const registrySeedEvents: LiveEvent[] = deriveLiveEvents([
+  ...RAW_VIP_HITS.filter(h => !h.id.startsWith("dayhit-")),
+  ...generateDayVipHits(23),
+]);
 
 /**
  * The device list used to live here: 19 curated rows plus 981 bulk-generated ones, standing in for

@@ -9,7 +9,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed } from "@/lib/time";
 import { useToast } from "../Toast";
-import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SEARCH_FIELD, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
+import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SEARCH_FIELD, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
 
 type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires";
@@ -30,8 +30,8 @@ type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires
  * empty space beside it — which is what it looked like after the reorder handed it the group
  * column's share (owner's note: "우선순위 가로너비는 지금너무 넓게 잡혀있는것 같아").
  *
- * 등록일 and 마지막 탐지 are fixed at 110px for the same reason: the value is always `2026-09-09`,
- * ten characters, plus a line of elapsed time under it.
+ * 등록일 is fixed at 110px: the value is always `2026-09-09`, ten characters. 마지막 탐지 gets
+ * 140px because it carries a time as well (`2026-09-08 18:42`) plus the elapsed line under it.
  *
  * 이름 is CAPPED, not a bare fraction: measured across the seeded 101 rows the longest name renders
  * at 200px ("Muhammad Rizal bin Hassan") and the median at 97px, against a 292px track — so most
@@ -39,13 +39,13 @@ type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires
  * 220px) fits the longest without an ellipsis and hands the rest to 등록 근거, which holds case
  * numbers of no fixed length.
  */
-const VIP_GRID = "28px 96px 48px minmax(170px, 220px) 1fr 1.5fr 110px 110px 36px";
+const VIP_GRID = "28px 96px 48px minmax(170px, 220px) 1fr 1.5fr 140px 110px 36px";
 /** The All tab adds a Group column; the Individuals tab would print "Individual" on every row. */
-const VIP_GRID_WITH_GROUP = "28px 96px 48px minmax(170px, 220px) 1.1fr 0.9fr 1.3fr 110px 110px 36px";
+const VIP_GRID_WITH_GROUP = "28px 96px 48px minmax(170px, 220px) 1.1fr 0.9fr 1.3fr 140px 110px 36px";
 /** Same two, with the category track dropped — see complianceConfig.vipCategories. The freed
  *  width goes to the name, which is what a reader scans this table by. */
-const VIP_GRID_NO_CAT = "28px 96px 48px minmax(170px, 220px) 1fr 110px 110px 36px";
-const VIP_GRID_WITH_GROUP_NO_CAT = "28px 96px 48px minmax(170px, 220px) 1fr 1.4fr 110px 110px 36px";
+const VIP_GRID_NO_CAT = "28px 96px 48px minmax(170px, 220px) 1fr 140px 110px 36px";
+const VIP_GRID_WITH_GROUP_NO_CAT = "28px 96px 48px minmax(170px, 220px) 1fr 1.4fr 140px 110px 36px";
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -1712,7 +1712,9 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
    * needs before the API has pages. The same component runs Server & API's list.
    */
   const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
+  /* The starting page size is measured, not fixed at 25 — see useFitRowsPerPage. 69px is this
+     table's row height (a 48px face plus the row's own padding), measured in the browser. */
+  const { listRef, rowsPerPage, setRowsPerPage, perPageOptions } = useFitRowsPerPage(69);
   // Any narrowing changes what page 1 even means, so a filter or a tab switch goes back to it —
   // otherwise searching from page 5 answers with an empty table.
   const pagingKey = `${vipTab}|${q}|${groupFilter ?? ""}|${priorityFilter}|${healthFilter ?? ""}|${view}`;
@@ -2273,22 +2275,6 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           </>)}
         </div>
       </div>
-      {/* ITS OWN ROW, between the toolbar and the list (owner's note, 2026-09-18: "페이지
-          네이게이션이랑 검색창이랑 필터랑 버튼있는 라인이랑 다른라인에 놔야할것같은데").
-          It went into the toolbar first and that row then held nine controls — search, two
-          filters, a range, five page buttons, a per-page select and three actions — on one line.
-          Above the list rather than under it because 25 rows is over 1700px of table: a pager
-          below meant scrolling to the end of the page to turn it. The range also reads as a
-          caption for the list underneath, which is the reason the table needs no row numbers. */}
-      {vipTab !== "groups" && (
-        <TablePagination
-          total={sortedPersons.length}
-          page={currentPage}
-          rowsPerPage={rowsPerPage}
-          onPage={setPage}
-          onRowsPerPage={setRowsPerPage}
-        />
-      )}
 
       {vipTab === "groups" ? (
         projectGroups.length === 0 ? (
@@ -2347,7 +2333,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           </div>
         )
       ) : view === "table" ? (
-        <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
+        <div ref={listRef} style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
           {/* Floating over the list rather than pushing it down: the rows being acted on must stay
               where they were when they were picked. A centred pill, not a full-width band — fixed
               positioning is relative to the window and a band would run under the rail. */}
@@ -2600,7 +2586,13 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     these rows together; the dash does not need to carry the sentence. Grey, never
                     amber — never being seen is not a fault (see Person.lastDetectedAt). */}
                 <span style={{ display: "flex", flexDirection: "column", gap: "1px", fontSize: "12px", color: person.lastDetectedAt ? "var(--gray-600)" : "var(--gray-300)" }}>
-                  {person.lastDetectedAt ? person.lastDetectedAt.slice(0, 10) : "—"}
+                  {/* Date AND time, in the site's own zone. A sighting is a moment — "seen on the
+                      8th" is the half of it that does not help somebody deciding whether to look at
+                      the footage (owner's ask, 2026-09-18). The value carries an instant now; it
+                      used to be stored as a bare date, so there was no time to show. */}
+                  {person.lastDetectedAt
+                    ? `${dateKeyIn(new Date(person.lastDetectedAt), PROJECT_TIME_ZONE)} ${clockMinutesIn(new Date(person.lastDetectedAt), PROJECT_TIME_ZONE)}`
+                    : "—"}
                   {/* How long ago, under the date (owner's ask). A date answers "when"; the reader
                       is asking "recently or not", and 2026-09-08 only answers that if you are
                       holding today's date in your head. Null until mounted, like every other clock
@@ -2777,6 +2769,24 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
         </div>
       )}
 
+
+      {/* UNDER THE LIST, on its own row. It was tried above the table — the range reads as a
+         caption there and you do not have to scroll to turn the page — and the owner took it back
+         ("위에 있는게 너무 어색하다"): a pager between the toolbar and the column headings puts
+         three bands of controls in a row before any data appears. Under the table is where every
+         comparable console keeps it (Navattic, Vapi, Xero, Employment Hero, Gusto), and it is
+         where the eye already is when it reaches the end of a page.
+         Never inside the toolbar: that row then held nine controls on one line. */}
+      {vipTab !== "groups" && (
+        <TablePagination
+          total={sortedPersons.length}
+          page={currentPage}
+          rowsPerPage={rowsPerPage}
+          onPage={setPage}
+          onRowsPerPage={setRowsPerPage}
+          perPageOptions={perPageOptions}
+        />
+      )}
 
       {showRegister && <RegisterVipModal t={t} groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} escapeSuspended={managingCategories} projectId={projectId} onClose={() => setShowRegister(false)} onSubmit={register} />}
       {editingPerson && (
