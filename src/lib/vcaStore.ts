@@ -922,6 +922,15 @@ interface VcaStoreState {
   addPerson: (person: Omit<Person, "id" | "expiresAt"> & { expiresAt?: string | null }) => void;
   removePerson: (personId: string) => void;
   /**
+   * Put a deleted listing back exactly as it was — the undo behind the toast.
+   *
+   * Takes the whole object, not an id, because the row is gone by the time anybody clicks: the
+   * caller holds the copy it removed. The SAME id goes back, which is the point — a re-registered
+   * person would be a new record with a new id, and the audit trail would show a deletion followed
+   * by an unrelated registration instead of a mistake and its correction.
+   */
+  restorePerson: (person: Person) => void;
+  /**
    * A CSV import, as one act.
    *
    * Not addPerson in a loop. Every mutation trims the audit log to AUDIT_LOG_LIMIT, so importing
@@ -4222,6 +4231,24 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       return {
         persons: state.persons.filter(p => p.id !== personId),
         auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  restorePerson: (person) =>
+    set(state => {
+      // Already back — two clicks on the same toast, or the row re-registered by hand in between.
+      if (state.persons.some(p => p.id === person.id)) return state;
+      return {
+        // Back where it was in the list rather than appended: the reader is watching the row they
+        // just deleted, and having it reappear at the bottom of a hundred looks like a different
+        // row arriving.
+        persons: [...state.persons, person].sort((a, b) => a.id.localeCompare(b.id)),
+        auditLog: [clientAudit({
+          projectId: person.projectId,
+          // Both lines stay in the log. An undo is not an erasure of the delete — an audit that
+          // shows only the net effect cannot answer "was this person ever off the list".
+          message: `VIP ${person.name} restored to the VIP registry (deletion undone)`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   releasePerson: (personId, reason) =>

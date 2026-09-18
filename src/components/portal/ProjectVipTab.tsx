@@ -178,6 +178,8 @@ interface VipDict {
   confirmRemoveBody: string;
   removeAction: string;
   vipRemovedTitle: string;
+  undoRemove: string;
+  vipRestoredTitle: string;
   modalTitle: string;
   editModalTitle: (name: string) => string;
   saveEdit: string;
@@ -347,6 +349,8 @@ const T: Record<"en" | "ko", VipDict> = {
     confirmRemoveBody: "They will be removed from this project's VIP list, and come off the matching list.",
     removeAction: "Remove",
     vipRemovedTitle: "VIP removed",
+    undoRemove: "Undo",
+    vipRestoredTitle: "Restored to the registry",
     modalTitle: "Add new person",
     editModalTitle: (name: string) => `Edit — ${name}`,
     saveEdit: "Save",
@@ -503,6 +507,8 @@ const T: Record<"en" | "ko", VipDict> = {
     confirmRemoveBody: "이 프로젝트의 VIP 목록에서 삭제되고, 대조 명단에서 내려갑니다.",
     removeAction: "삭제",
     vipRemovedTitle: "VIP 삭제됨",
+    undoRemove: "되돌리기",
+    vipRestoredTitle: "명단에 되돌렸습니다",
     modalTitle: "새 인물 추가",
     editModalTitle: (name: string) => `${name} 편집`,
     saveEdit: "저장",
@@ -1356,6 +1362,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
   const addPerson = useVcaStore(s => s.addPerson);
   const addPersons = useVcaStore(s => s.addPersons);
   const removePerson = useVcaStore(s => s.removePerson);
+  const restorePerson = useVcaStore(s => s.restorePerson);
   const updatePerson = useVcaStore(s => s.updatePerson);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
@@ -1746,10 +1753,39 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
     setEditingPerson(null);
   };
 
+  /*
+   * Delete, then offer it back for five seconds.
+   *
+   * THE SAFEGUARD IS UNDO, NOT A HARDER CONFIRMATION (owner's ask, 2026-09-18: "수동삭제에
+   * 실수로 삭제되지않게, 장치가 있었으면 좋겠는뎅"). Eight consoles were read for this —
+   * Cloudflare, Clerk, Lindy, Replit, Okta, Relevance AI, PlanetScale, Railway — and every one of
+   * them asks you to TYPE THE NAME. Every one of them is also deleting a CONTAINER: a worker, an
+   * application, a workspace, a folder, an organization, a service. Not one of them does it for a
+   * row in a list, and for good reason: type-to-confirm on a row somebody clears fifty of teaches
+   * copy-paste, and a confirmation people have learned to satisfy is not a safeguard.
+   *
+   * So the row keeps its plain confirmation (with the face on it, which is the check that matters
+   * — you see who you are about to erase) and gains an undo. The deletion is real either way:
+   * `removePerson` writes its audit line immediately, `restorePerson` writes a second one, and
+   * both stay. An undo that hid the first line would be worse than no undo.
+   *
+   * Project delete is the container case, and that one is switched off entirely for this release
+   * (complianceConfig.projectDelete) — when it comes back, type-to-confirm is the pattern for it.
+   */
   const confirmRemove = () => {
     if (!confirmingRemove) return;
-    removePerson(confirmingRemove.id);
-    showToast({ variant: "warning", title: t.vipRemovedTitle, desc: confirmingRemove.name });
+    const removed = confirmingRemove;
+    removePerson(removed.id);
+    showToast({
+      variant: "warning",
+      title: t.vipRemovedTitle,
+      desc: removed.name,
+      actionLabel: t.undoRemove,
+      onAction: () => {
+        restorePerson(removed);
+        showToast({ variant: "success", title: t.vipRestoredTitle, desc: removed.name });
+      },
+    });
     setConfirmingRemove(null);
   };
 
