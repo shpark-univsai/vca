@@ -17,8 +17,8 @@ type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires
 // 36px for the actions column, the width RowActionsMenu gets in every other table.
 /*
  * TRACKS FOLLOW THE HEADER ORDER, and the header was reordered on 2026-09-18 — check both
- * together if you touch either. Order: checkbox · 우선순위 · face · 이름 · 등록 근거 · [그룹] ·
- * [분류] · 마지막 탐지 · 등록일 · actions.
+ * together if you touch either. Order: checkbox · 우선순위 · face · 이름 · [그룹] · [분류] ·
+ * 등록 근거 · 마지막 탐지 · 등록일 · actions.
  *
  * 우선순위 LEADS THE ROW, before the face (owner's ask: "그룹이 맨앞에가 애매하면 우선순위를
  * 맨앞에?"). Before rather than after, so the face and the name stay side by side — they are one
@@ -39,13 +39,13 @@ type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires
  * 220px) fits the longest without an ellipsis and hands the rest to 등록 근거, which holds case
  * numbers of no fixed length.
  */
-const VIP_GRID = "28px 96px 48px minmax(170px, 220px) 1.5fr 1fr 110px 110px 36px";
+const VIP_GRID = "28px 96px 48px minmax(170px, 220px) 1fr 1.5fr 110px 110px 36px";
 /** The All tab adds a Group column; the Individuals tab would print "Individual" on every row. */
-const VIP_GRID_WITH_GROUP = "28px 96px 48px minmax(170px, 220px) 1.3fr 1.1fr 0.9fr 110px 110px 36px";
+const VIP_GRID_WITH_GROUP = "28px 96px 48px minmax(170px, 220px) 1.1fr 0.9fr 1.3fr 110px 110px 36px";
 /** Same two, with the category track dropped — see complianceConfig.vipCategories. The freed
  *  width goes to the name, which is what a reader scans this table by. */
 const VIP_GRID_NO_CAT = "28px 96px 48px minmax(170px, 220px) 1fr 110px 110px 36px";
-const VIP_GRID_WITH_GROUP_NO_CAT = "28px 96px 48px minmax(170px, 220px) 1.4fr 1fr 110px 110px 36px";
+const VIP_GRID_WITH_GROUP_NO_CAT = "28px 96px 48px minmax(170px, 220px) 1fr 1.4fr 110px 110px 36px";
 const GROUP_GRID = "1.5fr 0.6fr 0.8fr 1.6fr 36px";
 
 const PRIORITY_LABELS: NonNullable<Person["priorityLabel"]>[] = ["normal", "high", "very_high"];
@@ -1169,30 +1169,35 @@ function Tag({ label, bg, color, flexible, icon }: { label: string; bg: string; 
 }
 
 /**
- * The three priorities as three dots, filled from the left.
+ * The three priorities as a meter: bars of rising height, filled from the left.
  *
- * NOT BARS OF RISING HEIGHT — that was the first version and it read as signal strength (owner's
- * note, 2026-09-18: "뭔가 네트워크 신호를 나타내는것 같은데"). In a product whose other main list
- * is cameras with a connection state, a wifi-shaped mark next to a person is a mark pointing at
- * the wrong noun. Dots carry the same "one of three" without borrowing anybody else's meaning.
- *
- * Why a mark at all: a reader compares two rows without reading either word, which is what the
- * column is for — and the shape survives both languages, where `일반 / 높음 / 매우 높음` and
- * `NORMAL / HIGH / VERY HIGH` have different lengths and no shared first letter.
+ * Tried as three dots and taken back (owner's read, 2026-09-18: 점보다 신호모양이 더 낫다).
+ * The dots said "one of three" but flatly — the bars say WHICH one at a glance because the
+ * silhouette itself grows, and that is what a column you scan is for. The wifi resemblance is the
+ * known cost and it was weighed: the mark sits inside a labelled pill, on a row about a person,
+ * in a column headed 우선순위 — the reading is settled by everything around it.
  *
  * `currentColor` throughout, so the mark takes the pill's own colour — grey, amber, red — and no
- * new colour enters the palette. The unfilled dots are the same colour at an opacity, which is an
+ * new colour enters the palette. The unfilled bars are the same colour at an opacity, which is an
  * existing token turned down rather than a value invented here.
  *
- * Not arrows: an arrow says "rising", which is a claim about change over time that a priority does
- * not make. Not repeated punctuation: at 10px that reads as shouting.
+ * Not arrows: an arrow says "rising", a claim about change over time a priority does not make.
+ * Not repeated punctuation: at 10px that reads as shouting.
  */
 function PriorityMark({ level }: { level: NonNullable<Person["priorityLabel"]> }) {
   const filled = level === "very_high" ? 3 : level === "high" ? 2 : 1;
+  // Heights rise 4 → 7 → 10 inside a 10px box, on a 2px bar with a 1.5px gap: the whole mark is
+  // 8.5px wide, which fits the 18px pill beside 10px text without pushing the padding around.
+  const bars = [
+    { x: 0, y: 6, h: 4 },
+    { x: 3.5, y: 3, h: 7 },
+    { x: 7, y: 0, h: 10 },
+  ];
   return (
-    <svg width="18" height="6" viewBox="0 0 18 6" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-      {[3, 9, 15].map((cx, i) => (
-        <circle key={cx} cx={cx} cy="3" r="2.5" fill="currentColor" opacity={i < filled ? 1 : 0.26} />
+    <svg width="9" height="10" viewBox="0 0 9 10" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+      {bars.map((b, i) => (
+        <rect key={b.x} x={b.x} y={b.y} width="2" height={b.h} rx="1"
+          fill="currentColor" opacity={i < filled ? 1 : 0.28} />
       ))}
     </svg>
   );
@@ -2442,9 +2447,13 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                  ahead of the priority that decides how an operator reacts. Dates go to the right:
                  a column of numbers is the easy one to scan wherever it sits. */
               { label: t.colName, key: "name" },
-              { label: t.basisLabel },
+              /* 그룹 before 등록 근거 (owner's order, 2026-09-18): the group is who this person
+                 arrived with, which is the next thing you read after the name; the basis is the
+                 paperwork behind the listing and reads better beside it than between it and the
+                 name. */
               ...(showGroupColumn ? [{ label: t.colGroup }] : []),
               ...(categoriesEnabled ? [{ label: t.colCategory }] : []),
+              { label: t.basisLabel },
               /* 마지막 탐지 before 등록일 (owner's order). Recency is what somebody acts on; the
                  registration date is an audit fact, and audit facts can sit at the end. */
               { label: t.colLastDetected, key: "lastDetected" },
@@ -2513,7 +2522,6 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     {person.name}
                   </button>
                 </span>
-                <span title={person.basis || undefined} style={{ fontSize: "12px", color: person.basis ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.basis || "—"}</span>
                 {showGroupColumn && (
                   <span style={{ minWidth: 0, fontSize: "12px", color: person.groupId ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {personGroups.find(g => g.id === person.groupId)?.name ?? "—"}
@@ -2534,6 +2542,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     );
                   })()}
                 </span>}
+                <span title={person.basis || undefined} style={{ fontSize: "12px", color: person.basis ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.basis || "—"}</span>
                 {/* A VALUE, NOT A CONTROL. This was a select on every row, so 123 bordered boxes
                     with dropdown arrows ran down the middle of the table — after the faces, the
                     loudest thing on the screen, and most of them reading "Individual".
