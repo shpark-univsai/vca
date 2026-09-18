@@ -190,26 +190,31 @@ function roundedBoundary(points: [number, number][]): [number, number][] {
 
   const centroidLat = hull.reduce((sum, p) => sum + p[0], 0) / hull.length;
   const centroidLng = hull.reduce((sum, p) => sum + p[1], 0) / hull.length;
+  /* A degree of longitude is shorter than a degree of latitude everywhere but the equator, so all
+     the distance work below happens in a frame where both axes are the same size. At Singapore's
+     latitude the correction is 0.03% and invisible; it is here because the product is not only
+     deployed there. */
   const lngScale = Math.max(0.2, Math.cos((centroidLat * Math.PI) / 180));
+  const radial = ([lat, lng]: [number, number]) => Math.hypot(lat - centroidLat, (lng - centroidLng) * lngScale);
+  const bearing = ([lat, lng]: [number, number]) => Math.atan2((lng - centroidLng) * lngScale, lat - centroidLat);
 
-  /* The group's radius in degrees of latitude, which is the unit the offset is expressed in. */
-  const radius = Math.max(...hull.map(p => Math.hypot(p[0] - centroidLat, (p[1] - centroidLng) * lngScale)));
-  // 0.00045° of latitude is about 50m, 0.0027° about 300m.
-  const pad = Math.min(0.0027, Math.max(0.00045, radius * 0.22));
-
-  const offset = hull.map(([lat, lng]) => {
+  /** Every point pushed away from the centroid by the same distance. */
+  const expand = (ring: [number, number][], by: number) => ring.map(([lat, lng]) => {
     const dLat = lat - centroidLat;
     const dLng = (lng - centroidLng) * lngScale;
     const length = Math.hypot(dLat, dLng);
-    // A vertex sitting on the centroid has no direction to be pushed in; leave it where it is and
-    // let its neighbours carry the shape.
+    // A point sitting on the centroid has no direction to be pushed in.
     if (length === 0) return [lat, lng] as [number, number];
-    return [lat + (dLat / length) * pad, lng + (dLng / length) * pad / lngScale] as [number, number];
+    return [lat + (dLat / length) * by, lng + (dLng / length) * by / lngScale] as [number, number];
   });
 
+  /* Chaikin's corner cutting: each edge gives up its ends at the quarter marks. TWO passes, not
+     three — every pass both smooths the corner and pulls it further inside the hull, and the
+     third pass was buying a rounder curve at the price of a boundary that had to be inflated to
+     catch its own cameras again. Two reads as a curve at the zoom a pill click lands on. */
   const smooth = (ring: [number, number][]) => {
     let current = ring;
-    for (let pass = 0; pass < 3; pass += 1) {
+    for (let pass = 0; pass < 2; pass += 1) {
       const next: [number, number][] = [];
       for (let i = 0; i < current.length; i += 1) {
         const [aLat, aLng] = current[i];
@@ -223,42 +228,36 @@ function roundedBoundary(points: [number, number][]): [number, number][] {
   };
 
   /*
-   * AND THEN CHECK, because corner cutting pulls the curve INWARD.
+   * SMOOTH FIRST, THEN OFFSET BY WHAT IS ACTUALLY MISSING.
    *
-   * Chaikin replaces each corner with a chord across it, so the smoothed ring sits inside the
-   * polygon it was made from — most of the way round that is invisible, but at a sharp vertex the
-   * curve can end up inside the original hull and leave that camera's dot outside the boundary
-   * drawn around it. Measured on the Bedok zone at the first attempt: five cameras, one of them
-   * outside its own ring, which is worse than the hard-edged hull it replaced.
+   * The first version did it the other way round — pad the hull, smooth, then grow the whole ring
+   * by 45% at a time until the strays were caught. It contained every camera and it sat far too
+   * far out (owner: 점 가까이 라인이 있을 수 있게): inflating uniformly to rescue ONE sharp
+   * corner pushes the other three sides out by the same amount, and on a zone two kilometres
+   * across that is hundreds of metres of empty ground on every side.
    *
-   * So the padding is not guessed: grow it until every camera is inside, by the standard
-   * ray-crossing test. Four attempts at +45% each, then take what we have — a boundary that is
-   * slightly tight beats a loop that never ends, and by the fourth the pad is triple the first.
+   * Measured instead. Corner cutting pulls the curve inside the hull, so the question is how far
+   * inside — per extreme point, radially. Take the worst of those deficits, add one small margin
+   * for the gap the eye wants between a dot and the line, and offset once. No loop, nothing
+   * guessed, and the line ends up as close to the dots as containment allows rather than as far
+   * out as the clumsiest corner demanded.
+   *
+   * The margin is geographic (0.00032° of latitude, about 35m) rather than a share of the group:
+   * it exists to clear the 12px dot, and at the zoom a pill click lands on 35m is roughly seven
+   * pixels — a visible gap that does not grow into a moat on a large zone.
    */
-  const inside = (ring: [number, number][], [lat, lng]: [number, number]) => {
-    let hit = false;
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
-      const [iLat, iLng] = ring[i];
-      const [jLat, jLng] = ring[j];
-      if ((iLng > lng) !== (jLng > lng)
-        && lat < ((jLat - iLat) * (lng - iLng)) / (jLng - iLng) + iLat) hit = !hit;
-    }
-    return hit;
-  };
-
-  let grown = pad;
-  let ring = smooth(offset);
-  for (let attempt = 0; attempt < 4 && points.some(point => !inside(ring, point)); attempt += 1) {
-    grown *= 1.45;
-    ring = smooth(hull.map(([lat, lng]) => {
-      const dLat = lat - centroidLat;
-      const dLng = (lng - centroidLng) * lngScale;
-      const length = Math.hypot(dLat, dLng);
-      if (length === 0) return [lat, lng] as [number, number];
-      return [lat + (dLat / length) * grown, lng + (dLng / length) * grown / lngScale] as [number, number];
-    }));
-  }
-  return ring;
+  const smoothed = smooth(hull);
+  const deficit = Math.max(0, ...hull.map(vertex => {
+    const target = bearing(vertex);
+    // The smoothed point closest in direction to this vertex is the one standing in front of it.
+    const nearest = smoothed.reduce((best, point) => {
+      const gap = Math.abs(Math.atan2(Math.sin(bearing(point) - target), Math.cos(bearing(point) - target)));
+      return gap < best.gap ? { gap, radius: radial(point) } : best;
+    }, { gap: Infinity, radius: 0 });
+    return radial(vertex) - nearest.radius;
+  }));
+  const MARGIN = 0.00032;
+  return expand(smoothed, deficit + MARGIN);
 }
 
 /** Zone names come from a text field somebody types into, and they go into markup built as a
