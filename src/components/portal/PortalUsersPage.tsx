@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Asterisk, ClipboardList, MailQuestion, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
+import { Asterisk, ClipboardList, MailQuestion, MonitorOff, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, APP_SCREENS, type AccessPreset, type AppScreen, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -71,13 +71,18 @@ const T = {
     rosterEmpty: "Nobody is waiting on the roster.",
     toastBulkIssued: (n: number) => `${n} registration code(s) issued`,
     countPortalOnly: "Portal only",
-    countInvited: "Invited",
-    countSuspended: "Suspended",
+    // WHAT THE FIGURE COUNTS, NOT THE NAME OF A STATE. "Invited 1" and "Suspended 1" read as a
+    // status with a number stuck to it — the same figure the row's own badge already carries — and
+    // the reader has to supply the sentence themselves. These say who is in the pile, so the
+    // number has something to be a number OF. The tooltip stays: it explains the consequence,
+    // which is a different job from naming the set.
+    countInvited: "Invite not accepted",
+    countSuspended: "Blocked from signing in",
     countTotal: "on this project",
     countPeopleUnit: "people",
     invitedHint: "Invited but has not set a password yet — they cannot sign in until they do.",
     suspendedHint: "Kept on the list but blocked from signing in.",
-    countDormant: "Dormant",
+    countDormant: "No sign-in for 90 days",
     bulkSuspendTitle: (n: number) => (n === 1 ? "Suspend 1 account?" : `Suspend these ${n} accounts?`),
     bulkSuspendBody: "They stop being able to sign in immediately and stay on the list, so any of them can be restored without a new invitation. Nothing is deleted.",
     bulkSuspendCta: (n: number) => `Suspend ${n}`,
@@ -85,7 +90,12 @@ const T = {
     bulkSuspendAction: "Suspend all shown",
     bulkSuspendKept: (n: number) => `${n} left active — the last administrator cannot be suspended, and neither can your own account from here.`,
     bulkSuspendedToast: (n: number) => `${n} account${n === 1 ? "" : "s"} suspended`,
-    dormantHint: "Active accounts that have not signed in for 90 days, and accounts invited over 90 days ago that never did. On a site whose staff rotate, these are the accounts nobody remembers to close.",
+    // ONLY THE HALF THAT IS COUNTED. It promised "and accounts invited over 90 days ago that never
+    // signed in" as well, and isDormant counts no such thing — PortalUser records no invitedAt, so
+    // the age of an open invitation cannot be judged here (its own comment says so). The sentence
+    // was describing an intention as if it were a figure. HANDOFF: the second half comes back the
+    // day the server reports when an invitation was issued, not before.
+    dormantHint: "Active accounts that have not signed in for 90 days. On a site whose staff rotate, these are the accounts nobody remembers to close.",
 
     // Toolbar filters
 
@@ -287,13 +297,21 @@ const T = {
 
     // Invite modal
     modalTitle: "Invite user",
-    nameLabel: "Name",
+    // THE MARKERS MATCH THE BUTTON'S OWN TEST, which is the only thing that makes them worth
+    // printing. Name, the address and at least one project each hold the Invite button disabled
+    // (see canInvite) and carried no mark, while "App grants" on the right carried the only one on
+    // the form — so the form marked the field the reader cannot leave blank and said nothing about
+    // the three they can. Team is deliberately unmarked: canInvite tests it, and the select is
+    // seeded with the team that owns this page's project and has no empty option, so it is not a
+    // field anybody can fail. Cameras is unmarked because it does not block — an unanswered scope
+    // means every camera on the ticked projects, which is the row's own sentence.
+    nameLabel: "Name *",
     namePlaceholder: "Full name",
-    emailLabel: "Email",
+    emailLabel: "Email *",
     teamLabel: "Team",
     accessLabel: "Where they sign in",
     permissionLabel: "Portal role",
-    projectsLabel: "Projects",
+    projectsLabel: "Projects *",
     scopeLabel: "Cameras",
     scopeNoProject: "Tick a project to see how many cameras that is.",
     scopeNoCameras: "No cameras are registered on the ticked projects yet.",
@@ -351,7 +369,15 @@ const T = {
     // anything tuned by hand since goes — and the person doing it is usually the person who tuned it.
     grantsOverwriteWarning: "This account has grants set by hand. Following this preset replaces them.",
     grantsUnchanged: "Nothing changed yet.",
-    grantsHeldNone: "No screens",
+    // Names the missing thing rather than reporting an absence — "No screens" in a cell about app
+    // access could be read as "this account has no app". It is an amber badge in the row now, so
+    // it has to say what is not set.
+    grantsHeldNone: "No app screens",
+    fixGrants: "Choose screens",
+    countNoScreens: "No app screens set",
+    // "Once nothing else stops them" earns its clause: the gate tests suspended and invited first,
+    // so this is the refusal waiting behind those, not necessarily the one they meet today.
+    noScreensHint: "The app is one of their doors and not one screen is granted, so there is nothing for them to open. Once nothing else stops them, sign-in turns them away with \"no screens have been assigned to this account\" — set the screens here and it clears.",
     grantsSavedTitle: "App screens updated",
     grantsSavedDesc: (name: string) => `${name}'s grants take effect the next time they open the app.`,
     grantsPortalOnly: "A Portal-only account has no app screens to grant.",
@@ -403,13 +429,13 @@ const T = {
     rosterEmpty: "명부에서 기다리는 사람이 없습니다.",
     toastBulkIssued: (n: number) => `등록 코드 ${n}개를 발급했습니다`,
     countPortalOnly: "Portal 전용",
-    countInvited: "초대됨",
-    countSuspended: "정지됨",
+    countInvited: "초대 수락 안 함",
+    countSuspended: "로그인 차단됨",
     countTotal: "이 프로젝트 인원",
     countPeopleUnit: "명",
     invitedHint: "초대는 됐지만 아직 비밀번호를 설정하지 않았습니다 — 설정 전까지 로그인할 수 없습니다.",
     suspendedHint: "목록에는 남아 있지만 로그인이 차단된 상태입니다.",
-    countDormant: "미접속",
+    countDormant: "90일 이상 미접속",
     bulkSuspendTitle: (n: number) => `계정 ${n}개를 정지할까요?`,
     bulkSuspendBody: "즉시 로그인이 막히고 목록에는 그대로 남습니다. 그래서 다시 필요해지면 새로 초대하지 않고 되돌릴 수 있습니다. 삭제되는 것은 없습니다.",
     bulkSuspendCta: (n: number) => `${n}개 정지`,
@@ -417,7 +443,7 @@ const T = {
     bulkSuspendAction: "표시된 계정 모두 정지",
     bulkSuspendKept: (n: number) => `${n}개는 활성으로 남습니다 — 마지막 관리자와 본인 계정은 여기서 정지할 수 없습니다.`,
     bulkSuspendedToast: (n: number) => `계정 ${n}개를 정지했습니다`,
-    dormantHint: "90일 넘게 로그인하지 않은 활성 계정, 그리고 초대된 지 90일이 지나도록 한 번도 들어오지 않은 계정입니다. 인력이 도는 현장에서 아무도 닫는 것을 기억하지 못하는 계정이 이것입니다.",
+    dormantHint: "90일 넘게 로그인하지 않은 활성 계정입니다. 인력이 도는 현장에서 아무도 닫는 것을 기억하지 못하는 계정이 이것입니다.",
 
     // Toolbar filters
 
@@ -573,13 +599,13 @@ const T = {
 
     // Invite modal
     modalTitle: "사용자 초대",
-    nameLabel: "이름",
+    nameLabel: "이름 *",
     namePlaceholder: "전체 이름",
-    emailLabel: "이메일",
+    emailLabel: "이메일 *",
     teamLabel: "팀",
     accessLabel: "어디로 로그인하나",
     permissionLabel: "Portal 역할",
-    projectsLabel: "프로젝트",
+    projectsLabel: "프로젝트 *",
     scopeLabel: "카메라 범위",
     scopeNoProject: "프로젝트를 고르면 몇 대인지 나옵니다.",
     scopeNoCameras: "고른 프로젝트에 등록된 카메라가 아직 없습니다.",
@@ -623,7 +649,10 @@ const T = {
     grantsModalIntro: (name: string) => `${name}이(가) 관제 앱에서 열 수 있는 화면과, 그것을 정하는 방식입니다.`,
     grantsOverwriteWarning: "이 계정은 손으로 조정한 권한을 갖고 있습니다. 이 프리셋을 따르면 그것이 대체됩니다.",
     grantsUnchanged: "아직 바뀐 것이 없습니다.",
-    grantsHeldNone: "화면 없음",
+    grantsHeldNone: "앱 화면 미지정",
+    fixGrants: "화면 지정",
+    countNoScreens: "앱 화면 미지정",
+    noScreensHint: "앱이 이 계정의 문 중 하나인데 볼 화면이 하나도 지정되지 않았습니다. 다른 이유로 막히는 것이 없어지는 순간, 로그인 단계에서 「볼 화면이 지정되지 않은 계정입니다」로 되돌려보냅니다. 여기서 화면을 지정하면 풀립니다.",
     grantsSavedTitle: "앱 화면 권한을 바꿨습니다",
     grantsSavedDesc: (name: string) => `${name}이(가) 다음에 앱을 열 때부터 적용됩니다.`,
     grantsPortalOnly: "Portal만 쓰는 계정에는 부여할 앱 화면이 없습니다.",
@@ -1112,7 +1141,15 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.emailLabel}</label>
-            <TextField value={email} onChange={setEmail} placeholder="name@univs.ai" type="email" />
+            {/* THE PLACEHOLDER HAS TO BE AN ADDRESS THIS FORM WOULD ACCEPT. It was a fixed
+                "name@univs.ai" — our own domain, not the customer's — while the field below it
+                refuses anything off the installation's domain: on the seeded project the hint
+                says name@univs.ai and the error says accounts must be @smartcity.gov.sg. Measured
+                by typing the suggested shape into the field: the Invite button stayed disabled
+                with errDomain under it. Same mailDomain the validation reads, so the example and
+                the rule cannot drift apart. Left generic when no domain is configured — then
+                nothing is refused and there is no domain to suggest. */}
+            <TextField value={email} onChange={setEmail} placeholder={mailDomain ? `name@${mailDomain}` : "name@example.com"} type="email" />
             {/* Under the field, not on submit. The three ways this address can be wrong are all
                 knowable while it is being typed, and finding out after pressing Send is finding
                 out after an account was nearly created. */}
@@ -2250,6 +2287,29 @@ function StageBadge({ stage, t }: { stage: Stage; t: { stageRosterListed: string
 }
 
 /**
+ * An account that holds the app door and no screen behind it.
+ *
+ * AccessGate decides the same thing with the same pair of fields — `denialFor` returns
+ * "noScreens" for `appAccess && (appScreens ?? []).length === 0` — and its refusal screen tells
+ * the person to have an administrator assign screens "in Portal, under Users & Permissions",
+ * which is this page. So this screen is where the state has to be findable, and until now it was
+ * an 11px grey line in one cell.
+ *
+ * NOT A CLAIM THAT THE GATE IS REFUSING THEM TODAY. The gate tests suspended and invited BEFORE
+ * this, so a suspended or still-invited account is turned away with those reasons instead — the
+ * two seeded rows in this state are exactly those. What is true of all of them is what the badge
+ * says: no screen is granted, so the day the account becomes usable it arrives at nothing. That
+ * is a grant to repair now, not an incident, and the wording stays on the grant.
+ */
+function lacksAppScreens(u: PortalUser): boolean {
+  return u.appAccess && (u.appScreens ?? []).length === 0;
+}
+
+/** The cuts the summary strip can put on the table. One name, because four signatures repeating
+ *  the same union is how the fifth one gets forgotten. */
+type UserFilterKey = "invited" | "suspended" | "roster" | "dormant" | "noScreens";
+
+/**
  * The page's summary, in the shared SummaryStrip — the same row Input Sources, the VIP registry and
  * Server & API carry.
  *
@@ -2271,8 +2331,8 @@ function UserCountStrip({
   rosterWaiting: number;
   /* Counted by the page, not here: it needs a post-mount clock, and this component has none. */
   dormant: number;
-  statusFilter: "invited" | "suspended" | "roster" | "dormant" | null;
-  onFilter: (next: "invited" | "suspended" | "roster" | "dormant" | null) => void;
+  statusFilter: UserFilterKey | null;
+  onFilter: (next: UserFilterKey | null) => void;
   onShowGuide: () => void;
 }) {
   const [lang] = usePortalLanguage();
@@ -2304,6 +2364,11 @@ function UserCountStrip({
           { key: "invited" as const, count: invited, label: t.countInvited, hint: t.invitedHint, icon: <MailQuestion size={14} strokeWidth={2.4} /> },
           { key: "suspended" as const, count: suspended, label: t.countSuspended, hint: t.suspendedHint, icon: <UserX size={14} strokeWidth={2.4} /> },
           { key: "roster" as const, count: rosterWaiting, label: t.countRosterWaiting, hint: t.rosterWaitingHint, icon: <ClipboardList size={14} strokeWidth={2.4} /> },
+          /* The count half of the Input Sources pattern (badge in the cell, repair link under it,
+             count that filters to those rows). Counted over every account with the app door and
+             no screens, suspended and invited included — the badge is on their rows, and a figure
+             that disagrees with the badges under it stops being a figure anybody trusts. */
+          { key: "noScreens" as const, count: users.filter(lacksAppScreens).length, label: t.countNoScreens, hint: t.noScreensHint, icon: <MonitorOff size={14} strokeWidth={2.4} /> },
           // Last, because it is the only one that is not a state the console set — it is a state
           // that accumulated while nobody looked.
           { key: "dormant" as const, count: dormant, label: t.countDormant, hint: t.dormantHint, icon: <UserMinus size={14} strokeWidth={2.4} /> },
@@ -2367,9 +2432,11 @@ interface PortalUsersPageProps {
  * counts — it is active and quiet, which looks exactly like an account in good standing until
  * somebody signs in with it.
  *
- * Two shapes, one meaning. An active account that has not signed in for 90 days, and an
- * invitation older than 90 days that was never accepted — a credential issued to somebody who
- * never arrived is a live credential too.
+ * ONE SHAPE TODAY, not the two this comment used to claim: an active account that has not signed
+ * in for 90 days. An unaccepted invitation older than 90 days is a live credential too and belongs
+ * in the same pile, but `PortalUser` carries no invitedAt (see isDormant), so its age cannot be
+ * judged in the browser — and the tile's own tooltip was promising that half to the reader while
+ * nothing counted it. It comes back when the server reports when an invitation was issued.
  *
  * 90 days is a threshold, not a policy. It is long enough that leave, secondment and a quiet
  * season do not fill this list with people who are simply not on shift, and short enough to
@@ -2596,7 +2663,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
    * then finding that person meant scanning the table. The strip's cells are the filter now, which
    * is what the numbers were being read for.
    */
-  const [statusFilter, setStatusFilter] = useState<"invited" | "suspended" | "roster" | "dormant" | null>(null);
+  const [statusFilter, setStatusFilter] = useState<UserFilterKey | null>(null);
   /** True when the list is empty only because something is filtering it. The two empty states
    *  send the reader to different places, and one message for both sends half of them wrong. */
   const narrowed = statusFilter !== null || search.trim() !== "";
@@ -2613,8 +2680,12 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
     // "roster" narrows to people who have no account at all, so no account row can match it.
     // "dormant" is not a status the record carries — it is a judgement about time, so it cannot
     // be compared against u.status like the other three.
+    // "noScreens" is not a status either — it is a pair of grant fields, the same pair the gate
+    // reads (see lacksAppScreens).
     .filter(u => statusFilter === null
-      || (statusFilter === "dormant" ? nowMs !== null && isDormant(u, nowMs) : u.status === statusFilter));
+      || (statusFilter === "dormant" ? nowMs !== null && isDormant(u, nowMs)
+        : statusFilter === "noScreens" ? lacksAppScreens(u)
+        : u.status === statusFilter));
   /**
    * Roster rows for this project that are still waiting — matched against accounts by employee
    * number, which is the roster's own key. Status "used" is not enough on its own: an account can
@@ -2684,8 +2755,15 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
    *
    * Only offered while something IS narrowing the list. On an unfiltered table this would read
    * as "suspend everyone", which is not an errand anybody has.
+   *
+   * AND NOT UNDER THE GRANT-GAP CUT. "App screens not set" narrows to accounts that are missing a
+   * grant, and the errand there is the repair link in their rows, not closing them — a bar reading
+   * "suspend all shown" over two accounts whose only fault is an unfinished setup offers the one
+   * action that makes the gap permanent. Every other cut on this strip does mean "this person is
+   * on the way out or already stopped", which is what the bar is for.
    */
-  const bulkSuspendTargets = peopleTab === "accounts" && narrowed
+  const bulkSuspendOffered = narrowed && statusFilter !== "noScreens";
+  const bulkSuspendTargets = peopleTab === "accounts" && bulkSuspendOffered
     ? filteredUsers.filter(u => u.status !== "suspended"
         // Your own account, excluded here rather than refused later: locking yourself out mid
         // clear-out is a mistake the screen should not offer, and the store cannot know which
@@ -2693,7 +2771,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         && u.id !== currentPortalUser(portalUsers)?.id
         && !isLastActiveAdmin(portalUsers, u.id))
     : [];
-  const bulkSuspendKept = peopleTab === "accounts" && narrowed
+  const bulkSuspendKept = peopleTab === "accounts" && bulkSuspendOffered
     ? filteredUsers.filter(u => u.status !== "suspended").length - bulkSuspendTargets.length
     : 0;
 
@@ -3060,12 +3138,39 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 does not have. */}
             <span style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: 0 }}>
               <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{accessLabel(t, accessModeOf(u))}</span>
-              {u.appAccess && (
-                <span style={{ fontSize: "11px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {(u.appScreens ?? []).length === 0 ? t.grantsHeldNone
-                    : (u.grantMode === "preset" && u.presetId && presetLabelById.get(u.presetId)) || t.grantCustom}
+              {/* THE GAP IS NAMED, NOT WHISPERED. "화면 없음" in 11px gray-400 was the quietest
+                  thing in the row, and it is the one line on it that says this account reaches
+                  nothing — AccessGate refuses it with "noScreens" and sends the reader to this
+                  very screen to repair it. Same three parts Input Sources gave its server gap: an
+                  amber badge naming what is missing, the repair directly under it, and a figure
+                  in the strip above that filters the table to these rows. */}
+              {u.appAccess && (lacksAppScreens(u) ? (
+                <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px", minWidth: 0 }}>
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", gap: "4px", flexShrink: 0,
+                    height: "18px", padding: "0 8px", borderRadius: "999px",
+                    backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
+                    fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap",
+                  }}>
+                    <MonitorOff size={11} strokeWidth={2.6} />
+                    {t.grantsHeldNone}
+                  </span>
+                  {/* Opens the same dialog as the row menu's 앱 화면 변경, so there is one editor
+                      for this and not a second one to keep in step. Behind manageAccess like
+                      every other grant on this page: an admin may read the gap and only an owner
+                      closes it, and the menu item states that reason for whoever cannot. */}
+                  {manageAccess && (
+                    <button onClick={() => setChangingGrantsFor(u)}
+                      style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "10px", fontWeight: 700, color: "var(--primary-400)", textDecoration: "underline" }}>
+                      {t.fixGrants}
+                    </button>
+                  )}
                 </span>
-              )}
+              ) : (
+                <span style={{ fontSize: "11px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {(u.grantMode === "preset" && u.presetId && presetLabelById.get(u.presetId)) || t.grantCustom}
+                </span>
+              ))}
             </span>
             {/* Search is a separate grant from the console role, so it gets its own column rather
                 than being folded into the role label — the two answer different questions. The cell
