@@ -25,6 +25,12 @@ const T = {
   en: {
     title: "Import cameras",
     subtitle: "One row per camera. Nothing is replaced — every row is added to this project.",
+    modeQuestion: "What is this file for?",
+    modeAdd: "Register new cameras",
+    modeAddWhy: "Every row becomes a camera. A code already in the register is refused as a collision.",
+    modeFill: "Fill in coordinates",
+    modeFillWhy: "For cameras already registered. Export the register, put the surveyed latitude and longitude in those two columns, and drop it back — only the position changes. Rows whose code matches nothing are refused.",
+    columnsNoteFill: "Code, Latitude and Longitude are required. Everything else in the file is ignored — this mode changes nothing but the position.",
     dropHere: "Drop a CSV file here",
     orBrowse: "or choose a file",
     formatNote: "CSV or TSV. In Excel: File → Save As → CSV UTF-8.",
@@ -53,6 +59,8 @@ const T = {
     allowanceCut: (left: number, ready: number) => `The file has ${ready} importable rows and the licence has ${left} channels left — the first ${left} will be registered and the rest refused.`,
     doneTitle: "Import finished",
     doneAdded: (n: number) => (n === 1 ? "1 camera registered" : `${n} cameras registered`),
+    doneFilled: (n: number) => (n === 1 ? "1 camera positioned" : `${n} cameras positioned`),
+    importFillN: (n: number) => (n === 1 ? "Fill 1 camera" : `Fill ${n} cameras`),
     doneSkipped: (n: number) => `${n} row${n === 1 ? "" : "s"} skipped`,
     doneNoCoordsNote: "Cameras without coordinates are registered but do not appear on the map until a position is set on each.",
     skippedHeading: "Skipped rows",
@@ -75,6 +83,12 @@ const T = {
   ko: {
     title: "카메라 가져오기",
     subtitle: "카메라 한 대가 한 행입니다. 무엇도 대체하지 않고, 모든 행이 이 프로젝트에 추가됩니다.",
+    modeQuestion: "이 파일은 무엇을 하려는 건가요?",
+    modeAdd: "새 카메라 등록",
+    modeAddWhy: "한 행이 카메라 한 대가 됩니다. 이미 등록된 코드는 중복으로 거절합니다.",
+    modeFill: "좌표 채우기",
+    modeFillWhy: "이미 등록된 카메라용입니다. 등록부를 내보내 측량한 위도·경도를 그 두 열에 채워 다시 올리면 위치만 바뀝니다. 코드가 어느 카메라와도 맞지 않는 행은 거절합니다.",
+    columnsNoteFill: "코드·위도·경도가 필수입니다. 파일의 나머지는 읽지 않습니다 — 이 모드는 위치 말고 아무것도 바꾸지 않습니다.",
     dropHere: "CSV 파일을 여기에 놓으세요",
     orBrowse: "또는 파일 선택",
     formatNote: "CSV 또는 TSV. 엑셀에서: 파일 → 다른 이름으로 저장 → CSV UTF-8.",
@@ -102,6 +116,8 @@ const T = {
     allowanceCut: (left: number, ready: number) => `파일에 가져올 수 있는 행이 ${ready}개인데 라이선스에 남은 채널은 ${left}개입니다 — 앞의 ${left}대만 등록되고 나머지는 거부됩니다.`,
     doneTitle: "가져오기 완료",
     doneAdded: (n: number) => `카메라 ${n}대 등록됨`,
+    doneFilled: (n: number) => `카메라 ${n}대 좌표 채움`,
+    importFillN: (n: number) => `${n}대 좌표 채우기`,
     doneSkipped: (n: number) => `${n}행 건너뜀`,
     doneNoCoordsNote: "좌표가 없는 카메라도 등록은 되지만, 각각 위치를 넣기 전까지 지도에 나타나지 않습니다.",
     skippedHeading: "건너뛴 행",
@@ -148,6 +164,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
   const cameras = useVcaStore(s => s.cameras);
   const projects = useVcaStore(s => s.projects);
   const addCameras = useVcaStore(s => s.addCameras);
+  const fillCameraPositions = useVcaStore(s => s.fillCameraPositions);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t: Dict = T[lang];
@@ -232,6 +249,33 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
       if (blocking.length > 0) skipped.push({ row, reasons: blocking.map(issueText) });
     });
 
+    /*
+     * FILL MODE WRITES POSITIONS, IT DOES NOT REGISTER ANYTHING.
+     *
+     * This called addCameras whichever mode was chosen, so a coordinate file — every row naming a
+     * camera that is already registered — came back with every row refused as a code collision.
+     * The mode was parsed and then thrown away at the last step, which is the worst place to lose
+     * it: the screen had already said what it was going to do.
+     */
+    if (mode === "fill-coordinates") {
+      const notFound = new Set(fillCameraPositions(
+        projectId,
+        okRows.map(row => ({ code: row.code, lat: row.lat as number, lng: row.lng as number })),
+        parsed.fileName,
+      ));
+      okRows.forEach(row => {
+        if (notFound.has(row.code)) skipped.push({ row, reasons: [issueText("not-in-register")] });
+      });
+      const filled = okRows.length - notFound.size;
+      setResult({ added: filled, skipped });
+      showToast({
+        variant: filled > 0 ? "success" : "warning",
+        title: filled > 0 ? t.toastTitle : t.toastNothing,
+        desc: t.toastDesc(filled, skipped.length),
+      });
+      return;
+    }
+
     const refused = new Set(addCameras(
       okRows.map(row => ({
         projectId,
@@ -294,7 +338,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
         {result ? (
           <>
             <div style={{ padding: "20px", overflowY: "auto", minHeight: 0 }}>
-              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.doneAdded(result.added)}</p>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{mode === "fill-coordinates" ? t.doneFilled(result.added) : t.doneAdded(result.added)}</p>
               {result.skipped.length > 0 && (
                 <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "2px" }}>{t.doneSkipped(result.skipped.length)}</p>
               )}
@@ -400,13 +444,51 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
                   color: willImport === 0 ? "var(--gray-400)" : "white",
                   fontSize: "13px", fontWeight: 700, cursor: willImport === 0 ? "not-allowed" : "pointer",
                 }}>
-                {t.importN(willImport)}
+                {mode === "fill-coordinates" ? t.importFillN(willImport) : t.importN(willImport)}
               </button>
             </div>
           </>
         ) : (
           <>
             <div style={{ padding: "0 20px 20px" }}>
+              {/*
+                THE MODE, ASKED BEFORE THE FILE.
+                
+                It existed in the library and in this component's state and had no control at all —
+                setMode was never called, so the round trip the coordinate decision leans on ("put
+                the survey in later") was reachable from code and from nobody's hands. Recorded in
+                HANDOFF-SERVER §9-2 as the way back from a deferred survey, which made writing this
+                overdue rather than optional.
+                
+                Two boxes rather than a select, and asked first: the same file means two different
+                things depending on the answer, and "update the row if the code exists" as a silent
+                default is destructive — a file meant to add twelve cameras would rewrite the name,
+                stream URL and credentials of everything already registered under a matching code.
+                See CameraImportMode.
+              */}
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.modeQuestion}</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
+                {([
+                  { value: "add" as CameraImportMode, label: t.modeAdd, why: t.modeAddWhy },
+                  { value: "fill-coordinates" as CameraImportMode, label: t.modeFill, why: t.modeFillWhy },
+                ]).map(option => {
+                  const on = mode === option.value;
+                  return (
+                    <button key={option.value} type="button"
+                      /* The parse is mode-dependent, so a mode change after a file is chosen has to
+                         drop what was parsed rather than reinterpret it silently. */
+                      onClick={() => { setMode(option.value); setParsed(null); setFileError(null); }}
+                      style={{
+                        textAlign: "left", padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontFamily: "inherit",
+                        border: on ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
+                        backgroundColor: on ? "var(--primary-50)" : "white",
+                      }}>
+                      <span style={{ display: "block", fontSize: "12px", fontWeight: 700, color: on ? "var(--primary-400)" : "var(--gray-900)" }}>{option.label}</span>
+                      <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", marginTop: "3px", lineHeight: 1.45 }}>{option.why}</span>
+                    </button>
+                  );
+                })}
+              </div>
               <div
                 onDragOver={e => { e.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
@@ -435,7 +517,9 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
               <p style={{ fontSize: "12px", marginTop: "14px", lineHeight: 1.5, color: allowance === 0 ? "var(--warning-500)" : "var(--gray-500)" }}>
                 {limit === undefined ? t.allowanceNone : allowance === 0 ? t.allowanceFull(limit) : t.allowanceLeft(allowance)}
               </p>
-              <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.5 }}>{t.columnsNote}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.5 }}>
+                {mode === "fill-coordinates" ? t.columnsNoteFill : t.columnsNote}
+              </p>
               <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "4px", lineHeight: 1.5 }}>{t.formatNote}</p>
               <button onClick={downloadTemplate}
                 style={{ marginTop: "10px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>

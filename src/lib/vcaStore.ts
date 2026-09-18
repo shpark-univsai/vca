@@ -849,6 +849,24 @@ interface VcaStoreState {
    * Returns the codes it refused: over the limit, or colliding with a code already registered.
    */
   addCameras: (cameras: Omit<Camera, "id">[], source: string) => string[];
+  /**
+   * Put surveyed coordinates onto cameras that are ALREADY registered, matched by code.
+   *
+   * The other half of the rule the coordinate decision rests on (HANDOFF-SERVER §9-2): a bulk
+   * import may defer the survey, so there has to be a way to close it later. The import screen's
+   * "fill in coordinates" mode is that way — export the register, put the two columns in, drop it
+   * back. Nothing else on the row is touched: the same file re-read as an "add" would rewrite
+   * names, stream URLs and credentials, which is why the mode is a question the operator answers
+   * rather than something inferred from whether the code exists.
+   *
+   * One call and one audit line, for the reason addCameras is one call: a file of three hundred
+   * rows would otherwise trim the log with its own entries.
+   *
+   * Returns the codes it could not place — a code matching no camera in this project. Those are
+   * refusals, not notes: a row reported as filled when nothing was found is a lie about the
+   * register.
+   */
+  fillCameraPositions: (projectId: string, entries: { code: string; lat: number; lng: number }[], source: string) => string[];
   updateCamera: (cameraId: string, updates: Partial<Omit<Camera, "id" | "projectId">>) => void;
   removeCamera: (cameraId: string) => void;
   /**
@@ -3765,6 +3783,35 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           projectId,
           message: `${accepted.length} camera${accepted.length === 1 ? "" : "s"} imported from ${source}`
             + (refused.length > 0 ? ` (${refused.length} refused)` : ""),
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      }));
+    }
+    return refused;
+  },
+  fillCameraPositions: (projectId, entries, source) => {
+    const state = get();
+    const byCode = new Map(
+      state.cameras.filter(c => c.projectId === projectId).map(c => [c.code.trim().toLowerCase(), c.id]),
+    );
+    const refused: string[] = [];
+    const placed = new Map<string, { lat: number; lng: number }>();
+    entries.forEach(entry => {
+      const id = byCode.get(entry.code.trim().toLowerCase());
+      if (id === undefined) { refused.push(entry.code); return; }
+      // Last line wins a repeated code, which is what a spreadsheet's own reading of itself is.
+      placed.set(id, { lat: entry.lat, lng: entry.lng });
+    });
+    if (placed.size > 0) {
+      set(st => ({
+        cameras: st.cameras.map(c => {
+          const position = placed.get(c.id);
+          return position ? { ...c, ...position } : c;
+        }),
+        auditLog: [clientAudit({
+          projectId,
+          message: `Coordinates filled for ${placed.size} camera${placed.size === 1 ? "" : "s"} from ${source}`
+            + (refused.length > 0 ? ` (${refused.length} not found)` : ""),
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
       }));

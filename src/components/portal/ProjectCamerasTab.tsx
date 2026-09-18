@@ -72,7 +72,13 @@ const T = {
     healthNoPositionWhy: "The register has the zone but not the latitude and longitude, so this camera is drawn nowhere on the map and nothing it detects can be counted toward a zone. Not a camera fault — the survey line is the part that is missing, and somebody on site fills it in.",
     healthShowOnly: "Show only these",
     healthClear: "Show everything again",
-    searchPlaceholder: "Search by camera name, code, RTSP URL, or IP address",
+    /* THREE, IN THE ORDER PEOPLE ACTUALLY TYPE. It listed four — name, code, RTSP URL, IP — which
+       is the field reciting its implementation. The code is generated, never typed, so nobody
+       searches by one they remember (owner: 코드 검색은 몰라서 못할 것 같은데); it stays in the
+       copy because the one reader who HAS a code — from a CSV or a ticket saying "CAM-BLK-026
+       offline" — needs to know it will match, but it goes last. The RTSP URL is rarer still and
+       comes out of the sentence entirely; the box still matches it. */
+    searchPlaceholder: "Search by name, IP address, or code",
     filterAllZones: "All zones",
     filterAllStatus: "All status",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
@@ -258,7 +264,7 @@ const T = {
     healthNoPositionWhy: "구역은 적혀 있지만 위도·경도가 없습니다. 그래서 지도 어디에도 그려지지 않고, 이 카메라가 잡은 탐지는 어느 구역으로도 집계되지 않습니다. 카메라 고장이 아니라 등록부에 측량값이 빠진 것이라, 현장에서 좌표를 재서 채워 넣으면 됩니다.",
     healthShowOnly: "이 항목만 보기",
     healthClear: "전체 다시 보기",
-    searchPlaceholder: "카메라 이름, 코드, RTSP URL, IP 주소로 검색",
+    searchPlaceholder: "이름, IP 주소, 코드로 검색",
     filterAllZones: "전체 구역",
     filterAllStatus: "전체 상태",
     filtersActive: (n: number) => `필터 ${n}개`,
