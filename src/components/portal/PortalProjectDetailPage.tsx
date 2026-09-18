@@ -60,6 +60,8 @@ const T = {
     noPendingAccessRequests: "No pending access requests.",
     attentionTitle: "Attention needed",
     dismissBanner: "Dismiss",
+    attnMore: (n: number) => `+${n} more`,
+    attnAllTitle: "Attention needed",
     attnOffline: (n: number) => `${n} camera${n === 1 ? " is" : "s are"} offline`,
     attnAwaiting: (n: number) => `${n} camera${n === 1 ? " has" : "s have"} never reported in`,
     attnCameraError: (n: number) => `${n} camera${n === 1 ? "" : "s"} refusing the connection`,
@@ -156,6 +158,8 @@ const T = {
     noPendingAccessRequests: "대기 중인 접근 요청이 없습니다.",
     attentionTitle: "확인 필요",
     dismissBanner: "닫기",
+    attnMore: (n: number) => `+${n}건 더보기`,
+    attnAllTitle: "확인 필요",
     attnOffline: (n: number) => `오프라인 카메라 ${n}대`,
     attnAwaiting: (n: number) => `한 번도 응답한 적 없는 카메라 ${n}대`,
     attnCameraError: (n: number) => `연결이 거부된 카메라 ${n}대`,
@@ -474,6 +478,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
    *  panel's footer). */
   // Session-only, deliberately: see the banner's note. Nothing here is resolved by closing it.
   const [attentionDismissed, setAttentionDismissed] = useState(false);
+  const [attentionAllOpen, setAttentionAllOpen] = useState(false);
   // Read after mount, not during render: the clock is not a pure input, and license expiry is
   // the only thing here that needs it — same pattern ProjectLicenseTab uses. Reads as not-expired
   // for the first frame, then corrects itself once mounted (no server/client mismatch).
@@ -806,6 +811,24 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
     ...(projectPersons.length === 0 ? [{ key: "novips", text: t.attnNoVips, color: "var(--gray-400)", tab: "vip" as DetailTab }] : []),
   ];
 
+  /*
+   * Ranked for the strip and the popup alike: red (something is broken) → amber (something needs
+   * doing) → grey (worth knowing). The array above is built in a reading order that mixes them,
+   * which is fine while every item is on screen and wrong the moment only the first three are.
+   */
+  const rankedAttention = useMemo(() => {
+    const weight = (c: string) => (c === "var(--danger-400)" ? 0 : c === "var(--warning-500)" ? 1 : 2);
+    return [...attentionItems].sort((a, b) => weight(a.color) - weight(b.color));
+  }, [attentionItems]);
+  /** One place that knows where each errand leads, so the strip and the popup cannot disagree. */
+  const goToAttention = (item: (typeof rankedAttention)[number]) => {
+    if (item.settings) { onOpenSettings?.(); return; }
+    setVipHealthFocus(item.vipHealth ?? null);
+    setCameraGapFocus(item.cameraGap ?? false);
+    onTabChange(item.tab);
+    setAttentionAllOpen(false);
+  };
+
   // Owner only, the same as the copy of this panel on Users & Permissions. An approval mints an
   // account with a working sign-in link; the Overview being a summary screen does not make the
   // button on it a lighter action.
@@ -935,7 +958,24 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
             than the system alerting. Dismiss hides it for this visit only — nothing is stored, and
             a reload brings it back, because none of these errands go away by being closed.
           */}
-          {attentionItems.length > 0 && !attentionDismissed && (
+          {attentionItems.length > 0 && !attentionDismissed && (() => {
+          /*
+           * ONE LINE, WORST FIRST, AND THE REST BEHIND "더보기" (owner's ask, 2026-09-18).
+           *
+           * It used to print every errand into a wrapping paragraph — eight of them on the seeded
+           * site, which ran to three lines and pushed the cards below the fold. A strip that grows
+           * with the number of problems is loudest exactly when the page is already busiest, and
+           * the × ended up on its own line, far from the title it belongs to.
+           *
+           * Sorted by how hard it is, not by the order the list happens to be built in: red
+           * (something is broken) → amber (something needs doing) → grey (worth knowing). The
+           * first three stay on the line; the rest are a count you can open. Three because the
+           * line has to survive a narrow window, not because three is a magic number.
+           */
+          const INLINE = 3;
+          const shown = rankedAttention.slice(0, INLINE);
+          const hidden = rankedAttention.length - shown.length;
+          return (
             /* The colour lives in the mark, not in the band.
                It was primary-100 filled with a primary-200 border and a primary-400 label, which
                is a full-width purple field at the top of the page the reader opens first — the
@@ -945,7 +985,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                Now: a whisper of tint to say this is not another card, and the whole of the colour
                spent on a 28px square. */
             <div style={{
-              display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
+              // nowrap, so the strip is one line whatever it holds — the overflow goes behind the
+              // count at the end, not onto a second line.
+              display: "flex", alignItems: "center", gap: "12px", flexWrap: "nowrap",
               // White, like every other card on this page. The tinted band asked for attention
               // with its whole surface, which on a page of white cards made it the loudest thing
               // before anybody read a word of it — and what it holds is a list of errands, not an
@@ -981,17 +1023,17 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                 are two different tabs; one control cannot honestly stand for both. The sentence
                 already names them, so the names are the links.
               */}
-              <p style={{ fontSize: "13px", color: "var(--gray-600)", minWidth: 0 }}>
-                {attentionItems.map((item, i) => (
+              <p style={{
+                fontSize: "13px", color: "var(--gray-600)", minWidth: 0,
+                // The line clips instead of wrapping: an errand cut mid-word is the signal that
+                // there is more, and the count beside it says how much more.
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {shown.map((item, i) => (
                   <span key={item.key}>
                     {i > 0 && <span style={{ color: "var(--gray-400)" }}>{" · "}</span>}
                     <button
-                      onClick={() => {
-                        if (item.settings) { onOpenSettings?.(); return; }
-                        setVipHealthFocus(item.vipHealth ?? null);
-                        setCameraGapFocus(item.cameraGap ?? false);
-                        onTabChange(item.tab);
-                      }}
+                      onClick={() => goToAttention(item)}
                       style={{
                         border: "none", background: "none", padding: 0, cursor: "pointer",
                         font: "inherit", color: "var(--gray-900)", fontWeight: 600,
@@ -1004,7 +1046,23 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                   </span>
                 ))}
               </p>
+              {/* The count, not a word: "+5건 더보기" says how much is hidden, where "더보기" alone
+                  asks the reader to click to find out whether it was worth clicking. */}
+              {hidden > 0 && (
+                <button
+                  onClick={() => setAttentionAllOpen(true)}
+                  style={{
+                    flexShrink: 0, border: "none", background: "none", padding: 0, cursor: "pointer",
+                    font: "inherit", fontSize: "12px", fontWeight: 700, color: "var(--primary-400)",
+                  }}
+                >
+                  {t.attnMore(hidden)}
+                </button>
+              )}
               <span style={{ flex: 1 }} />
+              {/* Same row as the title now. It was at the end of a wrapping flex line, so with the
+                  errands running to three lines it sat under them — a close button a long way from
+                  the thing it closes. */}
               <button
                 className="portal-icon-btn"
                 onClick={() => setAttentionDismissed(true)}
@@ -1013,6 +1071,55 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
               >
                 <X size={14} strokeWidth={2.4} />
               </button>
+            </div>
+          );
+          })()}
+
+          {/* Every errand, one per row, in the same order the strip ranks them.
+              A popup rather than an expanding strip: the strip's job is to stay one line, and a
+              disclosure that pushes the cards down is the wrapping paragraph again with a control
+              in front of it. Each row is the link it was on the strip, and taking one closes the
+              popup — you asked to go somewhere, so the list you were choosing from gets out of the
+              way. */}
+          {attentionAllOpen && (
+            <div
+              onClick={e => { if (e.target === e.currentTarget) setAttentionAllOpen(false); }}
+              style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}
+            >
+              <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, boxShadow: PANEL_SHADOW, width: "440px", maxWidth: "100%", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 12px" }}>
+                  <p style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)" }}>{t.attnAllTitle}</p>
+                  <button
+                    className="portal-icon-btn"
+                    onClick={() => setAttentionAllOpen(false)}
+                    title={t.dismissBanner}
+                    style={{ display: "flex", border: "none", background: "none", padding: "4px", cursor: "pointer", color: "var(--gray-400)" }}
+                  >
+                    <X size={14} strokeWidth={2.4} />
+                  </button>
+                </div>
+                <div style={{ overflowY: "auto", padding: "0 8px 12px" }}>
+                  {rankedAttention.map(item => (
+                    <button
+                      key={item.key}
+                      onClick={() => goToAttention(item)}
+                      className="portal-btn-quiet"
+                      style={{
+                        display: "flex", alignItems: "center", gap: "10px", width: "100%", textAlign: "left",
+                        padding: "10px 12px", borderRadius: "8px", border: "none", background: "none",
+                        cursor: "pointer", font: "inherit", fontSize: "13px", color: "var(--gray-900)",
+                      }}
+                    >
+                      {/* The colour that ranked it, as a dot. On the strip the order carries that;
+                          in a list of eight rows the reader needs to see where red stops. */}
+                      <span style={{ width: "6px", height: "6px", borderRadius: "999px", backgroundColor: item.color, flexShrink: 0 }} />
+                      <span style={{ minWidth: 0 }}>{item.text}</span>
+                      <span style={{ flex: 1 }} />
+                      <ChevronRight size={14} strokeWidth={2.4} style={{ color: "var(--gray-300)", flexShrink: 0 }} />
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
