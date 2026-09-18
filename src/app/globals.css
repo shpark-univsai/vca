@@ -275,15 +275,20 @@ optgroup {
    An element selector rather than a class: roughly half the fields in Portal are bare <input>s that
    never went through TextField, and a per-field opt-in is a rule that is true until the next form
    forgets it. */
-/* 500, NOT 600. It was 600 — the same weight the fields themselves set — so the only thing
-   telling an empty field from a filled one was the grey, and the prompts came out blunt (owner,
-   2026-09-18: 플레이스홀더 문구들 너무 두꺼워서 투박해 보여). One notch down does what the
-   paragraph above always claimed: lighter than a typed value in weight as well as in colour.
-   SUIT is a variable face (100-900), so 500 is a real weight here, not a synthesised one. */
+/* 400, AND THE MEASUREMENT IS WHY.
+   This was 600, and the paragraph above justified it as "heavier so it still reads as a specimen".
+   Measured in the browser (2026-09-18): a portal input's own text computes to 400 — FIELD_STYLE
+   sets no weight, so it inherits the body's. The placeholder was two steps HEAVIER than the value
+   it stands in for. The prompt was bolder than the answer, which is backwards, and it is what the
+   owner was seeing: 플레이스홀더 문구들 너무 두꺼워서 투박해 보여.
+   So it matches the value's weight and the grey does the work of telling them apart — which is the
+   channel that was always carrying it here, and the convention every other console follows. The
+   few fields that set 600 on themselves get a prompt lighter than their value, which is also
+   right. SUIT is a variable face (100-900), so nothing here is synthesised. */
 input::placeholder,
 textarea::placeholder {
   color: var(--gray-400);
-  font-weight: 500;
+  font-weight: 400;
   opacity: 1; /* Firefox dims placeholders by default, which would undo the weight. */
   transition: color .12s ease;
 }
