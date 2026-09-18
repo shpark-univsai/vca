@@ -2423,7 +2423,11 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               nothing between here and that scroller clips its overflow. zIndex 2 so rows pass
               beneath rather than over, and the gray-50 fill is what makes "beneath" invisible. */}
           <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: categoriesEnabled ? (showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID) : (showGroupColumn ? VIP_GRID_WITH_GROUP_NO_CAT : VIP_GRID_NO_CAT), columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
-            <label style={{ display: "flex", alignItems: "center", height: "100%", minHeight: "28px", margin: "0 -6px", padding: "0 6px", cursor: "pointer" }}>
+            {/* No minHeight on the HEADER's box. The row version sets one because a row is tall
+                enough to spare it; here it made the heading strip 49px for a 15px checkbox, which
+                reads as a heavier band than the rows under it (owner's note: "테이블 헤더 높이가
+                이상하게 두꺼워"). The negative margin still widens the target sideways. */}
+            <label style={{ display: "flex", alignItems: "center", margin: "0 -6px", padding: "0 6px", cursor: "pointer" }}>
               <input
                 type="checkbox"
               checked={allVisibleSelected}

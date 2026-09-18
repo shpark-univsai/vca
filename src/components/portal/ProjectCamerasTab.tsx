@@ -1739,7 +1739,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             {/* The thumbnail, address and AI-engine columns carry no sortKey — a picture has no
                 order, an address sorts by whatever the IP happens to start with, and AI engines is
                 a set per camera rather than one value. */}
-            <label style={{ display: "flex", alignItems: "center", height: "100%", minHeight: "28px", margin: "0 -6px", padding: "0 6px", cursor: "pointer" }}>
+            {/* No minHeight on the HEADER's box. The row version sets one because a row is tall
+                enough to spare it; here it made the heading strip 49px for a 15px checkbox, which
+                reads as a heavier band than the rows under it (owner's note: "테이블 헤더 높이가
+                이상하게 두꺼워"). The negative margin still widens the target sideways. */}
+            <label style={{ display: "flex", alignItems: "center", margin: "0 -6px", padding: "0 6px", cursor: "pointer" }}>
               <input
                 type="checkbox"
                 checked={allVisibleSelected}
