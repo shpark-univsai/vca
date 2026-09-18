@@ -209,6 +209,11 @@ interface VipDict {
   namePlaceholder: string;
   priorityLabel: string;
   facePhotoLabelRequired: string;
+  addPhotos: string;
+  representativePhoto: string;
+  photoSetHint: string;
+  photoSetCount: (n: number) => string;
+  removePhoto: string;
   changePhoto: string;
   uploadPhoto: string;
   currentPhoto: string;
@@ -397,6 +402,14 @@ const T: Record<"en" | "ko", VipDict> = {
     namePlaceholder: "Alexander Wright",
     priorityLabel: "Priority",
     facePhotoLabelRequired: "Face photo *",
+    addPhotos: "Add photos",
+    representativePhoto: "Shown",
+    /* The owner's own sentence, kept word for word (2026-09-18) — it is the whole explanation the
+       extra tiles need, and it says the two things that decide whether more pictures help at all:
+       clear, and frontal. */
+    photoSetHint: "Upload clear frontal face images for best recognition results.",
+    photoSetCount: (n: number) => `${n} more`,
+    removePhoto: "Remove",
     changePhoto: "Change",
     uploadPhoto: "Upload photo",
     currentPhoto: "Current photo",
@@ -572,6 +585,11 @@ const T: Record<"en" | "ko", VipDict> = {
     namePlaceholder: "홍길동",
     priorityLabel: "우선순위",
     facePhotoLabelRequired: "얼굴 사진 *",
+    addPhotos: "사진 추가",
+    representativePhoto: "대표",
+    photoSetHint: "정면이 선명한 얼굴 사진을 여러 장 올리면 인식률이 좋아집니다.",
+    photoSetCount: (n: number) => `${n}장 더`,
+    removePhoto: "삭제",
     changePhoto: "변경",
     uploadPhoto: "사진 업로드",
     currentPhoto: "현재 사진",
@@ -632,6 +650,8 @@ interface RegisterValues {
   /** Undefined = an individual, i.e. in no group. */
   groupId?: string;
   photoUrl?: string;
+  /** The rest of the enrolment set, in the order the tiles show it. See Person.enrolmentPhotoUrls. */
+  enrolmentPhotoUrls?: string[];
 }
 
 /**
@@ -734,10 +754,31 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
    * used to open as an empty dropzone reading "Upload photo", which says the registry has no
    * picture of somebody whose picture is on the row behind the modal.
    */
-  const [photoPreview, setPhotoPreview] = useState<string | null>(person?.photoUrl ?? null);
-  /** True while the pointer is over the photo, so the control can offer to replace it. */
-  const [photoHovered, setPhotoHovered] = useState(false);
-  const [photoFileName, setPhotoFileName] = useState<string | null>(null);
+  /*
+   * ONE SET OF FACES, ORDERED, AND THE FIRST ONE IS THE REPRESENTATIVE.
+   *
+   * It was a single photo and a single dropzone. Several pictures of the same person enrol better
+   * than one — one picture is one angle under one light — and the previous product asked for them
+   * as a row of tiles under the heading "Face Images" with a + Add tile at the end (owner's
+   * screenshot, 2026-09-18). Same shape here.
+   *
+   * Ordered rather than a bag, because `Person.photoUrl` is the one face the table, the cards, the
+   * detail panel and the app all draw: it is photos[0]. The rest go to
+   * `Person.enrolmentPhotoUrls`. Removing the first tile promotes the next, so "which face do I
+   * see everywhere" is answered by a position the reader can see and change rather than by a flag.
+   */
+  const [photos, setPhotos] = useState<{ url: string; fileName?: string }[]>(
+    person
+      ? [
+        ...(person.photoUrl ? [{ url: person.photoUrl }] : []),
+        ...(person.enrolmentPhotoUrls ?? []).map(url => ({ url })),
+      ]
+      : [],
+  );
+  /** Which tile the pointer is over, so it can offer its own remove control. -1 for none. */
+  const [photoHoverIndex, setPhotoHoverIndex] = useState(-1);
+  /* The rest of this component still asks "is there a face at all?" in one place. */
+  const photoPreview = photos[0]?.url ?? null;
   /**
    * What the model made of the photo currently on file: nothing wrong reported, unreadable, or
    * re-submitted and unanswered. Passed in rather than recomputed — registryHealth owns the
@@ -800,10 +841,17 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // A new picture is a new attempt: the refusal was about the last one.
     setPhotoRejected(false);
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPhotoPreview(URL.createObjectURL(file));
-    setPhotoFileName(file.name);
+    const picked = Array.from(e.target.files ?? []);
+    // Cleared so picking the same file twice in a row still fires a change event.
+    e.target.value = "";
+    if (picked.length === 0) return;
+    /* Appended, never replacing: the tiles are a set being built up, and somebody who has already
+       chosen three faces and reaches for a fourth is adding, not starting again. */
+    setPhotos(previous => [...previous, ...picked.map(file => ({ url: URL.createObjectURL(file), fileName: file.name }))]);
+  };
+  const removePhoto = (index: number) => {
+    setPhotoRejected(false);
+    setPhotos(previous => previous.filter((_, i) => i !== index));
   };
 
   return (
@@ -836,54 +884,67 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
                   name beside an unstarred photo and left the reader guessing which rule applied. */}
               {t.facePhotoLabelRequired}
             </label>
-            <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: "none" }} />
+            <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={handlePhotoChange} style={{ display: "none" }} />
             {/*
-              With a photo: the photo, and "Change photo" over it on hover. Without: the dropzone.
-
-              The whole control is the button either way, so the picture is the target — clicking a
-              face to replace it is what every avatar field does, and a separate "Change" link
-              beside a thumbnail is a second thing to aim at. The overlay only appears on hover
-              because a caption printed permanently across somebody's face is a caption you stop
-              reading and a face you cannot see.
+              A ROW OF TILES AND A + AT THE END, which is the shape the previous product used for
+              exactly this field. Not a wide dropzone: a dropzone is one slot by implication, and
+              the whole point here is that there can be several. Wraps, so a set of six does not
+              push the form sideways.
             */}
-            <button
-              type="button"
-              onClick={() => photoInputRef.current?.click()}
-              onMouseEnter={() => setPhotoHovered(true)}
-              onMouseLeave={() => setPhotoHovered(false)}
-              style={{
-                width: "100%", boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: photoPreview ? "flex-start" : "center", gap: "12px",
-                padding: photoPreview ? "10px" : "24px", borderRadius: "10px",
-                border: photoPreview ? BORDER : "1px dashed var(--gray-300)",
-                backgroundColor: "var(--gray-50)", cursor: "pointer", textAlign: "left",
-              }}>
-              {photoPreview ? (
-                <>
-                  <span style={{ position: "relative", display: "flex", flexShrink: 0, borderRadius: "8px", overflow: "hidden" }}>
-                    <img src={photoPreview} alt="" style={{ width: "64px", height: "64px", objectFit: "cover", display: "block" }} />
-                    {photoHovered && (
-                      <span style={{
-                        position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                        backgroundColor: "rgba(24, 17, 39, 0.62)", color: "white", fontSize: "10px", fontWeight: 700,
-                        textAlign: "center", lineHeight: 1.3, padding: "4px",
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {photos.map((photo, index) => (
+                <span
+                  key={photo.url}
+                  onMouseEnter={() => setPhotoHoverIndex(index)}
+                  onMouseLeave={() => setPhotoHoverIndex(-1)}
+                  title={photo.fileName}
+                  style={{ position: "relative", display: "flex", width: "72px", height: "72px", borderRadius: "10px", overflow: "hidden", border: BORDER, flexShrink: 0 }}>
+                  <img src={photo.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  {/* WHICH ONE THE REST OF THE PRODUCT SHOWS. Marked rather than left to be
+                      inferred from position: the table, the cards and the app all draw this face,
+                      and a set of five tiles gives no other clue which one that is. */}
+                  {index === 0 && (
+                    <span style={{
+                      position: "absolute", left: 0, right: 0, bottom: 0, padding: "2px 0",
+                      backgroundColor: "rgba(24,17,39,0.62)", color: "white",
+                      fontSize: "9px", fontWeight: 700, textAlign: "center",
+                    }}>
+                      {t.representativePhoto}
+                    </span>
+                  )}
+                  {photoHoverIndex === index && (
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(index)}
+                      title={t.removePhoto}
+                      style={{
+                        position: "absolute", top: "3px", right: "3px", display: "flex",
+                        width: "18px", height: "18px", alignItems: "center", justifyContent: "center",
+                        borderRadius: "50%", border: "none", backgroundColor: "rgba(24,17,39,0.72)",
+                        color: "white", cursor: "pointer", padding: 0,
                       }}>
-                        {t.changePhoto}
-                      </span>
-                    )}
-                  </span>
-                  {/* The file name once a new one has been chosen; before that there is no file,
-                      only the picture the server already holds. */}
-                  <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {photoFileName ?? t.currentPhoto}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="var(--gray-500)" strokeWidth="1.22" strokeLinecap="round"/></svg>
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}>{t.uploadPhoto}</span>
-                </>
-              )}
-            </button>
+                      <svg width="9" height="9" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
+                    </button>
+                  )}
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px",
+                  width: "72px", height: "72px", borderRadius: "10px", flexShrink: 0,
+                  border: "1px dashed var(--gray-300)", backgroundColor: "var(--gray-50)",
+                  cursor: "pointer", fontFamily: "inherit",
+                }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{photos.length === 0 ? t.uploadPhoto : t.addPhotos}</span>
+              </button>
+            </div>
+            {/* The owner's own sentence, under the tiles where the previous product put it. It is
+                the whole explanation this field needs: it says why more than one is worth adding
+                and what kind of picture is worth adding. */}
+            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoSetHint}</p>
             {/* The reason this form is open, for the people it is open about.
                 An admin who clicked "12 photo unreadable", picked a row and got here saw a
                 perfectly ordinary-looking photograph and no hint of what was wrong with it. The
@@ -1054,7 +1115,11 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
               name: name.trim(), priorityLabel,
               description: description.trim() || undefined,
               groupId: groupId || undefined,
-              photoUrl: photoPreview ?? undefined,
+              /* The first tile is the face the product draws; the rest are the enrolment set.
+                 Sent as undefined rather than an empty array when there is only one, so an edit
+                 that removed the extras clears the field instead of storing []. */
+              photoUrl: photos[0]?.url,
+              enrolmentPhotoUrls: photos.length > 1 ? photos.slice(1).map(photo => photo.url) : undefined,
               });
             }}
             disabled={!valid}
@@ -1327,6 +1392,21 @@ function PersonDetailModal({ t, person, zone, groups, onClose, onEdit, onRemove 
         <FacePhoto src={person.photoUrl} radius="0"
           style={{ width: "100%", aspectRatio: "1 / 1", maxHeight: "320px", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", backgroundColor: "var(--gray-100)" }}
           hiddenStyle={{ border: "none", borderBottom: "1px solid var(--gray-200)" }} />
+        {/* THE REST OF THE ENROLMENT SET, when there is one. The big photo above is the face
+            everything else in the product draws; these are the other pictures this person was
+            enrolled from, and "how many angles do we actually have of him" is a question you can
+            only answer by seeing them. Absent entirely for a row enrolled from one photograph —
+            a strip explaining that there is nothing to show is worse than no strip. */}
+        {(person.enrolmentPhotoUrls?.length ?? 0) > 0 && (
+          <div style={{ padding: "12px 20px 0", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)" }}>
+              {t.photoSetCount((person.enrolmentPhotoUrls ?? []).length)}
+            </span>
+            {(person.enrolmentPhotoUrls ?? []).map(url => (
+              <FacePhoto key={url} src={url} size={40} radius="8px" />
+            ))}
+          </div>
+        )}
         <div style={{ padding: "20px 20px", display: "flex", flexDirection: "column", gap: "12px" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
           <div style={{ minWidth: 0 }}>
@@ -1835,6 +1915,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
       // through rather than falling back to a stock face, so the one path that can produce a
       // photoless person (the CSV import above) stays the only one.
       name: values.name, type: "VIP", ...(values.photoUrl ? { photoUrl: values.photoUrl } : null),
+      ...(values.enrolmentPhotoUrls ? { enrolmentPhotoUrls: values.enrolmentPhotoUrls } : null),
       registeredAt: new Date().toISOString(),
       priorityLabel: values.priorityLabel,
       description: values.description,
@@ -1863,6 +1944,10 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
       // Only when a new file was picked. Without this, opening the editor and saving without
       // touching the photo would replace the enrolled face with a generated placeholder.
       ...(values.photoUrl ? { photoUrl: values.photoUrl } : null),
+      /* Written even when undefined, unlike photoUrl above — removing every extra tile has to be
+         saveable, and `undefined` is how this field says "only the representative left". The form
+         opens with the stored set in it, so what comes back is always the whole answer. */
+      enrolmentPhotoUrls: values.enrolmentPhotoUrls,
     });
     showToast({ variant: "success", title: t.vipUpdatedTitle, desc: values.name });
     setEditingPerson(null);

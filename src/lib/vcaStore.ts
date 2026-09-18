@@ -644,6 +644,23 @@ export interface Person {
    */
   photoUrl?: string;
   /**
+   * MORE OF THE SAME FACE. The enrolment set beyond the representative photo above.
+   *
+   * One picture is one angle under one light. A face recognition model matches better when it has
+   * several of the same person — a straight-on shot, a slight turn, indoors and out — which is why
+   * every product that enrols faces asks for more than one where it can (owner, 2026-09-18: 사실
+   * 여러 장 있으면 더 좋긴 하잖아?).
+   *
+   * `photoUrl` stays what it is: the one face the table, the cards and the detail panel draw. This
+   * is the rest of the set, and it is optional — a row registered from one photograph is a normal
+   * row, not an incomplete one.
+   *
+   * WHAT IT IS NOT: a gallery of sightings. Everything in here is a picture somebody uploaded
+   * deliberately to enrol this person, never a frame a camera captured — those live on the
+   * detections and mean something else entirely.
+   */
+  enrolmentPhotoUrls?: string[];
+  /**
    * When this face was enrolled.
    *
    * Either a plain date ("2026-08-30") or a full ISO instant — new registrations record the

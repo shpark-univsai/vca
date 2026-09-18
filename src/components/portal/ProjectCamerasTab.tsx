@@ -53,7 +53,16 @@ const T = {
     // bugs against, so they are gone rather than kept in step with the live pair.
     confirmDeleteCamTitle: (name: string) => `Remove ${name}?`,
     confirmDeleteCamBody: "The camera comes off this project along with its zone, its server assignment and its place on the map. Recorded detections stay.",
-    healthConnected: "connected",
+    /* NAMES WHAT THE NUMBER COUNTS, not a state. "connected" under a figure reads as the status
+       of one camera — the same word this table's status column puts on a row — so the cell looked
+       like a state with a number stuck to it (owner, 2026-09-18: 연결됨은 저 숫자를 설명하는 말이
+       아닌 것 같아). "Connected cameras" is the tally.
+       NOT "detecting", which is what the owner reached for and what this figure cannot support:
+       the register knows the last connection attempt answered, and nothing more. The app's own
+       "running" is literally `status === "online"` renamed (see realtime/cameraStatus.runStateOf),
+       so writing 감지 중 here would be the same fact wearing a bigger claim. Per-camera analysis
+       state has to come from the server before any screen can say it. */
+    healthConnected: "connected cameras",
     healthConnectedWhy: "Answered the last connection attempt. It says the stream is reachable, not that anything is looking at it.",
     healthOfFleet: (total: number) => `of ${total}`,
     healthAwaiting: "awaiting first contact",
@@ -94,7 +103,11 @@ const T = {
     verdictManipulated: "Manipulated",
     verdictInconclusive: "Inconclusive",
     verdictScore: (n: number) => `${Math.round(n * 100)}%`,
-    deepfakeFileOption: "Check a file for manipulation",
+    /* PARALLEL WITH THE ITEM ABOVE IT. Both are uploads; what differs is what happens next, so
+       the label carries the purpose and keeps the verb. "의뢰" (a request lodged with somebody)
+       read as a different kind of act from its two siblings, which are just things you add
+       (owner, 2026-09-18: 딥페이크 검사 의뢰 이 문장 좀 어색해). */
+    deepfakeFileOption: "Upload for deepfake check",
     deepfakeUploadTitle: "Deepfake check",
     deepfakeUploadHint: "MP4, MOV, JPG, PNG. Judged authentic or manipulated — this does not search the file for faces.",
     colSource: "Source",
@@ -245,7 +258,7 @@ const T = {
     errLng: "경도는 -180에서 180 사이입니다.",
     confirmDeleteCamTitle: (name: string) => `${name}을(를) 삭제할까요?`,
     confirmDeleteCamBody: "이 프로젝트에서 카메라가 빠지고, 존·서버 배정·지도 위 위치도 함께 사라집니다. 기록된 탐지는 남습니다.",
-    healthConnected: "연결됨",
+    healthConnected: "연결된 카메라",
     healthConnectedWhy: "마지막 연결 시도에 응답했습니다. 스트림에 닿는다는 뜻이지, 누가 보고 있다는 뜻은 아닙니다.",
     healthOfFleet: (total: number) => `/ ${total}대`,
     healthAwaiting: "첫 연결 대기",
@@ -280,7 +293,7 @@ const T = {
     verdictManipulated: "조작됨",
     verdictInconclusive: "판정 불가",
     verdictScore: (n: number) => `${Math.round(n * 100)}%`,
-    deepfakeFileOption: "딥페이크 검사 의뢰",
+    deepfakeFileOption: "딥페이크 검사 업로드",
     deepfakeUploadTitle: "딥페이크 검사",
     deepfakeUploadHint: "MP4, MOV, JPG, PNG. 진짜인지 조작인지 판정합니다 — 얼굴을 찾지는 않습니다.",
     colSource: "종류",
