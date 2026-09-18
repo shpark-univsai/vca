@@ -1821,22 +1821,48 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           those four rows. */}
       {vipTab !== "groups" && <SummaryStrip cells={[
         ...([
-          // These two before the photo defects, because they are the ones about the listing itself
-          // — whether this person should still be matched at all — rather than about a record being
-          // incomplete. Expired first: a listing that has already lapsed is a sharper fact than one
-          // nobody has dated, and this cell is where the Overview's red line lands.
-          // The explanation follows the switch that decides how a listing ends. With release off
-          // the row menu has no such item, and an explanation naming one would send the reader
-          // hunting for a control the console does not carry.
+          /*
+           * ORDER: what has run out of time, then what is silently not working, then what is
+           * merely untidy. Reordered 2026-09-18 on the owner's ask ("중요순으로 왼쪽 정렬"),
+           * after reading how other consoles rank the same kind of strip.
+           *
+           * Expired stays first. Vanta's "Needs attention" panel breaks down as Overdue → Due
+           * soon → Needs remediation, and Vapi's Issues strip as Critical → Warning: a deadline
+           * that has already passed leads, in both. Here it is also the sharpest fact on the
+           * screen — somebody is still on a matching list whose basis ran out.
+           *
+           * Then the photo defects, because a VIP the model cannot read is a listing that does
+           * NOTHING while looking complete. That is worse than a record that is untidy, and it
+           * used to sit behind the expiry cells.
+           */
           { key: "expired" as const, count: health.expired.length, label: t.healthExpired, why: releaseEnabled ? t.healthExpiredWhy : t.healthExpiredWhyNoRelease, icon: <CalendarX size={14} strokeWidth={2.4} /> },
-          { key: "expiryUnanswered" as const, count: health.expiryUnanswered.length, label: t.healthExpiryUnanswered, why: t.expiryUnansweredWhy, icon: <CalendarOff size={14} strokeWidth={2.4} /> },
-          { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, why: t.healthMissingPhotoWhy, icon: <ImageOff size={14} strokeWidth={2.4} /> },
           { key: "embeddingFailed" as const, count: health.embeddingFailed.length, label: t.healthEmbeddingFailed, why: t.healthEmbeddingFailedWhy, icon: <AlertTriangle size={14} strokeWidth={2.4} /> },
+          { key: "missingPhoto" as const, count: health.missingPhoto.length, label: t.healthMissingPhoto, why: t.healthMissingPhotoWhy, icon: <ImageOff size={14} strokeWidth={2.4} /> },
+          { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates, why: t.healthDuplicatesWhy, icon: <Users size={14} strokeWidth={2.4} /> },
           // Not amber. A photo somebody has already replaced is not an outstanding defect, it is
           // work in progress, and colouring it the same as the untouched ones would mean the
           // strip never rewarded doing anything about them.
           { key: "reenrolling" as const, count: health.reenrolling.length, label: t.healthReenrolling, why: t.healthReenrollingWhy, icon: <RefreshCw size={14} strokeWidth={2.4} />, neutral: true },
-          { key: "duplicates" as const, count: health.duplicates.length, label: t.healthDuplicates, why: t.healthDuplicatesWhy, icon: <Users size={14} strokeWidth={2.4} /> },
+          /*
+           * LAST, AND NOT AMBER — an end date nobody set is the NORMAL state of a register, not a
+           * defect (owner's read, 2026-09-18: "만료일을 지정 안하는경우가 많을것같은데").
+           *
+           * It was second from the left in warning amber, over 118 of 122 people. A warning that
+           * fires on 97% of the rows teaches the reader to stop looking at the strip, and the two
+           * cells that DO need an answer (1 expired, 19 unreadable photos) sat next to it wearing
+           * the same colour.
+           *
+           * Every comparable list treats "no end date" as an ordinary value, in grey: Grok prints
+           * `No expiry`, WorkOS and Copy.ai `Never`, LangChain a plain grey `Never` chip, and Deel
+           * shows a missing submission deadline as `Not available`. None of them counts it in a
+           * summary. Vanta is the one that does track it — `Needs remediation (no SLA assigned)` —
+           * and it is the LAST of that panel's three rows, which is the arrangement copied here.
+           *
+           * Kept rather than deleted, because on a register of PEOPLE "when should this person
+           * come off the list" is a question a retention audit does ask. It stays countable and
+           * clickable; it just stops shouting.
+           */
+          { key: "expiryUnanswered" as const, count: health.expiryUnanswered.length, label: t.healthExpiryUnanswered, why: t.expiryUnansweredWhy, icon: <CalendarOff size={14} strokeWidth={2.4} />, neutral: true },
         ].filter(item => item.count > 0).map(item => ({
           key: item.key,
           icon: item.icon,
