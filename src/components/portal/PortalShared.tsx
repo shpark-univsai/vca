@@ -395,14 +395,25 @@ export function TablePagination({ total, page, rowsPerPage, onPage, onRowsPerPag
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "12px", flexWrap: "wrap", gap: "10px" }}>
+    /* Space under it as well as over it. The pager sits ABOVE the list now, so with only a top
+       margin the page buttons ended up hard against the table's heading strip — two bands of
+       controls with nothing between them (owner's note: "페이지 선택하는거 바로아래 공간이 너무
+       좁아"). 12px each side, the same step the toolbar above uses. */
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "12px 0", flexWrap: "wrap", gap: "10px" }}>
       <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.showing(rangeStart, rangeEnd, total)}</p>
-      {/* The page buttons and the per-page select are one group at the right end (owner's ask,
-          2026-09-18). They were three groups spread by space-between, which put the page numbers
-          in the middle of the row with nothing either side of them — floating, and a long way from
-          the control that changes how many rows a page holds. Both are about paging; they belong
-          together, and the range stays left as the caption for the list. */}
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+      {/*
+       * ONE CONTROL AT THE RIGHT END, after Employment Hero's table footer — `‹ 1 › 20 / page`.
+       * (Owner's ask, 2026-09-18: find the combined pattern rather than putting two next to each
+       * other.) Mobbin was read for this: Vapi keeps `Previous · Page 1 of 1 · Next` apart from
+       * `Rows per page: 25`, Navattic splits them to opposite corners, Xero writes the whole thing
+       * as a sentence, Neon compresses it to `1-6 of 6 ‹ › [1]`. Employment Hero's is the one that
+       * merges them, and the merge is the LABEL: the unit moves inside the select, so `25 / 페이지`
+       * needs no "Rows per page:" beside it and the two controls read as one group.
+       *
+       * The numbered buttons stay — Employment Hero shows one page box because its list is short;
+       * at five pages the numbers are worth having, and they window past seven.
+       */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
         {arrow("prev")}
         {pages.map((n, i) => (n === null ? (
@@ -420,11 +431,8 @@ export function TablePagination({ total, page, rowsPerPage, onPage, onRowsPerPag
         )))}
         {arrow("next")}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.perPage}</span>
-        <FilterSelect value={String(rowsPerPage)} onChange={v => { onRowsPerPage(Number(v)); onPage(1); }}
-          options={perPageOptions.map(n => ({ value: String(n), label: String(n) }))} fitContent />
-      </div>
+      <FilterSelect value={String(rowsPerPage)} onChange={v => { onRowsPerPage(Number(v)); onPage(1); }}
+        options={perPageOptions.map(n => ({ value: String(n), label: t.perPage(n) }))} fitContent />
       </div>
     </div>
   );
@@ -433,13 +441,13 @@ export function TablePagination({ total, page, rowsPerPage, onPage, onRowsPerPag
 const PAGER_T = {
   en: {
     showing: (a: number, b: number, total: number) => `Showing ${a}–${b} of ${total}`,
-    perPage: "Rows per page:",
+    perPage: (n: number) => `${n} / page`,
     prev: "Previous page",
     next: "Next page",
   },
   ko: {
     showing: (a: number, b: number, total: number) => `전체 ${total}건 중 ${a}–${b}건 표시`,
-    perPage: "페이지당 행 수:",
+    perPage: (n: number) => `${n} / 페이지`,
     prev: "이전 페이지",
     next: "다음 페이지",
   },

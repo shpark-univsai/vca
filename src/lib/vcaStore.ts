@@ -3011,7 +3011,14 @@ export const PERSONS: Person[] = (() => {
     { id: "person-portal-0a", name: "Nadia Rahman", type: "VIP", photoUrl: getFacePhoto("person-portal-0a"), registeredAt: "2026-09-09T09:12:00+08:00", projectId: "proj-sg", priorityLabel: "normal", expiresAt: null },
     { id: "person-portal-0b", name: "Terence Goh", type: "VIP", photoUrl: getFacePhoto("person-portal-0b"), registeredAt: "2026-09-09T08:40:00+08:00", projectId: "proj-sg", priorityLabel: "high", groupId: "pgroup-1" },
     { id: "person-portal-0c", name: "Farah Idris", type: "VIP", photoUrl: getFacePhoto("person-portal-0c"), registeredAt: "2026-09-08T16:05:00+08:00", projectId: "proj-sg", priorityLabel: "normal" },
-    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2026-09-01T14:32:00+08:00", lastDetectedAt: "2026-09-08", projectId: "proj-sg", priorityLabel: "high", groupId: "pgroup-1", expiresAt: "2026-09-05" },
+    /* The one expired listing, and it is the OLDEST registration on the site on purpose (owner's
+       note, 2026-09-18: "만료 13일이 지난게 등록일기준으로 맨 마지막에 있어야 현실 실제
+       데이터같을 것 같아"). With a retention period the expiries arrive in registration order, so
+       an expired row sitting among this week's registrations reads as fabricated.
+       Registered 2025-09-05, expires 2026-09-05 — exactly 365 days, which is the deployment
+       default — so today it is 13 days past. Sorted by 등록일 descending it lands on the last page,
+       where the listings that are running out actually are. */
+    { id: "person-portal-1", name: "Michael Tan", type: "VIP", photoUrl: getFacePhoto("person-portal-1"), registeredAt: "2025-09-05T14:32:00+08:00", lastDetectedAt: "2026-09-08", projectId: "proj-sg", priorityLabel: "high", groupId: "pgroup-1", expiresAt: "2026-09-05" },
     { id: "person-portal-2", name: "Sarah Lim", type: "VIP", photoUrl: getFacePhoto("person-portal-2"), registeredAt: "2026-08-30T09:05:00+08:00", lastDetectedAt: "2026-09-03", projectId: "proj-sg", priorityLabel: "normal", groupId: "pgroup-1", expiresAt: "2026-09-28" },
     { id: "person-portal-3", name: "David Ho", type: "VIP", photoUrl: getFacePhoto("person-portal-3"), registeredAt: "2026-08-28T17:48:00+08:00", lastDetectedAt: "2026-08-29", projectId: "proj-sg", priorityLabel: "very_high", groupId: "pgroup-2", expiresAt: "2026-10-10" },
     { id: "person-portal-4", name: "Rachel Wong", type: "VIP", photoUrl: getFacePhoto("person-portal-4"), registeredAt: "2026-08-25T11:20:00+08:00", projectId: "proj-sg", priorityLabel: "normal" },
