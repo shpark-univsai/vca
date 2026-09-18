@@ -517,7 +517,11 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                     }}
                   >
                     <span style={{ display: "flex", color: "var(--gray-900)" }}>{isCurrent && <span style={{ display: "flex", color: "var(--gray-900)" }}><SelectedCheckIcon size={16} /></span>}</span>
-                    <span style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {/* 13px, not 12: this row's name is the content of the picker, and 13 is what
+                        Portal's tables give a primary cell in nearly fifty places. At 12 it was a
+                        step BELOW the team rows in the switcher above it and below the search
+                        field it sits under, which read as secondary. */}
+                    <span style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       <ProjectIcon /> {p.name}
                     </span>
                     <span style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis" }}>{p.id}</span>
