@@ -1169,37 +1169,30 @@ function Tag({ label, bg, color, flexible, icon }: { label: string; bg: string; 
 }
 
 /**
- * The three priorities as a meter, not as three unrelated symbols.
+ * The three priorities as three dots, filled from the left.
  *
- * Bars of rising height with the filled ones counted from the left: one of three, two of three,
- * three of three. A reader compares two rows without reading either word, which is what the
+ * NOT BARS OF RISING HEIGHT — that was the first version and it read as signal strength (owner's
+ * note, 2026-09-18: "뭔가 네트워크 신호를 나타내는것 같은데"). In a product whose other main list
+ * is cameras with a connection state, a wifi-shaped mark next to a person is a mark pointing at
+ * the wrong noun. Dots carry the same "one of three" without borrowing anybody else's meaning.
+ *
+ * Why a mark at all: a reader compares two rows without reading either word, which is what the
  * column is for — and the shape survives both languages, where `일반 / 높음 / 매우 높음` and
  * `NORMAL / HIGH / VERY HIGH` have different lengths and no shared first letter.
  *
  * `currentColor` throughout, so the mark takes the pill's own colour — grey, amber, red — and no
- * new colour enters the palette. The unfilled bars are the same colour at an opacity, which is an
- * existing token turned down rather than a value invented here (the rule the trail-end glow was
- * measured against on 2026-09-18).
+ * new colour enters the palette. The unfilled dots are the same colour at an opacity, which is an
+ * existing token turned down rather than a value invented here.
  *
- * Not arrows, and not a count of exclamation marks: an arrow says "rising", which is a claim about
- * change over time that a priority does not make, and repeated punctuation reads as shouting at
- * 10px. Jira's arrows and Linear's bars are the two references here; the bars are the one that
- * still reads when three of them sit in a column a few pixels apart.
+ * Not arrows: an arrow says "rising", which is a claim about change over time that a priority does
+ * not make. Not repeated punctuation: at 10px that reads as shouting.
  */
 function PriorityMark({ level }: { level: NonNullable<Person["priorityLabel"]> }) {
   const filled = level === "very_high" ? 3 : level === "high" ? 2 : 1;
-  // Heights rise 4 → 7 → 10 inside a 10px box, on a 2px bar with a 1.5px gap: the whole mark is
-  // 8.5px wide, which fits the 18px pill beside 10px text without pushing the padding around.
-  const bars = [
-    { x: 0, y: 6, h: 4 },
-    { x: 3.5, y: 3, h: 7 },
-    { x: 7, y: 0, h: 10 },
-  ];
   return (
-    <svg width="9" height="10" viewBox="0 0 9 10" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-      {bars.map((b, i) => (
-        <rect key={b.x} x={b.x} y={b.y} width="2" height={b.h} rx="1"
-          fill="currentColor" opacity={i < filled ? 1 : 0.28} />
+    <svg width="18" height="6" viewBox="0 0 18 6" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+      {[3, 9, 15].map((cx, i) => (
+        <circle key={cx} cx={cx} cy="3" r="2.5" fill="currentColor" opacity={i < filled ? 1 : 0.26} />
       ))}
     </svg>
   );
