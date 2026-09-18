@@ -10,7 +10,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed } from "@/lib/time";
 import { decodeSpreadsheetBytes, looksLikeXlsx, parseDelimited } from "@/lib/rosterImport";
 import { useToast } from "../Toast";
-import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SEARCH_FIELD, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
+import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
 
 type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires";
@@ -1662,7 +1662,6 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
   const todayKey = nowMs === null ? null : dateKeyIn(new Date(nowMs), projectZone);
   const [releaseReason, setReleaseReason] = useState("");
   const { sort, toggle: toggleSort } = useTableSort<VipSortKey>({ key: "registered", direction: "desc" });
-  const [searchFocused, setSearchFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const q = search.trim().toLowerCase();
@@ -2302,24 +2301,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
       ]} />}
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: TOOLBAR_GAP }}>
-      <div style={{ position: "relative", ...SEARCH_FIELD }}>
-        <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-        </span>
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder={t.searchPlaceholder}
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
-          style={{
-            // The shared control shape, with room on the left for the icon that sits at 12px:
-            // 12 + 14 (icon) + 6 = 32, which keeps that gap on the spacing scale too.
-            ...FIELD_STYLE, padding: "0 12px 0 32px",
-            ...(searchFocused ? FIELD_FOCUS : null),
-          }}
-        />
-      </div>
+      <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
         {/* Next to the search box, the way Input Sources puts its zone / status / engine selects
             there. Not on the Groups tab: both of these narrow a list of people, and that tab lists
             parties. Each option carries its own count, so the reader knows whether a filter is

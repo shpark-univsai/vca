@@ -348,3 +348,19 @@ git diff <파일> | grep '^[+-]'     # 내용까지 본다
 - **계약 공백 대장** — 백엔드에 넘길 것. 13건.
   https://claude.ai/code/artifact/64932f4e-218f-4f9b-aa03-4cd174712a04
 - **HANDOFF.md** — 백엔드 전달 문서. 버전 단위로만 갱신합니다.
+
+---
+
+## 5. 2026-09-18 병렬 배정 (규칙 0)
+
+세 갈래를 동시에 엽니다. **파일 소유가 겹치지 않습니다** — 같은 워킹카피이므로 이것이 유일한
+충돌 방지책입니다. 각 갈래는 자기 파일만 고치고, 끝나면 그 파일만 경로 지정으로 커밋합니다.
+
+| 갈래 | 소유 파일 | 내용 |
+|---|---|---|
+| A | `src/components/portal/ProjectVipTab.tsx`, `src/components/portal/VipImportModal.tsx`(신규), `src/lib/vipImport.ts`(신규) | VIP 일괄 업로드 미리보기 — 쓰기 전에 행별 문제를 보여주는 단계 |
+| B | `src/components/portal/ProjectServerTab.tsx` | 사양 열 → 연결된 카메라 수 · 상태 뱃지 배경 연하게 · 서버 폼 필수값 정확하게 |
+| C | `src/components/portal/PortalUsersPage.tsx` | 사용자 및 권한 화면 검토·수정 |
+
+**아무도 건드리지 않는 파일**: `PortalShared.tsx`, `vcaStore.ts`, `globals.css`. 공용 파일을
+고쳐야 하는 일이 생기면 먼저 말하고, 제가(조정 세션) 한 번에 반영합니다.

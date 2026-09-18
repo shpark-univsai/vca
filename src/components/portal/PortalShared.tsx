@@ -157,6 +157,73 @@ export const TOOLBAR_GAP = "10px";
 export const SEARCH_FIELD: React.CSSProperties = { flex: 1, minWidth: "200px", maxWidth: "320px" };
 
 /**
+ * THE SEARCH BOX, ONCE.
+ *
+ * Six screens had their own: four hand-rolled the magnifier and the focus ring, two used a bare
+ * TextField with no icon at all, and NONE of them could be cleared without selecting the text and
+ * deleting it. The only way back to the whole list was the Servers page's own 초기화 button —
+ * one screen out of six (owner, 2026-09-18: 초기화가 서버 페이지에만 있거든).
+ *
+ * THE × LIVES IN THE FIELD, which is the owner's other suggestion and the better of the two: it
+ * clears the thing it sits inside, it appears only when there is something to clear, and it needs
+ * no space in a toolbar that already holds nine controls. A separate 초기화 button has to decide
+ * what it resets — this box, or the filters too — and the filters already carry their own clear
+ * (see ActiveFilterCount).
+ *
+ * Escape clears it too, because a search box that has swallowed the key everywhere else in the
+ * product is a search box people press Escape in.
+ */
+const CLEAR_T = { en: "Clear", ko: "지우기" } as const;
+
+export function SearchInput({ value, onChange, placeholder, style }: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  /** Merged over SEARCH_FIELD, for the odd screen that needs a different width. */
+  style?: React.CSSProperties;
+}) {
+  const [lang] = usePortalLanguage();
+  const [focused, setFocused] = useState(false);
+  return (
+    <div style={{ position: "relative", ...SEARCH_FIELD, ...style }}>
+      <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex", pointerEvents: "none" }}>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+      </span>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onKeyDown={e => { if (e.key === "Escape" && value !== "") { e.stopPropagation(); onChange(""); } }}
+        style={{
+          // 12 + 14 (icon) + 6 = 32 on the left, so the icon's gap is on the spacing scale too;
+          // the same on the right while the clear button is there, and 12 when it is not — a
+          // permanent 32px gutter on the right makes every empty field look indented.
+          ...FIELD_STYLE, padding: value === "" ? "0 12px 0 32px" : "0 30px 0 32px",
+          ...(focused ? FIELD_FOCUS : null),
+        }}
+      />
+      {value !== "" && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-label={CLEAR_T[lang]}
+          title={CLEAR_T[lang]}
+          style={{
+            position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            width: "18px", height: "18px", borderRadius: "50%", border: "none",
+            backgroundColor: "var(--gray-100)", color: "var(--gray-500)", cursor: "pointer", padding: 0,
+          }}>
+          <svg width="9" height="9" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
  * PLACEHOLDERS carry the example and not the words "e.g.".
  *
  * Grey text in an empty field already reads as an example, so the prefix restates the thing the

@@ -5,8 +5,8 @@ import { useVcaStore, type AuditEvent } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import {
-  BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SEARCH_FIELD, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
-  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, TextField, sortRows, useTableSort, MEASURE } from "./PortalShared";
+  BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
+  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, sortRows, useTableSort, MEASURE } from "./PortalShared";
 import { FileOutput, History, UserCog, CalendarClock } from "lucide-react";
 
 /**
@@ -203,9 +203,7 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
       ]} />
 
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
-        <div style={{ position: "relative", ...SEARCH_FIELD }}>
-          <TextField value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
-        </div>
+        <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
         <FilterSelect value={range} onChange={setRange} options={[
           { value: "7", label: t.range7 },
           { value: "30", label: t.range30 },

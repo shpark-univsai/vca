@@ -7,7 +7,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { TablePagination, SummaryStrip, CARD_BORDER, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, TableEmpty, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch, usePortalEditAccess, ConfirmModal, FieldError } from "./PortalShared";
+import { TablePagination, SummaryStrip, CARD_BORDER, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, Switch, usePortalEditAccess, ConfirmModal, FieldError } from "./PortalShared";
 
 // Ordered as the deployed Add Server dialog orders them, so an operator who has used that one
 // finds each entry where their hand already goes. Its list opens with "All", which this one does
@@ -923,15 +923,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
           {/* Centred for the same reason as the Input Sources toolbar: the controls carry their own
               height, so anything unstyled dropped in here would draw itself against the top edge. */}
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
-            <div style={{ position: "relative", ...SEARCH_FIELD }}>
-              <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-              </span>
-              {/* This one drew no focus state of its own and fell through to the global outline —
-                  TextField brings the same ring every other search box has. */}
-              <TextField value={search} onChange={setSearch} placeholder={t.searchPlaceholder}
-                style={{ padding: "0 12px 0 32px" }} />
-            </div>
+            <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
             <FilterSelect value={typeFilter} onChange={v => setTypeFilter(v as typeof typeFilter)}
               options={[{ value: "ALL", label: t.allTypes }, ...SERVER_TYPES.map(ty => ({ value: ty, label: ty }))]} />
             {/* The only control on this row without a mark of its own — the select had its chevron

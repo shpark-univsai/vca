@@ -12,7 +12,7 @@ import { formatElapsed } from "@/lib/time";
 import { forgetUploadFile, rememberUploadFile } from "@/lib/uploadBlobs";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { useFitRowsPerPage, TablePagination, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
+import { useFitRowsPerPage, TablePagination, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -1142,7 +1142,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   }, [openCameraId, onCameraOpened]);
   const [confirmingStatusCam, setConfirmingStatusCam] = useState<Camera | null>(null);
   const [search, setSearch] = useState("");
-  const [searchFocused, setSearchFocused] = useState(false);
   const [zoneFilter, setZoneFilter] = useState("ALL");
   // "awaiting" is not a CameraStatus — it is offline plus a never-reported clock. The filter
   // carries it anyway because it is what a reader actually wants to narrow to on install day.
@@ -2009,23 +2008,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           count stretched to the row's 36px and drew its text at the top of that box, sitting a
           third of a line above the Delete button beside it. */}
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
-        <div style={{ position: "relative", ...SEARCH_FIELD }}>
-          <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          </span>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder={t.searchPlaceholder}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            style={{
-              // 12 + 14 (icon) + 6 = 32, so the icon's gap is on the spacing scale too.
-              ...FIELD_STYLE, padding: "0 12px 0 32px",
-              ...(searchFocused ? FIELD_FOCUS : null),
-            }}
-          />
-        </div>
+        <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
         <FilterSelect
           value={zoneFilter}
           onChange={setZoneFilter}

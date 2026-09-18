@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Asterisk, ClipboardList, MailQuestion, Users2, UserMinus, UserX, ClipboardPlus, Download, KeyRound, Printer, Upload} from "lucide-react";
+import { Asterisk, ClipboardList, MailQuestion, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, APP_SCREENS, type AccessPreset, type AppScreen, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip, usePortalEditAccess, AppGrantList } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip, usePortalEditAccess, AppGrantList } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import RosterImportModal from "./RosterImportModal";
@@ -2539,7 +2539,6 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
    */
   const [peopleTab, setPeopleTab] = useState<"accounts" | "roster">("accounts");
   const [search, setSearch] = useState("");
-  const [searchFocused, setSearchFocused] = useState(false);
   // Name ascending to start: the only order that is stable and that a reader can predict before
   // they have looked. The sortable columns are the ones an administrator asks questions about —
   // who, which team, what permission, when they last signed in, what state they are in.
@@ -2808,24 +2807,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           — so they sit close. The distance that matters is the one above this row, not the one
           inside the pair. */}
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
-      <div style={{ position: "relative", ...SEARCH_FIELD }}>
-        <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", display: "flex" }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 12L9.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-        </span>
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder={t.searchPlaceholder}
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
-          style={{
-            // The shared control shape, with room on the left for the icon that sits at 12px:
-            // 12 + 14 (icon) + 6 = 32, which keeps that gap on the spacing scale too.
-            ...FIELD_STYLE, padding: "0 12px 0 32px",
-            ...(searchFocused ? FIELD_FOCUS : null),
-          }}
-        />
-      </div>
+      <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
 
           {/* Tools follow the tab. Six buttons in one row was every tool for both halves of the
               lifecycle competing at once, and four of them could not act on what the reader was
