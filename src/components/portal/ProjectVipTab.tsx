@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
-import { AlertTriangle, ArrowDownWideNarrow, CalendarX, Eye, FileInput, FileOutput, RefreshCw, Users } from "lucide-react";
+import { AlertTriangle, ArrowDownWideNarrow, CalendarX, Eye, FileDown, FileInput, FileOutput, RefreshCw, Users } from "lucide-react";
 import { canSetPolicy, currentPortalUser, isExpired, registryHealth, useVcaStore, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed } from "@/lib/time";
+import { decodeSpreadsheetBytes, looksLikeXlsx, parseDelimited } from "@/lib/rosterImport";
 import { useToast } from "../Toast";
 import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, FIELD_STYLE, FIELD_FOCUS, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SEARCH_FIELD, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
@@ -224,6 +225,14 @@ interface VipDict {
   bulkEmptyTitle: string;
   bulkSuccessDesc: (count: number, fileName: string) => string;
   bulkEmptyDesc: string;
+  bulkSkipped: (count: number) => string;
+  bulkXlsxTitle: string;
+  bulkXlsxDesc: string;
+  bulkTemplate: string;
+  bulkTemplateHint: string;
+  bulkTemplateMemoHeader: string;
+  bulkTemplateName: string;
+  bulkTemplateMemo: string;
   // Tabs and groups
   tabAll: string;
   tabGroups: string;
@@ -417,6 +426,14 @@ const T: Record<"en" | "ko", VipDict> = {
     register: "Register",
     priorityText: { normal: "Normal", high: "High", very_high: "Very High" } as Record<NonNullable<Person["priorityLabel"]>, string>,
     bulkSuccessTitle: "Bulk upload complete",
+    bulkSkipped: (count: number) => `${count} row${count === 1 ? "" : "s"} skipped (no name)`,
+    bulkXlsxTitle: "That is an Excel file",
+    bulkXlsxDesc: "Save it as CSV UTF-8 first — in Excel, File → Save As → CSV UTF-8 — and upload that.",
+    bulkTemplate: "Template",
+    bulkTemplateHint: "One person per row: a name, and a note if there is one. A file of bare names works too.",
+    bulkTemplateMemoHeader: "Memo",
+    bulkTemplateName: "Hong Gildong",
+    bulkTemplateMemo: "Escorted at all times",
     bulkEmptyTitle: "No rows imported",
     bulkSuccessDesc: (count: number, fileName: string) => `${count} VIP(s) registered from ${fileName}.`,
     tabAll: "All",
@@ -597,6 +614,14 @@ const T: Record<"en" | "ko", VipDict> = {
     register: "등록",
     priorityText: { normal: "일반", high: "높음", very_high: "매우 높음" } as Record<NonNullable<Person["priorityLabel"]>, string>,
     bulkSuccessTitle: "일괄 업로드 완료",
+    bulkSkipped: (count: number) => `${count}행 건너뜀 (이름 없음)`,
+    bulkXlsxTitle: "엑셀 파일입니다",
+    bulkXlsxDesc: "먼저 CSV UTF-8로 저장해서 올려주세요 — 엑셀에서 파일 → 다른 이름으로 저장 → CSV UTF-8입니다.",
+    bulkTemplate: "서식",
+    bulkTemplateHint: "한 줄에 한 사람: 이름, 그리고 메모가 있으면 메모. 이름만 적힌 파일도 됩니다.",
+    bulkTemplateMemoHeader: "메모",
+    bulkTemplateName: "홍길동",
+    bulkTemplateMemo: "상시 경호 대상",
     bulkEmptyTitle: "가져온 행이 없습니다",
     bulkSuccessDesc: (count: number, fileName: string) => `${fileName}에서 VIP ${count}명이 등록되었습니다.`,
     tabAll: "전체",
@@ -1989,19 +2014,82 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
     setConfirmingRemove(null);
   };
 
+  /**
+   * The header this file is expected to carry, in both languages.
+   *
+   * Keyed off the sheet rather than off the console's UI language, for the reason the camera and
+   * roster imports do the same: the spreadsheet was probably made by somebody other than the
+   * person importing it.
+   */
+  const bulkColumn = (heading: string): "name" | "description" | null => {
+    const normalised = heading.trim().toLowerCase().replace(/\s|_/g, "");
+    if (["name", "fullname", "이름", "성명"].includes(normalised)) return "name";
+    if (["description", "memo", "note", "메모", "비고", "설명"].includes(normalised)) return "description";
+    return null;
+  };
+
+  /** The two columns this import reads, as a file somebody can fill in. */
+  const downloadBulkTemplate = () => {
+    const rows = [[t.colName, t.bulkTemplateMemoHeader], [t.bulkTemplateName, t.bulkTemplateMemo]];
+    const csv = rows.map(row => row.map(csvEscape).join(",")).join("\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "vip-import-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  /*
+   * THE BULK PATH, PARSED PROPERLY.
+   *
+   * It used to be `text.split("\n")` and `split(",")` on whatever the browser decoded as UTF-8,
+   * which broke on three ordinary files: a memo containing a comma ("Escorted at all times, two
+   * officers") split into two columns and put half the note in nobody's field; a CSV saved by a
+   * Korean Excel (CP949, which is what "Save as CSV" gives you there) arrived as mojibake names;
+   * and an .xlsx workbook was read as binary and imported as garbage rows. The camera and staff
+   * imports already had all three answers — decodeSpreadsheetBytes with its EUC-KR fallback,
+   * parseDelimited for quoted fields, looksLikeXlsx for the wrong file — so this reads them from
+   * the same place instead of keeping a third parser.
+   *
+   * WHAT IT STILL DOES NOT HAVE: the preview the camera import gives you, where each row's
+   * problem is named before anything is written. This one reports the count it skipped in the
+   * toast and no more. That is the next piece of work on this screen, not a decision.
+   */
   const handleBulkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    file.text().then(text => {
-      const rows = text.split("\n").map(r => r.trim()).filter(Boolean);
-      // Tolerate an optional "name,description" header row from spreadsheet exports.
-      const dataRows = rows[0]?.toLowerCase().startsWith("name") ? rows.slice(1) : rows;
+    file.arrayBuffer().then(buffer => {
+      if (looksLikeXlsx(file.name, new Uint8Array(buffer.slice(0, 2)))) {
+        showToast({ variant: "warning", title: t.bulkXlsxTitle, desc: t.bulkXlsxDesc });
+        return;
+      }
+      const table = parseDelimited(decodeSpreadsheetBytes(buffer));
+      if (table.length === 0) {
+        showToast({ variant: "warning", title: t.bulkEmptyTitle, desc: t.bulkEmptyDesc });
+        return;
+      }
+      /* A header row if the first line names columns we recognise, and otherwise the first line is
+         data — a file of bare names with no header is the commonest thing an installer hands over
+         and refusing it would be pedantry. */
+      const headerCells = table[0].cells;
+      const mapped = headerCells.map(bulkColumn);
+      const hasHeader = mapped.some(column => column !== null);
+      const nameAt = hasHeader ? Math.max(0, mapped.indexOf("name")) : 0;
+      const memoAt = hasHeader ? mapped.indexOf("description") : 1;
+      const dataRows = hasHeader ? table.slice(1) : table;
       const at = new Date().toISOString();
-      const incoming = dataRows
-        .map(row => row.split(",").map(v => v?.trim()))
-        .filter(([name]) => !!name)
-        .map(([name, description]) => ({
+      const named = dataRows
+        .map(row => ({
+          name: (row.cells[nameAt] ?? "").trim(),
+          description: memoAt >= 0 ? (row.cells[memoAt] ?? "").trim() : "",
+        }))
+        .filter(row => row.name.length > 0);
+      const skipped = dataRows.length - named.length;
+      const incoming = named
+        .map(({ name, description }) => ({
           // No photoUrl. A CSV of names contains no faces, and the import used to hand each row a
           // stock portrait from the mock pool — which made every bulk-imported person look
           // registered and matchable when in fact nothing had been enrolled. Those rows are what
@@ -2018,7 +2106,11 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
       showToast({
         variant: count > 0 ? "success" : "warning",
         title: count > 0 ? t.bulkSuccessTitle : t.bulkEmptyTitle,
-        desc: count > 0 ? t.bulkSuccessDesc(count, file.name) : t.bulkEmptyDesc,
+        // The rows that went nowhere, said out loud. "200명 등록" over a file of 214 lines is a
+        // number somebody reconciles against their spreadsheet and cannot explain.
+        desc: count > 0
+          ? (skipped > 0 ? `${t.bulkSuccessDesc(count, file.name)} · ${t.bulkSkipped(skipped)}` : t.bulkSuccessDesc(count, file.name))
+          : t.bulkEmptyDesc,
       });
     });
   };
@@ -2303,6 +2395,19 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
             style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: mayEdit ? "var(--gray-600)" : "var(--gray-300)", fontSize: "12px", fontWeight: 600, cursor: mayEdit ? "pointer" : "not-allowed" }}>
             <FileInput size={14} strokeWidth={2.4} />
             {t.bulkUpload}
+          </button>
+          {/* THE FILE THIS BUTTON WANTS, next to the button that wants it.
+              A bulk upload with no stated shape is a guess: somebody with a spreadsheet of two
+              hundred names has to find out by trying. Google Workspace's admin console hands out
+              a sample CSV for exactly this, and the camera import here already does. The header
+              matching is forgiving either way (이름/name, 메모/설명/note, and a file of bare names
+              with no header at all), so the template is a help rather than a requirement — which
+              is Salesforce's rule too: map what they give you, and let an export be the template.
+              Open to a read-only account: downloading a blank file changes nothing. */}
+          <button className="portal-btn-quiet" onClick={downloadBulkTemplate} title={t.bulkTemplateHint}
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+            <FileDown size={14} strokeWidth={2.4} />
+            {t.bulkTemplate}
           </button>
           {/* title, the same way the two buttons on either side of it carry their refusal — a
               toolbar has no room for a sentence under it, and these three have to stay one row. */}
