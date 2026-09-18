@@ -8,7 +8,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { CARD_BORDER, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
+import { TablePagination, CARD_BORDER, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SEARCH_FIELD, CONTROL_HEIGHT, PANEL_SHADOW, FIELD_STYLE, FIELD_FOCUS, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -16,9 +16,15 @@ const T = {
     exportCsv: "Export CSV",
     importCsv: "Import CSV",
     addCamera: "Add camera",
-    online: "Online",
+    /* ONE NAME PER STATE, and these four are it. The summary cards used to say "connected /
+       offline / refusing the connection / awaiting first contact" while the table and the filter
+       said "Online / Offline / Error / Not yet connected" — so clicking a card that counted
+       "refusing the connection" landed on rows labelled "Error", and three of the four states had
+       two names depending on where you read them. The card wording won: it is the one that says
+       what happened rather than how bad it is ("Error" is a severity, not a state). */
+    online: "Connected",
     offline: "Offline",
-    statusError: "Error",
+    statusError: "Refusing the connection",
     atLimitReason: (limit: number) => `All ${limit} licensed channels are in use. Raising the limit is a contract change — see the Licence screen.`,
     atLimitBanner: (limit: number) => `All ${limit} licensed channels are in use. No further source can be connected until the limit is raised.`,
     noLicenceReason: "No channel count is recorded for this project, so there is nothing to connect against. A channel count arrives with the licence.",
@@ -45,7 +51,7 @@ const T = {
     healthOfFleet: (total: number) => `of ${total}`,
     healthAwaiting: "awaiting first contact",
     healthAwaitingWhy: "Registered here, never heard from. Not a fault — this is where every camera sits between being added and its first report. On installation day it is most of the fleet.",
-    statusAwaiting: "Not yet connected",
+    statusAwaiting: "Awaiting first contact",
     healthOffline: "offline",
     healthOfflineWhy: "No answer at all — the address is unreachable. Usually power, cable or network rather than the camera itself.",
     healthError: "refusing the connection",
@@ -179,9 +185,9 @@ const T = {
     exportCsv: "CSV 내보내기",
     importCsv: "CSV 가져오기",
     addCamera: "카메라 추가",
-    online: "온라인",
+    online: "연결됨",
     offline: "오프라인",
-    statusError: "오류",
+    statusError: "연결 거부",
     atLimitReason: (limit: number) => `라이선스 채널 ${limit}개를 모두 쓰고 있습니다. 한도를 올리는 것은 계약 변경입니다 — 라이선스 화면을 보세요.`,
     atLimitBanner: (limit: number) => `라이선스 채널 ${limit}개를 모두 쓰고 있습니다. 한도를 올리기 전에는 소스를 더 연결할 수 없습니다.`,
     noLicenceReason: "이 프로젝트에 기록된 채널 수가 없어서, 연결의 근거가 될 값이 없습니다. 채널 수는 라이선스와 함께 들어옵니다.",
@@ -201,7 +207,7 @@ const T = {
     healthOfFleet: (total: number) => `/ ${total}대`,
     healthAwaiting: "첫 연결 대기",
     healthAwaitingWhy: "여기 등록만 되고 아직 한 번도 응답한 적이 없습니다. 고장이 아니라, 모든 카메라가 등록과 첫 보고 사이에 거치는 자리입니다. 설치 당일에는 대부분이 여기 있습니다.",
-    statusAwaiting: "연결 전",
+    statusAwaiting: "첫 연결 대기",
     healthOffline: "오프라인",
     healthOfflineWhy: "응답이 아예 없습니다. 주소에 닿지 않는 상태로, 대개 카메라보다 전원·케이블·네트워크 문제입니다.",
     healthError: "연결 거부",
@@ -1018,6 +1024,23 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       default: return undefined;
     }
   });
+  /*
+   * PAGED. 69 sources on the seeded site and a real fleet is hundreds — the list ran off the
+   * bottom with no way to say where in it you were, the same thing the VIP registry was paged for
+   * (owner's ask). Same shared component, same default of 25.
+   *
+   * `visibleRows` stays the full filtered set: the counts, the select-all and the CSV export are
+   * about everything the filters admit, not about the page somebody happens to be looking at.
+   */
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const pagingKey = `${kindTab}|${search}|${statusFilter}|${zoneFilter}|${view}`;
+  const [lastPagingKey, setLastPagingKey] = useState(pagingKey);
+  if (lastPagingKey !== pagingKey) { setLastPagingKey(pagingKey); setPage(1); }
+  const totalPages = Math.max(1, Math.ceil(visibleRows.length / rowsPerPage));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = visibleRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
   // The grid view and the camera-only actions (batch reconnect, CSV export) still work on cameras.
   const visibleCameras = visibleRows.filter((r): r is Extract<SourceRow, { kind: "camera" }> => r.kind === "camera").map(r => r.camera);
 
@@ -1746,8 +1769,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         // Header/last-row corners are radiused directly instead. Top border/radius omitted — the
         // fixed column-header block above already draws that edge, and the two must read as one card.
         <div style={{ backgroundColor: "white", borderLeft: BORDER, borderRight: BORDER, borderBottom: BORDER, boxShadow: PANEL_SHADOW }}>
-          {visibleRows.map((row, i) => {
-            const isLast = i === visibleRows.length - 1;
+          {pageRows.map((row, i) => {
+            const isLast = i === pageRows.length - 1;
             const rowStyle: React.CSSProperties = {
               display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
               borderBottom: isLast ? "none" : BORDER,
@@ -2064,6 +2087,15 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           </div>
         </div>
       )}
+
+      {/* Under both views, like the VIP registry's. */}
+      <TablePagination
+        total={visibleRows.length}
+        page={currentPage}
+        rowsPerPage={rowsPerPage}
+        onPage={setPage}
+        onRowsPerPage={setRowsPerPage}
+      />
 
       {showAdd && (
         <CameraFormModal title={t.addModalTitle} initial={EMPTY_FORM} isEdit={false} servers={projectServers} onClose={() => setShowAdd(false)} onSubmit={createCamera} t={t} />
