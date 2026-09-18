@@ -34,19 +34,18 @@ const T = {
     dropHere: "Drop a CSV file here",
     orBrowse: "or choose a file",
     formatNote: "CSV or TSV. In Excel: File → Save As → CSV UTF-8.",
-    columnsNote: "Name, Code and RTSP URL are required. Zone, Location, IP, MAC, Latitude and Longitude are used if the file has them.",
+    columnsNote: "Name, Code, RTSP URL, Latitude and Longitude are required. Zone, Location, IP and MAC are used if the file has them.",
     downloadTemplate: "Download template",
     xlsxTitle: "That is an Excel file",
     xlsxBody: "Save it as CSV UTF-8 first — in Excel, File → Save As → CSV UTF-8 — and drop that.",
     emptyFileTitle: "Nothing to import",
     emptyFileBody: "The file has no rows under its header.",
     missingColumnsTitle: "Wrong file, or missing columns",
-    missingColumnsBody: (names: string) => `No column matched: ${names}. A camera needs at least a name, a code and a stream URL.`,
+    missingColumnsBody: (names: string) => `No column matched: ${names}. A camera needs a name, a code, a stream URL and a position — without the last one its detections count toward no district.`,
     colLine: "Line", colName: "Name", colCode: "Code", colRtsp: "RTSP URL", colZone: "Zone", colLocation: "Location",
     colLat: "Latitude", colLng: "Longitude", colIp: "IP", colMac: "MAC", colReason: "Reason",
     readyCount: (n: number) => `${n} ready`,
     errorCount: (n: number) => `${n} with errors`,
-    warnCount: (n: number) => `${n} without map coordinates`,
     allRowsBad: "No row in this file can be imported.",
     errorsSkippedNote: "Rows with errors are skipped; the rest still import.",
     unmappedNote: (cols: string) => `Ignored columns: ${cols}`,
@@ -62,7 +61,6 @@ const T = {
     doneFilled: (n: number) => (n === 1 ? "1 camera positioned" : `${n} cameras positioned`),
     importFillN: (n: number) => (n === 1 ? "Fill 1 camera" : `Fill ${n} cameras`),
     doneSkipped: (n: number) => `${n} row${n === 1 ? "" : "s"} skipped`,
-    doneNoCoordsNote: "Cameras without coordinates are registered but do not appear on the map until a position is set on each.",
     skippedHeading: "Skipped rows",
     downloadErrors: "Download skipped rows",
     toastTitle: "Cameras imported",
@@ -92,19 +90,18 @@ const T = {
     dropHere: "CSV 파일을 여기에 놓으세요",
     orBrowse: "또는 파일 선택",
     formatNote: "CSV 또는 TSV. 엑셀에서: 파일 → 다른 이름으로 저장 → CSV UTF-8.",
-    columnsNote: "이름·코드·RTSP URL은 필수입니다. 구역·위치·IP·MAC·위도·경도는 파일에 있으면 함께 읽습니다.",
+    columnsNote: "이름·코드·RTSP URL·위도·경도가 필수입니다. 구역·위치·IP·MAC은 파일에 있으면 함께 읽습니다.",
     downloadTemplate: "서식 내려받기",
     xlsxTitle: "엑셀 파일입니다",
     xlsxBody: "CSV UTF-8로 먼저 저장해 주세요 — 엑셀에서 파일 → 다른 이름으로 저장 → CSV UTF-8 — 그 파일을 놓으시면 됩니다.",
     emptyFileTitle: "가져올 것이 없습니다",
     emptyFileBody: "머리글 아래에 행이 없습니다.",
     missingColumnsTitle: "다른 파일이거나 열이 빠졌습니다",
-    missingColumnsBody: (names: string) => `일치하는 열이 없습니다: ${names}. 카메라에는 최소한 이름과 코드와 스트림 주소가 필요합니다.`,
+    missingColumnsBody: (names: string) => `일치하는 열이 없습니다: ${names}. 카메라에는 이름·코드·스트림 주소·위치가 필요합니다 — 위치가 없으면 그 카메라의 탐지가 어느 구역 숫자에도 들어가지 않습니다.`,
     colLine: "행", colName: "이름", colCode: "코드", colRtsp: "RTSP URL", colZone: "구역", colLocation: "위치",
     colLat: "위도", colLng: "경도", colIp: "IP", colMac: "MAC", colReason: "사유",
     readyCount: (n: number) => `${n}대 준비됨`,
     errorCount: (n: number) => `${n}행 오류`,
-    warnCount: (n: number) => `${n}대 좌표 없음`,
     allRowsBad: "이 파일에서 가져올 수 있는 행이 없습니다.",
     errorsSkippedNote: "오류가 있는 행은 건너뛰고 나머지는 그대로 들어갑니다.",
     unmappedNote: (cols: string) => `무시한 열: ${cols}`,
@@ -119,7 +116,6 @@ const T = {
     doneFilled: (n: number) => `카메라 ${n}대 좌표 채움`,
     importFillN: (n: number) => `${n}대 좌표 채우기`,
     doneSkipped: (n: number) => `${n}행 건너뜀`,
-    doneNoCoordsNote: "좌표가 없는 카메라도 등록은 되지만, 각각 위치를 넣기 전까지 지도에 나타나지 않습니다.",
     skippedHeading: "건너뛴 행",
     downloadErrors: "건너뛴 행 내려받기",
     toastTitle: "카메라를 가져왔습니다",
@@ -203,7 +199,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
     // for rows it then refuses.
     const { rows, missingColumns, unmappedHeaders } = buildCameraImportRows(table, cameras.map(c => c.code), mode);
     if (missingColumns.length > 0) {
-      const label: Record<string, string> = { name: t.colName, code: t.colCode, rtspUrl: t.colRtsp };
+      const label: Record<string, string> = { name: t.colName, code: t.colCode, rtspUrl: t.colRtsp, lat: t.colLat, lng: t.colLng };
       setFileError(table.length === 0
         ? { title: t.emptyFileTitle, body: t.emptyFileBody }
         : { title: t.missingColumnsTitle, body: t.missingColumnsBody(missingColumns.map(c => label[c] ?? c).join(", ")) });
@@ -235,7 +231,10 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
   // Arrows, not a bare `isBlocking` reference: Array.prototype passes the index as the second
   // argument, which would land in the `mode` parameter.
   const badRows = parsed?.rows.filter(r => r.issues.some(i => isBlocking(i, mode))) ?? [];
-  const warnRows = parsed?.rows.filter(r => !r.issues.some(i => isBlocking(i, mode)) && r.issues.length > 0) ?? [];
+  /* There is no such thing as a non-blocking issue any more — in both modes every issue refuses
+     its row (see WARNINGS_BY_MODE), so the amber "imported with a caveat" tally this used to feed
+     described a case the screen can no longer produce. Kept as a comment rather than a variable:
+     if a real warning is ever added back, this is where its count belongs. */
   // What will actually be registered, after the licence has its say. Stated before the button is
   // pressed: a file of 300 rows against 40 free channels is a fact the reader should meet here,
   // not in the result screen.
@@ -342,9 +341,10 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
               {result.skipped.length > 0 && (
                 <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "2px" }}>{t.doneSkipped(result.skipped.length)}</p>
               )}
-              {result.added > 0 && warnRows.length > 0 && (
-                <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.doneNoCoordsNote}</p>
-              )}
+              {/* The "registered but not on the map" note is gone with the state it described:
+                  nothing imports without coordinates any more (see WARNINGS_BY_MODE), so a line
+                  explaining what happens to those rows would describe a case this screen can no
+                  longer produce. */}
               {result.skipped.length > 0 && (
                 <div style={{ marginTop: "16px" }}>
                   <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.skippedHeading}</p>
@@ -385,7 +385,8 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
             <div style={{ padding: "12px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", flexShrink: 0 }}>
               <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--success-400)" }}>{t.readyCount(okRows.length)}</span>
               {badRows.length > 0 && <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-400)" }}>{t.errorCount(badRows.length)}</span>}
-              {warnRows.length > 0 && <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)" }}>{t.warnCount(warnRows.length)}</span>}
+              {/* No amber "N without coordinates" tally either — in both modes a row without a
+                  position is an error now, and it is counted with the rest of them. */}
               <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>
                 {okRows.length === 0 ? t.allRowsBad : badRows.length > 0 ? t.errorsSkippedNote : ""}
               </span>

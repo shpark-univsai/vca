@@ -51,19 +51,25 @@ export type CameraImportMode = "add" | "fill-coordinates";
 /**
  * Issues that do not block, per mode. Everything else blocks.
  *
- * In "add": a camera with no coordinates is a real camera that cannot be drawn on the map AND
- * whose detections fall out of every district figure — the coordinates are what put a camera in a
- * district, and a district's VIP count is the detections of the cameras in it (confirmed 2026-09-18
- * from a customer already running the service). That is a bigger cost than a missing pin, and it
- * is why the single-camera form now REFUSES to save without them.
+ * NOTHING IS MERELY A WARNING IN EITHER MODE ANY MORE.
  *
- * This door still lets them through, deliberately. A three-hundred-row inventory export is exactly
- * the file that does not have a survey in it yet; refusing it would mean an installer with RTSP
- * URLs cannot start, which is backwards — the placement is what gets filled in later, not the
- * camera. So the rule is: one at a time, coordinates are demanded; in bulk they may be deferred,
- * the row says so, the count is reported separately, and the deferral has a way back — which is
- * what "fill-coordinates" is for. A deferral nobody can see would be the actual bug, and the
- * registry's 좌표 미등록 cell plus the map's "not on the map" group are where it stays visible.
+ * A camera with no coordinates is not a camera missing a pin: the coordinates are what put it in a
+ * district, and a district's VIP count is the detections of the cameras in it (confirmed
+ * 2026-09-18 from a customer already running the service). So its detections fall out of every
+ * district figure, with nothing on any screen saying the number was counted short.
+ *
+ * This door let them through at first, on the argument that a three-hundred-row inventory export
+ * is exactly the file that has no survey in it yet — so the rule was "one at a time it is
+ * demanded, in bulk it may be deferred", with the deferral visible (the 좌표 미등록 cell) and a
+ * way back (the fill-coordinates mode). The owner closed that door too the same day: "csv 가져올
+ * 때 위치정보 없으면 등록 안 되게 막아야 할 것 같아." A rule enforced at two of three doors is a
+ * rule that leaks at the third, and the third is the one that registers three hundred cameras at
+ * once — which is where an invisible undercount scales.
+ *
+ * So the survey now comes before the import, not after it. The file is refused up front when it
+ * has no latitude/longitude COLUMNS (see REQUIRED), and row by row when a row leaves them empty.
+ * The fill-coordinates mode stays: it is now for the rows an older install left behind, not for a
+ * deferral this screen creates.
  *
  * In "fill-coordinates" the same absence blocks, because a row with no coordinates has nothing to
  * fill and a "no change" row reported as imported is a lie. Name and stream are not read at all
@@ -71,7 +77,7 @@ export type CameraImportMode = "add" | "fill-coordinates";
  * which is what an exported register with two columns filled in looks like.
  */
 const WARNINGS_BY_MODE: Record<CameraImportMode, CameraImportIssue[]> = {
-  "add": ["no-coordinates"],
+  "add": [],
   // Nothing is merely a warning here. A row with no coordinates has nothing to fill, and a row
   // naming no registered camera has nothing to fill it into — both are refusals, not notes.
   "fill-coordinates": [],
@@ -131,9 +137,12 @@ const HEADER_SYNONYMS: Record<CameraColumnKey, string[]> = {
   lng: ["lng", "lon", "long", "longitude", "경도"],
 };
 
-/** Name, code and a stream. Everything else can arrive later; without these three there is no
- *  camera to add — a row with no RTSP URL is a line in a spreadsheet, not a source. */
-const REQUIRED: CameraColumnKey[] = ["name", "code", "rtspUrl"];
+/** Name, code, a stream and a position. A row missing any of them is a line in a spreadsheet
+ *  rather than a source: without the stream there is nothing to watch, and without the coordinates
+ *  the camera's detections count toward no district (see WARNINGS_BY_MODE). Demanded as COLUMNS so
+ *  a file that never had a survey in it is refused at the door, with the missing headings named,
+ *  instead of three hundred rows each carrying the same error. */
+const REQUIRED: CameraColumnKey[] = ["name", "code", "rtspUrl", "lat", "lng"];
 
 /** Latitude/longitude, or undefined if the cell is empty or not a usable number. */
 function parseCoord(raw: string, max: number): number | null | undefined {
