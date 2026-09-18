@@ -4,8 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MAP_TILE_URL, MAP_TILE_FILTER, tileLayerOptions } from "@/lib/mapTiles";
 import { hasPosition, isAwaitingFirstContact, type Camera } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { BORDER, CARD_RADIUS } from "./PortalShared";
+import { BORDER, CARD_RADIUS, PANEL_SHADOW } from "./PortalShared";
 
 /**
  * THE REGISTER, ON THE MAP.
@@ -15,8 +14,18 @@ import { BORDER, CARD_RADIUS } from "./PortalShared";
  * no sort, no paging, cameras only — and it answered a question the row's own thumbnail already
  * answers. A map answers one the table cannot: where is the fleet, and is anything left uncovered.
  *
- * A PANEL, NOT A VIEW MODE. It opens over the screen and closes again, so the table is never
- * replaced by something that cannot select, sort or page. That was the grid's actual fault.
+ * A VIEW OF THE CURRENT FILTER, which is what makes it a toggle and not the grid again.
+ *
+ * It was a panel over the screen first, and that was the weaker answer (owner: 그리드랑 표
+ * 토글있던것처럼 지도랑 표 이렇게 해서 페이지에 뿌려주는게 더 낫지 않아?). A panel gets a
+ * modal's worth of room and, worse, it floats free of the toolbar: it drew the whole register
+ * while the table behind it was narrowed to nine offline cameras. As a view it takes the same
+ * rows the table has, so 오프라인 + 지도 answers "where are the dead ones" — a question neither
+ * instrument answers alone.
+ *
+ * The grid deserved deleting for a different reason: it claimed to be the list and could not
+ * select, sort or page. A map claims to be a map. Nobody sorts one, and the table is one click
+ * away with everything it can do intact.
  *
  * The app's map, brought over (owner: 앱에서 쓰고있는 지도 가져와도 돼) — the same Leaflet, the
  * same tile source and the same desaturating filter from lib/mapTiles, so the two maps in this
@@ -70,19 +79,17 @@ function statusColor(cam: Camera): string {
   return "var(--warning-400)";
 }
 
-export default function CameraMapPanel({
-  cameras, onClose, onInspect, onShowUnpositioned,
+export default function CameraMapView({
+  cameras, onInspect, onShowUnpositioned,
 }: {
-  /** Every camera in the project — the panel does its own splitting by position. */
+  /** The rows the table would be showing — filters applied. Split by position here. */
   cameras: Camera[];
-  onClose: () => void;
   onInspect: (cameraId: string) => void;
-  /** Narrows the table behind this panel to the unsurveyed rows, and closes. */
+  /** Narrows the list to the unsurveyed rows, which is where their coordinates get filled in. */
   onShowUnpositioned: () => void;
 }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
-  useEscapeKey(onClose);
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
@@ -153,36 +160,32 @@ export default function CameraMapPanel({
   const selectedCamera = selected === null ? null : placed.find(c => c.id === selected) ?? null;
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
-      <div style={{
-        backgroundColor: "white", borderRadius: "16px", border: BORDER, boxShadow: "var(--shadow-modal)",
-        width: "100%", maxWidth: "1100px", height: "min(760px, 100%)", display: "flex", flexDirection: "column", overflow: "hidden",
-      }}>
-        <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: "12px", borderBottom: BORDER }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
-          <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{t.counted(placed.length, cameras.length)}</span>
-          <span style={{ flex: 1 }} />
-          {/* The legend is the four words the dots stand for. Four colours with no key is a
-              puzzle, and the table behind this panel spells them out in a column. */}
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-            {([
-              { color: "var(--success-400)", label: t.connected },
-              { color: "var(--warning-400)", label: t.offline },
-              { color: "var(--danger-400)", label: t.error },
-              { color: "var(--gray-300)", label: t.awaiting },
-            ]).map(item => (
-              <span key={item.label} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 600, color: "var(--gray-500)" }}>
-                <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: item.color }} />
-                {item.label}
-              </span>
-            ))}
-          </div>
-          <button className="portal-icon-btn" onClick={onClose} title={t.close}
-            style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          </button>
+    /* The same card the table draws, at a height that leaves the toolbar and the summary cells
+       above it on screen — a map shorter than this cannot show a city, and a taller one pushes
+       its own legend off the bottom. */
+    <div style={{
+      backgroundColor: "white", border: BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW,
+      display: "flex", flexDirection: "column", overflow: "hidden", height: "min(62vh, 640px)", minHeight: "380px",
+    }}>
+      <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px", borderBottom: BORDER, flexWrap: "wrap" }}>
+        <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-600)" }}>{t.counted(placed.length, cameras.length)}</span>
+        <span style={{ flex: 1 }} />
+        {/* The legend is the four words the dots stand for. Four colours with no key is a puzzle,
+            and the table one click away spells them out in a column. */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          {([
+            { color: "var(--success-400)", label: t.connected },
+            { color: "var(--warning-400)", label: t.offline },
+            { color: "var(--danger-400)", label: t.error },
+            { color: "var(--gray-300)", label: t.awaiting },
+          ]).map(item => (
+            <span key={item.label} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 600, color: "var(--gray-500)" }}>
+              <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: item.color }} />
+              {item.label}
+            </span>
+          ))}
         </div>
+      </div>
 
         <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
           <div
@@ -213,7 +216,7 @@ export default function CameraMapPanel({
             }}>
               <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.noPosition(unplaced)}</p>
               <p style={{ fontSize: "11px", color: "var(--gray-500)", marginTop: "3px", lineHeight: 1.45 }}>{t.noPositionWhy}</p>
-              <button className="portal-btn-quiet" onClick={() => { onShowUnpositioned(); onClose(); }}
+              <button className="portal-btn-quiet" onClick={onShowUnpositioned}
                 style={{ marginTop: "8px", padding: "4px 8px", borderRadius: "6px", border: "none", backgroundColor: "var(--gray-100)", color: "var(--gray-700)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                 {t.showThem}
               </button>
@@ -253,8 +256,7 @@ export default function CameraMapPanel({
                 {t.preview}
               </button>
             </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );

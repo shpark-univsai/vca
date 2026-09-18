@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import CameraImportModal from "./CameraImportModal";
-import CameraMapPanel from "./CameraMapPanel";
-import { CircleAlert, FileInput, FileOutput, MapPin, Film as FilmIcon, Image as ImageIcon, MapPinOff, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
+import CameraMapView from "./CameraMapView";
+import { CircleAlert, FileInput, FileOutput, MapPin, Table2, Film as FilmIcon, Image as ImageIcon, MapPinOff, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
 import { useVcaStore, hasPosition, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -16,6 +16,7 @@ const T = {
   en: {
     exportCsv: "Export CSV",
     importCsv: "Import CSV",
+    viewTable: "Table",
     openMap: "Map",
     openMapWhy: "Where this project's cameras are, drawn from their coordinates.",
     addCamera: "Add camera",
@@ -168,6 +169,11 @@ const T = {
     // the roster, the categories — and this was the only 변경사항 저장 among nine plain 저장.
     saveChanges: "Save",
     addDevice: "Add",
+    addAnother: "Add and keep going",
+    addAnotherWhy: "Registers this camera and keeps the form open for the next one. What a batch shares — maker, model, credentials, server, zone — stays filled in.",
+    addedSoFar: (n: number) => `${n} added`,
+    addAnotherAtLimit: "No channel left on the licence.",
+    closeAfterBatch: "Done",
     confirmOfflineTitle: "Mark camera offline?",
     confirmOfflineBody: (name: string) => `${name} will show as offline for everyone monitoring this project — make sure the stream is actually down before confirming.`,
     markOffline: "Mark offline",
@@ -190,6 +196,7 @@ const T = {
   ko: {
     exportCsv: "CSV 내보내기",
     importCsv: "CSV 가져오기",
+    viewTable: "테이블",
     openMap: "지도",
     openMapWhy: "등록된 좌표로 이 프로젝트의 카메라 위치를 그립니다.",
     addCamera: "카메라 추가",
@@ -309,6 +316,11 @@ const T = {
     cancel: "취소",
     saveChanges: "저장",
     addDevice: "추가",
+    addAnother: "추가하고 계속",
+    addAnotherWhy: "이 카메라를 등록하고 폼을 열어 둔 채 다음 대로 넘어갑니다. 한 묶음이 공유하는 값 — 제조사·모델·계정·연결 서버·구역 — 은 채워진 채로 남습니다.",
+    addedSoFar: (n: number) => `${n}대 등록됨`,
+    addAnotherAtLimit: "라이선스에 남은 채널이 없습니다.",
+    closeAfterBatch: "완료",
     confirmOfflineTitle: "카메라를 오프라인으로 표시하시겠습니까?",
     confirmOfflineBody: (name: string) => `${name} 카메라가 이 프로젝트를 모니터링하는 모든 사용자에게 오프라인으로 표시됩니다. 확인하기 전에 실제로 스트림이 끊겼는지 확인하세요.`,
     markOffline: "오프라인으로 표시",
@@ -549,7 +561,7 @@ function generateCameraCode(name: string, existing: string[]): string {
 }
 
 function CameraFormModal({
-  title, initial, isEdit, servers, onClose, onSubmit, t,
+  title, initial, isEdit, servers, onClose, onSubmit, onSubmitAndAnother, addedInSitting = 0, atLimit = false, t,
 }: {
   title: string;
   initial: CameraFormValues;
@@ -559,6 +571,13 @@ function CameraFormModal({
   servers: { id: string; name: string }[];
   onClose: () => void;
   onSubmit: (values: CameraFormValues) => void;
+  /** Registers and stays open for the next one. Absent on the edit form — there is no "and
+   *  another" when the subject is one existing camera. */
+  onSubmitAndAnother?: (values: CameraFormValues) => void;
+  /** How many this sitting has registered, for the line beside the buttons. */
+  addedInSitting?: number;
+  /** No channel left on the licence: both save buttons refuse, and the reason is written out. */
+  atLimit?: boolean;
   t: (typeof T)["en"] | (typeof T)["ko"];
 }) {
   useEscapeKey(onClose);
@@ -644,23 +663,44 @@ function CameraFormModal({
    * globals.css: a disabled button cannot tell you why it is disabled.
    */
   const [refused, setRefused] = useState(false);
+  /* Bumped on every "and keep going", and used as a key on the name field so the field remounts
+     and takes focus — where the next camera's first keystroke belongs. */
+  const [round, setRound] = useState(0);
+
+  /*
+   * WHAT A BATCH SHARES STAYS, WHAT IDENTIFIES ONE CAMERA CLEARS.
+   *
+   * Twelve cameras going in at one site are the same maker and model, reached with the same
+   * installer credential, pointed at the same server, standing in the same zone. Clearing those
+   * would make the second camera as much typing as the first, which is the whole reason this
+   * button exists. What cannot carry over is what tells one camera from another: its name, its
+   * address, its stream path and — since the coordinates are now what puts it in a district —
+   * its position. Carrying a position over would put twelve cameras on one spot.
+   */
+  const nextInBatch = () => {
+    setForm(f => ({ ...f, name: "", ip: "", rtspUrl: "", lat: "", lng: "" }));
+    setRefused(false);
+    setRound(r => r + 1);
+  };
 
   const field = (
     key: "name" | "ip" | "location" | "zone" | "rtspUrl" | "model" | "username" | "password" | "lat" | "lng",
     label: string,
     placeholder: string,
-    opts?: { type?: string; inputMode?: "decimal"; error?: string },
+    opts?: { type?: string; inputMode?: "decimal"; error?: string; remountKey?: number; autoFocus?: boolean },
   ) => (
     <div>
       <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{label}</label>
       {/* TextField, not a bare input: it carries the shared height and the shared focus ring, so a
           field and the select next to it in this same form stop being two different controls. */}
       <TextField
+        key={opts?.remountKey}
         value={form[key]}
         onChange={v => setForm(f => ({ ...f, [key]: v }))}
         placeholder={placeholder}
         type={opts?.type}
         inputMode={opts?.inputMode}
+        autoFocus={opts?.autoFocus}
         autoComplete={key === "password" ? "new-password" : undefined}
       />
       {/* Under the field it belongs to. The submit button greys out either way, but a disabled
@@ -693,6 +733,8 @@ function CameraFormModal({
 
           {field("name", t.fieldDeviceName, t.fieldDeviceNamePlaceholder, {
             error: refused && nameMissing ? t.errRequired : undefined,
+            // Remounted per batch round so autoFocus fires again — see nextInBatch.
+            remountKey: round, autoFocus: round > 0,
           })}
           {field("ip", t.fieldIp, t.fieldIpPlaceholder, {
             error: ipShape ? FIELD_CHECK_T[lang][ipShape] : ipCharsBad ? t.errIp : refused && ipMissing ? t.errRequired : undefined,
@@ -755,14 +797,38 @@ function CameraFormModal({
             tab's install button already makes, for the same reason: a tooltip on a disabled control
             is unreliable across browsers and this sentence has to be read. */}
         <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", flexWrap: "wrap" }}>
-          {refused && !valid && (
+          {refused && !valid ? (
             <p style={{ flex: "1 1 200px", minWidth: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, margin: 0 }}>
               {t.saveRefused}
             </p>
-          )}
+          ) : atLimit ? (
+            <p style={{ flex: "1 1 200px", minWidth: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, margin: 0 }}>
+              {t.addAnotherAtLimit}
+            </p>
+          ) : addedInSitting > 0 ? (
+            /* The form staying open looks identical whether the last one saved or not. The toast
+               says so and is gone in four seconds; this reader is still typing. */
+            <p style={{ flex: "1 1 120px", minWidth: 0, fontSize: "11px", fontWeight: 700, color: "var(--success-500)", lineHeight: 1.45, margin: 0 }}>
+              {t.addedSoFar(addedInSitting)}
+            </p>
+          ) : null}
           <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.cancel}
+            {/* 닫기 once something has gone in: 취소 would claim it can undo the four cameras
+                already registered. Same distinction the bulk bar draws. */}
+            {addedInSitting > 0 ? t.closeAfterBatch : t.cancel}
           </button>
+          {/* SECONDARY, AND ONLY WHEN ADDING. Between one camera and a hundred (which is the CSV's
+              job) sits the batch somebody types in, and for that the expensive part is reopening
+              the form. Left of the primary so the ordinary single add stays the rightmost, biggest
+              target — Stripe and Google Admin put "save and add another" in this same place. */}
+          {onSubmitAndAnother && (
+            <button className="portal-btn-outline" title={t.addAnotherWhy}
+              onClick={() => { if (!valid) { setRefused(true); return; } onSubmitAndAnother(form); nextInBatch(); }}
+              disabled={atLimit}
+              style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: atLimit ? "var(--gray-300)" : "var(--gray-700)", fontSize: "13px", fontWeight: 700, cursor: atLimit ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+              {t.addAnother}
+            </button>
+          )}
           <button className="portal-btn-primary" onClick={() => (valid ? onSubmit(form) : setRefused(true))}
             style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
@@ -1191,7 +1257,17 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
 
   // `password` is read off the form and dropped here on purpose — see CameraFormValues. Everything
   // else the form collects is stored.
-  const createCamera = (values: CameraFormValues) => {
+  /*
+   * HOW MANY WENT IN WITHOUT THE FORM CLOSING.
+   *
+   * Twelve cameras at one site is the ordinary case and the CSV is the answer for a hundred, but
+   * between the two there is a range where opening the form twelve times is the whole job (owner's
+   * ask, 2026-09-18: csv로 가져오진 못하고 여러 대 등록할 경우에 하기 좋게). The counter is shown
+   * beside the buttons because the form staying open looks the same whether the last one saved or
+   * not — the toast says so too, but a toast is gone in four seconds and this reader is typing.
+   */
+  const [addedInSitting, setAddedInSitting] = useState(0);
+  const createCamera = (values: CameraFormValues, keepOpen = false) => {
     // Refused here as well as disabled above: the button is the UI, this is the rule.
     if (cannotAddSource) return;
     addCamera({
@@ -1211,7 +1287,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         ? { lat: undefined, lng: undefined }
         : { lat: Number(values.lat), lng: Number(values.lng) }),
     });
-    setShowAdd(false);
+    if (keepOpen) setAddedInSitting(n => n + 1);
+    else setShowAdd(false);
     showToast({ variant: "success", title: t.toastCameraAddedTitle, desc: t.toastCameraAddedDesc(values.name.trim()) });
   };
 
@@ -1383,9 +1460,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    */
 
   const [showImport, setShowImport] = useState(false);
-  /* The map, as a panel over the screen rather than a second view of the list — see
-     CameraMapPanel for why the thing it replaces (the grid) was a worse table. */
-  const [showMap, setShowMap] = useState(false);
+  /* Table or map, on the tabs that hold cameras. The map is a view of the SAME filtered rows —
+     see CameraMapView for why that is what makes this a legitimate toggle and the deleted grid
+     not one. */
+  const [view, setView] = useState<"table" | "map">("table");
 
   const exportCsv = () => {
     const header = [t.csvHeaderName, t.csvHeaderCode, t.csvHeaderZone, t.csvHeaderLocation, t.csvHeaderRtspUrl, t.csvHeaderStatus];
@@ -1492,6 +1570,29 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           );
         })}
       </div>
+        {/* THE VIEW SWITCH, at the far end of the tab row rather than down in the toolbar. It
+            answers the tabs' kind of question — which shape of this list — and is set once and
+            left, while the toolbar below is touched on the way to a particular row.
+            Only where the rows are cameras: a video file has no coordinates, so there is nothing
+            for a map to draw on the 영상 / 이미지 / 딥페이크 tabs. */}
+        {showCameraColumns && (
+          <div style={{ display: "flex", alignItems: "center", marginBottom: "8px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px", flexShrink: 0 }}>
+            {(["table", "map"] as const).map(v => (
+              <button key={v} onClick={() => setView(v)} title={v === "map" ? t.openMapWhy : undefined}
+                style={{
+                  display: "flex", alignItems: "center", gap: "5px",
+                  padding: "4px 10px", borderRadius: "8px", border: "none", cursor: "pointer", fontFamily: "inherit",
+                  backgroundColor: view === v ? "white" : "transparent", boxShadow: view === v ? PANEL_SHADOW : "none",
+                  fontSize: "10px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
+                }}>
+                {/* Both halves carry a mark or neither would: one icon facing a bare word makes
+                    the pill look like a button beside a label rather than two of the same thing. */}
+                {v === "table" ? <Table2 size={11} strokeWidth={2.6} /> : <MapPin size={11} strokeWidth={2.6} />}
+                {v === "table" ? t.viewTable : t.openMap}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/*
@@ -1673,16 +1774,6 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           {/* Beside Export, and before it: the first thing a new site does is put a list in,
               and the round trip this reads is the one Export writes. Behind the same edit gate
               as adding a camera — this is the same act, three hundred times. */}
-          {/* Left of the file actions: this one only looks, and looking comes before changing —
-              the same order Preview takes in the row menu. Open to a read-only account for the
-              same reason. Only on the tabs that hold cameras: a file has no coordinates. */}
-          {showCameraColumns && (
-            <button className="portal-btn-quiet" onClick={() => setShowMap(true)} title={t.openMapWhy}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              <MapPin size={14} strokeWidth={2.4} />
-              {t.openMap}
-            </button>
-          )}
           {mayEdit && (
             <button className="portal-btn-quiet" onClick={() => setShowImport(true)}
               style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
@@ -1798,6 +1889,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           scroll underneath. Rendered here (still inside the fixed/sticky block) as the top half of
           the card; the data rows below are the bottom half, in normal flow, meeting it with no
           border between them so the two halves read as one continuous card. */}
+      {view === "table" && (
       <div ref={listRef} style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
           <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
             {/* The thumbnail, address and AI-engine columns carry no sortKey — a picture has no
@@ -1829,9 +1921,21 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             ))}
           </div>
         </div>
+      )}
       </div>
 
-      {visibleRows.length === 0 ? (
+      {/* THE MAP TAKES THE LIST'S PLACE, not the screen's. Same rows the table would draw, so
+          every filter above still applies — which is the whole argument for a toggle here (see
+          CameraMapView). */}
+      {view === "map" ? (
+        <CameraMapView
+          cameras={visibleCameras}
+          onInspect={setInspectingCameraId}
+          /* Straight to the rows that cannot be drawn. Back to the table too: their coordinates
+             get filled in from a row, and a map is not where that happens. */
+          onShowUnpositioned={() => { setKindTab("camera"); setGapFilter("noPosition"); setView("table"); }}
+        />
+      ) : visibleRows.length === 0 ? (
         <div style={{
           backgroundColor: "white", boxShadow: PANEL_SHADOW,
           // The bottom half of the card the column headings above opened, so it takes no top
@@ -2138,17 +2242,28 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
 
       {/* Under the list, like the VIP registry's — and outside the sticky block, which is only
           the tabs, the toolbar and the column headings. */}
-      <TablePagination
+      {view === "table" && <TablePagination
         total={visibleRows.length}
         page={currentPage}
         rowsPerPage={rowsPerPage}
         onPage={setPage}
         onRowsPerPage={setRowsPerPage}
         perPageOptions={perPageOptions}
-      />
+      />}
 
       {showAdd && (
-        <CameraFormModal title={t.addModalTitle} initial={EMPTY_FORM} isEdit={false} servers={projectServers} onClose={() => setShowAdd(false)} onSubmit={createCamera} t={t} />
+        <CameraFormModal
+          title={t.addModalTitle}
+          initial={EMPTY_FORM}
+          isEdit={false}
+          servers={projectServers}
+          onClose={() => { setShowAdd(false); setAddedInSitting(0); }}
+          onSubmit={createCamera}
+          onSubmitAndAnother={values => createCamera(values, true)}
+          addedInSitting={addedInSitting}
+          atLimit={cannotAddSource}
+          t={t}
+        />
       )}
       {editingCamera && (
         <CameraFormModal
@@ -2198,16 +2313,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           off monitoring at once, and there is no restore. Says what actually happens and what does
           not, because "are you sure?" alone leaves people guessing about the recordings. */}
       {showImport && <CameraImportModal projectId={projectId} onClose={() => setShowImport(false)} />}
-      {showMap && (
-        <CameraMapPanel
-          cameras={projectCameras}
-          onClose={() => setShowMap(false)}
-          onInspect={id => { setShowMap(false); setInspectingCameraId(id); }}
-          /* Straight to the rows that cannot be drawn — the panel says how many and this is the
-             way to them, which is the same move the 좌표 미등록 cell above the table makes. */
-          onShowUnpositioned={() => { setKindTab("camera"); setGapFilter("noPosition"); }}
-        />
-      )}
+
 
       {confirmingBulkDelete && (
         <div onClick={e => { if (e.target === e.currentTarget) setConfirmingBulkDelete(false); }}
