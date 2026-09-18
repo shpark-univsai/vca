@@ -160,6 +160,107 @@ function convexHull(points: [number, number][]): [number, number][] {
   return [...lower.slice(0, -1), ...upper.slice(0, -1)];
 }
 
+/**
+ * The hull, pushed outward and then rounded off.
+ *
+ * A convex hull runs THROUGH the outermost cameras — the dots sit on the line, which reads as a
+ * route between them rather than a boundary around them, and the corners come out as hard spikes.
+ * The owner's reference is the other shape: the same group with the line held off the dots and the
+ * corners smoothed (2026-09-18, with a before/after of both).
+ *
+ * Two steps, no geometry library:
+ *  1. OFFSET. Each hull vertex moves away from the centroid. The distance is a share of the
+ *     group's own size rather than a fixed number of metres — a zone whose cameras sit on one
+ *     street and a zone spread over a kilometre both need the line clear of the dots, and a
+ *     constant would swallow the first and barely show on the second. Clamped at both ends so a
+ *     pair of near-identical coordinates still gets a visible margin.
+ *  2. ROUND. Chaikin's corner cutting: every edge gives up its ends at the quarter marks, three
+ *     times over. Each pass halves the angle at every corner, and after three the polygon reads as
+ *     a curve while still being the polygon Leaflet knows how to draw. No curve primitive needed —
+ *     Leaflet's polygon takes points, so the rounding has to live in the points.
+ *
+ * Longitude is scaled by cos(latitude) throughout: a degree of longitude is shorter than a degree
+ * of latitude everywhere but the equator, and offsetting in raw degrees would push the east and
+ * west sides further than the north and south ones. At Singapore's latitude that is a 0.03%
+ * difference and invisible; the scaling is here because the product is not only deployed there.
+ */
+function roundedBoundary(points: [number, number][]): [number, number][] {
+  const hull = convexHull(points);
+  if (hull.length < 3) return hull;
+
+  const centroidLat = hull.reduce((sum, p) => sum + p[0], 0) / hull.length;
+  const centroidLng = hull.reduce((sum, p) => sum + p[1], 0) / hull.length;
+  const lngScale = Math.max(0.2, Math.cos((centroidLat * Math.PI) / 180));
+
+  /* The group's radius in degrees of latitude, which is the unit the offset is expressed in. */
+  const radius = Math.max(...hull.map(p => Math.hypot(p[0] - centroidLat, (p[1] - centroidLng) * lngScale)));
+  // 0.00045° of latitude is about 50m, 0.0027° about 300m.
+  const pad = Math.min(0.0027, Math.max(0.00045, radius * 0.22));
+
+  const offset = hull.map(([lat, lng]) => {
+    const dLat = lat - centroidLat;
+    const dLng = (lng - centroidLng) * lngScale;
+    const length = Math.hypot(dLat, dLng);
+    // A vertex sitting on the centroid has no direction to be pushed in; leave it where it is and
+    // let its neighbours carry the shape.
+    if (length === 0) return [lat, lng] as [number, number];
+    return [lat + (dLat / length) * pad, lng + (dLng / length) * pad / lngScale] as [number, number];
+  });
+
+  const smooth = (ring: [number, number][]) => {
+    let current = ring;
+    for (let pass = 0; pass < 3; pass += 1) {
+      const next: [number, number][] = [];
+      for (let i = 0; i < current.length; i += 1) {
+        const [aLat, aLng] = current[i];
+        const [bLat, bLng] = current[(i + 1) % current.length];
+        next.push([aLat + (bLat - aLat) * 0.25, aLng + (bLng - aLng) * 0.25]);
+        next.push([aLat + (bLat - aLat) * 0.75, aLng + (bLng - aLng) * 0.75]);
+      }
+      current = next;
+    }
+    return current;
+  };
+
+  /*
+   * AND THEN CHECK, because corner cutting pulls the curve INWARD.
+   *
+   * Chaikin replaces each corner with a chord across it, so the smoothed ring sits inside the
+   * polygon it was made from — most of the way round that is invisible, but at a sharp vertex the
+   * curve can end up inside the original hull and leave that camera's dot outside the boundary
+   * drawn around it. Measured on the Bedok zone at the first attempt: five cameras, one of them
+   * outside its own ring, which is worse than the hard-edged hull it replaced.
+   *
+   * So the padding is not guessed: grow it until every camera is inside, by the standard
+   * ray-crossing test. Four attempts at +45% each, then take what we have — a boundary that is
+   * slightly tight beats a loop that never ends, and by the fourth the pad is triple the first.
+   */
+  const inside = (ring: [number, number][], [lat, lng]: [number, number]) => {
+    let hit = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+      const [iLat, iLng] = ring[i];
+      const [jLat, jLng] = ring[j];
+      if ((iLng > lng) !== (jLng > lng)
+        && lat < ((jLat - iLat) * (lng - iLng)) / (jLng - iLng) + iLat) hit = !hit;
+    }
+    return hit;
+  };
+
+  let grown = pad;
+  let ring = smooth(offset);
+  for (let attempt = 0; attempt < 4 && points.some(point => !inside(ring, point)); attempt += 1) {
+    grown *= 1.45;
+    ring = smooth(hull.map(([lat, lng]) => {
+      const dLat = lat - centroidLat;
+      const dLng = (lng - centroidLng) * lngScale;
+      const length = Math.hypot(dLat, dLng);
+      if (length === 0) return [lat, lng] as [number, number];
+      return [lat + (dLat / length) * grown, lng + (dLng / length) * grown / lngScale] as [number, number];
+    }));
+  }
+  return ring;
+}
+
 /** Zone names come from a text field somebody types into, and they go into markup built as a
  *  string for Leaflet. */
 function escapeHtml(value: string): string {
@@ -392,16 +493,20 @@ export default function CameraMapView({
       const L = (await import("leaflet")).default;
       if (cancelled) return;
       const points = pickedZone.cams.map(c => [c.lat, c.lng] as [number, number]);
-      const hull = convexHull(points);
+      const boundary = roundedBoundary(points);
       const style = {
         color: "var(--primary-400)", weight: 1.6, dashArray: "5 4",
         fill: false, interactive: false,
+        /* Leaflet thins a polygon's points at low zoom to save work, which would undo the rounding
+           the moment you zoomed out. The shape is a few dozen points; keep every one. */
+        smoothFactor: 0,
       };
-      layer = hull.length >= 3
-        ? L.polygon(hull, style)
+      layer = boundary.length >= 3
+        ? L.polygon(boundary, style)
         /* One or two cameras have no polygon. A circle wide enough to hold them says the same
-           thing — a ring around this group — without pretending to a shape. 120m so a single
-           camera's ring is visible at the zoom a pill click lands on. */
+           thing — a ring around this group — without pretending to a shape, and it is already the
+           rounded form the rest of this is working toward. 120m so a single camera's ring is
+           visible at the zoom a pill click lands on. */
         : L.circle([pickedZone.lat, pickedZone.lng], { ...style, radius: Math.max(120, 120 * points.length) });
       map.addLayer?.(layer);
     })();
