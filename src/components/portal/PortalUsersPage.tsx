@@ -106,6 +106,11 @@ const T = {
     colPermission: "Permission",
     colAccess: "Access",
     colAppSearch: "Person Search",
+    colCameras: "Cameras",
+    camerasAll: "All",
+    camerasSome: (n: number, total: number) => `${n} / ${total}`,
+    camerasNarrowedTitle: (n: number, total: number) => `Sees ${n} of the ${total} cameras on their projects, in the app.`,
+    camerasAllTitle: "Sees every camera on their projects, including ones added later.",
     colLastLogin: "Last Login",
     colStatus: "Status",
     emptyNoUsers: "No users have access to this project yet.",
@@ -454,6 +459,11 @@ const T = {
     colPermission: "권한",
     colAccess: "접근",
     colAppSearch: "인물 검색",
+    colCameras: "카메라",
+    camerasAll: "전체",
+    camerasSome: (n: number, total: number) => `${n} / ${total}`,
+    camerasNarrowedTitle: (n: number, total: number) => `앱에서 담당 프로젝트 카메라 ${total}대 중 ${n}대만 봅니다.`,
+    camerasAllTitle: "담당 프로젝트의 카메라를 전부 봅니다. 나중에 추가되는 것도 포함합니다.",
     colLastLogin: "마지막 로그인",
     colStatus: "상태",
     emptyNoUsers: "이 프로젝트에 접근 권한이 있는 사용자가 아직 없습니다.",
@@ -2455,7 +2465,7 @@ function UserCountStrip({
   );
 }
 
-type UserSortKey = "name" | "permission" | "lastLogin" | "status";
+type UserSortKey = "name" | "permission" | "lastLogin" | "status" | "cameras";
 
 interface PortalUsersPageProps {
   /** Scopes the table to users who have access to this project — mirrors Clerk's per-application Users tab. */
@@ -2675,8 +2685,11 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
    * fraction so it cannot collapse to nothing on a small window, and the two lines inside it now
    * ellipsise instead of pushing the row taller.
    */
+  /* Nine tracks in accounts mode since 2026-09-21, the ninth being Cameras. The width came from
+     the three widest: the User column keeps its floor, Other projects and Last login each give up
+     a tenth. A camera cell is "전체" or "12 / 62" — the narrowest thing in the row. */
   const GRID = showAccountColumns
-    ? "minmax(160px, 1.15fr) 1.15fr 0.85fr 0.8fr 0.55fr 0.95fr 0.6fr 36px"
+    ? "minmax(150px, 1.1fr) 1.05fr 0.8fr 0.8fr 0.55fr 0.6fr 0.85fr 0.6fr 36px"
     : "minmax(180px, 1.4fr) 1fr 1.2fr 0.7fr 36px";
 
   const bulkIssueCodes = () => {
@@ -2821,6 +2834,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       // undefined to the bottom either way rather than letting it win "oldest first".
       case "lastLogin": return u.lastLoginAt;
       case "status": return u.status;
+      /* A number, so ascending puts the narrowest first — which is the whole reason this column
+         is sortable. "Every camera" is not a count, and taking the project's total for it keeps
+         it at the top of the descending order where it belongs, above any narrowed account. */
+      case "cameras": return u.cameraIds === undefined ? scopableCamerasFor(u).length : u.cameraIds.length;
     }
   });
 
@@ -3091,6 +3108,9 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             { label: t.colPermission, key: "permission" },
             { label: t.colAccess },
             { label: t.colAppSearch },
+            /* Sortable, and "전체" sorts as the largest: the question this column answers is who
+               has been narrowed, so the narrowest scopes have to be reachable in one click. */
+            { label: t.colCameras, key: "cameras" },
             { label: t.colLastLogin, key: "lastLogin" },
             { label: t.colStatus, key: "status", align: "right" as const },
             { label: "" },
@@ -3232,6 +3252,31 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 </span>
               ) : (
                 <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
+              )}
+            </span>
+            {/*
+              HOW MUCH OF THE SITE THIS ACCOUNT SEES IN THE APP.
+             
+              A camera scope could be set from the row menu and then read back nowhere: the table
+              gave no sign which accounts had been narrowed, so an access review had to open every
+              row's menu one at a time. `전체` is the ordinary case and stays quiet; a narrowed
+              account is the one worth finding, so it gets the darker, heavier treatment and the
+              figures line up column-wise (tabular digits).
+             
+              Dashed where the app is shut, for the reason the Person Search cell gives: a scope
+              describes what the app shows, and an account that cannot reach the app is not seeing
+              twelve cameras. The grant is kept in the data and comes back with the door.
+            */}
+            <span>
+              {!u.appAccess ? (
+                <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
+              ) : u.cameraIds === undefined ? (
+                <span title={t.camerasAllTitle} style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.camerasAll}</span>
+              ) : (
+                <span title={t.camerasNarrowedTitle(u.cameraIds.length, scopableCamerasFor(u).length)}
+                  style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontVariantNumeric: "tabular-nums" }}>
+                  {t.camerasSome(u.cameraIds.length, scopableCamerasFor(u).length)}
+                </span>
               )}
             </span>
             <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.lastLoginAt ?? "—"}</span>

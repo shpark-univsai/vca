@@ -1711,6 +1711,45 @@ export function eventsInProject(events: VcaEvent[], projectId: string, cameras: 
   return events.filter(e => projectIdForCameraId(e.cameraId, cameras) === projectId);
 }
 
+/**
+ * THE DETECTIONS THIS ACCOUNT MAY SEE, which is not the same set as the project's.
+ *
+ * A camera scope narrowed the app's camera LISTS and nothing else: `useProjectCameras` went
+ * through camerasVisibleTo, so a guard scoped to two cameras saw two cameras in the sidebar — and
+ * every VIP hit from all sixty-two in the feed, the map, the chart and the notification bell. The
+ * scope named which cameras somebody may watch, and the watching happens through the detections.
+ *
+ * Portal deliberately does NOT go through here, the same way it does not go through
+ * camerasVisibleTo: an administrator reads the whole site's activity, including cameras they are
+ * not scoped to watch.
+ *
+ * TWO LIMITS, both worth stating rather than hiding:
+ *
+ *   1. A TRACKING EVENT IS FILTERED BY ITS OWN CAMERA, not by its trail. `TrackingHop` carries a
+ *      `cameraLabel` and no camera id (see the type), so a hop cannot be resolved against a scope
+ *      without matching cameras by name — which is the exact mistake this codebase has already
+ *      paid for twice. So a visible trail can still draw a hop on a camera outside the scope.
+ *      Trimming the path instead would be worse: a trail with a hop removed draws a straight line
+ *      between the two that remain and claims a journey that never happened.
+ *   2. The dashboard's VIP simulation picks from VIP_SIMULATION_CAMERAS, a pool outside the
+ *      register, so those ids are in nobody's scope and their events drop out for any narrowed
+ *      account. That is the honest answer for a camera the register does not have, and it costs
+ *      the default demo nothing: every seeded account has `cameraIds === undefined`.
+ *
+ * HANDOFF: filtering a list in the browser is not control. The server has to scope the event feed,
+ * the search results and the streams the same way, or a narrowed account still receives everything
+ * and only the screen is polite about it.
+ */
+export function eventsVisibleTo(events: VcaEvent[], projectId: string, cameras: Camera[], users: PortalUser[]): VcaEvent[] {
+  const inProject = eventsInProject(events, projectId, cameras);
+  // Same stand-in rule as camerasVisibleTo: an identity that resolves to nobody sees everything,
+  // so the mock stays explorable. A real build reads the scope off the session.
+  const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
+  if (!me || me.cameraIds === undefined) return inProject;
+  const allowed = new Set(me.cameraIds);
+  return inProject.filter(e => allowed.has(e.cameraId));
+}
+
 /** People registered at this site. */
 export function personsInProject(persons: Person[], projectId: string): Person[] {
   return persons.filter(p => p.projectId === projectId);
@@ -1879,8 +1918,11 @@ export function useActiveProjectId(): string {
 export function useProjectEvents(): VcaEvent[] {
   const events = useVcaStore(s => s.events);
   const cameras = useVcaStore(s => s.cameras);
+  // Raw slices out of the selectors, filtering in the memo — the same rule useProjectCameras
+  // states: a selector that builds a new array every call never settles.
+  const users = useVcaStore(s => s.portalUsers);
   const projectId = useActiveProjectId();
-  return useMemo(() => eventsInProject(events, projectId, cameras), [events, projectId, cameras]);
+  return useMemo(() => eventsVisibleTo(events, projectId, cameras, users), [events, projectId, cameras, users]);
 }
 
 /**
@@ -3374,6 +3416,39 @@ let portalUserSeq = PORTAL_USERS.length;
 let orgSeq = TEAMS.length;
 let serverSeq = SERVERS.length;
 let apiKeySeq = API_KEYS.length;
+
+/**
+ * DROP DELETED CAMERAS OUT OF EVERY CAMERA SCOPE.
+ *
+ * `PortalUser.cameraIds` is a list of ids, so a deleted camera left a dead id behind in it
+ * forever: the table's `12 / 62` counted a camera that no longer exists, and the day an id space
+ * is reused that scope silently points at a different street. (Cameras cannot change project —
+ * `updateCamera` omits `projectId` — so deletion is the only way a scope can go stale.)
+ *
+ * An emptied list is KEPT AS `[]`, not turned back into `undefined`. Absent means "every camera",
+ * and widening somebody's access because the one camera they were scoped to was deleted is the
+ * kind of silent grant this field exists to prevent. `[]` is a real state the gate already knows:
+ * an account with no cameras sees no cameras, which is what somebody chose when they picked one.
+ *
+ * Returns the same array when nothing changed, so a delete that touches no scope does not make
+ * every account re-render.
+ */
+function pruneCameraScopes(users: PortalUser[], removedIds: Set<string>): { users: PortalUser[]; touched: number } {
+  let touched = 0;
+  const next = users.map(u => {
+    if (u.cameraIds === undefined) return u;
+    const kept = u.cameraIds.filter(id => !removedIds.has(id));
+    if (kept.length === u.cameraIds.length) return u;
+    touched += 1;
+    return { ...u, cameraIds: kept };
+  });
+  return touched === 0 ? { users, touched } : { users: next, touched };
+}
+
+/** The sentence a camera removal adds to its audit line when it also narrowed somebody's scope. */
+function scopeNote(touched: number): string {
+  return touched === 0 ? "" : ` · removed from ${touched} account${touched === 1 ? "'s" : "s'"} camera scope`;
+}
 let accessRequestSeq = ACCESS_REQUESTS.length;
 
 function auditAt(minutesAgo: number): string {
@@ -3967,9 +4042,11 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   removeCamera: (cameraId) =>
     set(state => {
       const cam = state.cameras.find(c => c.id === cameraId);
-      const auditEntry: AuditEvent = clientAudit({ projectId: cam?.projectId, message: `Camera ${cam?.name ?? cameraId} removed`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() });
+      const scopes = pruneCameraScopes(state.portalUsers, new Set([cameraId]));
+      const auditEntry: AuditEvent = clientAudit({ projectId: cam?.projectId, message: `Camera ${cam?.name ?? cameraId} removed${scopeNote(scopes.touched)}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() });
       return {
         cameras: state.cameras.filter(c => c.id !== cameraId),
+        portalUsers: scopes.users,
         auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
@@ -3978,15 +4055,17 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const ids = new Set(cameraIds);
       const removed = state.cameras.filter(c => ids.has(c.id));
       if (removed.length === 0) return {};
+      const scopes = pruneCameraScopes(state.portalUsers, ids);
       const auditEntry: AuditEvent = clientAudit({
         projectId: removed[0].projectId,
-        message: removed.length === 1
+        message: (removed.length === 1
           ? `Camera ${removed[0].name} removed`
-          : `${removed.length} cameras removed (${removed.map(c => c.code).join(", ")})`,
+          : `${removed.length} cameras removed (${removed.map(c => c.code).join(", ")})`) + scopeNote(scopes.touched),
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       return {
         cameras: state.cameras.filter(c => !ids.has(c.id)),
+        portalUsers: scopes.users,
         auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
