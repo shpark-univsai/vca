@@ -34,11 +34,11 @@ const T = {
     orBrowse: "or choose a file",
     formatNote: "CSV. In Excel: File → Save As → CSV UTF-8.",
     columnsNote: "A name is all that is required. A memo column is read if the file has one, and a file of bare names with no header row works too.",
-    photoHowNote: "A CSV cannot hold an image. Write each person's image file name in the Photo file name column, and pick the images in the same step.",
+    photoHowNote: "A CSV cannot hold an image, so the images are picked here and matched by file name. Name each image after the person — hong-gildong.jpg — and picking the files is all it takes. Where a file is named something else, write that name in the sheet's Photo file name column.",
     noPhotoNote: "A row that ends up with no face is still registered, and no camera can match that person until one is enrolled.",
     pickPhotos: "Choose photo files",
     pickMorePhotos: "Choose more photos",
-    photosNone: "No photos picked yet — the file names in the sheet are waiting for them.",
+    photosNone: "No photos picked yet — they are matched to these rows by file name.",
     photosMatched: (n: number, total: number) => `${n} of ${total} rows have their photo`,
     photosUnused: (names: string) => `Picked and unused: ${names}`,
     colPhoto: "Photo",
@@ -84,11 +84,11 @@ const T = {
     orBrowse: "또는 파일 선택",
     formatNote: "CSV 파일. 엑셀에서: 파일 → 다른 이름으로 저장 → CSV UTF-8.",
     columnsNote: "이름만 있으면 됩니다. 메모 열은 파일에 있으면 함께 읽고, 머리글 없이 이름만 적힌 파일도 됩니다.",
-    photoHowNote: "CSV 안에는 이미지가 들어가지 않습니다. 사람마다 사진 파일 이름을 '사진 파일명' 열에 적고, 사진 파일은 같은 단계에서 함께 고르세요.",
+    photoHowNote: "CSV 안에는 이미지가 들어가지 않아서, 사진은 여기서 고르고 파일 이름으로 사람을 찾습니다. 파일 이름을 그 사람 이름으로 해 두면(홍길동.jpg) 고르기만 하면 붙습니다. 파일 이름이 이름과 다를 때만 표의 '사진 파일명' 열에 적으면 됩니다.",
     noPhotoNote: "사진이 붙지 않은 행도 등록은 되지만, 얼굴을 등록하기 전에는 어느 카메라도 그 사람을 찾지 못합니다.",
     pickPhotos: "사진 파일 고르기",
     pickMorePhotos: "사진 더 고르기",
-    photosNone: "고른 사진이 아직 없습니다 — 표에 적힌 파일 이름들이 사진을 기다리고 있습니다.",
+    photosNone: "고른 사진이 아직 없습니다 — 파일 이름으로 이 행들과 맞춰 붙입니다.",
     photosMatched: (n: number, total: number) => `${total}행 중 ${n}행에 사진이 붙었습니다`,
     photosUnused: (names: string) => `고른 사진 중 쓰이지 않은 것: ${names}`,
     colPhoto: "사진",
@@ -251,14 +251,18 @@ export default function VipImportModal({
      photos never re-parses and never re-checks names against the registry. */
   const attached = useMemo(() => (parsed ? attachVipPhotos(parsed.rows, photos) : null), [parsed, photos]);
   const rows = attached?.rows ?? [];
-  /* Whether the sheet asked for photos at all. A file of bare names gets none of this — no column,
-     no button, no counts — and reads exactly as it did before the column existed. */
-  const sheetNamesPhotos = rows.some(r => r.photoFile !== "");
+  /**
+   * THE PHOTO STEP IS ON EVERY FILE, including a pasted column of bare names.
+   *
+   * It used to appear only for a sheet with a photo column, which was right while the column was
+   * the only way to name an image. It is not any more: an image called 홍길동.jpg finds 홍길동 with
+   * nothing written in the sheet at all, so a file of bare names can arrive here with faces — and
+   * hiding the button for exactly that file would hide the easiest path to them.
+   *
+   * The denominator is every row for the same reason: any row can take a photo now, so "5행 중
+   * 2행" is the true fraction rather than a count of the rows that happened to name a file.
+   */
   const withPhotoCount = rows.filter(r => r.photo).length;
-  /* The denominator is the rows that ASKED for a photo, not every row: a sheet where forty of two
-     hundred name an image is forty out of forty when those forty land, and "40 of 200" would read
-     as a hundred and sixty failures. */
-  const namedPhotoCount = rows.filter(r => r.photoFile !== "").length;
 
   const okRows = importableRows(rows);
   const badRows = rows.filter(r => r.issues.some(isBlocking));
@@ -333,7 +337,7 @@ export default function VipImportModal({
 
   /* Track count and cell count are driven by the one flag, because a grid whose row emits fewer
      cells than it has tracks does not leave a hole — it slides every later cell one column left. */
-  const GRID = sheetNamesPhotos ? "34px 1fr 1fr 46px 1.4fr" : "40px 1.2fr 1.4fr 1.4fr";
+  const GRID = "34px 1fr 1fr 46px 1.4fr";
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
@@ -427,8 +431,7 @@ export default function VipImportModal({
                   button, and not as a step of its own: the reader has to be able to pick more and
                   watch the same rows fill in. A file of bare names shows none of this and keeps
                   the sentence it always had. */}
-              {sheetNamesPhotos ? (
-                <div style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <div style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                   <button onClick={() => photoInputRef.current?.click()}
                     style={{ display: "flex", alignItems: "center", gap: "6px", height: "30px", padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
                     <ImagePlus size={13} strokeWidth={2.4} />
@@ -439,8 +442,8 @@ export default function VipImportModal({
                   {photos.length === 0 ? (
                     <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.photosNone}</span>
                   ) : (
-                    <span style={{ fontSize: "12px", fontWeight: 700, color: withPhotoCount === namedPhotoCount ? "var(--success-400)" : "var(--warning-500)" }}>
-                      {t.photosMatched(withPhotoCount, namedPhotoCount)}
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: withPhotoCount === rows.length ? "var(--success-400)" : "var(--warning-500)" }}>
+                      {t.photosMatched(withPhotoCount, rows.length)}
                     </span>
                   )}
                   {/* Pictures the reader chose that no row asked for — a misspelt file name in the
@@ -453,14 +456,15 @@ export default function VipImportModal({
                         + (attached.unusedFiles.length > 4 ? ` +${attached.unusedFiles.length - 4}` : ""))}
                     </span>
                   )}
-                </div>
-              ) : (
-                <span style={{ width: "100%", fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.noPhotoNote}</span>
-              )}
+                {/* The consequence, and only while there is one: it goes as the last row fills. */}
+                {withPhotoCount < rows.length && (
+                  <span style={{ width: "100%", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.noPhotoNote}</span>
+                )}
+              </div>
             </div>
             <div style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
               <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: "10px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, position: "sticky", top: 0 }}>
-                {(sheetNamesPhotos ? [t.colLine, t.colName, t.colMemo, t.colPhoto, t.colReason] : [t.colLine, t.colName, t.colMemo, t.colReason]).map(h => (
+                {[t.colLine, t.colName, t.colMemo, t.colPhoto, t.colReason].map(h => (
                   <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{h}</span>
                 ))}
               </div>
@@ -481,7 +485,7 @@ export default function VipImportModal({
                         26px thumbnail is that check — the reason the images are picked here rather
                         than uploaded blind after the import. A row whose file was not picked shows
                         the words instead; the reason column says what to do about it. */}
-                    {sheetNamesPhotos && (
+                    {(
                       r.photo ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={previewUrl(r.photo)} alt="" width={26} height={26}

@@ -421,7 +421,7 @@ const T: Record<"en" | "ko", VipDict> = {
     register: "Register",
     priorityText: { normal: "Normal", high: "High", very_high: "Very High" } as Record<NonNullable<Person["priorityLabel"]>, string>,
     bulkTemplate: "Template",
-    bulkTemplateHint: "One person per row: a name, a note if there is one, and the file name of their photo. The photos are picked in the import step. A file of bare names works too.",
+    bulkTemplateHint: "One person per row: a name, and a note if there is one. Photos are picked in the import step and found by file name — name them after the person, and only fill the photo column where a file is called something else. A file of bare names works too.",
     bulkTemplateMemoHeader: "Memo",
     bulkTemplatePhotoHeader: "Photo file name",
     bulkTemplateName: "Hong Gildong",
@@ -604,12 +604,12 @@ const T: Record<"en" | "ko", VipDict> = {
     register: "등록",
     priorityText: { normal: "일반", high: "높음", very_high: "매우 높음" } as Record<NonNullable<Person["priorityLabel"]>, string>,
     bulkTemplate: "서식",
-    bulkTemplateHint: "한 줄에 한 사람: 이름, 메모가 있으면 메모, 그리고 사진 파일 이름. 사진 파일은 가져오기 단계에서 함께 고릅니다. 이름만 적힌 파일도 됩니다.",
+    bulkTemplateHint: "한 줄에 한 사람: 이름, 메모가 있으면 메모. 사진은 가져오기 단계에서 고르고 파일 이름으로 찾습니다 — 파일 이름을 그 사람 이름으로 해 두면 되고, 다른 이름일 때만 사진 열에 적습니다. 이름만 적힌 파일도 됩니다.",
     bulkTemplateMemoHeader: "메모",
     bulkTemplatePhotoHeader: "사진 파일명",
     bulkTemplateName: "홍길동",
     bulkTemplateMemo: "상시 경호 대상",
-    bulkTemplatePhotoSample: "hong-gildong.jpg",
+    bulkTemplatePhotoSample: "홍길동.jpg",
     tabAll: "전체",
     tabGroups: "그룹",
     tabAllHint: "이 프로젝트에 등록된 사람 전부입니다. 그룹에 속했는지와 무관합니다.",
@@ -2003,10 +2003,13 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
    *  VipImportModal as well, so the toolbar's 서식 button and the one inside the import modal write
    *  the same file — and so the sample stays reachable for an account that may not import at all. */
   const downloadBulkTemplate = () => {
-    /* THREE COLUMNS, and the third is a file name rather than an image: a CSV cannot carry a
-       photograph, so the sheet says which file belongs to whom and the files themselves are picked
-       in the import step (VipImportModal). This is ID123's shape and the one the modal matches on;
-       see attachVipPhotos in lib/vipImport.ts for the matching rule.
+    /* THREE COLUMNS, and the third one is usually nothing to type.
+       A CSV cannot carry a photograph, so images are picked in the import step and found by file
+       name (attachVipPhotos in lib/vipImport.ts). The name they are matched against is the
+       PERSON'S name by default — which is why the sample value is the sample person's name with an
+       extension, demonstrating the convention rather than an override. The column earns its place
+       for the folder that came off a camera as IMG_0342.jpg, where there is no convention to lean
+       on, and a sheet that leaves it empty loses nothing.
 
        No instruction row above the header. A comment line in a CSV is a line the parser has to
        read as somebody called "사진은 가져오기 단계에서 고르세요" — the sentence belongs on the

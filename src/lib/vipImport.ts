@@ -12,20 +12,40 @@
  * stance, same encoding sniff, same header normalisation. See rosterImport.ts for why .xlsx is out
  * of scope and what the EUC-KR fallback is for.
  *
- * PHOTOGRAPHS COME BESIDE THE FILE, NOT IN IT. A CSV cannot hold an image, so the sheet holds a
- * FILE NAME and the images are picked in the same step (owner, 2026-09-21: 사진이 들어갈 공간이
- * 없는뎅?). That is the pattern the products that do this use — ID123 uploads the roster then the
- * photo set and matches on the file name, HikCentral goes further and makes the file name the only
- * key. The one real product shape we cannot copy is Genetec's, whose CSV carries a filesystem path:
- * a browser cannot read a path off the operator's disk, only a file they hand it.
+ * PHOTOGRAPHS COME BESIDE THE FILE, NOT IN IT, AND THE SHEET USUALLY NEED NOT MENTION THEM.
  *
- * So `attachVipPhotos` below is the second half of this importer, and the two things it can say
- * about a face are both NOTES rather than refusals: the sheet named an image that was not picked,
- * or two rows named the same image. Neither invalidates the person — a row with no face still
- * belongs on the list and lands in the registry's 사진 없음 count, which is where it was before
- * this column existed. WHAT IT WILL NOT DO is enrol one image as two people: the second row keeps
- * its name and loses the photo, because one face registered as two identities alerts twice and the
- * registry counts it as a duplicate enrolment.
+ * A CSV cannot hold an image, so the images are picked in the same step and matched by file name.
+ * What the file name is matched AGAINST is where the products differ, and the owner's question is
+ * the right one (2026-09-21: 보통 다른 서비스들에서도 이렇게 템플릿에 제목 적게 해? 번거로울것
+ * 같은뎅?). Typing a file name per person is the minority shape:
+ *
+ *   - Verkada's bulk image upload has NO column and no mapping file at all — the image is named
+ *     `[email].jpg`, `[user id].jpg` or `[external id].jpg`, 500 per batch, and a file that matches
+ *     nobody is an error the operator resolves before proceeding.
+ *   - HikCentral's batch enrolment: "The naming rule of photo is: Person Name, Person ID, or
+ *     Person Name_ID." A folder or a ZIP, no sheet.
+ *   - CloudBadging names each image after the record's ID number.
+ *   - ID123 and SAP SuccessFactors are the other camp: the sheet carries the photo file name and
+ *     the ZIP must match it exactly, extension included.
+ *   - Genetec's CSV carries a filesystem PATH, which is the one shape we cannot copy: a browser
+ *     cannot read a path off the operator's disk, only a file they hand it.
+ *
+ * So the default here is the majority one, and the only field a VIP has is the name: an image
+ * called `홍길동.jpg` lands on 홍길동 with nothing typed anywhere. The `사진 파일명` column stays
+ * as the OVERRIDE, for the folder that came off a camera as `IMG_0342.jpg` — which is the case the
+ * name convention cannot serve and the reason the column is not simply deleted.
+ *
+ * A name is not a key in this registry (see WARNINGS below), so matching on it would be a guess if
+ * one file could land on two people. It cannot: a name repeated inside one file already blocks its
+ * second row, so at most one importable row answers to any name.
+ *
+ * The three things this can say about a face are all NOTES rather than refusals: the sheet named an
+ * image that was not picked, two rows named the same image, or nothing matched at all — and that
+ * last one is not even said, because most lists are half without photographs. A row with no face
+ * still belongs on the list and lands in the registry's 사진 없음 count. WHAT IT WILL NOT DO is
+ * enrol one image as two people: the second row keeps its name and loses the photo, because one
+ * face registered as two identities alerts twice and the registry counts it as a duplicate
+ * enrolment.
  *
  * What this file still cannot judge is whether an image holds a readable face. That is the model's
  * answer, it arrives after enrolment, and a preview that guessed at it would be inventing the one
@@ -80,7 +100,8 @@ export interface ParsedVipRow {
   name: string;
   /** The memo column, or "" — optional everywhere, which is why its absence is not an issue. */
   description: string;
-  /** The image file this row asked for, as the sheet spelt it, or "". */
+  /** The image file this row asked for BY NAME, as the sheet spelt it, or "" — in which case the
+   *  person's own name is what the picked images are matched against. */
   photoFile: string;
   /** The picked image this row got, set by attachVipPhotos. Absent means this person imports with
    *  no face — either the sheet named none, or it named one that was not among the files. */
@@ -234,18 +255,35 @@ export function buildVipImportRows(
 }
 
 /**
- * The key a file name is matched on.
+ * The keys a picked image answers to: its own name, and its name without the extension.
  *
  * Case and surrounding space are folded, because a sheet typed by hand says `Hong.JPG` for a file
- * called `hong.jpg` and they are one image. The extension is kept in the key, so an exact match is
- * tried first and the ID123 rule ("the name in the sheet matches the file, extension included")
- * always wins; the extension-less form is a second, looser key, for the sheet that says
- * `hong-gildong` because Windows was hiding the extension when somebody read it off the folder.
+ * called `hong.jpg` and they are one image. The extension is kept in the first key, so the ID123
+ * rule ("the name in the sheet matches the file, extension included") wins where the sheet spelt it
+ * out; the extension-less key is what both the looser sheet and the name convention match on.
+ *
+ * Separators fold too — space, hyphen, underscore, dot — so `hong-gildong.jpg`, `hong_gildong.jpg`
+ * and `Hong Gildong.jpg` all answer for a person called Hong Gildong. HikCentral asks for a plus
+ * sign between the two halves of a name; folding every separator accepts that spelling and the
+ * three obvious others rather than making the operator learn ours. It cannot make two different
+ * people collide into one key without those people already having the same name, which blocks its
+ * own second row.
  */
+function foldSeparators(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s._+-]+/g, "");
+}
+
 function photoKeys(fileName: string): string[] {
   const base = fileName.trim().toLowerCase();
   const dot = base.lastIndexOf(".");
-  return dot > 0 ? [base, base.slice(0, dot)] : [base];
+  const withoutExtension = dot > 0 ? base.slice(0, dot) : base;
+  return [base, withoutExtension, foldSeparators(withoutExtension)];
+}
+
+/** What a row answers to when the sheet named no file: the person's own name, folded the same way
+ *  a file name is, so `홍길동.jpg` and `Hong-Gildong.JPG` both find their person. */
+function nameKeys(name: string): string[] {
+  return [name.trim().toLowerCase(), foldSeparators(name)];
 }
 
 export interface VipPhotoAttachResult {
@@ -278,18 +316,48 @@ export function attachVipPhotos(rows: ParsedVipRow[], files: File[]): VipPhotoAt
   });
 
   const used = new Set<File>();
-  const next = rows.map(row => {
-    const issues = row.issues.filter(i => i !== "photo-not-found" && i !== "photo-used-twice");
-    if (!row.photoFile) return { ...row, photo: undefined, issues };
+  const photo: (File | undefined)[] = rows.map(() => undefined);
+  const extra: VipImportIssue[][] = rows.map(() => []);
 
+  /*
+   * TWO PASSES, AND WHAT THE SHEET SAID GOES FIRST.
+   *
+   * An explicit file name is an instruction; a name match is a convention. In one pass the
+   * convention would win whenever its row came first — row 2 called 김하나 would take `하나.jpg`
+   * and row 9, which asked for `하나.jpg` by name, would be told its file was never picked. So
+   * every named file is handed out before any name is tried.
+   */
+  rows.forEach((row, i) => {
+    if (!row.photoFile) return;
     const match = photoKeys(row.photoFile).map(k => byKey.get(k)).find(Boolean);
-    if (!match) return { ...row, photo: undefined, issues: [...issues, "photo-not-found" as const] };
+    if (!match) { extra[i] = ["photo-not-found"]; return; }
     // ONE FACE IS NOT TWO PEOPLE. The first row keeps the image; the rest keep their names and
     // import with no face, which is a state the registry already knows how to show.
-    if (used.has(match)) return { ...row, photo: undefined, issues: [...issues, "photo-used-twice" as const] };
+    if (used.has(match)) { extra[i] = ["photo-used-twice"]; return; }
     used.add(match);
-    return { ...row, photo: match, issues };
+    photo[i] = match;
   });
+
+  /* NO COLUMN, NO PROBLEM: the person's own name is tried against the picked images, which is all
+     the operator has to do in most of the products this was modelled on — name the photos after
+     the people. Nothing is said when it finds nothing: a list where half the people have no
+     photograph is the normal state of this registry, and a note on every such row would bury the
+     rows that DID ask for a file and missed it. */
+  rows.forEach((row, i) => {
+    if (row.photoFile || !row.name) return;
+    const match = nameKeys(row.name).map(k => byKey.get(k)).find(Boolean);
+    if (!match) return;
+    if (used.has(match)) { extra[i] = ["photo-used-twice"]; return; }
+    used.add(match);
+    photo[i] = match;
+  });
+
+  const next = rows.map((row, i) => ({
+    ...row,
+    photo: photo[i],
+    // Recomputed from scratch, so a note left by an earlier pick cannot survive the file arriving.
+    issues: [...row.issues.filter(is => is !== "photo-not-found" && is !== "photo-used-twice"), ...extra[i]],
+  }));
 
   return { rows: next, unusedFiles: files.filter(f => !used.has(f)).map(f => f.name) };
 }
