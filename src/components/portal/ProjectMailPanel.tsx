@@ -17,6 +17,32 @@
  * So the panel moved to Settings, directly under the team default it overrides. Nothing about the
  * behaviour changed: the network override still decides the invite transport (InviteUserModal
  * reads it through isNetworkIsolated), and a project with no mail anywhere still says so.
+ *
+ * WHAT THE MAIL ITSELF IS (carried over with the move, written 2026-08-28). VCA does not host
+ * mailboxes: it hands messages to the customer's own mail server (Exchange / Zimbra / Postfix),
+ * which is what users read in their internal webmail. On an internet-separated network that is
+ * what makes an invite link workable at all, because the webmail and VCA both sit inside it, so
+ * the link resolves.
+ *
+ * Only two things send mail today, account invitations and password resets, and both go to the
+ * person they concern, so there is no recipient list to configure here. VIP-detection and daily
+ * report mail were discussed and deliberately left out of this version; when they arrive they need
+ * recipients and conditions, which is a separate screen rather than another field here.
+ *
+ * PROVISIONAL: the backend developer is still looking into how SMTP is actually configured on
+ * their side, so the field set below (host / port / from-address / TLS) is this screen's guess at
+ * the shape, not a settled contract. `mailDomain` is NOT provisional: accounts live on one domain
+ * and /request-access already refuses addresses outside it. Expect the SMTP fields to change (auth
+ * credentials, a connection test, a per-event sender) and keep them in one block so that change
+ * stays local.
+ *
+ * Settings inherit from the team and can be overridden per project. The inherited case is the
+ * normal one (one company, one mail server), and the override exists because network isolation
+ * (see isNetworkIsolated, set in NetworkStatus below) is resolved per PROJECT, not per team: one
+ * team really can hold an internet-isolated project routing through an internal server alongside
+ * an internet-reachable project that does not. Every deployment is on-premise (see
+ * getAuthConfig's doc comment), which is a separate axis from whether a given site can reach the
+ * internet, and this override is keyed on the second one.
  */
 
 import { useState } from "react";

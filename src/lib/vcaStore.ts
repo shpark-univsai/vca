@@ -277,6 +277,65 @@ export interface Camera {
 export type ServerType = "AI Camera" | "Normal Camera" | "Face Recognition" | "Image Store" | "Database";
 export type ServerStatus = "success" | "error";
 
+/**
+ * A KEY SOMEBODY'S INTEGRATION SIGNS ITS CALLS WITH.
+ *
+ * The API tab of the Server screen was four endpoint lines and a sentence admitting that issuing
+ * and revoking keys did not exist. Every comparable console is the other way round: Verkada's
+ * Organization Settings has a Verkada API tab whose whole content is the key list (+ New API Key,
+ * with a name, read-only or read/write, an expiry, shown once, ten per organization, org admins
+ * only) and the endpoint reference lives on a separate documentation site. A console's job with an
+ * API is the credential, not the reference.
+ *
+ * WHAT THIS RECORD DOES NOT HOLD IS THE KEY. `prefix` is the leading characters, which is what a
+ * list can show to tell two keys apart; the secret exists once, in the dialog that issued it. A
+ * console that could show a key again would be a console worth stealing.
+ *
+ * `expiresAt` is a date or null, and null means no end date rather than unanswered — the dialog
+ * makes the reader pick, so absence here is a choice somebody made.
+ */
+export interface ApiKey {
+  id: string;
+  projectId: string;
+  name: string;
+  scope: ApiKeyScope;
+  /** The visible leading characters. The rest is never stored anywhere in the front end. */
+  prefix: string;
+  createdAt: string;
+  createdBy: string;
+  /** A date (YYYY-MM-DD), or null for a key with no end date. */
+  expiresAt: string | null;
+  /** Set when somebody revokes it. A revoked key stays on the list: the record of who could call
+   *  what, and until when, is the reason an audit reads this screen at all. */
+  revokedAt?: string;
+}
+
+export type ApiKeyScope = "read" | "readwrite";
+
+/** Ten per project, the same ceiling Verkada puts on an organization. */
+export const API_KEY_LIMIT = 10;
+
+export type ApiKeyRefusal = "over-limit" | "duplicate-name";
+
+/**
+ * Which of the three states a key is in, or null-safe "not yet known".
+ *
+ * `todayKey` is passed in for the reason isExpired takes it: a day computed during render differs
+ * between the server's HTML and the browser's first pass. Before the clock is read this answers
+ * "unknown" and the screen prints the date with no verdict, rather than a verdict that changes in
+ * front of the reader.
+ */
+export function apiKeyState(key: ApiKey, todayKey: string | null): "revoked" | "expired" | "active" | "unknown" {
+  if (key.revokedAt) return "revoked";
+  if (todayKey === null) return "unknown";
+  if (key.expiresAt && key.expiresAt.slice(0, 10) < todayKey) return "expired";
+  return "active";
+}
+
+export function apiKeysInProject(keys: ApiKey[], projectId: string): ApiKey[] {
+  return keys.filter(k => k.projectId === projectId);
+}
+
 export interface Server {
   id: string;
   projectId: string;
@@ -829,6 +888,7 @@ interface VcaStoreState {
   uploads: UploadedMedia[];
   portalUsers: PortalUser[];
   servers: Server[];
+  apiKeys: ApiKey[];
   auditLog: AuditEvent[];
   accessRequests: AccessRequest[];
   staffRoster: RosterEntry[];
@@ -971,6 +1031,19 @@ interface VcaStoreState {
   setProjectVipRetention: (projectId: string, days: number | null) => void;
   // null clears the override and falls back to the auto-detected value; true/false pins it.
   setNetworkIsolationOverride: (projectId: string, override: boolean | null) => void;
+  /**
+   * Make a key, or say why not.
+   *
+   * Returns the secret ONCE, to the caller that asked for it, and keeps only the prefix. Nothing
+   * in the store, in an audit line or in a toast carries the rest of it.
+   *
+   * HANDOFF: the real issue happens on the server, which is the only place that can mint a value
+   * its own validator will accept. This generates one so the screen can show the shape and the
+   * once-only reveal; the panel says so in as many words.
+   */
+  issueApiKey: (projectId: string, draft: { name: string; scope: ApiKeyScope; expiresAt: string | null }) =>
+    { refusal: ApiKeyRefusal } | { key: ApiKey; secret: string };
+  revokeApiKey: (keyId: string) => void;
   updateTeamMail: (teamId: string, updates: Pick<Team, "mailDomain" | "smtp">) => void;
   /**
    * `expiresAt` has three states here, not two, and the third is the point:
@@ -2611,6 +2684,21 @@ const STAFF_ROSTER: RosterEntry[] = [
   { employeeId: "EMP-3018", name: "Yusuf Karim", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "EFGH6543" },
 ];
 
+/**
+ * Seeded keys, so the screen has the three states in it: one working, one that ran out, one
+ * somebody pulled.
+ *
+ * Fixed dates and fixed prefixes, like every other seed here — a prefix generated at module load
+ * would differ between the server's render and the browser's, which is the mismatch that cost a
+ * morning on the VIP tab. The secrets these prefixes belong to never existed.
+ */
+const API_KEYS: ApiKey[] = [
+  { id: "apikey-1", projectId: "proj-sg", name: "Control room dashboard", scope: "read", prefix: "vca_a41c9f2b", createdAt: "2026-08-14T10:22:00+08:00", createdBy: "Grace Tan", expiresAt: "2027-08-14" },
+  { id: "apikey-2", projectId: "proj-sg", name: "Nightly export job", scope: "readwrite", prefix: "vca_7d0e5a13", createdAt: "2026-06-02T09:05:00+08:00", createdBy: "Marcus Lee", expiresAt: "2026-09-01" },
+  { id: "apikey-3", projectId: "proj-sg", name: "Integrator trial", scope: "read", prefix: "vca_11b8c6d4", createdAt: "2026-05-20T15:40:00+08:00", createdBy: "Grace Tan", expiresAt: null, revokedAt: "2026-07-01T14:03:00+08:00" },
+  { id: "apikey-4", projectId: "proj-riverside", name: "Campus attendance sync", scope: "read", prefix: "vca_c93f0ae7", createdAt: "2026-07-11T08:15:00+08:00", createdBy: "Nadia Rahman", expiresAt: "2027-07-11" },
+];
+
 const SERVERS: Server[] = [
   { id: "srv-1", projectId: "proj-sg", name: "FR 2", ip: "192.168.0.36", port: 8021, type: "Face Recognition", status: "success" },
   { id: "srv-2", projectId: "proj-sg", name: "AI camera 1", ip: "192.168.0.36", port: 8012, type: "AI Camera", status: "success" },
@@ -3285,6 +3373,7 @@ let eventSeq = SEED_EVENTS.length;
 let portalUserSeq = PORTAL_USERS.length;
 let orgSeq = TEAMS.length;
 let serverSeq = SERVERS.length;
+let apiKeySeq = API_KEYS.length;
 let accessRequestSeq = ACCESS_REQUESTS.length;
 
 function auditAt(minutesAgo: number): string {
@@ -3754,6 +3843,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   events: SEED_EVENTS,
   portalUsers: PORTAL_USERS,
   servers: SERVERS,
+  apiKeys: API_KEYS,
   auditLog: AUDIT_LOG,
   accessRequests: ACCESS_REQUESTS,
   staffRoster: STAFF_ROSTER,
@@ -4352,6 +4442,59 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
+  issueApiKey: (projectId, draft) => {
+    const state = get();
+    const mine = apiKeysInProject(state.apiKeys, projectId);
+    // Live keys only. A revoked one is a record, not a key, and counting it would stop a site
+    // making its tenth after somebody tidied up.
+    if (mine.filter(k => !k.revokedAt).length >= API_KEY_LIMIT) return { refusal: "over-limit" };
+    // A name is how these are told apart in a list of ten — two "integration" rows and nobody
+    // knows which one the revoke button is about to take down.
+    const taken = mine.some(k => !k.revokedAt && k.name.trim().toLowerCase() === draft.name.trim().toLowerCase());
+    if (taken) return { refusal: "duplicate-name" };
+
+    /* 32 bytes of the browser's own randomness, hex, with a readable prefix. Math.random is not
+       used for this even in a mock: a value shaped like a credential teaches whoever copies this
+       code where the credential comes from. */
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    const secret = `vca_${Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")}`;
+    const key: ApiKey = {
+      id: `apikey-${++apiKeySeq}`,
+      projectId,
+      name: draft.name.trim(),
+      scope: draft.scope,
+      prefix: secret.slice(0, 12),
+      createdAt: new Date().toISOString(),
+      createdBy: SIGNED_IN_USER.name,
+      expiresAt: draft.expiresAt,
+    };
+    set(st => ({
+      apiKeys: [key, ...st.apiKeys],
+      auditLog: [clientAudit({
+        projectId,
+        // The prefix, never the secret. An audit log is read by more people than the dialog was.
+        message: `API key "${key.name}" issued (${key.prefix}…, ${draft.scope === "read" ? "read-only" : "read/write"}${draft.expiresAt ? `, expires ${draft.expiresAt}` : ", no expiry"})`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    }));
+    return { key, secret };
+  },
+  revokeApiKey: (keyId) =>
+    set(state => {
+      const key = state.apiKeys.find(k => k.id === keyId);
+      if (!key || key.revokedAt) return {};
+      return {
+        // Kept, with a date on it. Deleting the row would delete the answer to "what could that
+        // integration read last quarter", which is the question an audit brings here.
+        apiKeys: state.apiKeys.map(k => (k.id === keyId ? { ...k, revokedAt: new Date().toISOString() } : k)),
+        auditLog: [clientAudit({
+          projectId: key.projectId,
+          message: `API key "${key.name}" revoked (${key.prefix}…)`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   updateTeamMail: (teamId, updates) =>
     set(state => ({
       teams: state.teams.map(o => (o.id === teamId ? { ...o, ...updates } : o)),

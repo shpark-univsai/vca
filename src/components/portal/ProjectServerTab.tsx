@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CircleAlert, CircleCheck, CircleDashed, RotateCcw, ServerCrash, Unplug, Video } from "lucide-react";
 import { useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
+import ProjectApiPanel from "./ProjectApiPanel";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { TablePagination, SummaryStrip, CARD_BORDER, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, usePortalEditAccess, ConfirmModal, FieldError } from "./PortalShared";
+import { TablePagination, SummaryStrip, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, usePortalEditAccess, ConfirmModal, FieldError } from "./PortalShared";
 
 // Ordered as the deployed Add Server dialog orders them, so an operator who has used that one
 // finds each entry where their hand already goes. Its list opens with "All", which this one does
@@ -275,108 +276,9 @@ function ServerFormModal({
   );
 }
 
-const API_ENDPOINTS = [
-  { method: "GET", path: "/v1/cameras", desc: { en: "List cameras registered to this project.", ko: "이 프로젝트에 등록된 카메라 목록을 조회합니다." } },
-  { method: "GET", path: "/v1/persons", desc: { en: "List VIP registrations.", ko: "VIP 등록 목록을 조회합니다." } },
-  { method: "POST", path: "/v1/events", desc: { en: "Push a detection event from an edge server.", ko: "엣지 서버에서 탐지 이벤트를 전송합니다." } },
-  { method: "GET", path: "/v1/servers", desc: { en: "List infrastructure nodes and their health.", ko: "인프라 노드와 상태를 조회합니다." } },
-];
-
-const API_DOC_T = {
-  en: {
-    baseUrl: "API Base URL",
-    endpoints: "Endpoints",
-    baseUrlNote: "This installation's own address. There is no vendor-hosted API — the product is on-premise, so the base URL is whatever host this console is served from.",
-    noKeys: "API keys are not issued or revoked from Portal yet. Until they are, treat these endpoints as documentation rather than as something you can call today.",
-  },
-  ko: {
-    baseUrl: "API 기본 URL",
-    endpoints: "엔드포인트",
-    baseUrlNote: "이 설치본 자신의 주소입니다. 벤더가 호스팅하는 API는 없습니다 — 온프레미스 제품이라, 기본 URL은 이 콘솔이 서비스되는 호스트입니다.",
-    noKeys: "API 키 발급과 폐기는 아직 Portal에 없습니다. 생기기 전까지 이 엔드포인트들은 지금 호출할 수 있는 것이 아니라 문서로 보시면 됩니다.",
-  },
-} as const;
-
-function ApiDocumentation({ projectId }: { projectId: string }) {
-  const [lang] = usePortalLanguage();
-  const t = API_DOC_T[lang];
-  // After mount: window does not exist while this renders on the server, and a guessed host
-  // corrected a frame later is the hydration mismatch the rest of Portal avoids.
-  const [origin, setOrigin] = useState("");
-  useEffect(() => { queueMicrotask(() => setOrigin(window.location.origin)); }, []);
-  return (
-    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "20px" }}>
-      <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.baseUrl}</p>
-      {/*
-        The host this console is served from, not a vendor cloud.
-       
-        It printed https://api.univs.ai/portal/{id} — a URL on the supplier's own domain, on a
-        product that is on-premise only (decided 2026-09-02, no cloud hosting) and that on some
-        sites runs on a network with no route to the internet at all. An address the customer's
-        own installation cannot reach is not a base URL, it is a wrong answer.
-       
-        Read at render rather than baked in: this screen cannot know the deployment's hostname,
-        and the browser showing it is by definition sitting on one.
-      */}
-      <p style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", marginTop: "6px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "8px", padding: "8px 10px", overflowX: "auto" }}>
-        {origin}/api/portal/projects/{projectId}
-      </p>
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.baseUrlNote}</p>
-      <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "20px", marginBottom: "10px" }}>{t.endpoints}</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        {API_ENDPOINTS.map(ep => (
-          <div key={ep.path} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", backgroundColor: "var(--gray-50)" }}>
-            <span style={{
-              fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "6px", flexShrink: 0,
-              backgroundColor: ep.method === "GET" ? "var(--gray-200)" : "var(--success-100)",
-              color: ep.method === "GET" ? "var(--gray-900)" : "var(--success-400)",
-            }}>
-              {ep.method}
-            </span>
-            <span style={{ fontSize: "10px", fontFamily: "monospace", color: "var(--gray-900)" }}>{ep.path}</span>
-            <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{ep.desc[lang]}</span>
-          </div>
-        ))}
-      </div>
-      {/* Said plainly: there is no key issue/revoke anywhere in Portal, so a reader who takes
-          this list as an invitation to integrate finds out later and by failing. */}
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "14px" }}>{t.noKeys}</p>
-    </div>
-  );
-}
-
-/**
- * Outgoing mail. VCA does not host mailboxes — it hands messages to the customer's own mail server
- * (Exchange / Zimbra / Postfix), which is what users read in their internal webmail. On an
- * internet-separated network that is what makes an invite link workable at all: the webmail and VCA
- * both sit inside it, so the link resolves.
- *
- * Only two things send mail today — account invitations and password resets — and both go to the
- * person they concern, so there is no recipient list to configure here. VIP-detection and daily
- * report mail were discussed and deliberately left out of this version; when they arrive they need
- * recipients and conditions, which is a separate screen, not another field here.
- *
- * PROVISIONAL (2026-08-28): the backend developer is still looking into how SMTP is actually
- * configured on their side, so the field set below — host / port / from-address / TLS — is this
- * screen's guess at the shape, not a settled contract. `mailDomain` is NOT provisional: accounts
- * live on one domain and /request-access already refuses addresses outside it. Expect the SMTP
- * fields to change (auth credentials, a connection test, a per-event sender) and keep them in one
- * block so that change stays local.
- *
- * Settings inherit from the team and can be overridden per project. The inherited case is
- * the normal one (one company, one mail server), and the override exists because network
- * isolation (see isNetworkIsolated(), set below in NetworkStatus) is resolved per PROJECT, not
- * per team: one team really can hold an internet-isolated project routing through an internal
- * server alongside an internet-reachable project that does not. Every deployment is on-premise
- * (see getAuthConfig()'s doc comment) — that's a separate axis from whether a given site can
- * reach the internet, which is what this override is actually keyed on.
- */
-// Lucide — see PortalProjectDetailPage's note. Globe rather than Lucide's own Network for the one
-// below: the drawing it replaces was a globe with meridians, and what that card is about is whether
-// this site can reach the outside world, not the shape of its internal topology.
 const MAIN_T = {
   en: {
-    subTabInfra: "Infrastructure", subTabApi: "API Documentation",
+    subTabInfra: "Infrastructure", subTabApi: "API",
     confirmDeleteTitle: (name: string) => `Remove ${name}?`,
     confirmDeleteBody: "The server comes off this project. Any camera assigned to it is left unassigned — nothing stops processing that was not already stopped, but nobody is told where those cameras run next.",
     confirmDeleteCameras: (n: number) => (n === 1 ? "1 camera is assigned to it." : `${n} cameras are assigned to it.`),
@@ -435,7 +337,7 @@ const MAIN_T = {
     toastAdded: "Server added", toastUpdated: "Server updated", toastRemoved: "Server removed",
   },
   ko: {
-    subTabInfra: "인프라", subTabApi: "API 문서",
+    subTabInfra: "인프라", subTabApi: "API",
     confirmDeleteTitle: (name: string) => `${name}을(를) 삭제할까요?`,
     confirmDeleteBody: "이 프로젝트에서 서버가 빠집니다. 여기 배정돼 있던 카메라는 미배정 상태가 됩니다 — 이미 멈춰 있던 것 말고 새로 멈추는 건 없지만, 그 카메라들이 이제 어디서 도는지는 아무도 모릅니다.",
     confirmDeleteCameras: (n: number) => `배정된 카메라 ${n}대.`,
@@ -635,7 +537,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
         ))}
       </div>
 
-      {subTab === "api" ? <ApiDocumentation projectId={projectId} /> : (
+      {subTab === "api" ? <ProjectApiPanel projectId={projectId} /> : (
         <>
           {/*
             The two gaps and the ratio between the fleet and the servers running it, in the shared
