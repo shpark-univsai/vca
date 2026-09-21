@@ -13,6 +13,7 @@ import { useToast } from "../Toast";
 import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import CameraGroupsTab from "./CameraGroupsTab";
+import AccessPresetsTab from "./AccessPresetsTab";
 import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import RosterImportModal from "./RosterImportModal";
 import CameraScopePicker from "./CameraScopePicker";
@@ -53,6 +54,8 @@ const T = {
     // wrongly for: an invited account is already here, before anybody has signed in with it.
     peopleTabAccountsHint: "Accounts that can reach this project — including people who have been invited and have not signed in yet.",
     peopleTabRosterHint: "On the staff roster with no account yet. Issue a registration code and hand it over on paper — they sign up without mail.",
+    peopleTabPresets: "App presets",
+    peopleTabPresetsHint: "Editing one reaches every account following it.",
     peopleTabGroups: "Camera groups",
     peopleTabGroupsHint: "Named sets of cameras, handed out as one when granting camera access. Membership is edited on Input Sources.",
     colPlannedPermission: "Permission on signup",
@@ -431,6 +434,8 @@ const T = {
     peopleTabRoster: "명부 대기",
     peopleTabAccountsHint: "이 프로젝트에 닿을 수 있는 계정입니다 — 초대만 받고 아직 로그인하지 않은 사람도 포함합니다.",
     peopleTabRosterHint: "명부에 있고 아직 계정이 없는 사람입니다. 등록 코드를 발급해 종이로 건네면 메일 없이 가입합니다.",
+    peopleTabPresets: "앱 권한 프리셋",
+    peopleTabPresetsHint: "하나를 고치면 그것을 따르는 계정 전부에 닿습니다.",
     peopleTabGroups: "카메라 그룹",
     peopleTabGroupsHint: "이름 붙인 카메라 묶음입니다. 카메라 권한을 줄 때 한 덩어리로 줍니다. 어떤 카메라가 들어가는지는 입력 소스에서 정합니다.",
     colPlannedPermission: "가입 시 권한",
@@ -2912,7 +2917,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
    * questions. What the two halves needed to share was never one row list — it was one page, one
    * ladder of stages, one search and one set of counts, and they still do.
    */
-  const [peopleTab, setPeopleTab] = useState<"accounts" | "roster" | "groups">("accounts");
+  const [peopleTab, setPeopleTab] = useState<"accounts" | "roster" | "groups" | "presets">("accounts");
   const [search, setSearch] = useState("");
   // Name ascending to start: the only order that is stable and that a reader can predict before
   // they have looked. The sortable columns are the ones an administrator asks questions about —
@@ -2963,6 +2968,10 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
   // See UserProjectsModal on why the team itself is not editable from that dialog.
   const pageTeamId = projects.find(p => p.id === projectId)?.teamId;
   const teamProjects = projects.filter(p => p.teamId === pageTeamId);
+  /* The presets of this page's team — for the tab's count. In a memo because presetsForTeam
+     builds a new array every call, which is what makes a selector never settle. */
+  const allPresets = useVcaStore(st => st.accessPresets);
+  const pagePresets = useMemo(() => presetsForTeam(allPresets, pageTeamId ?? ""), [allPresets, pageTeamId]);
   const [editingProjectsFor, setEditingProjectsFor] = useState<PortalUser | null>(null);
   const currentProject = projects.find(p => p.id === projectId);
   /**
@@ -3139,7 +3148,12 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           /* Third, after the people: a group is what their access is handed out in, so it reads
              as the thing you set up once and then use on the two tabs to its left. */
           { id: "groups", label: t.peopleTabGroups, count: cameraGroupsInProject(cameraGroups, projectId).length, hint: t.peopleTabGroupsHint },
-        ] as { id: "accounts" | "roster" | "groups"; label: string; count: number; hint: string }[]).map(tab => {
+          /* Fourth, beside the groups: the two halves of one grant. A group answers "which
+             cameras", a preset answers "which screens", and the invite form asks both. It used to
+             live under 설정, where nobody handing out access goes looking (owner: 아 설정에
+             있었구나). */
+          { id: "presets", label: t.peopleTabPresets, count: pagePresets.length, hint: t.peopleTabPresetsHint },
+        ] as { id: "accounts" | "roster" | "groups" | "presets"; label: string; count: number; hint: string }[]).map(tab => {
           const active = peopleTab === tab.id;
           return (
             /* On the tab rather than a line under it. The tab name is a state ("On the roster"),
@@ -3168,7 +3182,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           the count strip, the search toolbar and the account/roster table all answer questions
           about accounts, and leaving them on screen under a table of groups would have the page
           showing two subjects at once with one set of filters over both. */}
-      {peopleTab === "groups" ? <CameraGroupsTab projectId={projectId} onGoToCameras={onGoToCameras} /> : (<>
+      {peopleTab === "presets" ? <AccessPresetsTab teamId={pageTeamId ?? ""} canEdit={manageAccess} />
+        : peopleTab === "groups" ? <CameraGroupsTab projectId={projectId} onGoToCameras={onGoToCameras} /> : (<>
       {!mailAvailable && <RecoveryModeNotice supportContact={authConfig.supportContact} />}
 
       {/* The strip drives the tab as well as the filter. Picking "on the roster" from the

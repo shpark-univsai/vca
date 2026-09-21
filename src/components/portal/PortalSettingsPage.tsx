@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ClipboardList, KeySquare, Mail, MapPin, Monitor, Pencil, Plus, Tag, Trash2, User } from "lucide-react";
+import { useState } from "react";
+import { ClipboardList, Mail, MapPin, Monitor, Pencil, Plus, Tag, Trash2, User } from "lucide-react";
 import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
-import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, presetsForTeam, accountsFollowingPreset, presetLabel, presetDescription, APP_ACTIONS, SIGNED_IN_USER, type AccessPreset, type AppAction, type SearchPurpose } from "@/lib/vcaStore";
+import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, usePortalEditAccess, useTypeLabel, AppGrantList, useGrantNames } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, usePortalEditAccess, useTypeLabel } from "./PortalShared";
 import { VipCategoryModal } from "./VipCategories";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -554,10 +554,11 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
     ...(myTeam ? [{ id: "mail", label: t.mailRailLabel, icon: <Mail size={15} strokeWidth={2.2} /> }] : []),
     ...(getComplianceConfig().vipCategories && myTeamId ? [{ id: "categories", label: t.categoryTitle, icon: <Tag size={15} strokeWidth={2.2} /> }] : []),
     ...(requirePurpose && myTeamId ? [{ id: "purposes", label: t.purposeTitle, icon: <ClipboardList size={15} strokeWidth={2.2} /> }] : []),
-    /* No compliance flag in front of this one. Presets are how app access is given at all, not an
-       optional regime some installations run — an installation with none of them can only hand out
-       custom grants one account at a time. */
-    ...(myTeamId ? [{ id: "presets", label: t.presetTitle, icon: <KeySquare size={15} strokeWidth={2.2} /> }] : []),
+    /* PRESETS ARE NOT HERE ANY MORE. They moved to 사용자 및 권한, beside the camera groups
+       (2026-09-21): a preset answers "which screens" and a group answers "which cameras", the
+       invite form asks both, and an owner handing out access does not come to Settings to find
+       them (owner: 아 설정에 있었구나). Moved rather than mirrored — two editors for living
+       inheritance would change other people's access from a stale screen. */
     { id: "display", label: t.displayTitle, icon: <Monitor size={15} strokeWidth={2.2} /> },
   ];
   /* Derived, not stored. The conditions above can stop holding while the page is open — a project
@@ -994,13 +995,6 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         </CardSection>
       )}
 
-      {active === "presets" && myTeamId && (
-        <CardSection heading={t.presetTitle} icon={<KeySquare size={15} strokeWidth={2.2} />}>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.55, marginBottom: "14px", maxWidth: "62ch" }}>{t.presetIntro}</p>
-          <AccessPresetList t={t} teamId={myTeamId} canEdit={maySetPolicy} />
-        </CardSection>
-      )}
-
       {active === "display" && (
       <CardSection heading={t.displayTitle} icon={<Monitor size={15} strokeWidth={2.2} />}>
         <PairGrid>
@@ -1266,212 +1260,6 @@ function SearchPurposeList({ t, teamId, purposes, canEdit }: {
       {purposes.some(sp => sp.archived) && (
         <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.purposeRetireNote}</p>
       )}
-    </div>
-  );
-}
-
-/**
- * The team's app-access presets: make one, edit one, retire one.
- *
- * WHY THE FOLLOWER COUNT IS NOT DECORATION. A preset here is living inheritance — editing it
- * changes everybody following it, which is the combination AWS avoids (managed policies cannot be
- * edited) and Genetec avoids (templates are copied, not followed). The store's own comment on
- * updateAccessPreset says doing it anyway is defensible only while the person editing can see who
- * they are about to change, and that if the preview ever comes off the screen the action is no
- * longer safe to offer. So it is rendered before the editor opens and again inside it, and it
- * names the accounts rather than only counting them — "12 accounts" is a number, "Marcus, Wei and
- * ten others" is a room.
- */
-function AccessPresetList({ t, teamId, canEdit }: {
-  t: (typeof T)["en"] | (typeof T)["ko"];
-  teamId: string;
-  canEdit: boolean;
-}) {
-  /* The three we ship are printed as product strings, a customer's own preset as they typed it.
-     See AccessPreset.builtinKey — the English console was showing 운영자 / 조사자 / 감독자. */
-  const [lang] = usePortalLanguage();
-  const { showToast } = useToast();
-  // Raw slices out of the selectors, filtering in memos — presetsForTeam and
-  // accountsFollowingPreset both build new arrays, and a selector that does that never settles.
-  const allPresets = useVcaStore(s => s.accessPresets);
-  const portalUsers = useVcaStore(s => s.portalUsers);
-  const addAccessPreset = useVcaStore(s => s.addAccessPreset);
-  const updateAccessPreset = useVcaStore(s => s.updateAccessPreset);
-  const archiveAccessPreset = useVcaStore(s => s.archiveAccessPreset);
-  const presets = useMemo(() => presetsForTeam(allPresets, teamId), [allPresets, teamId]);
-  const followersOf = useMemo(() => {
-    const map = new Map<string, string[]>();
-    presets.forEach(pr => map.set(pr.id, accountsFollowingPreset(portalUsers, pr.id).map(u => u.name)));
-    return map;
-  }, [presets, portalUsers]);
-
-  /** Which row is open, and for what. One at a time: two open editors of a living preset is two
-   *  people's worth of consequence on one screen with no way to tell them apart. */
-  const [editing, setEditing] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [retiring, setRetiring] = useState<string | null>(null);
-
-  const closeAll = () => { setEditing(null); setCreating(false); setRetiring(null); };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-      {presets.length === 0 && !creating && (
-        <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.presetEmpty}</p>
-      )}
-
-      {presets.map(pr => {
-        const names = followersOf.get(pr.id) ?? [];
-        if (editing === pr.id) {
-          return (
-            <PresetEditor key={pr.id} t={t} preset={pr} followers={names}
-              onCancel={closeAll}
-              onSave={patch => {
-                updateAccessPreset(pr.id, patch);
-                showToast({ variant: "success", title: t.presetSavedToast, desc: patch.label ?? pr.label });
-                closeAll();
-              }} />
-          );
-        }
-        return (
-          <div key={pr.id} style={{ padding: "12px", border: BORDER, borderRadius: "10px" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-              <span style={{ flex: 1, minWidth: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{presetLabel(pr, lang)}</span>
-              {canEdit && retiring !== pr.id && (
-                <>
-                  <button className="portal-btn-quiet" onClick={() => { closeAll(); setEditing(pr.id); }}
-                    style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                    {t.presetEdit}
-                  </button>
-                  <button className="portal-btn-quiet" onClick={() => { closeAll(); setRetiring(pr.id); }}
-                    style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                    {t.presetRetire}
-                  </button>
-                </>
-              )}
-            </div>
-            <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "3px" }}>{pr.description}</p>
-            <PresetGrantSummary preset={pr} />
-            {/* The count sits on the row, not only inside the editor. Somebody deciding whether to
-                open this at all is already deciding how many people to touch. */}
-            <p style={{ fontSize: "11px", color: names.length === 0 ? "var(--gray-400)" : "var(--gray-500)", marginTop: "6px" }}>
-              {names.length === 0 ? t.presetFollowersNone : `${t.presetFollowers(names.length)} — ${names.join(", ")}`}
-            </p>
-            {retiring === pr.id && (
-              <div style={{ marginTop: "10px", padding: "12px", borderRadius: "8px", backgroundColor: "var(--gray-50)" }}>
-                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.presetRetireAsk}</p>
-                {/* The consequence in this installation's numbers, not in general. */}
-                <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.55, marginTop: "4px" }}>{t.presetRetireBody(names.length)}</p>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "10px" }}>
-                  <button className="portal-btn-outline" onClick={closeAll}
-                    style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                    {t.presetCancel}
-                  </button>
-                  <button onClick={() => {
-                      archiveAccessPreset(pr.id);
-                      showToast({ variant: "warning", title: t.presetRetiredToast, desc: pr.label });
-                      closeAll();
-                    }}
-                    style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--danger-500)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                    {t.presetRetireConfirm}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {!canEdit ? (
-        // Said, not hidden — the same rule the purpose list follows.
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.presetOwnerOnly}</p>
-      ) : creating ? (
-        <PresetEditor t={t} preset={null} followers={[]}
-          onCancel={closeAll}
-          onSave={patch => {
-            addAccessPreset({
-              teamId,
-              label: patch.label ?? "",
-              description: patch.description ?? "",
-              actions: patch.actions ?? [],
-            });
-            showToast({ variant: "success", title: t.presetCreatedToast, desc: patch.label });
-            closeAll();
-          }} />
-      ) : (
-        <button className="portal-btn-outline" onClick={() => { closeAll(); setCreating(true); }}
-          style={{ height: CONTROL_HEIGHT, borderRadius: "10px", border: "1px dashed var(--gray-300)", backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-          + {t.presetNew}
-        </button>
-      )}
-    </div>
-  );
-}
-
-/** What a preset switches on, in one line, without offering to change it. */
-function PresetGrantSummary({ preset }: { preset: AccessPreset }) {
-  const names = useGrantNames();
-  // In APP_ACTIONS order, so two presets holding the same set read identically.
-  const parts = APP_ACTIONS.filter(a => preset.actions.includes(a)).map(a => names.action[a]);
-  return (
-    <p style={{ fontSize: "11px", color: "var(--gray-600)", lineHeight: 1.5, marginTop: "5px" }}>
-      {parts.join(" · ")}
-    </p>
-  );
-}
-
-/** The one form, for a new preset and an existing one. */
-function PresetEditor({ t, preset, followers, onSave, onCancel }: {
-  t: (typeof T)["en"] | (typeof T)["ko"];
-  preset: AccessPreset | null;
-  followers: string[];
-  onSave: (patch: Partial<Omit<AccessPreset, "id" | "teamId">>) => void;
-  onCancel: () => void;
-}) {
-  const [label, setLabel] = useState(preset?.label ?? "");
-  const [description, setDescription] = useState(preset?.description ?? "");
-  const [actions, setActions] = useState<AppAction[]>(preset?.actions ?? []);
-  const toggleAction = (a: AppAction) =>
-    setActions(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
-
-  /* At least one action, for the reason the invite form gives: a preset that grants nothing hands
-     the "app open, nothing in it" state to everybody who follows it at once, and the gate then
-     turns each of them away. */
-  const canSave = label.trim().length > 0 && description.trim().length > 0 && actions.length > 0;
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
-      <div>
-        <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.presetLabelField}</label>
-        <TextField value={label} onChange={setLabel} placeholder={t.presetLabelPlaceholder} autoFocus />
-      </div>
-      <div>
-        <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.presetDescField}</label>
-        <TextField value={description} onChange={setDescription} placeholder={t.presetDescPlaceholder} />
-      </div>
-      <div>
-        <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.presetGrantsField}</label>
-        <AppGrantList actions={actions} locked={false} onToggle={toggleAction} />
-      </div>
-      {/* Named again here, with the verb attached. The row above says who follows this; this says
-          what pressing Save does to them. */}
-      {followers.length > 0 && (
-        <p style={{ fontSize: "12px", color: "var(--warning-500)", fontWeight: 700, lineHeight: 1.5 }}>
-          {t.presetEditReach(followers.length)}
-        </p>
-      )}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
-        {!canSave && actions.length === 0 && label.trim() && description.trim() && (
-          <span style={{ flex: 1, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{t.presetNoScreens}</span>
-        )}
-        <button className="portal-btn-outline" onClick={onCancel}
-          style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-          {t.presetCancel}
-        </button>
-        <button className="portal-btn-primary" onClick={() => canSave && onSave({ label: label.trim(), description: description.trim(), actions })} disabled={!canSave}
-          style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-          {preset ? t.presetSave : t.presetCreate}
-        </button>
-      </div>
     </div>
   );
 }
