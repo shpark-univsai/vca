@@ -11,6 +11,10 @@ import {
   attachVipPhotos, buildVipImportRows, decodeSpreadsheetBytes, importableRows, isBlocking, looksLikeXlsx,
   parseDelimited, type ParsedVipRow, type VipImportIssue,
 } from "@/lib/vipImport";
+import {
+  entryToFile, isImageEntry, isSpreadsheetArchive, isTableEntry, looksLikeZip, readZipArchive,
+  type ZipProblem,
+} from "@/lib/zipArchive";
 
 /**
  * A spreadsheet of names, previewed before it is registered.
@@ -30,9 +34,20 @@ const T = {
   en: {
     title: "Import VIPs",
     subtitle: "One person per row. Nothing is replaced — every row is added to this project.",
-    dropHere: "Drop a CSV file here",
+    dropHere: "Drop a CSV or ZIP file here",
     orBrowse: "or choose a file",
-    formatNote: "CSV. In Excel: File → Save As → CSV UTF-8.",
+    formatNote: "CSV, or a ZIP holding one table and the photos. In Excel: File → Save As → CSV UTF-8.",
+    zipRead: (table: string, n: number) => `From the archive: ${table} · ${n} photo${n === 1 ? "" : "s"}`,
+    zipNoTableTitle: "No table in this ZIP",
+    zipNoTableBody: "The archive holds no .csv file. Zip the sheet together with the photos — folders inside are fine.",
+    zipManyTablesTitle: "Several tables in this ZIP",
+    zipManyTablesBody: (names: string) => `One sheet per archive, so it is clear which list is being imported. This one holds: ${names}`,
+    zipEncryptedTitle: "This ZIP is password-protected",
+    zipEncryptedBody: "Unlock it and zip it again without a password.",
+    zipUnsupportedTitle: "This ZIP uses a compression this reader does not know",
+    zipUnsupportedBody: "Zip it again with the normal method — on Windows, right-click → Send to → Compressed folder; on macOS, right-click → Compress.",
+    zipCorruptTitle: "This ZIP cannot be read",
+    zipCorruptBody: "The archive's own index does not parse, so the download may be incomplete. Try zipping the folder again.",
     columnsNote: "A name is all that is required. A memo column is read if the file has one, and a file of bare names with no header row works too.",
     photoHowNote: "A CSV cannot hold an image, so the images are picked here and matched by file name. Name each image after the person — hong-gildong.jpg — and picking the files is all it takes. Where a file is named something else, write that name in the sheet's Photo file name column.",
     noPhotoNote: "A row that ends up with no face is still registered, and no camera can match that person until one is enrolled.",
@@ -40,7 +55,7 @@ const T = {
     pickMorePhotos: "Choose more photos",
     photosNone: "No photos picked yet — they are matched to these rows by file name.",
     photosMatched: (n: number, total: number) => `${n} of ${total} rows have their photo`,
-    photosUnused: (names: string) => `Picked and unused: ${names}`,
+    photosUnused: (names: string) => `Unused photos: ${names}`,
     colPhoto: "Photo",
     downloadTemplate: "Download template",
     xlsxTitle: "That is an Excel file",
@@ -80,9 +95,20 @@ const T = {
   ko: {
     title: "VIP 가져오기",
     subtitle: "한 사람이 한 행입니다. 무엇도 대체하지 않고, 모든 행이 이 프로젝트에 추가됩니다.",
-    dropHere: "CSV 파일을 여기에 놓으세요",
+    dropHere: "CSV나 ZIP 파일을 여기에 놓으세요",
     orBrowse: "또는 파일 선택",
-    formatNote: "CSV 파일. 엑셀에서: 파일 → 다른 이름으로 저장 → CSV UTF-8.",
+    formatNote: "CSV 파일, 또는 표 하나와 사진들을 함께 압축한 ZIP. 엑셀에서: 파일 → 다른 이름으로 저장 → CSV UTF-8.",
+    zipRead: (table: string, n: number) => `압축 파일에서 읽은 것: ${table} · 사진 ${n}장`,
+    zipNoTableTitle: "ZIP 안에 표가 없습니다",
+    zipNoTableBody: "이 압축 파일에는 .csv 파일이 없습니다. 표와 사진을 같이 압축해 주세요 — 안에 폴더가 있어도 됩니다.",
+    zipManyTablesTitle: "ZIP 안에 표가 여러 개입니다",
+    zipManyTablesBody: (names: string) => `어느 명단을 가져오는지 분명해야 하므로 압축 파일 하나에 표는 하나입니다. 이 파일에는 이렇게 들어 있습니다: ${names}`,
+    zipEncryptedTitle: "암호가 걸린 ZIP입니다",
+    zipEncryptedBody: "암호를 풀고 다시 압축해 주세요.",
+    zipUnsupportedTitle: "이 ZIP의 압축 방식은 읽을 수 없습니다",
+    zipUnsupportedBody: "일반 방식으로 다시 압축해 주세요 — 윈도우는 오른쪽 클릭 → 압축(ZIP) 폴더, 맥은 오른쪽 클릭 → 압축.",
+    zipCorruptTitle: "ZIP을 읽을 수 없습니다",
+    zipCorruptBody: "압축 파일 안의 목록이 해석되지 않습니다 — 내려받기가 중간에 끊겼을 수 있습니다. 폴더를 다시 압축해 보세요.",
     columnsNote: "이름만 있으면 됩니다. 메모 열은 파일에 있으면 함께 읽고, 머리글 없이 이름만 적힌 파일도 됩니다.",
     photoHowNote: "CSV 안에는 이미지가 들어가지 않아서, 사진은 여기서 고르고 파일 이름으로 사람을 찾습니다. 파일 이름을 그 사람 이름으로 해 두면(홍길동.jpg) 고르기만 하면 붙습니다. 파일 이름이 이름과 다를 때만 표의 '사진 파일명' 열에 적으면 됩니다.",
     noPhotoNote: "사진이 붙지 않은 행도 등록은 되지만, 얼굴을 등록하기 전에는 어느 카메라도 그 사람을 찾지 못합니다.",
@@ -90,7 +116,7 @@ const T = {
     pickMorePhotos: "사진 더 고르기",
     photosNone: "고른 사진이 아직 없습니다 — 파일 이름으로 이 행들과 맞춰 붙입니다.",
     photosMatched: (n: number, total: number) => `${total}행 중 ${n}행에 사진이 붙었습니다`,
-    photosUnused: (names: string) => `고른 사진 중 쓰이지 않은 것: ${names}`,
+    photosUnused: (names: string) => `쓰이지 않은 사진: ${names}`,
     colPhoto: "사진",
     downloadTemplate: "서식 내려받기",
     xlsxTitle: "엑셀 파일입니다",
@@ -209,19 +235,70 @@ export default function VipImportModal({
    */
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<File[]>([]);
+  /** What an archive turned out to hold, so the reader can see the zip was understood — they
+   *  picked one file and got a sheet and a photo set they never selected by name. */
+  const [archiveNote, setArchiveNote] = useState<string | null>(null);
 
   const issueText = (issue: VipImportIssue) => t.issue[issue] ?? issue;
 
 
+  const zipProblemMessage = (problem: ZipProblem): FileError => {
+    switch (problem) {
+      case "encrypted": return { title: t.zipEncryptedTitle, body: t.zipEncryptedBody };
+      case "unsupported-compression": return { title: t.zipUnsupportedTitle, body: t.zipUnsupportedBody };
+      // ZIP64 means four gigabytes or 65,535 members. Reported as the same unreadable archive
+      // rather than a lesson in the format: nothing the reader can do differs.
+      default: return { title: t.zipCorruptTitle, body: t.zipCorruptBody };
+    }
+  };
+
   const readFile = async (file: File) => {
     setFileError(null);
     setParsed(null);
+    setArchiveNote(null);
     const buffer = await file.arrayBuffer();
-    if (looksLikeXlsx(file.name, new Uint8Array(buffer.slice(0, 2)))) {
+
+    /**
+     * AN ARCHIVE IS TRIED FIRST, and it has to be: .xlsx is a zip too, so the old xlsx check
+     * (which reads PK and says "that is an Excel file") would answer for every zip anybody drops.
+     * Read the members instead and let them say which it is — isSpreadsheetArchive looks for the
+     * parts only an OOXML package has, which is a truer test than the extension it used to trust.
+     */
+    let sheetBytes: ArrayBuffer = buffer;
+    if (looksLikeZip(new Uint8Array(buffer.slice(0, 4)))) {
+      const archive = await readZipArchive(buffer);
+      if ("problem" in archive) {
+        setFileError(zipProblemMessage(archive.problem));
+        return;
+      }
+      if (isSpreadsheetArchive(archive.entries)) {
+        setFileError({ title: t.xlsxTitle, body: t.xlsxBody });
+        return;
+      }
+      const tables = archive.entries.filter(isTableEntry);
+      if (tables.length === 0) {
+        setFileError({ title: t.zipNoTableTitle, body: t.zipNoTableBody });
+        return;
+      }
+      if (tables.length > 1) {
+        setFileError({ title: t.zipManyTablesTitle, body: t.zipManyTablesBody(tables.map(e => e.path).join(", ")) });
+        return;
+      }
+      const images = archive.entries.filter(isImageEntry);
+      // REPLACED, not added to: the archive is the whole delivery. Adding it to whatever was
+      // picked before would leave images from an abandoned attempt matching rows in this one.
+      setPhotos(images.map(entryToFile));
+      setArchiveNote(t.zipRead(tables[0].name, images.length));
+      // sliced, so the decoder gets the member's own bytes rather than a window onto the zip.
+      sheetBytes = tables[0].bytes.slice().buffer as ArrayBuffer;
+    } else if (looksLikeXlsx(file.name, new Uint8Array(buffer.slice(0, 2)))) {
       setFileError({ title: t.xlsxTitle, body: t.xlsxBody });
       return;
+    } else {
+      setPhotos([]);
     }
-    const table = parseDelimited(decodeSpreadsheetBytes(buffer));
+
+    const table = parseDelimited(decodeSpreadsheetBytes(sheetBytes));
     // Names are checked against this project's listings only, and released listings are left out:
     // the note this raises says "already on this project's list", and somebody released from it is
     // not on it. Scoped the way watchedPersonsInProject scopes, so the preview agrees with the
@@ -446,6 +523,12 @@ export default function VipImportModal({
                       {t.photosMatched(withPhotoCount, rows.length)}
                     </span>
                   )}
+                {/* What the archive turned out to hold. Said because nobody chose these files by
+                    name: one drop produced a sheet and a photo set, and the reader has no other
+                    way to check that the zip was read the way they packed it. */}
+                {archiveNote && (
+                  <span style={{ width: "100%", fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{archiveNote}</span>
+                )}
                   {/* Pictures the reader chose that no row asked for — a misspelt file name in the
                       sheet looks identical from the row's side, and this is the half that names the
                       file so the two can be compared. Four, then a count: a folder of two hundred
@@ -546,12 +629,12 @@ export default function VipImportModal({
                 <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.dropHere}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.orBrowse}</p>
               </div>
-              {/* Still .csv only, as the toolbar's input was. The parser underneath reads TSV as
-                  well — parseDelimited sniffs the delimiter — but the picker is not told so and
-                  neither is the format note above: the template is a CSV, and the one instruction
-                  that gets an Excel user out of trouble is which Save As option to pick. A dropped
-                  .tsv is still read; it simply is not advertised. */}
-              <input ref={inputRef} type="file" accept=".csv,text/csv"
+              {/* CSV or ZIP, and .tsv listed now that the archive made the list longer than one:
+                  the parser has always read tab-separated text (parseDelimited sniffs the
+                  delimiter) and the picker simply did not say so. The format note above still
+                  leads with CSV, because the template is a CSV and the one instruction that gets
+                  an Excel user out of trouble is which Save As option to pick. */}
+              <input ref={inputRef} type="file" accept=".csv,text/csv,.tsv,.zip,application/zip"
                 onChange={e => { onPick(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
 
               {fileError && (
