@@ -11,6 +11,7 @@ import { VipCategoryModal } from "./VipCategories";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "@/components/Toast";
+import ProjectMailPanel from "./ProjectMailPanel";
 import { PROJECT_TIME_ZONE } from "@/lib/time";
 
 /**
@@ -111,7 +112,8 @@ const T = {
     appNo: "Portal only",
     team: "Team",
     teamMailTitle: "Team mail",
-    teamMailIntro: "A project can override this in its Server tab.",
+    mailRailLabel: "Mail",
+    teamMailIntro: "Every project on this team uses these unless it sets its own below.",
     teamMailDomain: "Mail domain",
     teamMailDomainHint: "Accounts must have an address on this domain. Requests and invites to anything else are refused.",
     teamMailHost: "SMTP host",
@@ -238,7 +240,8 @@ const T = {
     appNo: "Portal만",
     team: "팀",
     teamMailTitle: "팀 메일",
-    teamMailIntro: "프로젝트의 서버 탭에서 덮어쓸 수 있습니다.",
+    mailRailLabel: "메일",
+    teamMailIntro: "이 팀의 프로젝트는 아래에서 따로 정하지 않는 한 이 설정을 씁니다.",
     teamMailDomain: "메일 도메인",
     teamMailDomainHint: "계정은 반드시 이 도메인의 주소여야 합니다. 그 외 주소로의 요청과 초대는 거부됩니다.",
     teamMailHost: "SMTP 호스트",
@@ -544,7 +547,9 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const sections = [
     { id: "account", label: t.accountTitle, icon: <User size={15} strokeWidth={2.2} /> },
     ...(project ? [{ id: "project", label: t.projectTitle, icon: <MapPin size={15} strokeWidth={2.2} /> }] : []),
-    ...(myTeam ? [{ id: "mail", label: t.teamMailTitle, icon: <Mail size={15} strokeWidth={2.2} /> }] : []),
+    /* "메일" rather than "팀 메일": the section holds the team default and, under it, this
+       project's own override and network state. */
+    ...(myTeam ? [{ id: "mail", label: t.mailRailLabel, icon: <Mail size={15} strokeWidth={2.2} /> }] : []),
     ...(getComplianceConfig().vipCategories && myTeamId ? [{ id: "categories", label: t.categoryTitle, icon: <Tag size={15} strokeWidth={2.2} /> }] : []),
     ...(requirePurpose && myTeamId ? [{ id: "purposes", label: t.purposeTitle, icon: <ClipboardList size={15} strokeWidth={2.2} /> }] : []),
     /* No compliance flag in front of this one. Presets are how app access is given at all, not an
@@ -907,6 +912,17 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           </div>
         </CardSection>
       )}
+
+      {/*
+        THE PROJECT'S OWN MAIL, UNDER THE DEFAULT IT OVERRIDES.
+
+        This was a tab of the Server & API screen, which filed "where do invitations leave from"
+        among the recording and analytics nodes. Milestone and Genetec both keep mail in system
+        settings and servers elsewhere, and the card above was already pointing at that other
+        screen for the override. One subject, one place. ProjectMailPanel.tsx carries the rest of
+        the reasoning; the panel itself is unchanged.
+      */}
+      {active === "mail" && project && <ProjectMailPanel projectId={project.id} />}
 
       {active === "categories" && myTeamId && (
         <CardSection heading={t.categoryTitle} icon={<Tag size={15} strokeWidth={2.2} />}>
