@@ -314,6 +314,7 @@ const T = {
     // field anybody can fail. Cameras is unmarked because it does not block — an unanswered scope
     // means every camera on the ticked projects, which is the row's own sentence.
     nameLabel: "Name *",
+    nameFromEmail: "Filled in from the address — edit it and it stays yours.",
     namePlaceholder: "Full name",
     emailLabel: "Email *",
     teamLabel: "Team",
@@ -619,6 +620,7 @@ const T = {
     // Invite modal
     modalTitle: "사용자 초대",
     nameLabel: "이름 *",
+    nameFromEmail: "이메일에서 채웠습니다 — 고치면 그대로 둡니다.",
     namePlaceholder: "전체 이름",
     emailLabel: "이메일 *",
     teamLabel: "팀",
@@ -941,7 +943,29 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const [issuedId, setIssuedId] = useState<string | null>(null);
   const [scoping, setScoping] = useState(false);
   const [name, setName] = useState("");
+  /** Once somebody types in the name field it is theirs, and the address stops suggesting. */
+  const [nameTouched, setNameTouched] = useState(false);
   const [email, setEmail] = useState("");
+  /**
+   * A name out of an address, or nothing.
+   *
+   * Only the shapes that really carry a name: `marcus.lee`, `marcus_lee`, `marcus-lee`. A local
+   * part with no separator ("ops", "control") is a mailbox rather than a person, and initials
+   * ("k.h.j") would come out as "K H J" — both suggest nothing instead of something wrong.
+   */
+  const nameFromEmail = (address: string): string => {
+    const local = address.split("@")[0]?.trim() ?? "";
+    const parts = local.split(/[._-]+/).filter(Boolean);
+    if (parts.length < 2 || parts.some(part => part.length < 2 || /\d/.test(part))) return "";
+    return parts.map(part => part[0].toUpperCase() + part.slice(1).toLowerCase()).join(" ");
+  };
+  const changeEmail = (next: string) => {
+    setEmail(next);
+    if (nameTouched) return;
+    const suggestion = nameFromEmail(next);
+    // Only ever writes a suggestion or clears one it wrote itself — never blanks a typed name.
+    setName(suggestion);
+  };
   // Defaults to the team that owns the project this page is scoped to — not teams[0]. With more
   // than one team in the installation those are different answers, and the first one silently
   // filed an invite under a team the admin was not even looking at.
@@ -1214,12 +1238,25 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
         </div>
         {/* The part that gives, between two that do not. minHeight 0 because a flex child will
             not shrink below its content without it, which is what made the whole sheet grow. */}
-        <div className="portal-invite-grid" style={{ overflowY: "auto", minHeight: 0 }}>
+        {/* A REAL FORM, so Enter sends it. Every reference dialog is one field and a button away
+            from done, and ours was six fields where the keyboard could not finish the job: the
+            primary button was the only way, and the pointer had to travel past a grant list to
+            reach it. `requestSubmit` runs the same validation path as the button — no second
+            code path that could diverge. */}
+        <form
+          onSubmit={e => { e.preventDefault(); if (canInvite) submit(); }}
+          className="portal-invite-grid" style={{ overflowY: "auto", minHeight: 0 }}>
           <div style={MODAL_BODY_WITH_SELECT}>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
-            <TextField value={name} onChange={setName} placeholder={t.namePlaceholder} />
-          </div>
+          {/*
+            THE ADDRESS FIRST (2026-09-21, after eight invite dialogs on Mobbin: Stripe,
+            Productboard, Dub, Whop, Emergent, Zapier, Wellfound, Tana — every one of them opens
+            with the email and nothing else).
+            
+            It is not just convention. On this installation the address decides whether the rest
+            of the form can be filled at all: accounts must be on the site's mail domain, and a
+            name typed before an address that gets refused is work thrown away. It is also the
+            one field nobody can guess for you — the name, this form can.
+          */}
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.emailLabel}</label>
             {/* THE PLACEHOLDER HAS TO BE AN ADDRESS THIS FORM WOULD ACCEPT. It was a fixed
@@ -1230,12 +1267,24 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                 with errDomain under it. Same mailDomain the validation reads, so the example and
                 the rule cannot drift apart. Left generic when no domain is configured — then
                 nothing is refused and there is no domain to suggest. */}
-            <TextField value={email} onChange={setEmail} placeholder={mailDomain ? `name@${mailDomain}` : "name@example.com"} type="email" />
+            <TextField value={email} onChange={changeEmail} placeholder={mailDomain ? `name@${mailDomain}` : "name@example.com"} type="email" />
             {/* Under the field, not on submit. The three ways this address can be wrong are all
                 knowable while it is being typed, and finding out after pressing Send is finding
                 out after an account was nearly created. */}
             {emailError && (
               <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.5, marginTop: "6px" }}>{emailError}</p>
+            )}
+          </div>
+          {/* FILLED IN FROM THE ADDRESS, AND STILL A FIELD. `marcus.lee@smartcity.gov.sg` becomes
+              "Marcus Lee" — a suggestion, not a value: the moment somebody edits the name it is
+              theirs and no later change to the address touches it (`nameTouched`). Addresses that
+              carry no name (`ops@`, `k.h.j@`) suggest nothing rather than something wrong, which
+              is the same rule the camera importer follows about guessing. */}
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
+            <TextField value={name} onChange={v => { setNameTouched(true); setName(v); }} placeholder={t.namePlaceholder} />
+            {!nameTouched && name !== "" && (
+              <p style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.nameFromEmail}</p>
             )}
           </div>
           <div>
@@ -1340,7 +1389,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               <p style={{ fontSize: "12px", color: "var(--gray-400)", textAlign: "center", lineHeight: 1.6, maxWidth: "26ch" }}>{t.grantsPortalOnly}</p>
             </div>
           )}
-        </div>
+        </form>
         <div style={{ padding: "16px 24px", borderTop: "1px solid var(--gray-200)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
           {/* The reason sits beside the button rather than leaving it dead and silent. Shown only
               once Invite has been pressed: nothing on this form goes red while somebody is still
