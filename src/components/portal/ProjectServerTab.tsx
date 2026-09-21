@@ -15,9 +15,43 @@ import { TablePagination, SummaryStrip, CARD_RADIUS, TextField, BORDER, TABLE_CO
 // not repeat: "All" is a filter, and no server is of type all.
 const SERVER_TYPES: ServerType[] = ["Face Recognition", "Normal Camera", "AI Camera", "Database", "Image Store"];
 
-// The three words a status column can say. The form no longer offers them — a server's status is
-// not something an administrator types in — so only the table reads this; kept a top-level dict
-// the same way SERVER_TYPES/API_ENDPOINTS are.
+/**
+ * Display-only names for the five types, keyed by the English identifier the data uses — the same
+ * arrangement ProjectLicenseTab makes for its feature names, so translating here never touches a
+ * lookup. `얼굴 인식` is the word that screen already uses for the same engine.
+ *
+ * WHY THESE WERE ENGLISH IN A KOREAN TABLE: the rule is that DATA is not translated, and these
+ * looked like data. They are not — they are our own five-item enum, the way a status or a priority
+ * is, and every one of those is translated. A row reading `배정된 카메라 35대 · Face Recognition`
+ * was the only place in Portal where one row held both languages.
+ *
+ * The two that name a camera (`AI Camera`, `Normal Camera`) are kept as they are, deliberately:
+ * they are what the deployed product calls those nodes, and renaming them to roles (analytics
+ * node, recording node) on this screen alone would leave the console and the product saying
+ * different words for the same machine. Worth raising with whoever owns the product's naming, not
+ * worth quietly diverging.
+ */
+const SERVER_TYPE_LABELS: Record<ServerType, { en: string; ko: string }> = {
+  "Face Recognition": { en: "Face Recognition", ko: "얼굴 인식" },
+  "Normal Camera": { en: "Normal Camera", ko: "일반 카메라" },
+  "AI Camera": { en: "AI Camera", ko: "AI 카메라" },
+  "Database": { en: "Database", ko: "데이터베이스" },
+  "Image Store": { en: "Image Store", ko: "이미지 저장소" },
+};
+
+/** The types that take camera streams. The other two hold pictures and rows. */
+const CAMERA_PROCESSING_TYPES: ServerType[] = ["Face Recognition", "AI Camera", "Normal Camera"];
+
+/*
+ * The three words a status column can say. The form no longer offers them (a server's status is not
+ * something an administrator types in), so only the table reads this.
+ *
+ * The header above these used to read 상태(기록) — "status, as recorded" — to admit that nothing on
+ * this screen tested anything. The parenthesis is gone because the badge already says it: an
+ * un-answered server reads 확인 안 됨, and the 연결 실패 card spells out that somebody recorded the
+ * failure rather than the console observing it. No comparable product puts a caveat in a column
+ * heading, and the caveat was true of all three words, not of the column.
+ */
 const STATUS_T = {
   en: { success: "Responding", error: "No answer", unchecked: "Not checked" },
   ko: { success: "정상 응답", error: "응답 없음", unchecked: "확인 안 됨" },
@@ -238,7 +272,7 @@ function ServerFormModal({
                    blank and read as broken. It cannot be chosen back into — picking it is picking
                    nothing, and the button below already says what nothing costs. */
                 ...(form.type === "" ? [{ value: "", label: t.serverTypePrompt }] : []),
-                ...SERVER_TYPES.map(ty => ({ value: ty, label: ty })),
+                ...SERVER_TYPES.map(ty => ({ value: ty, label: SERVER_TYPE_LABELS[ty][lang] })),
               ]} />
           </div>
           {/* Address and port on one row: between them they are one thing, and nothing reaches a
@@ -278,7 +312,7 @@ function ServerFormModal({
 
 const MAIN_T = {
   en: {
-    subTabInfra: "Infrastructure", subTabApi: "API",
+    subTabInfra: "Servers", subTabApi: "API",
     confirmDeleteTitle: (name: string) => `Remove ${name}?`,
     confirmDeleteBody: "The server comes off this project. Any camera assigned to it is left unassigned — nothing stops processing that was not already stopped, but nobody is told where those cameras run next.",
     confirmDeleteCameras: (n: number) => (n === 1 ? "1 camera is assigned to it." : `${n} cameras are assigned to it.`),
@@ -287,9 +321,9 @@ const MAIN_T = {
     gapNoCameras: "no cameras assigned",
     gapNoCamerasWhy: "The server is registered and reachable but has nothing pointed at it — capacity that is paid for and idle.",
     gapServerUnit: "servers",
-    gapPerServers: (n: number) => `across ${n} server${n === 1 ? "" : "s"}`,
+    gapPerServers: (n: number) => `across ${n} processing server${n === 1 ? "" : "s"}`,
     gapLoadLabel: "cameras to process",
-    gapLoadWhy: "Cameras in this project divided across its servers. The figure an argument for another server is made from — it is not a limit, and nothing here enforces one.",
+    gapLoadWhy: "Cameras in this project divided across the servers that take streams. An image store and a database are left out of the denominator: no camera is ever assigned to one. This is the figure an argument for another server is made from, not a limit, and nothing here enforces one. What each server is actually carrying is not on this screen until the server reports it.",
     gapShowOnly: "Show only these",
     gapClear: "Show everything again",
     searchPlaceholder: "Search by server name or IP address",
@@ -306,7 +340,7 @@ const MAIN_T = {
        being read as a live result. Dropping the parenthetical for consistency with the other
        tables would make this column claim the observation those tables have and this one does
        not. */
-    colStatus: "Status (recorded)", colName: "Server Name", colIp: "Server IP", colType: "Server Type",
+    colStatus: "Status", colName: "Server Name", colIp: "Server IP", colType: "Server Type",
     /* THE FIFTH COLUMN IS THE CAMERA COUNT, NOT 사양 (owner's ask, 2026-09-18: 사양 칸이 전부
        비어 있다). Measured in the browser before touching it: all six rows of proj-sg printed
        "—", because `specification` is undefined on all eight seeded servers and nothing writes
@@ -337,7 +371,7 @@ const MAIN_T = {
     toastAdded: "Server added", toastUpdated: "Server updated", toastRemoved: "Server removed",
   },
   ko: {
-    subTabInfra: "인프라", subTabApi: "API",
+    subTabInfra: "서버", subTabApi: "API",
     confirmDeleteTitle: (name: string) => `${name}을(를) 삭제할까요?`,
     confirmDeleteBody: "이 프로젝트에서 서버가 빠집니다. 여기 배정돼 있던 카메라는 미배정 상태가 됩니다 — 이미 멈춰 있던 것 말고 새로 멈추는 건 없지만, 그 카메라들이 이제 어디서 도는지는 아무도 모릅니다.",
     confirmDeleteCameras: (n: number) => `배정된 카메라 ${n}대.`,
@@ -346,16 +380,16 @@ const MAIN_T = {
     gapNoCameras: "카메라 미할당",
     gapNoCamerasWhy: "등록되어 있고 연결도 되지만 아무것도 붙어 있지 않습니다. 비용은 나가고 놀고 있는 용량입니다.",
     gapServerUnit: "대",
-    gapPerServers: (n: number) => `/ 서버 ${n}대`,
+    gapPerServers: (n: number) => `/ 처리 서버 ${n}대`,
     gapLoadLabel: "처리할 카메라",
-    gapLoadWhy: "이 프로젝트의 카메라를 서버 수로 나눈 값입니다. 서버 증설을 설득할 때 쓰는 숫자이고, 한계치가 아니며 여기서 강제하지도 않습니다.",
+    gapLoadWhy: "이 프로젝트의 카메라를 스트림을 받는 서버 수로 나눈 값입니다. 이미지 저장소와 데이터베이스는 카메라가 배정되지 않으므로 분모에서 빠집니다. 서버 증설을 설득할 때 쓰는 숫자이고, 한계치가 아니며 여기서 강제하지도 않습니다. 서버별 실제 부하는 서버가 알려주기 전까지 이 화면에 없습니다.",
     gapShowOnly: "이 항목만 보기",
     gapClear: "전체 다시 보기",
     searchPlaceholder: "서버 이름 또는 IP 주소로 검색",
     allTypes: "전체 유형", reset: "초기화", addServer: "서버 추가",
     emptyNoServers: "이 프로젝트에 아직 설정된 서버가 없습니다.",
     emptyNoMatch: "필터와 일치하는 서버가 없습니다.",
-    colStatus: "상태(기록)", colName: "서버 이름", colIp: "서버 IP", colType: "서버 유형",
+    colStatus: "상태", colName: "서버 이름", colIp: "서버 IP", colType: "서버 유형",
     colCameras: "배정된 카메라",
     cameraCount: (n: number) => `${n}대`,
     camerasNone: "아무 카메라도 없음",
@@ -424,6 +458,16 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   }
   const erroredServers = projectServers.filter(sv => sv.status === "error");
   const unusedServers = projectServers.filter(sv => !camerasPerServer.has(sv.id));
+  /**
+   * THE SERVERS THAT ACTUALLY TAKE STREAMS.
+   *
+   * The ratio card divided the fleet by every server on the project, which on this site meant
+   * dividing 62 cameras by six — two of them an image store and a database, machines no camera is
+   * ever assigned to. An average whose denominator counts a database is not an average of
+   * anything. Three, here, and the figure moves from ~10 per server to ~21, which is the number
+   * somebody would take to a meeting.
+   */
+  const processingServers = projectServers.filter(sv => CAMERA_PROCESSING_TYPES.includes(sv.type));
   const gapServers = {
     error: new Set(erroredServers.map(sv => sv.id)),
     noCameras: new Set(unusedServers.map(sv => sv.id)),
@@ -448,7 +492,9 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
         // Padded so 10.20.4.9 sorts after 10.20.4.17 rather than before it — a plain string compare
         // orders addresses by digit, which is the wrong answer for every list of IPs.
         case "ip": return server.ip.split(".").map(part => part.padStart(3, "0")).join(".");
-        case "type": return server.type;
+        // The label, not the identifier: a Korean reader sorting this column would otherwise get
+        // English alphabetical order, which looks like no order at all.
+        case "type": return SERVER_TYPE_LABELS[server.type][lang];
       }
     },
   );
@@ -566,7 +612,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               key: "load",
               icon: <Video size={14} strokeWidth={2.4} />,
               figure: projectCameras.length,
-              unit: t.gapPerServers(projectServers.length),
+              unit: t.gapPerServers(processingServers.length),
               label: t.gapLoadLabel,
               explanation: t.gapLoadWhy,
             },
@@ -577,7 +623,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
             <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
             <FilterSelect value={typeFilter} onChange={v => setTypeFilter(v as typeof typeFilter)}
-              options={[{ value: "ALL", label: t.allTypes }, ...SERVER_TYPES.map(ty => ({ value: ty, label: ty }))]} />
+              options={[{ value: "ALL", label: t.allTypes }, ...SERVER_TYPES.map(ty => ({ value: ty, label: SERVER_TYPE_LABELS[ty][lang] }))]} />
             {/* The only control on this row without a mark of its own — the select had its chevron
                 and Add Server its plus, so Reset read as a word somebody had left there. lucide
                 rather than a hand-drawn path, at the 1.4 stroke every Portal icon now uses. */}
@@ -636,9 +682,19 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                   <div style={{ display: "flex", alignItems: "center" }}>
                     <StatusBadge state={statusState} label={statusLabel} />
                   </div>
-                  <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{server.name}</span>
+                  {/* THE SPEC, BACK ON SCREEN. Its own column became 배정된 카메라 on 2026-09-18
+                      because it was empty on every seeded row, which left a field the add form
+                      still asks for with nowhere to be read — type it, save, and it is only
+                      visible by reopening the form. A second line under the name costs no column
+                      and appears only where somebody recorded one. */}
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{server.name}</p>
+                    {server.specification && (
+                      <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{server.specification}</p>
+                    )}
+                  </div>
                   <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace" }}>{server.port ? `${server.ip}:${server.port}` : server.ip}</span>
-                  <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{server.type}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{SERVER_TYPE_LABELS[server.type][lang]}</span>
                   {/* gray-600 like the address and the type beside it, not the gray-400 the spec
                       column used: that was the weight for a value nobody had recorded, and this
                       one is as much a fact about the row as the other two. Zero goes the other
