@@ -323,10 +323,16 @@ const T = {
     accessLabel: "Where they sign in",
     permissionLabel: "Portal role",
     projectsLabel: "Projects *",
+    sectionWho: "Who",
+    sectionWhere: "Where",
     scopeLabel: "Cameras",
     scopeNoProject: "Tick a project to see how many cameras that is.",
     scopeNoCameras: "No cameras are registered on the ticked projects yet.",
-    scopeStartsAll: (n: number) => `Every camera on these projects — ${n} today, and any added later. The next step can narrow that.`,
+    scopeStartsAll: (n: number) => `Every camera on these projects — ${n} today, and any added later.`,
+    scopeGroupHint: "Pick a group and they see only that, plus whatever joins the group later.",
+    scopeGroupsNone: "No camera groups on these projects yet. They are made on the Camera groups tab.",
+    scopePickedGroups: (n: number) => `${n} camera${n === 1 ? "" : "s"} through the picked groups. Individual cameras are added after the invite.`,
+    scopeGroupCount: (n: number) => `${n}`,
     scopeHeldAll: (n: number) => `Every camera on their projects — ${n} today, and any added later.`,
     scopeHeldSome: (n: number, total: number) => `${n} of ${total} cameras.`,
     scopePick: "Choose cameras",
@@ -631,10 +637,16 @@ const T = {
     accessLabel: "어디로 로그인하나",
     permissionLabel: "Portal 역할",
     projectsLabel: "프로젝트 *",
+    sectionWho: "누구를",
+    sectionWhere: "어디에",
     scopeLabel: "카메라 범위",
     scopeNoProject: "프로젝트를 고르면 몇 대인지 나옵니다.",
     scopeNoCameras: "고른 프로젝트에 등록된 카메라가 아직 없습니다.",
-    scopeStartsAll: (n: number) => `이 프로젝트의 카메라 전부 — 지금 ${n}대, 나중에 추가되는 것도 포함합니다. 좁히는 것은 다음 단계에서 합니다.`,
+    scopeStartsAll: (n: number) => `이 프로젝트의 카메라 전부 — 지금 ${n}대, 나중에 추가되는 것도 포함합니다.`,
+    scopeGroupHint: "그룹을 고르면 그 그룹만 봅니다. 나중에 그 그룹에 들어오는 카메라도 함께 봅니다.",
+    scopeGroupsNone: "이 프로젝트에 카메라 그룹이 아직 없습니다. 카메라 그룹 탭에서 만듭니다.",
+    scopePickedGroups: (n: number) => `고른 그룹으로 ${n}대. 카메라를 한 대씩 더 주는 것은 초대 뒤에 합니다.`,
+    scopeGroupCount: (n: number) => `${n}`,
     scopeHeldAll: (n: number) => `담당 프로젝트의 카메라 전부 — 지금 ${n}대, 나중에 추가되는 것도 포함합니다.`,
     scopeHeldSome: (n: number, total: number) => `${total}대 중 ${n}대.`,
     scopePick: "카메라 고르기",
@@ -730,7 +742,13 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, t }: 
   return (
     <>
       <div>
-        <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.grantLabel}</label>
+        {/* THE COLUMN'S TITLE, IN THE STYLE THE OTHER TWO USE. It was a 12px field label like the
+            nine above it, which made the right half look like a tenth field rather than the
+            second question. Promoted rather than topped with new copy: a head reading "what they
+            may do" above a list already labelled 할 수 있는 일 is the same words twice. Both
+            callers get it — the edit modal's column starts here too, and the pair reading the
+            same in both places is this component's whole reason to exist. */}
+        <label style={{ ...SECTION_HEAD, display: "block", marginBottom: "10px" }}>{t.grantLabel}</label>
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
           {/* Custom is the LAST ITEM OF THE SAME LIST rather than a separate switch — it is one
               more way of answering "how are this person's grants decided", and a toggle beside the
@@ -739,7 +757,9 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, t }: 
             { id: "custom", label: t.grantCustom, desc: t.grantCustomDesc }].map(opt => {
             const picked = choice === opt.id;
             return (
-              <button key={opt.id} onClick={() => onChoice(opt.id)}
+              /* type="button": this list renders inside the invite <form>, where a button with
+                 no type submits — pressing a preset created the account. */
+              <button key={opt.id} type="button" onClick={() => onChoice(opt.id)}
                 style={{
                   width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
                   padding: "10px 12px", borderRadius: "10px", cursor: "pointer",
@@ -937,6 +957,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const addPortalUser = useVcaStore(s => s.addPortalUser);
   const issueInviteToken = useVcaStore(s => s.issueInviteToken);
   const allCameras = useVcaStore(s => s.cameras);
+  const allGroups = useVcaStore(s => s.cameraGroups);
   const [lang] = usePortalLanguage();
   const t = T[lang];
   /** The account this form just made, or null while it is still a form. Holding it here rather
@@ -1035,6 +1056,10 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const shownActions = isCustom ? customActions : (shown?.appActions ?? []);
   const [permission, setPermission] = useState<PortalPermission>("admin");
   const [projectIds, setProjectIds] = useState<string[]>(defaultProjectId ? [defaultProjectId] : []);
+  /** Camera groups the invite hands over. Empty means every camera — see the note on draftGroups. */
+  const [scopeGroupIds, setScopeGroupIds] = useState<string[]>([]);
+  const toggleScopeGroup = (id: string) =>
+    setScopeGroupIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   const toggleProject = (id: string) =>
     setProjectIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
@@ -1056,6 +1081,29 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const selectedProjects = teamProjects.filter(p => projectIds.includes(p.id));
   /** What the ticked projects hold today — the number the scope row says out loud. */
   const draftScopable = scopableCameras(allCameras, projectIds);
+  /*
+   * CAMERAS ARE GRANTED BY GROUP AT INVITE TIME, AND ONLY BY GROUP.
+   *
+   * The owner's constraint (2026-09-21): 실제 현장에서는 연결된 카메라 대수가 1000대이상일 수
+   * 있어서. That settles a question the references disagree on. Eagle Eye Networks is the one
+   * product that puts the camera list inside the add-user dialog — drag and drop, or "Add All" —
+   * and a list of a thousand rows is not a thing anybody drags. Verkada, Milestone and Rhombus all
+   * hand out cameras by site, role or group and never one at a time on this screen, which is the
+   * shape that survives the scale.
+   *
+   * NOTHING PICKED IS NOT AN UNANSWERED QUESTION, it is the answer "every camera on the ticked
+   * projects" — the same rule the data model already states on scopedCameraIds, where absent-and-
+   * absent is the only "everything". So there is no All/Some switch to set and no fifth way to
+   * fail: an empty pick sends the account through with the whole register, exactly as it did
+   * before this control existed, and every chip pressed narrows it. An empty ARRAY would mean
+   * "narrowed to nothing", which is why submit omits the field rather than sending [].
+   *
+   * Derived, not filtered into state: unticking a project must drop its groups, and a useEffect
+   * doing that would fight the render it is triggered by.
+   */
+  const draftGroups = allGroups.filter(g => projectIds.includes(g.projectId));
+  const pickedGroups = draftGroups.filter(g => scopeGroupIds.includes(g.id));
+  const pickedGroupCameras = new Set(pickedGroups.flatMap(g => g.cameraIds));
   const hasIsolated = selectedProjects.some(isNetworkIsolated);
   const hasReachable = selectedProjects.some(p => !isNetworkIsolated(p));
   // Only when a site constrains the address. The all-connected case had a line of its own
@@ -1110,6 +1158,12 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
     const id = addPortalUser({
       name: name.trim(), email: email.trim(), teamId, projectIds,
       permission: resolved.permission, appAccess: resolved.appAccess, status: "invited",
+      // The groups picked above, and the field is OMITTED when none were: an empty array is the
+      // answer "narrowed to nothing" (scopedCameraIds), which would sign the account into an app
+      // with no cameras at all. Groups only — a thousand-camera site is not granted one row at a
+      // time, see the note on draftGroups. Not sent for a Portal-only account either: it has no
+      // app to watch cameras in, and a scope on it would come back the day the app door opens.
+      ...(resolved.appAccess && pickedGroups.length > 0 ? { cameraGroupIds: pickedGroups.map(g => g.id) } : {}),
       ...grants,
       ...(resolved.appAccess ? { grantMode: (chosen ? "preset" : "custom") as GrantMode, presetId: chosen?.id } : {}),
     });
@@ -1157,9 +1211,19 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.scopeLabel}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "2px" }}>
-                  {created.cameraIds === undefined
-                    ? t.scopeHeldAll(scopable.length)
-                    : t.scopeHeldSome(created.cameraIds.length, scopable.length)}
+                  {/* READ THROUGH THE RESOLVER, NOT OFF `cameraIds`. The invite can now hand over
+                      camera GROUPS, which leaves cameraIds undefined on an account that is
+                      narrowed — this line used to test that one field and would have told the
+                      reader "every camera on their projects" about somebody who got one group.
+                      scopedCameraIds is the one place that resolves both fields (its own doc says
+                      so), and it resolves groups through their current membership, so the number
+                      here is the number the account actually sees. */}
+                  {(() => {
+                    const ids = scopedCameraIds(created, allGroups);
+                    return ids === null
+                      ? t.scopeHeldAll(scopable.length)
+                      : t.scopeHeldSome([...ids].filter(id => scopable.some(c => c.id === id)).length, scopable.length);
+                  })()}
                 </p>
               </div>
               <button onClick={() => setScoping(true)}
@@ -1251,6 +1315,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           onSubmit={e => { e.preventDefault(); if (canInvite) submit(); }}
           className="portal-invite-grid" style={{ overflowY: "auto", minHeight: 0 }}>
           <div style={MODAL_BODY_WITH_SELECT}>
+          <SectionHead>{t.sectionWho}</SectionHead>
           {/*
             THE ADDRESS FIRST (2026-09-21, after eight invite dialogs on Mobbin: Stripe,
             Productboard, Dub, Whop, Emergent, Zapier, Wellfound, Tana — every one of them opens
@@ -1301,11 +1366,23 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                 the field says it is ANSWERED instead of looking optional. */}
             <p style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.teamPrefilled}</p>
           </div>
+          {/* THE SECOND QUESTION STARTS HERE: the three fields above are the person, everything
+              below is how far they reach — which door, which project, which cameras inside it.
+              The rule is on the head rather than between the fields so the group is one object. */}
+          <SectionHead divided>{t.sectionWhere}</SectionHead>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.accessLabel}</label>
+            {/* type="button" ON EVERY CONTROL INSIDE THE FORM. A <button> in a form is a SUBMIT
+                button unless it says otherwise, and this dialog became a real <form> so Enter
+                would send it (c0f5747). Measured after that change: filling the address and
+                pressing a preset MAILED THE INVITE on the spot — the click submitted the form,
+                the account was created and the dialog jumped to "계정이 만들어졌습니다". Every
+                picker in here needs the attribute, and a new one added without it does the same
+                thing silently, because the form only submits when the invite happens to be
+                valid. */}
             <div style={{ display: "flex", gap: "8px" }}>
               {(["both", "appOnly", "portalOnly"] as AccessMode[]).map(mode => (
-                <button key={mode} onClick={() => setAccessMode(mode)}
+                <button key={mode} type="button" onClick={() => setAccessMode(mode)}
                   style={{
                     flex: 1, padding: "10px 8px", borderRadius: "10px", cursor: "pointer",
                     border: accessMode === mode ? "1px solid var(--gray-900)" : BORDER,
@@ -1338,7 +1415,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               {teamProjects.map(p => {
                 const active = projectIds.includes(p.id);
                 return (
-                  <button key={p.id} onClick={() => toggleProject(p.id)}
+                  <button key={p.id} type="button" onClick={() => toggleProject(p.id)}
                     style={{
                       padding: "6px 10px", borderRadius: "8px", cursor: "pointer",
                       border: active ? "1px solid var(--gray-900)" : BORDER,
@@ -1377,8 +1454,49 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>
                 {projectIds.length === 0 ? t.scopeNoProject
                   : draftScopable.length === 0 ? t.scopeNoCameras
+                  : pickedGroups.length > 0 ? t.scopePickedGroups(pickedGroupCameras.size)
                   : t.scopeStartsAll(draftScopable.length)}
               </p>
+              {/* THE GROUPS, AS CHIPS, IN THE ONE COLUMN THAT HAS THE ROOM. Same control as the
+                  project chips two fields up, and deliberately so: the pair reads as one chain
+                  narrowing from the site inwards — which project, then which cameras inside it.
+                  Only rendered once the ticked projects hold cameras, so the empty-register case
+                  keeps its single sentence instead of gaining a second empty state. */}
+              {draftScopable.length > 0 && (
+                draftGroups.length === 0 ? (
+                  <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "8px" }}>{t.scopeGroupsNone}</p>
+                ) : (
+                  <>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "10px" }}>
+                      {draftGroups.map(g => {
+                        const on = scopeGroupIds.includes(g.id);
+                        return (
+                          <button key={g.id} type="button" onClick={() => toggleScopeGroup(g.id)}
+                            style={{
+                              display: "flex", alignItems: "center", gap: "6px",
+                              padding: "6px 10px", borderRadius: "8px", cursor: "pointer",
+                              border: on ? "1px solid var(--gray-900)" : BORDER,
+                              backgroundColor: on ? "var(--gray-100)" : "white",
+                              color: on ? "var(--gray-900)" : "var(--gray-600)",
+                              fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+                            }}>
+                            {g.label}
+                            {/* The size, because two groups can carry the same name's worth of
+                                weight and a very different number of cameras. */}
+                            <span style={{ fontSize: "10px", fontWeight: 600, color: on ? "var(--gray-500)" : "var(--gray-400)" }}>
+                              {t.scopeGroupCount(g.cameraIds.length)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* WHY A GROUP AND NOT A LIST OF CAMERAS, said once, under the control it is
+                        about. The growth is the whole difference between the two and it cannot be
+                        seen by looking at the chips. */}
+                    <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "8px" }}>{t.scopeGroupHint}</p>
+                  </>
+                )
+              )}
             </div>
           )}
           </div>
@@ -1731,6 +1849,40 @@ const MODAL_BODY: React.CSSProperties = {
 const MODAL_BODY_WITH_SELECT: React.CSSProperties = {
   padding: "20px", display: "flex", flexDirection: "column", gap: "16px",
 };
+
+/**
+ * A COLUMN TITLE, so the two halves of the invite dialog read as two questions.
+ *
+ * The owner's doubt (2026-09-21): 초대팝업 UI 레이아웃을 조금 바꾸고싶은데, 아니면 이 단계를
+ * 쪼개야하나싶기도하고. The answer from the references is: do not split it into steps, title the
+ * parts. Everything that splits an invite into numbered steps does it because the permission
+ * surface is enormous — HubSpot's permission tree, Docusign's profile + security + permission
+ * profile + groups, Navan's per-user role table. Ours is six checkboxes and one select, and the
+ * cost of a wizard is exactly what Verkada pays: after the invite, an administrator must re-open
+ * "Manage Roles" to find out which sites somebody actually got.
+ *
+ * What was missing was not fewer fields, it was the grouping. The dialog was one flat form with a
+ * rule down the middle, so the address and the camera scope looked equally weighty. Customer.io's
+ * add-user page is the reference that titles its parts (User details / Account level permissions /
+ * Workspace level permissions), and Eagle Eye — the one VMS that keeps everything in one dialog —
+ * tabs them for the same reason.
+ *
+ * TWO WORDS, NOT A SENTENCE. The head sits directly above a labelled field, so anything longer is
+ * read twice. The third head is the grant column's own first label, promoted to this style rather
+ * than a new line of copy above it (see GrantPicker).
+ */
+const SECTION_HEAD: React.CSSProperties = {
+  fontSize: "11px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase",
+  color: "var(--gray-400)",
+};
+
+function SectionHead({ children, divided }: { children: React.ReactNode; divided?: boolean }) {
+  return (
+    <p style={{ ...SECTION_HEAD, ...(divided ? { borderTop: "1px solid var(--gray-200)", paddingTop: "16px" } : {}) }}>
+      {children}
+    </p>
+  );
+}
 
 /**
  * The four console roles, with the sentence that explains each. One definition, used by the row

@@ -2163,7 +2163,9 @@ function GrantRow({ label, desc, on, locked, onToggle }: {
   label: string; desc: string; on: boolean; locked: boolean; onToggle: () => void;
 }) {
   return (
-    <button onClick={locked ? undefined : onToggle} disabled={locked} aria-pressed={on}
+    /* type="button": a grant row renders inside the invite <form>, and a button with no type
+       submits it — a tick on "인물 검색" would have mailed the invite. */
+    <button type="button" onClick={locked ? undefined : onToggle} disabled={locked} aria-pressed={on}
       style={{
         width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
         padding: "9px 10px", borderRadius: "8px", border: "none", fontFamily: "inherit",
