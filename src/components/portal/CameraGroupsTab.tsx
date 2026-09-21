@@ -57,6 +57,8 @@ const T = {
     membersSavedToast: "Group cameras saved",
     andMore: (n: number) => `and ${n} more`,
     noZone: "No zone",
+    zonePick: "select all", zoneClear: "clear",
+    zonePicked: (n: number) => n === 0 ? "none in the group" : `${n} in the group`,
     renameTitle: (label: string) => `Rename ${label}`,
     renameBody: "The name is what an administrator picks from when granting camera access, so it should read the way somebody says it out loud.",
     renameField: "Group name",
@@ -92,13 +94,16 @@ const T = {
     membersSavedToast: "그룹의 카메라를 저장했습니다",
     andMore: (n: number) => `외 ${n}대`,
     noZone: "구역 미지정",
+    zonePick: "전체 선택", zoneClear: "해제",
+    zonePicked: (n: number) => n === 0 ? "그룹에 없음" : `그룹에 ${n}대`,
     renameTitle: (label: string) => `${label} 이름 바꾸기`,
     renameBody: "이 이름이 카메라 권한을 줄 때 고르는 이름입니다. 사람들이 입으로 부르는 말로 두는 게 좋습니다.",
     renameField: "그룹 이름",
     renameSave: "이름 바꾸기",
     renameDuplicate: "이 프로젝트에 같은 이름의 그룹이 이미 있습니다.",
     renamedToast: "그룹 이름을 바꿨습니다",
-    removeTitle: (label: string) => `${label}을(를) 삭제할까요?`,
+    /* 을(를) 없이 — 조사 두 개를 괄호로 내보이는 문장은 제품이 이름을 모른다는 뜻입니다. */
+    removeTitle: (label: string) => `「${label}」 삭제할까요?`,
     removeBody: "이 그룹을 가진 계정은 그 카메라들을 잃습니다 — 다른 그룹이나 개별 카메라로 덮이는 경우는 제외입니다. 카메라 자체는 그대로 있습니다.",
     removeWithHolders: (n: number) => `지금 ${n}개 계정이 갖고 있습니다.`,
     removeConfirm: "그룹 삭제",
@@ -151,6 +156,19 @@ function MemberEditor({ group, cameras, t, onSave, onClose }: {
   const toggle = (id: string) => setPicked(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const dirty = [...picked].sort().join() !== [...group.cameraIds].sort().join();
 
+  /* ZONES START CLOSED ON A BIG REGISTER — the same rule and the same threshold as the scope
+     picker (owner: 실제 현장에서는 연결된 카메라 대수가 1000대이상일 수 있어서). A thousand rows
+     inside a 42vh box is a list nobody scrolls; a zone is what somebody ticks. Below a screenful
+     the list is already the answer, so closing it would only add clicks. */
+  const zonesStartOpen = cameras.length <= 40;
+  const [openZones, setOpenZones] = useState<string[]>(() => zonesStartOpen ? cameras.map(c => c.zone?.trim() || "") : []);
+  const toggleZoneOpen = (zone: string) =>
+    setOpenZones(prev => prev.includes(zone) ? prev.filter(z => z !== zone) : [...prev, zone]);
+  const toggleZoneAll = (ids: string[]) => {
+    const allOn = ids.every(id => picked.includes(id));
+    setPicked(prev => allOn ? prev.filter(id => !ids.includes(id)) : [...new Set([...prev, ...ids])]);
+  };
+
   return (
     <ConfirmModal
       title={t.membersTitle(group.label)}
@@ -174,10 +192,33 @@ function MemberEditor({ group, cameras, t, onSave, onClose }: {
             <p style={{ fontSize: "12px", color: "var(--gray-400)", padding: "10px", lineHeight: 1.5 }}>{t.membersNone}</p>
           ) : zones.map(([zone, list]) => (
             <div key={zone || "__none"} style={{ marginBottom: "8px" }}>
-              <p style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)", padding: "0 0 4px 2px" }}>
-                {zone || t.noZone} · {list.length}
-              </p>
-              {list.map(c => {
+              {/* The name opens the zone; the words beside it tick the whole zone. On a big site
+                  those are the two things somebody does here, and one header doing both would
+                  make ticking a zone cost opening it first. A search opens what it found. */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 0 4px 2px" }}>
+                <button type="button" onClick={() => toggleZoneOpen(zone)}
+                  style={{ display: "flex", alignItems: "center", gap: "5px", border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
+                  <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true"
+                    style={{ transform: (needle !== "" || openZones.includes(zone)) ? "rotate(90deg)" : "none", transition: "transform 120ms", flexShrink: 0 }}>
+                    <path d="M3 1.5L7 5l-4 3.5" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)" }}>
+                    {zone || t.noZone} · {list.length}
+                  </span>
+                </button>
+                <button type="button" onClick={() => toggleZoneAll(list.map(c => c.id))}
+                  style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>
+                  {list.every(c => picked.includes(c.id)) ? t.zoneClear : t.zonePick}
+                </button>
+                {/* A closed zone says how much of it is in the group, or you would open it to find
+                    out whether you had already ticked it. */}
+                {!(needle !== "" || openZones.includes(zone)) && (
+                  <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>
+                    {t.zonePicked(list.filter(c => picked.includes(c.id)).length)}
+                  </span>
+                )}
+              </div>
+              {(needle !== "" || openZones.includes(zone)) && list.map(c => {
                 const on = picked.includes(c.id);
                 return (
                   <button key={c.id} onClick={() => toggle(c.id)}

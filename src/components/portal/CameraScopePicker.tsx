@@ -5,7 +5,7 @@ import { useVcaStore, hasPosition, type Camera, type PortalUser } from "@/lib/vc
 import { usePortalLanguage } from "@/lib/i18n";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "@/components/Toast";
-import { BORDER, CONTROL_HEIGHT } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, TextField } from "./PortalShared";
 
 /**
  * Which cameras an account may watch.
@@ -58,6 +58,28 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
   const [pickedGroups, setPickedGroups] = useState<string[]>(user.cameraGroupIds ?? []);
   const [picked, setPicked] = useState<string[]>(user.cameraIds ?? (narrowed ? [] : cameras.map(c => c.id)));
 
+  /*
+   * A THOUSAND CAMERAS IS THE REAL SITE, NOT THE SEED (owner, 2026-09-21: 실제 현장에서는 연결된
+   * 카메라 대수가 1000대이상일 수 있어서). Measured on the seeded register — 62 cameras in 18
+   * zones — this dialog rendered 95 buttons and 437 nodes in one 792px scroll box WITH NO SEARCH
+   * FIELD AT ALL. At a thousand that is ~1,060 buttons and ~4,600 nodes, and the part that breaks
+   * first is not the browser: there is no way to find a camera you know the name of.
+   *
+   * So two things, and neither is virtualisation: a search box, and zones that start CLOSED once
+   * the register is big enough that reading it top to bottom is not how anybody would use it.
+   * Closed zones are still granted whole from their header, which is how a big site is actually
+   * scoped — by the north gate, not by camera 700.
+   */
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+  /* The threshold is a screenful. 40 rows is about what this box shows without scrolling past the
+     footer, so below it the list IS the answer and closing it would only add clicks. Above it the
+     list is a haystack. One rule for both states rather than a second mode to learn. */
+  const zonesStartOpen = cameras.length <= 40;
+  const [openZones, setOpenZones] = useState<string[]>(() => zonesStartOpen ? cameras.map(c => c.zone?.trim() || "") : []);
+  const toggleZoneOpen = (zone: string) =>
+    setOpenZones(prev => prev.includes(zone) ? prev.filter(z => z !== zone) : [...prev, zone]);
+
   /** Cameras a picked group already brings — shown as included rather than offered again. */
   const coveredByGroup = useMemo(() => {
     const ids = new Set<string>();
@@ -84,6 +106,22 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
     return [...map.entries()].sort((a, b) => (a[0] === "" ? 1 : b[0] === "" ? -1 : a[0].localeCompare(b[0])));
   }, [cameras]);
 
+  /* What the search leaves. Name AND code, because an operator knows one or the other and the
+     register prints both. A zone whose own name matches keeps all of its cameras — "north gate"
+     is how somebody searches for the whole zone. Empty query: everything, untouched. */
+  const shownZones = useMemo(() => {
+    if (!needle) return zoneGroups;
+    return zoneGroups
+      .map(([zone, group]) => {
+        if (zone.toLowerCase().includes(needle)) return [zone, group] as [string, Camera[]];
+        return [zone, group.filter(c =>
+          c.name.toLowerCase().includes(needle) || (c.code ?? "").toLowerCase().includes(needle),
+        )] as [string, Camera[]];
+      })
+      .filter(([, group]) => group.length > 0);
+  }, [zoneGroups, needle]);
+  const shownCount = useMemo(() => shownZones.reduce((n, [, g]) => n + g.length, 0), [shownZones]);
+
   const toggleGroupPick = (id: string) =>
     setPickedGroups(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
@@ -96,6 +134,22 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
   /* Zero is refused, for the reason the invite form refuses zero screens: it saves an account that
      signs in, opens a screen it was granted, and finds nothing on it — a product that looks broken
      to the person it was made for. Suspending somebody is how you stop them, and it says so. */
+  /*
+   * "EVERYTHING, TICKED" IS THE ONE ANSWER THAT LIES LATER.
+   *
+   * An account nobody has narrowed opens this dialog with every camera pre-ticked, so switching to
+   * 직접 고르기 and pressing save writes today's whole register as an explicit list — which looks
+   * identical to "all cameras" on the day it is saved and excludes every camera installed after
+   * it. The invite form states the same rule where it decides NOT to send a camera list.
+   *
+   * It is not forbidden, because "all but two" is a real scope and this is how somebody builds it.
+   * It is SAID, at the moment it would be saved, with the way out named: the first option.
+   *
+   * Found by the zones-closed change (2026-09-21): with the zones open, at least the ticks were on
+   * screen. Closed, the reader saw eighteen zone headers reading "5대 고름" and no reason to think
+   * anything was frozen.
+   */
+  const wouldFreezeAll = mode === "some" && cameras.length > 0 && resolvedCount === cameras.length;
   const canSave = mode === "all" || resolvedCount > 0;
   const sameIds = (a: string[] | undefined, b: string[]) =>
     a !== undefined && [...a].sort().join() === [...b].sort().join();
@@ -183,25 +237,60 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
           </div>
 
           <div style={{ borderTop: "1px solid var(--gray-200)", paddingTop: "12px", opacity: mode === "all" ? 0.5 : 1 }}>
-            <p style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)", paddingBottom: "6px" }}>
-              {t.camerasHeading}
-            </p>
-            {zoneGroups.map(([zone, group]) => {
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "10px", paddingBottom: "6px" }}>
+              <p style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)" }}>
+                {t.camerasHeading}
+              </p>
+              {/* The count of what the search left, not of the register — the register's total is
+                  already in the sentence at the top and repeating it here would say nothing. */}
+              {needle !== "" && (
+                <span style={{ fontSize: "10.5px", color: "var(--gray-400)" }}>{t.searchHits(shownCount)}</span>
+              )}
+            </div>
+            {/* THE FIELD THAT WAS MISSING. Disabled under "all" like everything else in this
+                block: searching a list you are not choosing from is a control that does nothing. */}
+            <div style={{ paddingBottom: "10px" }}>
+              <TextField value={query} onChange={setQuery} placeholder={t.searchPlaceholder} disabled={mode === "all"} />
+            </div>
+            {shownZones.length === 0 && (
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, padding: "2px 0 6px" }}>{t.searchNone}</p>
+            )}
+            {shownZones.map(([zone, group]) => {
               const allOn = group.every(c => picked.includes(c.id));
+              /* A search opens what it finds: closing a zone that matched would hide the only
+                 reason it is on screen. Otherwise the reader's own toggle decides. */
+              const open = needle !== "" || openZones.includes(zone);
               return (
                 <div key={zone || "__none"} style={{ marginBottom: "10px" }}>
-                  <button
-                    onClick={mode === "some" ? () => toggleGroup(group.map(c => c.id)) : undefined}
-                    disabled={mode === "all"}
-                    style={{ display: "flex", alignItems: "center", gap: "6px", border: "none", background: "none", padding: "0 0 4px", cursor: mode === "some" ? "pointer" : "default", fontFamily: "inherit" }}>
-                    <span style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)" }}>
-                      {zone || t.noZone} · {group.length}
-                    </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingBottom: "4px" }}>
+                    {/* TWO CONTROLS, TWO JOBS. The name opens the zone, the words beside it grant
+                        it whole — a big site is scoped by the zone, and making the header do only
+                        one of those would force a reader to open 18 zones to grant three. */}
+                    <button type="button" onClick={() => toggleZoneOpen(zone)}
+                      style={{ display: "flex", alignItems: "center", gap: "5px", border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
+                      <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true"
+                        style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 120ms", flexShrink: 0 }}>
+                        <path d="M3 1.5L7 5l-4 3.5" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)" }}>
+                        {zone || t.noZone} · {group.length}
+                      </span>
+                    </button>
                     {mode === "some" && (
-                      <span style={{ fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>{allOn ? t.clearGroup : t.pickGroup}</span>
+                      <button type="button" onClick={() => toggleGroup(group.map(c => c.id))}
+                        style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>
+                        {allOn ? t.clearGroup : t.pickGroup}
+                      </button>
                     )}
-                  </button>
-                  {group.map(c => {
+                    {/* A closed zone still has to say what it is holding, or the reader has to open
+                        it to find out whether it is already granted. */}
+                    {!open && mode === "some" && (
+                      <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>
+                        {t.zonePicked(group.filter(c => picked.includes(c.id) || coveredByGroup.has(c.id)).length)}
+                      </span>
+                    )}
+                  </div>
+                  {open && group.map(c => {
                     const byGroup = coveredByGroup.has(c.id);
                     const on = mode === "all" || byGroup || picked.includes(c.id);
                     return (
@@ -237,7 +326,9 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
         <div style={{ padding: "16px 20px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
           {/* The dead button says why, in the two sentences that are actually different: nothing
               has moved, or this would leave them with no camera at all. */}
-          {!(canSave && dirty) ? (
+          {wouldFreezeAll ? (
+            <span style={{ flex: 1, fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.45 }}>{t.freezeWarning}</span>
+          ) : !(canSave && dirty) ? (
             <span style={{ flex: 1, fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>
               {!canSave ? t.refuseEmpty : t.unchanged}
             </span>
@@ -282,6 +373,11 @@ const T = {
     noCoords: "no coordinates",
     pickGroup: "select all",
     clearGroup: "clear",
+    searchPlaceholder: "Search by name or code",
+    searchHits: (n: number) => `${n} found`,
+    searchNone: "No camera on these projects matches that.",
+    freezeWarning: "Every camera is ticked. Saved like this the list is frozen, and cameras added later are left out — pick the first option to include them.",
+    zonePicked: (n: number) => n === 0 ? "none picked" : `${n} picked`,
     refuseEmpty: "Pick at least one camera — an account with none opens a screen with nothing on it",
     unchanged: "Nothing changed yet.",
     cancel: "Cancel",
@@ -308,6 +404,11 @@ const T = {
     noCoords: "좌표 없음",
     pickGroup: "전체 선택",
     clearGroup: "해제",
+    searchPlaceholder: "이름이나 코드로 검색",
+    searchHits: (n: number) => `${n}대`,
+    searchNone: "그 조건에 맞는 카메라가 없습니다.",
+    freezeWarning: "전부 체크돼 있습니다. 이대로 저장하면 목록이 굳어서 나중에 추가되는 카메라는 빠집니다 — 함께 주려면 위의 첫 번째를 고르세요.",
+    zonePicked: (n: number) => n === 0 ? "고른 것 없음" : `${n}대 고름`,
     refuseEmpty: "카메라를 하나 이상 골라주세요 — 하나도 없으면 화면을 열어도 아무것도 없습니다",
     unchanged: "아직 바뀐 것이 없습니다.",
     cancel: "취소",
