@@ -46,6 +46,17 @@ const T = {
     holders: (names: string) => names,
     createdBy: (who: string, when: string) => `${who} · ${when}`,
     rename: "Rename", remove: "Delete", cancel: "Cancel",
+    goToCameras: "Go to Input Sources",
+    editMembers: "Edit cameras",
+    membersTitle: (label: string) => `Cameras in ${label}`,
+    membersBody: "Ticked cameras are in the group. Everybody holding it sees whatever is ticked here, including what gets ticked later.",
+    membersSearch: "Search by name or code",
+    membersSave: "Save cameras",
+    membersNone: "No camera on this project matches that.",
+    membersCount: (n: number) => `${n} ticked`,
+    membersSavedToast: "Group cameras saved",
+    andMore: (n: number) => `and ${n} more`,
+    noZone: "No zone",
     renameTitle: (label: string) => `Rename ${label}`,
     renameBody: "The name is what an administrator picks from when granting camera access, so it should read the way somebody says it out loud.",
     renameField: "Group name",
@@ -70,6 +81,17 @@ const T = {
     holders: (names: string) => names,
     createdBy: (who: string, when: string) => `${who} · ${when}`,
     rename: "이름 바꾸기", remove: "삭제", cancel: "취소",
+    goToCameras: "입력 소스로 가기",
+    editMembers: "카메라 편집",
+    membersTitle: (label: string) => `${label}의 카메라`,
+    membersBody: "체크된 카메라가 그룹에 들어갑니다. 이 그룹을 가진 사람은 여기 체크된 것을 보게 되고, 나중에 체크되는 것도 함께 보게 됩니다.",
+    membersSearch: "이름이나 코드로 검색",
+    membersSave: "카메라 저장",
+    membersNone: "그 조건에 맞는 카메라가 이 프로젝트에 없습니다.",
+    membersCount: (n: number) => `${n}대 체크됨`,
+    membersSavedToast: "그룹의 카메라를 저장했습니다",
+    andMore: (n: number) => `외 ${n}대`,
+    noZone: "구역 미지정",
     renameTitle: (label: string) => `${label} 이름 바꾸기`,
     renameBody: "이 이름이 카메라 권한을 줄 때 고르는 이름입니다. 사람들이 입으로 부르는 말로 두는 게 좋습니다.",
     renameField: "그룹 이름",
@@ -89,7 +111,101 @@ type Dict = typeof T.en;
 
 const GRID = "1.4fr 0.6fr 1.6fr 1fr 36px";
 
-export default function CameraGroupsTab({ projectId }: { projectId: string }) {
+/**
+ * EDITING MEMBERSHIP IN PLACE, which is the one thing this screen does that Input Sources does
+ * better for CREATING a group.
+ *
+ * The creation path stays where the cameras are: tick rows in the table, click dots on the map,
+ * press a zone pill, then "Group these". That is the right place to ASSEMBLE a set, because it has
+ * the search, the filters, the map and the status of every camera.
+ *
+ * Fixing an existing group is a different errand: the reader is already here, holding the group,
+ * and usually changing one or two members. Sending them to another screen and back for that is
+ * the friction — so this is a list with a search box, the same zone-grouped shape the camera-scope
+ * picker uses, and it writes through setCameraGroupMembers (which audits how many accounts the
+ * change reaches, because it reaches them immediately).
+ */
+function MemberEditor({ group, cameras, t, onSave, onClose }: {
+  group: CameraGroup;
+  cameras: { id: string; name: string; code: string; zone?: string }[];
+  t: Dict;
+  onSave: (cameraIds: string[]) => void;
+  onClose: () => void;
+}) {
+  const [picked, setPicked] = useState<string[]>(group.cameraIds);
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+  const matching = needle === ""
+    ? cameras
+    : cameras.filter(c => c.name.toLowerCase().includes(needle) || c.code.toLowerCase().includes(needle));
+
+  /* Grouped by the register's own zone, like the scope picker: "the north gate ones" is how
+     somebody says it, and a camera with no zone keeps its own group rather than disappearing. */
+  const byZone = new Map<string, typeof cameras>();
+  matching.forEach(c => {
+    const key = c.zone?.trim() || "";
+    byZone.set(key, [...(byZone.get(key) ?? []), c]);
+  });
+  const zones = [...byZone.entries()].sort((a, b) => (a[0] === "" ? 1 : b[0] === "" ? -1 : a[0].localeCompare(b[0])));
+
+  const toggle = (id: string) => setPicked(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const dirty = [...picked].sort().join() !== [...group.cameraIds].sort().join();
+
+  return (
+    <ConfirmModal
+      title={t.membersTitle(group.label)}
+      body={t.membersBody}
+      confirmLabel={t.membersSave}
+      cancelLabel={t.cancel}
+      confirmDisabled={!dirty}
+      bodyScrolls
+      onConfirm={() => onSave(picked)}
+      onClose={onClose}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px", minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <TextField value={query} onChange={setQuery} placeholder={t.membersSearch} />
+          </div>
+          <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-500)", whiteSpace: "nowrap" }}>{t.membersCount(picked.length)}</span>
+        </div>
+        <div style={{ maxHeight: "42vh", overflowY: "auto", border: BORDER, borderRadius: "10px", padding: "8px" }}>
+          {zones.length === 0 ? (
+            <p style={{ fontSize: "12px", color: "var(--gray-400)", padding: "10px", lineHeight: 1.5 }}>{t.membersNone}</p>
+          ) : zones.map(([zone, list]) => (
+            <div key={zone || "__none"} style={{ marginBottom: "8px" }}>
+              <p style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)", padding: "0 0 4px 2px" }}>
+                {zone || t.noZone} · {list.length}
+              </p>
+              {list.map(c => {
+                const on = picked.includes(c.id);
+                return (
+                  <button key={c.id} onClick={() => toggle(c.id)}
+                    style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left", padding: "6px 6px", borderRadius: "8px", border: "none", backgroundColor: "transparent", cursor: "pointer", fontFamily: "inherit" }}>
+                    <span style={{ width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white" }}>
+                      {on && (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                          <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </span>
+                    <span style={{ minWidth: 0, fontSize: "12.5px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
+                    <span style={{ flexShrink: 0, fontSize: "10px", fontFamily: "monospace", color: "var(--gray-400)" }}>{c.code}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </ConfirmModal>
+  );
+}
+
+export default function CameraGroupsTab({ projectId, onGoToCameras }: {
+  projectId: string;
+  onGoToCameras?: () => void;
+}) {
   const [lang] = usePortalLanguage();
   const t: Dict = T[lang];
   const { showToast } = useToast();
@@ -98,6 +214,7 @@ export default function CameraGroupsTab({ projectId }: { projectId: string }) {
   const allCameras = useVcaStore(s => s.cameras);
   const portalUsers = useVcaStore(s => s.portalUsers);
   const renameCameraGroup = useVcaStore(s => s.renameCameraGroup);
+  const setCameraGroupMembers = useVcaStore(s => s.setCameraGroupMembers);
   const removeCameraGroup = useVcaStore(s => s.removeCameraGroup);
 
   const groups = cameraGroupsInProject(allGroups, projectId);
@@ -107,6 +224,7 @@ export default function CameraGroupsTab({ projectId }: { projectId: string }) {
   const [nameDraft, setNameDraft] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<CameraGroup | null>(null);
+  const [editing, setEditing] = useState<CameraGroup | null>(null);
 
   /** The accounts whose scope names this group — the answer this tab exists for. */
   const holdersOf = (group: CameraGroup) =>
@@ -130,7 +248,17 @@ export default function CameraGroupsTab({ projectId }: { projectId: string }) {
 
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
         {groups.length === 0 ? (
-          <TableEmpty text={t.empty} />
+          /* A sentence that names another screen needs the way to it. The empty state used to
+             say "select cameras on Input Sources" and leave the reader to find the sidebar. */
+          <div style={{ padding: "28px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+            <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6, textAlign: "center", maxWidth: "46ch" }}>{t.empty}</p>
+            {onGoToCameras && (
+              <button onClick={onGoToCameras}
+                style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                {t.goToCameras}
+              </button>
+            )}
+          </div>
         ) : (
           <>
             <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
@@ -148,7 +276,23 @@ export default function CameraGroupsTab({ projectId }: { projectId: string }) {
                   padding: "10px 16px", alignItems: "center",
                   borderBottom: isLast ? "none" : BORDER,
                 }}>
-                  <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.label}</span>
+                  {/* WHICH CAMERAS, not only how many. A count cannot be checked against what
+                      somebody meant to group, and the three names under the label are usually
+                      enough to recognise it — the rest is one click away in 카메라 편집. */}
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.label}</p>
+                    {count > 0 && (
+                      <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {[
+                          ...group.cameraIds
+                            .map(id => registered.find(c => c.id === id)?.name)
+                            .filter(Boolean)
+                            .slice(0, 3),
+                          ...(count > 3 ? [t.andMore(count - 3)] : []),
+                        ].join(", ")}
+                      </p>
+                    )}
+                  </div>
                   {/* An empty group is worth seeing rather than reading as a zero: it grants
                       nothing today and will grant whatever somebody puts in it. */}
                   {count === 0
@@ -165,6 +309,13 @@ export default function CameraGroupsTab({ projectId }: { projectId: string }) {
                     {t.createdBy(group.createdBy, group.createdAt.slice(0, 10))}
                   </span>
                   <RowActionsMenu actions={[
+                    {
+                      /* First, because it is the one that changes access rather than wording. */
+                      label: t.editMembers,
+                      disabled: !mayEdit,
+                      reason: mayEdit ? undefined : t.notOwner,
+                      onClick: () => setEditing(group),
+                    },
                     {
                       label: t.rename,
                       disabled: !mayEdit,
@@ -208,6 +359,20 @@ export default function CameraGroupsTab({ projectId }: { projectId: string }) {
             {nameError && <FieldError>{nameError}</FieldError>}
           </div>
         </ConfirmModal>
+      )}
+
+      {editing && (
+        <MemberEditor
+          group={editing}
+          cameras={registered}
+          t={t}
+          onSave={ids => {
+            setCameraGroupMembers(editing.id, ids);
+            showToast({ variant: "success", title: t.membersSavedToast, desc: `${editing.label} · ${t.cameras(ids.length)}` });
+            setEditing(null);
+          }}
+          onClose={() => setEditing(null)}
+        />
       )}
 
       {removing && (

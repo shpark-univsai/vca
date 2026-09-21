@@ -315,6 +315,8 @@ const T = {
     // means every camera on the ticked projects, which is the row's own sentence.
     nameLabel: "Name *",
     nameFromEmail: "Filled in from the address — edit it and it stays yours.",
+    teamPrefilled: "Set to the team that owns this project.",
+    accessPrefilled: "Set to the narrowest of the three.",
     namePlaceholder: "Full name",
     emailLabel: "Email *",
     teamLabel: "Team",
@@ -621,6 +623,8 @@ const T = {
     modalTitle: "사용자 초대",
     nameLabel: "이름 *",
     nameFromEmail: "이메일에서 채웠습니다 — 고치면 그대로 둡니다.",
+    teamPrefilled: "이 프로젝트의 팀으로 맞춰 뒀습니다.",
+    accessPrefilled: "가장 좁은 쪽으로 맞춰 뒀습니다.",
     namePlaceholder: "전체 이름",
     emailLabel: "이메일 *",
     teamLabel: "팀",
@@ -1290,6 +1294,12 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.teamLabel}</label>
             <FilterSelect value={teamId} onChange={changeTeam} options={teams.map(o => ({ value: o.id, label: o.name }))} />
+            {/* WHY THIS ONE HAS NO STAR (owner: 필수 표시 사실상 모두 필요하지않아?). The four
+                stars on this form are exactly the four things that stop the button: email, name,
+                projects, and the way grants are decided. A star here would be one you cannot
+                fail — the value is derived from the project on screen and can never be empty. So
+                the field says it is ANSWERED instead of looking optional. */}
+            <p style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.teamPrefilled}</p>
           </div>
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.accessLabel}</label>
@@ -1307,6 +1317,10 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                 </button>
               ))}
             </div>
+            {/* Same rule as the team field: no star, because the default cannot be empty — and
+                it is the NARROWEST of the three, so a hurried invite gives the least rather than
+                the most. Saying so stops "no star" reading as "optional". */}
+            <p style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.accessPrefilled}</p>
           </div>
           {accessMode !== "appOnly" && (
             <div>
@@ -2538,6 +2552,9 @@ type UserSortKey = "name" | "permission" | "lastLogin" | "status" | "cameras";
 interface PortalUsersPageProps {
   /** Scopes the table to users who have access to this project — mirrors Clerk's per-application Users tab. */
   projectId: string;
+  /** Sends the reader to Input Sources, where cameras are selected. Optional so this page still
+   *  renders anywhere it is mounted without the detail page's tab switcher around it. */
+  onGoToCameras?: () => void;
 }
 
 /**
@@ -2633,7 +2650,7 @@ function isDormant(u: PortalUser, nowMs: number): boolean {
   return false;
 }
 
-export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
+export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUsersPageProps) {
   // Post-mount, like every other clock read in Portal — see TempPasswordBadge. Dormancy is a
   // judgement about elapsed time, so it cannot be decided during a server render.
   const [nowMs, setNowMs] = useState<number | null>(null);
@@ -2995,7 +3012,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           the count strip, the search toolbar and the account/roster table all answer questions
           about accounts, and leaving them on screen under a table of groups would have the page
           showing two subjects at once with one set of filters over both. */}
-      {peopleTab === "groups" ? <CameraGroupsTab projectId={projectId} /> : (<>
+      {peopleTab === "groups" ? <CameraGroupsTab projectId={projectId} onGoToCameras={onGoToCameras} /> : (<>
       {!mailAvailable && <RecoveryModeNotice supportContact={authConfig.supportContact} />}
 
       {/* The strip drives the tab as well as the filter. Picking "on the roster" from the
