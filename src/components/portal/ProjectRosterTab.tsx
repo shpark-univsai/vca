@@ -272,8 +272,13 @@ function RosterCodeCell({ entry, onReveal, t }: { entry: RosterEntry; onReveal: 
       style={{ display: "flex", alignItems: "center", gap: "6px", border: "none", background: "none", cursor: "pointer", padding: 0, fontFamily: "monospace", fontSize: "12px", fontWeight: revealed ? 700 : 600, color: revealed ? "var(--gray-900)" : "var(--gray-500)" }}
     >
       {revealed ? formatCode(entry.code ?? "") : "••••-••••"}
+      {/* THE ICON SHOWS THE STATE, NOT THE ACTION — the way this product's own password fields do
+          it (mypage and register both render `shown ? Eye : EyeOff`, four places). It was the
+          other way round here and read as backwards, which it was: with the code on screen beside
+          a crossed-out eye, the cell said "hidden" and showed the value. The button's aria-label
+          still says what pressing it DOES, because that is what a label is for. */}
       <span style={{ display: "flex", color: "var(--gray-400)" }}>
-        {revealed ? <EyeOff size={14} strokeWidth={2.4} /> : <Eye size={14} strokeWidth={2.4} />}
+        {revealed ? <Eye size={14} strokeWidth={2.4} /> : <EyeOff size={14} strokeWidth={2.4} />}
       </span>
     </button>
   );
