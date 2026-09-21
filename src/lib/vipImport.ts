@@ -160,7 +160,10 @@ const HEADER_SYNONYMS: Record<VipColumnKey, string[]> = {
  * folding harder (dropping spaces entirely, say) would start calling different people the same.
  */
 function nameKey(name: string): string {
-  return name.trim().toLowerCase().replace(/\s+/g, " ");
+  // NFC for the reason normalizeForMatch gives below: a list assembled on a Mac and a list typed in
+  // Windows spell the same Korean name with different bytes, and "the same name twice" has to see
+  // through that as well — otherwise one file can carry a person twice and alert twice.
+  return name.normalize("NFC").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 /**
@@ -269,12 +272,32 @@ export function buildVipImportRows(
  * people collide into one key without those people already having the same name, which blocks its
  * own second row.
  */
+/**
+ * COMPOSED FIRST, and this is not a nicety — it is the difference between a photograph landing and
+ * disappearing in exactly the environment this console ships into.
+ *
+ * macOS stores Korean file names DECOMPOSED (NFD: ㅎ + ㅏ + ㄴ …), and a zip made in Finder carries
+ * them that way. A sheet typed in Excel on Windows holds the same name COMPOSED (NFC: 한). The two
+ * are different byte sequences, they compare unequal, and they render identically — so the failure
+ * is invisible: the preview lists `한가람.png` under "unused photos" beside a row called 한가람 and
+ * the reader has nothing to look at that would tell them why.
+ *
+ * Measured before fixing (headless Chrome, a Finder-made zip with an NFD name): 0 of 2 rows matched,
+ * the file reported as unused, its name on screen indistinguishable from the row's.
+ *
+ * Normalising both sides to NFC is the whole fix. It goes here rather than at the zip reader so the
+ * screen keeps printing the name the archive actually holds; only the comparison is normalised.
+ */
+function normalizeForMatch(value: string): string {
+  return value.normalize("NFC").trim().toLowerCase();
+}
+
 function foldSeparators(value: string): string {
-  return value.trim().toLowerCase().replace(/[\s._+-]+/g, "");
+  return normalizeForMatch(value).replace(/[\s._+-]+/g, "");
 }
 
 function photoKeys(fileName: string): string[] {
-  const base = fileName.trim().toLowerCase();
+  const base = normalizeForMatch(fileName);
   const dot = base.lastIndexOf(".");
   const withoutExtension = dot > 0 ? base.slice(0, dot) : base;
   return [base, withoutExtension, foldSeparators(withoutExtension)];
@@ -283,7 +306,7 @@ function photoKeys(fileName: string): string[] {
 /** What a row answers to when the sheet named no file: the person's own name, folded the same way
  *  a file name is, so `홍길동.jpg` and `Hong-Gildong.JPG` both find their person. */
 function nameKeys(name: string): string[] {
-  return [name.trim().toLowerCase(), foldSeparators(name)];
+  return [normalizeForMatch(name), foldSeparators(name)];
 }
 
 export interface VipPhotoAttachResult {
