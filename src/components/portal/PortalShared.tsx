@@ -1404,7 +1404,12 @@ export function Switch({ checked, onChange, label, disabled }: {
       disabled={disabled}
       onClick={() => onChange(!checked)}
       style={{
-        position: "relative", flexShrink: 0, width: "38px", height: "22px", borderRadius: "8px",
+        /* A PILL, not an 8px box (owner, 2026-09-21: 켜고 끄는 토글이 약간 각진데). The knob
+           inside has always been a full circle, so a track with 8px corners put a round thing in a
+           squarish slot — which is what read as angular. 999px makes the track's ends the same
+           curve as the knob that travels between them. 8px is this console's BUTTON radius; a
+           switch is not a button, and nothing else in Portal draws one. */
+        position: "relative", flexShrink: 0, width: "38px", height: "22px", borderRadius: "999px",
         border: "none", padding: 0, cursor: disabled ? "not-allowed" : "pointer",
         backgroundColor: checked ? "var(--gray-900)" : "var(--gray-200)",
         opacity: disabled ? 0.5 : 1,
