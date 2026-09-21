@@ -260,13 +260,22 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
         {/* WHETHER THIS SITE CAN REACH THE WORLD. The switch shows the effective value and IS the
             override; the line under it says where that value came from, with the way back to
             detection offered only when there is something to go back from. */}
-        {/* Labelled for the fact, not the mechanism: "인터넷 격리" over a value that reads
-            "연결됨" is a label and a value disagreeing. The switch's own name stays as its
-            accessible label. */}
+        {/*
+          LABELLED FOR THE FACT, AND THE SWITCH POINTS THE SAME WAY.
+       
+          Two goes at this. It was "인터넷 격리" over a value reading "연결됨" — a label and a
+          value disagreeing. Renaming the label to 인터넷 연결 fixed that and broke something
+          worse: the switch still carried isolation, so turning ON the thing called Internet said
+          there was none (owner: 켜진 상태같은데, 인터넷이 없는상태라는거지?).
+       
+          A switch names the state it is in when it is on. So this one is connectivity: on is
+          connected, off is isolated, and the stored value is still isolation — the handler
+          inverts once, here, rather than leaving every reader to.
+        */}
         <PairItem label={t.networkLabel} hint={n.overrideWhy}>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <Switch checked={isolated} onChange={v => setNetworkIsolationOverride(projectId, v)} label={n.switchLabel} disabled={!mayEdit} />
+              <Switch checked={!isolated} onChange={v => setNetworkIsolationOverride(projectId, !v)} label={t.networkLabel} disabled={!mayEdit} />
               <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{isolated ? n.isolated : n.connected}</span>
             </div>
             <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>
