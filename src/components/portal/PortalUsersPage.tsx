@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Asterisk, ClipboardList, MailQuestion, MonitorOff, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
@@ -12,6 +12,7 @@ import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
 import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
+import CameraGroupsTab from "./CameraGroupsTab";
 import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import RosterImportModal from "./RosterImportModal";
 import CameraScopePicker from "./CameraScopePicker";
@@ -52,6 +53,8 @@ const T = {
     // wrongly for: an invited account is already here, before anybody has signed in with it.
     peopleTabAccountsHint: "Accounts that can reach this project — including people who have been invited and have not signed in yet.",
     peopleTabRosterHint: "On the staff roster with no account yet. Issue a registration code and hand it over on paper — they sign up without mail.",
+    peopleTabGroups: "Camera groups",
+    peopleTabGroupsHint: "Named sets of cameras, handed out as one when granting camera access. Membership is edited on Input Sources.",
     colPlannedPermission: "Permission on signup",
     colCode: "Registration code",
     countRosterWaiting: "On the roster",
@@ -420,6 +423,8 @@ const T = {
     peopleTabRoster: "명부 대기",
     peopleTabAccountsHint: "이 프로젝트에 닿을 수 있는 계정입니다 — 초대만 받고 아직 로그인하지 않은 사람도 포함합니다.",
     peopleTabRosterHint: "명부에 있고 아직 계정이 없는 사람입니다. 등록 코드를 발급해 종이로 건네면 메일 없이 가입합니다.",
+    peopleTabGroups: "카메라 그룹",
+    peopleTabGroupsHint: "이름 붙인 카메라 묶음입니다. 카메라 권한을 줄 때 한 덩어리로 줍니다. 어떤 카메라가 들어가는지는 입력 소스에서 정합니다.",
     colPlannedPermission: "가입 시 권한",
     colCode: "등록 코드",
     countRosterWaiting: "명부 대기",
@@ -2685,7 +2690,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
    * questions. What the two halves needed to share was never one row list — it was one page, one
    * ladder of stages, one search and one set of counts, and they still do.
    */
-  const [peopleTab, setPeopleTab] = useState<"accounts" | "roster">("accounts");
+  const [peopleTab, setPeopleTab] = useState<"accounts" | "roster" | "groups">("accounts");
   const [search, setSearch] = useState("");
   // Name ascending to start: the only order that is stable and that a reader can predict before
   // they have looked. The sortable columns are the ones an administrator asks questions about —
@@ -2909,7 +2914,10 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         {([
           { id: "accounts", label: t.peopleTabAccounts, count: projectUsers.length, hint: t.peopleTabAccountsHint },
           { id: "roster", label: t.peopleTabRoster, count: rosterWaiting.length, hint: t.peopleTabRosterHint },
-        ] as { id: "accounts" | "roster"; label: string; count: number; hint: string }[]).map(tab => {
+          /* Third, after the people: a group is what their access is handed out in, so it reads
+             as the thing you set up once and then use on the two tabs to its left. */
+          { id: "groups", label: t.peopleTabGroups, count: cameraGroupsInProject(cameraGroups, projectId).length, hint: t.peopleTabGroupsHint },
+        ] as { id: "accounts" | "roster" | "groups"; label: string; count: number; hint: string }[]).map(tab => {
           const active = peopleTab === tab.id;
           return (
             /* On the tab rather than a line under it. The tab name is a state ("On the roster"),
@@ -2934,6 +2942,11 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
         })}
       </div>
 
+      {/* THE THIRD TAB REPLACES THE LIST, it does not sit above it. Camera groups are not people:
+          the count strip, the search toolbar and the account/roster table all answer questions
+          about accounts, and leaving them on screen under a table of groups would have the page
+          showing two subjects at once with one set of filters over both. */}
+      {peopleTab === "groups" ? <CameraGroupsTab projectId={projectId} /> : (<>
       {!mailAvailable && <RecoveryModeNotice supportContact={authConfig.supportContact} />}
 
       {/* The strip drives the tab as well as the filter. Picking "on the roster" from the
@@ -3559,6 +3572,8 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
           );
         })}
       </div>
+
+      </>)}
 
       {rosterEditorFor && (
         <RosterEntryModal entry={rosterEditorFor.entry} projectId={projectId} onClose={() => setRosterEditorFor(null)} t={rt} />
