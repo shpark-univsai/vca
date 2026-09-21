@@ -5,13 +5,12 @@ import { Boxes } from "lucide-react";
 import {
   cameraGroupsInProject, camerasInProject, useVcaStore, type Camera, type CameraGroup,
 } from "@/lib/vcaStore";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
 import CameraMapView from "./CameraMapView";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TextField,
-  ConfirmModal, FieldError, RowActionsMenu, TableEmpty, usePortalEditAccess,
+  ConfirmModal, FieldError, RowActionsMenu, usePortalEditAccess,
 } from "./PortalShared";
 
 /**
@@ -47,7 +46,7 @@ const T = {
     holdersNone: "Nobody",
     holders: (names: string) => names,
     createdBy: (who: string, when: string) => `${who} · ${when}`,
-    rename: "Rename", remove: "Delete", cancel: "Cancel",
+    rename: "Rename", remove: "Delete", cancel: "Cancel", back: "Back",
     goToCameras: "Go to Input Sources",
     editMembers: "Edit cameras",
     membersTitle: (label: string) => `Cameras in ${label}`,
@@ -96,7 +95,7 @@ const T = {
     holdersNone: "없음",
     holders: (names: string) => names,
     createdBy: (who: string, when: string) => `${who} · ${when}`,
-    rename: "이름 바꾸기", remove: "삭제", cancel: "취소",
+    rename: "이름 바꾸기", remove: "삭제", cancel: "취소", back: "뒤로",
     goToCameras: "입력 소스로 가기",
     editMembers: "카메라 편집",
     membersTitle: (label: string) => `${label}의 카메라`,
@@ -178,7 +177,8 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
   onSave: (label: string, cameraIds: string[]) => "duplicate-label" | null;
   onClose: () => void;
 }) {
-  useEscapeKey(onClose);
+  /* No useEscapeKey: Escape closes the thing on top, and nothing is on top of this any more —
+     pressing it with a half-built group would throw the work away with no undo. */
   const creating = group === null;
   const [label, setLabel] = useState(group?.label ?? "");
   const [labelError, setLabelError] = useState<string | null>(null);
@@ -229,15 +229,39 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
   };
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "820px", width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "20px 20px 0" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
+    /*
+     * ON THE PAGE, NOT IN A POPUP (owner, 2026-09-21: 카메라 그룹에 만들기 버튼 눌러서 뜨는
+     * 팝업화면을 바닥에 뿌려줘).
+     *
+     * A dialog was the wrong container for this one. The thing being assembled is a set of
+     * cameras out of a register that can run past a thousand, and the two ways of picking them
+     * both want room: the map had 46vh of a sheet capped at 90vh, and the list had a scroll box
+     * inside a scroll box. A popup also says "answer this and get back", and building a group is
+     * not that — it is work somebody does with the table they came from still in mind.
+     *
+     * So it takes over the tab's own area, the way the tab itself takes over the accounts list,
+     * and leaves by its own back button. No scrim, no escape-to-close: there is nothing stacked
+     * over to dismiss, and Escape with a half-built group would throw the work away.
+     */
+    <div>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "14px" }}>
+        {/* THE WAY BACK IS A CONTROL, not a corner X. A page needs a back; a dialog needs a
+            close, and this is no longer a dialog. */}
+        <button type="button" onClick={onClose}
+          style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: "5px", height: CONTROL_HEIGHT, padding: "0 10px 0 8px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+            <path d="M7 1.5L3 5l4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          {t.back}
+        </button>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)" }}>
             {creating ? t.createTitle : t.membersTitle(group.label)}
           </p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.membersBody}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "2px" }}>{t.membersBody}</p>
         </div>
+      </div>
+      <div style={{ backgroundColor: "white", borderRadius: CARD_RADIUS, border: CARD_BORDER, boxShadow: PANEL_SHADOW, display: "flex", flexDirection: "column" }}>
 
         {creating && (
           <div style={{ padding: "16px 20px 0" }}>
@@ -279,9 +303,11 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
             row, because it is about the rule and not about any one camera. */}
         <p style={{ padding: "10px 20px 0", fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.overlapNote}</p>
 
-        <div style={{ padding: "12px 20px", overflowY: "auto", minHeight: 0, flex: 1 }}>
+        {/* The PAGE scrolls now, not a box inside a box. The list keeps its own frame so the zone
+            groups read as one object, and the map gets a real height instead of 46vh of a sheet. */}
+        <div style={{ padding: "12px 20px" }}>
           {view === "map" ? (
-            <div style={{ height: "46vh", minHeight: "320px" }}>
+            <div style={{ height: "56vh", minHeight: "420px" }}>
               <CameraMapView
                 cameras={cameras}
                 selectedIds={new Set(picked)}
@@ -357,11 +383,10 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
         </div>
 
         <div style={{ padding: "14px 20px 20px", display: "flex", alignItems: "center", gap: "8px", borderTop: "1px solid var(--gray-200)" }}>
+          {/* The count is the confirmation: it is the one number this screen exists to set, and it
+              sits beside the button that writes it. No second cancel — 뒤로 at the top is the way
+              out, and two of them on one page is a choice nobody has to make. */}
           <span style={{ flex: 1, fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>{t.pickedCount(picked.length)}</span>
-          <button type="button" onClick={onClose}
-            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12.5px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            {t.cancel}
-          </button>
           <button type="button" onClick={save} disabled={!dirty}
             style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: dirty ? "var(--gray-900)" : "var(--gray-200)", color: dirty ? "white" : "var(--gray-400)", fontSize: "12.5px", fontWeight: 700, cursor: dirty ? "pointer" : "default", fontFamily: "inherit" }}>
             {creating ? t.createSave : t.membersSave}
@@ -407,6 +432,40 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
      cameras exist, because a scope resolves through the register and not through the list. */
   const liveCount = (group: CameraGroup) =>
     group.cameraIds.filter(id => registered.some(c => c.id === id)).length;
+
+  /*
+   * THE EDITOR TAKES THE WHOLE AREA (owner: 팝업화면을 바닥에 뿌려줘) — it is not drawn over the
+   * table, it replaces it, the same way this tab replaces the accounts list. Two subjects on one
+   * screen with one set of controls over both is what the tab switch exists to avoid, and a map
+   * needs the room the table was using.
+   */
+    {/* ONE EDITOR, TWO ERRANDS. `editing` holds the group being changed; `creating` is the same
+        screen with the name field on and no group behind it. Two components would have drifted
+        the first time the list or the map changed. */}
+  if (editing || creating) {
+    return (
+      <GroupEditor
+        group={editing}
+        cameras={registered}
+        otherGroups={groups.filter(g => g.id !== editing?.id)}
+        t={t}
+        onSave={(label, ids) => {
+          if (editing) {
+            setCameraGroupMembers(editing.id, ids);
+            showToast({ variant: "success", title: t.membersSavedToast, desc: `${editing.label} · ${t.cameras(ids.length)}` });
+            setEditing(null);
+            return null;
+          }
+          const refusal = addCameraGroup(projectId, label, ids);
+          if (refusal) return refusal;
+          showToast({ variant: "success", title: t.createdToast, desc: `${label} · ${t.cameras(ids.length)}` });
+          setCreating(false);
+          return null;
+        }}
+        onClose={() => { setEditing(null); setCreating(false); }}
+      />
+    );
+  }
 
   return (
     <div>
@@ -548,31 +607,6 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
         </ConfirmModal>
       )}
 
-      {/* ONE EDITOR, TWO ERRANDS. `editing` holds the group being changed; `creating` is the same
-          dialog with the name field on and no group behind it. Two components would have drifted
-          the first time the list or the map changed. */}
-      {(editing || creating) && (
-        <GroupEditor
-          group={editing}
-          cameras={registered}
-          otherGroups={groups.filter(g => g.id !== editing?.id)}
-          t={t}
-          onSave={(label, ids) => {
-            if (editing) {
-              setCameraGroupMembers(editing.id, ids);
-              showToast({ variant: "success", title: t.membersSavedToast, desc: `${editing.label} · ${t.cameras(ids.length)}` });
-              setEditing(null);
-              return null;
-            }
-            const refusal = addCameraGroup(projectId, label, ids);
-            if (refusal) return refusal;
-            showToast({ variant: "success", title: t.createdToast, desc: `${label} · ${t.cameras(ids.length)}` });
-            setCreating(false);
-            return null;
-          }}
-          onClose={() => { setEditing(null); setCreating(false); }}
-        />
-      )}
 
       {removing && (
         <ConfirmModal
