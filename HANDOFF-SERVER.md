@@ -165,6 +165,31 @@
 
 ## 4. 권한
 
+### 앱 권한이 화면 5개 + 동작 2개에서 **동작 5개**로 바뀌었습니다 *(2026-09-21, v6 이후)*
+
+계정과 프리셋이 드는 값이 바뀌었습니다. **화면은 저장하지 않고 파생합니다.**
+
+```
+appActions: ("liveView" | "history" | "personSearch" | "trail" | "export")[]
+```
+
+- 없어진 필드 셋: `appScreens` · `appSearch` · `appExport`. 뒤의 둘은 다섯 동작 중 둘로
+  들어갔고(`personSearch` · `export`), 화면은 `screensForActions`로 나옵니다 —
+  `liveView`→실시간 관제 · `history`→베스트 프레임 · `personSearch`→RedFace ·
+  `trail`→레드맵과 Re-ID 분석(둘 다).
+- **왜 바꿨나**: 인물 검색이 화면 세 곳에 있어서 「화면을 준다」와 「검색을 준다」가 반쯤
+  같은 결정이었고, 그래서 커스텀이 프리셋과 똑같아 보였습니다. Milestone의 역할도 창
+  목록이 아니라 **장치별 동작**(보기·재생·내보내기·스마트 검색)을 듭니다. `trail`을 따로
+  둔 이유도 같습니다 — Milestone의 Smart search, Avigilon의 Appearance Search가 별도
+  권한인 것과 같은 무게입니다(범위 안 모든 카메라를 훑습니다).
+- **빈 배열은 여전히 거절 사유**입니다(`noScreens`): 앱 문은 열렸는데 할 수 있는 일이
+  없는 계정이고, 일괄 초대가 만드는 상태입니다. 카메라 범위의 "없음"과 달리 여기서는
+  **부재가 곧 아무것도 못 함**입니다.
+- 프리셋도 `actions: AppAction[]` 하나를 듭니다(전엔 `screens`+두 불리언).
+- 우리가 기본으로 넣은 프리셋 셋에는 `builtinKey`(`operator`/`investigator`/`supervisor`)가
+  붙습니다. **이름을 고객이 바꾸면 키를 버립니다** — 그때부터 그 이름은 고객의 것이고,
+  서버가 번역된 이름을 되돌려주면 그들이 쓴 말을 덮습니다.
+
 - **앱 권한 프리셋 CRUD**, 그리고 계정의 `grantMode` · `presetId` · `presetLabel`.
 - **프리셋을 고치면 따르는 계정이 재계산**되어야 합니다. 그리고 **계정의 권한을 하나라도
   직접 바꾸면 그 계정은 프리셋에서 이탈**합니다 — 이름만 프리셋을 따르는 계정이 생기면

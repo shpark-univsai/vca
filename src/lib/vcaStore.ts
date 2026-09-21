@@ -1244,7 +1244,8 @@ interface VcaStoreState {
    * updatePortalUserAccess already logs a dropped search grant separately from the access change
    * that caused it.
    */
-  setAppGrant: (userId: string, grant: AppScreen | "search" | "export", allowed: boolean) => void;
+  /** Turn one of the five actions on or off. Detaches the account from its preset on the way. */
+  setAppGrant: (userId: string, action: AppAction, allowed: boolean) => void;
   /**
    * Narrow this account to a set of cameras, or hand it all of them again with `undefined`.
    *
@@ -2050,8 +2051,20 @@ export function useProjectCameras(): Camera[] {
  * the flag off the session and defaults to denied. Replace the body, not the call sites.
  */
 export function canSearchInApp(users: PortalUser[]): boolean {
+  return holdsAppAction(users, "personSearch");
+}
+
+/**
+ * Whether the signed-in account holds one action.
+ *
+ * Same stand-in rule as currentPortalRole: there is no session, so this resolves SIGNED_IN_USER's
+ * address against the account list, and an address that matches nobody answers true so the mock
+ * stays explorable. A real build reads the session and denies by default. Replace the body, not
+ * the call sites.
+ */
+export function holdsAppAction(users: PortalUser[], action: AppAction): boolean {
   const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
-  return me ? me.appSearch === true : true;
+  return me ? (me.appActions ?? []).includes(action) : true;
 }
 
 /**
@@ -2061,20 +2074,19 @@ export function canSearchInApp(users: PortalUser[]): boolean {
  */
 export function canSeeScreen(users: PortalUser[], screen: AppScreen): boolean {
   const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
-  return me ? (me.appScreens ?? []).includes(screen) : true;
+  return me ? screensForActions(me.appActions ?? []).includes(screen) : true;
 }
 
 /** The screens this account holds, in the app's own tab order. Empty is a real answer. */
 export function screensFor(users: PortalUser[]): AppScreen[] {
   const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
   if (!me) return APP_SCREENS;
-  return APP_SCREENS.filter(sc => (me.appScreens ?? []).includes(sc));
+  return screensForActions(me.appActions ?? []);
 }
 
 /** Whether this account may take a sighting out as a file. See PortalUser.appExport. */
 export function canExportEvidence(users: PortalUser[]): boolean {
-  const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
-  return me ? me.appExport === true : true;
+  return holdsAppAction(users, "export");
 }
 
 /** The grants a preset hands out, as the fields they are stored in. */
@@ -2107,8 +2119,8 @@ export function presetDescription(preset: AccessPreset, lang: "en" | "ko"): stri
   return preset.builtinKey ? PRESET_BUILTIN_LABELS[preset.builtinKey].description[lang] : preset.description;
 }
 
-export function grantsOfPreset(preset: AccessPreset): Pick<PortalUser, "appScreens" | "appSearch" | "appExport"> {
-  return { appScreens: [...preset.screens], appSearch: preset.appSearch, appExport: preset.appExport };
+export function grantsOfPreset(preset: AccessPreset): Pick<PortalUser, "appActions"> {
+  return { appActions: [...preset.actions] };
 }
 
 /**
@@ -2305,6 +2317,56 @@ export type AppScreen = "live" | "bestframe" | "redmap" | "reid" | "redface";
 export const APP_SCREENS: AppScreen[] = ["live", "bestframe", "redmap", "reid", "redface"];
 
 /**
+ * WHAT AN ACCOUNT MAY DO IN THE APP — five actions, and the screens follow from them.
+ *
+ * The grant was five SCREENS plus two verbs, which mixed two different questions: what somebody
+ * may do, and where they do it. Search appears on three screens, so the same permission was being
+ * asked twice, and a custom grant ended up looking identical to a preset with the same seven rows
+ * (owner, 2026-09-16: 커스텀이 프리셋이랑 똑같다, 더 세부적이었으면 · 2026-09-21: 기능들을 더
+ * 세부적으로 나눠서 선택할수있게).
+ *
+ * The products split it this way too: a Milestone role carries per-device verbs (view live,
+ * playback, export, smart search), not a list of windows. `trail` is its own action for the same
+ * reason Milestone keeps "Smart search" and Avigilon keeps "Appearance Search" separate: it reads
+ * across every camera in scope to reconstruct one person's movement, which is a different weight
+ * from watching a camera.
+ *
+ *   liveView      what is on the cameras now
+ *   history       frames and records from before now
+ *   personSearch  find a person across the recorded set
+ *   trail         reconstruct one person's route across cameras
+ *   export        take evidence out of the building
+ *
+ * SCREENS ARE DERIVED, never stored: see screensForActions. A screen is a place, and a place with
+ * nothing you may do in it is not a grant worth keeping.
+ */
+export type AppAction = "liveView" | "history" | "personSearch" | "trail" | "export";
+
+/** Order is the ladder the grants run up, and every list built from it reads that way. */
+export const APP_ACTIONS: AppAction[] = ["liveView", "history", "personSearch", "trail", "export"];
+
+/**
+ * Which screens these actions open.
+ *
+ * ONE MAPPING, HERE. Every screen in the app hosts one of the five actions; `redmap` and `reid`
+ * both host the trail, which is why they arrive together. A reader who wants to know why a screen
+ * is missing for somebody gets the answer from the action that is missing, not from a checkbox
+ * nobody can account for.
+ */
+export function screensForActions(actions: AppAction[]): AppScreen[] {
+  const has = (a: AppAction) => actions.includes(a);
+  return APP_SCREENS.filter(screen => {
+    switch (screen) {
+      case "live": return has("liveView");
+      case "bestframe": return has("history");
+      case "redface": return has("personSearch");
+      case "reid": return has("trail");
+      case "redmap": return has("trail");
+    }
+  });
+}
+
+/**
  * How an account's app grants are decided: by following a preset, or by its own set.
  *
  * Stored, not a UI mode. Which one an account is in outlives the dialog that set it — a preset
@@ -2351,9 +2413,8 @@ export interface AccessPreset {
   /** One line saying what this is for. Required: a list of names with no descriptions cannot be
    *  chosen from, which is the whole failure mode of removing the pre-selected default. */
   description: string;
-  screens: AppScreen[];
-  appSearch: boolean;
-  appExport: boolean;
+  /** What this preset hands out. Screens follow from it — see APP_ACTIONS. */
+  actions: AppAction[];
   /**
    * Retired rather than deleted, like an archived SearchPurpose. Accounts that followed it are
    * moved to "custom", which changes nobody's access — detaching copies nothing because following
@@ -2370,32 +2431,6 @@ export interface PortalUser {
   projectIds: string[];
   permission: PortalPermission;
   /**
-   * May run person searches in the monitoring app (Data's search screens and Redmap).
-   *
-   * Kept apart from `permission`, which is a console role: a person can be app-only and still be
-   * the one who runs searches, and a Portal admin may have no business searching at all.
-   *
-   * Undefined means not granted. Reconstructing where a person went is the app's most invasive
-   * capability, so it is given deliberately, not inherited.
-   *
-   * STILL ONE FLAG, BUT NO LONGER FOR THE ORIGINAL REASON. It said "search is the only weighted
-   * action the app has — no export, no VIP editing, no camera control (checked 2026-09-04)", and
-   * on 2026-09-10 evidence export arrived in Redmap: a detection's metadata and the operator's
-   * call, as a file, out of the console. That is a second weighted action.
-   *
-   * It is covered today because it sits inside Redmap, and Redmap is gated by this flag as a
-   * whole screen — you cannot export a sighting you were never allowed to find. That is a real
-   * containment, not an accident, and it is why this is not urgent.
-   *
-   * What it does not answer: whether taking evidence OUT deserves its own grant. Searching and
-   * exporting fail differently — a search that should not have happened leaves a record and
-   * ends; an export leaves a copy the console can no longer see. Institutions that separate
-   * "may look" from "may take away" are not being fussy. Deciding that is a policy call about
-   * who gets which grant, not a refactor, so it is written here rather than guessed at: this is
-   * the seam to widen, and there is now one thing waiting at it.
-   */
-  appSearch?: boolean;
-  /**
    * Which app screens this account may open. Undefined or empty means none.
    *
    * Nothing is inherited from the role: a Portal owner with app access and no screens sees no
@@ -2406,7 +2441,15 @@ export interface PortalUser {
    * prevent everywhere — bulk CSV invitations and server-made accounts never pass the screen that
    * makes zero impossible. See GateDenial "noScreens".
    */
-  appScreens?: AppScreen[];
+  /**
+   * What this account may do in the app. The screens it opens are derived from this
+   * (screensForActions), and `appSearch`/`appExport` were folded in as two of the five.
+   *
+   * Absent is not "everything" here, unlike a camera scope: an account with the app door open and
+   * no actions is the state the gate refuses, on purpose, because somebody bulk-invited it and
+   * nobody has said yet what it is for. See AccessGate's "noScreens".
+   */
+  appActions?: AppAction[];
   /**
    * Which cameras of its projects this account may watch. UNDEFINED MEANS ALL OF THEM.
    *
@@ -2443,21 +2486,6 @@ export interface PortalUser {
    * that means everything.
    */
   cameraGroupIds?: string[];
-  /**
-   * May take a sighting out of the console as a file. Undefined means not granted.
-   *
-   * NOT A CONTROL, AND IT MUST NOT BE DESCRIBED AS ONE. A gate inside the browser, guarding an
-   * export the browser performs, recorded by a line the browser writes — the same browser skips
-   * all three. src/lib/evidence.ts already says the necessary half: the export has to be a server
-   * call that logs before it returns bytes, and the permission has to be read there.
-   *
-   * It exists here for two reasons that are not enforcement. A flag we do not declare is an
-   * endpoint the backend builds without a permission check, and retrofitting one costs far more
-   * than declaring it now. And export is wired only to Redmap today while `EvidenceSurface`
-   * already declares "bestframe" — the day that call site appears, every operator holding the
-   * narrowest preset could export faces, because BestFrame is in it.
-   */
-  appExport?: boolean;
   /**
    * Whether this account follows a preset or carries its own set, and which preset.
    *
@@ -2803,10 +2831,10 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appSearch: true, appExport: true, appScreens: ["bestframe", "live", "reid", "redface", "redmap"], grantMode: "preset", presetId: "preset-supervisor", status: "active", lastLoginAt: "2026-08-25 09:14" },
-  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appSearch: true, appScreens: ["bestframe", "live", "reid", "redface", "redmap"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["liveView", "history", "personSearch", "trail", "export"], grantMode: "preset", presetId: "preset-supervisor", status: "active", lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["liveView", "history", "personSearch", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
   // Admin who also works the app — the combination the single-field model could not hold.
-  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appScreens: ["bestframe", "live"], grantMode: "preset", presetId: "preset-operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
+  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appActions: ["liveView", "history"], grantMode: "preset", presetId: "preset-operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
   { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", employeeId: "EMP-2044", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "invited" },
   { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", employeeId: "EMP-2045", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "suspended", lastLoginAt: "2026-06-02 08:30" },
   // The customer's security officer: reads Portal for the audit trail, has no business in the
@@ -4038,17 +4066,17 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     {
       id: "preset-operator", teamId: "team-univs", builtinKey: "operator", label: "운영자",
       description: "지금 일어나는 일을 본다",
-      screens: ["live", "bestframe"], appSearch: false, appExport: false,
+      actions: ["liveView", "history"],
     },
     {
       id: "preset-investigator", teamId: "team-univs", builtinKey: "investigator", label: "조사자",
       description: "운영자 + 지난 것을 찾는다",
-      screens: ["live", "bestframe", "redmap", "reid", "redface"], appSearch: true, appExport: false,
+      actions: ["liveView", "history", "personSearch", "trail"],
     },
     {
       id: "preset-supervisor", teamId: "team-univs", builtinKey: "supervisor", label: "감독자",
       description: "조사자 + 증거를 밖으로 낸다",
-      screens: ["live", "bestframe", "redmap", "reid", "redface"], appSearch: true, appExport: true,
+      actions: ["liveView", "history", "personSearch", "trail", "export"],
     },
   ],
   searchPurpose: null,
@@ -5375,7 +5403,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
-  setAppGrant: (userId, grant, allowed) =>
+  setAppGrant: (userId, action, allowed) =>
     set(state => {
       const user = state.portalUsers.find(u => u.id === userId);
       if (!user) return state;
@@ -5384,16 +5412,14 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       // a row nobody keeps.
       const detach = detachedFromPreset(user);
       const next = { ...user, ...detach.patch };
-      if (grant === "search") next.appSearch = allowed;
-      else if (grant === "export") next.appExport = allowed;
-      else {
-        const held = new Set(user.appScreens ?? []);
-        if (allowed) held.add(grant); else held.delete(grant);
-        next.appScreens = APP_SCREENS.filter(sc => held.has(sc));
-      }
+      const held = new Set(user.appActions ?? []);
+      if (allowed) held.add(action); else held.delete(action);
+      // Written in APP_ACTIONS order, so two accounts holding the same set store it identically
+      // and a diff between them is about access rather than about insertion order.
+      next.appActions = APP_ACTIONS.filter(a => held.has(a));
       const auditEntry: AuditEvent = clientAudit({
         projectId: user.projectIds[0],
-        message: `${allowed ? "Granted" : "Revoked"} app ${grant} for ${user.name}`,
+        message: `${allowed ? "Granted" : "Revoked"} app ${action} for ${user.name}`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       return {
@@ -5411,9 +5437,16 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         message: `${allowed ? "Person search granted" : "Person search revoked"}: ${user.name}`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
+      /* Writes the `personSearch` action, which is where person search lives since the grant
+         became five actions. Kept as its own store call rather than folded into setAppGrant: the
+         row menu's 인물 검색 차단 is the one grant an administrator flips without opening the
+         grants dialog, and its audit line says so in words rather than as "revoked app
+         personSearch". */
+      const held = new Set(user.appActions ?? []);
+      if (allowed) held.add("personSearch"); else held.delete("personSearch");
       return {
         portalUsers: state.portalUsers.map(u => (
-          u.id === userId ? { ...u, appSearch: allowed, ...detach.patch } : u
+          u.id === userId ? { ...u, appActions: APP_ACTIONS.filter(a => held.has(a)), ...detach.patch } : u
         )),
         auditLog: [auditEntry, ...detach.audit, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };

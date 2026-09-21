@@ -72,7 +72,7 @@ export function updateGateChoice(door: GateDoor): void {
 export type GateDenial = "appNotGranted" | "portalNotGranted" | "notActivated" | "suspended" | "noDoor" | "noScreens";
 
 /** Everything the gate needs to judge an account. A subset of PortalUser so callers can pass one. */
-export type GateUser = Pick<PortalUser, "name" | "email" | "permission" | "appAccess" | "status" | "appScreens">;
+export type GateUser = Pick<PortalUser, "name" | "email" | "permission" | "appAccess" | "status" | "appActions">;
 
 /**
  * Why this door is shut for this account, or null if it is open.
@@ -106,7 +106,10 @@ export function denialFor(user: GateUser | undefined, door: GateDoor): GateDenia
   // A backstop, not the main defence. The grant screen makes zero screens unpickable, but bulk CSV
   // invitations and server-created accounts never pass through it, so the answer has to exist at
   // sign-in too — which is also where Milestone answers it.
-  if (door === "app" && (user.appScreens ?? []).length === 0) return "noScreens";
+  // The app door with nothing to do behind it. Named "noScreens" since before the grant became
+  // five actions, and kept: the refusal the operator sees is about arriving at an app with no
+  // screens in it, which is still exactly what happens.
+  if (door === "app" && (user.appActions ?? []).length === 0) return "noScreens";
   return null;
 }
 

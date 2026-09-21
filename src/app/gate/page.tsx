@@ -39,7 +39,7 @@ const DEMO_USERS: Record<GateDenial, GateUser> = {
   // Synthetic for the same reason noDoor is, though not for the same reason: the store can create
   // this state — a bulk CSV invitation does — but no seeded account is in it, and putting a real
   // person here would contradict what Users & Permissions says about them.
-  noScreens: { name: "(bulk-invited account)", email: "newcomer@univs.ai", permission: "none", appAccess: true, status: "active", appScreens: [] },
+  noScreens: { name: "(bulk-invited account)", email: "newcomer@univs.ai", permission: "none", appAccess: true, status: "active", appActions: [] },
 };
 
 function GateBody() {

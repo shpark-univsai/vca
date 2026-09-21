@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Asterisk, ClipboardList, MailQuestion, MonitorOff, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, APP_SCREENS, type AccessPreset, type AppScreen, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
@@ -362,7 +362,7 @@ const T = {
     accountsCreatedTitle: (count: number) => `${count} accounts created`,
     grantLabel: "App grants *",
     grantCustom: "Custom",
-    grantCustomDesc: "Pick the screens and actions one by one.",
+    grantCustomDesc: "Pick what they may do, one action at a time.",
     grantNotChosen: "Choose how this account's grants are decided",
     grantNoScreens: "Tick at least one screen — an account with none cannot open the app",
     grantsHeading: "What this grants",
@@ -649,7 +649,7 @@ const T = {
     accountsCreatedTitle: (count: number) => `계정 ${count}개가 만들어졌습니다`,
     grantLabel: "권한 부여 방식 *",
     grantCustom: "커스텀",
-    grantCustomDesc: "화면과 동작을 하나씩 고릅니다.",
+    grantCustomDesc: "할 수 있는 일을 하나씩 고릅니다.",
     grantNotChosen: "권한 부여 방식을 선택해주세요",
     grantNoScreens: "화면을 하나 이상 골라주세요 — 하나도 없으면 앱을 열 수 없습니다",
     grantsHeading: "이 방식이 켜는 것",
@@ -693,17 +693,13 @@ const T = {
  * It holds no state. The caller owns the draft, because the two callers resolve it differently —
  * an invite starts with nothing chosen, an edit starts from what the account already holds.
  */
-function GrantPicker({ presets, choice, onChoice, screens, search, exportOn, onToggleScreen, onToggleSearch, onToggleExport, t }: {
+function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, t }: {
   presets: AccessPreset[];
   choice: string | null;
   onChoice: (id: string) => void;
   /** What the list shows — already resolved by the caller, which is not always the custom draft. */
-  screens: AppScreen[];
-  search: boolean;
-  exportOn: boolean;
-  onToggleScreen: (screen: AppScreen) => void;
-  onToggleSearch: () => void;
-  onToggleExport: () => void;
+  actions: AppAction[];
+  onToggleAction: (action: AppAction) => void;
   t: (typeof T)["en"] | (typeof T)["ko"];
 }) {
   const isCustom = choice === "custom";
@@ -757,9 +753,7 @@ function GrantPicker({ presets, choice, onChoice, screens, search, exportOn, onT
             {choice === null ? t.grantsUnset : !isCustom ? t.grantsLocked : ""}
           </span>
         </div>
-        <AppGrantList
-          screens={screens} search={search} exportOn={exportOn} locked={!isCustom}
-          onToggleScreen={onToggleScreen} onToggleSearch={onToggleSearch} onToggleExport={onToggleExport} />
+        <AppGrantList actions={actions} locked={!isCustom} onToggle={onToggleAction} />
       </div>
     </>
   );
@@ -934,13 +928,11 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const allPresets = useVcaStore(st => st.accessPresets);
   const presets = useMemo(() => presetsForTeam(allPresets, teamId), [allPresets, teamId]);
   const [grantChoice, setGrantChoice] = useState<string | null>(null);
-  const [customScreens, setCustomScreens] = useState<AppScreen[]>([]);
-  const [customSearch, setCustomSearch] = useState(false);
-  const [customExport, setCustomExport] = useState(false);
+  const [customActions, setCustomActions] = useState<AppAction[]>([]);
   /** Shown only after Invite has been pressed once — see the note on grantChoice. */
   const [submitted, setSubmitted] = useState(false);
-  const toggleCustomScreen = (screen: AppScreen) =>
-    setCustomScreens(prev => prev.includes(screen) ? prev.filter(x => x !== screen) : [...prev, screen]);
+  const toggleCustomAction = (action: AppAction) =>
+    setCustomActions(prev => prev.includes(action) ? prev.filter(x => x !== action) : [...prev, action]);
   /**
    * An installation with no presets starts on custom, because there is nothing else to offer.
    * No guard forbidding that: the emptiness check below already covers where it leads.
@@ -950,18 +942,18 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   /**
    * PICKING A RADIO IS NOT PICKING GRANTS, and this used to treat them as the same thing.
    *
-   * Custom with nothing ticked passed every check and saved `appScreens: []` — an account that
+   * Custom with nothing ticked passed every check and saved an empty grant — an account that
    * signs in, is refused by the gate's `noScreens`, and reads as a broken product to the person
    * it was created for. The comment above this line claimed "zero screens is already refused at
    * save"; nothing refused it. The gate was catching it hours later, at the one moment nobody
    * who could fix it is watching.
    *
-   * Screens, not verbs: a verb acts on a screen, so search-without-screens is the same empty
-   * account wearing a tick. A preset cannot be empty — `addAccessPreset` is the only way one is
-   * made and no screen for it exists yet — so this asks the question only of custom.
+   * One question now rather than two, which is what the five actions bought: the grant IS the
+   * list of actions, so "did they choose anything" is a single count. A preset cannot be empty —
+   * `addAccessPreset` refuses it — so this asks only of custom.
    */
   const grantsChosen = accessMode === "portalOnly"
-    || (effectiveChoice !== null && !(isCustom && customScreens.length === 0));
+    || (effectiveChoice !== null && !(isCustom && customActions.length === 0));
   /**
    * What the grant list shows, which is not always what the custom checkboxes hold.
    *
@@ -973,9 +965,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
    */
   const pickedPreset = presets.find(pr => pr.id === effectiveChoice);
   const shown = pickedPreset ? grantsOfPreset(pickedPreset) : null;
-  const shownScreens = isCustom ? customScreens : (shown?.appScreens ?? []);
-  const shownSearch = isCustom ? customSearch : shown?.appSearch === true;
-  const shownExport = isCustom ? customExport : shown?.appExport === true;
+  const shownActions = isCustom ? customActions : (shown?.appActions ?? []);
   const [permission, setPermission] = useState<PortalPermission>("admin");
   const [projectIds, setProjectIds] = useState<string[]>(defaultProjectId ? [defaultProjectId] : []);
 
@@ -1044,7 +1034,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
     const chosen = presets.find(pr => pr.id === effectiveChoice);
     const grants = !resolved.appAccess ? {}
       : chosen ? grantsOfPreset(chosen)
-      : { appScreens: customScreens, appSearch: customSearch, appExport: customExport };
+      : { appActions: customActions };
     // NO `cameraIds` HERE, DELIBERATELY. Absent is not "unanswered" — it is the answer "every
     // camera on this account's projects", and it is the only answer that keeps including cameras
     // installed next month. Handing over today's full list instead would look identical on the
@@ -1301,10 +1291,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
             <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
               <GrantPicker
                 presets={presets} choice={effectiveChoice} onChoice={setGrantChoice}
-                screens={shownScreens} search={shownSearch} exportOn={shownExport}
-                onToggleScreen={toggleCustomScreen}
-                onToggleSearch={() => setCustomSearch(!customSearch)}
-                onToggleExport={() => setCustomExport(!customExport)}
+                actions={shownActions} onToggleAction={toggleCustomAction}
                 t={t} />
             </div>
           ) : (
@@ -2099,11 +2086,7 @@ function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => voi
   const setAppGrant = useVcaStore(st => st.setAppGrant);
 
   /** What this account holds right now — the thing every comparison below is against. */
-  const held = useMemo(() => ({
-    screens: user.appScreens ?? [],
-    search: user.appSearch === true,
-    export: user.appExport === true,
-  }), [user.appScreens, user.appSearch, user.appExport]);
+  const held = useMemo(() => user.appActions ?? [], [user.appActions]);
 
   const [choice, setChoice] = useState<string | null>(() => {
     // A preset that is no longer offered cannot be shown as selected — the radio would sit on
@@ -2114,37 +2097,30 @@ function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => voi
       && presetsForTeam(allPresets, user.teamId).some(pr => pr.id === user.presetId);
     return following ? user.presetId ?? "custom" : "custom";
   });
-  const [customScreens, setCustomScreens] = useState<AppScreen[]>(held.screens);
-  const [customSearch, setCustomSearch] = useState(held.search);
-  const [customExport, setCustomExport] = useState(held.export);
-  const toggleCustomScreen = (screen: AppScreen) =>
-    setCustomScreens(prev => prev.includes(screen) ? prev.filter(x => x !== screen) : [...prev, screen]);
+  const [customActions, setCustomActions] = useState<AppAction[]>(held);
+  const toggleCustomAction = (action: AppAction) =>
+    setCustomActions(prev => prev.includes(action) ? prev.filter(x => x !== action) : [...prev, action]);
 
   const isCustom = choice === "custom";
   const pickedPreset = presets.find(pr => pr.id === choice);
   const shown = pickedPreset ? grantsOfPreset(pickedPreset) : null;
-  const screens = isCustom ? customScreens : (shown?.appScreens ?? []);
-  const search = isCustom ? customSearch : shown?.appSearch === true;
-  const exportOn = isCustom ? customExport : shown?.appExport === true;
+  const actions = isCustom ? customActions : (shown?.appActions ?? []);
 
-  /** Order-independent: the toggle appends, the store stores in APP_SCREENS order. */
-  const sameScreens = (a: AppScreen[], b: AppScreen[]) =>
-    APP_SCREENS.filter(sc => a.includes(sc)).join() === APP_SCREENS.filter(sc => b.includes(sc)).join();
+  /** Order-independent: the toggle appends, the store stores in APP_ACTIONS order. */
+  const sameActions = (a: AppAction[], b: AppAction[]) =>
+    APP_ACTIONS.filter(x => a.includes(x)).join() === APP_ACTIONS.filter(x => b.includes(x)).join();
 
   const dirty = isCustom
-    ? user.grantMode !== "custom" || !sameScreens(customScreens, held.screens)
-      || customSearch !== held.search || customExport !== held.export
+    ? user.grantMode !== "custom" || !sameActions(customActions, held)
     : user.grantMode !== "preset" || user.presetId !== choice;
   /* Same refusal as the invite form, for the same reason: custom with nothing ticked saves an
      account that signs in and is turned away by the gate's noScreens. */
-  const canSave = dirty && (isCustom ? customScreens.length > 0 : choice !== null);
+  const canSave = dirty && (isCustom ? customActions.length > 0 : choice !== null);
   /* Said before it happens rather than reported after. Following a preset means holding its
      grants, so hand-tuned values go — and only when they actually differ, or the warning becomes
      wallpaper on every preset switch. */
   const willOverwrite = !isCustom && shown != null && user.grantMode === "custom"
-    && (!sameScreens(shown.appScreens ?? [], held.screens)
-      || (shown.appSearch === true) !== held.search
-      || (shown.appExport === true) !== held.export);
+    && !sameActions(shown.appActions ?? [], held);
 
   const save = () => {
     if (!canSave) return;
@@ -2163,12 +2139,10 @@ function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => voi
       // ONE AUDIT LINE PER CHANGE, which is what the store's comment asks for — a preset name
       // alone swallows the manual tuning that came after it, and that is the half an access
       // review is actually asking about.
-      APP_SCREENS.forEach(sc => {
-        const next = customScreens.includes(sc);
-        if (next !== held.screens.includes(sc)) setAppGrant(user.id, sc, next);
+      APP_ACTIONS.forEach(action => {
+        const next = customActions.includes(action);
+        if (next !== held.includes(action)) setAppGrant(user.id, action, next);
       });
-      if (customSearch !== held.search) setAppGrant(user.id, "search", customSearch);
-      if (customExport !== held.export) setAppGrant(user.id, "export", customExport);
     }
     // The app reads its grants when it loads, so this is what actually happens — not "revoked".
     showToast({ variant: "success", title: t.grantsSavedTitle, desc: t.grantsSavedDesc(user.name) });
@@ -2186,10 +2160,7 @@ function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => voi
         <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0, overflowY: "auto" }}>
           <GrantPicker
             presets={presets} choice={choice} onChoice={setChoice}
-            screens={screens} search={search} exportOn={exportOn}
-            onToggleScreen={toggleCustomScreen}
-            onToggleSearch={() => setCustomSearch(!customSearch)}
-            onToggleExport={() => setCustomExport(!customExport)}
+            actions={actions} onToggleAction={toggleCustomAction}
             t={t} />
         </div>
         {willOverwrite && (
@@ -2342,7 +2313,7 @@ function StageBadge({ stage, t }: { stage: Stage; t: { stageRosterListed: string
  * An account that holds the app door and no screen behind it.
  *
  * AccessGate decides the same thing with the same pair of fields — `denialFor` returns
- * "noScreens" for `appAccess && (appScreens ?? []).length === 0` — and its refusal screen tells
+ * "noScreens" for `appAccess && (appActions ?? []).length === 0` — and its refusal screen tells
  * the person to have an administrator assign screens "in Portal, under Users & Permissions",
  * which is this page. So this screen is where the state has to be findable, and until now it was
  * an 11px grey line in one cell.
@@ -2353,8 +2324,13 @@ function StageBadge({ stage, t }: { stage: Stage; t: { stageRosterListed: string
  * says: no screen is granted, so the day the account becomes usable it arrives at nothing. That
  * is a grant to repair now, not an incident, and the wording stays on the grant.
  */
+/** Whether this account holds the person-search action. See APP_ACTIONS. */
+function holdsSearch(u: PortalUser): boolean {
+  return (u.appActions ?? []).includes("personSearch");
+}
+
 function lacksAppScreens(u: PortalUser): boolean {
-  return u.appAccess && (u.appScreens ?? []).length === 0;
+  return u.appAccess && (u.appActions ?? []).length === 0;
 }
 
 /** The cuts the summary strip can put on the table. One name, because four signatures repeating
@@ -3269,7 +3245,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                   "what did this person have?" — the mirror image of inventing a coordinate with
                   `?? 0`. The grant is kept and comes back with the door; this cell just stops
                   claiming it is live while the door is shut. */}
-              {u.appSearch && u.appAccess ? (
+              {holdsSearch(u) && u.appAccess ? (
                 <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px", backgroundColor: "var(--info-100)", color: "var(--info-500)", fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap" }}>
                   {t.appSearchOn}
                 </span>
@@ -3423,13 +3399,13 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                 // not since closing the app door stopped erasing the grants behind it. The two
                 // values are read together instead — the cell above is `appSearch && appAccess`,
                 // and this row's disable rule is the same pair.)
-                label: u.appSearch ? t.appSearchRevoke : t.appSearchGrant,
-                disabled: !manageAccess || (!u.appSearch && !u.appAccess),
+                label: holdsSearch(u) ? t.appSearchRevoke : t.appSearchGrant,
+                disabled: !manageAccess || (!holdsSearch(u) && !u.appAccess),
                 reason: !manageAccess ? t.reasonNotOwner
-                  : (!u.appSearch && !u.appAccess) ? t.reasonNoApp
+                  : (!holdsSearch(u) && !u.appAccess) ? t.reasonNoApp
                   : undefined,
                 onClick: () => {
-                  const next = !u.appSearch;
+                  const next = !holdsSearch(u);
                   setConfirming({
                     title: next ? t.confirmSearchGrantTitle(u.name) : t.confirmSearchRevokeTitle(u.name),
                     body: next ? t.confirmSearchGrantBody : t.confirmSearchRevokeBody,

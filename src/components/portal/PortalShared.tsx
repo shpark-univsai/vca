@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Check, EyeOff } from "lucide-react";
-import { APP_SCREENS, SUPPORT_CONTACT, canEditPortal, canSetPolicy, canViewFaces, currentPortalUser, useVcaStore, type AppScreen, type ProjectType } from "@/lib/vcaStore";
+import { APP_ACTIONS, SUPPORT_CONTACT, canEditPortal, canSetPolicy, canViewFaces, currentPortalUser, screensForActions, useVcaStore, type AppAction, type AppScreen, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { APP_GRANT_LABELS } from "@/lib/appGrants";
@@ -2159,8 +2159,8 @@ const SUPPORT_T = {
  */
 const GRANT_T = APP_GRANT_LABELS;
 
-function GrantRow({ label, desc, on, locked, onToggle }: {
-  label: string; desc: string; on: boolean; locked: boolean; onToggle: () => void;
+function GrantRow({ label, desc, footnote, on, locked, onToggle }: {
+  label: string; desc: string; footnote?: string; on: boolean; locked: boolean; onToggle: () => void;
 }) {
   return (
     <button onClick={locked ? undefined : onToggle} disabled={locked} aria-pressed={on}
@@ -2186,6 +2186,9 @@ function GrantRow({ label, desc, on, locked, onToggle }: {
       <span style={{ minWidth: 0 }}>
         <span style={{ display: "block", fontSize: "12.5px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</span>
         <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, marginTop: "1px" }}>{desc}</span>
+        {footnote && (
+          <span style={{ display: "block", fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "2px" }}>{footnote}</span>
+        )}
       </span>
     </button>
   );
@@ -2201,40 +2204,38 @@ function GrantGroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 /** The five screens over the two actions, with one source for both sets of words. */
-export function AppGrantList({ screens, search, exportOn, locked, onToggleScreen, onToggleSearch, onToggleExport }: {
-  screens: AppScreen[];
-  search: boolean;
-  exportOn: boolean;
+export function AppGrantList({ actions, locked, onToggle }: {
+  actions: AppAction[];
   locked: boolean;
-  onToggleScreen: (screen: AppScreen) => void;
-  onToggleSearch: () => void;
-  onToggleExport: () => void;
+  onToggle: (action: AppAction) => void;
 }) {
   const [lang] = usePortalLanguage();
   const g = GRANT_T[lang];
   return (
     <>
-      <GrantGroupLabel>{g.groupScreens}</GrantGroupLabel>
-      <div style={{ display: "flex", flexDirection: "column", marginBottom: "10px" }}>
-        {APP_SCREENS.map(sc => (
-          <GrantRow key={sc} label={g.screenName[sc]} desc={g.screenDesc[sc]}
-            on={screens.includes(sc)} locked={locked} onToggle={() => onToggleScreen(sc)} />
-        ))}
-      </div>
-      <GrantGroupLabel>{g.groupVerbs}</GrantGroupLabel>
+      <GrantGroupLabel>{g.groupActions}</GrantGroupLabel>
       <div style={{ display: "flex", flexDirection: "column" }}>
-        <GrantRow label={g.verbSearch} desc={g.verbSearchDesc}
-          on={search} locked={locked} onToggle={onToggleSearch} />
-        <GrantRow label={g.verbExport} desc={g.verbExportDesc}
-          on={exportOn} locked={locked} onToggle={onToggleExport} />
+        {APP_ACTIONS.map(action => {
+          /* WHICH TAB THIS OPENS, under the action. An administrator grants a capability and the
+             person then goes looking for a tab, so the row has to answer both — but the grant is
+             the capability, which is why the screens are the small grey line and not the
+             checkbox. `trail` opens two, and `personSearch` is the one that also lights up search
+             boxes on screens another action opened. */
+          const screens = screensForActions([action]).map(sc => g.screenName[sc]).join(" · ");
+          return (
+            <GrantRow key={action} label={g.actionName[action]} desc={g.actionDesc[action]}
+              footnote={screens ? g.opens(screens) : g.opensNothing}
+              on={actions.includes(action)} locked={locked} onToggle={() => onToggle(action)} />
+          );
+        })}
       </div>
     </>
   );
 }
 
-/** The screen names alone, for places that list a preset's grants without offering to change them. */
-export function useGrantNames(): { screen: Record<AppScreen, string>; search: string; export: string } {
+/** The action names alone, for places that list a preset's grants without offering to change them. */
+export function useGrantNames(): { action: Record<AppAction, string>; screen: Record<AppScreen, string> } {
   const [lang] = usePortalLanguage();
   const g = GRANT_T[lang];
-  return { screen: g.screenName, search: g.verbSearch, export: g.verbExport };
+  return { action: g.actionName, screen: g.screenName };
 }

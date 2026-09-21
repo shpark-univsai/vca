@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ClipboardList, KeySquare, Mail, MapPin, Monitor, Pencil, Plus, Tag, Trash2, User } from "lucide-react";
 import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
-import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, presetsForTeam, accountsFollowingPreset, presetLabel, presetDescription, APP_SCREENS, SIGNED_IN_USER, type AccessPreset, type AppScreen, type SearchPurpose } from "@/lib/vcaStore";
+import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, presetsForTeam, accountsFollowingPreset, presetLabel, presetDescription, APP_ACTIONS, SIGNED_IN_USER, type AccessPreset, type AppAction, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, usePortalEditAccess, useTypeLabel, AppGrantList, useGrantNames } from "./PortalShared";
@@ -1392,9 +1392,7 @@ function AccessPresetList({ t, teamId, canEdit }: {
               teamId,
               label: patch.label ?? "",
               description: patch.description ?? "",
-              screens: patch.screens ?? [],
-              appSearch: patch.appSearch ?? false,
-              appExport: patch.appExport ?? false,
+              actions: patch.actions ?? [],
             });
             showToast({ variant: "success", title: t.presetCreatedToast, desc: patch.label });
             closeAll();
@@ -1412,11 +1410,8 @@ function AccessPresetList({ t, teamId, canEdit }: {
 /** What a preset switches on, in one line, without offering to change it. */
 function PresetGrantSummary({ preset }: { preset: AccessPreset }) {
   const names = useGrantNames();
-  const parts = [
-    ...APP_SCREENS.filter(sc => preset.screens.includes(sc)).map(sc => names.screen[sc]),
-    ...(preset.appSearch ? [names.search] : []),
-    ...(preset.appExport ? [names.export] : []),
-  ];
+  // In APP_ACTIONS order, so two presets holding the same set read identically.
+  const parts = APP_ACTIONS.filter(a => preset.actions.includes(a)).map(a => names.action[a]);
   return (
     <p style={{ fontSize: "11px", color: "var(--gray-600)", lineHeight: 1.5, marginTop: "5px" }}>
       {parts.join(" · ")}
@@ -1434,16 +1429,14 @@ function PresetEditor({ t, preset, followers, onSave, onCancel }: {
 }) {
   const [label, setLabel] = useState(preset?.label ?? "");
   const [description, setDescription] = useState(preset?.description ?? "");
-  const [screens, setScreens] = useState<AppScreen[]>(preset?.screens ?? []);
-  const [appSearch, setAppSearch] = useState(preset?.appSearch ?? false);
-  const [appExport, setAppExport] = useState(preset?.appExport ?? false);
-  const toggleScreen = (sc: AppScreen) =>
-    setScreens(prev => prev.includes(sc) ? prev.filter(x => x !== sc) : [...prev, sc]);
+  const [actions, setActions] = useState<AppAction[]>(preset?.actions ?? []);
+  const toggleAction = (a: AppAction) =>
+    setActions(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
 
-  /* Screens, not verbs, and for the reason the invite form gives: a verb acts on a screen, so
-     search-without-screens is the same empty account wearing a tick. A preset with no screens
-     would hand that state to everybody who follows it at once. */
-  const canSave = label.trim().length > 0 && description.trim().length > 0 && screens.length > 0;
+  /* At least one action, for the reason the invite form gives: a preset that grants nothing hands
+     the "app open, nothing in it" state to everybody who follows it at once, and the gate then
+     turns each of them away. */
+  const canSave = label.trim().length > 0 && description.trim().length > 0 && actions.length > 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
@@ -1457,11 +1450,7 @@ function PresetEditor({ t, preset, followers, onSave, onCancel }: {
       </div>
       <div>
         <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.presetGrantsField}</label>
-        <AppGrantList
-          screens={screens} search={appSearch} exportOn={appExport} locked={false}
-          onToggleScreen={toggleScreen}
-          onToggleSearch={() => setAppSearch(!appSearch)}
-          onToggleExport={() => setAppExport(!appExport)} />
+        <AppGrantList actions={actions} locked={false} onToggle={toggleAction} />
       </div>
       {/* Named again here, with the verb attached. The row above says who follows this; this says
           what pressing Save does to them. */}
@@ -1471,14 +1460,14 @@ function PresetEditor({ t, preset, followers, onSave, onCancel }: {
         </p>
       )}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
-        {!canSave && screens.length === 0 && label.trim() && description.trim() && (
+        {!canSave && actions.length === 0 && label.trim() && description.trim() && (
           <span style={{ flex: 1, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{t.presetNoScreens}</span>
         )}
         <button className="portal-btn-outline" onClick={onCancel}
           style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
           {t.presetCancel}
         </button>
-        <button className="portal-btn-primary" onClick={() => canSave && onSave({ label: label.trim(), description: description.trim(), screens, appSearch, appExport })} disabled={!canSave}
+        <button className="portal-btn-primary" onClick={() => canSave && onSave({ label: label.trim(), description: description.trim(), actions })} disabled={!canSave}
           style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
           {preset ? t.presetSave : t.presetCreate}
         </button>
