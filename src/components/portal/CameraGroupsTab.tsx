@@ -244,7 +244,7 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
      * over to dismiss, and Escape with a half-built group would throw the work away.
      */
     <div>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "14px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "14px" }}>
         {/* THE WAY BACK IS A CONTROL, not a corner X. A page needs a back; a dialog needs a
             close, and this is no longer a dialog. */}
         <button type="button" onClick={onClose}
@@ -254,12 +254,32 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
           </svg>
           {t.back}
         </button>
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)" }}>
             {creating ? t.createTitle : t.membersTitle(group.label)}
           </p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "2px" }}>{t.membersBody}</p>
         </div>
+        {/*
+         * SAVE AT THE TOP, WHERE IT CANNOT FALL OFF.
+         *
+         * Measured with the save at the foot of the panel: in list mode its bottom edge sat at
+         * 916px on a 900px window — it OPENED off screen and had to be scrolled to. The map mode
+         * was no better by design, only by luck (899 of 900).
+         *
+         * Klaviyo's geofence editor is the reference and it does exactly this: a full-page editor
+         * with Exit and Save pinned top right, because the thing being edited (a map, a long
+         * list) has no fixed height and anything below it inherits that. Felt, Hex and Google
+         * Workspace's group builder all keep the commit control out of the scrolling area too.
+         *
+         * The count rides along, because it is the one number this screen sets and it belongs
+         * beside the button that writes it.
+         */}
+        <span style={{ flexShrink: 0, fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>{t.pickedCount(picked.length)}</span>
+        <button type="button" onClick={save} disabled={!dirty}
+          style={{ flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: dirty ? "var(--gray-900)" : "var(--gray-200)", color: dirty ? "white" : "var(--gray-400)", fontSize: "12.5px", fontWeight: 700, cursor: dirty ? "pointer" : "default", fontFamily: "inherit" }}>
+          {creating ? t.createSave : t.membersSave}
+        </button>
       </div>
       <div style={{ backgroundColor: "white", borderRadius: CARD_RADIUS, border: CARD_BORDER, boxShadow: PANEL_SHADOW, display: "flex", flexDirection: "column" }}>
 
@@ -382,16 +402,6 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
           )}
         </div>
 
-        <div style={{ padding: "14px 20px 20px", display: "flex", alignItems: "center", gap: "8px", borderTop: "1px solid var(--gray-200)" }}>
-          {/* The count is the confirmation: it is the one number this screen exists to set, and it
-              sits beside the button that writes it. No second cancel — 뒤로 at the top is the way
-              out, and two of them on one page is a choice nobody has to make. */}
-          <span style={{ flex: 1, fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>{t.pickedCount(picked.length)}</span>
-          <button type="button" onClick={save} disabled={!dirty}
-            style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: dirty ? "var(--gray-900)" : "var(--gray-200)", color: dirty ? "white" : "var(--gray-400)", fontSize: "12.5px", fontWeight: 700, cursor: dirty ? "pointer" : "default", fontFamily: "inherit" }}>
-            {creating ? t.createSave : t.membersSave}
-          </button>
-        </div>
       </div>
     </div>
   );
