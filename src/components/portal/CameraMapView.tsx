@@ -188,13 +188,25 @@ function statusColor(cam: Camera): string {
 }
 
 export default function CameraMapView({
-  cameras, onInspect, onShowUnpositioned, selectedIds, onToggleSelect,
+  cameras, onInspect, onShowUnpositioned, selectedIds, onToggleSelect, alwaysPicking,
 }: {
   /** The rows the table would be showing — filters applied. Split by position here. */
   cameras: Camera[];
-  onInspect: (cameraId: string) => void;
-  /** Narrows the list to the unsurveyed rows, which is where their coordinates get filled in. */
-  onShowUnpositioned: () => void;
+  /** Opens the camera's own panel. Absent inside a group editor, which has nothing to open. */
+  onInspect?: (cameraId: string) => void;
+  /** Narrows the list to the unsurveyed rows, which is where their coordinates get filled in.
+   *  Absent where there is no list to narrow — the notice then just states the count. */
+  onShowUnpositioned?: () => void;
+  /**
+   * PICKING IS THE WHOLE POINT HERE, SO IT IS NOT A MODE (owner, 2026-09-21: 입력소스 화면에
+   * 넣었던 지도를 여기 카메라 그룹에도 넣어서 지도에서 그룹핑할수있게해줘).
+   *
+   * On Input Sources the same map does two jobs — look at a camera, or add it to a selection — so
+   * a mode button decides which, and clicking a dot outside picking opens the camera. Inside a
+   * group editor there is only one job, and leaving the button there would mean a dot press that
+   * does nothing until somebody finds the toggle first.
+   */
+  alwaysPicking?: boolean;
   /**
    * THE SAME SELECTION THE TABLE HOLDS (owner, 2026-09-21: 카메라 그룹을 검색하거나 지도에서
    * 선택해서 그룹핑할수있게).
@@ -216,7 +228,8 @@ export default function CameraMapView({
      is what the two-layer note below is avoiding), so it would close over the first value. */
   /** A stable key for the selection, because the Set is a new object on every render. */
   const selectionKey = [...selectedIds].sort().join(",");
-  const [picking, setPicking] = useState(false);
+  const [pickingMode, setPickingMode] = useState(false);
+  const picking = alwaysPicking || pickingMode;
   const pickingRef = useRef(picking);
   useEffect(() => { pickingRef.current = picking; }, [picking]);
   const onToggleRef = useRef(onToggleSelect);
@@ -512,7 +525,8 @@ export default function CameraMapView({
             counts the same selection. MEASURED before writing that sentence: the bar is
             position:fixed at the foot of the viewport (top 820 of 900), not above this card, and
             an arrow pointing the wrong way is worse than none. */}
-        <button onClick={() => setPicking(v => !v)}
+        {!alwaysPicking && (
+        <button onClick={() => setPickingMode(v => !v)}
           style={{
             display: "inline-flex", alignItems: "center", gap: "6px", height: "26px", padding: "0 10px",
             borderRadius: "999px", cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700,
@@ -523,7 +537,8 @@ export default function CameraMapView({
           <MousePointerClick size={12} strokeWidth={2.4} />
           {picking ? t.pickStop : t.pickStart}
         </button>
-        {picking && (
+        )}
+        {picking && !alwaysPicking && (
           <span style={{ fontSize: "11px", color: "var(--gray-500)" }}>{t.pickHint(selectedIds.size)}</span>
         )}
         <span style={{ flex: 1 }} />
@@ -580,10 +595,15 @@ export default function CameraMapView({
             }}>
               <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.noPosition(unplaced)}</p>
               <p style={{ fontSize: "11px", color: "var(--gray-500)", marginTop: "3px", lineHeight: 1.45 }}>{t.noPositionWhy}</p>
-              <button className="portal-btn-quiet" onClick={onShowUnpositioned}
-                style={{ marginTop: "8px", padding: "4px 8px", borderRadius: "6px", border: "none", backgroundColor: "var(--gray-100)", color: "var(--gray-700)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                {t.showThem}
-              </button>
+              {/* Only where there is a list to narrow. In a group editor the count still has to be
+                  said — a map that silently omits the unsurveyed cameras looks like the whole
+                  fleet — but "show them" would point at nothing. */}
+              {onShowUnpositioned && (
+                <button className="portal-btn-quiet" onClick={onShowUnpositioned}
+                  style={{ marginTop: "8px", padding: "4px 8px", borderRadius: "6px", border: "none", backgroundColor: "var(--gray-100)", color: "var(--gray-700)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  {t.showThem}
+                </button>
+              )}
             </div>
           )}
 
@@ -615,10 +635,12 @@ export default function CameraMapView({
               {selectedCamera.zone && (
                 <p style={{ fontSize: "11px", color: "var(--gray-500)", marginTop: "4px" }}>{selectedCamera.zone}</p>
               )}
-              <button className="portal-btn-quiet" onClick={() => onInspect(selectedCamera.id)}
-                style={{ marginTop: "10px", width: "100%", padding: "6px 8px", borderRadius: "6px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                {t.preview}
-              </button>
+              {onInspect && (
+                <button className="portal-btn-quiet" onClick={() => onInspect(selectedCamera.id)}
+                  style={{ marginTop: "10px", width: "100%", padding: "6px 8px", borderRadius: "6px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  {t.preview}
+                </button>
+              )}
             </div>
         )}
       </div>

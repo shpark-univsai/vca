@@ -383,7 +383,6 @@ const T = {
     grantNoScreens: "Tick at least one screen — an account with none cannot open the app",
     grantsHeading: "What this grants",
     grantsLocked: "Follows the preset. Choose Custom to change individual items.",
-    grantsUnset: "Choose how grants are decided, above.",
     grantsModalTitle: "App permissions",
     grantsModalIntro: (name: string) => `${name} — what they may do in the monitoring app`,
     // Named before it happens, not reported after. Following a preset means holding its grants, so
@@ -685,7 +684,6 @@ const T = {
     grantNoScreens: "화면을 하나 이상 골라주세요 — 하나도 없으면 앱을 열 수 없습니다",
     grantsHeading: "이 방식이 켜는 것",
     grantsLocked: "프리셋을 따릅니다. 하나씩 바꾸려면 커스텀을 고르세요.",
-    grantsUnset: "위에서 부여 방식을 먼저 고르세요.",
     grantsModalTitle: "앱 권한",
     grantsModalIntro: (name: string) => `${name} — 관제 앱에서 할 수 있는 일`,
     grantsOverwriteWarning: "이 계정은 손으로 조정한 권한을 갖고 있습니다. 이 프리셋을 따르면 그것이 대체됩니다.",
@@ -783,14 +781,19 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, t }: 
         </div>
       </div>
 
-      {/* THE LIST IS ALWAYS HERE, not only under Custom.
-          A preset is a name until you can see what it switches on. In preset mode the rows are
-          locked rather than hidden: hiding them answers "what does this preset do?" with silence. */}
+      {/* THE LIST IS HERE FOR EVERY ANSWER — AND NOTHING BEFORE THE FIRST ONE.
+          A preset is a name until you can see what it switches on, so in preset mode the rows are
+          locked rather than hidden: hiding them answers "what does this preset do?" with silence.
+          But BEFORE anything is picked there is nothing to describe (owner, 2026-09-21: 프리셋을
+          선택 안한상태일땐, 아래 이 방식이 켜는것을 안보여줘도될것같아). Six outlined pills under a
+          heading that says "what this switches on" describe a grant nobody chose — and the only
+          words there were an instruction to go back up, which the reader is already looking at. */}
+      {choice !== null && (
       <div style={{ borderTop: "1px solid var(--gray-200)", paddingTop: "14px", minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", marginBottom: "8px" }}>
           <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.grantsHeading}</label>
           <span style={{ fontSize: "11px", color: "var(--gray-400)", textAlign: "right", lineHeight: 1.45 }}>
-            {choice === null ? t.grantsUnset : !isCustom ? t.grantsLocked : ""}
+            {!isCustom ? t.grantsLocked : ""}
           </span>
         </div>
         <AppGrantList actions={actions} locked={!isCustom} onToggle={onToggleAction} />
@@ -820,6 +823,7 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, t }: 
           );
         })()}
       </div>
+      )}
     </>
   );
 }

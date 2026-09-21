@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { Boxes } from "lucide-react";
 import {
-  cameraGroupsInProject, camerasInProject, useVcaStore, type CameraGroup,
+  cameraGroupsInProject, camerasInProject, useVcaStore, type Camera, type CameraGroup,
 } from "@/lib/vcaStore";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
+import CameraMapView from "./CameraMapView";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
@@ -37,8 +39,8 @@ import {
 const T = {
   en: {
     heading: "Camera groups",
-    intro: "A named set of cameras, handed out as one on an account's camera scope. Group membership is edited on Input Sources, where the cameras are.",
-    empty: "No groups on this project yet. Select cameras on Input Sources and press “Group these”.",
+    intro: "A named set of cameras, handed out as one on an account's camera scope. Pick them from the list or on the map, and one camera may sit in several groups.",
+    empty: "No groups on this project yet. Make one here, or select cameras on Input Sources and group them there.",
     colName: "Group", colCameras: "Cameras", colHolders: "Accounts holding it", colCreated: "Created",
     cameras: (n: number) => `${n} camera${n === 1 ? "" : "s"}`,
     camerasNone: "Empty",
@@ -58,6 +60,18 @@ const T = {
     andMore: (n: number) => `and ${n} more`,
     noZone: "No zone",
     zonePick: "select all", zoneClear: "clear",
+    viewList: "List", viewMap: "Map",
+    createTitle: "New camera group",
+    createSave: "Create group",
+    createName: "Group name",
+    createNamePlaceholder: "The way people say it out loud",
+    createButton: "New group",
+    createdToast: "Camera group created",
+    overlapNote: "A camera can be in several groups at once. Adding it here does not take it out of another.",
+    inOtherGroups: (n: number) => `in ${n} other`,
+    inOtherGroupsTitle: (names: string) => `Also in: ${names}`,
+    pickedCount: (n: number) => `${n} picked`,
+    mapHint: "Click a dot to add or remove it. Zone pills add the whole zone.",
     zonePicked: (n: number) => n === 0 ? "none in the group" : `${n} in the group`,
     renameTitle: (label: string) => `Rename ${label}`,
     renameBody: "The name is what an administrator picks from when granting camera access, so it should read the way somebody says it out loud.",
@@ -74,8 +88,8 @@ const T = {
   },
   ko: {
     heading: "카메라 그룹",
-    intro: "이름 붙인 카메라 묶음입니다. 계정의 카메라 범위에서 한 덩어리로 줍니다. 그룹에 어떤 카메라가 들어가는지는 카메라가 있는 입력 소스에서 정합니다.",
-    empty: "이 프로젝트에 아직 그룹이 없습니다. 입력 소스에서 카메라를 고르고 「그룹으로 묶기」를 누르세요.",
+    intro: "이름 붙인 카메라 묶음입니다. 계정의 카메라 범위에서 한 덩어리로 줍니다. 목록에서 찾거나 지도에서 눌러 넣고, 한 카메라가 여러 그룹에 들어가도 됩니다.",
+    empty: "이 프로젝트에 아직 그룹이 없습니다. 여기서 만들거나, 입력 소스에서 카메라를 골라 묶을 수 있습니다.",
     colName: "그룹", colCameras: "카메라", colHolders: "이 그룹을 가진 계정", colCreated: "만든 사람",
     cameras: (n: number) => `${n}대`,
     camerasNone: "비어 있음",
@@ -95,6 +109,18 @@ const T = {
     andMore: (n: number) => `외 ${n}대`,
     noZone: "구역 미지정",
     zonePick: "전체 선택", zoneClear: "해제",
+    viewList: "목록", viewMap: "지도",
+    createTitle: "새 카메라 그룹",
+    createSave: "그룹 만들기",
+    createName: "그룹 이름",
+    createNamePlaceholder: "사람들이 입으로 부르는 말",
+    createButton: "그룹 만들기",
+    createdToast: "카메라 그룹을 만들었습니다",
+    overlapNote: "카메라는 여러 그룹에 동시에 들 수 있습니다. 여기서 넣어도 다른 그룹에서 빠지지 않습니다.",
+    inOtherGroups: (n: number) => `다른 그룹 ${n}`,
+    inOtherGroupsTitle: (names: string) => `여기에도 있음: ${names}`,
+    pickedCount: (n: number) => `${n}대 체크됨`,
+    mapHint: "점을 눌러 넣거나 뺍니다. 구역 알약을 누르면 그 구역이 통째로 들어갑니다.",
     zonePicked: (n: number) => n === 0 ? "그룹에 없음" : `그룹에 ${n}대`,
     renameTitle: (label: string) => `${label} 이름 바꾸기`,
     renameBody: "이 이름이 카메라 권한을 줄 때 고르는 이름입니다. 사람들이 입으로 부르는 말로 두는 게 좋습니다.",
@@ -117,36 +143,57 @@ type Dict = typeof T.en;
 const GRID = "1.4fr 0.6fr 1.6fr 1fr 36px";
 
 /**
- * EDITING MEMBERSHIP IN PLACE, which is the one thing this screen does that Input Sources does
- * better for CREATING a group.
+ * ONE EDITOR FOR BOTH — MAKING A GROUP AND CHANGING ONE, WITH THE LIST AND THE MAP SIDE BY SIDE.
  *
- * The creation path stays where the cameras are: tick rows in the table, click dots on the map,
- * press a zone pill, then "Group these". That is the right place to ASSEMBLE a set, because it has
- * the search, the filters, the map and the status of every camera.
+ * The owner asked for the map here (2026-09-21): 입력소스 화면에 넣었던 지도를 여기 카메라
+ * 그룹에도 넣어서 지도에서 그룹핑할수있게해줘. That overrides the earlier note in this file, which
+ * argued creation should stay on Input Sources because that is where the map is. The map is a
+ * component, so "where the map is" was never the real constraint — the real one is that a group is
+ * assembled the way the site is described, and a site is described by pointing at it.
  *
- * Fixing an existing group is a different errand: the reader is already here, holding the group,
- * and usually changing one or two members. Sending them to another screen and back for that is
- * the friction — so this is a list with a search box, the same zone-grouped shape the camera-scope
- * picker uses, and it writes through setCameraGroupMembers (which audits how many accounts the
- * change reaches, because it reaches them immediately).
+ * TWO WAYS IN, ONE SELECTION. The list has the search and the zone grouping; the map has the
+ * geography. They write the same `picked` set, so twenty ticked in the list and two clicked on the
+ * map are twenty-two in the group — the same rule the bulk selection on Input Sources follows, and
+ * for the same reason: a second selection would be a second answer to "what is in this group".
+ *
+ * OVERLAP IS ALLOWED AND SAID OUT LOUD (owner: 카메라들이 중복으로도 그룹핑 될수있을것같구).
+ * Nothing in the data model ever forbade it — `addCameraGroup` refuses a duplicate NAME and says
+ * nothing about members — but a checkbox list gives no hint either way, and an administrator who
+ * assumes exclusivity will not build the groups they actually need (the gate camera belongs to
+ * 정문 and to 야간 순찰 both). So each row says how many other groups hold that camera and names
+ * them on hover, and the note above the list says adding here takes nothing away.
+ *
+ * NOT ConfirmModal: that shell is capped at 400px, which is not a map. Its own dialog, at the
+ * width the two-pane picker uses.
  */
-function MemberEditor({ group, cameras, t, onSave, onClose }: {
-  group: CameraGroup;
-  cameras: { id: string; name: string; code: string; zone?: string }[];
+function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
+  /** The group being changed, or null while one is being made. */
+  group: CameraGroup | null;
+  /** The project's register — full cameras, because the map needs the coordinates and the status. */
+  cameras: Camera[];
+  /** Every other group of this project, for the "also in" count. */
+  otherGroups: CameraGroup[];
   t: Dict;
-  onSave: (cameraIds: string[]) => void;
+  /** Returns an error key when the name is taken, so the field can say so without closing. */
+  onSave: (label: string, cameraIds: string[]) => "duplicate-label" | null;
   onClose: () => void;
 }) {
-  const [picked, setPicked] = useState<string[]>(group.cameraIds);
+  useEscapeKey(onClose);
+  const creating = group === null;
+  const [label, setLabel] = useState(group?.label ?? "");
+  const [labelError, setLabelError] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string[]>(group?.cameraIds ?? []);
+  const [view, setView] = useState<"list" | "map">("list");
   const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
+
   const matching = needle === ""
     ? cameras
     : cameras.filter(c => c.name.toLowerCase().includes(needle) || c.code.toLowerCase().includes(needle));
 
   /* Grouped by the register's own zone, like the scope picker: "the north gate ones" is how
      somebody says it, and a camera with no zone keeps its own group rather than disappearing. */
-  const byZone = new Map<string, typeof cameras>();
+  const byZone = new Map<string, Camera[]>();
   matching.forEach(c => {
     const key = c.zone?.trim() || "";
     byZone.set(key, [...(byZone.get(key) ?? []), c]);
@@ -154,12 +201,11 @@ function MemberEditor({ group, cameras, t, onSave, onClose }: {
   const zones = [...byZone.entries()].sort((a, b) => (a[0] === "" ? 1 : b[0] === "" ? -1 : a[0].localeCompare(b[0])));
 
   const toggle = (id: string) => setPicked(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  const dirty = [...picked].sort().join() !== [...group.cameraIds].sort().join();
 
   /* ZONES START CLOSED ON A BIG REGISTER — the same rule and the same threshold as the scope
      picker (owner: 실제 현장에서는 연결된 카메라 대수가 1000대이상일 수 있어서). A thousand rows
-     inside a 42vh box is a list nobody scrolls; a zone is what somebody ticks. Below a screenful
-     the list is already the answer, so closing it would only add clicks. */
+     inside one scroll box is a list nobody scrolls; a zone is what somebody ticks. Below a
+     screenful the list is already the answer, so closing it would only add clicks. */
   const zonesStartOpen = cameras.length <= 40;
   const [openZones, setOpenZones] = useState<string[]>(() => zonesStartOpen ? cameras.map(c => c.zone?.trim() || "") : []);
   const toggleZoneOpen = (zone: string) =>
@@ -169,77 +215,160 @@ function MemberEditor({ group, cameras, t, onSave, onClose }: {
     setPicked(prev => allOn ? prev.filter(id => !ids.includes(id)) : [...new Set([...prev, ...ids])]);
   };
 
+  /** The other groups holding a camera — the overlap, named rather than counted on hover. */
+  const alsoIn = (cameraId: string) => otherGroups.filter(g => g.cameraIds.includes(cameraId));
+
+  const dirty = creating
+    ? label.trim() !== "" && picked.length > 0
+    : [...picked].sort().join() !== [...(group?.cameraIds ?? [])].sort().join() ;
+
+  const save = () => {
+    if (!dirty) return;
+    const refusal = onSave(label.trim(), picked);
+    if (refusal === "duplicate-label") setLabelError(t.renameDuplicate);
+  };
+
   return (
-    <ConfirmModal
-      title={t.membersTitle(group.label)}
-      body={t.membersBody}
-      confirmLabel={t.membersSave}
-      cancelLabel={t.cancel}
-      confirmDisabled={!dirty}
-      bodyScrolls
-      onConfirm={() => onSave(picked)}
-      onClose={onClose}
-    >
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px", minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <TextField value={query} onChange={setQuery} placeholder={t.membersSearch} />
-          </div>
-          <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-500)", whiteSpace: "nowrap" }}>{t.membersCount(picked.length)}</span>
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "820px", width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-modal)" }}>
+        <div style={{ padding: "20px 20px 0" }}>
+          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
+            {creating ? t.createTitle : t.membersTitle(group.label)}
+          </p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.membersBody}</p>
         </div>
-        <div style={{ maxHeight: "42vh", overflowY: "auto", border: BORDER, borderRadius: "10px", padding: "8px" }}>
-          {zones.length === 0 ? (
+
+        {creating && (
+          <div style={{ padding: "16px 20px 0" }}>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.createName}</label>
+            <TextField value={label} onChange={v => { setLabel(v); setLabelError(null); }} placeholder={t.createNamePlaceholder} autoFocus />
+            {labelError && <FieldError>{labelError}</FieldError>}
+          </div>
+        )}
+
+        <div style={{ padding: "16px 20px 0", display: "flex", alignItems: "center", gap: "10px" }}>
+          {/* TWO WAYS IN, NOT TWO SELECTIONS. Switching does not reset anything — the count in the
+              footer is the same set on both sides, which is what makes switching safe to do
+              halfway through. */}
+          <div style={{ display: "flex", gap: "4px", padding: "3px", backgroundColor: "var(--gray-100)", borderRadius: "9px" }}>
+            {([["list", t.viewList], ["map", t.viewMap]] as const).map(([value, text]) => (
+              <button key={value} type="button" onClick={() => setView(value)}
+                style={{
+                  padding: "5px 12px", borderRadius: "7px", cursor: "pointer", fontFamily: "inherit",
+                  fontSize: "11.5px", fontWeight: 700, border: "none",
+                  backgroundColor: view === value ? "white" : "transparent",
+                  color: view === value ? "var(--gray-900)" : "var(--gray-500)",
+                  boxShadow: view === value ? "var(--shadow-card)" : "none",
+                }}>
+                {text}
+              </button>
+            ))}
+          </div>
+          {view === "list" && (
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <TextField value={query} onChange={setQuery} placeholder={t.membersSearch} />
+            </div>
+          )}
+          {view === "map" && (
+            <span style={{ flex: 1, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{t.mapHint}</span>
+          )}
+        </div>
+
+        {/* THE ONE SENTENCE THAT STOPS A WRONG ASSUMPTION. Said above the list rather than on a
+            row, because it is about the rule and not about any one camera. */}
+        <p style={{ padding: "10px 20px 0", fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.overlapNote}</p>
+
+        <div style={{ padding: "12px 20px", overflowY: "auto", minHeight: 0, flex: 1 }}>
+          {view === "map" ? (
+            <div style={{ height: "46vh", minHeight: "320px" }}>
+              <CameraMapView
+                cameras={cameras}
+                selectedIds={new Set(picked)}
+                onToggleSelect={toggle}
+                alwaysPicking
+              />
+            </div>
+          ) : zones.length === 0 ? (
             <p style={{ fontSize: "12px", color: "var(--gray-400)", padding: "10px", lineHeight: 1.5 }}>{t.membersNone}</p>
-          ) : zones.map(([zone, list]) => (
-            <div key={zone || "__none"} style={{ marginBottom: "8px" }}>
-              {/* The name opens the zone; the words beside it tick the whole zone. On a big site
-                  those are the two things somebody does here, and one header doing both would
-                  make ticking a zone cost opening it first. A search opens what it found. */}
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 0 4px 2px" }}>
-                <button type="button" onClick={() => toggleZoneOpen(zone)}
-                  style={{ display: "flex", alignItems: "center", gap: "5px", border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
-                  <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true"
-                    style={{ transform: (needle !== "" || openZones.includes(zone)) ? "rotate(90deg)" : "none", transition: "transform 120ms", flexShrink: 0 }}>
-                    <path d="M3 1.5L7 5l-4 3.5" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)" }}>
-                    {zone || t.noZone} · {list.length}
-                  </span>
-                </button>
-                <button type="button" onClick={() => toggleZoneAll(list.map(c => c.id))}
-                  style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>
-                  {list.every(c => picked.includes(c.id)) ? t.zoneClear : t.zonePick}
-                </button>
-                {/* A closed zone says how much of it is in the group, or you would open it to find
-                    out whether you had already ticked it. */}
-                {!(needle !== "" || openZones.includes(zone)) && (
-                  <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>
-                    {t.zonePicked(list.filter(c => picked.includes(c.id)).length)}
-                  </span>
-                )}
-              </div>
-              {(needle !== "" || openZones.includes(zone)) && list.map(c => {
-                const on = picked.includes(c.id);
+          ) : (
+            <div style={{ border: BORDER, borderRadius: "10px", padding: "8px" }}>
+              {zones.map(([zone, list]) => {
+                const open = needle !== "" || openZones.includes(zone);
                 return (
-                  <button key={c.id} onClick={() => toggle(c.id)}
-                    style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left", padding: "6px 6px", borderRadius: "8px", border: "none", backgroundColor: "transparent", cursor: "pointer", fontFamily: "inherit" }}>
-                    <span style={{ width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white" }}>
-                      {on && (
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-                          <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  <div key={zone || "__none"} style={{ marginBottom: "8px" }}>
+                    {/* The name opens the zone; the words beside it tick the whole zone. On a big
+                        site those are the two things somebody does here, and one header doing both
+                        would make ticking a zone cost opening it first. */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 0 4px 2px" }}>
+                      <button type="button" onClick={() => toggleZoneOpen(zone)}
+                        style={{ display: "flex", alignItems: "center", gap: "5px", border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
+                        <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true"
+                          style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 120ms", flexShrink: 0 }}>
+                          <path d="M3 1.5L7 5l-4 3.5" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
+                        <span style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)" }}>
+                          {zone || t.noZone} · {list.length}
+                        </span>
+                      </button>
+                      <button type="button" onClick={() => toggleZoneAll(list.map(c => c.id))}
+                        style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>
+                        {list.every(c => picked.includes(c.id)) ? t.zoneClear : t.zonePick}
+                      </button>
+                      {/* A closed zone says how much of it is in the group, or you would open it to
+                          find out whether you had already ticked it. */}
+                      {!open && (
+                        <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>
+                          {t.zonePicked(list.filter(c => picked.includes(c.id)).length)}
+                        </span>
                       )}
-                    </span>
-                    <span style={{ minWidth: 0, fontSize: "12.5px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
-                    <span style={{ flexShrink: 0, fontSize: "10px", fontFamily: "monospace", color: "var(--gray-400)" }}>{c.code}</span>
-                  </button>
+                    </div>
+                    {open && list.map(c => {
+                      const on = picked.includes(c.id);
+                      const others = alsoIn(c.id);
+                      return (
+                        <button key={c.id} type="button" onClick={() => toggle(c.id)}
+                          style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left", padding: "6px 6px", borderRadius: "8px", border: "none", backgroundColor: "transparent", cursor: "pointer", fontFamily: "inherit" }}>
+                          <span style={{ width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white" }}>
+                            {on && (
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                                <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </span>
+                          <span style={{ minWidth: 0, fontSize: "12.5px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
+                          <span style={{ flexShrink: 0, fontSize: "10px", fontFamily: "monospace", color: "var(--gray-400)" }}>{c.code}</span>
+                          {/* THE OVERLAP, ON THE ROW IT IS ABOUT. Counted here and named on hover:
+                              four group names on a row would push the camera's own name out. */}
+                          {others.length > 0 && (
+                            <span title={t.inOtherGroupsTitle(others.map(g => g.label).join(", "))}
+                              style={{ flexShrink: 0, fontSize: "10px", fontWeight: 700, color: "var(--gray-400)" }}>
+                              {t.inOtherGroups(others.length)}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 );
               })}
             </div>
-          ))}
+          )}
+        </div>
+
+        <div style={{ padding: "14px 20px 20px", display: "flex", alignItems: "center", gap: "8px", borderTop: "1px solid var(--gray-200)" }}>
+          <span style={{ flex: 1, fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>{t.pickedCount(picked.length)}</span>
+          <button type="button" onClick={onClose}
+            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12.5px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {t.cancel}
+          </button>
+          <button type="button" onClick={save} disabled={!dirty}
+            style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: dirty ? "var(--gray-900)" : "var(--gray-200)", color: dirty ? "white" : "var(--gray-400)", fontSize: "12.5px", fontWeight: 700, cursor: dirty ? "pointer" : "default", fontFamily: "inherit" }}>
+            {creating ? t.createSave : t.membersSave}
+          </button>
         </div>
       </div>
-    </ConfirmModal>
+    </div>
   );
 }
 
@@ -254,6 +383,7 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
   const allGroups = useVcaStore(s => s.cameraGroups);
   const allCameras = useVcaStore(s => s.cameras);
   const portalUsers = useVcaStore(s => s.portalUsers);
+  const addCameraGroup = useVcaStore(s => s.addCameraGroup);
   const renameCameraGroup = useVcaStore(s => s.renameCameraGroup);
   const setCameraGroupMembers = useVcaStore(s => s.setCameraGroupMembers);
   const removeCameraGroup = useVcaStore(s => s.removeCameraGroup);
@@ -266,6 +396,7 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
   const [nameError, setNameError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<CameraGroup | null>(null);
   const [editing, setEditing] = useState<CameraGroup | null>(null);
+  const [creating, setCreating] = useState(false);
 
   /** The accounts whose scope names this group — the answer this tab exists for. */
   const holdersOf = (group: CameraGroup) =>
@@ -281,10 +412,19 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
     <div>
       <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "14px" }}>
         <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "1px" }}><Boxes size={17} strokeWidth={2} /></span>
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.heading}</p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px", lineHeight: 1.5 }}>{t.intro}</p>
         </div>
+        {/* MAKING ONE STARTS HERE NOW, not only on Input Sources. Disabled for a reader who cannot
+            change access — the row menu already refuses, and a button that opens a dialog whose
+            save is refused is worse than a button that says no. */}
+        {mayEdit && (
+          <button type="button" onClick={() => setCreating(true)}
+            style={{ flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {t.createButton}
+          </button>
+        )}
       </div>
 
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
@@ -293,6 +433,12 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
              say "select cameras on Input Sources" and leave the reader to find the sidebar. */
           <div style={{ padding: "28px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
             <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6, textAlign: "center", maxWidth: "46ch" }}>{t.empty}</p>
+            {mayEdit && (
+              <button type="button" onClick={() => setCreating(true)}
+                style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                {t.createButton}
+              </button>
+            )}
             {onGoToCameras && (
               <button onClick={onGoToCameras}
                 style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
@@ -402,17 +548,29 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
         </ConfirmModal>
       )}
 
-      {editing && (
-        <MemberEditor
+      {/* ONE EDITOR, TWO ERRANDS. `editing` holds the group being changed; `creating` is the same
+          dialog with the name field on and no group behind it. Two components would have drifted
+          the first time the list or the map changed. */}
+      {(editing || creating) && (
+        <GroupEditor
           group={editing}
           cameras={registered}
+          otherGroups={groups.filter(g => g.id !== editing?.id)}
           t={t}
-          onSave={ids => {
-            setCameraGroupMembers(editing.id, ids);
-            showToast({ variant: "success", title: t.membersSavedToast, desc: `${editing.label} · ${t.cameras(ids.length)}` });
-            setEditing(null);
+          onSave={(label, ids) => {
+            if (editing) {
+              setCameraGroupMembers(editing.id, ids);
+              showToast({ variant: "success", title: t.membersSavedToast, desc: `${editing.label} · ${t.cameras(ids.length)}` });
+              setEditing(null);
+              return null;
+            }
+            const refusal = addCameraGroup(projectId, label, ids);
+            if (refusal) return refusal;
+            showToast({ variant: "success", title: t.createdToast, desc: `${label} · ${t.cameras(ids.length)}` });
+            setCreating(false);
+            return null;
           }}
-          onClose={() => setEditing(null)}
+          onClose={() => { setEditing(null); setCreating(false); }}
         />
       )}
 
