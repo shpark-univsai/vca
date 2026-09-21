@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Asterisk, ClipboardList, MailQuestion, MonitorOff, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
@@ -3239,13 +3239,33 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           { id: "presets", label: t.peopleTabPresets, count: pagePresets.length, hint: t.peopleTabPresetsHint },
         ] as { id: "accounts" | "roster" | "groups" | "presets"; label: string; count: number; hint: string }[]).map(tab => {
           const active = peopleTab === tab.id;
-          return (
-            /* On the tab rather than a line under it. The tab name is a state ("On the roster"),
-               which is the right name for what the tab holds but says nothing about what you came
-               here to do; a permanent sentence answering that would be clutter for everybody who
-               already knows. Our own Tooltip, not the browser's `title` — that one wants the
-               pointer held still for over a second and this hint has to be findable. */
-            <Tooltip key={tab.id} text={tab.hint}>
+          /*
+           * A RULE BETWEEN TWO KINDS OF TAB (owner, 2026-09-21: 이 네개가 같은 레벨의 데이터
+           * 탭은 아닌것같은데, 나란히 두면 헷갈리지않을까?).
+           *
+           * Right: the first two hold PEOPLE — accounts, and the roster waiting to become
+           * accounts — and the last two hold the THINGS PEOPLE ARE GIVEN: a set of cameras, a set
+           * of screens. Four tab names in a row with a count on each read as four lists of the
+           * same kind, and the counts make it worse (5 · 8 · 2 · 3 looks like one series).
+           *
+           * A rule rather than two captions: the grouping is one bit of information, and a word
+           * for it would take a second line of the header for something the reader only needs
+           * once. Verkada and HubSpot keep users and their roles in one flat strip, but their
+           * names carry the kind — ours are 계정 / 명부 대기 / 카메라 그룹 / 앱 권한 프리셋, where
+           * only the last two say what they are.
+           */
+          const startsSecondKind = tab.id === "groups";
+          return (<React.Fragment key={tab.id}>
+            {startsSecondKind && (
+              <span aria-hidden="true" style={{ width: "1px", alignSelf: "stretch", marginBottom: "10px", backgroundColor: "var(--gray-200)" }} />
+            )}
+            {/* On the tab rather than a line under it. The tab name is a state (on the roster),
+                which is the right name for what the tab holds but says nothing about what you
+                came here to do; a permanent sentence answering that would be clutter for
+                everybody who already knows. Our own Tooltip, not the browser title attribute —
+                that one wants the pointer held still for over a second and this hint has to be
+                findable. */}
+            <Tooltip text={tab.hint}>
             <button onClick={() => setPeopleTab(tab.id)}
               style={{
                 display: "flex", alignItems: "center", gap: "6px",
@@ -3258,7 +3278,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
               <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{tab.count}</span>
             </button>
             </Tooltip>
-          );
+          </React.Fragment>);
         })}
       </div>
 
