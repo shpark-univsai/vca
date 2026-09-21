@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ClipboardList, KeySquare, Mail, MapPin, Monitor, Pencil, Plus, Tag, Trash2, User } from "lucide-react";
 import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
-import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, presetsForTeam, accountsFollowingPreset, APP_SCREENS, SIGNED_IN_USER, type AccessPreset, type AppScreen, type SearchPurpose } from "@/lib/vcaStore";
+import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, presetsForTeam, accountsFollowingPreset, presetLabel, presetDescription, APP_SCREENS, SIGNED_IN_USER, type AccessPreset, type AppScreen, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, usePortalEditAccess, useTypeLabel, AppGrantList, useGrantNames } from "./PortalShared";
@@ -1287,6 +1287,9 @@ function AccessPresetList({ t, teamId, canEdit }: {
   teamId: string;
   canEdit: boolean;
 }) {
+  /* The three we ship are printed as product strings, a customer's own preset as they typed it.
+     See AccessPreset.builtinKey — the English console was showing 운영자 / 조사자 / 감독자. */
+  const [lang] = usePortalLanguage();
   const { showToast } = useToast();
   // Raw slices out of the selectors, filtering in memos — presetsForTeam and
   // accountsFollowingPreset both build new arrays, and a selector that does that never settles.
@@ -1332,7 +1335,7 @@ function AccessPresetList({ t, teamId, canEdit }: {
         return (
           <div key={pr.id} style={{ padding: "12px", border: BORDER, borderRadius: "10px" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-              <span style={{ flex: 1, minWidth: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{pr.label}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{presetLabel(pr, lang)}</span>
               {canEdit && retiring !== pr.id && (
                 <>
                   <button className="portal-btn-quiet" onClick={() => { closeAll(); setEditing(pr.id); }}

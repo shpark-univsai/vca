@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Asterisk, ClipboardList, MailQuestion, MonitorOff, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, scopedCameraIds, APP_SCREENS, type AccessPreset, type AppScreen, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, APP_SCREENS, type AccessPreset, type AppScreen, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
@@ -707,6 +707,10 @@ function GrantPicker({ presets, choice, onChoice, screens, search, exportOn, onT
   t: (typeof T)["en"] | (typeof T)["ko"];
 }) {
   const isCustom = choice === "custom";
+  /* The three presets we ship carry a key and are printed as product strings; a preset the
+     customer made is printed as they typed it. Without this the English console showed 운영자 /
+     조사자 / 감독자 in a list of English rows. See AccessPreset.builtinKey. */
+  const [lang] = usePortalLanguage();
   return (
     <>
       <div>
@@ -715,7 +719,7 @@ function GrantPicker({ presets, choice, onChoice, screens, search, exportOn, onT
           {/* Custom is the LAST ITEM OF THE SAME LIST rather than a separate switch — it is one
               more way of answering "how are this person's grants decided", and a toggle beside the
               list would make it a second question people answer before the first. */}
-          {[...presets.map(pr => ({ id: pr.id, label: pr.label, desc: pr.description })),
+          {[...presets.map(pr => ({ id: pr.id, label: presetLabel(pr, lang), desc: presetDescription(pr, lang) })),
             { id: "custom", label: t.grantCustom, desc: t.grantCustomDesc }].map(opt => {
             const picked = choice === opt.id;
             return (
@@ -2633,9 +2637,14 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   // Raw slice out of the selector, lookup built in a memo — a selector that returns a new object
   // every call re-renders forever, which is how this page last broke.
   const allPresetsHere = useVcaStore(s => s.accessPresets);
+  /* `lang` is a dependency because the three presets we ship are printed as product strings:
+     without it the map keeps whichever language was current when it was first built, and the
+     Korean table showed "Investigator" in the access cell while the same preset read 조사자 in
+     every dialog. The language hook settles after mount (it reads localStorage), so the first
+     build is always the wrong one. */
   const presetLabelById = useMemo(
-    () => new Map(allPresetsHere.map(pr => [pr.id, pr.label])),
-    [allPresetsHere]
+    () => new Map(allPresetsHere.map(pr => [pr.id, presetLabel(pr, lang)])),
+    [allPresetsHere, lang]
   );
   /**
    * The account action waiting on a yes. One piece of state rather than a flag per action: the

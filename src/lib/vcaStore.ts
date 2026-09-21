@@ -2078,6 +2078,35 @@ export function canExportEvidence(users: PortalUser[]): boolean {
 }
 
 /** The grants a preset hands out, as the fields they are stored in. */
+/**
+ * The product strings for the three presets we ship, keyed by `builtinKey` — the same arrangement
+ * SERVER_TYPE_LABELS and the licence tab's FEATURE_LABELS make, so the lookup never touches the
+ * data. A preset the customer made has no key and keeps its own label.
+ */
+export const PRESET_BUILTIN_LABELS: Record<NonNullable<AccessPreset["builtinKey"]>, { label: { en: string; ko: string }; description: { en: string; ko: string } }> = {
+  operator: {
+    label: { en: "Operator", ko: "운영자" },
+    description: { en: "Watches what is happening now", ko: "지금 일어나는 일을 본다" },
+  },
+  investigator: {
+    label: { en: "Investigator", ko: "조사자" },
+    description: { en: "Operator, plus finding what already happened", ko: "운영자 + 지난 것을 찾는다" },
+  },
+  supervisor: {
+    label: { en: "Supervisor", ko: "감독자" },
+    description: { en: "Investigator, plus taking evidence out of the building", ko: "조사자 + 증거를 밖으로 낸다" },
+  },
+};
+
+/** What to print for a preset's name: ours translated, the customer's as typed. */
+export function presetLabel(preset: AccessPreset, lang: "en" | "ko"): string {
+  return preset.builtinKey ? PRESET_BUILTIN_LABELS[preset.builtinKey].label[lang] : preset.label;
+}
+
+export function presetDescription(preset: AccessPreset, lang: "en" | "ko"): string {
+  return preset.builtinKey ? PRESET_BUILTIN_LABELS[preset.builtinKey].description[lang] : preset.description;
+}
+
 export function grantsOfPreset(preset: AccessPreset): Pick<PortalUser, "appScreens" | "appSearch" | "appExport"> {
   return { appScreens: [...preset.screens], appSearch: preset.appSearch, appExport: preset.appExport };
 }
@@ -2305,6 +2334,20 @@ export interface AccessPreset {
   teamId: string;
   /** The customer's own word. Never translated — see VipCategory.label. */
   label: string;
+  /**
+   * SET ONLY ON THE THREE WE SHIP, and the reason it exists (owner, 2026-09-21, on the English
+   * console: 영어인데 한국어가 남아있어).
+   *
+   * `label` is customer data and data is not translated, which is right for a preset somebody
+   * created. But the three seeded ones were written by us, so on the English console they read as
+   * a Korean string nobody could account for. A key on the shipped ones lets the screen print a
+   * product string for them (PRESET_BUILTIN_LABELS) while a customer's own preset keeps its
+   * literal name in whatever language they typed.
+   *
+   * DROPPED THE MOMENT SOMEBODY RENAMES IT. Once the customer has named it, it is theirs and the
+   * translation would overwrite their word — see updateAccessPreset.
+   */
+  builtinKey?: "operator" | "investigator" | "supervisor";
   /** One line saying what this is for. Required: a list of names with no descriptions cannot be
    *  chosen from, which is the whole failure mode of removing the pre-selected default. */
   description: string;
@@ -3993,17 +4036,17 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
    */
   accessPresets: [
     {
-      id: "preset-operator", teamId: "team-univs", label: "운영자",
+      id: "preset-operator", teamId: "team-univs", builtinKey: "operator", label: "운영자",
       description: "지금 일어나는 일을 본다",
       screens: ["live", "bestframe"], appSearch: false, appExport: false,
     },
     {
-      id: "preset-investigator", teamId: "team-univs", label: "조사자",
+      id: "preset-investigator", teamId: "team-univs", builtinKey: "investigator", label: "조사자",
       description: "운영자 + 지난 것을 찾는다",
       screens: ["live", "bestframe", "redmap", "reid", "redface"], appSearch: true, appExport: false,
     },
     {
-      id: "preset-supervisor", teamId: "team-univs", label: "감독자",
+      id: "preset-supervisor", teamId: "team-univs", builtinKey: "supervisor", label: "감독자",
       description: "조사자 + 증거를 밖으로 낸다",
       screens: ["live", "bestframe", "redmap", "reid", "redface"], appSearch: true, appExport: true,
     },
@@ -5236,7 +5279,12 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     set(state => {
       const preset = state.accessPresets.find(p => p.id === presetId);
       if (!preset) return state;
-      const next = { ...preset, ...updates };
+      /* RENAMED BY THE CUSTOMER MEANS IT IS THEIRS NOW. `builtinKey` makes the screen print our
+         translated name instead of the stored label, so keeping the key after somebody renames
+         one of the three we ship would show our word where they wrote theirs. Dropped on any
+         label change, and only on a label change — editing the grants leaves the name alone. */
+      const renamed = updates.label !== undefined && updates.label.trim() !== preset.label;
+      const next = { ...preset, ...updates, ...(renamed ? { builtinKey: undefined } : null) };
       const followers = state.portalUsers.filter(u => u.grantMode === "preset" && u.presetId === presetId);
       return {
         accessPresets: state.accessPresets.map(p => (p.id === presetId ? next : p)),
