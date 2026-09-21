@@ -242,7 +242,16 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
    * other.
    */
   return (
-    <div style={{ borderTop: BORDER, paddingTop: "22px", display: "flex", flexDirection: "column", gap: "22px" }}>
+    /* The rule needs air on BOTH sides (owner: 라인이 위에 버튼에 너무 붙어있어). The card's own
+       22px gap put it that far under the team block's save button, which is the right gap between
+       two fields and too tight for a line that separates two scopes — the button read as sitting
+       on it.
+
+       MEASURED, not guessed: the card's flex gap does not reach this element (CardSection puts its
+       children in a wrapper of its own), so the space above the rule was 0 before this margin and
+       14px with a 14px one. 26 above and 24 below reads as a break between two scopes rather than
+       as an underline on the button. */
+    <div style={{ borderTop: BORDER, marginTop: "26px", paddingTop: "24px", display: "flex", flexDirection: "column", gap: "22px" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <p style={{ fontSize: "13px", fontWeight: 800, color: "var(--gray-900)" }}>{t.panelHeading}</p>
         <p style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{project.name}</p>
