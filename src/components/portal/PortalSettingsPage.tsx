@@ -121,6 +121,7 @@ const T = {
     teamMailFrom: "From address",
     teamMailTls: "Use TLS",
     teamMailSave: "Save mail settings",
+    teamMailSaveScoped: "Save team default",
     teamMailSaved: "Team mail settings saved",
     teamMailFromMismatch: (d: string) => `The from address has to be on @${d}, or the receiving server rejects it.`,
     teamMailUnverified: "Saved, not tested — this screen never reaches the relay. A wrong host loses invitations silently.",
@@ -249,6 +250,7 @@ const T = {
     teamMailFrom: "발신 주소",
     teamMailTls: "TLS 사용",
     teamMailSave: "메일 설정 저장",
+    teamMailSaveScoped: "팀 기본값 저장",
     teamMailSaved: "팀 메일 설정이 저장되었습니다",
     teamMailFromMismatch: (d: string) => `발신 주소는 @${d} 도메인이어야 합니다. 아니면 받는 쪽 서버가 거부합니다.`,
     teamMailUnverified: "저장만 할 뿐 연결을 시험하지는 않습니다. 호스트가 틀리면 초대장이 아무 표시 없이 사라집니다.",
@@ -870,7 +872,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         is why it sits here beside the other two team policies.
       */}
       {active === "mail" && myTeam && (
-        <CardSection heading={t.teamMailTitle} icon={<Mail size={15} strokeWidth={2.2} />} subheading={myTeam.name} hint={t.teamMailIntro}>
+        <CardSection heading={t.mailRailLabel} icon={<Mail size={15} strokeWidth={2.2} />} subheading={`${t.teamMailTitle} · ${myTeam.name}`} hint={t.teamMailIntro}>
           {/* No maxWidth of its own any more — the section's content column is the cap, and two
               of these grids with two different ones is how columns stop lining up between
               sections. */}
@@ -907,22 +909,22 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           <div style={{ marginTop: "14px" }}>
             <button className="portal-btn-primary" onClick={saveTeamMail} disabled={!canSaveTeamMail}
               style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSaveTeamMail ? "var(--primary-400)" : "var(--gray-200)", color: canSaveTeamMail ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSaveTeamMail ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-              {t.teamMailSave}
+              {t.teamMailSaveScoped}
             </button>
           </div>
+          {/*
+            THE PROJECT'S EXCEPTION, IN THE SAME CARD.
+
+            This whole block was a tab of the Server & API screen, which filed "where do
+            invitations leave from" among the recording and analytics nodes; Milestone and Genetec
+            both keep mail in system settings and their servers elsewhere. Brought here it first
+            became a second section, which gave one rail entry two headings over the same four
+            field names — two records reading as one thing duplicated. It is a named scope under
+            the team default now, with its own save, because saving one must not write the other.
+          */}
+          {project && <ProjectMailPanel projectId={project.id} />}
         </CardSection>
       )}
-
-      {/*
-        THE PROJECT'S OWN MAIL, UNDER THE DEFAULT IT OVERRIDES.
-
-        This was a tab of the Server & API screen, which filed "where do invitations leave from"
-        among the recording and analytics nodes. Milestone and Genetec both keep mail in system
-        settings and servers elsewhere, and the card above was already pointing at that other
-        screen for the override. One subject, one place. ProjectMailPanel.tsx carries the rest of
-        the reasoning; the panel itself is unchanged.
-      */}
-      {active === "mail" && project && <ProjectMailPanel projectId={project.id} />}
 
       {active === "categories" && myTeamId && (
         <CardSection heading={t.categoryTitle} icon={<Tag size={15} strokeWidth={2.2} />}>

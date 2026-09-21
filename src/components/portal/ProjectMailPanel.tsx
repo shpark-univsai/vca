@@ -18,6 +18,19 @@
  * behaviour changed: the network override still decides the invite transport (InviteUserModal
  * reads it through isNetworkIsolated), and a project with no mail anywhere still says so.
  *
+ * SECOND PASS, THE DAY IT MOVED: the panel arrived here as four boxes of its own — a network
+ * card, an amber banner, a checkbox card and a table of what VCA sends — sitting under a section
+ * built out of the settings page's CardSection, with its own heading sizes and its own padding
+ * (owner: 다른 탭들이랑 디자인이 통일감이 없어). It is one CardSection now, with the same
+ * heading block, the same label/value pairs and the same field styling as Team mail above it and
+ * as every other section on this page.
+ *
+ * The rebuild also settled the duplicate control the comparison turned up: the amber banner's
+ * "Set up SMTP" button and the checkbox below it were two controls for one decision, in two
+ * boxes. One switch decides where this project's mail goes; the warning that used to be permanent
+ * now appears only in the case that is actually dangerous, which is an internet-isolated site
+ * still relying on the team's server.
+ *
  * WHAT THE MAIL ITSELF IS (carried over with the move, written 2026-08-28). VCA does not host
  * mailboxes: it hands messages to the customer's own mail server (Exchange / Zimbra / Postfix),
  * which is what users read in their internal webmail. On an internet-separated network that is
@@ -46,17 +59,13 @@
  */
 
 import { useState } from "react";
-import { Globe, Mail } from "lucide-react";
 import { isNetworkIsolated, resolveMailConfig, useVcaStore } from "@/lib/vcaStore";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { portProblem } from "@/lib/fieldChecks";
-import { BORDER, CARD_BORDER, CARD_RADIUS, PANEL_SHADOW, Switch, usePortalEditAccess } from "./PortalShared";
-
-function MailIcon() { return <Mail size={18} strokeWidth={1.87} />; }
-
-function NetworkIcon() { return <Globe size={18} strokeWidth={1.87} />; }
-
+import {
+  BORDER, CONTROL_HEIGHT, FieldError, PairGrid, PairItem, Switch, TextField, usePortalEditAccess,
+} from "./PortalShared";
 const NETWORK_T = {
   en: {
     heading: "Network reachability",
@@ -87,104 +96,6 @@ const NETWORK_T = {
     overrideWhy: "방화벽이나 보안 정책 때문에 핑 확인이 부정확할 수 있어, 이 스위치가 감지 결과보다 항상 우선합니다.",
   },
 } as const;
-
-/**
- * Whether this project's site can reach the internet — decides the invite-mail transport in
- * InviteUserModal (PortalUsersPage.tsx) and whether the "using team default" mail banner below
- * even applies. A real deployment would detect this by an outbound ping, but a firewall or
- * security policy can make that check return a false positive/negative — so the resolved value
- * always has an admin override on top, per isNetworkIsolated()'s precedence. This card is the one
- * place that override is set; everywhere else only reads the result.
- */
-function NetworkStatus({ projectId }: { projectId: string }) {
-  const projects = useVcaStore(s => s.projects);
-  const setNetworkIsolationOverride = useVcaStore(s => s.setNetworkIsolationOverride);
-  const [lang] = usePortalLanguage();
-  const t = NETWORK_T[lang];
-
-  const project = projects.find(p => p.id === projectId);
-  if (!project) return null;
-
-  const detected = project.networkIsolatedDetected ?? false;
-  const overrideValue = project.networkIsolatedOverride ?? null;
-  const hasOverride = overrideValue !== null;
-  const effective = isNetworkIsolated(project);
-
-  // No toast here — the status badge above and the toggle's own selected state already give
-  // immediate visual feedback, and a toast on every checkbox/toggle click was noisier than useful
-  // for a setting an admin might flip back and forth while diagnosing a mail-delivery issue.
-  const setOverride = (value: boolean | null) => {
-    setNetworkIsolationOverride(projectId, value);
-  };
-
-  return (
-    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "20px" }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
-          <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0 }}><NetworkIcon /></span>
-          <div>
-            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.heading}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
-              {t.desc}
-            </p>
-          </div>
-        </div>
-        <span style={{
-          fontSize: "10px", fontWeight: 700, padding: "4px 10px", borderRadius: "999px", textTransform: "uppercase", flexShrink: 0,
-          backgroundColor: effective ? "var(--gray-200)" : "var(--success-100)",
-          color: effective ? "var(--gray-700)" : "var(--success-400)",
-        }}>
-          {effective ? t.isolated : t.connected}
-        </span>
-      </div>
-
-      <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "8px" }}>
-        <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: detected ? "var(--gray-400)" : "var(--success-400)", flexShrink: 0 }} />
-        <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>
-          {t.autoDetected} <span style={{ fontWeight: 700, color: "var(--gray-700)" }}>{detected ? t.noResponse : t.reachable}</span>
-        </p>
-      </div>
-
-      {/* One switch for the state itself, instead of a checkbox that revealed a second control.
-          "Override auto-detection" asked the reader to opt into the idea of overriding before they
-          could say the thing they came to say, and named the mechanism rather than the setting —
-          nobody arrives here wanting to override something, they arrive knowing the site is
-          isolated. Flipping the switch IS the override now.
-
-          Three states are still reachable, because the third one is not a position of the switch:
-          the switch shows the effective value, and a line underneath says whether that value came
-          from detection or from a person, with the way back to detection offered only when there
-          is something to go back from. */}
-      <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: BORDER }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.switchLabel}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px", lineHeight: 1.5 }}>{t.switchDesc}</p>
-          </div>
-          <div style={{ marginTop: "2px" }}>
-            <Switch checked={effective} onChange={setOverride} label={t.switchLabel} />
-          </div>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginTop: "12px" }}>
-          <p style={{ fontSize: "12px", color: hasOverride ? "var(--gray-700)" : "var(--gray-400)" }}>
-            {!hasOverride
-              ? t.followingDetection
-              : overrideValue ? t.overriddenIsolated : t.overriddenConnected}
-          </p>
-          {hasOverride && (
-            <button onClick={() => setOverride(null)}
-              style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
-              {t.revertToDetection}
-            </button>
-          )}
-        </div>
-        <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "8px", lineHeight: 1.5 }}>{t.overrideWhy}</p>
-      </div>
-    </div>
-  );
-}
-
 const MAIL_T = {
   en: {
     usingDefault: (name: string) => `Using ${name}'s default mail server`,
@@ -205,11 +116,16 @@ const MAIL_T = {
     fromAddressPlaceholder: "vca-noreply@company.local",
     fromAddressError: (domain: string) => `Must be an address on ${domain}.`,
     fromAddressHint: "The From: address recipients will see.",
-    useTls: "Use TLS", save: "Save",
+    useTls: "Use TLS", save: "Save", saveProject: "Save for this project",
     toastUsingTeam: "Using team mail settings",
     toastSaved: "Mail settings saved",
     toastSavedDesc: (addr: string) => `Invites will be sent from ${addr}. Nothing has been sent through this relay yet — send one invite and confirm it arrives before you rely on it.`,
     panelHeading: "This project",
+    panelHint: "Where this project's invitations and password resets go out from.",
+    networkLabel: "Internet",
+    mailServerLabel: "Mail server",
+    isolatedRisk: "This site is internet-isolated and still using the team's mail server. Invitations will not arrive unless that server is reachable from inside the site.",
+    inheritedSummary: (domain: string, host: string) => `${domain} · ${host}`,
     whatVcaSends: "What VCA sends",
     accountInvitation: "Account invitation", accountInvitationValue: "To the invited address, on approval",
     passwordReset: "Password reset", passwordResetValue: "To the account's own address, on request",
@@ -233,25 +149,39 @@ const MAIL_T = {
     fromAddressPlaceholder: "vca-noreply@company.local",
     fromAddressError: (domain: string) => `${domain} 주소여야 합니다.`,
     fromAddressHint: "수신자에게 표시될 발신(From) 주소입니다.",
-    useTls: "TLS 사용", save: "저장",
+    useTls: "TLS 사용", save: "저장", saveProject: "이 프로젝트만 저장",
     toastUsingTeam: "팀 메일 설정 사용 중",
     toastSaved: "메일 설정 저장됨",
     toastSavedDesc: (addr: string) => `초대장은 ${addr}에서 발송됩니다. 아직 이 릴레이로 보낸 적은 없습니다. 초대를 한 통 보내 도착하는지 확인한 뒤에 쓰세요.`,
     panelHeading: "이 프로젝트",
+    panelHint: "이 프로젝트의 초대장과 비밀번호 재설정 메일이 어디에서 나가는지 정합니다.",
+    networkLabel: "인터넷 연결",
+    mailServerLabel: "메일 서버",
+    isolatedRisk: "이 사이트는 인터넷과 격리돼 있는데 팀의 메일 서버를 쓰고 있습니다. 사이트 안에서 그 서버에 닿지 않으면 초대장이 도착하지 않습니다.",
+    inheritedSummary: (domain: string, host: string) => `${domain} · ${host}`,
     whatVcaSends: "VCA가 발송하는 메일",
     accountInvitation: "계정 초대", accountInvitationValue: "승인 시 초대받은 주소로 발송",
     passwordReset: "비밀번호 재설정", passwordResetValue: "요청 시 계정 본인 주소로 발송",
   },
 } as const;
 
+/**
+ * ONE SECTION: how this site reaches the world, and where its mail goes out from.
+ *
+ * Network and mail were two cards because they were two components; they are one question in
+ * practice — an isolated site is exactly the site that needs its own relay — so they are one
+ * section with two pairs, in the order somebody reads them.
+ */
 export default function ProjectMailPanel({ projectId }: { projectId: string }) {
   const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
   const projects = useVcaStore(s => s.projects);
   const teams = useVcaStore(s => s.teams);
   const updateProjectMail = useVcaStore(s => s.updateProjectMail);
+  const setNetworkIsolationOverride = useVcaStore(s => s.setNetworkIsolationOverride);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t = MAIL_T[lang];
+  const n = NETWORK_T[lang];
 
   const project = projects.find(p => p.id === projectId);
   const team = project ? teams.find(o => o.id === project.teamId) : undefined;
@@ -266,6 +196,10 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
   const [useTls, setUseTls] = useState(project?.smtp?.useTls ?? true);
 
   if (!project) return null;
+
+  const detected = project.networkIsolatedDetected ?? false;
+  const hasOverride = (project.networkIsolatedOverride ?? null) !== null;
+  const isolated = isNetworkIsolated(project);
 
   const portNumber = Number(port);
   const portValid = portProblem(port) === null && port.trim() !== "";
@@ -296,139 +230,131 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
     showToast({ variant: "success", title: t.toastSaved, desc: t.toastSavedDesc(fromAddress.trim()) });
   };
 
+  /*
+   * A SCOPE, NOT A SECTION (owner: 메일 탭에 두개 항목이 있는데 이거 맞아?).
+   *
+   * It arrived here as its own CardSection, which gave the Mail rail entry two headings, two icon
+   * chips and two save buttons over the same four field names — two records, read as one thing
+   * duplicated. They ARE two records: the team's default mail server, and the exception a single
+   * internet-isolated site needs. So the fix is not to merge them but to make the relationship
+   * visible: one card headed Mail, the team default first, then a ruled line and this block,
+   * each with the scope named and each with its own save, because saving one must not write the
+   * other.
+   */
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      {/* WHOSE SETTINGS THESE ARE. On the server screen the tab name answered that; here the card
-          above it is the team's default carrying the same four field names, so without this line a
-          reader coming down the page cannot tell which values apply to what. */}
-      <div style={{ display: "flex", alignItems: "baseline", gap: "8px", padding: "4px 2px 0" }}>
+    <div style={{ borderTop: BORDER, paddingTop: "22px", display: "flex", flexDirection: "column", gap: "22px" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <p style={{ fontSize: "13px", fontWeight: 800, color: "var(--gray-900)" }}>{t.panelHeading}</p>
         <p style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{project.name}</p>
       </div>
-
-      <NetworkStatus projectId={projectId} />
-
-      {/* A project that hasn't overridden anything is quietly relying on the team default — easy to
-          miss until an on-prem site's invites silently fail because that default can't reach it.
-          Surface it as an actionable banner rather than only inside the read-only card below. */}
-      {!override && inherited.mailDomain && (
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
-          backgroundColor: "var(--warning-100)", border: "1px solid var(--warning-300)", borderRadius: "12px", padding: "14px 16px",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
-            <span style={{ display: "flex", color: "var(--warning-500)", flexShrink: 0 }}><MailIcon /></span>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>
-                {t.usingDefault(team?.name ?? t.theTeam)}
-              </p>
-              <p style={{ fontSize: "12px", color: "var(--gray-600)", marginTop: "2px" }}>
-                {t.bannerDesc}
-              </p>
+      <PairGrid>
+        {/* WHETHER THIS SITE CAN REACH THE WORLD. The switch shows the effective value and IS the
+            override; the line under it says where that value came from, with the way back to
+            detection offered only when there is something to go back from. */}
+        {/* Labelled for the fact, not the mechanism: "인터넷 격리" over a value that reads
+            "연결됨" is a label and a value disagreeing. The switch's own name stays as its
+            accessible label. */}
+        <PairItem label={t.networkLabel} hint={n.overrideWhy}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <Switch checked={isolated} onChange={v => setNetworkIsolationOverride(projectId, v)} label={n.switchLabel} disabled={!mayEdit} />
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{isolated ? n.isolated : n.connected}</span>
             </div>
-          </div>
-          <button className="portal-btn-primary" onClick={() => setOverride(true)} disabled={!mayEdit} title={readOnlyReason}
-            style={{ padding: "8px 14px", borderRadius: "8px", border: "none", backgroundColor: mayEdit ? "var(--gray-900)" : "var(--gray-200)", color: mayEdit ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed", flexShrink: 0, whiteSpace: "nowrap" }}>
-            {t.setUpSmtp}
-          </button>
-        </div>
-      )}
-
-      {/* What is in force right now, before any of the editing below. Only relevant once this project
-          is actually using its own server — the banner above already covers the "inheriting the team
-          default" case, so repeating those same values in a second card here would be redundant. A
-          project with nothing configured anywhere is still a real problem worth surfacing regardless
-          of override state, so that case bypasses the override check. */}
-      {(override || !inherited.mailDomain) && (
-        <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "20px" }}>
-          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.inEffect}</p>
-          {inherited.mailDomain ? (
-            <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
-              <SettingRow label={t.domain} value={inherited.mailDomain} />
-              <SettingRow label={t.smtpHost} value={inherited.smtp ? `${inherited.smtp.host}:${inherited.smtp.port}` : "—"} />
-              <SettingRow label={t.sentFrom} value={inherited.smtp?.fromAddress ?? "—"} />
-              <SettingRow label={t.source} value={overridden ? t.thisProject : t.inheritedFrom(team?.name ?? t.theTeam)} />
-            </div>
-          ) : (
-            /* A project with no mail configured cannot invite anyone, so this says so plainly rather
-               than showing empty fields that look merely unfilled. */
-            <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "8px", lineHeight: 1.5 }}>
-              {t.notConfigured}
+            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>
+              {n.autoDetected} <span style={{ fontWeight: 700, color: "var(--gray-500)" }}>{detected ? n.noResponse : n.reachable}</span>
+              {hasOverride && <> · {isolated ? n.overriddenIsolated : n.overriddenConnected}</>}
             </p>
-          )}
-        </div>
-      )}
+            {hasOverride && mayEdit && (
+              <button onClick={() => setNetworkIsolationOverride(projectId, null)}
+                style={{ alignSelf: "flex-start", border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, color: "var(--primary-400)", textDecoration: "underline" }}>
+                {n.revertToDetection}
+              </button>
+            )}
+          </div>
+        </PairItem>
 
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "20px" }}>
-        <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
-          <input type="checkbox" checked={override} onChange={e => setOverride(e.target.checked)}
-            style={{ marginTop: "3px", accentColor: "var(--gray-900)", cursor: "pointer" }} />
-          <span>
-            <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.useDifferentServer}</span>
-            <span style={{ display: "block", fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>
-              {t.useDifferentServerDesc}
-            </span>
-          </span>
-        </label>
+        {/* WHERE MAIL GOES OUT FROM. One switch, not a banner button and a checkbox in two boxes.
+            The inherited values are stated beside it rather than repeated in a card of their own,
+            because "what is in force" is one line when nothing is being edited. */}
+        <PairItem label={t.mailServerLabel} hint={t.useDifferentServerDesc}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <Switch checked={override} onChange={setOverride} label={t.useDifferentServer} disabled={!mayEdit} />
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>
+                {override ? t.thisProject : t.inheritedFrom(team?.name ?? t.theTeam)}
+              </span>
+            </div>
+            {!override && inherited.mailDomain && (
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", fontFamily: "monospace" }}>
+                {t.inheritedSummary(inherited.mailDomain, inherited.smtp ? `${inherited.smtp.host}:${inherited.smtp.port}` : "—")}
+              </p>
+            )}
+            {/* A project with nothing configured anywhere cannot invite anyone, which is worth
+                saying whatever the switch is set to. */}
+            {!inherited.mailDomain && !override && (
+              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.notConfigured}</p>
+            )}
+            {/* THE WARNING, ONLY WHERE IT IS TRUE. This was a permanent amber banner on every
+                inheriting project; the case that actually loses invitations is an isolated site
+                relying on a server it may not be able to reach. */}
+            {!override && isolated && inherited.mailDomain && (
+              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.isolatedRisk}</p>
+            )}
+          </div>
+        </PairItem>
 
         {override && (
-          <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
-            {/* Says out loud that these fields are not settled, so nobody hands them to a customer
-                as the configuration contract before the backend confirms it. */}
-            <p style={{
-              margin: 0, fontSize: "10px", fontWeight: 600, color: "var(--warning-500)",
-              backgroundColor: "var(--warning-100)", padding: "8px 10px", borderRadius: "8px", lineHeight: 1.5,
-            }}>
-              {t.provisionalNotice}
-            </p>
-            <MailField label={t.mailDomain} value={domain} onChange={setDomain} placeholder={t.mailDomainPlaceholder}
-              hint={t.mailDomainHint} />
-            <div style={{ display: "flex", gap: "12px" }}>
-              <div style={{ flex: 1 }}>
-                <MailField label={t.smtpHost} value={host} onChange={setHost} placeholder={t.smtpHostPlaceholder} />
+          <>
+            <PairItem label={t.mailDomain} hint={t.mailDomainHint}>
+              <TextField value={domain} onChange={setDomain} placeholder={t.mailDomainPlaceholder} />
+            </PairItem>
+            <PairItem label={t.smtpHost}>
+              <TextField value={host} onChange={setHost} placeholder={t.smtpHostPlaceholder} />
+            </PairItem>
+            <PairItem label={t.port}>
+              <div>
+                <TextField value={port} onChange={v => setPort(v.replace(/[^0-9]/g, ""))} placeholder={t.portPlaceholder} inputMode="numeric" />
+                {!portValid && port.trim() !== "" && <FieldError>{t.portError}</FieldError>}
               </div>
-              <div style={{ width: "120px" }}>
-                <MailField label={t.port} value={port} onChange={setPort} placeholder={t.portPlaceholder}
-                  error={port !== "" && !portValid ? t.portError : ""} />
+            </PairItem>
+            <PairItem label={t.sentFrom} hint={t.fromAddressHint}>
+              <div>
+                <TextField value={fromAddress} onChange={setFromAddress} placeholder={t.fromAddressPlaceholder} />
+                {!fromMatchesDomain && <FieldError>{t.fromAddressError(domain.trim())}</FieldError>}
               </div>
-            </div>
-            <MailField label={t.sentFrom} value={fromAddress} onChange={setFromAddress} placeholder={t.fromAddressPlaceholder}
-              error={!fromMatchesDomain ? t.fromAddressError(domain.trim()) : ""}
-              hint={fromMatchesDomain ? t.fromAddressHint : ""} />
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-              <input type="checkbox" checked={useTls} onChange={e => setUseTls(e.target.checked)}
-                style={{ accentColor: "var(--gray-900)", cursor: "pointer" }} />
-              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)" }}>{t.useTls}</span>
-            </label>
-          </div>
+            </PairItem>
+            <PairItem label={t.useTls}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "var(--gray-600)" }}>
+                <input type="checkbox" checked={useTls} onChange={e => setUseTls(e.target.checked)} disabled={!mayEdit} />
+                {t.useTls}
+              </label>
+            </PairItem>
+          </>
         )}
 
-        {/* Nothing to save while unchecked and already on the team default — that's a no-op click.
-            Stays visible if unchecking just turned OFF a previously-saved override, since that's a
-            real change (revert to default) that still needs to be committed. */}
-        {(override || overridden) && (
-          <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
-            <button onClick={save} disabled={!canSave} title={mayEdit ? undefined : readOnlyReason}
-              style={{
-                padding: "10px 16px", borderRadius: "8px", border: "none",
-                backgroundColor: canSave ? "var(--gray-900)" : "var(--gray-200)",
-                color: canSave ? "white" : "var(--gray-400)",
-                fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "default",
-              }}>
-              {t.save}
-            </button>
+        {/* The two messages this product sends, and who each one goes to. Read once, which is why
+            it is the last pair rather than a card of its own. */}
+        <PairItem label={t.whatVcaSends}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <SettingRow label={t.accountInvitation} value={t.accountInvitationValue} />
+            <SettingRow label={t.passwordReset} value={t.passwordResetValue} />
           </div>
-        )}
-      </div>
+        </PairItem>
+      </PairGrid>
 
-      {/* Named so nobody has to guess what a mail change affects. The two events are the whole list
-          on purpose — see the note on this component. */}
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "20px" }}>
-        <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.whatVcaSends}</p>
-        <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
-          <SettingRow label={t.accountInvitation} value={t.accountInvitationValue} />
-          <SettingRow label={t.passwordReset} value={t.passwordResetValue} />
-        </div>
+      {/* Says out loud that these fields are not settled, so nobody hands them to a customer as
+          the configuration contract before the backend confirms it. */}
+      {override && (
+        <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.provisionalNotice}</p>
+      )}
+
+      <div>
+        {/* Named for what it writes. Two buttons reading "저장" in one card, one of them writing
+            every project on the team, is the kind of button people press once and regret. */}
+        <button className="portal-btn-primary" onClick={save} disabled={!canSave} title={mayEdit ? undefined : readOnlyReason}
+          style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+          {t.saveProject}
+        </button>
       </div>
     </div>
   );
@@ -436,33 +362,9 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
 
 function SettingRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
-      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", width: "130px", flexShrink: 0, whiteSpace: "nowrap" }}>{label}</span>
-      <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", wordBreak: "break-all" }}>{value}</span>
-    </div>
-  );
-}
-
-function MailField({ label, value, onChange, placeholder, hint, error }: {
-  label: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; hint?: string; error?: string;
-}) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-      <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{label}</label>
-      <input
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        style={{
-          height: "38px", padding: "0 10px", borderRadius: "8px", outline: "none",
-          border: error ? "1px solid var(--danger-400)" : BORDER,
-          fontSize: "13px", color: "var(--gray-900)", fontFamily: "inherit",
-        }}
-      />
-      {error
-        ? <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--danger-400)" }}>{error}</span>
-        : hint ? <span style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.5 }}>{hint}</span> : null}
+    <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
+      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", width: "108px", flexShrink: 0, whiteSpace: "nowrap" }}>{label}</span>
+      <span style={{ fontSize: "12px", color: "var(--gray-900)", wordBreak: "break-all" }}>{value}</span>
     </div>
   );
 }
