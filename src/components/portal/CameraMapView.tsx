@@ -1,5 +1,7 @@
 "use client";
 
+import { MousePointerClick } from "lucide-react";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MAP_TILE_URL, MAP_TILE_FILTER, tileLayerOptions } from "@/lib/mapTiles";
 import { hasPosition, isAwaitingFirstContact, type Camera } from "@/lib/vcaStore";
@@ -51,6 +53,11 @@ const T = {
     noPosition: (n: number) => `${n} not on the map`,
     noPositionWhy: "No latitude and longitude on record, so there is nowhere to draw them. Open them in the table to fill the survey in.",
     showThem: "Show those rows",
+    pickStart: "Pick cameras",
+    pickStop: "Done picking",
+    pickHint: (n: number) => n === 0
+      ? "Click a dot to pick one camera, or a zone pill to add the whole zone. The bar at the bottom makes the group."
+      : `${n} picked — dots for one, zone pills for a whole zone. The bar at the bottom makes the group.`,
     preview: "Preview stream",
     empty: "No camera in this project has coordinates yet, so there is nothing to draw.",
     zoneUnset: "No zone",
@@ -71,6 +78,11 @@ const T = {
     noPosition: (n: number) => `지도에 없는 ${n}대`,
     noPositionWhy: "위도·경도가 등록돼 있지 않아 그릴 자리가 없습니다. 표에서 열어 측량값을 채우면 됩니다.",
     showThem: "그 행 보기",
+    pickStart: "카메라 고르기",
+    pickStop: "고르기 끝",
+    pickHint: (n: number) => n === 0
+      ? "점을 누르면 한 대, 구역 알약을 누르면 그 구역 전체가 들어갑니다. 묶는 것은 아래 막대에서 합니다."
+      : `${n}대 골랐습니다 — 점은 한 대, 구역 알약은 구역 전체. 묶는 것은 아래 막대에서 합니다.`,
     preview: "스트림 미리보기",
     empty: "이 프로젝트에는 좌표가 등록된 카메라가 아직 없어서 그릴 것이 없습니다.",
     zoneUnset: "구역 미지정",
@@ -176,16 +188,43 @@ function statusColor(cam: Camera): string {
 }
 
 export default function CameraMapView({
-  cameras, onInspect, onShowUnpositioned,
+  cameras, onInspect, onShowUnpositioned, selectedIds, onToggleSelect,
 }: {
   /** The rows the table would be showing — filters applied. Split by position here. */
   cameras: Camera[];
   onInspect: (cameraId: string) => void;
   /** Narrows the list to the unsurveyed rows, which is where their coordinates get filled in. */
   onShowUnpositioned: () => void;
+  /**
+   * THE SAME SELECTION THE TABLE HOLDS (owner, 2026-09-21: 카메라 그룹을 검색하거나 지도에서
+   * 선택해서 그룹핑할수있게).
+   *
+   * One set, shared: search and tick twenty rows in the table, switch to the map, add the two by
+   * the gate by clicking them, and the bulk bar above — which is outside this view and already
+   * counts the same set — makes the group out of all twenty-two. A second selection living in
+   * here would be a second answer to "what am I about to group".
+   */
+  selectedIds: Set<string>;
+  onToggleSelect: (cameraId: string) => void;
 }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
+
+  /* Clicking a dot means one of two things, so the map says which mode it is in rather than
+     guessing from a modifier key nobody would find. Held in a ref as well as state: the marker's
+     click handler is attached once when the layer is built (rebuilding sixty markers per render
+     is what the two-layer note below is avoiding), so it would close over the first value. */
+  /** A stable key for the selection, because the Set is a new object on every render. */
+  const selectionKey = [...selectedIds].sort().join(",");
+  const [picking, setPicking] = useState(false);
+  const pickingRef = useRef(picking);
+  useEffect(() => { pickingRef.current = picking; }, [picking]);
+  const onToggleRef = useRef(onToggleSelect);
+  useEffect(() => { onToggleRef.current = onToggleSelect; }, [onToggleSelect]);
+  /* The current selection, for the same reason: a pill's handler is attached once, and adding a
+     zone has to skip the cameras already picked or the toggle would take them back out. */
+  const selectedIdsRef = useRef(selectedIds);
+  useEffect(() => { selectedIdsRef.current = selectedIds; }, [selectedIds]);
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
@@ -283,7 +322,10 @@ export default function CameraMapView({
         });
         const marker = L.marker([cam.lat as number, cam.lng as number], { icon, title: cam.name })
           .addTo(dotLayer)
-          .on("click", () => setSelected(cam.id));
+          .on("click", () => {
+            if (pickingRef.current) onToggleRef.current(cam.id);
+            else setSelected(cam.id);
+          });
         /* Kept so picking a zone can re-mark these dots without rebuilding the map. Rebuilding
            would re-run the fitBounds below and fight the zoom the pill click just performed. */
         markersRef.current.set(cam.id, marker);
@@ -338,10 +380,24 @@ export default function CameraMapView({
         })
           .addTo(pillLayer)
           .on("click", () => {
-            /* Into the zone, one notch past the breakpoint, so the pill is replaced by its own
-               cameras in a single movement — and ringed, so the group it stood for is still
-               readable once it is gone. */
-            setSelectedZone(zone.key);
+            /*
+             * IN PICKING MODE A PILL IS A WHOLE ZONE ADDED (owner, 2026-09-21: 기존에 대시보드에
+             * 설정되어있는 구역을 선택하거나 카메라 정보를 검색해서 선택할수있거나).
+             *
+             * The zones here are the register's own `zone` values — the same words the dashboard
+             * and the daily list use — so "the Geylang ones" is one click rather than eight. It
+             * adds rather than replaces: a group is often two zones plus a camera by the gate.
+             * The map still zooms in, because the ringed dots are the receipt for what was just
+             * added and the pill is about to be replaced by them.
+             */
+            if (pickingRef.current) {
+              zone.cams.forEach(c => { if (!selectedIdsRef.current.has(c.id)) onToggleRef.current(c.id); });
+            } else {
+              /* Into the zone, one notch past the breakpoint, so the pill is replaced by its own
+                 cameras in a single movement — and ringed, so the group it stood for is still
+                 readable once it is gone. */
+              setSelectedZone(zone.key);
+            }
             const bounds = L.latLngBounds(zone.cams.map(c => [c.lat, c.lng] as [number, number]));
             instance.fitBounds(bounds, { padding: [56, 56], maxZoom: ZONE_FOCUS_ZOOM });
           });
@@ -402,18 +458,22 @@ export default function CameraMapView({
       placed.forEach(cam => {
         const marker = markersRef.current.get(cam.id);
         if (!marker) return;
+        /* One ring, two reasons: a zone picked from a pill, and a camera picked for a group. They
+           never overlap in practice (picking a zone clears nothing, but the modes are used one at
+           a time) and a second ring style would make the map teach two marks for "this one". */
         marker.setIcon(L.divIcon({
           className: "",
-          html: dotHtml(statusColor(cam), pickedIds.has(cam.id)),
+          html: dotHtml(statusColor(cam), pickedIds.has(cam.id) || selectedIds.has(cam.id)),
           iconSize: [12, 12],
           iconAnchor: [6, 6],
         }));
       });
     })();
     return () => { cancelled = true; };
-    // placed is recreated per render; positionsKey is the value that actually changes.
+    // placed is recreated per render; positionsKey is the value that actually changes. The
+    // selection is joined into a string for the same reason: the Set is new every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickedZone, positionsKey]);
+  }, [pickedZone, positionsKey, selectionKey]);
 
   const selectedCamera = selected === null ? null : placed.find(c => c.id === selected) ?? null;
 
@@ -444,6 +504,27 @@ export default function CameraMapView({
               <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
             </button>
           </span>
+        )}
+        {/* PICKING IS A MODE, AND IT SAYS SO. A dot's click means either "show me this camera" or
+            "add it to the group", and a modifier key would be a rule nobody discovers. The button
+            is the only place that choice is made, and while it is on, the hint says where the
+            group actually gets made — the bulk bar, which is outside this component and already
+            counts the same selection. MEASURED before writing that sentence: the bar is
+            position:fixed at the foot of the viewport (top 820 of 900), not above this card, and
+            an arrow pointing the wrong way is worse than none. */}
+        <button onClick={() => setPicking(v => !v)}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: "6px", height: "26px", padding: "0 10px",
+            borderRadius: "999px", cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700,
+            border: picking ? "1px solid var(--gray-900)" : BORDER,
+            backgroundColor: picking ? "var(--gray-900)" : "white",
+            color: picking ? "white" : "var(--gray-600)",
+          }}>
+          <MousePointerClick size={12} strokeWidth={2.4} />
+          {picking ? t.pickStop : t.pickStart}
+        </button>
+        {picking && (
+          <span style={{ fontSize: "11px", color: "var(--gray-500)" }}>{t.pickHint(selectedIds.size)}</span>
         )}
         <span style={{ flex: 1 }} />
         {/* WHICHEVER MODE IS ON SCREEN, THE HEADER EXPLAINS THAT ONE. A status legend over a map

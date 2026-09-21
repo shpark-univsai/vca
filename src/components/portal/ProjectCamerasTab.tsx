@@ -2265,6 +2265,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         <CameraMapView
           cameras={visibleCameras}
           onInspect={setInspectingCameraId}
+          /* The table's own selection, so a group can be assembled half by search and half by
+             pointing at the map. The bulk bar above this view counts the same set. */
+          selectedIds={selectedIds}
+          onToggleSelect={toggleRow}
           /* Straight to the rows that cannot be drawn. Back to the table too: their coordinates
              get filled in from a row, and a map is not where that happens. */
           onShowUnpositioned={() => { setKindTab("camera"); setGapFilter("noPosition"); setView("table"); }}
