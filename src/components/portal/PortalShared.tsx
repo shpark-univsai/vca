@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Check, EyeOff } from "lucide-react";
-import { APP_ACTIONS, SUPPORT_CONTACT, canEditPortal, canSetPolicy, canViewFaces, currentPortalUser, screensForActions, useVcaStore, type AppAction, type AppScreen, type ProjectType } from "@/lib/vcaStore";
+import { APP_ACTIONS, SUPPORT_CONTACT, canEditPortal, canSetPolicy, canViewFaces, currentPortalUser, useVcaStore, type AppAction, type AppScreen, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { APP_GRANT_LABELS } from "@/lib/appGrants";
@@ -2159,8 +2159,8 @@ const SUPPORT_T = {
  */
 const GRANT_T = APP_GRANT_LABELS;
 
-function GrantRow({ label, desc, footnote, on, locked, onToggle }: {
-  label: string; desc: string; footnote?: string; on: boolean; locked: boolean; onToggle: () => void;
+function GrantRow({ label, desc, on, locked, onToggle }: {
+  label: string; desc: string; on: boolean; locked: boolean; onToggle: () => void;
 }) {
   return (
     <button onClick={locked ? undefined : onToggle} disabled={locked} aria-pressed={on}
@@ -2186,20 +2186,8 @@ function GrantRow({ label, desc, footnote, on, locked, onToggle }: {
       <span style={{ minWidth: 0 }}>
         <span style={{ display: "block", fontSize: "12.5px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</span>
         <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, marginTop: "1px" }}>{desc}</span>
-        {footnote && (
-          <span style={{ display: "block", fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "2px" }}>{footnote}</span>
-        )}
       </span>
     </button>
-  );
-}
-
-function GrantGroupLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p style={{
-      fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
-      color: "var(--gray-400)", padding: "0 10px", marginBottom: "2px",
-    }}>{children}</p>
   );
 }
 
@@ -2211,23 +2199,64 @@ export function AppGrantList({ actions, locked, onToggle }: {
 }) {
   const [lang] = usePortalLanguage();
   const g = GRANT_T[lang];
+  /**
+   * LOCKED IS A SUMMARY, NOT FIVE DEAD ROWS.
+   *
+   * Measured before changing it (owner: ui를 저렇게 보여주는게 좋을까?): with a preset selected
+   * the sheet stood at 792px on a 900px viewport and the inner scroller hid 89px, so 증거
+   * 내보내기 — the one row that separates 감독자 from 조사자 — was below the fold. Five rows of
+   * 70px each, none of them clickable, to say what a one-line name already implies.
+   *
+   * So a preset shows its grants as five marks: filled for held, outlined for not. Complete (a
+   * summary that dropped the ungranted ones would answer "what does this NOT give" with silence)
+   * and about a fifth of the height. The full rows, with what each action does and which screens
+   * it opens, are for the mode where somebody is actually choosing — custom.
+   */
+  if (locked) {
+    return (
+      <>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", padding: "2px 10px 0" }}>
+          {APP_ACTIONS.map(action => {
+            const on = actions.includes(action);
+            return (
+              <span key={action} style={{
+                display: "inline-flex", alignItems: "center", gap: "5px",
+                height: "24px", padding: "0 9px", borderRadius: "999px",
+                fontSize: "11px", fontWeight: 700, whiteSpace: "nowrap",
+                backgroundColor: on ? "var(--gray-900)" : "transparent",
+                color: on ? "white" : "var(--gray-400)",
+                border: on ? "1px solid var(--gray-900)" : "1px dashed var(--gray-300)",
+              }}>
+                {on && (
+                  <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                    <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+                {g.actionName[action]}
+              </span>
+            );
+          })}
+        </div>
+      </>
+    );
+  }
   return (
     <>
-      <GrantGroupLabel>{g.groupActions}</GrantGroupLabel>
       <div style={{ display: "flex", flexDirection: "column" }}>
-        {APP_ACTIONS.map(action => {
-          /* WHICH TAB THIS OPENS, under the action. An administrator grants a capability and the
-             person then goes looking for a tab, so the row has to answer both — but the grant is
-             the capability, which is why the screens are the small grey line and not the
-             checkbox. `trail` opens two, and `personSearch` is the one that also lights up search
-             boxes on screens another action opened. */
-          const screens = screensForActions([action]).map(sc => g.screenName[sc]).join(" · ");
-          return (
-            <GrantRow key={action} label={g.actionName[action]} desc={g.actionDesc[action]}
-              footnote={screens ? g.opens(screens) : g.opensNothing}
-              on={actions.includes(action)} locked={locked} onToggle={() => onToggle(action)} />
-          );
-        })}
+        {APP_ACTIONS.map(action => (
+          /* WHERE IT APPLIES, named as the app names it (owner: 기능들을 앱에 화면에 기반해서
+             적어줘야 헷갈리지않을것 같은데). `actionOpens` spells out the exact places including
+             the two panels the dashboard is made of, because "실시간" was ambiguous between the
+             dashboard's EVENTS panel and the Data → Live Monitoring tab — and it turned out to be
+             both, plus the map.
+
+             On the description's line rather than its own: measured at three lines per row the
+             sheet stood at 792px on a 900px viewport with 105px hidden, so the last action sat
+             below the fold in the one mode where somebody is choosing. */
+          <GrantRow key={action} label={g.actionName[action]}
+            desc={`${g.actionDesc[action]} · ${g.opens(g.actionOpens[action])}`}
+            on={actions.includes(action)} locked={locked} onToggle={() => onToggle(action)} />
+        ))}
       </div>
     </>
   );

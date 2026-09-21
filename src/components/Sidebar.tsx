@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Search, Crown } from "lucide-react";
 import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, getFacePhoto, formatTimeAgo, districtIdAt } from "@/lib/mockData";
 import {
-  vcaEventsToLiveEvents, todaysDetectionHits,
+  vcaEventsToLiveEvents, todaysDetectionHits, useDashboardPanels,
   useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras, type Camera,
 } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -1461,7 +1461,20 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
 }) {
   const [lang] = useLanguage();
   const t = T[lang];
-  const [tab, setTab] = usePersistedSidebarTab();
+  const [storedTab, setTab] = usePersistedSidebarTab();
+  /**
+   * THE TWO PANELS ARE TWO GRANTS (owner, 2026-09-21: 시스템 현황패널만 볼수있는 쪽일수도있고).
+   *
+   * EVENTS is detections — a person, a place, a time. SYSTEM is cameras and servers, with nobody's
+   * data in it, which is why an IT operator can be given the second and not the first. The tab
+   * button for a panel this account does not hold is not drawn, and a stored preference for it is
+   * corrected here rather than in an effect: the panel would paint once before an effect could
+   * move it, and that one frame is the whole thing being gated.
+   */
+  const panels = useDashboardPanels();
+  const tab: SidebarTab = panels[storedTab === "SYSTEM" ? "system" : "events"]
+    ? storedTab
+    : (panels.events ? "EVENTS" : "SYSTEM");
   const [hovered, setHovered] = useState<{ id: string; top: number; item: LiveEvent | Device } | null>(null);
   const { vipTargets, eventsToday } = useEventCounts();
   const activeProjectId = useActiveProjectId();
@@ -1487,12 +1500,15 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
     <div onMouseLeave={() => setHovered(null)} style={{ width:"60px", flexShrink:0, height:"100%", backgroundColor:"white", ...(position === "right" ? { borderLeft: BORDER } : { borderRight: BORDER }), display:"flex", flexDirection:"column", alignItems:"center", padding:"12px 0", overflow:"hidden", position:"relative" }}>
       {/* Tab toggle */}
       <div style={{ width:"44px", backgroundColor:"var(--gray-100)", borderRadius:"12px", padding:"4px", display:"flex", flexDirection:"column", gap:"4px", flexShrink:0 }}>
+        {panels.events && (
         <button onClick={() => setTab("EVENTS")} aria-label={t.events} style={{ width:"36px", height:"32px", borderRadius:"8px", border:"none", cursor:"pointer", backgroundColor: tab==="EVENTS" ? "var(--primary-400)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s" }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M1.75 1.75V11.0833C1.75 11.3928 1.87292 11.6895 2.09171 11.9083C2.3105 12.1271 2.60725 12.25 2.91667 12.25H12.25" stroke={tab==="EVENTS" ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M11.083 5.25L8.16634 8.16667L5.83301 5.83333L4.08301 7.58333" stroke={tab==="EVENTS" ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
+        )}
+        {panels.system && (
         <button onClick={() => setTab("SYSTEM")} aria-label={t.system} style={{ width:"36px", height:"32px", borderRadius:"8px", border:"none", cursor:"pointer", backgroundColor: tab==="SYSTEM" ? "var(--primary-400)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s" }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M9.87887 7.82031H12.0651C12.1677 7.82037 12.2685 7.84663 12.3581 7.89661C12.4477 7.94658 12.523 8.01862 12.5769 8.10587C12.6308 8.19313 12.6615 8.29271 12.6661 8.39517C12.6708 8.49764 12.6491 8.59958 12.6033 8.69133L11.3789 11.1406C11.3325 11.2334 11.2629 11.3127 11.1768 11.3706C11.0907 11.4286 10.9911 11.4633 10.8876 11.4714C10.7842 11.4796 10.6804 11.4608 10.5863 11.417C10.4923 11.3731 10.4111 11.3057 10.3508 11.2213L9.07227 9.43352" stroke={tab==="SYSTEM" ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
@@ -1502,6 +1518,7 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
             <path d="M4.00977 6.01562H4.01458" stroke={tab==="SYSTEM" ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
+        )}
       </div>
 
       {/* Summary badges */}

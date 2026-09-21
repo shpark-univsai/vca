@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip, usePortalEditAccess, AppGrantList } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import RosterImportModal from "./RosterImportModal";
@@ -161,7 +161,7 @@ const T = {
     // The two cells that used to be a select on every row — see AccessChangeModal.
     changeRole: "Change Portal role",
     changeAccess: "Change where they sign in",
-    changeGrants: "Change app screens",
+    changeGrants: "Change app permissions",
     changeScope: "Change which cameras",
     reasonNoScopeWithoutApp: "This account cannot reach the app, so there are no cameras to narrow.",
     reasonNoCamerasToScope: "No cameras are registered on this account's projects yet.",
@@ -363,13 +363,17 @@ const T = {
     grantLabel: "App grants *",
     grantCustom: "Custom",
     grantCustomDesc: "Pick what they may do, one action at a time.",
+    customDiff: (preset: string, plus: string, minus: string) =>
+      `${preset}${plus ? ` + ${plus}` : ""}${minus ? ` − ${minus}` : ""}`,
+    customSameAsPreset: (preset: string) =>
+      `This is exactly ${preset}'s set. Following the preset instead keeps them in step with it when it changes.`,
     grantNotChosen: "Choose how this account's grants are decided",
     grantNoScreens: "Tick at least one screen — an account with none cannot open the app",
     grantsHeading: "What this grants",
     grantsLocked: "Follows the preset. Choose Custom to change individual items.",
     grantsUnset: "Choose how grants are decided, above.",
-    grantsModalTitle: "App screens",
-    grantsModalIntro: (name: string) => `What ${name} may open in the monitoring app, and how that is decided.`,
+    grantsModalTitle: "App permissions",
+    grantsModalIntro: (name: string) => `${name} — what they may do in the monitoring app`,
     // Named before it happens, not reported after. Following a preset means holding its grants, so
     // anything tuned by hand since goes — and the person doing it is usually the person who tuned it.
     grantsOverwriteWarning: "This account has grants set by hand. Following this preset replaces them.",
@@ -503,7 +507,7 @@ const T = {
     resendInvite: "초대 링크 다시 만들기",
     changeRole: "Portal 역할 변경",
     changeAccess: "로그인 위치 변경",
-    changeGrants: "앱 화면 권한 변경",
+    changeGrants: "앱 권한 변경",
     changeScope: "볼 수 있는 카메라 변경",
     reasonNoScopeWithoutApp: "앱에 접근할 수 없는 계정이라 좁힐 카메라가 없습니다.",
     reasonNoCamerasToScope: "이 계정의 프로젝트에 등록된 카메라가 아직 없습니다.",
@@ -650,13 +654,17 @@ const T = {
     grantLabel: "권한 부여 방식 *",
     grantCustom: "커스텀",
     grantCustomDesc: "할 수 있는 일을 하나씩 고릅니다.",
+    customDiff: (preset: string, plus: string, minus: string) =>
+      `${preset}${plus ? ` + ${plus}` : ""}${minus ? ` − ${minus}` : ""}`,
+    customSameAsPreset: (preset: string) =>
+      `${preset} 프리셋과 똑같은 조합입니다. 프리셋을 따르게 두면 그 프리셋이 바뀔 때 함께 바뀝니다.`,
     grantNotChosen: "권한 부여 방식을 선택해주세요",
     grantNoScreens: "화면을 하나 이상 골라주세요 — 하나도 없으면 앱을 열 수 없습니다",
     grantsHeading: "이 방식이 켜는 것",
     grantsLocked: "프리셋을 따릅니다. 하나씩 바꾸려면 커스텀을 고르세요.",
     grantsUnset: "위에서 부여 방식을 먼저 고르세요.",
-    grantsModalTitle: "앱 화면 권한",
-    grantsModalIntro: (name: string) => `${name}이(가) 관제 앱에서 열 수 있는 화면과, 그것을 정하는 방식입니다.`,
+    grantsModalTitle: "앱 권한",
+    grantsModalIntro: (name: string) => `${name} — 관제 앱에서 할 수 있는 일`,
     grantsOverwriteWarning: "이 계정은 손으로 조정한 권한을 갖고 있습니다. 이 프리셋을 따르면 그것이 대체됩니다.",
     grantsUnchanged: "아직 바뀐 것이 없습니다.",
     grantsHeldNone: "앱 화면 미지정",
@@ -707,6 +715,7 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, t }: 
      customer made is printed as they typed it. Without this the English console showed 운영자 /
      조사자 / 감독자 in a list of English rows. See AccessPreset.builtinKey. */
   const [lang] = usePortalLanguage();
+  const grantNames = useGrantNames();
   return (
     <>
       <div>
@@ -754,6 +763,31 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, t }: 
           </span>
         </div>
         <AppGrantList actions={actions} locked={!isCustom} onToggle={onToggleAction} />
+        {/* WHAT THIS ONE-OFF IS, IN THE WORDS OF THE LADDER. A custom set of five ticks is not
+            something an access review can read: "조사자 − 동선 추적" is. Computed against the
+            closest preset by how many actions differ, and when it matches one exactly the line
+            says so — a custom account holding exactly a preset's set is an account that will not
+            follow that preset when it changes, which is usually not what somebody meant. */}
+        {isCustom && actions.length > 0 && (() => {
+          const nearest = presets
+            .map(pr => {
+              const held = grantsOfPreset(pr).appActions ?? [];
+              const plus = actions.filter(a => !held.includes(a));
+              const minus = held.filter(a => !actions.includes(a));
+              return { pr, plus, minus, distance: plus.length + minus.length };
+            })
+            .sort((a, b) => a.distance - b.distance)[0];
+          if (!nearest) return null;
+          const name = presetLabel(nearest.pr, lang);
+          const names = (list: AppAction[]) => list.map(a => grantNames.action[a]).join(", ");
+          return (
+            <p style={{ fontSize: "11px", color: nearest.distance === 0 ? "var(--warning-500)" : "var(--gray-500)", lineHeight: 1.5, padding: "0 10px" }}>
+              {nearest.distance === 0
+                ? t.customSameAsPreset(name)
+                : t.customDiff(name, nearest.plus.length ? names(nearest.plus) : "", nearest.minus.length ? names(nearest.minus) : "")}
+            </p>
+          );
+        })()}
       </div>
     </>
   );
@@ -2152,7 +2186,7 @@ function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => voi
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-modal)" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "20px 20px 0" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.grantsModalTitle}</p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.grantsModalIntro(user.name)}</p>
@@ -3503,7 +3537,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
                     {entry.permission === "admin" ? rt.admin : rt.operator}
                   </span>
                   <div style={{ minWidth: 0 }}>
-                    <RosterCodeCell entry={entry} onReveal={() => logRosterCodeViewed(entry.employeeId)} />
+                    <RosterCodeCell entry={entry} t={rt} onReveal={() => logRosterCodeViewed(entry.employeeId)} />
                   </div>
                               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <StageBadge stage={stage} t={t} />

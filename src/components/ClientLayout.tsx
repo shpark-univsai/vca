@@ -19,7 +19,7 @@ import SidebarToggleIcon from "./SidebarToggleIcon";
 import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
 import {
-  useVcaStore, currentPortalUser, screensFor,
+  useVcaStore, currentPortalUser, screensFor, holdsAppAction, cameraInScope,
   camerasInProject, getActiveProjectId, useActiveProjectId, watchedPersonsInProject,
   type AppScreen, type Camera,
 } from "@/lib/vcaStore";
@@ -202,6 +202,33 @@ function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void
             lng: camera.lng,
             photoUrl: getFacePhoto(liveEvent.id),
           });
+          /*
+           * THE ALERT IS A SCREEN, AND IT IS GATED LIKE ONE (owner, 2026-09-21: vip감지가
+           * 실시간되서 토스트알럿이 뜨고있는데 그것도 권한에 따라 막아야할수도 있어).
+           *
+           * It carries a name, a priority, a group, a camera and a confidence — the whole of a
+           * live detection — and it arrives unbidden, so it walked past every tab gate on the
+           * way in. An account without `liveView` now gets no toast.
+           *
+           * THE EVENT IS STILL WRITTEN. What the cameras saw is the site's record, not this
+           * account's view of it: suppressing the store write would delete a detection for
+           * everybody because one operator may not watch live. Read at fire time, like the
+           * language below, because a grant can change while this timer is armed.
+           */
+          const mayWatchLive = holdsAppAction(storeNow.portalUsers, "liveView");
+          /*
+           * AND ONLY FOR A CAMERA THIS ACCOUNT MAY WATCH. The map and the feed were already
+           * narrowed (they read through eventsVisibleTo); a toast arrives one detection at a time,
+           * so it asks about the one camera it came from.
+           *
+           * An account scoped to three of sixty-two cameras will therefore see very few alerts.
+           * That is the truth of a scope rather than a defect: three cameras really do see fewer
+           * people. What must not happen is the opposite — narrowing the simulation to their
+           * cameras so the demo looks busy, which would invent activity that the site did not
+           * record and put it in everybody else's feed too.
+           */
+          const inScope = cameraInScope(camera.id, storeNow.portalUsers, storeNow.cameraGroups);
+          if (!mayWatchLive || !inScope) { scheduleNext(); return; }
           // Read at fire time, not at arm time — the timer is armed once now (see the refs
           // above), so the alert is written in whatever language is on screen when it arrives.
           const alertLang = langRef.current;
@@ -342,8 +369,12 @@ export default function ClientLayout() {
   const portalUsersForScreens = useVcaStore(s => s.portalUsers);
   const heldScreens = useMemo(() => screensFor(portalUsersForScreens), [portalUsersForScreens]);
   const holds = (screen: AppScreen) => heldScreens.includes(screen);
+  /* The dashboard rides on `liveView` rather than on the app door. It was `true` for everybody
+     with the app, which let an account with no viewing grant watch the live VIP feed, the live
+     detection count and the detections on the map — see dashboardOpensFor. */
+  const holdsLive = holdsAppAction(portalUsersForScreens, "liveView");
   const tabAllowed = (tab: NavTab) =>
-    tab === "DASHBOARD" ? true
+    tab === "DASHBOARD" ? holdsLive
     : tab === "BEST FRAME" ? holds("bestframe")
     : tab === "REDMAP" ? holds("redmap")
     : holds("live") || holds("reid") || holds("redface");
@@ -369,8 +400,9 @@ export default function ClientLayout() {
   const [refusedScreen, setRefusedScreen] = useState<NavTab | null>(
     () => (tabAllowed(requestedTab) ? null : requestedTab),
   );
-  /** Where somebody goes when the screen they asked for is not theirs. Dashboard rides on the
-   *  app door, so this always resolves. */
+  /** Where somebody goes when the screen they asked for is not theirs. The fallback stays the
+   *  dashboard for the case where nothing is allowed — the grant screen refuses that combination
+   *  (export alone), so arriving here means somebody edited the data by hand. */
   const firstAllowedTab: NavTab = VALID_TABS.find(tabAllowed) ?? "DASHBOARD";
   /**
    * Moving tab sets `tab=` and leaves every other parameter standing.
@@ -507,8 +539,11 @@ export default function ClientLayout() {
     if (tabAllowed(activePage)) return;
     setRefusedScreen(activePage);
     setActivePage(firstAllowedTab);
+    // `holdsLive` joins the deps because the dashboard is gated on it now: revoking live view
+    // while somebody is sitting on the dashboard has to move them, and heldScreens does not
+    // change when it happens (the dashboard is not an AppScreen).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePage, heldScreens]);
+  }, [activePage, heldScreens, holdsLive]);
   /**
    * The address bar has to stop naming the refused screen too.
    *

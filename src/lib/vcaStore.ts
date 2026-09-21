@@ -2351,10 +2351,48 @@ export const APP_SCREENS: AppScreen[] = ["live", "bestframe", "redmap", "reid", 
  * SCREENS ARE DERIVED, never stored: see screensForActions. A screen is a place, and a place with
  * nothing you may do in it is not a grant worth keeping.
  */
-export type AppAction = "liveView" | "history" | "personSearch" | "trail" | "export";
+export type AppAction =
+  | "systemStatus"
+  | "liveView"
+  | "history"
+  | "personSearch"
+  | "trail"
+  | "export";
 
-/** Order is the ladder the grants run up, and every list built from it reads that way. */
-export const APP_ACTIONS: AppAction[] = ["liveView", "history", "personSearch", "trail", "export"];
+/**
+ * ORDERED BY HOW MUCH THEY REVEAL ABOUT A PERSON, not by where they sit in the app.
+ *
+ * The owner's reason for splitting these at all is the second half of why (2026-09-21): 이렇게
+ * 나누는건 업무를 나누는것도 있겟지만 개인정보 보호를 위해서 권한을 쪼개서 주는것도 이유.
+ * So the list runs from the one view that contains no personal data at all to the two that
+ * identify somebody and take their picture out of the building:
+ *
+ *   systemStatus  cameras and servers, up or down. NOBODY'S DATA IS IN IT.
+ *   liveView      detections happening now — a person, a place, a time
+ *   history       the same, from before now
+ *   personSearch  turns "someone was here" into "this person was here"
+ *   trail         joins those into one person's route across the site
+ *   export        takes any of it out of the console as a file
+ *
+ * `systemStatus` exists because the dashboard has two panels and only one of them is about
+ * people: an IT operator who keeps 62 cameras online needs the SYSTEM panel and has no business
+ * in the VIP feed (owner: 시스템 현황패널만 볼수있는 쪽일수도있고).
+ *
+ * SEEING THE PHOTOGRAPHS IS THE OBVIOUS NEXT ONE AND IT IS NOT HERE YET, deliberately. Portal
+ * already separates "may read the registry" from "may look at the faces" (canViewFaces), and the
+ * same line inside the app would be the strongest privacy control this product could offer: a
+ * name, a place and a time can be legitimate to see while the photograph is not.
+ *
+ * It is absent because it cannot be added honestly in one sitting. Counted: 44 <img> renderers
+ * across the app draw a face — Sidebar 4, MapView 4 (inside Leaflet HTML strings), DataPage 25,
+ * RedmapPage 5, Best Frame 4, Navbar 2 — and a control covering forty of them is worse than none,
+ * because the console would state that photographs are hidden while four screens still show them.
+ * The way in is the two sources every one of those reads (`getFacePhoto` and `Person.photoUrl`),
+ * gated once each, with a placeholder rather than a broken image. That is its own piece of work.
+ */
+export const APP_ACTIONS: AppAction[] = [
+  "systemStatus", "liveView", "history", "personSearch", "trail", "export",
+];
 
 /**
  * Which screens these actions open.
@@ -2364,6 +2402,70 @@ export const APP_ACTIONS: AppAction[] = ["liveView", "history", "personSearch", 
  * is missing for somebody gets the answer from the action that is missing, not from a checkbox
  * nobody can account for.
  */
+/**
+ * WHETHER THE APP'S DASHBOARD OPENS. Its own rule, because the dashboard is not an `AppScreen` —
+ * it is the app's landing page and it was gated by nothing at all (`tab === "DASHBOARD" ? true`
+ * in ClientLayout), riding on the app door alone.
+ *
+ * That was a hole the permission screen could not see: the dashboard carries the live VIP feed,
+ * today's detection count and the map of detections, so an account granted only, say, evidence
+ * export still watched live activity there while the grant screen implied live viewing was
+ * controlled (owner, 2026-09-21: 실시간 보기는 대시보드에도 데이터 모니터링 탭에도 해당하는
+ * 내용이라서 그걸 모두 포함인건지..).
+ *
+ * It is live activity, so it belongs to `liveView` — and the grant rows say both places out loud
+ * now. The camera scope already applied here (eventsVisibleTo), which is what made the gap worth
+ * closing rather than accepting: the screen was honest about WHICH cameras and silent about
+ * whether somebody may watch at all.
+ */
+export function dashboardOpensFor(actions: AppAction[]): boolean {
+  return actions.includes("liveView") || actions.includes("systemStatus");
+}
+
+/**
+ * The dashboard's two panels, gated one at a time.
+ *
+ * All-or-nothing on the dashboard was the wrong cut (owner: 아에 대시보드 내용 못보고 다른
+ * 페이지로 랜딩되어야할수도있는거지 — and the other half of the same message: the SYSTEM panel on
+ * its own is a legitimate landing). The EVENTS panel, the map pins and the VIP counts are
+ * detections; the SYSTEM panel is cameras and servers. Two different questions, two grants.
+ */
+export function dashboardPanelsFor(actions: AppAction[]): { events: boolean; system: boolean } {
+  return { events: actions.includes("liveView"), system: actions.includes("systemStatus") };
+}
+
+/**
+ * Whether ONE camera is inside this account's scope — for the places that hold a camera id rather
+ * than a list, the live alert being the one that matters (owner: 어떤 특정 카메라만 볼수있는
+ * 경우엔 지도에 한 카메라의 데이터만 보게하고 토스트알럿도 그 카메라에 찍힌 vip만 떠야하거든).
+ *
+ * The map and the feed were already narrowed, because both read through eventsVisibleTo. A toast
+ * has no list to filter: it arrives one detection at a time, so it asks about one camera.
+ */
+export function cameraInScope(cameraId: string, users: PortalUser[], groups: CameraGroup[]): boolean {
+  const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
+  if (!me) return true;
+  const ids = scopedCameraIds(me, groups);
+  return ids === null || ids.has(cameraId);
+}
+
+/**
+ * The actions the signed-in account holds, for the components that need more than one of them.
+ *
+ * Same stand-in rule as everywhere else in this file: an identity that resolves to nobody holds
+ * everything, so the mock stays explorable, and a real build reads the session.
+ */
+export function actionsOfSignedIn(users: PortalUser[]): AppAction[] {
+  const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
+  return me ? (me.appActions ?? []) : [...APP_ACTIONS];
+}
+
+/** The dashboard's panels for the signed-in account, as a hook for the app's own screens. */
+export function useDashboardPanels(): { events: boolean; system: boolean } {
+  const users = useVcaStore(s => s.portalUsers);
+  return useMemo(() => dashboardPanelsFor(actionsOfSignedIn(users)), [users]);
+}
+
 export function screensForActions(actions: AppAction[]): AppScreen[] {
   const has = (a: AppAction) => actions.includes(a);
   return APP_SCREENS.filter(screen => {
@@ -2842,10 +2944,10 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["liveView", "history", "personSearch", "trail", "export"], grantMode: "preset", presetId: "preset-supervisor", status: "active", lastLoginAt: "2026-08-25 09:14" },
-  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["liveView", "history", "personSearch", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["systemStatus", "liveView", "history", "personSearch", "trail", "export"], grantMode: "preset", presetId: "preset-supervisor", status: "active", lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["systemStatus", "liveView", "history", "personSearch", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
   // Admin who also works the app — the combination the single-field model could not hold.
-  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appActions: ["liveView", "history"], grantMode: "preset", presetId: "preset-operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
+  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appActions: ["systemStatus", "liveView", "history"], grantMode: "preset", presetId: "preset-operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
   { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", employeeId: "EMP-2044", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "invited" },
   { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", employeeId: "EMP-2045", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "suspended", lastLoginAt: "2026-06-02 08:30" },
   // The customer's security officer: reads Portal for the audit trail, has no business in the
@@ -4077,17 +4179,17 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     {
       id: "preset-operator", teamId: "team-univs", builtinKey: "operator", label: "운영자",
       description: "지금 일어나는 일을 본다",
-      actions: ["liveView", "history"],
+      actions: ["systemStatus", "liveView", "history"],
     },
     {
       id: "preset-investigator", teamId: "team-univs", builtinKey: "investigator", label: "조사자",
       description: "운영자 + 지난 것을 찾는다",
-      actions: ["liveView", "history", "personSearch", "trail"],
+      actions: ["systemStatus", "liveView", "history", "personSearch", "trail"],
     },
     {
       id: "preset-supervisor", teamId: "team-univs", builtinKey: "supervisor", label: "감독자",
       description: "조사자 + 증거를 밖으로 낸다",
-      actions: ["liveView", "history", "personSearch", "trail", "export"],
+      actions: ["systemStatus", "liveView", "history", "personSearch", "trail", "export"],
     },
   ],
   searchPurpose: null,

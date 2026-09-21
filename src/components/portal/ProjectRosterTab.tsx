@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Eye } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useVcaStore } from "@/lib/vcaStore";
 import { REGISTRATION_CODE_TTL_DAYS, formatCode, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -66,6 +66,8 @@ const T = {
     colPermission: "Permission",
     colStatus: "Status",
     colCode: "Code",
+    codeReveal: "Show the code",
+    codeHide: "Hide the code again",
     admin: "Portal admin",
     operator: "App user",
     // The two roster options mint two very different accounts (see activateRosterEntry), and
@@ -155,6 +157,8 @@ const T = {
     colPermission: "권한",
     colStatus: "상태",
     colCode: "코드",
+    codeReveal: "코드 보기",
+    codeHide: "코드 다시 가리기",
     admin: "Portal 관리자",
     operator: "앱 사용자",
     accessBoth: "Portal + 앱",
@@ -231,11 +235,19 @@ function csvEscape(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
 }
 
-// Masked until clicked, and clicking is what's worth an audit trail — an admin who can see a still-
-// live code is an admin who can hand it to the wrong person. Used/expired codes never get a reveal
-// control at all: they're dead values, so there's nothing left to protect or show (see PROMPT's
-// "사용된 코드는 영구히 숨긴다" — extended here to expired for the same reason, not just used).
-function RosterCodeCell({ entry, onReveal }: { entry: RosterEntry; onReveal: () => void }) {
+/*
+ * Masked until clicked, and clicking is what's worth an audit trail — an admin who can see a still-
+ * live code is an admin who can hand it to the wrong person. Used/expired codes never get a reveal
+ * control at all: they're dead values, so there's nothing left to protect or show (see PROMPT's
+ * "사용된 코드는 영구히 숨긴다" — extended here to expired for the same reason, not just used).
+ *
+ * AND IT GOES BACK (owner, 2026-09-21: 코드가 가려졌다가 다시보이고 다시 가릴수있게 해줘). Reveal
+ * used to be one-way, so a code read once stayed on screen for the rest of the session — on a
+ * shared control-room display that is the opposite of masking it in the first place. The same
+ * button hides it again, and the audit line is written on each REVEAL only: every look is a look,
+ * and putting it away is not one.
+ */
+function RosterCodeCell({ entry, onReveal, t }: { entry: RosterEntry; onReveal: () => void; t: Translations }) {
   const [revealed, setRevealed] = useState(false);
 
   if (entry.status === "not-issued") {
@@ -244,24 +256,26 @@ function RosterCodeCell({ entry, onReveal }: { entry: RosterEntry; onReveal: () 
   if (entry.status !== "unused") {
     return <span style={{ fontSize: "12px", fontFamily: "monospace", color: "var(--gray-300)" }}>••••-••••</span>;
   }
-  if (!revealed) {
-    return (
-      <button
-        onClick={() => { setRevealed(true); onReveal(); }}
-        style={{ display: "flex", alignItems: "center", gap: "6px", border: "none", background: "none", cursor: "pointer", padding: 0, fontFamily: "monospace", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}
-      >
-        ••••-••••
-        {/* Lucide, like the password fields' show/hide toggle — this is the same "reveal a hidden
-            value" affordance, and it was a second hand-drawn eye that happened to be a slightly
-            different shape from that one. Colour comes from the wrapper so the button can tint it. */}
-        <span style={{ display: "flex", color: "var(--gray-400)" }}><Eye size={14} strokeWidth={2.4} /></span>
-      </button>
-    );
-  }
+  /* One button in both states, so the row does not change height or shift when it flips and the
+     control stays under the same pointer. Lucide's pair, like the password fields' show/hide
+     toggle — this is the same "reveal a hidden value" affordance. */
   return (
-    <span style={{ fontFamily: "monospace", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
-      {formatCode(entry.code ?? "")}
-    </span>
+    <button
+      onClick={() => {
+        if (revealed) { setRevealed(false); return; }
+        setRevealed(true);
+        onReveal();
+      }}
+      title={revealed ? t.codeHide : t.codeReveal}
+      aria-label={revealed ? t.codeHide : t.codeReveal}
+      aria-pressed={revealed}
+      style={{ display: "flex", alignItems: "center", gap: "6px", border: "none", background: "none", cursor: "pointer", padding: 0, fontFamily: "monospace", fontSize: "12px", fontWeight: revealed ? 700 : 600, color: revealed ? "var(--gray-900)" : "var(--gray-500)" }}
+    >
+      {revealed ? formatCode(entry.code ?? "") : "••••-••••"}
+      <span style={{ display: "flex", color: "var(--gray-400)" }}>
+        {revealed ? <EyeOff size={14} strokeWidth={2.4} /> : <Eye size={14} strokeWidth={2.4} />}
+      </span>
+    </button>
   );
 }
 
