@@ -317,9 +317,6 @@ const T = {
     // field anybody can fail. Cameras is unmarked because it does not block — an unanswered scope
     // means every camera on the ticked projects, which is the row's own sentence.
     nameLabel: "Name *",
-    nameFromEmail: "Filled in from the address — edit it and it stays yours.",
-    teamPrefilled: "Set to the team that owns this project.",
-    accessPrefilled: "Set to the narrowest of the three.",
     namePlaceholder: "Full name",
     emailLabel: "Email *",
     teamLabel: "Team",
@@ -328,11 +325,19 @@ const T = {
     projectsLabel: "Projects *",
     sectionWho: "Who",
     sectionWhere: "Where",
+    foldGrant: "Permissions",
+    foldSite: "Site",
+    foldTeam: "Team",
+    foldUnanswered: "not chosen yet",
+    foldGrantCustom: (n: number) => `Hand-picked · ${n} of 6`,
+    foldGrantPortalOnly: "Portal only — no app screens",
+    foldSiteMore: (first: string, rest: number) => `${first} +${rest}`,
+    foldCamerasAll: (n: number) => `all ${n} cameras`,
+    foldCamerasSome: (n: number) => `${n} cameras`,
     scopeLabel: "Cameras",
     scopeNoProject: "Tick a project to see how many cameras that is.",
     scopeNoCameras: "No cameras are registered on the ticked projects yet.",
     scopeStartsAll: (n: number) => `Every camera on these projects — ${n} today, and any added later.`,
-    scopeGroupHint: "Pick a group and they see only that, plus whatever joins the group later.",
     scopeGroupsNone: "No camera groups on these projects yet. They are made on the Camera groups tab.",
     scopePickedGroups: (n: number) => `${n} camera${n === 1 ? "" : "s"} through the picked groups. Individual cameras are added after the invite.`,
     scopeGroupCount: (n: number) => `${n}`,
@@ -632,9 +637,6 @@ const T = {
     // Invite modal
     modalTitle: "사용자 초대",
     nameLabel: "이름 *",
-    nameFromEmail: "이메일에서 채웠습니다 — 고치면 그대로 둡니다.",
-    teamPrefilled: "이 프로젝트의 팀으로 맞춰 뒀습니다.",
-    accessPrefilled: "가장 좁은 쪽으로 맞춰 뒀습니다.",
     namePlaceholder: "전체 이름",
     emailLabel: "이메일 *",
     teamLabel: "팀",
@@ -643,11 +645,19 @@ const T = {
     projectsLabel: "프로젝트 *",
     sectionWho: "누구를",
     sectionWhere: "어디에",
+    foldGrant: "권한",
+    foldSite: "현장",
+    foldTeam: "팀",
+    foldUnanswered: "아직 고르지 않았음",
+    foldGrantCustom: (n: number) => `직접 고름 · 6가지 중 ${n}`,
+    foldGrantPortalOnly: "포털만 — 앱 화면 없음",
+    foldSiteMore: (first: string, rest: number) => `${first} 외 ${rest}`,
+    foldCamerasAll: (n: number) => `카메라 전체 ${n}대`,
+    foldCamerasSome: (n: number) => `카메라 ${n}대`,
     scopeLabel: "카메라 범위",
     scopeNoProject: "프로젝트를 고르면 몇 대인지 나옵니다.",
     scopeNoCameras: "고른 프로젝트에 등록된 카메라가 아직 없습니다.",
     scopeStartsAll: (n: number) => `이 프로젝트의 카메라 전부 — 지금 ${n}대, 나중에 추가되는 것도 포함합니다.`,
-    scopeGroupHint: "그룹을 고르면 그 그룹만 봅니다. 나중에 그 그룹에 들어오는 카메라도 함께 봅니다.",
     scopeGroupsNone: "이 프로젝트에 카메라 그룹이 아직 없습니다. 카메라 그룹 탭에서 만듭니다.",
     scopePickedGroups: (n: number) => `고른 그룹으로 ${n}대. 카메라를 한 대씩 더 주는 것은 초대 뒤에 합니다.`,
     scopeGroupCount: (n: number) => `${n}`,
@@ -727,10 +737,18 @@ const T = {
  * It holds no state. The caller owns the draft, because the two callers resolve it differently —
  * an invite starts with nothing chosen, an edit starts from what the account already holds.
  */
-function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, t }: {
+function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideTitle, t }: {
   presets: AccessPreset[];
   choice: string | null;
   onChoice: (id: string) => void;
+  /**
+   * Drop the "how grants are decided" heading, for the caller whose own row already says it.
+   *
+   * Display only — the pair of questions and every answer stays identical in both callers, which
+   * is this component's whole reason to exist. The invite dialog folds this list under a row
+   * labelled 권한, and a heading repeating that word inside the fold is the same word twice.
+   */
+  hideTitle?: boolean;
   /** What the list shows — already resolved by the caller, which is not always the custom draft. */
   actions: AppAction[];
   onToggleAction: (action: AppAction) => void;
@@ -751,7 +769,7 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, t }: 
             may do" above a list already labelled 할 수 있는 일 is the same words twice. Both
             callers get it — the edit modal's column starts here too, and the pair reading the
             same in both places is this component's whole reason to exist. */}
-        <label style={{ ...SECTION_HEAD, display: "block", marginBottom: "10px" }}>{t.grantLabel}</label>
+        {!hideTitle && <label style={{ ...SECTION_HEAD, display: "block", marginBottom: "10px" }}>{t.grantLabel}</label>}
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
           {/* Custom is the LAST ITEM OF THE SAME LIST rather than a separate switch — it is one
               more way of answering "how are this person's grants decided", and a toggle beside the
@@ -1065,6 +1083,8 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const shownActions = isCustom ? customActions : (shown?.appActions ?? []);
   const [permission, setPermission] = useState<PortalPermission>("admin");
   const [projectIds, setProjectIds] = useState<string[]>(defaultProjectId ? [defaultProjectId] : []);
+  /** Which fold is open, or none. One at a time: two open folds is the tall form again. */
+  const [openFold, setOpenFold] = useState<"grant" | "site" | "team" | null>(null);
   /** Camera groups the invite hands over. Empty means every camera — see the note on draftGroups. */
   const [scopeGroupIds, setScopeGroupIds] = useState<string[]>([]);
   const toggleScopeGroup = (id: string) =>
@@ -1113,6 +1133,33 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const draftGroups = allGroups.filter(g => projectIds.includes(g.projectId));
   const pickedGroups = draftGroups.filter(g => scopeGroupIds.includes(g.id));
   const pickedGroupCameras = new Set(pickedGroups.flatMap(g => g.cameraIds));
+
+  /*
+   * WHAT EACH CLOSED FOLD SAYS. Written from the draft, so a fold read from the outside always
+   * agrees with what is inside it — a summary computed from anything else is the way a folded form
+   * starts lying about itself.
+   *
+   * The grant one has three states because the three are genuinely different: nothing chosen (the
+   * only thing on this form that blocks and cannot be pre-answered), a preset by name, and a
+   * hand-picked set counted rather than listed — six action names do not fit on a row.
+   */
+  const grantSummary = accessMode === "portalOnly" ? t.foldGrantPortalOnly
+    : effectiveChoice === null ? t.foldUnanswered
+    : effectiveChoice === "custom" ? t.foldGrantCustom(customActions.length)
+    : presetLabel(presets.find(pr => pr.id === effectiveChoice)!, lang);
+  /* Site: the projects, the door, and how many cameras that comes to — the three things the fold
+     holds, in the order the fold asks them. "및 N" rather than every project name: two names
+     already fill the row at 520px. */
+  const siteSummary = projectIds.length === 0 ? t.foldUnanswered : [
+    selectedProjects.length <= 1
+      ? (selectedProjects[0]?.name ?? "")
+      : t.foldSiteMore(selectedProjects[0].name, selectedProjects.length - 1),
+    accessLabel(t, accessMode),
+    accessMode === "portalOnly" ? ""
+      : draftScopable.length === 0 ? ""
+      : pickedGroups.length > 0 ? t.foldCamerasSome(pickedGroupCameras.size)
+      : t.foldCamerasAll(draftScopable.length),
+  ].filter(Boolean).join(" · ");
   const hasIsolated = selectedProjects.some(isNetworkIsolated);
   const hasReachable = selectedProjects.some(p => !isNetworkIsolated(p));
   // Only when a site constrains the address. The all-connected case had a line of its own
@@ -1147,6 +1194,11 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
     && teamId !== "" && projectIds.length > 0 && grantsChosen;
   const submit = () => {
     setSubmitted(true);
+    /* AN ERROR MUST NOT POINT AT A FOLD. The two blocking answers that live behind one are the
+       projects and the grant, so a refused invite opens the fold that is missing its answer —
+       otherwise the reason sits beside the button and the field it is about is not on screen. */
+    if (projectIds.length === 0) setOpenFold("site");
+    else if (applyAccessMode(accessMode, permission).appAccess && !grantsChosen) setOpenFold("grant");
     // A project is required, the same as it is when the assignment is changed later: an account
     // invited with nothing ticked signs into an empty app and reads it as a broken product.
     if (!name.trim() || !email.trim() || !teamId || projectIds.length === 0) return;
@@ -1303,7 +1355,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
         submit button is not.
       */}
       <div style={{
-        backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "880px", width: "100%",
+        backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "520px", width: "100%",
         boxShadow: "var(--shadow-modal)",
         display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 32px)", minHeight: 0,
       }}>
@@ -1322,14 +1374,12 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
             code path that could diverge. */}
         <form
           onSubmit={e => { e.preventDefault(); if (canInvite) submit(); }}
-          className="portal-invite-grid" style={{ overflowY: "auto", minHeight: 0 }}>
-          <div style={MODAL_BODY_WITH_SELECT}>
-          <SectionHead>{t.sectionWho}</SectionHead>
+          style={{ overflowY: "auto", minHeight: 0, ...MODAL_BODY_WITH_SELECT }}>
           {/*
             THE ADDRESS FIRST (2026-09-21, after eight invite dialogs on Mobbin: Stripe,
             Productboard, Dub, Whop, Emergent, Zapier, Wellfound, Tana — every one of them opens
             with the email and nothing else).
-            
+
             It is not just convention. On this installation the address decides whether the rest
             of the form can be filled at all: accounts must be on the site's mail domain, and a
             name typed before an address that gets refused is work thrown away. It is also the
@@ -1339,13 +1389,10 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.emailLabel}</label>
             {/* THE PLACEHOLDER HAS TO BE AN ADDRESS THIS FORM WOULD ACCEPT. It was a fixed
                 "name@univs.ai" — our own domain, not the customer's — while the field below it
-                refuses anything off the installation's domain: on the seeded project the hint
-                says name@univs.ai and the error says accounts must be @smartcity.gov.sg. Measured
-                by typing the suggested shape into the field: the Invite button stayed disabled
-                with errDomain under it. Same mailDomain the validation reads, so the example and
-                the rule cannot drift apart. Left generic when no domain is configured — then
-                nothing is refused and there is no domain to suggest. */}
-            <TextField value={email} onChange={changeEmail} placeholder={mailDomain ? `name@${mailDomain}` : "name@example.com"} type="email" />
+                refuses anything off the installation's domain. Same mailDomain the validation
+                reads, so the example and the rule cannot drift apart. Left generic when no domain
+                is configured — then nothing is refused and there is no domain to suggest. */}
+            <TextField value={email} onChange={changeEmail} placeholder={mailDomain ? `name@${mailDomain}` : "name@example.com"} type="email" autoFocus />
             {/* Under the field, not on submit. The three ways this address can be wrong are all
                 knowable while it is being typed, and finding out after pressing Send is finding
                 out after an account was nearly created. */}
@@ -1357,179 +1404,168 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               "Marcus Lee" — a suggestion, not a value: the moment somebody edits the name it is
               theirs and no later change to the address touches it (`nameTouched`). Addresses that
               carry no name (`ops@`, `k.h.j@`) suggest nothing rather than something wrong, which
-              is the same rule the camera importer follows about guessing. */}
+              is the same rule the camera importer follows about guessing.
+              NO "filled in from the address" LINE ANY MORE (owner, 2026-09-21: 필드 밑 회색
+              설명줄 다 없앤다) — the name appearing as the address is typed says it by happening. */}
           <div>
             <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
             <TextField value={name} onChange={v => { setNameTouched(true); setName(v); }} placeholder={t.namePlaceholder} />
-            {!nameTouched && name !== "" && (
-              <p style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.nameFromEmail}</p>
-            )}
           </div>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.teamLabel}</label>
-            <FilterSelect value={teamId} onChange={changeTeam} options={teams.map(o => ({ value: o.id, label: o.name }))} />
-            {/* WHY THIS ONE HAS NO STAR (owner: 필수 표시 사실상 모두 필요하지않아?). The four
-                stars on this form are exactly the four things that stop the button: email, name,
-                projects, and the way grants are decided. A star here would be one you cannot
-                fail — the value is derived from the project on screen and can never be empty. So
-                the field says it is ANSWERED instead of looking optional. */}
-            <p style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.teamPrefilled}</p>
-          </div>
-          {/* THE SECOND QUESTION STARTS HERE: the three fields above are the person, everything
-              below is how far they reach — which door, which project, which cameras inside it.
-              The rule is on the head rather than between the fields so the group is one object. */}
-          <SectionHead divided>{t.sectionWhere}</SectionHead>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.accessLabel}</label>
-            {/* type="button" ON EVERY CONTROL INSIDE THE FORM. A <button> in a form is a SUBMIT
-                button unless it says otherwise, and this dialog became a real <form> so Enter
-                would send it (c0f5747). Measured after that change: filling the address and
-                pressing a preset MAILED THE INVITE on the spot — the click submitted the form,
-                the account was created and the dialog jumped to "계정이 만들어졌습니다". Every
-                picker in here needs the attribute, and a new one added without it does the same
-                thing silently, because the form only submits when the invite happens to be
-                valid. */}
-            <div style={{ display: "flex", gap: "8px" }}>
-              {(["both", "appOnly", "portalOnly"] as AccessMode[]).map(mode => (
-                <button key={mode} type="button" onClick={() => setAccessMode(mode)}
-                  style={{
-                    flex: 1, padding: "10px 8px", borderRadius: "10px", cursor: "pointer",
-                    border: accessMode === mode ? "1px solid var(--gray-900)" : BORDER,
-                    backgroundColor: accessMode === mode ? "var(--gray-100)" : "white",
-                    color: accessMode === mode ? "var(--gray-900)" : "var(--gray-600)",
-                    fontSize: "12px", fontWeight: 700,
-                  }}>
-                  {accessLabel(t, mode)}
-                </button>
-              ))}
-            </div>
-            {/* Same rule as the team field: no star, because the default cannot be empty — and
-                it is the NARROWEST of the three, so a hurried invite gives the least rather than
-                the most. Saying so stops "no star" reading as "optional". */}
-            <p style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.accessPrefilled}</p>
-          </div>
-          {accessMode !== "appOnly" && (
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.permissionLabel}</label>
-              <FilterSelect
-                value={permission}
-                onChange={v => setPermission(v as PortalPermission)}
-                options={consoleRoleOptions(t)}
-              />
-            </div>
-          )}
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.projectsLabel}</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-              {teamProjects.map(p => {
-                const active = projectIds.includes(p.id);
-                return (
-                  <button key={p.id} type="button" onClick={() => toggleProject(p.id)}
-                    style={{
-                      padding: "6px 10px", borderRadius: "8px", cursor: "pointer",
-                      border: active ? "1px solid var(--gray-900)" : BORDER,
-                      backgroundColor: active ? "var(--gray-100)" : "white",
-                      color: active ? "var(--gray-900)" : "var(--gray-600)",
-                      fontSize: "12px", fontWeight: 700,
-                    }}>
-                    {p.name}
-                  </button>
-                );
-              })}
-            </div>
-            {mailTransportNote && (
-              <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "8px" }}>{mailTransportNote}</p>
-            )}
-          </div>
-          {/* CAMERAS — stated here, chosen one step later. See the long note on the result step
-              for why the picker cannot be opened on a draft: it writes by user id, and a draft
-              has none. What this row is for is the question NOT being invisible — an account is
-              created here with every camera on its projects, and somebody who never learns that
-              does not know a scope exists to narrow. Last in the column because it is one notch
-              inside the project chips above it, and those chips decide what it can name.
-              Not asked of a Portal-only account: it has no app to watch cameras in.
 
-              ONE PARAGRAPH, THREE STATES, NO SECOND LINE. The promise that a narrowing step is
-              coming sits inside `scopeStartsAll`, which is the branch taken only when the ticked
-              projects hold at least one camera — the same condition the result step's button is
-              rendered under (`accessMode !== "portalOnly"` is exactly `appAccess`, see
-              applyAccessMode), so the promise cannot outlive the control it points at. It was a
-              second 11px line in a third grey; the note directly above this one is 12px
-              gray-500, and a column that says small things in two sizes reads as two kinds of
-              importance it does not have. */}
-          {accessMode !== "portalOnly" && (
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.scopeLabel}</label>
-              <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>
-                {projectIds.length === 0 ? t.scopeNoProject
-                  : draftScopable.length === 0 ? t.scopeNoCameras
-                  : pickedGroups.length > 0 ? t.scopePickedGroups(pickedGroupCameras.size)
-                  : t.scopeStartsAll(draftScopable.length)}
-              </p>
-              {/* THE GROUPS, AS CHIPS, IN THE ONE COLUMN THAT HAS THE ROOM. Same control as the
-                  project chips two fields up, and deliberately so: the pair reads as one chain
-                  narrowing from the site inwards — which project, then which cameras inside it.
-                  Only rendered once the ticked projects hold cameras, so the empty-register case
-                  keeps its single sentence instead of gaining a second empty state. */}
-              {draftScopable.length > 0 && (
-                draftGroups.length === 0 ? (
-                  <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "8px" }}>{t.scopeGroupsNone}</p>
-                ) : (
-                  <>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "10px" }}>
-                      {draftGroups.map(g => {
-                        const on = scopeGroupIds.includes(g.id);
-                        return (
-                          <button key={g.id} type="button" onClick={() => toggleScopeGroup(g.id)}
-                            style={{
-                              display: "flex", alignItems: "center", gap: "6px",
-                              padding: "6px 10px", borderRadius: "8px", cursor: "pointer",
-                              border: on ? "1px solid var(--gray-900)" : BORDER,
-                              backgroundColor: on ? "var(--gray-100)" : "white",
-                              color: on ? "var(--gray-900)" : "var(--gray-600)",
-                              fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
-                            }}>
-                            {g.label}
-                            {/* The size, because two groups can carry the same name's worth of
-                                weight and a very different number of cameras. */}
-                            <span style={{ fontSize: "10px", fontWeight: 600, color: on ? "var(--gray-500)" : "var(--gray-400)" }}>
-                              {t.scopeGroupCount(g.cameraIds.length)}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {/* WHY A GROUP AND NOT A LIST OF CAMERAS, said once, under the control it is
-                        about. The growth is the whole difference between the two and it cannot be
-                        seen by looking at the chips. */}
-                    <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "8px" }}>{t.scopeGroupHint}</p>
-                  </>
-                )
+          {/*
+            THE REST IS FOLDED (owner, 2026-09-21: 사람만 보이고 권한은 접어둔다).
+
+            Measured before rebuilding: the two-column sheet stood 880×859 on a 900px window — 95%
+            of the screen for seven questions — and the WIDE column was the empty one (538px wide
+            holding 392px of content, 333px of dead space under it) while the narrow 340px column
+            ran to 685px. Column titles did not fix that; the dialog was simply too big for what it
+            asks.
+
+            So: one column at 520px, the two fields nobody can answer for you open, and the three
+            that already have an answer folded to a line that STATES that answer. Docusign's
+            add-user page is the reference — its finished steps collapse to "Email: jdoe2@…" — and
+            the summary is what makes folding safe: a closed row is not a hidden question, it is an
+            answered one you can read without opening it.
+
+            The one row that cannot be pre-answered is the grant, deliberately (see grantChoice: no
+            preset is chosen for you). It carries the star and says so, and pressing Invite opens it
+            rather than pointing at a fold.
+          */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "4px" }}>
+            <FoldRow
+              label={t.foldGrant} required summary={grantSummary} answered={accessMode === "portalOnly" || effectiveChoice !== null}
+              open={openFold === "grant"} onToggle={() => setOpenFold(openFold === "grant" ? null : "grant")}>
+              {accessMode !== "portalOnly" ? (
+                <GrantPicker
+                  presets={presets} choice={effectiveChoice} onChoice={setGrantChoice}
+                  actions={shownActions} onToggleAction={toggleCustomAction}
+                  hideTitle t={t} />
+              ) : (
+                /* Portal-only: there is no app to grant screens in, and the row says so rather
+                   than opening onto an empty list. */
+                <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.grantsPortalOnly}</p>
               )}
-            </div>
-          )}
-          </div>
+            </FoldRow>
 
-          {/* RIGHT COLUMN — what this account may reach.
-              Only asked when the app is one of the doors: a Portal-only account has no screens to
-              grant and the question would have no answer. Custom is the LAST ITEM OF THE SAME LIST
-              rather than a separate switch — it is one more way of answering "how are this
-              person's grants decided", and a toggle beside the list would make it a second
-              question people answer before the first. */}
-          {accessMode !== "portalOnly" ? (
-            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
-              <GrantPicker
-                presets={presets} choice={effectiveChoice} onChoice={setGrantChoice}
-                actions={shownActions} onToggleAction={toggleCustomAction}
-                t={t} />
-            </div>
-          ) : (
-            /* Portal-only. The column is not left blank — an empty half reads as something that
-               failed to load rather than as a question that does not apply here. */
-            <div style={{ padding: "20px", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 0 }}>
-              <p style={{ fontSize: "12px", color: "var(--gray-400)", textAlign: "center", lineHeight: 1.6, maxWidth: "26ch" }}>{t.grantsPortalOnly}</p>
-            </div>
-          )}
+            <FoldRow
+              label={t.foldSite} required summary={siteSummary} answered={projectIds.length > 0}
+              open={openFold === "site"} onToggle={() => setOpenFold(openFold === "site" ? null : "site")}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.projectsLabel}</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                    {teamProjects.map(p => {
+                      const active = projectIds.includes(p.id);
+                      return (
+                        <button key={p.id} type="button" onClick={() => toggleProject(p.id)}
+                          style={{
+                            padding: "6px 10px", borderRadius: "8px", cursor: "pointer",
+                            border: active ? "1px solid var(--gray-900)" : BORDER,
+                            backgroundColor: active ? "var(--gray-100)" : "white",
+                            color: active ? "var(--gray-900)" : "var(--gray-600)",
+                            fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+                          }}>
+                          {p.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {mailTransportNote && (
+                    <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "8px" }}>{mailTransportNote}</p>
+                  )}
+                </div>
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.accessLabel}</label>
+                  {/* type="button" ON EVERY CONTROL INSIDE THE FORM. A <button> in a form is a
+                      SUBMIT button unless it says otherwise, and this dialog is a real <form> so
+                      Enter sends it (c0f5747). Measured after that change: filling the address and
+                      pressing a preset MAILED THE INVITE on the spot. Every picker in here needs
+                      the attribute, and a new one added without it does the same thing silently,
+                      because the form only submits when the invite happens to be valid. */}
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    {(["both", "appOnly", "portalOnly"] as AccessMode[]).map(mode => (
+                      <button key={mode} type="button" onClick={() => setAccessMode(mode)}
+                        style={{
+                          flex: 1, padding: "10px 8px", borderRadius: "10px", cursor: "pointer",
+                          border: accessMode === mode ? "1px solid var(--gray-900)" : BORDER,
+                          backgroundColor: accessMode === mode ? "var(--gray-100)" : "white",
+                          color: accessMode === mode ? "var(--gray-900)" : "var(--gray-600)",
+                          fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+                        }}>
+                        {accessLabel(t, mode)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {accessMode !== "appOnly" && (
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.permissionLabel}</label>
+                    <FilterSelect
+                      value={permission}
+                      onChange={v => setPermission(v as PortalPermission)}
+                      options={consoleRoleOptions(t)}
+                    />
+                  </div>
+                )}
+                {/* CAMERAS — groups only, and nothing picked means every camera on the ticked
+                    projects, the same rule the data model states on scopedCameraIds. A thousand-
+                    camera site is not granted one row at a time: Verkada, Milestone and Rhombus
+                    hand cameras out by site, role or group, and Eagle Eye — the one product with
+                    the camera list inside the add-user dialog — is the one that would not survive
+                    the scale. Not asked of a Portal-only account: no app to watch them in. */}
+                {accessMode !== "portalOnly" && (
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.scopeLabel}</label>
+                    <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>
+                      {projectIds.length === 0 ? t.scopeNoProject
+                        : draftScopable.length === 0 ? t.scopeNoCameras
+                        : pickedGroups.length > 0 ? t.scopePickedGroups(pickedGroupCameras.size)
+                        : t.scopeStartsAll(draftScopable.length)}
+                    </p>
+                    {draftScopable.length > 0 && (
+                      draftGroups.length === 0 ? (
+                        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "8px" }}>{t.scopeGroupsNone}</p>
+                      ) : (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "10px" }}>
+                          {draftGroups.map(g => {
+                            const on = scopeGroupIds.includes(g.id);
+                            return (
+                              <button key={g.id} type="button" onClick={() => toggleScopeGroup(g.id)}
+                                style={{
+                                  display: "flex", alignItems: "center", gap: "6px",
+                                  padding: "6px 10px", borderRadius: "8px", cursor: "pointer",
+                                  border: on ? "1px solid var(--gray-900)" : BORDER,
+                                  backgroundColor: on ? "var(--gray-100)" : "white",
+                                  color: on ? "var(--gray-900)" : "var(--gray-600)",
+                                  fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+                                }}>
+                                {g.label}
+                                {/* The size, because two groups can carry the same name's worth of
+                                    weight and a very different number of cameras. */}
+                                <span style={{ fontSize: "10px", fontWeight: 600, color: on ? "var(--gray-500)" : "var(--gray-400)" }}>
+                                  {t.scopeGroupCount(g.cameraIds.length)}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            </FoldRow>
+
+            {/* Last, and the only fold whose answer nobody normally changes: the team is the one
+                that owns the project this page is scoped to. Folded rather than dropped, because
+                an account CAN be filed under another team, and a form that never shows the team
+                would put somebody in the wrong one silently. */}
+            <FoldRow
+              label={t.foldTeam} summary={teams.find(o => o.id === teamId)?.name ?? ""} answered
+              open={openFold === "team"} onToggle={() => setOpenFold(openFold === "team" ? null : "team")}>
+              <FilterSelect value={teamId} onChange={changeTeam} options={teams.map(o => ({ value: o.id, label: o.name }))} />
+            </FoldRow>
+          </div>
         </form>
         <div style={{ padding: "16px 24px", borderTop: "1px solid var(--gray-200)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
           {/* The reason sits beside the button rather than leaving it dead and silent. Shown only
@@ -1876,20 +1912,68 @@ const MODAL_BODY_WITH_SELECT: React.CSSProperties = {
  * Workspace level permissions), and Eagle Eye — the one VMS that keeps everything in one dialog —
  * tabs them for the same reason.
  *
- * TWO WORDS, NOT A SENTENCE. The head sits directly above a labelled field, so anything longer is
- * read twice. The third head is the grant column's own first label, promoted to this style rather
- * than a new line of copy above it (see GrantPicker).
+ * WHAT IS LEFT OF IT. The two column heads this was built for are gone with the two columns
+ * (the dialog is one folded column now, see the form); the style stays because the grant list's
+ * own first label uses it, and the edit modal still shows that label.
  */
 const SECTION_HEAD: React.CSSProperties = {
   fontSize: "11px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase",
   color: "var(--gray-400)",
 };
 
-function SectionHead({ children, divided }: { children: React.ReactNode; divided?: boolean }) {
+/**
+ * ONE FOLDED QUESTION: its name, the answer it already holds, and its controls when opened.
+ *
+ * The summary is the whole point. A fold that says only 권한 hides a question; a fold that says
+ * 조사자 · 카메라 전체 62대 has ANSWERED it in the space of a line, and opening it is then an edit
+ * rather than a discovery. Docusign's add-user page is the reference (its finished steps collapse
+ * to "Email: jdoe2@…"), and the same rule is why the unanswered one reads 아직 고르지 않음 in the
+ * place where an answer would be, instead of showing nothing.
+ *
+ * The star sits on the row, not inside it: the four stars on this form are still exactly the four
+ * things that stop the button (email, name, projects, and how grants are decided), and two of
+ * those now live behind a fold.
+ */
+function FoldRow({ label, required, summary, answered, open, onToggle, children }: {
+  label: string;
+  required?: boolean;
+  /** What this fold holds right now, in the reader's words. */
+  summary: string;
+  /** False draws the summary as the thing still missing rather than as an answer. */
+  answered: boolean;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
   return (
-    <p style={{ ...SECTION_HEAD, ...(divided ? { borderTop: "1px solid var(--gray-200)", paddingTop: "16px" } : {}) }}>
-      {children}
-    </p>
+    <div style={{ border: BORDER, borderRadius: "10px", backgroundColor: open ? "white" : "var(--gray-50)" }}>
+      <button type="button" onClick={onToggle}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left",
+          padding: "11px 12px", border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
+        }}>
+        <span style={{ flexShrink: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
+          {label}{required ? " *" : ""}
+        </span>
+        <span style={{
+          flex: 1, minWidth: 0, fontSize: "12px", textAlign: "right",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          color: answered ? "var(--gray-500)" : "var(--gray-400)",
+          fontWeight: answered ? 500 : 600,
+        }}>
+          {summary}
+        </span>
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"
+          style={{ flexShrink: 0, transform: open ? "rotate(90deg)" : "none", transition: "transform 120ms" }}>
+          <path d="M3 1.5L7 5l-4 3.5" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && (
+        <div style={{ padding: "0 12px 14px", borderTop: "1px solid var(--gray-200)", paddingTop: "14px", minWidth: 0 }}>
+          {children}
+        </div>
+      )}
+    </div>
   );
 }
 
