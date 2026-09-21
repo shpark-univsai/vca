@@ -224,8 +224,10 @@ interface VipDict {
   bulkTemplate: string;
   bulkTemplateHint: string;
   bulkTemplateMemoHeader: string;
+  bulkTemplatePhotoHeader: string;
   bulkTemplateName: string;
   bulkTemplateMemo: string;
+  bulkTemplatePhotoSample: string;
   // Tabs and groups
   tabAll: string;
   tabGroups: string;
@@ -419,10 +421,12 @@ const T: Record<"en" | "ko", VipDict> = {
     register: "Register",
     priorityText: { normal: "Normal", high: "High", very_high: "Very High" } as Record<NonNullable<Person["priorityLabel"]>, string>,
     bulkTemplate: "Template",
-    bulkTemplateHint: "One person per row: a name, and a note if there is one. A file of bare names works too.",
+    bulkTemplateHint: "One person per row: a name, a note if there is one, and the file name of their photo. The photos are picked in the import step. A file of bare names works too.",
     bulkTemplateMemoHeader: "Memo",
+    bulkTemplatePhotoHeader: "Photo file name",
     bulkTemplateName: "Hong Gildong",
     bulkTemplateMemo: "Escorted at all times",
+    bulkTemplatePhotoSample: "hong-gildong.jpg",
     tabAll: "All",
     tabGroups: "Groups",
     tabAllHint: "Every person registered for this project, whether or not they belong to a group.",
@@ -600,10 +604,12 @@ const T: Record<"en" | "ko", VipDict> = {
     register: "등록",
     priorityText: { normal: "일반", high: "높음", very_high: "매우 높음" } as Record<NonNullable<Person["priorityLabel"]>, string>,
     bulkTemplate: "서식",
-    bulkTemplateHint: "한 줄에 한 사람: 이름, 그리고 메모가 있으면 메모. 이름만 적힌 파일도 됩니다.",
+    bulkTemplateHint: "한 줄에 한 사람: 이름, 메모가 있으면 메모, 그리고 사진 파일 이름. 사진 파일은 가져오기 단계에서 함께 고릅니다. 이름만 적힌 파일도 됩니다.",
     bulkTemplateMemoHeader: "메모",
+    bulkTemplatePhotoHeader: "사진 파일명",
     bulkTemplateName: "홍길동",
     bulkTemplateMemo: "상시 경호 대상",
+    bulkTemplatePhotoSample: "hong-gildong.jpg",
     tabAll: "전체",
     tabGroups: "그룹",
     tabAllHint: "이 프로젝트에 등록된 사람 전부입니다. 그룹에 속했는지와 무관합니다.",
@@ -1997,7 +2003,18 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
    *  VipImportModal as well, so the toolbar's 서식 button and the one inside the import modal write
    *  the same file — and so the sample stays reachable for an account that may not import at all. */
   const downloadBulkTemplate = () => {
-    const rows = [[t.colName, t.bulkTemplateMemoHeader], [t.bulkTemplateName, t.bulkTemplateMemo]];
+    /* THREE COLUMNS, and the third is a file name rather than an image: a CSV cannot carry a
+       photograph, so the sheet says which file belongs to whom and the files themselves are picked
+       in the import step (VipImportModal). This is ID123's shape and the one the modal matches on;
+       see attachVipPhotos in lib/vipImport.ts for the matching rule.
+
+       No instruction row above the header. A comment line in a CSV is a line the parser has to
+       read as somebody called "사진은 가져오기 단계에서 고르세요" — the sentence belongs on the
+       screen that takes the file, and it is there. */
+    const rows = [
+      [t.colName, t.bulkTemplateMemoHeader, t.bulkTemplatePhotoHeader],
+      [t.bulkTemplateName, t.bulkTemplateMemo, t.bulkTemplatePhotoSample],
+    ];
     const csv = rows.map(row => row.map(csvEscape).join(",")).join("\n");
     const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);

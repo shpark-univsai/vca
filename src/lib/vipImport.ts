@@ -12,11 +12,24 @@
  * stance, same encoding sniff, same header normalisation. See rosterImport.ts for why .xlsx is out
  * of scope and what the EUC-KR fallback is for.
  *
- * WHAT THIS FILE CANNOT JUDGE, and therefore does not report: anything about a face. A CSV of
- * names carries no photographs, so every row imported here lands in the registry's 사진 없음 count
- * and no camera can match any of them until somebody enrols a face. That is a true consequence of
- * the import, worth saying on the screen — but it is not a defect in the row, so it is not an
- * issue here. Issues are things a row got wrong.
+ * PHOTOGRAPHS COME BESIDE THE FILE, NOT IN IT. A CSV cannot hold an image, so the sheet holds a
+ * FILE NAME and the images are picked in the same step (owner, 2026-09-21: 사진이 들어갈 공간이
+ * 없는뎅?). That is the pattern the products that do this use — ID123 uploads the roster then the
+ * photo set and matches on the file name, HikCentral goes further and makes the file name the only
+ * key. The one real product shape we cannot copy is Genetec's, whose CSV carries a filesystem path:
+ * a browser cannot read a path off the operator's disk, only a file they hand it.
+ *
+ * So `attachVipPhotos` below is the second half of this importer, and the two things it can say
+ * about a face are both NOTES rather than refusals: the sheet named an image that was not picked,
+ * or two rows named the same image. Neither invalidates the person — a row with no face still
+ * belongs on the list and lands in the registry's 사진 없음 count, which is where it was before
+ * this column existed. WHAT IT WILL NOT DO is enrol one image as two people: the second row keeps
+ * its name and loses the photo, because one face registered as two identities alerts twice and the
+ * registry counts it as a duplicate enrolment.
+ *
+ * What this file still cannot judge is whether an image holds a readable face. That is the model's
+ * answer, it arrives after enrolment, and a preview that guessed at it would be inventing the one
+ * fact this screen exists to collect.
  *
  * Nothing here touches the store. It turns a file into rows plus a per-row verdict; committing them
  * is the caller's job, in one addPersons call.
@@ -28,7 +41,9 @@ import { normalizeHeader } from "./rosterImport";
 export type VipImportIssue =
   | "missing-name"
   | "duplicate-in-file"
-  | "duplicate-in-registry";
+  | "duplicate-in-registry"
+  | "photo-not-found"
+  | "photo-used-twice";
 
 /**
  * Issues that do not block. Everything else refuses its row.
@@ -52,7 +67,7 @@ export type VipImportIssue =
  * identical rows that will both match the same face and alert twice. The first occurrence still
  * goes in, so the intent of the file survives.
  */
-const WARNINGS: VipImportIssue[] = ["duplicate-in-registry"];
+const WARNINGS: VipImportIssue[] = ["duplicate-in-registry", "photo-not-found", "photo-used-twice"];
 
 export function isBlocking(issue: VipImportIssue): boolean {
   return !WARNINGS.includes(issue);
@@ -65,10 +80,15 @@ export interface ParsedVipRow {
   name: string;
   /** The memo column, or "" — optional everywhere, which is why its absence is not an issue. */
   description: string;
+  /** The image file this row asked for, as the sheet spelt it, or "". */
+  photoFile: string;
+  /** The picked image this row got, set by attachVipPhotos. Absent means this person imports with
+   *  no face — either the sheet named none, or it named one that was not among the files. */
+  photo?: File;
   issues: VipImportIssue[];
 }
 
-export type VipColumnKey = "name" | "description";
+export type VipColumnKey = "name" | "description" | "photoFile";
 
 export interface VipParseResult {
   rows: ParsedVipRow[];
@@ -104,6 +124,10 @@ export interface VipParseResult {
 const HEADER_SYNONYMS: Record<VipColumnKey, string[]> = {
   name: ["name", "fullname", "personname", "vipname", "이름", "성명", "성함", "대상자"],
   description: ["description", "memo", "note", "notes", "remark", "remarks", "메모", "비고", "설명", "사유"],
+  // "file" and "파일" are in here on purpose: a sheet with one image column heads it that way as
+  // often as it spells out "photo file name", and there is no other file this importer reads.
+  photoFile: ["photo", "photofile", "photofilename", "photoname", "image", "imagefile", "imagefilename",
+    "picture", "picturefile", "file", "filename", "사진", "사진파일", "사진파일명", "사진이름", "이미지", "이미지파일", "파일", "파일명"],
 };
 
 /**
@@ -181,6 +205,7 @@ export function buildVipImportRows(
 
     const name = at("name");
     const description = at("description");
+    const photoFile = at("photoFile");
     const issues: VipImportIssue[] = [];
 
     // The only hard requirement in the whole file. addPersons stores a Person and every screen
@@ -198,14 +223,75 @@ export function buildVipImportRows(
       else seenInFile.add(key);
     }
 
-    return { line, name, description, issues };
+    return { line, name, description, photoFile, issues };
   })
   // A trailing newline, or a row of nothing but delimiters, is not a record — reporting it as a
   // missing name is the importer complaining about its own parsing. parseDelimited drops the
   // all-empty ones already; this catches a row whose cells are whitespace.
-  .filter(r => !(r.name === "" && r.description === ""));
+  .filter(r => !(r.name === "" && r.description === "" && r.photoFile === ""));
 
   return { rows, missingColumns: [], unmappedHeaders, headerDetected };
+}
+
+/**
+ * The key a file name is matched on.
+ *
+ * Case and surrounding space are folded, because a sheet typed by hand says `Hong.JPG` for a file
+ * called `hong.jpg` and they are one image. The extension is kept in the key, so an exact match is
+ * tried first and the ID123 rule ("the name in the sheet matches the file, extension included")
+ * always wins; the extension-less form is a second, looser key, for the sheet that says
+ * `hong-gildong` because Windows was hiding the extension when somebody read it off the folder.
+ */
+function photoKeys(fileName: string): string[] {
+  const base = fileName.trim().toLowerCase();
+  const dot = base.lastIndexOf(".");
+  return dot > 0 ? [base, base.slice(0, dot)] : [base];
+}
+
+export interface VipPhotoAttachResult {
+  rows: ParsedVipRow[];
+  /** Images that were picked and that no row asked for, by file name. Reported because the reader
+   *  chose these files deliberately: forty names and thirty-nine photos is a typo they want to
+   *  find before the import, not a silent difference of one. */
+  unusedFiles: string[];
+}
+
+/**
+ * Hand the picked images to the rows that named them.
+ *
+ * Pure, and it replaces rather than mutates, so the preview can be recomputed when the reader adds
+ * more files — which is the normal way this is used: pick the sheet, see four rows missing their
+ * photo, pick the rest, and the same four lines answer again.
+ *
+ * Photo issues are recomputed from scratch each time for the same reason: an earlier pass that
+ * reported "file not found" must not leave that sentence on a row whose file has since arrived.
+ */
+export function attachVipPhotos(rows: ParsedVipRow[], files: File[]): VipPhotoAttachResult {
+  const byKey = new Map<string, File>();
+  files.forEach(f => {
+    photoKeys(f.name).forEach(k => {
+      // First file wins a key. Two files whose names differ only in case are one image picked
+      // twice as far as the sheet can tell, and the alternative — last wins — would depend on the
+      // order the file dialog happened to hand them over.
+      if (!byKey.has(k)) byKey.set(k, f);
+    });
+  });
+
+  const used = new Set<File>();
+  const next = rows.map(row => {
+    const issues = row.issues.filter(i => i !== "photo-not-found" && i !== "photo-used-twice");
+    if (!row.photoFile) return { ...row, photo: undefined, issues };
+
+    const match = photoKeys(row.photoFile).map(k => byKey.get(k)).find(Boolean);
+    if (!match) return { ...row, photo: undefined, issues: [...issues, "photo-not-found" as const] };
+    // ONE FACE IS NOT TWO PEOPLE. The first row keeps the image; the rest keep their names and
+    // import with no face, which is a state the registry already knows how to show.
+    if (used.has(match)) return { ...row, photo: undefined, issues: [...issues, "photo-used-twice" as const] };
+    used.add(match);
+    return { ...row, photo: match, issues };
+  });
+
+  return { rows: next, unusedFiles: files.filter(f => !used.has(f)).map(f => f.name) };
 }
 
 /** Rows that can actually be committed — nothing blocking. Warnings do not disqualify. */

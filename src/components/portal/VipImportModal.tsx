@@ -1,14 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { ImageOff, ImagePlus } from "lucide-react";
 import { useVcaStore } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import { BORDER } from "./PortalShared";
 import {
-  buildVipImportRows, decodeSpreadsheetBytes, importableRows, isBlocking, looksLikeXlsx, parseDelimited,
-  type ParsedVipRow, type VipImportIssue,
+  attachVipPhotos, buildVipImportRows, decodeSpreadsheetBytes, importableRows, isBlocking, looksLikeXlsx,
+  parseDelimited, type ParsedVipRow, type VipImportIssue,
 } from "@/lib/vipImport";
 
 /**
@@ -33,7 +34,14 @@ const T = {
     orBrowse: "or choose a file",
     formatNote: "CSV. In Excel: File → Save As → CSV UTF-8.",
     columnsNote: "A name is all that is required. A memo column is read if the file has one, and a file of bare names with no header row works too.",
-    noPhotoNote: "A CSV carries no faces. Imported rows are registered without a photo, and no camera can match them until one is enrolled.",
+    photoHowNote: "A CSV cannot hold an image. Write each person's image file name in the Photo file name column, and pick the images in the same step.",
+    noPhotoNote: "A row that ends up with no face is still registered, and no camera can match that person until one is enrolled.",
+    pickPhotos: "Choose photo files",
+    pickMorePhotos: "Choose more photos",
+    photosNone: "No photos picked yet — the file names in the sheet are waiting for them.",
+    photosMatched: (n: number, total: number) => `${n} of ${total} rows have their photo`,
+    photosUnused: (names: string) => `Picked and unused: ${names}`,
+    colPhoto: "Photo",
     downloadTemplate: "Download template",
     xlsxTitle: "That is an Excel file",
     xlsxBody: "Save it as CSV UTF-8 first — in Excel, File → Save As → CSV UTF-8 — and drop that.",
@@ -54,7 +62,8 @@ const T = {
     doneTitle: "Import finished",
     doneAdded: (n: number) => (n === 1 ? "1 person registered" : `${n} people registered`),
     doneSkipped: (n: number) => `${n} row${n === 1 ? "" : "s"} skipped`,
-    doneNoPhotoNote: (n: number) => `${n === 1 ? "This row is" : `All ${n} are`} in the registry's "no photo" count until a face is enrolled.`,
+    doneWithPhoto: (n: number) => (n === 1 ? "1 came with a photo" : `${n} came with a photo`),
+    doneNoPhotoNote: (n: number) => `${n === 1 ? "1 person is" : `${n} people are`} in the registry's "no photo" count until a face is enrolled.`,
     skippedHeading: "Skipped rows",
     downloadErrors: "Download skipped rows",
     toastTitle: "VIPs imported",
@@ -64,6 +73,8 @@ const T = {
       "missing-name": "No name",
       "duplicate-in-file": "Same name twice in this file — only the first row is imported",
       "duplicate-in-registry": "Already on this project's list — imported anyway",
+      "photo-not-found": "The photo file it names was not picked — imported without a face",
+      "photo-used-twice": "An earlier row already used this photo — imported without a face",
     } as Record<string, string>,
   },
   ko: {
@@ -73,7 +84,14 @@ const T = {
     orBrowse: "또는 파일 선택",
     formatNote: "CSV 파일. 엑셀에서: 파일 → 다른 이름으로 저장 → CSV UTF-8.",
     columnsNote: "이름만 있으면 됩니다. 메모 열은 파일에 있으면 함께 읽고, 머리글 없이 이름만 적힌 파일도 됩니다.",
-    noPhotoNote: "CSV에는 얼굴이 없습니다. 가져온 행은 사진 없이 등록되고, 사진을 등록하기 전에는 어느 카메라도 이 사람을 찾지 못합니다.",
+    photoHowNote: "CSV 안에는 이미지가 들어가지 않습니다. 사람마다 사진 파일 이름을 '사진 파일명' 열에 적고, 사진 파일은 같은 단계에서 함께 고르세요.",
+    noPhotoNote: "사진이 붙지 않은 행도 등록은 되지만, 얼굴을 등록하기 전에는 어느 카메라도 그 사람을 찾지 못합니다.",
+    pickPhotos: "사진 파일 고르기",
+    pickMorePhotos: "사진 더 고르기",
+    photosNone: "고른 사진이 아직 없습니다 — 표에 적힌 파일 이름들이 사진을 기다리고 있습니다.",
+    photosMatched: (n: number, total: number) => `${total}행 중 ${n}행에 사진이 붙었습니다`,
+    photosUnused: (names: string) => `고른 사진 중 쓰이지 않은 것: ${names}`,
+    colPhoto: "사진",
     downloadTemplate: "서식 내려받기",
     xlsxTitle: "엑셀 파일입니다",
     xlsxBody: "CSV UTF-8로 먼저 저장해 주세요 — 엑셀에서 파일 → 다른 이름으로 저장 → CSV UTF-8 — 그 파일을 놓으시면 됩니다.",
@@ -94,7 +112,8 @@ const T = {
     doneTitle: "가져오기 완료",
     doneAdded: (n: number) => `VIP ${n}명 등록됨`,
     doneSkipped: (n: number) => `${n}행 건너뜀`,
-    doneNoPhotoNote: (n: number) => `${n}명 모두 사진을 등록하기 전까지는 명단의 '사진 없음'에 들어 있습니다.`,
+    doneWithPhoto: (n: number) => `${n}명은 사진과 함께 등록됨`,
+    doneNoPhotoNote: (n: number) => `${n}명은 얼굴을 등록하기 전까지 명단의 '사진 없음'에 들어 있습니다.`,
     skippedHeading: "건너뛴 행",
     downloadErrors: "건너뛴 행 내려받기",
     toastTitle: "VIP를 가져왔습니다",
@@ -104,6 +123,8 @@ const T = {
       "missing-name": "이름 없음",
       "duplicate-in-file": "이 파일 안에서 이름 중복 — 먼저 나온 행만 가져옵니다",
       "duplicate-in-registry": "이미 이 프로젝트 명단에 있는 이름 — 그래도 가져옵니다",
+      "photo-not-found": "적힌 사진 파일이 고른 파일 중에 없음 — 사진 없이 등록됩니다",
+      "photo-used-twice": "같은 사진을 앞의 행이 이미 썼음 — 사진 없이 등록됩니다",
     } as Record<string, string>,
   },
 };
@@ -124,6 +145,32 @@ function downloadCsv(fileName: string, rows: string[][]) {
   a.download = fileName;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * One object URL per picked image, made once and kept — module-level, not a ref.
+ *
+ * A thumbnail is drawn while rendering, and a ref may not be read there; a module Map has the same
+ * lifetime and no such rule. It is also where lib/uploadBlobs keeps its URLs, for the same reason
+ * given there: a blob URL is a pointer into this one document, so it belongs to the module rather
+ * than to the store or to a component instance.
+ *
+ * NOT REVOKED WHEN THIS MODAL CLOSES, deliberately. The URLs of the images that were imported are
+ * handed to the store as those people's `photoUrl`, and the registry's table, cards and detail
+ * panel draw them afterwards — revoking on unmount would blank every face the import just
+ * registered. They die with the document, which is also when a blob URL stops meaning anything.
+ *
+ * A URL for an image that was picked and never imported does outlive its use: a few kilobytes of
+ * pointer for files the operator chose by hand in one sitting, against the bookkeeping of tracking
+ * which URL the store took — bookkeeping that disappears the day photos are uploaded to a server.
+ */
+const objectUrls = new Map<File, string>();
+function previewUrl(file: File): string {
+  const held = objectUrls.get(file);
+  if (held) return held;
+  const made = URL.createObjectURL(file);
+  objectUrls.set(file, made);
+  return made;
 }
 
 interface SkippedRow { row: ParsedVipRow; reasons: string[] }
@@ -151,9 +198,20 @@ export default function VipImportModal({
   const [dragging, setDragging] = useState(false);
   const [fileError, setFileError] = useState<FileError | null>(null);
   const [parsed, setParsed] = useState<{ rows: ParsedVipRow[]; unmapped: string[]; headerDetected: boolean; fileName: string } | null>(null);
-  const [result, setResult] = useState<{ added: number; skipped: SkippedRow[] } | null>(null);
+  const [result, setResult] = useState<{ added: number; withPhoto: number; skipped: SkippedRow[] } | null>(null);
+  /**
+   * THE IMAGES, PICKED BESIDE THE SHEET.
+   *
+   * Kept as the files themselves rather than as URLs, because the matching is by file name and
+   * re-running it is how this screen answers "did my photos land?" — pick the sheet, see which
+   * rows are still missing a face, pick the rest, and the same rows answer again. attachVipPhotos
+   * recomputes from scratch each time for that reason.
+   */
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [photos, setPhotos] = useState<File[]>([]);
 
   const issueText = (issue: VipImportIssue) => t.issue[issue] ?? issue;
+
 
   const readFile = async (file: File) => {
     setFileError(null);
@@ -188,16 +246,47 @@ export default function VipImportModal({
     if (file) void readFile(file);
   };
 
-  const okRows = parsed ? importableRows(parsed.rows) : [];
-  const badRows = parsed?.rows.filter(r => r.issues.some(isBlocking)) ?? [];
-  // Rows that import and still have something to say — here that is only the already-listed name.
-  // Counted separately from the errors because the two ask for different things: an error is a
-  // file to fix, a warning is a decision to make (see WARNINGS in vipImport.ts).
-  const warnRows = okRows.filter(r => r.issues.length > 0);
+  /* The sheet's rows with the picked images handed out. This, not `parsed.rows`, is what the
+     preview shows and what the button commits — `parsed` holds the file as it was read, so adding
+     photos never re-parses and never re-checks names against the registry. */
+  const attached = useMemo(() => (parsed ? attachVipPhotos(parsed.rows, photos) : null), [parsed, photos]);
+  const rows = attached?.rows ?? [];
+  /* Whether the sheet asked for photos at all. A file of bare names gets none of this — no column,
+     no button, no counts — and reads exactly as it did before the column existed. */
+  const sheetNamesPhotos = rows.some(r => r.photoFile !== "");
+  const withPhotoCount = rows.filter(r => r.photo).length;
+  /* The denominator is the rows that ASKED for a photo, not every row: a sheet where forty of two
+     hundred name an image is forty out of forty when those forty land, and "40 of 200" would read
+     as a hundred and sixty failures. */
+  const namedPhotoCount = rows.filter(r => r.photoFile !== "").length;
+
+  const okRows = importableRows(rows);
+  const badRows = rows.filter(r => r.issues.some(isBlocking));
+  /**
+   * Rows that import and still have something to say — and this counts ONE of the three warnings,
+   * not all of them, because the figure is labelled "already on the list".
+   *
+   * It used to be `issues.length > 0`, which was true while the only warning was the repeated name.
+   * The two photo warnings arrive in the same field, and counting them here made the strip say
+   * "2 already on the list" about two rows whose names were new and whose photos had gone astray.
+   * The photos have their own summary a line below, which is where those two belong.
+   */
+  const warnRows = okRows.filter(r => r.issues.includes("duplicate-in-registry"));
+
+  const onPickPhotos = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    // Added to what is already there, not replacing it: photo sets arrive a folder at a time, and
+    // a second pick that emptied the first would be a trap for the reader who is filling gaps.
+    // Same file picked twice is dropped by name+size, so re-picking a folder does not double it.
+    setPhotos(previous => {
+      const seen = new Set(previous.map(f => `${f.name}:${f.size}`));
+      return [...previous, ...Array.from(files).filter(f => !seen.has(`${f.name}:${f.size}`))];
+    });
+  };
 
   const commit = () => {
     if (!parsed) return;
-    const skipped: SkippedRow[] = parsed.rows
+    const skipped: SkippedRow[] = rows
       .map(row => ({ row, reasons: row.issues.filter(isBlocking).map(issueText) }))
       .filter(s => s.reasons.length > 0);
 
@@ -205,21 +294,26 @@ export default function VipImportModal({
     // One store call, so the import is one line in the Activity log instead of two hundred that
     // evict everything before them. See addPersons.
     const added = addPersons(okRows.map(row => ({
-      // No photoUrl. A CSV of names contains no faces, and this path used to hand each row a stock
-      // portrait from the mock pool — which made every bulk-imported person look enrolled and
-      // matchable when nothing had been enrolled at all. Those rows are what the registry's "no
-      // photo" figure counts, and the count is only true if the rows are.
+      // The face this row actually got, and nothing where it got none. This path used to hand
+      // every row a stock portrait from the mock pool, which made bulk-imported people look
+      // enrolled and matchable when nothing had been enrolled at all — so a row with no image
+      // still gets no photoUrl, and stays in the registry's "no photo" figure where it belongs.
+      //
+      // The enrolment set gets the same one image rather than being left absent: the register's
+      // photo tiles read enrolmentPhotoUrls, and a person whose only face was not in that list
+      // would show an empty enrolment beside a portrait that is plainly there.
       name: row.name,
       type: "VIP" as const,
       registeredAt: at,
       description: row.description || undefined,
+      ...(row.photo ? { photoUrl: previewUrl(row.photo), enrolmentPhotoUrls: [previewUrl(row.photo)] } : null),
       projectId,
     })), parsed.fileName);
 
     // addPersons refuses nothing — it returns the length of what it was handed (vcaStore.ts) — so
     // unlike the camera import there is no second, store-side skip list to fold in here. If it ever
     // grows one, it belongs on this line.
-    setResult({ added, skipped });
+    setResult({ added, withPhoto: okRows.filter(r => r.photo).length, skipped });
     showToast({
       variant: added > 0 ? "success" : "warning",
       title: added > 0 ? t.toastTitle : t.toastNothing,
@@ -229,13 +323,17 @@ export default function VipImportModal({
 
   const downloadSkipped = () => {
     if (!result) return;
+    // The photo column comes along, so the fixed file can be re-imported as it stands rather than
+    // losing which image each row asked for.
     downloadCsv("vip-import-skipped.csv", [
-      [t.colLine, t.colName, t.colMemo, t.colReason],
-      ...result.skipped.map(s => [String(s.row.line), s.row.name, s.row.description, s.reasons.join("; ")]),
+      [t.colLine, t.colName, t.colMemo, t.colPhoto, t.colReason],
+      ...result.skipped.map(s => [String(s.row.line), s.row.name, s.row.description, s.row.photoFile, s.reasons.join("; ")]),
     ]);
   };
 
-  const GRID = "40px 1.2fr 1.4fr 1.4fr";
+  /* Track count and cell count are driven by the one flag, because a grid whose row emits fewer
+     cells than it has tracks does not leave a hole — it slides every later cell one column left. */
+  const GRID = sheetNamesPhotos ? "34px 1fr 1fr 46px 1.4fr" : "40px 1.2fr 1.4fr 1.4fr";
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
@@ -258,11 +356,17 @@ export default function VipImportModal({
               {result.skipped.length > 0 && (
                 <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "2px" }}>{t.doneSkipped(result.skipped.length)}</p>
               )}
-              {/* Where those people now are, said once and in the registry's own words: the rows
-                  went in without a face, so the 사진 없음 figure above the list just moved by this
-                  many and nothing will match them until somebody uploads photos. */}
-              {result.added > 0 && (
-                <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.doneNoPhotoNote(result.added)}</p>
+              {/* Where those people now are, said once and in the registry's own words — and now
+                  counted rather than assumed: the import can land faces, so the number in the
+                  사진 없음 sentence is the rows that did NOT get one, and the sentence disappears
+                  entirely when every row came with a photo. Saying "all of them" over a set that
+                  is half enrolled is the kind of confident wrong figure this screen exists to
+                  stop producing. */}
+              {result.withPhoto > 0 && (
+                <p style={{ fontSize: "13px", color: "var(--success-400)", fontWeight: 700, marginTop: "2px" }}>{t.doneWithPhoto(result.withPhoto)}</p>
+              )}
+              {result.added - result.withPhoto > 0 && (
+                <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.doneNoPhotoNote(result.added - result.withPhoto)}</p>
               )}
               {result.skipped.length > 0 && (
                 <div style={{ marginTop: "16px" }}>
@@ -317,17 +421,50 @@ export default function VipImportModal({
               {!parsed.headerDetected && (
                 <span style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%", lineHeight: 1.5 }}>{t.noHeaderNote}</span>
               )}
-              {/* The faces, before the button rather than after. Every row in this preview is
-                  about to become a listing no camera can match. */}
-              <span style={{ width: "100%", fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.noPhotoNote}</span>
+              {/* THE SECOND HALF OF THE FILE, when the sheet asked for one.
+                  A sheet with a photo column has named images this modal does not have yet, so the
+                  way to give them to it sits here — beside the counts it changes, before the
+                  button, and not as a step of its own: the reader has to be able to pick more and
+                  watch the same rows fill in. A file of bare names shows none of this and keeps
+                  the sentence it always had. */}
+              {sheetNamesPhotos ? (
+                <div style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                  <button onClick={() => photoInputRef.current?.click()}
+                    style={{ display: "flex", alignItems: "center", gap: "6px", height: "30px", padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+                    <ImagePlus size={13} strokeWidth={2.4} />
+                    {photos.length === 0 ? t.pickPhotos : t.pickMorePhotos}
+                  </button>
+                  <input ref={photoInputRef} type="file" accept="image/*" multiple
+                    onChange={e => { onPickPhotos(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
+                  {photos.length === 0 ? (
+                    <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.photosNone}</span>
+                  ) : (
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: withPhotoCount === namedPhotoCount ? "var(--success-400)" : "var(--warning-500)" }}>
+                      {t.photosMatched(withPhotoCount, namedPhotoCount)}
+                    </span>
+                  )}
+                  {/* Pictures the reader chose that no row asked for — a misspelt file name in the
+                      sheet looks identical from the row's side, and this is the half that names the
+                      file so the two can be compared. Four, then a count: a folder of two hundred
+                      photos against the wrong sheet would otherwise fill the modal. */}
+                  {attached && attached.unusedFiles.length > 0 && (
+                    <span style={{ width: "100%", fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>
+                      {t.photosUnused(attached.unusedFiles.slice(0, 4).join(", ")
+                        + (attached.unusedFiles.length > 4 ? ` +${attached.unusedFiles.length - 4}` : ""))}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span style={{ width: "100%", fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.noPhotoNote}</span>
+              )}
             </div>
             <div style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
               <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: "10px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, position: "sticky", top: 0 }}>
-                {[t.colLine, t.colName, t.colMemo, t.colReason].map(h => (
+                {(sheetNamesPhotos ? [t.colLine, t.colName, t.colMemo, t.colPhoto, t.colReason] : [t.colLine, t.colName, t.colMemo, t.colReason]).map(h => (
                   <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{h}</span>
                 ))}
               </div>
-              {parsed.rows.map((r, i) => {
+              {rows.map((r, i) => {
                 const bad = r.issues.some(isBlocking);
                 const warn = !bad && r.issues.length > 0;
                 return (
@@ -339,6 +476,29 @@ export default function VipImportModal({
                     <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{r.line}</span>
                     <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name || "—"}</span>
                     <span style={{ fontSize: "12px", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.description || "—"}</span>
+                    {/* THE FACE ITSELF, not a tick. The one thing the reader cannot check from a
+                        file name is whether the right person's photo landed on the right row, and a
+                        26px thumbnail is that check — the reason the images are picked here rather
+                        than uploaded blind after the import. A row whose file was not picked shows
+                        the words instead; the reason column says what to do about it. */}
+                    {sheetNamesPhotos && (
+                      r.photo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={previewUrl(r.photo)} alt="" width={26} height={26}
+                          style={{ width: "26px", height: "26px", borderRadius: "50%", objectFit: "cover", border: "1px solid var(--gray-200)" }} />
+                      ) : r.photoFile ? (
+                        /* A MARK, NOT A SENTENCE. This cell held the words 파일 없음 while the
+                           reason column beside it said the same thing at length — one fact twice,
+                           in the two columns a reader compares. The glyph marks the row, the file
+                           name it was looking for is on the hover, and the sentence stays in the
+                           column whose heading is 사유. */
+                        <span title={r.photoFile} style={{ display: "flex", color: "var(--warning-500)" }}>
+                          <ImageOff size={15} strokeWidth={2.2} />
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
+                      )
+                    )}
                     {/* The reason column holds the reason, and stays empty when there is none —
                         unlike the camera preview, which reuses its last column for 위치 when the
                         row is clean. Here there is no third field to fall back to, and a memo
@@ -399,10 +559,13 @@ export default function VipImportModal({
 
               <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "14px", lineHeight: 1.5 }}>{t.columnsNote}</p>
               <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "4px", lineHeight: 1.5 }}>{t.formatNote}</p>
-              {/* The one consequence of this whole flow that the file cannot show and the list
-                  will: no photo means no match. Said before a file is chosen, because somebody
-                  about to export two hundred names should know what they are getting. */}
-              <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.noPhotoNote}</p>
+              {/* HOW, THEN WHAT IT COSTS — and only the second one is amber. These were one
+                  paragraph in warning colour, which put three lines of plain instruction ("write
+                  the file name in this column") under the colour this console keeps for things
+                  that are wrong. The instruction is how the feature works; the consequence is the
+                  one fact the file cannot show and the list will. */}
+              <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.photoHowNote}</p>
+              <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "6px", lineHeight: 1.5 }}>{t.noPhotoNote}</p>
               <button onClick={onDownloadTemplate}
                 style={{ marginTop: "10px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit" }}>
                 {t.downloadTemplate}
