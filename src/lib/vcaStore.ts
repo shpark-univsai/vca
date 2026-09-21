@@ -312,6 +312,35 @@ export interface ApiKey {
 
 export type ApiKeyScope = "read" | "readwrite";
 
+/**
+ * A NAMED SET OF CAMERAS, kept so that access can be given by the handful rather than one at a
+ * time (owner, 2026-09-21: 볼수있는 카메라도 그룹지어서 권한을 주고싶거든 물론 카메라 한대만
+ * 보는 사람도 있을 순 있지만).
+ *
+ * WHY NOT ZONE. The camera register already carries a `zone`, and reusing it was rejected on
+ * 2026-09-16 for a reason that still holds: a zone is a label maintained for the map and the
+ * daily ops list, so the day somebody corrects a camera's zone, an account's access moves with
+ * it and nobody chose that. A group exists FOR access — it is created, named and audited as an
+ * access object — so a change to it is a decision about access by definition.
+ *
+ * LIVING, NOT A BULK STAMP. Milestone's device groups are the other choice: there, "permissions
+ * set via the group are not stored for the group but on the individual devices", so a camera
+ * added to a group afterwards is NOT granted to the roles that hold it — a documented management
+ * trap. Here a scope holds GROUP IDS, so adding a camera to a group does widen everyone who holds
+ * that group. That is what a group is for, and the screen says so where the choice is made.
+ *
+ * Project-scoped: a group is a set of this site's cameras, and two sites do not share one.
+ */
+export interface CameraGroup {
+  id: string;
+  projectId: string;
+  /** The customer's own word, never translated — see VipCategory.label. */
+  label: string;
+  cameraIds: string[];
+  createdAt: string;
+  createdBy: string;
+}
+
 /** Ten per project, the same ceiling Verkada puts on an organization. */
 export const API_KEY_LIMIT = 10;
 
@@ -888,6 +917,7 @@ interface VcaStoreState {
   uploads: UploadedMedia[];
   portalUsers: PortalUser[];
   servers: Server[];
+  cameraGroups: CameraGroup[];
   apiKeys: ApiKey[];
   auditLog: AuditEvent[];
   accessRequests: AccessRequest[];
@@ -1222,7 +1252,13 @@ interface VcaStoreState {
    * says which of the three happened, because "scoped to 4 cameras" and "scoped to none" are not
    * the same event to whoever reads the log afterwards.
    */
-  setCameraScope: (userId: string, cameraIds: string[] | undefined) => void;
+  setCameraScope: (userId: string, cameraIds: string[] | undefined, cameraGroupIds?: string[] | undefined) => void;
+  /** Make a group out of the cameras somebody has selected. Returns null, or why not. */
+  addCameraGroup: (projectId: string, label: string, cameraIds: string[]) => "duplicate-label" | null;
+  renameCameraGroup: (groupId: string, label: string) => void;
+  setCameraGroupMembers: (groupId: string, cameraIds: string[]) => void;
+  /** Deletes the group and takes it out of every scope that held it. */
+  removeCameraGroup: (groupId: string) => void;
   /** Which project the monitoring app is watching. Empty until something picks one. */
   activeProjectId: string;
   setActiveProjectId: (projectId: string) => void;
@@ -1740,13 +1776,14 @@ export function eventsInProject(events: VcaEvent[], projectId: string, cameras: 
  * the search results and the streams the same way, or a narrowed account still receives everything
  * and only the screen is polite about it.
  */
-export function eventsVisibleTo(events: VcaEvent[], projectId: string, cameras: Camera[], users: PortalUser[]): VcaEvent[] {
+export function eventsVisibleTo(events: VcaEvent[], projectId: string, cameras: Camera[], users: PortalUser[], groups: CameraGroup[] = []): VcaEvent[] {
   const inProject = eventsInProject(events, projectId, cameras);
   // Same stand-in rule as camerasVisibleTo: an identity that resolves to nobody sees everything,
   // so the mock stays explorable. A real build reads the scope off the session.
   const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
-  if (!me || me.cameraIds === undefined) return inProject;
-  const allowed = new Set(me.cameraIds);
+  if (!me) return inProject;
+  const allowed = scopedCameraIds(me, groups);
+  if (allowed === null) return inProject;
   return inProject.filter(e => allowed.has(e.cameraId));
 }
 
@@ -1921,8 +1958,9 @@ export function useProjectEvents(): VcaEvent[] {
   // Raw slices out of the selectors, filtering in the memo — the same rule useProjectCameras
   // states: a selector that builds a new array every call never settles.
   const users = useVcaStore(s => s.portalUsers);
+  const groups = useVcaStore(s => s.cameraGroups);
   const projectId = useActiveProjectId();
-  return useMemo(() => eventsVisibleTo(events, projectId, cameras, users), [events, projectId, cameras, users]);
+  return useMemo(() => eventsVisibleTo(events, projectId, cameras, users, groups), [events, projectId, cameras, users, groups]);
 }
 
 /**
@@ -1960,12 +1998,37 @@ export function getActiveProjectId(): string {
  * Same stand-in rule as canSearchInApp: an identity that resolves to nobody sees everything, so
  * the mock stays explorable. A real build reads the scope off the session.
  */
-export function camerasVisibleTo(cameras: Camera[], projectId: string, users: PortalUser[]): Camera[] {
+export function camerasVisibleTo(cameras: Camera[], projectId: string, users: PortalUser[], groups: CameraGroup[] = []): Camera[] {
   const inProject = camerasInProject(cameras, projectId);
   const me = users.find(u => u.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase());
-  if (!me || me.cameraIds === undefined) return inProject;
-  const allowed = new Set(me.cameraIds);
+  if (!me) return inProject;
+  const allowed = scopedCameraIds(me, groups);
+  if (allowed === null) return inProject;
   return inProject.filter(c => allowed.has(c.id));
+}
+
+/**
+ * The camera ids an account is limited to, or null for "every camera".
+ *
+ * ONE PLACE RESOLVES THE TWO FIELDS, so a screen cannot read half the scope. Groups are resolved
+ * through their current membership — that is the whole difference between a group and a frozen
+ * list of ids (see CameraGroup) — and the two sets are unioned: somebody can hold two groups and
+ * one extra camera, which is the normal shape of a real scope.
+ *
+ * Absent-and-absent is the only "everything". An empty array is an answer somebody gave.
+ */
+export function scopedCameraIds(user: PortalUser, groups: CameraGroup[]): Set<string> | null {
+  if (user.cameraIds === undefined && user.cameraGroupIds === undefined) return null;
+  const ids = new Set(user.cameraIds ?? []);
+  (user.cameraGroupIds ?? []).forEach(groupId => {
+    groups.find(g => g.id === groupId)?.cameraIds.forEach(id => ids.add(id));
+  });
+  return ids;
+}
+
+/** The groups of one project, which is the only place a group means anything. */
+export function cameraGroupsInProject(groups: CameraGroup[], projectId: string): CameraGroup[] {
+  return groups.filter(g => g.projectId === projectId);
 }
 
 export function useProjectCameras(): Camera[] {
@@ -1973,8 +2036,9 @@ export function useProjectCameras(): Camera[] {
   // Raw slice out of the selector, filtering in the memo — a selector that builds a new array
   // every call never settles. This page has been killed by that twice.
   const users = useVcaStore(s => s.portalUsers);
+  const groups = useVcaStore(s => s.cameraGroups);
   const projectId = useActiveProjectId();
-  return useMemo(() => camerasVisibleTo(cameras, projectId, users), [cameras, projectId, users]);
+  return useMemo(() => camerasVisibleTo(cameras, projectId, users, groups), [cameras, projectId, users, groups]);
 }
 
 /**
@@ -2322,6 +2386,20 @@ export interface PortalUser {
    * everything and only the screen is hiding it.
    */
   cameraIds?: string[];
+  /**
+   * Camera GROUPS this account may watch, resolved to their members at read time.
+   *
+   * Two fields rather than one flattened list, because they answer differently to a change: a
+   * group picks up the camera somebody adds to it next week, an individual id does not. Flattening
+   * groups into `cameraIds` at save time would be Milestone's bulk stamp — see CameraGroup for why
+   * this is the living kind instead.
+   *
+   * "EVERY CAMERA" IS BOTH FIELDS ABSENT. One of them being set is a narrowed account, and the
+   * visible set is the union of the two (camerasVisibleTo). An empty array in either is still a
+   * real answer ("no groups", "no individual cameras"), which is why absence is the only thing
+   * that means everything.
+   */
+  cameraGroupIds?: string[];
   /**
    * May take a sighting out of the console as a file. Undefined means not granted.
    *
@@ -2739,6 +2817,19 @@ const API_KEYS: ApiKey[] = [
   { id: "apikey-2", projectId: "proj-sg", name: "Nightly export job", scope: "readwrite", prefix: "vca_7d0e5a13", createdAt: "2026-06-02T09:05:00+08:00", createdBy: "Marcus Lee", expiresAt: "2026-09-01" },
   { id: "apikey-3", projectId: "proj-sg", name: "Integrator trial", scope: "read", prefix: "vca_11b8c6d4", createdAt: "2026-05-20T15:40:00+08:00", createdBy: "Grace Tan", expiresAt: null, revokedAt: "2026-07-01T14:03:00+08:00" },
   { id: "apikey-4", projectId: "proj-riverside", name: "Campus attendance sync", scope: "read", prefix: "vca_c93f0ae7", createdAt: "2026-07-11T08:15:00+08:00", createdBy: "Nadia Rahman", expiresAt: "2027-07-11" },
+];
+
+/**
+ * Seeded groups, so the permission screens have something real to hand out.
+ *
+ * Fixed ids and fixed dates like every other seed here. The membership is written as camera ids
+ * that exist in CAMERAS above; a group naming a camera that was deleted is exactly the state
+ * `pruneCameraGroups` keeps out.
+ */
+const CAMERA_GROUPS: CameraGroup[] = [
+  { id: "cgroup-1", projectId: "proj-sg", label: "오차드·부기스 라인", cameraIds: ["cam-orchard", "cam-bugis", "cam-novena"], createdAt: "2026-09-02T10:00:00+08:00", createdBy: "Grace Tan" },
+  { id: "cgroup-2", projectId: "proj-sg", label: "Geylang 일대", cameraIds: ["cam-geylang", "cam-geylang-2"], createdAt: "2026-09-02T10:04:00+08:00", createdBy: "Grace Tan" },
+  { id: "cgroup-3", projectId: "proj-riverside", label: "정문·후문", cameraIds: [], createdAt: "2026-09-05T09:10:00+08:00", createdBy: "Nadia Rahman" },
 ];
 
 const SERVERS: Server[] = [
@@ -3416,6 +3507,7 @@ let portalUserSeq = PORTAL_USERS.length;
 let orgSeq = TEAMS.length;
 let serverSeq = SERVERS.length;
 let apiKeySeq = API_KEYS.length;
+let cameraGroupSeq = CAMERA_GROUPS.length;
 
 /**
  * DROP DELETED CAMERAS OUT OF EVERY CAMERA SCOPE.
@@ -3433,6 +3525,17 @@ let apiKeySeq = API_KEYS.length;
  * Returns the same array when nothing changed, so a delete that touches no scope does not make
  * every account re-render.
  */
+function pruneCameraGroupMembers(groups: CameraGroup[], removedIds: Set<string>): CameraGroup[] {
+  let changed = false;
+  const next = groups.map(g => {
+    const kept = g.cameraIds.filter(id => !removedIds.has(id));
+    if (kept.length === g.cameraIds.length) return g;
+    changed = true;
+    return { ...g, cameraIds: kept };
+  });
+  return changed ? next : groups;
+}
+
 function pruneCameraScopes(users: PortalUser[], removedIds: Set<string>): { users: PortalUser[]; touched: number } {
   let touched = 0;
   const next = users.map(u => {
@@ -3918,6 +4021,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   events: SEED_EVENTS,
   portalUsers: PORTAL_USERS,
   servers: SERVERS,
+  cameraGroups: CAMERA_GROUPS,
   apiKeys: API_KEYS,
   auditLog: AUDIT_LOG,
   accessRequests: ACCESS_REQUESTS,
@@ -4046,6 +4150,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const auditEntry: AuditEvent = clientAudit({ projectId: cam?.projectId, message: `Camera ${cam?.name ?? cameraId} removed${scopeNote(scopes.touched)}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() });
       return {
         cameras: state.cameras.filter(c => c.id !== cameraId),
+        cameraGroups: pruneCameraGroupMembers(state.cameraGroups, new Set([cameraId])),
         portalUsers: scopes.users,
         auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -4065,6 +4170,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       });
       return {
         cameras: state.cameras.filter(c => !ids.has(c.id)),
+        cameraGroups: pruneCameraGroupMembers(state.cameraGroups, ids),
         portalUsers: scopes.users,
         auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -4521,6 +4627,87 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
+  addCameraGroup: (projectId, label, cameraIds) => {
+    const trimmed = label.trim();
+    const state = get();
+    // A name is how a group is handed out on the permission screen, so two groups called the same
+    // thing is a scope nobody can read back.
+    const taken = cameraGroupsInProject(state.cameraGroups, projectId)
+      .some(g => g.label.trim().toLowerCase() === trimmed.toLowerCase());
+    if (taken) return "duplicate-label";
+    const group: CameraGroup = {
+      id: `cgroup-${++cameraGroupSeq}`,
+      projectId,
+      label: trimmed,
+      cameraIds: [...cameraIds],
+      createdAt: new Date().toISOString(),
+      createdBy: SIGNED_IN_USER.name,
+    };
+    set(st => ({
+      cameraGroups: [...st.cameraGroups, group],
+      auditLog: [clientAudit({
+        projectId, message: `Camera group "${trimmed}" created with ${cameraIds.length} camera(s)`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    }));
+    return null;
+  },
+  renameCameraGroup: (groupId, label) =>
+    set(state => {
+      const group = state.cameraGroups.find(g => g.id === groupId);
+      if (!group || label.trim() === "" || label.trim() === group.label) return {};
+      return {
+        cameraGroups: state.cameraGroups.map(g => (g.id === groupId ? { ...g, label: label.trim() } : g)),
+        auditLog: [clientAudit({
+          projectId: group.projectId, message: `Camera group "${group.label}" renamed to "${label.trim()}"`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  setCameraGroupMembers: (groupId, cameraIds) =>
+    set(state => {
+      const group = state.cameraGroups.find(g => g.id === groupId);
+      if (!group) return {};
+      const added = cameraIds.filter(id => !group.cameraIds.includes(id)).length;
+      const removed = group.cameraIds.filter(id => !cameraIds.includes(id)).length;
+      if (added === 0 && removed === 0) return {};
+      /* AUDITED AS AN ACCESS CHANGE, not a tidy-up. Everybody holding this group gains or loses
+         these cameras the moment it is saved — that is what makes a group a group, and it is why
+         the line says how many accounts are affected. */
+      const holders = state.portalUsers.filter(u => (u.cameraGroupIds ?? []).includes(groupId)).length;
+      return {
+        cameraGroups: state.cameraGroups.map(g => (g.id === groupId ? { ...g, cameraIds: [...cameraIds] } : g)),
+        auditLog: [clientAudit({
+          projectId: group.projectId,
+          message: `Camera group "${group.label}" changed (+${added} / -${removed}), affecting ${holders} account(s)`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  removeCameraGroup: (groupId) =>
+    set(state => {
+      const group = state.cameraGroups.find(g => g.id === groupId);
+      if (!group) return {};
+      /* Taken out of every scope that held it, for the reason pruneCameraScopes gives about
+         deleted cameras: a dead id in a scope counts toward a figure nobody can explain. An
+         account left with no groups and no cameras holds `[]`, which is "none" — not "everything".
+         Narrowing on a delete is the safe direction; widening is not. */
+      let touched = 0;
+      const users = state.portalUsers.map(u => {
+        if (!(u.cameraGroupIds ?? []).includes(groupId)) return u;
+        touched += 1;
+        return { ...u, cameraGroupIds: (u.cameraGroupIds ?? []).filter(id => id !== groupId) };
+      });
+      return {
+        cameraGroups: state.cameraGroups.filter(g => g.id !== groupId),
+        portalUsers: touched === 0 ? state.portalUsers : users,
+        auditLog: [clientAudit({
+          projectId: group.projectId,
+          message: `Camera group "${group.label}" deleted${touched === 0 ? "" : ` · removed from ${touched} account(s)`}`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   issueApiKey: (projectId, draft) => {
     const state = get();
     const mine = apiKeysInProject(state.apiKeys, projectId);
@@ -5118,17 +5305,23 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
-  setCameraScope: (userId, cameraIds) =>
+  setCameraScope: (userId, cameraIds, cameraGroupIds) =>
     set(state => {
       const user = state.portalUsers.find(u => u.id === userId);
       if (!user) return state;
-      const message = cameraIds === undefined
+      const groupCount = cameraGroupIds?.length ?? 0;
+      const groupNames = (cameraGroupIds ?? [])
+        .map(id => state.cameraGroups.find(g => g.id === id)?.label)
+        .filter(Boolean).join(", ");
+      // The groups by NAME, because "2 groups" in an audit log is not an answer to "what could
+      // that account see in March" — the membership will have moved by the time anybody asks.
+      const message = cameraIds === undefined && cameraGroupIds === undefined
         ? `Camera scope for ${user.name} cleared — every camera on their projects`
-        : cameraIds.length === 0
+        : (cameraIds?.length ?? 0) === 0 && groupCount === 0
         ? `Camera scope for ${user.name} set to none`
-        : `Camera scope for ${user.name} set to ${cameraIds.length} camera(s)`;
+        : `Camera scope for ${user.name} set to ${groupCount > 0 ? `${groupCount} group(s) [${groupNames}]` : ""}${groupCount > 0 && (cameraIds?.length ?? 0) > 0 ? " + " : ""}${(cameraIds?.length ?? 0) > 0 ? `${cameraIds?.length} camera(s)` : ""}`;
       return {
-        portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, cameraIds } : u)),
+        portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, cameraIds, cameraGroupIds } : u)),
         auditLog: [clientAudit({
           projectId: user.projectIds[0], message, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),

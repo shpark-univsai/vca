@@ -156,6 +156,15 @@ const T = {
     selectedCount: (n: number) => `${n} selected`,
     bulkClearSelection: "Clear selection",
     bulkMoveToZone: "Move to zone",
+    bulkGroup: "Group these",
+    groupModalTitle: (n: number) => `Group ${n} camera${n === 1 ? "" : "s"}`,
+    groupModalBody: "A group is how camera access is handed out on Users & Permissions. Whoever holds this group sees whatever is in it — including cameras added to it later.",
+    groupNameLabel: "Group name",
+    groupNamePlaceholder: "North gate",
+    groupCreate: "Create group",
+    groupDuplicate: "A group on this project already has that name.",
+    groupCreatedTitle: "Camera group created",
+    groupCreatedDesc: (label: string, n: number) => `${label} · ${n} camera${n === 1 ? "" : "s"}`,
     bulkDelete: "Remove",
     bulkDeleteConfirm: (n: number) => `Remove ${n} camera${n === 1 ? "" : "s"}?`,
     bulkDeleteBody: "They stop being monitored immediately and their channels are freed. Recordings already made are not deleted.",
@@ -343,6 +352,15 @@ const T = {
     selectedCount: (n: number) => `${n}대 선택됨`,
     bulkClearSelection: "선택 해제",
     bulkMoveToZone: "구역 이동",
+    bulkGroup: "그룹으로 묶기",
+    groupModalTitle: (n: number) => `카메라 ${n}대를 그룹으로`,
+    groupModalBody: "그룹은 사용자 및 권한에서 카메라 권한을 줄 때 쓰는 단위입니다. 이 그룹을 가진 사람은 그룹에 든 것을 보게 되고, 나중에 그룹에 추가되는 카메라도 함께 보게 됩니다.",
+    groupNameLabel: "그룹 이름",
+    groupNamePlaceholder: "북문 일대",
+    groupCreate: "그룹 만들기",
+    groupDuplicate: "이 프로젝트에 같은 이름의 그룹이 이미 있습니다.",
+    groupCreatedTitle: "카메라 그룹을 만들었습니다",
+    groupCreatedDesc: (label: string, n: number) => `${label} · 카메라 ${n}대`,
     bulkDelete: "삭제",
     bulkDeleteConfirm: (n: number) => `카메라 ${n}대를 삭제할까요?`,
     bulkDeleteBody: "즉시 모니터링이 중단되고 채널이 반환됩니다. 이미 저장된 녹화는 삭제되지 않습니다.",
@@ -1282,6 +1300,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   // being re-sorted or re-filtered underneath it.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
+  const [groupingSelection, setGroupingSelection] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [groupError, setGroupError] = useState<string | null>(null);
+  const addCameraGroup = useVcaStore(s => s.addCameraGroup);
   /*
    * Escape for the two dialogs on this screen that are inline JSX rather than components, so
    * they cannot each call useEscapeKey for themselves. Both had a working backdrop click and a
@@ -2155,6 +2177,15 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                 onChange={zone => { if (zone) bulkMoveToZone(zone); }}
                 options={[{ value: "", label: t.bulkMoveToZone }, ...zones.map(z => ({ value: z, label: z }))]}
               />
+              {/* GROUPING IS A BULK ACTION, because the selection IS the group. Somebody who
+                  wants "the north gate ones" ticks them here and names them, rather than picking
+                  the same twelve again inside a permission dialog. See CameraGroup. */}
+              <button
+                onClick={() => setGroupingSelection(true)}
+                style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}
+              >
+                {t.bulkGroup}
+              </button>
               <button
                 onClick={() => setConfirmingBulkDelete(true)}
                 style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
@@ -2704,6 +2735,34 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       {showImport && <CameraImportModal projectId={projectId} onClose={() => setShowImport(false)} />}
 
 
+      {/* Naming it is the whole dialog: the members are the selection, and the sentence says
+          what holding this group will mean for somebody. */}
+      {groupingSelection && (
+        <ConfirmModal
+          title={t.groupModalTitle(selectedIds.size)}
+          body={t.groupModalBody}
+          confirmLabel={t.groupCreate}
+          cancelLabel={t.cancel}
+          confirmDisabled={groupName.trim() === ""}
+          onConfirm={() => {
+            const label = groupName.trim();
+            const refusal = addCameraGroup(projectId, label, [...selectedIds]);
+            if (refusal === "duplicate-label") { setGroupError(t.groupDuplicate); return; }
+            showToast({ variant: "success", title: t.groupCreatedTitle, desc: t.groupCreatedDesc(label, selectedIds.size) });
+            setGroupingSelection(false);
+            setGroupName("");
+            setGroupError(null);
+            clearSelection();
+          }}
+          onClose={() => { setGroupingSelection(false); setGroupName(""); setGroupError(null); }}
+        >
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.groupNameLabel} *</label>
+            <TextField value={groupName} onChange={v => { setGroupName(v); setGroupError(null); }} placeholder={t.groupNamePlaceholder} />
+            {groupError && <FieldError>{groupError}</FieldError>}
+          </div>
+        </ConfirmModal>
+      )}
       {confirmingBulkDelete && (
         <div onClick={e => { if (e.target === e.currentTarget) setConfirmingBulkDelete(false); }}
           style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>

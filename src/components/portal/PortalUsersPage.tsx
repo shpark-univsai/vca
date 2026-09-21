@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Asterisk, ClipboardList, MailQuestion, MonitorOff, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, APP_SCREENS, type AccessPreset, type AppScreen, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, scopedCameraIds, APP_SCREENS, type AccessPreset, type AppScreen, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
@@ -2614,8 +2614,22 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
   const [changingGrantsFor, setChangingGrantsFor] = useState<PortalUser | null>(null);
   const [scopingFor, setScopingFor] = useState<PortalUser | null>(null);
   const allCameras = useVcaStore(s => s.cameras);
+  const cameraGroups = useVcaStore(s => s.cameraGroups);
   /** The cameras a scope for this account may name — the rule is on `scopableCameras`. */
   const scopableCamerasFor = (u: PortalUser) => scopableCameras(allCameras, u.projectIds);
+  /* How many cameras the account resolves to, or null for "every camera". Groups are resolved
+     through their current membership, so this number moves when a group does — which is the point
+     of a group (see CameraGroup). Intersected with what the account may be scoped to, so a group
+     from a project they were removed from cannot inflate the figure. */
+  const scopeCountFor = (u: PortalUser) => {
+    const ids = scopedCameraIds(u, cameraGroups);
+    if (ids === null) return null;
+    const scopable = new Set(scopableCamerasFor(u).map(c => c.id));
+    return [...ids].filter(id => scopable.has(id)).length;
+  };
+  const groupNamesFor = (u: PortalUser) => (u.cameraGroupIds ?? [])
+    .map(id => cameraGroups.find(g => g.id === id)?.label)
+    .filter(Boolean).join(", ");
   // Raw slice out of the selector, lookup built in a memo — a selector that returns a new object
   // every call re-renders forever, which is how this page last broke.
   const allPresetsHere = useVcaStore(s => s.accessPresets);
@@ -2837,7 +2851,7 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
       /* A number, so ascending puts the narrowest first — which is the whole reason this column
          is sortable. "Every camera" is not a count, and taking the project's total for it keeps
          it at the top of the descending order where it belongs, above any narrowed account. */
-      case "cameras": return u.cameraIds === undefined ? scopableCamerasFor(u).length : u.cameraIds.length;
+      case "cameras": return scopeCountFor(u) ?? scopableCamerasFor(u).length;
     }
   });
 
@@ -3270,12 +3284,15 @@ export default function PortalUsersPage({ projectId }: PortalUsersPageProps) {
             <span>
               {!u.appAccess ? (
                 <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
-              ) : u.cameraIds === undefined ? (
+              ) : scopeCountFor(u) === null ? (
                 <span title={t.camerasAllTitle} style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.camerasAll}</span>
               ) : (
-                <span title={t.camerasNarrowedTitle(u.cameraIds.length, scopableCamerasFor(u).length)}
+                /* The union of groups and individual cameras — the number they actually see. The
+                   groups are named in the hover, because "14 / 68" does not say whether that came
+                   from a group that will grow. */
+                <span title={`${t.camerasNarrowedTitle(scopeCountFor(u) ?? 0, scopableCamerasFor(u).length)}${groupNamesFor(u) ? ` · ${groupNamesFor(u)}` : ""}`}
                   style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontVariantNumeric: "tabular-nums" }}>
-                  {t.camerasSome(u.cameraIds.length, scopableCamerasFor(u).length)}
+                  {t.camerasSome(scopeCountFor(u) ?? 0, scopableCamerasFor(u).length)}
                 </span>
               )}
             </span>

@@ -23,6 +23,14 @@ import { BORDER, CONTROL_HEIGHT } from "./PortalShared";
  * chosen yet" here — it is the answer "every camera on their projects", which is what every
  * existing account holds. Ticking every box is NOT the same thing: that freezes today's list, and
  * a camera added next week would be invisible to them with nobody having decided that.
+ *
+ * GROUPS FIRST, THEN THE ODD CAMERA (owner, 2026-09-21: 볼수있는 카메라도 그룹지어서 권한을
+ * 주고싶거든 물론 카메라 한대만 보는 사람도 있을 순 있지만). A group is the unit somebody says
+ * out loud, and it keeps working as the site grows: a camera added to the group next month is
+ * granted to everybody holding it. An individual camera is the exception, not the rule, so it
+ * sits under the groups — and a camera a group already covers says so instead of pretending to
+ * be a separate decision. See CameraGroup for why this is a real object rather than the zone
+ * label, and for what Milestone does differently.
  */
 export default function CameraScopePicker({ user, cameras, onClose }: {
   user: PortalUser;
@@ -36,14 +44,38 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
   const { showToast } = useToast();
   const setCameraScope = useVcaStore(s => s.setCameraScope);
 
-  /** "all" and "some" are the two answers; `undefined` on the account means "all". */
-  const [mode, setMode] = useState<"all" | "some">(user.cameraIds === undefined ? "all" : "some");
-  const [picked, setPicked] = useState<string[]>(user.cameraIds ?? cameras.map(c => c.id));
+  const allGroups = useVcaStore(s => s.cameraGroups);
+  /* The groups of the projects this account holds. A group belongs to one project, so an account
+     on two sites can be given a group from each. */
+  const projectGroups = useMemo(() => {
+    const projectIds = new Set(user.projectIds);
+    return allGroups.filter(g => projectIds.has(g.projectId));
+  }, [allGroups, user.projectIds]);
+
+  /** "all" and "some" are the two answers; both fields absent on the account means "all". */
+  const narrowed = user.cameraIds !== undefined || user.cameraGroupIds !== undefined;
+  const [mode, setMode] = useState<"all" | "some">(narrowed ? "some" : "all");
+  const [pickedGroups, setPickedGroups] = useState<string[]>(user.cameraGroupIds ?? []);
+  const [picked, setPicked] = useState<string[]>(user.cameraIds ?? (narrowed ? [] : cameras.map(c => c.id)));
+
+  /** Cameras a picked group already brings — shown as included rather than offered again. */
+  const coveredByGroup = useMemo(() => {
+    const ids = new Set<string>();
+    pickedGroups.forEach(id => projectGroups.find(g => g.id === id)?.cameraIds.forEach(c => ids.add(c)));
+    return ids;
+  }, [pickedGroups, projectGroups]);
+
+  /** What this account will actually see — the union, which is the only number that matters. */
+  const resolvedCount = useMemo(() => {
+    const ids = new Set(picked);
+    coveredByGroup.forEach(id => ids.add(id));
+    return [...ids].filter(id => cameras.some(c => c.id === id)).length;
+  }, [picked, coveredByGroup, cameras]);
 
   /* Grouped by the zone the installer wrote, because that is how somebody says the answer out
      loud — "the north gate ones". Cameras with no zone sit in their own group rather than being
      dropped: a gap in the register must not quietly shrink the list somebody is granting from. */
-  const groups = useMemo(() => {
+  const zoneGroups = useMemo(() => {
     const map = new Map<string, Camera[]>();
     cameras.forEach(c => {
       const key = c.zone?.trim() || "";
@@ -51,6 +83,9 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
     });
     return [...map.entries()].sort((a, b) => (a[0] === "" ? 1 : b[0] === "" ? -1 : a[0].localeCompare(b[0])));
   }, [cameras]);
+
+  const toggleGroupPick = (id: string) =>
+    setPickedGroups(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   const toggle = (id: string) => setPicked(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const toggleGroup = (ids: string[]) => {
@@ -61,18 +96,24 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
   /* Zero is refused, for the reason the invite form refuses zero screens: it saves an account that
      signs in, opens a screen it was granted, and finds nothing on it — a product that looks broken
      to the person it was made for. Suspending somebody is how you stop them, and it says so. */
-  const canSave = mode === "all" || picked.length > 0;
+  const canSave = mode === "all" || resolvedCount > 0;
+  const sameIds = (a: string[] | undefined, b: string[]) =>
+    a !== undefined && [...a].sort().join() === [...b].sort().join();
   const dirty = mode === "all"
-    ? user.cameraIds !== undefined
-    : user.cameraIds === undefined || [...picked].sort().join() !== [...user.cameraIds].sort().join();
+    ? narrowed
+    : !narrowed || !sameIds(user.cameraIds, picked) || !sameIds(user.cameraGroupIds, pickedGroups);
 
   const save = () => {
     if (!canSave || !dirty) return;
-    setCameraScope(user.id, mode === "all" ? undefined : picked);
+    setCameraScope(
+      user.id,
+      mode === "all" ? undefined : picked,
+      mode === "all" ? undefined : pickedGroups,
+    );
     showToast({
       variant: "success",
       title: t.savedTitle,
-      desc: mode === "all" ? t.savedAll(user.name) : t.savedSome(user.name, picked.length),
+      desc: mode === "all" ? t.savedAll(user.name) : t.savedSome(user.name, resolvedCount),
     });
     onClose();
   };
@@ -106,11 +147,46 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
             );
           })}
 
-          {/* The list stays on screen under "all" as well, greyed. Hiding it answers "which
-              cameras does all mean?" with silence, and this is the one question the reader came
-              with — the same reason the grant rows stay visible in preset mode. */}
+          {/* GROUPS FIRST: the unit somebody actually says, and the one that keeps up with the
+              site. Greyed under "all" like the camera list below, for the same reason — hiding it
+              answers "what would I be choosing from?" with silence. */}
           <div style={{ borderTop: "1px solid var(--gray-200)", paddingTop: "12px", opacity: mode === "all" ? 0.5 : 1 }}>
-            {groups.map(([zone, group]) => {
+            <p style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)", paddingBottom: "6px" }}>
+              {t.groupsHeading}
+            </p>
+            {projectGroups.length === 0 ? (
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, paddingBottom: "6px" }}>{t.groupsNone}</p>
+            ) : (
+              <>
+                {projectGroups.map(g => {
+                  const on = pickedGroups.includes(g.id);
+                  return (
+                    <button key={g.id} onClick={mode === "some" ? () => toggleGroupPick(g.id) : undefined} disabled={mode === "all"}
+                      style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left", padding: "7px 8px", borderRadius: "8px", border: "none", backgroundColor: "transparent", cursor: mode === "some" ? "pointer" : "default", fontFamily: "inherit" }}>
+                      <span style={{ width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {on && (
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                            <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </span>
+                      <span style={{ minWidth: 0, fontSize: "12.5px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.label}</span>
+                      <span style={{ flexShrink: 0, fontSize: "10px", color: "var(--gray-400)" }}>{t.groupCount(g.cameraIds.length)}</span>
+                    </button>
+                  );
+                })}
+                {/* Said where the choice is made, because it is the one thing that separates a
+                    group from a list of ids and it cannot be seen by looking at the rows. */}
+                <p style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.5, padding: "4px 8px 0" }}>{t.groupGrows}</p>
+              </>
+            )}
+          </div>
+
+          <div style={{ borderTop: "1px solid var(--gray-200)", paddingTop: "12px", opacity: mode === "all" ? 0.5 : 1 }}>
+            <p style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)", paddingBottom: "6px" }}>
+              {t.camerasHeading}
+            </p>
+            {zoneGroups.map(([zone, group]) => {
               const allOn = group.every(c => picked.includes(c.id));
               return (
                 <div key={zone || "__none"} style={{ marginBottom: "10px" }}>
@@ -126,9 +202,10 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
                     )}
                   </button>
                   {group.map(c => {
-                    const on = mode === "all" || picked.includes(c.id);
+                    const byGroup = coveredByGroup.has(c.id);
+                    const on = mode === "all" || byGroup || picked.includes(c.id);
                     return (
-                      <button key={c.id} onClick={mode === "some" ? () => toggle(c.id) : undefined} disabled={mode === "all"}
+                      <button key={c.id} onClick={mode === "some" && !byGroup ? () => toggle(c.id) : undefined} disabled={mode === "all" || byGroup}
                         style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left", padding: "7px 8px", borderRadius: "8px", border: "none", backgroundColor: "transparent", cursor: mode === "some" ? "pointer" : "default", fontFamily: "inherit" }}>
                         <span style={{ width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           {on && (
@@ -140,6 +217,11 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
                         <span style={{ minWidth: 0, fontSize: "12.5px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
                         {/* Said, not coloured. A camera nobody surveyed is a gap in the register,
                             not a fault — and this list is where somebody notices it. */}
+                        {/* Why it is ticked when nobody ticked it here. Without this the reader
+                            unticks a camera, nothing happens, and the checkbox looks broken. */}
+                        {byGroup && (
+                          <span style={{ flexShrink: 0, fontSize: "10px", fontWeight: 700, color: "var(--primary-400)" }}>{t.viaGroup}</span>
+                        )}
                         {!hasPosition(c) && (
                           <span style={{ flexShrink: 0, fontSize: "10px", color: "var(--gray-400)" }}>{t.noCoords}</span>
                         )}
@@ -155,9 +237,16 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
         <div style={{ padding: "16px 20px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
           {/* The dead button says why, in the two sentences that are actually different: nothing
               has moved, or this would leave them with no camera at all. */}
-          {!(canSave && dirty) && (
+          {!(canSave && dirty) ? (
             <span style={{ flex: 1, fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>
               {!canSave ? t.refuseEmpty : t.unchanged}
+            </span>
+          ) : (
+            /* THE ONE NUMBER THAT MATTERS, where the decision is confirmed. Groups and individual
+               cameras overlap, so neither count answers "how much of the site is this" — the union
+               does, and it is what the table will show afterwards. */
+            <span style={{ flex: 1, fontSize: "11px", fontWeight: 700, color: "var(--gray-600)", lineHeight: 1.45 }}>
+              {mode === "all" ? t.optAll : t.resolved(resolvedCount)}
             </span>
           )}
           <button className="portal-btn-outline" onClick={onClose}
@@ -180,8 +269,15 @@ const T = {
     intro: (name: string) => `Which cameras ${name} may watch in the monitoring app. Portal is unaffected — an administrator manages every camera on the site.`,
     optAll: "Every camera on their projects",
     optAllDesc: "Including cameras added later. This is what an account holds unless somebody narrows it.",
-    optSome: "Only the cameras picked below",
-    optSomeDesc: "A camera added later is not included until somebody adds it here.",
+    optSome: "Only the groups and cameras picked below",
+    optSomeDesc: "A group keeps up with the site — a camera added to it later is included. An individual camera is not.",
+    groupsHeading: "Camera groups",
+    groupsNone: "No groups on these projects yet. Select cameras in Input Sources and group them there.",
+    groupCount: (n: number) => `${n} camera${n === 1 ? "" : "s"}`,
+    groupGrows: "Picking a group grants whatever is in it later, too.",
+    viaGroup: "in a group",
+    camerasHeading: "Individual cameras",
+    resolved: (n: number) => `Sees ${n} camera${n === 1 ? "" : "s"} right now`,
     noZone: "No zone",
     noCoords: "no coordinates",
     pickGroup: "select all",
@@ -199,8 +295,15 @@ const T = {
     intro: (name: string) => `${name}이(가) 관제 앱에서 볼 수 있는 카메라입니다. Portal은 영향받지 않습니다 — 관리자는 현장의 모든 카메라를 관리합니다.`,
     optAll: "담당 프로젝트의 카메라 전부",
     optAllDesc: "나중에 추가되는 카메라도 포함합니다. 아무도 좁히지 않으면 계정은 이 상태입니다.",
-    optSome: "아래에서 고른 카메라만",
-    optSomeDesc: "나중에 추가되는 카메라는 여기에 넣기 전까지 포함되지 않습니다.",
+    optSome: "아래에서 고른 그룹과 카메라만",
+    optSomeDesc: "그룹은 현장을 따라갑니다 — 나중에 그룹에 들어온 카메라도 포함됩니다. 개별 카메라는 그렇지 않습니다.",
+    groupsHeading: "카메라 그룹",
+    groupsNone: "이 프로젝트에 아직 그룹이 없습니다. 입력 소스에서 카메라를 골라 그룹으로 묶으세요.",
+    groupCount: (n: number) => `카메라 ${n}대`,
+    groupGrows: "그룹을 고르면 나중에 그 그룹에 들어오는 카메라도 함께 주어집니다.",
+    viaGroup: "그룹 포함",
+    camerasHeading: "개별 카메라",
+    resolved: (n: number) => `지금 보는 카메라 ${n}대`,
     noZone: "구역 미지정",
     noCoords: "좌표 없음",
     pickGroup: "전체 선택",
