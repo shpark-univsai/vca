@@ -33,37 +33,37 @@ import {
 const T = {
   en: {
     title: "Import VIPs",
-    subtitle: "One person per row. Nothing is replaced — every row is added to this project.",
+    subtitle: "One person per row. Nothing is replaced; every row is added to this project.",
     dropHere: "Drop a CSV or ZIP file here",
     orBrowse: "or choose a file",
     formatNote: "In Excel: File → Save As → CSV UTF-8.",
     zipRead: (table: string, n: number) => `From the archive: ${table} · ${n} photo${n === 1 ? "" : "s"}`,
     zipNoTableTitle: "No table in this ZIP",
-    zipNoTableBody: "The archive holds no .csv file. Zip the sheet together with the photos — folders inside are fine.",
+    zipNoTableBody: "The archive holds no .csv file. Zip the sheet together with the photos. Folders inside are fine.",
     zipManyTablesTitle: "Several tables in this ZIP",
     zipManyTablesBody: (names: string) => `One sheet per archive, so it is clear which list is being imported. This one holds: ${names}`,
     zipEncryptedTitle: "This ZIP is password-protected",
     zipEncryptedBody: "Unlock it and zip it again without a password.",
     zipUnsupportedTitle: "This ZIP uses a compression this reader does not know",
-    zipUnsupportedBody: "Zip it again with the normal method — on Windows, right-click → Send to → Compressed folder; on macOS, right-click → Compress.",
+    zipUnsupportedBody: "Zip it again with the normal method. On Windows, right-click → Send to → Compressed folder. On macOS, right-click → Compress.",
     zipCorruptTitle: "This ZIP cannot be read",
     zipCorruptBody: "The archive's own index does not parse, so the download may be incomplete. Try zipping the folder again.",
     labelTable: "Table",
     labelPhotos: "Photos",
     labelFile: "File",
     rowTable: "A name is all that is required. A header row is optional, and a memo column is read if there is one.",
-    rowPhotos: "Name each image after the person — hong-gildong.jpg. Named something else? Put that name in the sheet's Photo file name column.",
+    rowPhotos: "Name each image after the person (hong-gildong.jpg). Named something else? Put that name in the sheet's Photo file name column.",
     rowFile: "A CSV, or a ZIP holding one table and the photos.",
     noPhotoNote: "A row that ends up with no face is still registered, and no camera can match that person until one is enrolled.",
     pickPhotos: "Choose photo files",
     pickMorePhotos: "Choose more photos",
-    photosNone: "No photos picked yet — they are matched to these rows by file name.",
+    photosNone: "No photos picked yet. They are matched to these rows by file name.",
     photosMatched: (n: number, total: number) => `${n} of ${total} rows have their photo`,
     photosUnused: (names: string) => `Unused photos: ${names}`,
     colPhoto: "Photo",
     downloadTemplate: "Download template",
     xlsxTitle: "That is an Excel file",
-    xlsxBody: "Save it as CSV UTF-8 first — in Excel, File → Save As → CSV UTF-8 — and drop that.",
+    xlsxBody: "Save it as CSV UTF-8 first (in Excel: File → Save As → CSV UTF-8), then drop that file.",
     emptyFileTitle: "Nothing to import",
     emptyFileBody: "The file has no rows under its header.",
     missingColumnsTitle: "Wrong file, or missing columns",
@@ -90,10 +90,11 @@ const T = {
     toastDesc: (added: number, skipped: number) => (skipped > 0 ? `${added} added · ${skipped} skipped` : `${added} added`),
     issue: {
       "missing-name": "No name",
-      "duplicate-in-file": "Same name twice in this file — only the first row is imported",
-      "duplicate-in-registry": "Already on this project's list — imported anyway",
-      "photo-not-found": "The photo file it names was not picked — imported without a face",
-      "photo-used-twice": "An earlier row already used this photo — imported without a face",
+      "duplicate-in-file": "Same name twice in this file. Only the first row is imported",
+      "duplicate-in-registry": "Already on this project's list. Imported anyway",
+      "photo-not-found": "The photo file it names was not picked. Imported without a face",
+      "photo-used-twice": "An earlier row already used this photo. Imported without a face",
+      "photo-ambiguous": "Several photos share this name. Write the folder too, or rename them",
     } as Record<string, string>,
   },
   ko: {
@@ -104,15 +105,15 @@ const T = {
     formatNote: "엑셀에서: 파일 → 다른 이름으로 저장 → CSV UTF-8.",
     zipRead: (table: string, n: number) => `압축 파일에서 읽은 것: ${table} · 사진 ${n}장`,
     zipNoTableTitle: "ZIP 안에 표가 없습니다",
-    zipNoTableBody: "이 압축 파일에는 .csv 파일이 없습니다. 표와 사진을 같이 압축해 주세요 — 안에 폴더가 있어도 됩니다.",
+    zipNoTableBody: "이 압축 파일에는 .csv 파일이 없습니다. 표와 사진을 같이 압축해 주세요. 안에 폴더가 있어도 됩니다.",
     zipManyTablesTitle: "ZIP 안에 표가 여러 개입니다",
     zipManyTablesBody: (names: string) => `어느 명단을 가져오는지 분명해야 하므로 압축 파일 하나에 표는 하나입니다. 이 파일에는 이렇게 들어 있습니다: ${names}`,
     zipEncryptedTitle: "암호가 걸린 ZIP입니다",
     zipEncryptedBody: "암호를 풀고 다시 압축해 주세요.",
     zipUnsupportedTitle: "이 ZIP의 압축 방식은 읽을 수 없습니다",
-    zipUnsupportedBody: "일반 방식으로 다시 압축해 주세요 — 윈도우는 오른쪽 클릭 → 압축(ZIP) 폴더, 맥은 오른쪽 클릭 → 압축.",
+    zipUnsupportedBody: "일반 방식으로 다시 압축해 주세요. 윈도우는 오른쪽 클릭 → 압축(ZIP) 폴더, 맥은 오른쪽 클릭 → 압축입니다.",
     zipCorruptTitle: "ZIP을 읽을 수 없습니다",
-    zipCorruptBody: "압축 파일 안의 목록이 해석되지 않습니다 — 내려받기가 중간에 끊겼을 수 있습니다. 폴더를 다시 압축해 보세요.",
+    zipCorruptBody: "압축 파일 안의 목록이 해석되지 않습니다. 내려받기가 중간에 끊겼을 수 있으니 폴더를 다시 압축해 보세요.",
     labelTable: "표",
     labelPhotos: "사진",
     labelFile: "파일",
@@ -122,13 +123,13 @@ const T = {
     noPhotoNote: "사진이 붙지 않은 행도 등록은 되지만, 얼굴을 등록하기 전에는 어느 카메라도 그 사람을 찾지 못합니다.",
     pickPhotos: "사진 파일 고르기",
     pickMorePhotos: "사진 더 고르기",
-    photosNone: "고른 사진이 아직 없습니다 — 파일 이름으로 이 행들과 맞춰 붙입니다.",
+    photosNone: "고른 사진이 아직 없습니다. 파일 이름으로 이 행들과 맞춥니다.",
     photosMatched: (n: number, total: number) => `${total}행 중 ${n}행에 사진이 붙었습니다`,
     photosUnused: (names: string) => `쓰이지 않은 사진: ${names}`,
     colPhoto: "사진",
     downloadTemplate: "서식 내려받기",
     xlsxTitle: "엑셀 파일입니다",
-    xlsxBody: "CSV UTF-8로 먼저 저장해 주세요 — 엑셀에서 파일 → 다른 이름으로 저장 → CSV UTF-8 — 그 파일을 놓으시면 됩니다.",
+    xlsxBody: "엑셀에서 파일 → 다른 이름으로 저장 → CSV UTF-8로 저장한 다음, 그 파일을 놓아 주세요.",
     emptyFileTitle: "가져올 것이 없습니다",
     emptyFileBody: "머리글 아래에 행이 없습니다.",
     missingColumnsTitle: "다른 파일이거나 열이 빠졌습니다",
@@ -155,10 +156,11 @@ const T = {
     toastDesc: (added: number, skipped: number) => (skipped > 0 ? `${added}명 추가 · ${skipped}행 건너뜀` : `${added}명 추가`),
     issue: {
       "missing-name": "이름 없음",
-      "duplicate-in-file": "이 파일 안에서 이름 중복 — 먼저 나온 행만 가져옵니다",
-      "duplicate-in-registry": "이미 이 프로젝트 명단에 있는 이름 — 그래도 가져옵니다",
-      "photo-not-found": "적힌 사진 파일이 고른 파일 중에 없음 — 사진 없이 등록됩니다",
-      "photo-used-twice": "같은 사진을 앞의 행이 이미 썼음 — 사진 없이 등록됩니다",
+      "duplicate-in-file": "이 파일 안에 같은 이름이 두 번 있습니다. 먼저 나온 행만 가져옵니다",
+      "duplicate-in-registry": "이미 이 프로젝트 명단에 있는 이름입니다. 그래도 가져옵니다",
+      "photo-not-found": "적힌 사진 파일이 고른 파일 중에 없습니다. 사진 없이 등록됩니다",
+      "photo-used-twice": "앞의 행이 이 사진을 이미 썼습니다. 사진 없이 등록됩니다",
+      "photo-ambiguous": "같은 이름의 사진이 여러 개입니다. 폴더까지 적거나 파일 이름을 다르게 해 주세요",
     } as Record<string, string>,
   },
 };
@@ -581,13 +583,13 @@ export default function VipImportModal({
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={previewUrl(r.photo)} alt="" width={26} height={26}
                           style={{ width: "26px", height: "26px", borderRadius: "50%", objectFit: "cover", border: "1px solid var(--gray-200)" }} />
-                      ) : r.photoFile ? (
+                      ) : (r.photoFile || r.issues.includes("photo-ambiguous")) ? (
                         /* A MARK, NOT A SENTENCE. This cell held the words 파일 없음 while the
                            reason column beside it said the same thing at length — one fact twice,
                            in the two columns a reader compares. The glyph marks the row, the file
                            name it was looking for is on the hover, and the sentence stays in the
                            column whose heading is 사유. */
-                        <span title={r.photoFile} style={{ display: "flex", color: "var(--warning-500)" }}>
+                        <span title={r.photoFile || undefined} style={{ display: "flex", color: "var(--warning-500)" }}>
                           <ImageOff size={15} strokeWidth={2.2} />
                         </span>
                       ) : (

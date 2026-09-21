@@ -157,11 +157,18 @@ export function isTableEntry(entry: ZipEntry): boolean {
   return TABLE_EXTENSIONS.includes(extensionOf(entry.name));
 }
 
-/** An image member as a File, so it travels through the rest of the import as a picked file does. */
+/**
+ * An image member as a File, so it travels through the rest of the import as a picked file does.
+ *
+ * NAMED BY ITS PATH, not its last segment — reversing what this did at first, for a case the
+ * archive can hold and a bare name cannot answer: two folders with a `nadia.jpg` in each. The
+ * matcher generates the last segment as a key of its own (attachVipPhotos), so `images/nadia.jpg`
+ * still answers to `nadia.jpg` and to a person called nadia; keeping the path means the sheet can
+ * also say WHICH `nadia.jpg` it meant, and that the screen can print the two apart when it has to
+ * decline. A file picked loose from a desktop has no path, and its name is unchanged by this.
+ */
 export function entryToFile(entry: ZipEntry): File {
   const ext = extensionOf(entry.name);
   const type = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext ? `image/${ext}` : "application/octet-stream";
-  // NAMED BY ITS LAST SEGMENT, not its path: `images/nadia.jpg` has to match a row that says
-  // `nadia.jpg` or a person called nadia, and a leading folder would make both miss.
-  return new File([entry.bytes as BlobPart], entry.name, { type });
+  return new File([entry.bytes as BlobPart], entry.path, { type });
 }

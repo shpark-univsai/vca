@@ -63,7 +63,8 @@ export type VipImportIssue =
   | "duplicate-in-file"
   | "duplicate-in-registry"
   | "photo-not-found"
-  | "photo-used-twice";
+  | "photo-used-twice"
+  | "photo-ambiguous";
 
 /**
  * Issues that do not block. Everything else refuses its row.
@@ -87,7 +88,7 @@ export type VipImportIssue =
  * identical rows that will both match the same face and alert twice. The first occurrence still
  * goes in, so the intent of the file survives.
  */
-const WARNINGS: VipImportIssue[] = ["duplicate-in-registry", "photo-not-found", "photo-used-twice"];
+const WARNINGS: VipImportIssue[] = ["duplicate-in-registry", "photo-not-found", "photo-used-twice", "photo-ambiguous"];
 
 export function isBlocking(issue: VipImportIssue): boolean {
   return !WARNINGS.includes(issue);
@@ -296,11 +297,29 @@ function foldSeparators(value: string): string {
   return normalizeForMatch(value).replace(/[\s._+-]+/g, "");
 }
 
+/**
+ * Every spelling one image answers to, MOST SPECIFIC FIRST.
+ *
+ * The path is a key before the last segment is, which is what lets a sheet settle the one question
+ * an archive can pose and a bare file name cannot: `images/a/nadia.jpg` and `images/b/nadia.jpg`
+ * are two different faces with one name. A row that writes the path gets its own file; a row that
+ * writes `nadia.jpg` gets told there are two (see the ambiguity handling in attachVipPhotos)
+ * rather than being handed whichever the file dialog listed first.
+ *
+ * Order matters and is relied on: the lookup takes the first key that resolves, so a specific
+ * answer is never lost to a general one.
+ */
 function photoKeys(fileName: string): string[] {
-  const base = normalizeForMatch(fileName);
-  const dot = base.lastIndexOf(".");
-  const withoutExtension = dot > 0 ? base.slice(0, dot) : base;
-  return [base, withoutExtension, foldSeparators(withoutExtension)];
+  const full = normalizeForMatch(fileName);
+  const last = full.split("/").pop() ?? full;
+  const stripExtension = (value: string) => {
+    const dot = value.lastIndexOf(".");
+    return dot > 0 ? value.slice(0, dot) : value;
+  };
+  const keys = [full, stripExtension(full), last, stripExtension(last), foldSeparators(stripExtension(last))];
+  // Deduped, because a file with no folder produces the same string twice and a key that appears
+  // twice in one file's list would otherwise look like two files colliding.
+  return [...new Set(keys)];
 }
 
 /** What a row answers to when the sheet named no file: the person's own name, folded the same way
@@ -329,14 +348,37 @@ export interface VipPhotoAttachResult {
  */
 export function attachVipPhotos(rows: ParsedVipRow[], files: File[]): VipPhotoAttachResult {
   const byKey = new Map<string, File>();
+  /**
+   * Keys that more than one image answers to — `nadia.jpg` when the archive holds
+   * `images/a/nadia.jpg` and `images/b/nadia.jpg`.
+   *
+   * THESE ATTACH NOTHING. Handing over the first one is a guess, and the thing being guessed at is
+   * which face belongs to a name in a face-recognition watchlist: the wrong one alerts on the
+   * wrong person for as long as nobody notices, and nothing on the screen would have said so.
+   * Declining and naming both paths costs the operator one rename and tells them the truth.
+   *
+   * Two copies of the SAME image in two folders would also land here, and they are not compared
+   * byte for byte to find out — a length is not proof of sameness, reading both is work for a case
+   * far rarer than two people with a common name, and the repair is the same rename either way.
+   */
+  const ambiguous = new Set<string>();
   files.forEach(f => {
     photoKeys(f.name).forEach(k => {
-      // First file wins a key. Two files whose names differ only in case are one image picked
-      // twice as far as the sheet can tell, and the alternative — last wins — would depend on the
-      // order the file dialog happened to hand them over.
-      if (!byKey.has(k)) byKey.set(k, f);
+      const held = byKey.get(k);
+      if (!held) byKey.set(k, f);
+      else if (held !== f) ambiguous.add(k);
     });
   });
+
+  /** The first key that resolves, and whether it resolved to a crowd. */
+  const lookup = (candidates: string[]): { file?: File; ambiguous?: boolean } => {
+    for (const key of candidates) {
+      if (ambiguous.has(key)) return { ambiguous: true };
+      const file = byKey.get(key);
+      if (file) return { file };
+    }
+    return {};
+  };
 
   const used = new Set<File>();
   const photo: (File | undefined)[] = rows.map(() => undefined);
@@ -352,7 +394,8 @@ export function attachVipPhotos(rows: ParsedVipRow[], files: File[]): VipPhotoAt
    */
   rows.forEach((row, i) => {
     if (!row.photoFile) return;
-    const match = photoKeys(row.photoFile).map(k => byKey.get(k)).find(Boolean);
+    const { file: match, ambiguous: crowded } = lookup(photoKeys(row.photoFile));
+    if (crowded) { extra[i] = ["photo-ambiguous"]; return; }
     if (!match) { extra[i] = ["photo-not-found"]; return; }
     // ONE FACE IS NOT TWO PEOPLE. The first row keeps the image; the rest keep their names and
     // import with no face, which is a state the registry already knows how to show.
@@ -368,7 +411,12 @@ export function attachVipPhotos(rows: ParsedVipRow[], files: File[]): VipPhotoAt
      rows that DID ask for a file and missed it. */
   rows.forEach((row, i) => {
     if (row.photoFile || !row.name) return;
-    const match = nameKeys(row.name).map(k => byKey.get(k)).find(Boolean);
+    const { file: match, ambiguous: crowded } = lookup(nameKeys(row.name));
+    /* SAID here, unlike a plain miss. Nothing found is the normal state of half a watchlist; two
+       files found is an archive that holds this person's face twice over and a screen that has
+       decided not to choose — the reader has to know, or the row looks like one of the ordinary
+       ones with no photograph. */
+    if (crowded) { extra[i] = ["photo-ambiguous"]; return; }
     if (!match) return;
     if (used.has(match)) { extra[i] = ["photo-used-twice"]; return; }
     used.add(match);
@@ -379,7 +427,7 @@ export function attachVipPhotos(rows: ParsedVipRow[], files: File[]): VipPhotoAt
     ...row,
     photo: photo[i],
     // Recomputed from scratch, so a note left by an earlier pick cannot survive the file arriving.
-    issues: [...row.issues.filter(is => is !== "photo-not-found" && is !== "photo-used-twice"), ...extra[i]],
+    issues: [...row.issues.filter(is => !is.startsWith("photo-")), ...extra[i]],
   }));
 
   return { rows: next, unusedFiles: files.filter(f => !used.has(f)).map(f => f.name) };
