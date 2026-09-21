@@ -2095,14 +2095,25 @@ export function canExportEvidence(users: PortalUser[]): boolean {
  * SERVER_TYPE_LABELS and the licence tab's FEATURE_LABELS make, so the lookup never touches the
  * data. A preset the customer made has no key and keeps its own label.
  */
+/*
+ * EACH DESCRIPTION SAYS WHAT ITS OWN ROWS SAY. Rewritten when the grant became five actions
+ * (2026-09-21): Operator reads "watches what is happening now" while granting `history`, which is
+ * last week's frames — a line the reader can now catch, because the row under it is literally
+ * called 지난 기록 열람. The grants themselves are unchanged (they are the same pair the old
+ * preset held: live plus Best Frame); it is the sentence that was approximate.
+ *
+ * The three are a LADDER, each a prefix of the next, which is what makes them pickable at a
+ * glance — and it is also why custom exists: the off-ladder combinations (export without the
+ * trail, say) are real and nothing here should pretend they are not.
+ */
 export const PRESET_BUILTIN_LABELS: Record<NonNullable<AccessPreset["builtinKey"]>, { label: { en: string; ko: string }; description: { en: string; ko: string } }> = {
   operator: {
     label: { en: "Operator", ko: "운영자" },
-    description: { en: "Watches what is happening now", ko: "지금 일어나는 일을 본다" },
+    description: { en: "Watches the cameras, live and after the fact", ko: "카메라를 본다 — 실시간과 지난 기록" },
   },
   investigator: {
     label: { en: "Investigator", ko: "조사자" },
-    description: { en: "Operator, plus finding what already happened", ko: "운영자 + 지난 것을 찾는다" },
+    description: { en: "Operator, plus finding a person and following their route", ko: "운영자 + 사람을 찾고 동선을 따라간다" },
   },
   supervisor: {
     label: { en: "Supervisor", ko: "감독자" },
