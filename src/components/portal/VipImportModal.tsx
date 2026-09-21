@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { ImageOff, ImagePlus } from "lucide-react";
+import { Fragment, useMemo, useRef, useState } from "react";
+import { FileDown, ImageOff, ImagePlus } from "lucide-react";
 import { useVcaStore } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -36,7 +36,7 @@ const T = {
     subtitle: "One person per row. Nothing is replaced — every row is added to this project.",
     dropHere: "Drop a CSV or ZIP file here",
     orBrowse: "or choose a file",
-    formatNote: "CSV, or a ZIP holding one table and the photos. In Excel: File → Save As → CSV UTF-8.",
+    formatNote: "In Excel: File → Save As → CSV UTF-8.",
     zipRead: (table: string, n: number) => `From the archive: ${table} · ${n} photo${n === 1 ? "" : "s"}`,
     zipNoTableTitle: "No table in this ZIP",
     zipNoTableBody: "The archive holds no .csv file. Zip the sheet together with the photos — folders inside are fine.",
@@ -48,8 +48,12 @@ const T = {
     zipUnsupportedBody: "Zip it again with the normal method — on Windows, right-click → Send to → Compressed folder; on macOS, right-click → Compress.",
     zipCorruptTitle: "This ZIP cannot be read",
     zipCorruptBody: "The archive's own index does not parse, so the download may be incomplete. Try zipping the folder again.",
-    columnsNote: "A name is all that is required. A memo column is read if the file has one, and a file of bare names with no header row works too.",
-    photoHowNote: "A CSV cannot hold an image, so the images are picked here and matched by file name. Name each image after the person — hong-gildong.jpg — and picking the files is all it takes. Where a file is named something else, write that name in the sheet's Photo file name column.",
+    labelTable: "Table",
+    labelPhotos: "Photos",
+    labelFile: "File",
+    rowTable: "A name is all that is required. A header row is optional, and a memo column is read if there is one.",
+    rowPhotos: "Name each image after the person — hong-gildong.jpg. Named something else? Put that name in the sheet's Photo file name column.",
+    rowFile: "A CSV, or a ZIP holding one table and the photos.",
     noPhotoNote: "A row that ends up with no face is still registered, and no camera can match that person until one is enrolled.",
     pickPhotos: "Choose photo files",
     pickMorePhotos: "Choose more photos",
@@ -97,7 +101,7 @@ const T = {
     subtitle: "한 사람이 한 행입니다. 무엇도 대체하지 않고, 모든 행이 이 프로젝트에 추가됩니다.",
     dropHere: "CSV나 ZIP 파일을 여기에 놓으세요",
     orBrowse: "또는 파일 선택",
-    formatNote: "CSV 파일, 또는 표 하나와 사진들을 함께 압축한 ZIP. 엑셀에서: 파일 → 다른 이름으로 저장 → CSV UTF-8.",
+    formatNote: "엑셀에서: 파일 → 다른 이름으로 저장 → CSV UTF-8.",
     zipRead: (table: string, n: number) => `압축 파일에서 읽은 것: ${table} · 사진 ${n}장`,
     zipNoTableTitle: "ZIP 안에 표가 없습니다",
     zipNoTableBody: "이 압축 파일에는 .csv 파일이 없습니다. 표와 사진을 같이 압축해 주세요 — 안에 폴더가 있어도 됩니다.",
@@ -109,8 +113,12 @@ const T = {
     zipUnsupportedBody: "일반 방식으로 다시 압축해 주세요 — 윈도우는 오른쪽 클릭 → 압축(ZIP) 폴더, 맥은 오른쪽 클릭 → 압축.",
     zipCorruptTitle: "ZIP을 읽을 수 없습니다",
     zipCorruptBody: "압축 파일 안의 목록이 해석되지 않습니다 — 내려받기가 중간에 끊겼을 수 있습니다. 폴더를 다시 압축해 보세요.",
-    columnsNote: "이름만 있으면 됩니다. 메모 열은 파일에 있으면 함께 읽고, 머리글 없이 이름만 적힌 파일도 됩니다.",
-    photoHowNote: "CSV 안에는 이미지가 들어가지 않아서, 사진은 여기서 고르고 파일 이름으로 사람을 찾습니다. 파일 이름을 그 사람 이름으로 해 두면(홍길동.jpg) 고르기만 하면 붙습니다. 파일 이름이 이름과 다를 때만 표의 '사진 파일명' 열에 적으면 됩니다.",
+    labelTable: "표",
+    labelPhotos: "사진",
+    labelFile: "파일",
+    rowTable: "이름만 있으면 됩니다. 머리글이 없어도 되고, 메모 열은 있으면 함께 읽습니다.",
+    rowPhotos: "파일 이름을 그 사람 이름으로 해 두면 붙습니다(홍길동.jpg). 다른 이름이면 표의 '사진 파일명' 열에 적으세요.",
+    rowFile: "CSV, 또는 표 하나와 사진을 함께 압축한 ZIP.",
     noPhotoNote: "사진이 붙지 않은 행도 등록은 되지만, 얼굴을 등록하기 전에는 어느 카메라도 그 사람을 찾지 못합니다.",
     pickPhotos: "사진 파일 고르기",
     pickMorePhotos: "사진 더 고르기",
@@ -644,17 +652,43 @@ export default function VipImportModal({
                 </div>
               )}
 
-              <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "14px", lineHeight: 1.5 }}>{t.columnsNote}</p>
-              <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "4px", lineHeight: 1.5 }}>{t.formatNote}</p>
-              {/* HOW, THEN WHAT IT COSTS — and only the second one is amber. These were one
-                  paragraph in warning colour, which put three lines of plain instruction ("write
-                  the file name in this column") under the colour this console keeps for things
-                  that are wrong. The instruction is how the feature works; the consequence is the
-                  one fact the file cannot show and the list will. */}
-              <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.photoHowNote}</p>
-              <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "6px", lineHeight: 1.5 }}>{t.noPhotoNote}</p>
+              {/*
+                THREE NAMED LINES, NOT FOUR PARAGRAPHS (owner, 2026-09-21: 설명을 좀 더 읽기
+                편하게 바꿔줄순없을까, with the screen attached).
+
+                This was four grey paragraphs of the same size and weight stacked nine lines deep,
+                which is a wall: nothing said which to read first, and the two facts somebody
+                actually needs before choosing a file — what the sheet must contain, and how a
+                photograph finds its person — sat in the middle of it.
+
+                So each line now carries the noun it is about in the left column. A reader looking
+                for the photo rule finds it by scanning three words instead of reading three
+                paragraphs, and the Excel instruction drops to the smallest thing here because it
+                matters to one reader in ten — the one whose file came back as mojibake.
+
+                The consequence stays last and stays amber. It is the only line that is not about
+                how to use the screen.
+              */}
+              <div style={{ marginTop: "16px", display: "grid", gridTemplateColumns: "auto 1fr", columnGap: "12px", rowGap: "7px", alignItems: "baseline" }}>
+                {[
+                  { label: t.labelTable, text: t.rowTable },
+                  { label: t.labelPhotos, text: t.rowPhotos },
+                  { label: t.labelFile, text: t.rowFile },
+                ].map(row => (
+                  <Fragment key={row.label}>
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-400)", whiteSpace: "nowrap" }}>{row.label}</span>
+                    <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>{row.text}</span>
+                  </Fragment>
+                ))}
+              </div>
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "10px", lineHeight: 1.5 }}>{t.formatNote}</p>
+              <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.noPhotoNote}</p>
+              {/* An action, dressed as one. In a column of grey sentences a bold grey-900 phrase
+                  reads as another sentence — it is the one thing here somebody clicks before they
+                  have a file at all. */}
               <button onClick={onDownloadTemplate}
-                style={{ marginTop: "10px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit" }}>
+                style={{ marginTop: "14px", display: "inline-flex", alignItems: "center", gap: "6px", height: "30px", padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit" }}>
+                <FileDown size={13} strokeWidth={2.4} />
                 {t.downloadTemplate}
               </button>
             </div>
