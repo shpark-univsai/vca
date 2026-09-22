@@ -2358,3 +2358,66 @@ export function SectionNav({ sections, active, onSelect }: {
     </nav>
   );
 }
+
+/**
+ * A PANEL OFF THE RIGHT EDGE, FOR WORK YOU DO WHILE LOOKING AT THE PAGE.
+ *
+ * The owner's decision (2026-09-22): 지금 포탈에 팝업이랑 방금 처음 만든 오른쪽 패널창이랑
+ * 두가지 컴포넌트로 쓰고있는데 하나로 가능한한 통일하는게 좋을것같아 오른쪽패널로.
+ *
+ * WHICH DIALOGS BECOME THIS ONE, AND WHICH DO NOT. Editors, forms and detail panels move here:
+ * they are work, and work wants the screen it came from still visible — the accounts table behind
+ * the invite panel is the list you are adding to. Confirmations stay centred (ConfirmModal): a
+ * delete is a question, not a workspace, and the two containers behave in OPPOSITE ways about the
+ * scrim. A confirm should dismiss on a scrim click, because the answer is "no" and no work is
+ * lost; a half-built form must NOT, because the same gesture would throw the work away with no
+ * undo. One component cannot hold both rules without being wrong for one of them.
+ *
+ * So the scrim here does not close, and neither does Escape. ✕ and the panel's own cancel are the
+ * ways out, and both are gestures the reader chose.
+ *
+ * WHAT THE PANEL OWNS AND WHAT THE CALLER OWNS. The panel owns the shell: the scrim, the width,
+ * the full height, the header with its title and ✕, and a footer that keeps its height while the
+ * body between them scrolls — which is the layout the invite dialog needed a measured exception
+ * for as a centred sheet (its buttons opened 16px below the fold on a 912px window). Here it is
+ * the ordinary case, because a panel is as tall as the window by definition.
+ *
+ * `width` exists because these are not all the same kind of work: a form is one column (520px is
+ * the width the invite form was measured to), while a picker with a map beside it wants 672px.
+ */
+export function Drawer({ title, onClose, footer, width = "520px", children }: {
+  title: React.ReactNode;
+  onClose: () => void;
+  /** The row of buttons. Kept out of the scrolling body, so it cannot fall off the bottom. */
+  footer?: React.ReactNode;
+  width?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", justifyContent: "flex-end" }}>
+      <div style={{
+        backgroundColor: "white", width: `min(${width}, 100%)`, height: "100%",
+        borderLeft: BORDER, boxShadow: "var(--shadow-modal)",
+        display: "flex", flexDirection: "column",
+      }}>
+        <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ minWidth: 0, flex: 1, fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {title}
+          </div>
+          <button type="button" onClick={onClose} className="portal-icon-btn"
+            style={{ flexShrink: 0, padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+          </button>
+        </div>
+        {/* minHeight 0, or a flex child will not shrink below its content and the panel grows past
+            the window instead of scrolling — the bug that put the invite buttons off screen. */}
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>{children}</div>
+        {footer && (
+          <div style={{ flexShrink: 0, padding: "14px 20px", borderTop: BORDER, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

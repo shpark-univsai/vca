@@ -461,8 +461,19 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
                           const on = picked.includes(c.id);
                           const others = alsoIn(c.id);
                           return (
+                            /*
+                             * A GRID, NOT A FLEX ROW (owner: 목록으로 보여질때도 열을 좀 더
+                             * 구분해줘). Laid out as flex, the code sat immediately after each
+                             * name, so it landed in a different place on every row — 「Orchard
+                             * MRT CAM-ORC-001」 then 「Tampines Hub CAM-TAM-004」 — and the overlap
+                             * mark after it moved too. Fixed tracks put the code and the mark in
+                             * columns you can read down, which is what a list of sixty rows is
+                             * for. The name keeps 1fr and still truncates; the two right-hand
+                             * tracks are the widest their content gets (a code is 11 monospace
+                             * characters, 「다른 그룹 N」 is six glyphs and a digit).
+                             */
                             <button key={c.id} type="button" onClick={() => toggle(c.id)}
-                              style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left", padding: "7px 6px", borderRadius: "8px", border: "none", backgroundColor: "transparent", cursor: "pointer", fontFamily: "inherit" }}>
+                              style={{ width: "100%", display: "grid", gridTemplateColumns: "17px minmax(0, 1fr) 96px 68px", alignItems: "center", columnGap: "10px", textAlign: "left", padding: "7px 6px", borderRadius: "8px", border: "none", backgroundColor: "transparent", cursor: "pointer", fontFamily: "inherit" }}>
                               <span style={{ width: "17px", height: "17px", borderRadius: "5px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white" }}>
                                 {on && (
                                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
@@ -474,16 +485,17 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
                                   텍스트 조금 살짝만 키워줘) — this is the list somebody reads
                                   sixty rows of, and it sits in a 672px drawer with room for it. */}
                               <span style={{ minWidth: 0, fontSize: "13.5px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
-                              <span style={{ flexShrink: 0, fontSize: "11px", fontFamily: "monospace", color: "var(--gray-400)" }}>{c.code}</span>
+                              <span style={{ fontSize: "11px", fontFamily: "monospace", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.code}</span>
                               {/* THE OVERLAP, ON THE ROW IT IS ABOUT. Counted here and named on
-                                  hover: four group names on a row would push the camera's own
-                                  name out. */}
-                              {others.length > 0 && (
-                                <span title={t.inOtherGroupsTitle(others.map(g => g.label).join(", "))}
-                                  style={{ flexShrink: 0, fontSize: "11px", fontWeight: 700, color: "var(--gray-400)" }}>
-                                  {t.inOtherGroups(others.length)}
-                                </span>
-                              )}
+                                  hover: four group names on a row would push the camera's own name
+                                  out. The cell is emitted whether or not there is a mark — a grid
+                                  must emit as many cells as it has tracks, and dropping this one
+                                  on the rows without an overlap would pull the code out of its
+                                  column on those rows only. */}
+                              <span title={others.length > 0 ? t.inOtherGroupsTitle(others.map(g => g.label).join(", ")) : undefined}
+                                style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-400)", whiteSpace: "nowrap" }}>
+                                {others.length > 0 ? t.inOtherGroups(others.length) : ""}
+                              </span>
                             </button>
                           );
                         })}

@@ -56,16 +56,12 @@ const T = {
     pickStart: "Pick cameras",
     pickStop: "Done picking",
     pickHint: (n: number) => n === 0
-      ? "Click a dot to pick one camera, or a zone pill to add the whole zone. The bar at the bottom makes the group."
-      : `${n} picked — dots for one, zone pills for a whole zone. The bar at the bottom makes the group.`,
+      /* The zone pill half of this sentence was deleted with the pills. What the dots do is all
+         that is left to say, and the bar that makes the group is outside this component. */
+      ? "Click a dot to pick that camera. The bar at the bottom makes the group."
+      : `${n} picked. The bar at the bottom makes the group.`,
     preview: "Preview stream",
     empty: "No camera in this project has coordinates yet, so there is nothing to draw.",
-    zoneUnset: "No zone",
-    zoneCount: (n: number) => `${n} cam${n === 1 ? "" : "s"}`,
-    zoneDown: (n: number) => `${n} down`,
-    zoomHint: "Grouped by zone — zoom in for individual cameras.",
-    zonePicked: (label: string, n: number) => `${label} · ${n} ringed`,
-    clearZone: "Clear",
     counted: (drawn: number, total: number) => `${drawn} of ${total} drawn`,
   },
   ko: {
@@ -81,66 +77,13 @@ const T = {
     pickStart: "카메라 고르기",
     pickStop: "고르기 끝",
     pickHint: (n: number) => n === 0
-      ? "점을 누르면 한 대, 구역 알약을 누르면 그 구역 전체가 들어갑니다. 묶는 것은 아래 막대에서 합니다."
-      : `${n}대 골랐습니다 — 점은 한 대, 구역 알약은 구역 전체. 묶는 것은 아래 막대에서 합니다.`,
+      ? "점을 누르면 그 카메라가 들어갑니다. 묶는 것은 아래 막대에서 합니다."
+      : `${n}대 골랐습니다. 묶는 것은 아래 막대에서 합니다.`,
     preview: "스트림 미리보기",
     empty: "이 프로젝트에는 좌표가 등록된 카메라가 아직 없어서 그릴 것이 없습니다.",
-    zoneUnset: "구역 미지정",
-    zoneCount: (n: number) => `${n}대`,
-    zoneDown: (n: number) => `${n} 끊김`,
-    zoomHint: "구역별로 묶어 보고 있습니다 — 확대하면 카메라 한 대씩 보입니다.",
-    zonePicked: (label: string, n: number) => `${label} ${n}대 묶음`,
-    clearZone: "해제",
     counted: (drawn: number, total: number) => `${total}대 중 ${drawn}대 표시`,
   },
 } as const;
-
-/**
- * ZOOMED OUT IT IS ZONES, ZOOMED IN IT IS CAMERAS (owner's ask, 2026-09-18: 줌아웃하면 구역별로
- * 카메라 몇 대씩 있는지 보이게 하고 확대하면 카메라들 지금처럼). Sixty dots at city zoom is a
- * smear; "Angmokio 12대" is the fact somebody reads at that scale. 14 is the same breakpoint the
- * app's map clusters at, so the two behave alike.
- */
-const ZONE_ZOOM_BREAKPOINT = 14;
-/** Where a pill flies you. One past the breakpoint, so the pills give way to the dots as part of
- *  the same movement rather than needing a second zoom — the app's rule too. */
-const ZONE_FOCUS_ZOOM = ZONE_ZOOM_BREAKPOINT + 1;
-
-/**
- * GROUPED BY THE REGISTER'S OWN `zone`, NOT by the district geometry.
- *
- * The app groups by district and gets it wrong: it re-guesses from coordinates, and on the ten
- * named cameras here five landed in a neighbour's district (see HANDOFF-SERVER §9-1 — Geylang NC1
- * answered Kallang, 0.83km away). Worse, five of the register's zone names are in no district
- * list at all (Queenstown · Jurong East · Orchard · Bugis · Marina Bay), so those cameras would
- * simply vanish from a district-grouped map — 5 of the 11 hand-registered ones.
- *
- * `zone` is what somebody typed when they installed the camera, it is editable and bulk-movable
- * from this very screen, and it is the answer to "which part of the site is this in". Nothing is
- * inferred and no camera is dropped: a blank zone gets its own pill rather than disappearing.
- *
- * When the backend starts handing down a district id per camera (the decision recorded in §9-1),
- * this grouping can switch to it — one function, and the pills keep their shape.
- */
-function groupByZone(cameras: (Camera & { lat: number; lng: number })[], unsetLabel: string) {
-  const byZone = new Map<string, { label: string; cams: (Camera & { lat: number; lng: number })[] }>();
-  cameras.forEach(cam => {
-    const key = (cam.zone ?? "").trim();
-    const entry = byZone.get(key) ?? { label: key === "" ? unsetLabel : key, cams: [] };
-    entry.cams.push(cam);
-    byZone.set(key, entry);
-  });
-  return [...byZone.entries()].map(([key, { label, cams }]) => ({
-    key,
-    label,
-    cams,
-    /* The middle of the cameras themselves, not a district centre we would be borrowing from
-       somewhere else. A pill has to sit on the thing it counts. */
-    lat: cams.reduce((sum, c) => sum + c.lat, 0) / cams.length,
-    lng: cams.reduce((sum, c) => sum + c.lng, 0) / cams.length,
-    down: cams.filter(c => c.status !== "online").length,
-  }));
-}
 
 /**
  * A CAMERA'S DOT, AND WHETHER IT IS ONE OF THE PICKED ONES.
@@ -315,15 +258,12 @@ export default function CameraMapView({
   /* Which zone's cameras are ringed. Set by clicking a pill, cleared from the chip in the header
      — and it survives zooming in, which is the point: the ring is how the group stays legible
      once the pills have given way to individual dots. */
-  const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const placed = useMemo(() => cameras.filter(hasPosition), [cameras]);
   const unplaced = cameras.length - placed.length;
   /* Keyed on the coordinates rather than the array, so a re-render from a hover or a language
      change does not yank the view back from wherever the reader has panned to — the same rule
      RedmapMap follows. */
   const positionsKey = placed.map(c => `${c.id}:${c.lat},${c.lng}`).join("|");
-  const zones = useMemo(() => groupByZone(placed, t.zoneUnset), [placed, t.zoneUnset]);
-  const pickedZone = selectedZone === null ? null : zones.find(z => z.key === selectedZone) ?? null;
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -346,7 +286,6 @@ export default function CameraMapView({
       /* TWO LAYERS BUILT ONCE, SWAPPED ON ZOOM. Rebuilding sixty markers on every wheel notch
          drops frames and makes the map feel broken; a layer group added and removed does not. */
       const dotLayer = L.layerGroup();
-      const pillLayer = L.layerGroup();
 
       markersRef.current.clear();
       placed.forEach(cam => {
@@ -370,207 +309,34 @@ export default function CameraMapView({
         markersRef.current.set(cam.id, marker);
       });
 
-      /** Every pill, with the number that decides which one wins a collision. */
-      const pillEntries: { marker: L.Marker; zone: (typeof zones)[number]; full: string; compact: string }[] = [];
-
-      zones.forEach(zone => {
-        /* The count, and how many of them are not answering. One figure would make a zone of
-           twelve working cameras and a zone of twelve dead ones the same pill — which is the
-           thing this view exists to tell apart. Amber only when there is something to be amber
-           about; a healthy zone stays plain. */
-        /* ONE LINE, NOT TWO. Eighteen zones inside one city at this zoom collide, and a two-line
-           pill is twice the ground to collide over — a one-camera Kallang was sitting on top of an
-           eight-camera Geylang.
-           
-           THE BROKEN COUNT CARRIES THE SAME ICON THE 오프라인 CELL DOES, not the bare number it
-           had first: an amber "2" after a total is a number whose meaning you have to be told
-           (owner: 뱃지 끝에 주황색 글씨가 좀 직관적으로 모를 수 있을 것 같아서). A crossed-out
-           camera is the one mark on this screen that already means "not answering", four cards
-           up, so the pill borrows it rather than inventing a second vocabulary. lucide's video-off
-           path, inlined because this markup is a string Leaflet renders outside React. */
-        const downMark = zone.down > 0
-          ? `<span style="display:inline-flex;align-items:center;gap:2px;color:var(--warning-500)">
-               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                 <path d="M10.66 6H14a2 2 0 0 1 2 2v2.5l5.248-3.062A.5.5 0 0 1 22 7.87v8.196"/>
-                 <path d="M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/>
-                 <path d="m2 2 20 20"/>
-               </svg>
-               <span style="font-size:11px;font-weight:700">${zone.down}</span>
-             </span>`
-          : "";
-        /*
-         * TWO SIZES OF THE SAME PILL, AND WHICH ONE IS DRAWN IS DECIDED AFTER PLACEMENT.
-         *
-         * Eighteen zones inside one city at this zoom collide: measured in the group drawer,
-         * 18 pills produced 29 overlapping pairs at 629x372 and the same 29 at 629x290, which is
-         * why growing the map did not fix it — the cause is the scale, not the box. The earlier
-         * mitigation was z-index only (the bigger zone on top), so the smaller one was still
-         * there, half-covered and unreadable.
-         *
-         * The compact form drops the zone's NAME and keeps the count, which is about a third of
-         * the width. That is the right thing to lose: a pill whose name is hidden under another
-         * pill was not telling you the name either, and the count is what the layer is for. The
-         * name stays in the marker's title, so hovering still answers it, and clicking still
-         * grants the whole zone — losing the target is the one thing decluttering must not do.
-         */
-        const shell = (inner: string) => `<div style="transform:translate(-50%,-50%);display:inline-flex;align-items:baseline;
-                   gap:5px;background:white;border:1px solid var(--gray-200);border-radius:999px;padding:3px 9px;
-                   box-shadow:0 2px 8px rgba(24,17,39,0.14);white-space:nowrap;font-family:inherit;cursor:pointer">
-                   ${inner}
-                 </div>`;
-        const countSpan = `<span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.3px">${t.zoneCount(zone.cams.length)}</span>`;
-        const fullHtml = shell(`<span style="font-size:10px;font-weight:600;color:var(--gray-500)">${escapeHtml(zone.label)}</span>${countSpan}${downMark}`);
-        const compactHtml = shell(`${countSpan}${downMark}`);
-        const pill = L.divIcon({
-          className: "",
-          html: fullHtml,
-          iconSize: [0, 0],
-          iconAnchor: [0, 0],
-        });
-        const pillMarker = L.marker([zone.lat, zone.lng], {
-          icon: pill,
-          title: zone.down > 0 ? `${zone.label} · ${t.zoneCount(zone.cams.length)} · ${t.zoneDown(zone.down)}` : `${zone.label} · ${t.zoneCount(zone.cams.length)}`,
-          /* Where two pills still overlap, the bigger zone wins the top: a one-camera pill hiding
-             an eight-camera one is the worse of the two mistakes. Scaled by 1000 because Leaflet
-             derives a marker's z from its pixel Y — whichever sits further south wins by
-             hundreds, so an offset of "6" never decides anything. */
-          zIndexOffset: zone.cams.length * 1000,
-        })
-          .addTo(pillLayer)
-          .on("click", () => {
-            /*
-             * IN PICKING MODE A PILL IS A WHOLE ZONE ADDED (owner, 2026-09-21: 기존에 대시보드에
-             * 설정되어있는 구역을 선택하거나 카메라 정보를 검색해서 선택할수있거나).
-             *
-             * The zones here are the register's own `zone` values — the same words the dashboard
-             * and the daily list use — so "the Geylang ones" is one click rather than eight. It
-             * adds rather than replaces: a group is often two zones plus a camera by the gate.
-             * The map still zooms in, because the ringed dots are the receipt for what was just
-             * added and the pill is about to be replaced by them.
-             */
-            if (pickingRef.current) {
-              zone.cams.forEach(c => { if (!selectedIdsRef.current.has(c.id)) onToggleRef.current(c.id); });
-            } else {
-              /* Into the zone, one notch past the breakpoint, so the pill is replaced by its own
-                 cameras in a single movement — and ringed, so the group it stood for is still
-                 readable once it is gone. */
-              setSelectedZone(zone.key);
-            }
-            const bounds = L.latLngBounds(zone.cams.map(c => [c.lat, c.lng] as [number, number]));
-            instance.fitBounds(bounds, { padding: [56, 56], maxZoom: ZONE_FOCUS_ZOOM });
-          });
-        pillEntries.push({ marker: pillMarker, zone, full: fullHtml, compact: compactHtml });
-      });
-
       /*
-       * DECLUTTER: THE WHOLE LAYER PICKS ONE FORM, THEN THE LEFTOVERS GIVE WAY.
+       * NO ZONE PILLS ANY MORE (owner, 2026-09-22: 지도에 알약으로 보여지는것들을 다 지우고
+       * 확대하면 보였던 점들만 보여줄까?).
        *
-       * Eighteen zones inside one city at this zoom collide: measured in the group drawer, 18
-       * pills produced 29 overlapping pairs at 629x372 and the same 29 at 629x290 — growing the
-       * map does not fix it, because the cause is the scale.
+       * The pill layer drew one rounded label per zone below zoom 14, and it was the source of the
+       * defect this file spent the day on: 18 zones inside one city collided 29 times at 629x372
+       * and 29 times at 629x290 — the scale, not the box — so no amount of height fixed it. The
+       * decluttering that did fix the overlap could only do it by taking something away: on the
+       * drawer's map 8 of 18 zones ended up hidden, which is 8 zones you cannot click.
        *
-       * Deciding each pill on its own was tried first and was worse than the problem: seven kept
-       * their names, ONE went compact and ELEVEN were hidden. Eleven hidden zones is eleven zones
-       * you cannot click, and one small pill among seven large ones reads as a glitch rather than
-       * a rule.
+       * Its two jobs were already done elsewhere, which is what makes deleting it the right answer
+       * rather than a loss:
        *
-       * So density decides the FORM for everybody: if the full pills collide anywhere, every pill
-       * drops to its count. That is a third of the width each, which buys far more room than
-       * taking it from the losers one at a time, and a layer where all the marks are the same size
-       * reads as a layer. Only after that does anything give way, and hiding is the last resort.
+       *   the count per zone     the list view's own headers read 「ORCHARD · 3」, for every zone
+       *                          at once and with no collisions possible
+       *   add a whole zone       the same headers carry 전체 선택, which adds the zone in one press
        *
-       * What a compact pill loses is its zone's NAME, which is the right thing to lose: a name
-       * under another pill was not being read anyway. It stays in the marker's title, and the
-       * click still grants the whole zone — decluttering must not cost a target.
-       *
-       * Measured on the layout, not guessed from coordinates, and the box is the pill's CHILD div
-       * because the divIcon wrapper is iconSize [0,0] — the same trap that made a test report
-       * "0 pills, 0 overlaps" as a pass. A hidden element keeps its box, so a later pass can still
-       * measure what an earlier one hid.
+       * What is left is one layer at every zoom: a dot per camera, in its status colour, ringed
+       * when it is in the selection. Fewer marks, one meaning each, and nothing hidden.
        */
-      const PILL_GAP = 4;
-      const declutter = () => {
-        if (!instance.hasLayer(pillLayer)) return;
-        const boxOf = (m: L.Marker) => {
-          const el = m.getElement();
-          const inner = el?.firstElementChild as HTMLElement | undefined;
-          return inner ? inner.getBoundingClientRect() : null;
-        };
-        const hits = (r: DOMRect, placed: DOMRect[]) => placed.some(p =>
-          r.left < p.right + PILL_GAP && p.left < r.right + PILL_GAP
-          && r.top < p.bottom + PILL_GAP && p.top < r.bottom + PILL_GAP);
-        const setForm = (e: typeof pillEntries[number], compact: boolean) => {
-          e.marker.setIcon(L.divIcon({
-            className: "",
-            html: compact ? e.compact.replace("<div ", '<div data-compact="1" ') : e.full,
-            iconSize: [0, 0], iconAnchor: [0, 0],
-          }));
-        };
 
-        // Biggest zone first: where something has to give, the one-camera zone gives before the
-        // eight-camera one. Reset everything, or an earlier decision decides this one.
-        const order = [...pillEntries].sort((a, b) => b.zone.cams.length - a.zone.cams.length);
-        order.forEach(e => {
-          const el = e.marker.getElement();
-          if (el) el.style.visibility = "";
-          setForm(e, false);
-        });
-
-        /*
-         * HOW MANY WOULD LOSE THEIR PLACE DECIDES WHO GIVES UP THEIR NAME.
-         *
-         * Two rules were measured and each was wrong somewhere:
-         *
-         *   per-pill      the losers alone go compact — 13 names kept on the wide Input Sources
-         *                 map (good), but ELEVEN of 18 hidden in the 629px drawer, because seven
-         *                 full pills sat on the room the rest needed
-         *   whole-layer   one collision anywhere strips every name — 8 hidden in the drawer
-         *                 (better), but the wide map lost all 18 names to fix two pills
-         *
-         * So the density picks between them: if MORE THAN A THIRD of the pills would lose their
-         * place, the crowd is the problem and the whole layer drops to counts; otherwise it is a
-         * couple of unlucky pairs and only they give up their names. One rule, and it produces the
-         * better of the two behaviours at each size instead of the same compromise at both.
-         */
-        const firstPass: DOMRect[] = [];
-        const losers = new Set<typeof order[number]>();
-        order.forEach(e => {
-          const r = boxOf(e.marker);
-          if (!r) return;
-          if (hits(r, firstPass)) losers.add(e);
-          else firstPass.push(r);
-        });
-        const crowded = losers.size * 3 > order.length;
-        order.forEach(e => setForm(e, crowded || losers.has(e)));
-
-        // Then, and only then, hide what still cannot fit. Hiding costs a target, so it is last.
-        const placed: DOMRect[] = [];
-        order.forEach(e => {
-          const r = boxOf(e.marker);
-          const el = e.marker.getElement();
-          if (!r || !el) return;
-          if (hits(r, placed)) el.style.visibility = "hidden";
-          else placed.push(r);
-        });
-      };
-      const declutterSoon = () => requestAnimationFrame(() => requestAnimationFrame(declutter));
-
+      /* The dots are the only layer now, so nothing is swapped on zoom — `zoom` is still tracked
+         because the header's legend and hint read it. */
       const applyZoom = () => {
-        const z = instance.getZoom();
-        setZoom(z);
-        if (z > ZONE_ZOOM_BREAKPOINT) {
-          if (instance.hasLayer(pillLayer)) instance.removeLayer(pillLayer);
-          if (!instance.hasLayer(dotLayer)) instance.addLayer(dotLayer);
-        } else {
-          if (instance.hasLayer(dotLayer)) instance.removeLayer(dotLayer);
-          if (!instance.hasLayer(pillLayer)) { instance.addLayer(pillLayer); declutterSoon(); }
-        }
+        setZoom(instance.getZoom());
+        if (!instance.hasLayer(dotLayer)) instance.addLayer(dotLayer);
       };
       instance.on("zoomend", applyZoom);
-      /* Positions move on pan as well as zoom, and a pill that had room at one corner of the
-         city has none at another. `moveend` covers both — zoomend fires a move too. */
-      instance.on("moveend", declutterSoon);
 
       // Frame what is actually there. A site can be a campus a few hundred metres across, ten
       // kilometres from the city centre the default view opens on.
@@ -580,7 +346,6 @@ export default function CameraMapView({
       }
       // After the fit, not before: which layer belongs on screen depends on the zoom the fit chose.
       applyZoom();
-      declutterSoon();
       map = instance;
       mapInstanceRef.current = instance;
     })();
@@ -611,7 +376,6 @@ export default function CameraMapView({
     (async () => {
       const L = (await import("leaflet")).default;
       if (cancelled) return;
-      const pickedIds = new Set(pickedZone ? pickedZone.cams.map(c => c.id) : []);
       placed.forEach(cam => {
         const marker = markersRef.current.get(cam.id);
         if (!marker) return;
@@ -620,7 +384,7 @@ export default function CameraMapView({
            a time) and a second ring style would make the map teach two marks for "this one". */
         marker.setIcon(L.divIcon({
           className: "",
-          html: dotHtml(statusColor(cam), pickedIds.has(cam.id) || selectedIds.has(cam.id)),
+          html: dotHtml(statusColor(cam), selectedIds.has(cam.id)),
           iconSize: [12, 12],
           iconAnchor: [6, 6],
         }));
@@ -630,7 +394,7 @@ export default function CameraMapView({
     // placed is recreated per render; positionsKey is the value that actually changes. The
     // selection is joined into a string for the same reason: the Set is new every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickedZone, positionsKey, selectionKey]);
+  }, [positionsKey, selectionKey]);
 
   const selectedCamera = selected === null ? null : placed.find(c => c.id === selected) ?? null;
 
@@ -655,23 +419,8 @@ export default function CameraMapView({
     }}>
       <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px", borderBottom: BORDER, flexWrap: "wrap" }}>
         <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-600)" }}>{t.counted(placed.length, cameras.length)}</span>
-        {/* WHAT THE RING IS AROUND, AND THE WAY OUT OF IT. A dashed shape with nothing naming it
-            is a mark the reader has to reverse-engineer, and once the pills are gone there is
-            nothing else on screen that says which zone was picked. */}
-        {pickedZone && (
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: "6px", padding: "3px 4px 3px 9px",
-            borderRadius: "999px", border: "1px dashed var(--primary-400)", backgroundColor: "var(--primary-50)",
-          }}>
-            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--primary-400)" }}>
-              {t.zonePicked(pickedZone.label, pickedZone.cams.length)}
-            </span>
-            <button onClick={() => setSelectedZone(null)} title={t.clearZone}
-              style={{ display: "flex", padding: "2px", border: "none", background: "none", cursor: "pointer", color: "var(--primary-400)" }}>
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-            </button>
-          </span>
-        )}
+        {/* The dashed zone chip went with the pills: it named the zone a pill click had ringed,
+            and nothing rings a zone any more. */}
         {/* PICKING IS A MODE, AND IT SAYS SO. A dot's click means either "show me this camera" or
             "add it to the group", and a modifier key would be a rule nobody discovers. The button
             is the only place that choice is made, and while it is on, the hint says where the
@@ -696,14 +445,12 @@ export default function CameraMapView({
           <span style={{ fontSize: "11px", color: "var(--gray-500)" }}>{t.pickHint(selectedIds.size)}</span>
         )}
         <span style={{ flex: 1 }} />
-        {/* WHICHEVER MODE IS ON SCREEN, THE HEADER EXPLAINS THAT ONE. A status legend over a map
-            of zone pills describes marks that are not being drawn, and the pills' own numbers are
-            what needs explaining instead — including that zooming in changes what is drawn. */}
-        {zoom <= ZONE_ZOOM_BREAKPOINT ? (
-          <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-500)" }}>{t.zoomHint}</span>
-        ) : (
-        /* The legend is the four words the dots stand for. Four colours with no key is a puzzle,
-           and the table one click away spells them out in a column. */
+        {/* THE LEGEND, AT EVERY ZOOM. It used to swap with 「구역별로 묶어 보고 있습니다 — 확대하면
+            카메라 한 대씩 보입니다」 below zoom 14, which was true while the pills were drawn and
+            became a false sentence the moment they were deleted: the dots are there from the first
+            frame, so there is nothing to zoom in for and one layer needs one key.
+            The legend is the four words the dots stand for. Four colours with no key is a puzzle,
+            and the table one click away spells them out in a column. */}
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
           {([
             { color: "var(--success-400)", label: t.connected },
@@ -717,7 +464,6 @@ export default function CameraMapView({
             </span>
           ))}
         </div>
-        )}
       </div>
 
         <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
