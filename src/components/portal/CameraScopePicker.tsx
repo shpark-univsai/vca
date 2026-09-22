@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CheckCheck, RotateCcw } from "lucide-react";
 import { useVcaStore, hasPosition, type Camera, type PortalUser } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -328,15 +329,19 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
                   opens that way. On the whole register rather than on the search result: a filled
                   list is the starting point for an exclusion, and filling only what the search
                   left would be a different, smaller answer wearing the same label. */}
+              {/* The same two marks the group drawer uses for the same two actions — see the note
+                  there on why the reset arrow rather than an ✕. */}
               {mode === "some" && (
                 <button type="button" onClick={() => setPicked(cameras.map(c => c.id))}
-                  style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>
+                  style={{ display: "inline-flex", alignItems: "center", gap: "4px", border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>
+                  <CheckCheck size={12} strokeWidth={2.4} aria-hidden="true" />
                   {t.pickEvery}
                 </button>
               )}
               {mode === "some" && picked.length > 0 && (
                 <button type="button" onClick={() => setPicked([])}
-                  style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>
+                  style={{ display: "inline-flex", alignItems: "center", gap: "4px", border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>
+                  <RotateCcw size={11} strokeWidth={2.4} aria-hidden="true" />
                   {t.clearEvery}
                 </button>
               )}

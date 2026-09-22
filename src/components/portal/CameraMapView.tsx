@@ -624,19 +624,35 @@ export default function CameraMapView({
           {/* WHAT THE MAP CANNOT SHOW, SAID ON THE MAP. An unsurveyed camera is invisible here by
               nature, so the count sits in the corner with the way to its rows — otherwise the map
               quietly under-reports the fleet and looks complete while doing it. */}
+          {/*
+            ONE CHIP, NOT A CARD (owner, 2026-09-22: 지도에 없는 1대 표시가 너무 영역을 많이
+            차지하고있어 좀 줄여줘).
+           
+            It was a 300px panel three elements tall — a count, a two-line explanation and a
+            button — parked over the bottom-left corner of a map that is itself an input device.
+            Measured in the group drawer: it covered a fifth of a 629×372 map, which is cameras
+            you cannot click.
+           
+            What has to be ON the map is the COUNT: an unsurveyed camera is invisible here by
+            nature, so without it the map under-reports the fleet and looks complete doing it.
+            The explanation is not — it says what to do about a state the reader has not decided
+            to act on yet, so it moves to the chip's hover, where the same sentence is one
+            pointer-rest away. The button stays, because it is the one action, but it joins the
+            chip's line instead of standing on its own row.
+          */}
           {unplaced > 0 && (
-            <div style={{
-              position: "absolute", left: "12px", bottom: "12px", zIndex: 500, maxWidth: "300px",
-              backgroundColor: "white", border: BORDER, borderRadius: CARD_RADIUS, padding: "10px 12px", boxShadow: "var(--shadow-popover)",
+            <div title={t.noPositionWhy} style={{
+              position: "absolute", left: "10px", bottom: "10px", zIndex: 500,
+              display: "flex", alignItems: "center", gap: "8px",
+              backgroundColor: "white", border: BORDER, borderRadius: "999px", padding: "4px 6px 4px 10px", boxShadow: "var(--shadow-popover)",
             }}>
-              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.noPosition(unplaced)}</p>
-              <p style={{ fontSize: "11px", color: "var(--gray-500)", marginTop: "3px", lineHeight: 1.45 }}>{t.noPositionWhy}</p>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap" }}>{t.noPosition(unplaced)}</span>
               {/* Only where there is a list to narrow. In a group editor the count still has to be
                   said — a map that silently omits the unsurveyed cameras looks like the whole
                   fleet — but "show them" would point at nothing. */}
               {onShowUnpositioned && (
                 <button className="portal-btn-quiet" onClick={onShowUnpositioned}
-                  style={{ marginTop: "8px", padding: "4px 8px", borderRadius: "6px", border: "none", backgroundColor: "var(--gray-100)", color: "var(--gray-700)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ padding: "2px 8px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-100)", color: "var(--gray-700)", fontSize: "10.5px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                   {t.showThem}
                 </button>
               )}

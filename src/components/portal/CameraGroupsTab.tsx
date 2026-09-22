@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CheckCheck, RotateCcw } from "lucide-react";
 import {
   cameraGroupsInProject, camerasInProject, useVcaStore, type Camera, type CameraGroup,
 } from "@/lib/vcaStore";
@@ -277,7 +278,13 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
   const fieldLabel: React.CSSProperties = {
     fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px",
   };
+  /* The two whole-selection controls, marked (owner: 전부고르기랑 초기화앞에 각각 텍스트랑
+     어울리는 아이콘 넣어줘). CheckCheck for 전부 고르기 — the double tick is the one mark that
+     already means "all of them ticked" — and RotateCcw for 선택 초기화, which is the reset arrow
+     rather than an ✕: an ✕ on this screen closes things and takes cameras out of chips, and a
+     third meaning for it would be a third vocabulary. */
   const linkButton: React.CSSProperties = {
+    display: "inline-flex", alignItems: "center", gap: "4px",
     border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
     fontSize: "11px", fontWeight: 700, color: "var(--gray-500)",
   };
@@ -354,9 +361,15 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
               <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.pickHeading}</span>
               <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-900)", fontVariantNumeric: "tabular-nums" }}>{picked.length}</span>
               <span style={{ flex: 1 }} />
-              <button type="button" onClick={() => setPicked(cameras.map(c => c.id))} style={linkButton}>{t.allPick}</button>
+              <button type="button" onClick={() => setPicked(cameras.map(c => c.id))} style={linkButton}>
+                <CheckCheck size={13} strokeWidth={2.4} aria-hidden="true" />
+                {t.allPick}
+              </button>
               {picked.length > 0 && (
-                <button type="button" onClick={() => setPicked([])} style={linkButton}>{t.allClear}</button>
+                <button type="button" onClick={() => setPicked([])} style={linkButton}>
+                  <RotateCcw size={12} strokeWidth={2.4} aria-hidden="true" />
+                  {t.allClear}
+                </button>
               )}
             </div>
 
