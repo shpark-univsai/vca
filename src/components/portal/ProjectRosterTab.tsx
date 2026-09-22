@@ -7,7 +7,7 @@ import { REGISTRATION_CODE_TTL_DAYS, codeExpiresAt, formatCode, type RosterEntry
 import { sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
-import { TextField, FIELD_STYLE, BORDER, Drawer, PICKED_LINE, PICKED_FILL } from "./PortalShared";
+import { TextField, FIELD_STYLE, BORDER, ConfirmModal, Drawer, PICKED_LINE, PICKED_FILL } from "./PortalShared";
 
 const T = {
   en: {
@@ -515,42 +515,34 @@ function IssueConfirmModal({
   onConfirm: () => void;
   t: Translations;
 }) {
-  useEscapeKey(onClose);
   const hasCode = !!entry.code;
+  // ConfirmModal, not a copy of it: this card was hand-drawn back when the shared one did not
+  // exist, and the day the shared confirm button changed colour this one stayed where it was.
+  // NOT `danger` — issuing a piece of paper destroys nothing, and the reissue case only invalidates
+  // a code that the body sentence already names. The confirm is therefore the ordinary committing
+  // purple, which is also what this button was reaching for with its old gray-900.
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "20px" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
-            {hasCode ? t.reissueTitle : t.issueTitle}
-          </p>
-          {/* THE TWO LINES ARE ONE ANSWER, THE TITLE IS THE QUESTION (owner: 이 두줄 사이간격
-              좁혀주고 그위에 질문에서부터는 더 떨어트려줘). At 8px under the title and 6px between
-              themselves they read as three evenly spaced lines — a list, which is not what this
-              is. 14px away from the question and 3px apart makes the pair one block: what this
-              costs, in two facts.
-              The second line is said before the code exists, not after: the administrator is
-              about to print it and hand it over, and the deadline is only useful while they
-              still have the paper. */}
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "14px", lineHeight: 1.5 }}>
-            {hasCode ? t.reissueBody(entry.name) : t.issueBody(entry.name)}
-          </p>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "3px", lineHeight: 1.5 }}>
-            {t.codeExpiryNote(REGISTRATION_CODE_TTL_DAYS)}
-          </p>
-        </div>
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.cancel}
-          </button>
-          <button className="portal-btn-primary" onClick={onConfirm}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {hasCode ? t.reissueConfirm : t.issueConfirm}
-          </button>
-        </div>
-      </div>
-    </div>
+    <ConfirmModal
+      title={hasCode ? t.reissueTitle : t.issueTitle}
+      body={hasCode ? t.reissueBody(entry.name) : t.issueBody(entry.name)}
+      confirmLabel={hasCode ? t.reissueConfirm : t.issueConfirm}
+      cancelLabel={t.cancel}
+      onConfirm={onConfirm}
+      onClose={onClose}
+    >
+      {/* THE TWO LINES ARE ONE ANSWER, THE TITLE IS THE QUESTION (owner: 이 두줄 사이간격 좁혀주고
+          그위에 질문에서부터는 더 떨어트려줘). Kept, which is why the expiry is a second paragraph
+          here rather than a sentence glued onto `body`: at one even gap the three lines read as a
+          list, which is not what this is. 3px apart against the body's own 8px still makes the
+          pair one block — what this costs, in two facts — though the 14px the owner asked for is
+          now the shared card's 8px, since that gap belongs to ConfirmModal's body.
+          The second line is said before the code exists, not after: the administrator is about to
+          print it and hand it over, and the deadline is only useful while they still have the
+          paper. */}
+      <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "3px", lineHeight: 1.5 }}>
+        {t.codeExpiryNote(REGISTRATION_CODE_TTL_DAYS)}
+      </p>
+    </ConfirmModal>
   );
 }
 
@@ -562,28 +554,19 @@ function RemoveConfirmModal({
   onConfirm: () => void;
   t: Translations;
 }) {
-  useEscapeKey(onClose);
+  // ConfirmModal, same swap as IssueConfirmModal above — and `danger` stays, because the row goes
+  // and an unused code goes with it. Which of the two body sentences applies is still decided here:
+  // whether a code disappears along with the person is the whole difference between them.
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "20px" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.removeTitle(entry.name)}</p>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.5 }}>
-            {entry.code && entry.status === "unused" ? t.removeBodyWithCode : t.removeBodyNoCode}
-          </p>
-        </div>
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.cancel}
-          </button>
-          <button className="portal-btn-danger" onClick={onConfirm}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.remove}
-          </button>
-        </div>
-      </div>
-    </div>
+    <ConfirmModal
+      title={t.removeTitle(entry.name)}
+      body={entry.code && entry.status === "unused" ? t.removeBodyWithCode : t.removeBodyNoCode}
+      confirmLabel={t.remove}
+      cancelLabel={t.cancel}
+      danger
+      onConfirm={onConfirm}
+      onClose={onClose}
+    />
   );
 }
 

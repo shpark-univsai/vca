@@ -1714,9 +1714,13 @@ export function SortableHeader<K extends string>({ label, sortKey, sort, onToggl
  * is one people learn to click through, which costs the two that matter. Actions that only produce
  * something to hand over (a reset code, a resend) stay one click.
  *
- * The three older bespoke copies of this dialog (ProjectRosterTab's Issue/Remove, ProjectVipTab's
- * Remove) predate it and still carry their own markup — worth folding in here, but not while they
- * are untouched by the change that needed this.
+ * EVERY CONFIRMATION IN PORTAL IS THIS ONE NOW (2026-09-22). Five used to be hand-drawn copies —
+ * ProjectRosterTab's Issue and Remove, ProjectVipTab's Remove, ProjectCamerasTab's offline-mark and
+ * bulk-delete — and they proved why that costs: when this component's confirm button changed
+ * colour, none of the five followed, and two of them had no Escape key at all. A confirmation that
+ * needs one extra element takes `children`; that is what the slot is for (the VIP one puts the
+ * person's photo there, the roster one its expiry line). If a sixth is ever written by hand, this
+ * paragraph is the reason not to.
  */
 export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, confirmDisabled, altAction, onConfirm, onClose, escapeSuspended, bodyScrolls, children }: {
   title: string;

@@ -1028,47 +1028,6 @@ function CameraFormModal({
 }
 
 /**
- * Confirms one direction, because there is only one. This took a `nextStatus` and carried a second
- * set of strings for going the other way — "Reconnect camera?", "This attempts to reconnect ... and
- * marks it online" — which described an attempt that never happened; see markCameraOffline for why
- * that direction is gone. A dialog with one outcome does not need to be told which outcome it is.
- */
-function ConfirmStatusModal({
-  camera, onClose, onConfirm, t,
-}: {
-  camera: Camera;
-  onClose: () => void;
-  onConfirm: () => void;
-  t: (typeof T)["en"] | (typeof T)["ko"];
-}) {
-  useEscapeKey(onClose);
-  return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "380px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "20px" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.confirmOfflineTitle}</p>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px" }}>{t.confirmOfflineBody(camera.name)}</p>
-        </div>
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.cancel}
-          </button>
-          <button onClick={onConfirm}
-            style={{
-              padding: "10px 16px", borderRadius: "8px", border: "none",
-              backgroundColor: "var(--danger-400)", color: "white",
-              fontSize: "13px", fontWeight: 700, cursor: "pointer",
-            }}>
-            {t.markOffline}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
  * Status colours for an upload. Deliberately not the camera palette: green/grey there means a live
  * connection is up or down, and an analysis that has finished is not the same kind of fact as a
  * stream that is alive. Blue for done, grey for waiting, red for failed — so a glance at the column
@@ -2713,17 +2672,26 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           onClose={() => setConfirmingDeleteCam(null)}
         />
       )}
+      {/* Confirms one direction, because there is only one. This took a `nextStatus` and carried a
+          second set of strings for going the other way — "Reconnect camera?", "This attempts to
+          reconnect ... and marks it online" — which described an attempt that never happened; see
+          markCameraOffline for why that direction is gone. A dialog with one outcome does not need
+          to be told which outcome it is.
+          Its own scrim, header and footer are gone: it was a hand-drawn copy of ConfirmModal and
+          had already fallen behind it — a bordered white cancel and, after today, a confirm button
+          the shared one had recoloured without this one following. Red stays red, which in
+          ConfirmModal is `danger`: the camera goes dark for everyone watching the project. */}
       {confirmingStatusCam && (
-        <ConfirmStatusModal
-          camera={confirmingStatusCam}
-          onClose={() => setConfirmingStatusCam(null)}
+        <ConfirmModal
+          title={t.confirmOfflineTitle}
+          body={t.confirmOfflineBody(confirmingStatusCam.name)}
+          confirmLabel={t.markOffline}
+          cancelLabel={t.cancel}
+          danger
           onConfirm={() => { markCameraOffline(confirmingStatusCam); setConfirmingStatusCam(null); }}
-          t={t}
+          onClose={() => setConfirmingStatusCam(null)}
         />
       )}
-      {/* Confirmed, not undoable-with-a-toast: removing cameras in bulk takes a whole set of feeds
-          off monitoring at once, and there is no restore. Says what actually happens and what does
-          not, because "are you sure?" alone leaves people guessing about the recordings. */}
       {inspectingUploadId && projectUploads.some(u => u.id === inspectingUploadId) && (
         <UploadPreviewModal
           upload={projectUploads.find(u => u.id === inspectingUploadId) as UploadedMedia}
@@ -2761,24 +2729,23 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           </div>
         </ConfirmModal>
       )}
+      {/* Confirmed, not undoable-with-a-toast: removing cameras in bulk takes a whole set of feeds
+          off monitoring at once, and there is no restore. Says what actually happens and what does
+          not, because "are you sure?" alone leaves people guessing about the recordings.
+          Drawn by hand until now, and it had drifted twice over: its red was danger-500 where every
+          other destructive confirm in Portal is danger-400, and it never bound Escape at all, so
+          the one dialog in this tab you could not back out of with the keyboard was the one that
+          deletes a whole selection. Both come free from ConfirmModal. */}
       {confirmingBulkDelete && (
-        <div onClick={e => { if (e.target === e.currentTarget) setConfirmingBulkDelete(false); }}
-          style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)", padding: "20px" }}>
-            <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.bulkDeleteConfirm(visibleSelectedIds.length)}</p>
-            <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5, marginTop: "8px" }}>{t.bulkDeleteBody}</p>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "20px" }}>
-              <button className="portal-btn-outline" onClick={() => setConfirmingBulkDelete(false)}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {t.cancel}
-              </button>
-              <button onClick={bulkDelete}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--danger-500)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {t.bulkDelete}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmModal
+          title={t.bulkDeleteConfirm(visibleSelectedIds.length)}
+          body={t.bulkDeleteBody}
+          confirmLabel={t.bulkDelete}
+          cancelLabel={t.cancel}
+          danger
+          onConfirm={bulkDelete}
+          onClose={() => setConfirmingBulkDelete(false)}
+        />
       )}
     </div>
   );

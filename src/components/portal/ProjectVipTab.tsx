@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, ArrowDownWideNarrow, CalendarX, Eye, FileDown, FileInput, FileOutput, RefreshCw, Users } from "lucide-react";
 import { canSetPolicy, currentPortalUser, isExpired, registryHealth, useVcaStore, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed } from "@/lib/time";
 import { useToast } from "../Toast";
@@ -1137,35 +1136,6 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
         </div>
       </div>
     </Drawer>
-  );
-}
-
-function RemoveVipConfirmModal({ t, person, onClose, onConfirm }: { t: VipDict; person: Person; onClose: () => void; onConfirm: () => void }) {
-  useEscapeKey(onClose);
-  return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "380px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "24px 20px 20px", textAlign: "center" }}>
-          <FacePhoto src={person.photoUrl} size={72} radius="50%" style={{ margin: "0 auto 14px" }} />
-          {/* One heading, not a name on one line and "정말 삭제하시겠습니까?" under it — the second
-              line repeated the first without adding anything, and the question it asked was about
-              nobody in particular. 16px/800 is the dialog heading size the status and group
-              confirms already use. */}
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.confirmRemoveTitle(person.name)}</p>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px" }}>{t.confirmRemoveBody}</p>
-        </div>
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.cancel}
-          </button>
-          <button className="portal-btn-danger" onClick={onConfirm}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.removeAction}
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -2842,8 +2812,28 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           onConfirm={applyBulkDelete}
         />
       )}
+      {/* The face IS the check: this list is people, and the row that was clicked is identified by
+          a name that several of them can share. So the photo comes with the question — that is
+          what ConfirmModal's `children` is for, and it is why this dialog kept its own markup
+          long after the rest of the tab moved over. It no longer has to: the hand-drawn copy had
+          stopped matching the shared one's confirm button anyway.
+          One heading, not a name on one line and "정말 삭제하시겠습니까?" under it — the second line
+          repeated the first without adding anything, and the question it asked was about nobody in
+          particular. That is carried by the title string itself.
+          The photo sits UNDER the sentence now rather than above the name, because `children` is
+          the slot below the body and a centred stack is not worth a second copy of this card. */}
       {confirmingRemove && (
-        <RemoveVipConfirmModal t={t} person={confirmingRemove} onClose={() => setConfirmingRemove(null)} onConfirm={confirmRemove} />
+        <ConfirmModal
+          title={t.confirmRemoveTitle(confirmingRemove.name)}
+          body={t.confirmRemoveBody}
+          confirmLabel={t.removeAction}
+          cancelLabel={t.cancel}
+          danger
+          onConfirm={confirmRemove}
+          onClose={() => setConfirmingRemove(null)}
+        >
+          <FacePhoto src={confirmingRemove.photoUrl} size={72} radius="50%" style={{ marginTop: "14px" }} />
+        </ConfirmModal>
       )}
       {managingCategories && teamId && (
         <VipCategoryModal teamId={teamId} categories={teamCategories} canEdit={maySetPolicy} onClose={() => setManagingCategories(false)} />
