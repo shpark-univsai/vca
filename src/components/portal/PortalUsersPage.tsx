@@ -122,6 +122,8 @@ const T = {
     colCameras: "Cameras",
     camerasAll: "All",
     camerasSome: (n: number, total: number) => `${n} / ${total}`,
+    camerasFromGroups: (n: number) => `${n} group${n === 1 ? "" : "s"}`,
+    camerasFromGroupsTitle: "Part of this scope comes from camera groups, so it grows when a group does. Individually picked cameras do not.",
     camerasNarrowedTitle: (n: number, total: number) => `Sees ${n} of the ${total} cameras on their projects, in the app.`,
     camerasAllTitle: "Sees every camera on their projects, including ones added later.",
     colLastLogin: "Last Login",
@@ -513,6 +515,8 @@ const T = {
     colCameras: "카메라",
     camerasAll: "전체",
     camerasSome: (n: number, total: number) => `${n} / ${total}`,
+    camerasFromGroups: (n: number) => `그룹 ${n}`,
+    camerasFromGroupsTitle: "이 범위의 일부가 카메라 그룹에서 나옵니다. 그룹이 커지면 이 범위도 같이 커집니다. 개별로 고른 카메라는 그렇지 않습니다.",
     camerasNarrowedTitle: (n: number, total: number) => `앱에서 담당 프로젝트 카메라 ${total}대 중 ${n}대만 봅니다.`,
     camerasAllTitle: "담당 프로젝트의 카메라를 전부 봅니다. 나중에 추가되는 것도 포함합니다.",
     colLastLogin: "마지막 로그인",
@@ -3888,12 +3892,35 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
               ) : scopeCountFor(u) === null ? (
                 <span title={t.camerasAllTitle} style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.camerasAll}</span>
               ) : (
-                /* The union of groups and individual cameras — the number they actually see. The
-                   groups are named in the hover, because "14 / 68" does not say whether that came
-                   from a group that will grow. */
-                <span title={`${t.camerasNarrowedTitle(scopeCountFor(u) ?? 0, scopableCamerasFor(u).length)}${groupNamesFor(u) ? ` · ${groupNamesFor(u)}` : ""}`}
-                  style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontVariantNumeric: "tabular-nums" }}>
-                  {t.camerasSome(scopeCountFor(u) ?? 0, scopableCamerasFor(u).length)}
+                /*
+                 * THE NUMBER, AND WHETHER IT WILL GROW BY ITSELF (owner's reference mockup,
+                 * 2026-09-22: 「5대 허용」 with a 「2개 그룹」 mark beside it).
+                 *
+                 * `14 / 68` is the union of groups and individual cameras, and the one thing it
+                 * cannot say is which kind it came from. That matters more than the figure: a
+                 * scope built from groups takes in every camera added to those groups later, and
+                 * a scope built from individual cameras never changes. An access review reading
+                 * this column is looking for exactly that difference, and until now it existed
+                 * only inside the hover text.
+                 *
+                 * On its own line rather than beside the figure. Measured at 1180: this column
+                 * holds about 88px between 접근 and 마지막 로그인, and 「5 / 68」 plus 「그룹 2」
+                 * needs more than that. The rows already stand two lines tall for the 사용자 and
+                 * 접근 cells, so the second line here costs no height.
+                 */
+                <span style={{ display: "flex", flexDirection: "column", gap: "1px", alignItems: "flex-start" }}
+                  title={`${t.camerasNarrowedTitle(scopeCountFor(u) ?? 0, scopableCamerasFor(u).length)}${groupNamesFor(u) ? ` · ${groupNamesFor(u)}` : ""}`}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontVariantNumeric: "tabular-nums" }}>
+                    {t.camerasSome(scopeCountFor(u) ?? 0, scopableCamerasFor(u).length)}
+                  </span>
+                  {/* Only when a group is in it. A scope of individual cameras says nothing here,
+                      which is the correct silence: nothing about it will move on its own. */}
+                  {(u.cameraGroupIds ?? []).length > 0 && (
+                    <span title={t.camerasFromGroupsTitle}
+                      style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>
+                      {t.camerasFromGroups((u.cameraGroupIds ?? []).length)}
+                    </span>
+                  )}
                 </span>
               )}
             </span>
