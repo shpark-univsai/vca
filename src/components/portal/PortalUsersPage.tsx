@@ -3641,6 +3641,11 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
               const hint = others.length === 0 ? t.projectsOnlyThis : t.alsoOn(others.map(projectName).join(", "));
               const style: React.CSSProperties = {
                 fontSize: "12px", fontVariantNumeric: "tabular-nums", textAlign: "left",
+                /* A grid child stretches by default, so the button filled the whole 106px track
+                   and its dotted underline ran the width of the cell under a single digit
+                   (owner: 2 아래 점선이 숫자에 비해 너무 길어). justifySelf is the grid-level
+                   property that fixes it — `display: inline-block` loses to stretch. */
+                justifySelf: "start",
                 /* One site is the ordinary answer and stays quiet; more than one is the row worth
                    finding, so it is the one that gets the ink. */
                 color: others.length > 0 ? "var(--gray-900)" : "var(--gray-400)",
@@ -3655,13 +3660,19 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                  it. The underline only where there is something else to see: a dotted number on
                  every row would make "1" look like it hides something. */
               if (!manageAccess) return <span title={hint} style={style}>{t.projectsCount(u.projectIds.length)}</span>;
+              /* THE UNDERLINE GOES ON THE DIGIT, THE HIT AREA ON THE BUTTON. Tightening the
+                 button itself made both 7px wide — the dots fit the number and so did the only
+                 place you could press. The mark belongs to the character; the padding belongs to
+                 the finger. */
               return (
                 <button type="button" title={hint} onClick={() => setEditingProjectsFor(u)}
                   style={{
-                    ...style, border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
-                    borderBottom: others.length > 0 ? "1px dotted var(--gray-300)" : "none",
+                    ...style, border: "none", background: "none", padding: "2px 7px", margin: "0 -7px",
+                    cursor: "pointer", fontFamily: "inherit",
                   }}>
-                  {t.projectsCount(u.projectIds.length)}
+                  <span style={{ borderBottom: others.length > 0 ? "1px dotted var(--gray-400)" : "none", paddingBottom: "1px" }}>
+                    {t.projectsCount(u.projectIds.length)}
+                  </span>
                 </button>
               );
             })()}
