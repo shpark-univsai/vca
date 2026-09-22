@@ -50,7 +50,6 @@ const T = {
     goToCameras: "Go to Input Sources",
     editMembers: "Edit cameras",
     membersTitle: (label: string) => `Cameras in ${label}`,
-    membersBody: "Ticked cameras are in the group. Everybody holding it sees whatever is ticked here, including what gets ticked later.",
     membersSearch: "Search by name or code",
     membersSave: "Save cameras",
     membersNone: "No camera on this project matches that.",
@@ -60,7 +59,7 @@ const T = {
     noZone: "No zone",
     zonePick: "select all", zoneClear: "clear",
     inGroupHeading: "In this group",
-    inGroupEmpty: "Nothing yet. Tick cameras in the list, or click dots and zone pills on the map.",
+    inGroupEmpty: "Nothing yet.",
     inGroupUnknown: "No longer registered",
     inGroupRemove: "Take out of the group",
     viewList: "List", viewMap: "Map",
@@ -70,11 +69,9 @@ const T = {
     createNamePlaceholder: "The way people say it out loud",
     createButton: "New group",
     createdToast: "Camera group created",
-    overlapNote: "A camera can be in several groups at once. Adding it here does not take it out of another.",
     inOtherGroups: (n: number) => `in ${n} other`,
     inOtherGroupsTitle: (names: string) => `Also in: ${names}`,
     pickedCount: (n: number) => `${n} picked`,
-    mapHint: "Click a dot to add or remove it. Zone pills add the whole zone.",
     zonePicked: (n: number) => n === 0 ? "none in the group" : `${n} in the group`,
     renameTitle: (label: string) => `Rename ${label}`,
     renameBody: "The name is what an administrator picks from when granting camera access, so it should read the way somebody says it out loud.",
@@ -103,7 +100,6 @@ const T = {
     goToCameras: "입력 소스로 가기",
     editMembers: "카메라 편집",
     membersTitle: (label: string) => `${label}의 카메라`,
-    membersBody: "체크된 카메라가 그룹에 들어갑니다. 이 그룹을 가진 사람은 여기 체크된 것을 보게 되고, 나중에 체크되는 것도 함께 보게 됩니다.",
     membersSearch: "이름이나 코드로 검색",
     membersSave: "카메라 저장",
     membersNone: "그 조건에 맞는 카메라가 이 프로젝트에 없습니다.",
@@ -113,7 +109,9 @@ const T = {
     noZone: "구역 미지정",
     zonePick: "전체 선택", zoneClear: "해제",
     inGroupHeading: "이 그룹에 들어있는 것",
-    inGroupEmpty: "아직 없습니다. 목록에서 체크하거나, 지도에서 점과 구역 알약을 누르세요.",
+    /* One line, no instruction: the owner's standing rule about second lines in empty states,
+       and the instruction it carried is what the dots and the checkboxes do by being pressed. */
+    inGroupEmpty: "아직 없습니다.",
     inGroupUnknown: "등록부에 없는 카메라",
     inGroupRemove: "그룹에서 빼기",
     viewList: "목록", viewMap: "지도",
@@ -123,11 +121,9 @@ const T = {
     createNamePlaceholder: "사람들이 입으로 부르는 말",
     createButton: "그룹 만들기",
     createdToast: "카메라 그룹을 만들었습니다",
-    overlapNote: "카메라는 여러 그룹에 동시에 들 수 있습니다. 여기서 넣어도 다른 그룹에서 빠지지 않습니다.",
     inOtherGroups: (n: number) => `다른 그룹 ${n}`,
     inOtherGroupsTitle: (names: string) => `여기에도 있음: ${names}`,
     pickedCount: (n: number) => `${n}대 체크됨`,
-    mapHint: "점을 눌러 넣거나 뺍니다. 구역 알약을 누르면 그 구역이 통째로 들어갑니다.",
     zonePicked: (n: number) => n === 0 ? "그룹에 없음" : `그룹에 ${n}대`,
     renameTitle: (label: string) => `${label} 이름 바꾸기`,
     renameBody: "이 이름이 카메라 권한을 줄 때 고르는 이름입니다. 사람들이 입으로 부르는 말로 두는 게 좋습니다.",
@@ -268,7 +264,12 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
           <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)" }}>
             {creating ? t.createTitle : t.membersTitle(group.label)}
           </p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "2px" }}>{t.membersBody}</p>
+          {/* NO SUBTITLE (owner, 2026-09-22: 저런 설명문구가 없어도 바로 사용할때 헷갈리지않게
+              디자인해야하는게 맞거든?). It said "체크된 카메라가 그룹에 들어갑니다" over a screen
+              whose right column fills with the checked cameras as you check them, and then the
+              growth rule — which belongs where the group is HANDED OUT, not where it is built:
+              the invite form's camera row and the scope picker both carry it, beside the control
+              that grants it. */}
         </div>
         {/*
          * SAVE AT THE TOP, WHERE IT CANNOT FALL OFF.
@@ -354,13 +355,14 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
               the same order the page's own toolbar uses, where the search box leads and the
               filters follow it.
             */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderBottom: BORDER, backgroundColor: "var(--gray-50)" }}>
-              {view === "list" ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "10px", padding: "10px 12px", borderBottom: BORDER, backgroundColor: "var(--gray-50)" }}>
+              {/* In map mode the strip carries nothing but the switch: pressing a dot adds a row
+                  to the column on the right and rings the dot, which is the instruction. The
+                  sentence that used to sit here described that. */}
+              {view === "list" && (
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <TextField value={query} onChange={setQuery} placeholder={t.membersSearch} />
                 </div>
-              ) : (
-                <span style={{ flex: 1, minWidth: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{t.mapHint}</span>
               )}
               <div style={{ display: "flex", gap: "4px", padding: "3px", backgroundColor: "white", border: BORDER, borderRadius: "9px", flexShrink: 0 }}>
                 {([["list", t.viewList], ["map", t.viewMap]] as const).map(([value, text]) => (
@@ -520,9 +522,10 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
                 })}
               </div>
             )}
-            {/* THE ONE RULE THAT CANNOT BE SEEN, under the list it is about rather than stacked
-                above the map with the other hints. */}
-            <p style={{ padding: "10px 12px", borderTop: "1px solid var(--gray-100)", fontSize: "10.5px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.overlapNote}</p>
+            {/* The overlap rule is not written here either: a camera already in another group
+                carries "다른 그룹 1" on its own row in the list, which is the place somebody is
+                actually wondering about it. A sentence at the foot of the panel repeats it for the
+                other sixty rows it does not apply to. */}
           </div>
       </div>
     </div>
