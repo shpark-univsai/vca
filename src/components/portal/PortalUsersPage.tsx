@@ -3118,7 +3118,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
    * grant, as a mark beside the preset rather than a column asking the same question twice.
    */
   const GRID = showAccountColumns
-    ? "minmax(160px, 1.2fr) 0.62fr 0.78fr 1.15fr 0.62fr 0.82fr 0.58fr 36px"
+    ? "minmax(160px, 1.2fr) 0.6fr 0.75fr 0.6fr 1.12fr 0.6fr 0.8fr 36px"
     : "minmax(180px, 1.4fr) 1fr 1.2fr 0.7fr 36px";
 
   const bulkIssueCodes = () => {
@@ -3574,16 +3574,18 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
               let anyone rank people with. */}
           {((showAccountColumns ? [
             { label: t.colUser, key: "name" },
+            /* Before what they may do: a suspended account makes every grant on the row
+               hypothetical, and that has to be known at the name. */
+            { label: t.colStatus, key: "status" },
+            { label: t.colPermission, key: "permission" },
             /* Sortable: "who is on more than this site" is the question, and it is answered by
                ordering the column, not by reading five rows. */
             { label: t.colProjects, key: "projects" },
-            { label: t.colPermission, key: "permission" },
             { label: t.colAccess },
             /* Sortable, and "전체" sorts as the largest: the question this column answers is who
                has been narrowed, so the narrowest scopes have to be reachable in one click. */
             { label: t.colCameras, key: "cameras" },
             { label: t.colLastLogin, key: "lastLogin" },
-            { label: t.colStatus, key: "status", align: "right" as const },
             { label: "" },
           ] : [
             // The roster tab's own set. "Permission on signup" is not the same column as an
@@ -3619,6 +3621,42 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
               <p title={u.name} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</p>
               <p title={u.email} style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</p>
             </div>
+            {/*
+              THE STATE OF THE ACCOUNT, BESIDE THE ACCOUNT (owner, 2026-09-22: 계정상태는 사용자열
+              근처에 있어야할것같아).
+              
+              It was the last column before the menu, at the far edge of a 1,144px row, so reading
+              "is this person active" meant crossing five columns of what they may do. Whether the
+              account works at all comes before what it reaches: 정지됨 makes every other cell in
+              the row hypothetical, and the reader should know that at the name.
+              
+              Left-aligned now. The right edge was the reason it used to be pushed away from the
+              actions menu, and it is no longer at that edge.
+            */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "4px" }}>
+              <StatusBadge status={u.status} />
+              {u.tempPasswordIssuedAt && <TempPasswordBadge issuedAt={u.tempPasswordIssuedAt} />}
+              {u.setupCode && <SetupCodeBadge issuedAt={u.setupCodeIssuedAt} />}
+            </div>
+            {/* A VALUE, NOT A CONTROL — both this cell and Access beside it. They were each a
+                bordered 36px select on every row, which made a list of people read as a form for
+                editing permissions, and left the row's real actions (suspend, remove) as the
+                quietest thing on it. Changing either now goes through the row menu, which is
+                where this table's other access changes already live, and through a confirm step,
+                because neither is cheap to undo. See AccessChangeModal.
+
+                An account with no Portal access has no role to show, and printing one would imply
+                a Portal role can be held without Portal. The dash says so; Access beside it is
+                where that changes.
+
+                The dead-end the selects used to have is gone with them: the last owner's role is
+                the one the store refuses to change (isLastActiveAdmin), and the menu entry for it
+                is disabled with the reason attached rather than opening and doing nothing. */}
+            {!canEnterPortal(u.permission) ? (
+              <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
+            ) : (
+              <span title={lastAdmin ? t.lastAdminRoleFixed : undefined} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{roleLabel(t, u.permission)}</span>
+            )}
             {/*
               HOW MANY SITES THIS ACCOUNT IS ON — ITS OWN COLUMN, AND A NUMBER (owner, 2026-09-22:
               열을 추가해주는게 맞을것같은데).
@@ -3676,25 +3714,6 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                 </button>
               );
             })()}
-            {/* A VALUE, NOT A CONTROL — both this cell and Access beside it. They were each a
-                bordered 36px select on every row, which made a list of people read as a form for
-                editing permissions, and left the row's real actions (suspend, remove) as the
-                quietest thing on it. Changing either now goes through the row menu, which is
-                where this table's other access changes already live, and through a confirm step,
-                because neither is cheap to undo. See AccessChangeModal.
-
-                An account with no Portal access has no role to show, and printing one would imply
-                a Portal role can be held without Portal. The dash says so; Access beside it is
-                where that changes.
-
-                The dead-end the selects used to have is gone with them: the last owner's role is
-                the one the store refuses to change (isLastActiveAdmin), and the menu entry for it
-                is disabled with the reason attached rather than opening and doing nothing. */}
-            {!canEnterPortal(u.permission) ? (
-              <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
-            ) : (
-              <span title={lastAdmin ? t.lastAdminRoleFixed : undefined} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)" }}>{roleLabel(t, u.permission)}</span>
-            )}
             {/* Where this person may sign in. Its own value rather than a fourth role, because it
                 is a second question — see PortalPermission's doc.
 
@@ -3785,14 +3804,6 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
               )}
             </span>
             <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{u.lastLoginAt ?? "—"}</span>
-            {/* Right-aligned. Left-aligned, the badge sat at the near edge of its cell with a
-                hand's width of nothing between it and the actions menu — most visible once the
-                window narrows, which is when the columns to the left need that space most. */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
-              <StatusBadge status={u.status} />
-              {u.tempPasswordIssuedAt && <TempPasswordBadge issuedAt={u.tempPasswordIssuedAt} />}
-              {u.setupCode && <SetupCodeBadge issuedAt={u.setupCodeIssuedAt} />}
-            </div>
             {/* Two mail actions, because the two ways a person gets locked out need different
                 messages: an invite that never arrived is resent, an account whose password is
                 forgotten gets a reset. Resend only shows for users still sitting at "invited" —
