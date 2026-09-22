@@ -62,7 +62,7 @@ const T = {
     noZone: "No zone",
     zonePick: "select all", zoneClear: "clear",
     allPick: "Select all", allClear: "Clear selection",
-    inGroupHeading: "In this group",
+    pickHeading: "Select cameras",
     inGroupUnknown: "No longer registered",
     inGroupRemove: "Take out of the group",
     viewList: "List", viewMap: "Map",
@@ -108,7 +108,10 @@ const T = {
     noZone: "구역 미지정",
     zonePick: "전체 선택", zoneClear: "해제",
     allPick: "전부 고르기", allClear: "선택 초기화",
-    inGroupHeading: "이 그룹에 들어있는 것",
+    /* 「이 그룹에 들어있는 것」이었다 (사용자: 좀더 쉽고 직관적인 단어로). 그 말은 무엇이
+       담겼는지를 설명하려 했는데, 이 줄이 머리에 붙어 있는 것은 고르는 칸이고 옆의 숫자가
+       이미 몇 개 담겼는지 말한다. 시안도 「카메라 선택」을 쓴다. */
+    pickHeading: "카메라 선택",
     inGroupUnknown: "등록부에 없는 카메라",
     inGroupRemove: "그룹에서 빼기",
     viewList: "목록", viewMap: "지도",
@@ -340,9 +343,15 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
               act on — a control spanning more than the list it narrows is the misalignment the
               in-page editor was corrected for. 전부 고르기 and 선택 초기화 sit above that strip,
               because they act on the whole selection rather than on what the search left. */}
-          <div style={{ flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column" }}>
+          {/* THE WRAPPER GROWS ONLY IN MAP VIEW. Shrinking the bordered box inside it was not
+              enough: this column kept `flex: 1 1 auto` and swallowed the slack itself, so a search
+              that cut the list to 80px left 407px of nothing under it and pushed the selected
+              cameras that far down — measured, and the white space the owner was pointing at. */}
+          <div style={view === "map"
+            ? { flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column" }
+            : { flex: "0 0 auto", display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.inGroupHeading}</span>
+              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.pickHeading}</span>
               <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-900)", fontVariantNumeric: "tabular-nums" }}>{picked.length}</span>
               <span style={{ flex: 1 }} />
               <button type="button" onClick={() => setPicked(cameras.map(c => c.id))} style={linkButton}>{t.allPick}</button>
@@ -351,9 +360,20 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
               )}
             </div>
 
-            {/* 384px = the 44px strip plus a 340px map, which is what holds the seeded register's
-                eighteen zone pills apart at this width — the figure this floor exists to protect. */}
-            <div style={{ flex: 1, minHeight: "384px", border: CARD_BORDER, borderRadius: CARD_RADIUS, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            {/*
+              THE FLOOR IS THE MAP'S, NOT THE BOX'S (owner, 2026-09-22: 아래 빈여백은 없게 박스를
+              줄여주고 그럼 아래 선택된 카메라들이 다 보일것같아).
+             
+              384px — the 44px strip plus a 340px map — is what holds the seeded register's
+              eighteen zone pills apart, and a map shorter than that is the thing this floor
+              exists to prevent. A LIST has no such need: it is as tall as its rows, and holding
+              it at 384 left white space under a short one and pushed the selected cameras out of
+              sight. So the floor applies in map view only, and in list view the box takes its
+              content up to a screenful and scrolls past that.
+            */}
+            <div style={view === "map"
+              ? { flex: "1 1 auto", minHeight: "384px", border: CARD_BORDER, borderRadius: CARD_RADIUS, overflow: "hidden", display: "flex", flexDirection: "column" }
+              : { flex: "0 0 auto", border: CARD_BORDER, borderRadius: CARD_RADIUS, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "10px", padding: "10px 12px", borderBottom: BORDER, backgroundColor: "var(--gray-50)" }}>
                 {view === "list" && (
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -391,7 +411,9 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
               ) : zones.length === 0 ? (
                 <p style={{ fontSize: "12px", color: "var(--gray-400)", padding: "12px", lineHeight: 1.5 }}>{t.membersNone}</p>
               ) : (
-                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px" }}>
+                /* A screenful, then it scrolls: a thousand-camera register cannot set the height
+                   of a drawer, and eighteen open zones already run past one. */
+                <div style={{ maxHeight: "420px", overflowY: "auto", padding: "8px" }}>
                   {zones.map(([zone, list]) => {
                     const open = needle !== "" || openZones.includes(zone);
                     return (
@@ -406,18 +428,18 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
                               style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 120ms", flexShrink: 0 }}>
                               <path d="M3 1.5L7 5l-4 3.5" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
-                            <span style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)" }}>
+                            <span style={{ fontSize: "11.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)" }}>
                               {zone || t.noZone} · {list.length}
                             </span>
                           </button>
                           <button type="button" onClick={() => toggleZoneAll(list.map(c => c.id))}
-                            style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>
+                            style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "11.5px", fontWeight: 700, color: "var(--gray-500)" }}>
                             {list.every(c => picked.includes(c.id)) ? t.zoneClear : t.zonePick}
                           </button>
                           {/* A closed zone says how much of it is in the group, or you would open
                               it to find out whether you had already ticked it. */}
                           {!open && (
-                            <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>
+                            <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>
                               {t.zonePicked(list.filter(c => picked.includes(c.id)).length)}
                             </span>
                           )}
@@ -427,22 +449,25 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
                           const others = alsoIn(c.id);
                           return (
                             <button key={c.id} type="button" onClick={() => toggle(c.id)}
-                              style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left", padding: "6px 6px", borderRadius: "8px", border: "none", backgroundColor: "transparent", cursor: "pointer", fontFamily: "inherit" }}>
-                              <span style={{ width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white" }}>
+                              style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left", padding: "7px 6px", borderRadius: "8px", border: "none", backgroundColor: "transparent", cursor: "pointer", fontFamily: "inherit" }}>
+                              <span style={{ width: "17px", height: "17px", borderRadius: "5px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white" }}>
                                 {on && (
                                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
                                     <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                                   </svg>
                                 )}
                               </span>
-                              <span style={{ minWidth: 0, fontSize: "12.5px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
-                              <span style={{ flexShrink: 0, fontSize: "10px", fontFamily: "monospace", color: "var(--gray-400)" }}>{c.code}</span>
+                              {/* A touch larger than the 12.5/10 it was (owner: 그 아래 목록일때
+                                  텍스트 조금 살짝만 키워줘) — this is the list somebody reads
+                                  sixty rows of, and it sits in a 672px drawer with room for it. */}
+                              <span style={{ minWidth: 0, fontSize: "13.5px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
+                              <span style={{ flexShrink: 0, fontSize: "11px", fontFamily: "monospace", color: "var(--gray-400)" }}>{c.code}</span>
                               {/* THE OVERLAP, ON THE ROW IT IS ABOUT. Counted here and named on
                                   hover: four group names on a row would push the camera's own
                                   name out. */}
                               {others.length > 0 && (
                                 <span title={t.inOtherGroupsTitle(others.map(g => g.label).join(", "))}
-                                  style={{ flexShrink: 0, fontSize: "10px", fontWeight: 700, color: "var(--gray-400)" }}>
+                                  style={{ flexShrink: 0, fontSize: "11px", fontWeight: 700, color: "var(--gray-400)" }}>
                                   {t.inOtherGroups(others.length)}
                                 </span>
                               )}
@@ -461,12 +486,13 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
               group back — rings on dots and a count name nothing — and in the list the ticks are
               spread over eighteen zones. Each chip's ✕ takes that camera out, which is the one
               action this block is for. */}
-          {/* THREE ROWS AT MOST, THEN IT SCROLLS. 61 cameras is 300px of chips, and letting that
-              grow is how the map got squeezed. Bounded here rather than capped with 「외 N대」,
-              because every chip carries the ✕ that takes that camera out — a chip you cannot see
-              is a camera you cannot remove. */}
+          {/* NO CAP ON THESE ANY MORE. They were held to three rows while the picker above claimed
+              a fixed 384px whatever it held; now that a list box shrinks to its rows, the chips
+              get the space the box gave back and the body scrolls when there are genuinely too
+              many. Never capped with 「외 N대」 either way — every chip carries the ✕ that takes
+              that camera out, and a chip you cannot see is a camera you cannot remove. */}
           {picked.length > 0 && (
-            <div style={{ flexShrink: 0, maxHeight: "92px", overflowY: "auto", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+            <div style={{ flexShrink: 0, display: "flex", flexWrap: "wrap", gap: "6px" }}>
               {picked.map(id => {
                 const cam = cameras.find(c => c.id === id);
                 return (

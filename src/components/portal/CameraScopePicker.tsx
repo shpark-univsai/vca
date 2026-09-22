@@ -56,7 +56,21 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
   const narrowed = user.cameraIds !== undefined || user.cameraGroupIds !== undefined;
   const [mode, setMode] = useState<"all" | "some">(narrowed ? "some" : "all");
   const [pickedGroups, setPickedGroups] = useState<string[]>(user.cameraGroupIds ?? []);
-  const [picked, setPicked] = useState<string[]>(user.cameraIds ?? (narrowed ? [] : cameras.map(c => c.id)));
+  /*
+   * 「고른 것만」 OPENS EMPTY. IT USED TO OPEN WITH EVERY CAMERA TICKED.
+   *
+   * That default wrote today's whole register as an explicit list the moment somebody switched
+   * modes and saved — a scope identical to 전부 on the day it is written and excluding every
+   * camera installed after it. The most dangerous kind of defect: the save succeeds and the
+   * screen agrees with it. Found by driving the dialog for a test (2026-09-22): to grant one
+   * group of 3, the 62 pre-ticked cameras had to be cleared one zone at a time, eighteen times,
+   * and skipping that step produced 62 frozen cameras with no error anywhere.
+   *
+   * 「전부에서 두 대만 빼기」 is still a real scope and still buildable — 전부 고르기 fills the
+   * list in one press, and the freeze warning then lands on somebody who chose that state rather
+   * than on everybody who opened the dialog. The expensive direction is now the rare one.
+   */
+  const [picked, setPicked] = useState<string[]>(user.cameraIds ?? []);
 
   /*
    * A THOUSAND CAMERAS IS THE REAL SITE, NOT THE SEED (owner, 2026-09-21: 실제 현장에서는 연결된
@@ -309,6 +323,23 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
               {needle !== "" && (
                 <span style={{ fontSize: "10.5px", color: "var(--gray-400)" }}>{t.searchHits(shownCount)}</span>
               )}
+              <span style={{ flex: 1 }} />
+              {/* The one press that builds 「전부에서 두 대만 빼기」, now that the list no longer
+                  opens that way. On the whole register rather than on the search result: a filled
+                  list is the starting point for an exclusion, and filling only what the search
+                  left would be a different, smaller answer wearing the same label. */}
+              {mode === "some" && (
+                <button type="button" onClick={() => setPicked(cameras.map(c => c.id))}
+                  style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>
+                  {t.pickEvery}
+                </button>
+              )}
+              {mode === "some" && picked.length > 0 && (
+                <button type="button" onClick={() => setPicked([])}
+                  style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>
+                  {t.clearEvery}
+                </button>
+              )}
             </div>
             {/* THE FIELD THAT WAS MISSING. Disabled under "all" like everything else in this
                 block: searching a list you are not choosing from is a control that does nothing. */}
@@ -445,6 +476,7 @@ const T = {
     clearGroup: "clear",
     searchPlaceholder: "Search by name or code",
     searchHits: (n: number) => `${n} found`,
+    pickEvery: "Select all", clearEvery: "Clear selection",
     searchNone: "No camera on these projects matches that.",
     freezeWarning: "Every camera is ticked. Saved like this the list is frozen, and cameras added later are left out — pick the first option to include them.",
     zonePicked: (n: number) => n === 0 ? "none picked" : `${n} picked`,
@@ -483,6 +515,7 @@ const T = {
     clearGroup: "해제",
     searchPlaceholder: "이름이나 코드로 검색",
     searchHits: (n: number) => `${n}대`,
+    pickEvery: "전부 고르기", clearEvery: "선택 초기화",
     searchNone: "그 조건에 맞는 카메라가 없습니다.",
     freezeWarning: "전부 체크돼 있습니다. 이대로 저장하면 목록이 굳어서 나중에 추가되는 카메라는 빠집니다 — 함께 주려면 위의 첫 번째를 고르세요.",
     zonePicked: (n: number) => n === 0 ? "고른 것 없음" : `${n}대 고름`,
