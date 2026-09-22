@@ -300,33 +300,6 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
       </div>
       <div style={{ backgroundColor: "white", borderRadius: CARD_RADIUS, border: CARD_BORDER, boxShadow: PANEL_SHADOW, display: "flex", flexDirection: "column" }}>
 
-        <div style={{ padding: "16px 20px 0", display: "flex", alignItems: "center", gap: "10px" }}>
-          {/* TWO WAYS IN, NOT TWO SELECTIONS. Switching does not reset anything — the count in the
-              footer is the same set on both sides, which is what makes switching safe to do
-              halfway through. */}
-          <div style={{ display: "flex", gap: "4px", padding: "3px", backgroundColor: "var(--gray-100)", borderRadius: "9px" }}>
-            {([["list", t.viewList], ["map", t.viewMap]] as const).map(([value, text]) => (
-              <button key={value} type="button" onClick={() => setView(value)}
-                style={{
-                  padding: "5px 12px", borderRadius: "7px", cursor: "pointer", fontFamily: "inherit",
-                  fontSize: "11.5px", fontWeight: 700, border: "none",
-                  backgroundColor: view === value ? "white" : "transparent",
-                  color: view === value ? "var(--gray-900)" : "var(--gray-500)",
-                  boxShadow: view === value ? "var(--shadow-card)" : "none",
-                }}>
-                {text}
-              </button>
-            ))}
-          </div>
-          {view === "list" && (
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <TextField value={query} onChange={setQuery} placeholder={t.membersSearch} />
-            </div>
-          )}
-          {view === "map" && (
-            <span style={{ flex: 1, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{t.mapHint}</span>
-          )}
-        </div>
 
         {/* THE ONE SENTENCE THAT STOPS A WRONG ASSUMPTION. Said above the list rather than on a
             row, because it is about the rule and not about any one camera. */}
@@ -354,6 +327,45 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
               eighteen zone rows, off the bottom of the window, which is the one place it must not
               be. Measured at 1440: picker 400px, list 218px, side by side. */}
           <div style={{ flex: "1 1 360px", minWidth: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
+            {/*
+              THE VIEW SWITCH AND THE SEARCH BELONG TO THIS COLUMN (owner, 2026-09-22: 이게 좀
+              어색해).
+
+              They were a row ABOVE the frame, and the search box stretched the full width of the
+              pane — across the form column too — while filtering only the list on the left. A
+              control that spans two columns and acts on one is the misalignment that read as
+              awkward. Klaviyo keeps its search floating inside the map it searches; here it sits
+              at the top of the picker, the width of the thing it narrows.
+
+              The hint takes its place in map mode: there is nothing to type at, and "점을 눌러
+              넣거나 뺍니다" is what a first-time reader needs in exactly that spot.
+
+              SEARCH FIRST, THEN THE SWITCH (owner: 목록/지도 토글은 검색바 오른쪽으로 옮겨줘) —
+              the same order the page's own toolbar uses, where the search box leads and the
+              filters follow it.
+            */}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderBottom: BORDER, backgroundColor: "var(--gray-50)" }}>
+              {view === "list" ? (
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <TextField value={query} onChange={setQuery} placeholder={t.membersSearch} />
+                </div>
+              ) : (
+                <span style={{ flex: 1, minWidth: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{t.mapHint}</span>
+              )}
+              <div style={{ display: "flex", gap: "4px", padding: "3px", backgroundColor: "white", border: BORDER, borderRadius: "9px", flexShrink: 0 }}>
+                {([["list", t.viewList], ["map", t.viewMap]] as const).map(([value, text]) => (
+                  <button key={value} type="button" onClick={() => setView(value)}
+                    style={{
+                      padding: "4px 11px", borderRadius: "7px", cursor: "pointer", fontFamily: "inherit",
+                      fontSize: "11.5px", fontWeight: 700, border: "none",
+                      backgroundColor: view === value ? "var(--gray-900)" : "transparent",
+                      color: view === value ? "white" : "var(--gray-500)",
+                    }}>
+                    {text}
+                  </button>
+                ))}
+              </div>
+            </div>
           {view === "map" ? (
             <div style={{ flex: 1, minHeight: 0 }}>
               <CameraMapView
