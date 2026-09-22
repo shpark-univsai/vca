@@ -29,6 +29,8 @@ const T = {
     searchPlaceholder: "Search by user name or email address",
 
     // Role/status summary strip
+    axisConsoleRole: "Console",
+    axisDoor: "Signs in to",
     countOwners: "Owners",
     countAdmins: "Admins",
     countAuditors: "Read-only",
@@ -108,6 +110,8 @@ const T = {
     // Table
     colUser: "User",
     colOtherProjects: "Other projects",
+    alsoOn: (where: string) => `Also on ${where}`,
+    alsoOnMore: (first: string, rest: number) => `${first} +${rest}`,
     otherProjectsNone: "This project only",
     colPermission: "Permission",
     colAccess: "Access",
@@ -416,6 +420,8 @@ const T = {
     searchPlaceholder: "사용자 이름 또는 이메일 주소로 검색",
 
     // Role/status summary strip
+    axisConsoleRole: "포털 역할",
+    axisDoor: "로그인",
     countOwners: "최고관리자",
     countAdmins: "관리자",
     countAuditors: "읽기 전용",
@@ -482,6 +488,8 @@ const T = {
     // Table
     colUser: "사용자",
     colOtherProjects: "다른 프로젝트",
+    alsoOn: (where: string) => `${where}에도 있음`,
+    alsoOnMore: (first: string, rest: number) => `${first} 외 ${rest}`,
     otherProjectsNone: "이 프로젝트만",
     colPermission: "권한",
     colAccess: "접근",
@@ -2715,12 +2723,30 @@ function UserCountStrip({
 
   const invited = users.filter(u => u.status === "invited").length;
   const suspended = users.filter(u => u.status === "suspended").length;
-  const roleCounts: [string, number][] = [
-    [t.countOwners, users.filter(u => u.permission === "owner").length],
-    [t.countAdmins, users.filter(u => u.permission === "admin").length],
-    [t.countAuditors, users.filter(u => u.permission === "auditor").length],
-    [t.countAppOnly, users.filter(u => accessModeOf(u) === "appOnly").length],
-    [t.countPortalOnly, users.filter(u => accessModeOf(u) === "portalOnly").length],
+  /*
+   * TWO AXES, AND THE LINE HAS TO SHOW THEM AS TWO.
+   *
+   * These five figures were one comma list, which reads as one partition of the accounts — and it
+   * does not add up: on the seeded project it printed 최고관리자 1 · 관리자 0 · 읽기 전용 1 ·
+   * 앱 전용 3 · Portal 전용 1 for FIVE accounts, because Aaron Sim is counted twice (he is the
+   * read-only console role AND the Portal-only door). A reader who adds a list of counts and gets
+   * six for five people stops trusting the rest of the numbers.
+   *
+   * They are two different questions — which console role, and which door — which is exactly the
+   * split the permission model made deliberately (portal role vs appAccess). So the line names
+   * each group. The door side does not list "Portal + 앱" because it is the ordinary answer and
+   * the two named ones are the exceptions worth counting.
+   */
+  const roleGroups: { name: string; counts: [string, number][] }[] = [
+    { name: t.axisConsoleRole, counts: [
+      [t.countOwners, users.filter(u => u.permission === "owner").length],
+      [t.countAdmins, users.filter(u => u.permission === "admin").length],
+      [t.countAuditors, users.filter(u => u.permission === "auditor").length],
+    ] },
+    { name: t.axisDoor, counts: [
+      [t.countAppOnly, users.filter(u => accessModeOf(u) === "appOnly").length],
+      [t.countPortalOnly, users.filter(u => accessModeOf(u) === "portalOnly").length],
+    ] },
   ];
 
   return (
@@ -2729,7 +2755,11 @@ function UserCountStrip({
         {
           key: "total",
           icon: <Users2 size={14} strokeWidth={2.4} />,
-          figure: users.length + rosterWaiting,
+          /* ACCOUNTS ONLY (owner, 2026-09-22: 계정만). It was users.length + rosterWaiting, so the
+             headline read 13 on a screen that also printed 계정 5 and 명부 대기 8 separately and a
+             table with five rows in it — one number made of two that are both already on screen,
+             agreeing with neither. The card now says the same thing the tab and the table say. */
+          figure: users.length,
           unit: t.countPeopleUnit,
           label: t.countTotal,
         },
@@ -2772,8 +2802,18 @@ function UserCountStrip({
           section starts. Equal gaps everywhere is what made this page read as one flat column:
           hierarchy here is spacing, not another heading. */}
       <p style={{ fontSize: "11px", color: "var(--gray-500)", margin: "-14px 0 28px" }}>
-        {roleCounts.map(([label, count]) => `${label} ${count}`).join(" · ")}
-        <span style={{ color: "var(--gray-300)" }}>{"  ·  "}</span>
+        {/* A REAL GAP, not three spaces — HTML folds those, and the line came out as
+            "읽기 전용 1 로그인 앱 전용 3", which is the two groups run together and unreadable at
+            exactly the place the split was supposed to be. inline-block so the margin applies. */}
+        {roleGroups.map((g, i) => (
+          <span key={g.name} style={{ display: "inline-block", marginLeft: i > 0 ? "18px" : 0 }}>
+            <span style={{ color: "var(--gray-400)" }}>{g.name}&nbsp;</span>
+            {g.counts.map(([label, count]) => `${label} ${count}`).join(" · ")}
+          </span>
+        ))}
+        {/* The guide belongs to the whole line, not to the 로그인 group it used to sit behind a
+            "·" from — a dot there read it as a third figure in that group. Same 18px as between
+            the groups. */}
         <button
           onClick={onShowGuide}
           style={{
@@ -2783,6 +2823,7 @@ function UserCountStrip({
             // page's own hint labels use, and a solid underline in a grey caption reads as a link
             // to another page.
             borderBottom: "1px dotted var(--gray-300)",
+            marginLeft: "18px",
           }}
         >
           {t.whatRolesMean}
@@ -3034,11 +3075,22 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
    * fraction so it cannot collapse to nothing on a small window, and the two lines inside it now
    * ellipsise instead of pushing the row taller.
    */
-  /* Nine tracks in accounts mode since 2026-09-21, the ninth being Cameras. The width came from
-     the three widest: the User column keeps its floor, Other projects and Last login each give up
-     a tenth. A camera cell is "전체" or "12 / 62" — the narrowest thing in the row. */
+  /*
+   * SEVEN TRACKS, DOWN FROM NINE (owner, 2026-09-22: 비는 열 지우고 쓸 열 넓힌다).
+   *
+   * Measured on the seeded project: 「다른 프로젝트」 held a grey "이 프로젝트만" on four rows of
+   * five and 「인물 검색」 held "—" on three, together spending 247px of the row — while 「접근」,
+   * at 123px, was stacking four things in one cell (the door, the preset name, an 앱 화면 미지정
+   * badge and a 화면 지정 link). The widest columns were the empty ones.
+   *
+   * Neither value is dropped, both move to where they belong. Another project is a fact about the
+   * PERSON, so it goes under their address, and only when there is one — this page is scoped to a
+   * project, so "only this one" is the ordinary case and silence is the right way to say it.
+   * Person search is one of the six app actions, so it goes on the line that already names the
+   * grant, as a mark beside the preset rather than a column asking the same question twice.
+   */
   const GRID = showAccountColumns
-    ? "minmax(150px, 1.1fr) 1.05fr 0.8fr 0.8fr 0.55fr 0.6fr 0.85fr 0.6fr 36px"
+    ? "minmax(170px, 1.35fr) 0.85fr 1.25fr 0.7fr 0.9fr 0.62fr 36px"
     : "minmax(180px, 1.4fr) 1fr 1.2fr 0.7fr 36px";
 
   const bulkIssueCodes = () => {
@@ -3491,10 +3543,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
               let anyone rank people with. */}
           {((showAccountColumns ? [
             { label: t.colUser, key: "name" },
-            { label: t.colOtherProjects },
             { label: t.colPermission, key: "permission" },
             { label: t.colAccess },
-            { label: t.colAppSearch },
             /* Sortable, and "전체" sorts as the largest: the question this column answers is who
                has been narrowed, so the narrowest scopes have to be reachable in one click. */
             { label: t.colCameras, key: "cameras" },
@@ -3534,23 +3584,20 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             <div style={{ minWidth: 0 }}>
               <p title={u.name} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</p>
               <p title={u.email} style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</p>
-            </div>
-            {/* The project this page is scoped to is on every row by definition, so listing it is
-                a column of the same name repeated. What is not known is whether this person has
-                anywhere else — which is the question behind removing them from here, and the
-                row menu's Projects… is where that is answered. */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", minWidth: 0 }}>
+              {/* WHERE ELSE THIS PERSON IS, under their address and only when the answer is yes.
+                  It was a column of its own printing a grey "이 프로젝트만" on four rows out of
+                  five — 162px spent saying what the page's own scope already says. The question
+                  worth answering is whether removing them from here leaves them access somewhere
+                  else, and that has an answer only for the few who are on another site. */}
               {(() => {
                 const others = u.projectIds.filter(pid => pid !== projectId);
-                if (others.length === 0) {
-                  return <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>{t.otherProjectsNone}</span>;
-                }
-                return others.map((pid, i) => (
-                  <span key={pid} style={{ fontSize: "12px", color: "var(--gray-500)" }}>
-                    {i > 0 && <span style={{ color: "var(--gray-300)" }}>, </span>}
-                    {projectName(pid)}
-                  </span>
-                ));
+                if (others.length === 0) return null;
+                return (
+                  <p title={others.map(projectName).join(", ")}
+                    style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {t.alsoOn(others.length === 1 ? projectName(others[0]) : t.alsoOnMore(projectName(others[0]), others.length - 1))}
+                  </p>
+                );
               })()}
             </div>
             {/* A VALUE, NOT A CONTROL — both this cell and Access beside it. They were each a
@@ -3612,34 +3659,26 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                   )}
                 </span>
               ) : (
-                <span style={{ fontSize: "11px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {(u.grantMode === "preset" && u.presetId && presetLabelById.get(u.presetId)) || t.grantCustom}
+                /* THE GRANT AND THE ONE ACTION WORTH AUDITING, ON ONE LINE. Person search had a
+                   column of its own printing "—" on three rows of five; it is one of the six app
+                   actions, so a column for it asked the same question the preset name already
+                   answers — except for the one case an access review comes here for: who can turn
+                   "somebody was here" into "this person was here". So it stays, as a mark beside
+                   the preset, gated on the app door as well as the grant — an On badge on an
+                   account that cannot reach a search box is the kind of confident wrong value this
+                   console keeps producing. The grant itself is kept in the data when the door
+                   shuts and comes back with it; this line just stops claiming it is live. */
+                <span style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
+                  <span style={{ fontSize: "11px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {(u.grantMode === "preset" && u.presetId && presetLabelById.get(u.presetId)) || t.grantCustom}
+                  </span>
+                  {holdsSearch(u) && (
+                    <span title={t.colAppSearch} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", padding: "1px 6px", borderRadius: "999px", backgroundColor: "var(--info-100)", color: "var(--info-500)", fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap" }}>
+                      {t.colAppSearch}
+                    </span>
+                  )}
                 </span>
               ))}
-            </span>
-            {/* Search is a separate grant from the console role, so it gets its own column rather
-                than being folded into the role label — the two answer different questions. The cell
-                is always emitted, "—" included: this is a grid, so a conditional cell does not
-                leave a hole, it slides every cell after it one column left and pushes the row's
-                actions menu onto a second line. */}
-            <span>
-              {/* Gated on the app door as well as the grant. The column asks whether this person
-                  can run searches in the app, and without the app the answer is no however the
-                  flag reads — an "On" badge on an account that cannot reach a search box is the
-                  kind of confident wrong value this console keeps producing.
-
-                  FIXING IT HERE RATHER THAN IN THE DATA. updatePortalUserAccess used to clear the
-                  grants when the app went, which made the badge honest by destroying the answer to
-                  "what did this person have?" — the mirror image of inventing a coordinate with
-                  `?? 0`. The grant is kept and comes back with the door; this cell just stops
-                  claiming it is live while the door is shut. */}
-              {holdsSearch(u) && u.appAccess ? (
-                <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px", backgroundColor: "var(--info-100)", color: "var(--info-500)", fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap" }}>
-                  {t.appSearchOn}
-                </span>
-              ) : (
-                <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
-              )}
             </span>
             {/*
               HOW MUCH OF THE SITE THIS ACCOUNT SEES IN THE APP.
