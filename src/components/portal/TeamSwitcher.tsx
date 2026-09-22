@@ -6,7 +6,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { Building2, Settings2 } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
-import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH, ConfirmModal, SelectedCheckIcon, TextField } from "./PortalShared";
+import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH, ConfirmModal, Drawer, PanelCancel, PanelPrimary, SelectedCheckIcon, TextField } from "./PortalShared";
 import { useToast } from "@/components/Toast";
 
 const T = {
@@ -421,15 +421,6 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
   const t = T[lang];
   const [name, setName] = useState(team.name);
   const [confirming, setConfirming] = useState(false);
-  /*
-   * Escape stops closing this modal while the delete confirmation is stacked on top of it.
-   *
-   * useEscapeKey attaches a bare document listener, so with both dialogs mounted one Escape fired
-   * both handlers: the confirmation and this modal closed together, and a team rename typed into
-   * `name` but not yet saved went with them. The hook takes an `enabled` flag for exactly this, so
-   * the top-most dialog swallows the key.
-   */
-  useEscapeKey(onClose, !confirming);
 
   const projectCount = projects.filter(p => p.teamId === team.id).length;
   /*
@@ -455,63 +446,65 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
   const canSave = name.trim().length > 0 && name.trim() !== team.name;
 
   return (
-    <>
-      <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-        style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-        <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-          <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{mayShapeTeams ? t.manageTitle : t.renameTeam}</p>
-            <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-            </button>
-          </div>
-
-          <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.renameLabel}</label>
-              <TextField value={name} onChange={setName} autoFocus />
-            </div>
-
-            {mayShapeTeams && (
-            <div style={{ borderTop: BORDER, paddingTop: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.deleteTeam}</p>
-                <button onClick={() => canDelete && setConfirming(true)} disabled={!canDelete}
-                  className={canDelete ? "portal-btn-quiet" : undefined}
-                  style={{
-                    height: "30px", padding: "0 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent",
-                    color: canDelete ? "var(--danger-500)" : "var(--gray-300)",
-                    fontSize: "12px", fontWeight: 700, cursor: canDelete ? "pointer" : "not-allowed", fontFamily: "inherit",
-                  }}>
-                  {t.deleteConfirm}
-                </button>
-              </div>
-              {/* The blocker names the number, then the hint says where to go. "Cannot delete"
-                  on its own is a wall; this is a direction. */}
-              <p style={{ fontSize: "11px", color: canDelete ? "var(--gray-400)" : "var(--warning-500)", lineHeight: 1.45, marginTop: "4px" }}>
-                {canDelete ? t.deleteHint : projectCount > 0 ? t.deleteBlocked(projectCount) : t.deleteBlockedLastOwner}
-              </p>
-            </div>
-            )}
-          </div>
-
-          <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-            <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-              {t.cancel}
-            </button>
-            <button className="portal-btn-primary" disabled={!canSave}
-              onClick={() => {
-                renameTeam(team.id, name.trim());
-                showToast({ variant: "success", title: t.renamedToast, desc: name.trim() });
-                onClose();
-              }}
-              style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed" }}>
-              {t.save}
-            </button>
-          </div>
+    /* The shared right-side panel now, not a centred box of its own: this is a form — one field
+       and a save — and every form in Portal opens from the right edge, so the reader meets the
+       same shape whichever one they open. The scrim, the header, the ✕ and the footer row all
+       belong to Drawer; `dirty` hands it the data-loss guard, so a stray click on the scrim with
+       a half-typed name asks before it throws the name away. */
+    <Drawer
+      title={mayShapeTeams ? t.manageTitle : t.renameTeam}
+      onClose={onClose}
+      width="520px"
+      /* Escape belongs to the top-most dialog. useEscapeKey attaches a bare document listener, so
+         with the delete confirmation stacked on this panel one keypress fired both handlers and
+         closed both — taking a rename typed into `name` but not yet saved with them. */
+      escapeEnabled={!confirming}
+      dirty={name !== team.name}
+      footer={<>
+        <PanelCancel onClick={onClose} label={t.cancel} />
+        <PanelPrimary
+          onClick={() => {
+            renameTeam(team.id, name.trim());
+            showToast({ variant: "success", title: t.renamedToast, desc: name.trim() });
+            onClose();
+          }}
+          disabled={!canSave}
+          label={t.save}
+        />
+      </>}
+    >
+      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div>
+          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.renameLabel}</label>
+          <TextField value={name} onChange={setName} autoFocus />
         </div>
+
+        {mayShapeTeams && (
+        <div style={{ borderTop: BORDER, paddingTop: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.deleteTeam}</p>
+            <button onClick={() => canDelete && setConfirming(true)} disabled={!canDelete}
+              className={canDelete ? "portal-btn-quiet" : undefined}
+              style={{
+                height: "30px", padding: "0 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent",
+                color: canDelete ? "var(--danger-500)" : "var(--gray-300)",
+                fontSize: "12px", fontWeight: 700, cursor: canDelete ? "pointer" : "not-allowed", fontFamily: "inherit",
+              }}>
+              {t.deleteConfirm}
+            </button>
+          </div>
+          {/* The blocker names the number, then the hint says where to go. "Cannot delete"
+              on its own is a wall; this is a direction. */}
+          <p style={{ fontSize: "11px", color: canDelete ? "var(--gray-400)" : "var(--warning-500)", lineHeight: 1.45, marginTop: "4px" }}>
+            {canDelete ? t.deleteHint : projectCount > 0 ? t.deleteBlocked(projectCount) : t.deleteBlockedLastOwner}
+          </p>
+        </div>
+        )}
       </div>
 
+      {/* The confirmation stays INSIDE the panel. It draws its own backdrop at a lower z-index
+          than the Drawer's, so as a sibling of the panel it would be painted underneath it —
+          a dialog asking a question nobody can see. */}
       {confirming && (
         <ConfirmModal
           title={t.deleteConfirmTitle(team.name)}
@@ -535,12 +528,11 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
           </p>
         </ConfirmModal>
       )}
-    </>
+    </Drawer>
   );
 }
 
 export function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: (teamId: string) => void }) {
-  useEscapeKey(onClose);
   const addTeam = useVcaStore(s => s.addTeam);
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -563,48 +555,37 @@ export function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCr
   };
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.modalTitle}</p>
-          <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          </button>
-        </div>
-
-        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
-              {t.nameLabel} <span style={{ color: "var(--danger-400)" }}>*</span>
-            </label>
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder={t.namePlaceholder}
-              onKeyDown={e => { if (e.key === "Enter") submit(); }}
-              autoFocus
-              // 14px, a step up from the 13px the Portal's other form inputs use. This is the one
-              // field the whole box exists for, and it is what the team will be called everywhere
-              // afterwards — worth reading at the size you would read a title at.
-              style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "14px", fontFamily: "inherit" }}
-            />
-          </div>
-        </div>
-
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.cancel}
-          </button>
-          <button className="portal-btn-primary" onClick={submit} disabled={!canSubmit}
-            style={{
-              padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-200)", color: canSubmit ? "white" : "var(--gray-400)",
-              fontSize: "13px", fontWeight: 700, cursor: canSubmit ? "pointer" : "not-allowed", 
-            }}>
-            {t.create}
-          </button>
+    /* The shared right-side panel now. Asking for a team's name is a form like any other in
+       Portal, so it arrives from the same edge with the same header and the same pair of buttons;
+       `dirty` is the typed name, which the Drawer refuses to throw away on a scrim click. */
+    <Drawer
+      title={t.modalTitle}
+      onClose={onClose}
+      width="520px"
+      dirty={name.length > 0}
+      footer={<>
+        <PanelCancel onClick={onClose} label={t.cancel} />
+        <PanelPrimary onClick={submit} disabled={!canSubmit} label={t.create} />
+      </>}
+    >
+      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div>
+          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
+            {t.nameLabel} <span style={{ color: "var(--danger-400)" }}>*</span>
+          </label>
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder={t.namePlaceholder}
+            onKeyDown={e => { if (e.key === "Enter") submit(); }}
+            autoFocus
+            // 14px, a step up from the 13px the Portal's other form inputs use. This is the one
+            // field the whole panel exists for, and it is what the team will be called everywhere
+            // afterwards — worth reading at the size you would read a title at.
+            style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "14px", fontFamily: "inherit" }}
+          />
         </div>
       </div>
-    </div>
+    </Drawer>
   );
 }

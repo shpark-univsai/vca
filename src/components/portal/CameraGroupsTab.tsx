@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCheck, RotateCcw } from "lucide-react";
+import { CheckCheck, ChevronLeft, RotateCcw } from "lucide-react";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import {
   cameraGroupsInProject, camerasInProject, useVcaStore, type Camera, type CameraGroup,
@@ -65,6 +65,7 @@ const T = {
     zonePick: "select all", zoneClear: "clear",
     zoneBack: "Back to all zones",
     zoneInGroup: "In this group",
+    back: "Back",
     discardTitle: "You have unsaved changes",
     discardBody: "Close this panel and what you have typed is gone.",
     discardConfirm: "Close without saving",
@@ -116,6 +117,7 @@ const T = {
     zonePick: "전체 선택", zoneClear: "해제",
     zoneBack: "모든 구역으로",
     zoneInGroup: "이 그룹의 카메라",
+    back: "뒤로",
     discardTitle: "작성 중인 내용이 있습니다",
     discardBody: "닫으면 입력한 내용은 저장되지 않습니다.",
     discardConfirm: "저장하지 않고 닫기",
@@ -187,12 +189,14 @@ const IN_GROUP = "\u0000in-group";
  *
  * `onSaved` carries the group that was written, so a caller can tick what it just created.
  */
-export function CameraGroupEditor({ projectId, group, onClose, onSaved }: {
+export function CameraGroupEditor({ projectId, group, onClose, onSaved, nested }: {
   projectId: string;
   /** The group to change, or null to make one. */
   group: CameraGroup | null;
   onClose: () => void;
   onSaved?: (groupId: string) => void;
+  /** True when another panel is underneath this one — see GroupDrawer's own note. */
+  nested?: boolean;
 }) {
   const [lang] = usePortalLanguage();
   const t: Dict = T[lang];
@@ -205,6 +209,7 @@ export function CameraGroupEditor({ projectId, group, onClose, onSaved }: {
 
   return (
     <GroupDrawer
+      nested={nested}
       group={group}
       cameras={camerasInProject(allCameras, projectId)}
       otherGroups={groups.filter(g => g.id !== group?.id)}
@@ -266,7 +271,7 @@ export function CameraGroupEditor({ projectId, group, onClose, onSaved }: {
  * group. The shared Drawer holds the same rule — this editor keeps its own shell only because its
  * body is a picker with a map in it, not because it closes differently.
  */
-function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
+function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }: {
   /** The group being changed, or null while one is being made. */
   group: CameraGroup | null;
   /** The project's register — full cameras, because the map needs the coordinates and the status. */
@@ -277,6 +282,17 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
   /** Returns an error key when the name is taken, so the field can say so without closing. */
   onSave: (label: string, description: string, cameraIds: string[]) => "duplicate-label" | null;
   onClose: () => void;
+  /**
+   * True when this panel opened OVER another one — from the invite panel's camera scope, where a
+   * chip's pencil leads here (owner, 2026-09-22: 카메라 그룹 수정 클릭하면 패널창이 수정창으로
+   * 바뀌는데 이러면 뒤로가기 버튼이 타이틀 옆에 생겨야 할 것 같아, 아래 뒤로가기나 이런 것도
+   * 있어야 하고).
+   *
+   * Stacked, the panel occupies exactly the same rectangle as the one it covers, so nothing on
+   * screen says the invite is still there behind it. It then draws a ← beside the title and its
+   * footer says 뒤로 instead of 취소 — the same action either way, named for where it lands.
+   */
+  nested?: boolean;
 }) {
   /*
    * THE SCRIM ASKS WHEN THERE IS SOMETHING TO LOSE (owner, 2026-09-22: 작성 중일 때 왼쪽 딤드
@@ -415,12 +431,32 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
     <div onClick={e => { if (e.target === e.currentTarget) { if (dirty) setConfirmingClose(true); else onClose(); } }}
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", justifyContent: "flex-end" }}>
       <div style={{
-        backgroundColor: "white", width: "min(672px, 100%)", height: "100%",
+        backgroundColor: "white",
+        /*
+          THE STACKED ONE IS AS WIDE AS THE PANEL IT COVERS (owner, 2026-09-22: 카메라 그룹 수정은
+          패널 너비가 더 넓어지는데 사용자 초대는 좁네..?).
+
+          672 was measured for the MAP: eighteen zone pills needed that much width or they sat on
+          top of each other, the same failure the in-page editor had at 394. That reason is gone —
+          the pills were deleted today and the map draws dots at every zoom — so the width is free
+          to follow its context. Over the 520px invite panel it takes 520, because a panel that
+          grows when you step into it reads as the window changing size rather than as one more
+          layer. Opened from the camera-groups tab it keeps 672: nothing is underneath it there,
+          and the list's four columns and the map both have more room to spend.
+        */
+        width: nested ? "min(520px, 100%)" : "min(672px, 100%)", height: "100%",
         borderLeft: BORDER, boxShadow: "var(--shadow-modal)",
         display: "flex", flexDirection: "column",
       }}>
         {/* Header and footer both ruleless, like the shared Drawer this panel mirrors. */}
         <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "10px" }}>
+          {nested && (
+            <button type="button" onClick={onClose} className="portal-icon-btn"
+              aria-label={t.back} title={t.back}
+              style={{ flexShrink: 0, display: "flex", padding: "2px", marginLeft: "-4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-500)" }}>
+              <ChevronLeft size={18} strokeWidth={2.2} aria-hidden="true" />
+            </button>
+          )}
           <p style={{ minWidth: 0, flex: 1, fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {creating ? t.drawerNew : t.drawerEdit(group.label)}
           </p>
@@ -738,7 +774,7 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
           </span>
           {/* The shared pair, so this panel and every other one end the same way — see
               PanelCancel/PanelPrimary for what was measured against twenty reference panels. */}
-          <PanelCancel onClick={onClose} label={t.cancel} />
+          <PanelCancel onClick={onClose} label={nested ? t.back : t.cancel} />
           <PanelPrimary onClick={save} disabled={!dirty} label={creating ? t.createSave : t.editSave} />
         </div>
       </div>

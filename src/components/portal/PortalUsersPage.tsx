@@ -1756,6 +1756,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
         group is written, and Escape closes this editor only — see Drawer's escapeEnabled. */}
     {groupEditorFor && (
       <CameraGroupEditor
+        nested
         projectId={groupEditorFor.projectId}
         group={groupEditorFor.group}
         onClose={() => setGroupEditorFor(null)}

@@ -6,10 +6,9 @@ import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, SectionNav, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, usePortalEditAccess, useTypeLabel } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, SectionNav, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, Drawer, PanelCancel, PanelPrimary, usePortalEditAccess, useTypeLabel } from "./PortalShared";
 import { VipCategoryModal } from "./VipCategories";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "@/components/Toast";
 import ProjectMailPanel from "./ProjectMailPanel";
 import { PROJECT_TIME_ZONE } from "@/lib/time";
@@ -983,7 +982,6 @@ function ChangePasswordModal({ t, lang, onClose }: {
   const [confirm, setConfirm] = useState("");
   const [step, setStep] = useState<"verify" | "change">("verify");
   const { showToast } = useToast();
-  useEscapeKey(onClose, true);
 
   const formatValid = isPasswordFormatValid(next);
   // Only once something has been typed in the confirm box. A mismatch warning that appears on an
@@ -991,6 +989,10 @@ function ChangePasswordModal({ t, lang, onClose }: {
   const mismatch = confirm.length > 0 && confirm !== next;
   const canVerify = current.length > 0;
   const canSubmit = formatValid && confirm.length > 0 && !mismatch;
+  /* Handed to the shared panel's discard guard. Once anything has been typed, a stray scrim click
+     or an Escape asks first rather than dropping a password that was composed once and typed
+     twice; ✕ and 취소 stay immediate, because those are aimed. */
+  const dirty = current.length > 0 || next.length > 0 || confirm.length > 0;
 
   /* Advances on any non-empty entry, because there is nothing here that could disagree. That is
      the mock, not the design — see the HANDOFF NOTE. The screen deliberately says nothing like
@@ -1021,14 +1023,29 @@ function ChangePasswordModal({ t, lang, onClose }: {
   );
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "420px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "16px 20px 4px" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.changePassword}</p>
+    /* THE SHARED RIGHT-HAND PANEL NOW (owner, 2026-09-22: 중앙 모달로 뜨는 폼은 전부 공용 오른쪽
+       패널로). The scrim, the full-height panel, the header with its ✕, Escape, the discard
+       confirmation and the footer row that stays put are all the `Drawer`'s, so nothing here draws
+       them by hand any more — and it draws no rule under the header or over the footer, which is
+       why there is none to put back. Both steps are exactly the steps that were here before: the
+       container moved, the form did not. */
+    <Drawer title={t.changePassword} onClose={onClose} dirty={dirty}
+      footer={step === "verify" ? (
+        <>
+          <PanelCancel onClick={onClose} label={t.cancel} />
+          <PanelPrimary onClick={verify} label={t.verify} disabled={!canVerify} />
+        </>
+      ) : (
+        <>
+          <PanelCancel onClick={onClose} label={t.cancel} />
+          <PanelPrimary onClick={submit} label={t.updatePassword} disabled={!canSubmit} />
+        </>
+      )}>
+      <>
+        <div style={{ padding: "0 20px" }}>
           {/* Which of the two steps you are on. Named, not numbered: "1 / 2" tells you where you
               are, "Confirm it is you" tells you what is being asked. */}
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "3px" }}>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)" }}>
             {step === "verify" ? t.verifyStep : t.changeStep}
           </p>
           {/* Said before the typing rather than after it, on both steps, for the same reason the
@@ -1041,21 +1058,9 @@ function ChangePasswordModal({ t, lang, onClose }: {
           </p>
         </div>
         {step === "verify" ? (
-          <>
-            <div style={{ padding: "16px 20px 20px" }}>
-              {field(t.currentPassword, current, setCurrent, "current-password")}
-            </div>
-            <div style={{ padding: "0 20px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-              <button className="portal-btn-outline" onClick={onClose}
-                style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                {t.cancel}
-              </button>
-              <button className="portal-btn-primary" onClick={verify} disabled={!canVerify}
-                style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canVerify ? "var(--primary-400)" : "var(--gray-200)", color: canVerify ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canVerify ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-                {t.verify}
-              </button>
-            </div>
-          </>
+          <div style={{ padding: "16px 20px 20px" }}>
+            {field(t.currentPassword, current, setCurrent, "current-password")}
+          </div>
         ) : (
           /* Nothing here restates step 1.
    
@@ -1065,31 +1070,19 @@ function ChangePasswordModal({ t, lang, onClose }: {
              box followed for the same kind of reason: the subtitle above already says "choose a
              new password", and being on this step IS the confirmation. A panel repeating it was
              height spent on a fact the reader already has. Cancel is the way out. */
-          <>
-            <div style={{ padding: "16px 20px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
-              {field(t.newPassword, next, setNext, "new-password",
-                /* The rule under the field, not in a tooltip: it should be readable before it is
-                   broken rather than after. Amber only once what is typed breaks it. */
-                <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.45, color: next.length > 0 && !formatValid ? "var(--warning-500)" : "var(--gray-400)" }}>
-                  {PASSWORD_RULE_TEXT[lang]}
-                </p>)}
-              {field(t.confirmPassword, confirm, setConfirm, "new-password",
-                mismatch ? <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.45, color: "var(--warning-500)" }}>{t.mismatch}</p> : undefined)}
-            </div>
-            <div style={{ padding: "0 20px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-              <button className="portal-btn-outline" onClick={onClose}
-                style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                {t.cancel}
-              </button>
-              <button className="portal-btn-primary" onClick={submit} disabled={!canSubmit}
-                style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-200)", color: canSubmit ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSubmit ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-                {t.updatePassword}
-              </button>
-            </div>
-          </>
+          <div style={{ padding: "16px 20px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+            {field(t.newPassword, next, setNext, "new-password",
+              /* The rule under the field, not in a tooltip: it should be readable before it is
+                 broken rather than after. Amber only once what is typed breaks it. */
+              <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.45, color: next.length > 0 && !formatValid ? "var(--warning-500)" : "var(--gray-400)" }}>
+                {PASSWORD_RULE_TEXT[lang]}
+              </p>)}
+            {field(t.confirmPassword, confirm, setConfirm, "new-password",
+              mismatch ? <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.45, color: "var(--warning-500)" }}>{t.mismatch}</p> : undefined)}
+          </div>
         )}
-      </div>
-    </div>
+      </>
+    </Drawer>
   );
 }
 

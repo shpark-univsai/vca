@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Check, EyeOff } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronLeft, EyeOff } from "lucide-react";
 import { APP_ACTIONS, SUPPORT_CONTACT, canEditPortal, canSetPolicy, canViewFaces, currentPortalUser, useVcaStore, type AppAction, type AppScreen, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -61,8 +61,8 @@ export function usePortalPolicyAccess(): { maySetPolicy: boolean; reason: string
  * option (reachable, e.g. a camera whose assigned server was deleted).
  */
 const SHARED_LABELS = {
-  en: { moreActions: "More actions", select: "Select", typeSmartCity: "Smart City", typeSmartSchool: "Smart School" },
-  ko: { moreActions: "더 보기", select: "선택", typeSmartCity: "스마트시티", typeSmartSchool: "스마트스쿨" },
+  en: { moreActions: "More actions", select: "Select", back: "Back", typeSmartCity: "Smart City", typeSmartSchool: "Smart School" },
+  ko: { moreActions: "더 보기", select: "선택", back: "뒤로", typeSmartCity: "스마트시티", typeSmartSchool: "스마트스쿨" },
 } as const;
 
 /** Why a control is disabled, said in the role's own words rather than "no permission". */
@@ -2503,9 +2503,18 @@ const DRAWER_DISCARD_T = {
   },
 } as const;
 
-export function Drawer({ title, onClose, footer, width = "520px", escapeEnabled = true, dirty = false, children }: {
+export function Drawer({ title, onClose, onBack, footer, width = "520px", escapeEnabled = true, dirty = false, children }: {
   title: React.ReactNode;
   onClose: () => void;
+  /**
+   * Set only when this panel opened OVER another one, and it draws a ← before the title.
+   *
+   * A stacked panel replaces what the reader was looking at, in the same place, at the same size —
+   * so without a way back the screen has silently become a different screen. ✕ does return to the
+   * panel underneath, but ✕ everywhere else in Portal means "done with this, back to the page";
+   * the arrow is what says "there is something behind this".
+   */
+  onBack?: () => void;
   /** The row of buttons. Kept out of the scrolling body, so it cannot fall off the bottom. */
   footer?: React.ReactNode;
   width?: string;
@@ -2563,6 +2572,13 @@ export function Drawer({ title, onClose, footer, width = "520px", escapeEnabled 
             marking the edge when the body scrolls under it — is a scroll shadow's job, not a
             rule that is drawn whether anything scrolls or not. */}
         <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "10px" }}>
+          {onBack && (
+            <button type="button" onClick={onBack} className="portal-icon-btn"
+              aria-label={SHARED_LABELS[lang].back} title={SHARED_LABELS[lang].back}
+              style={{ flexShrink: 0, display: "flex", padding: "2px", marginLeft: "-4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-500)" }}>
+              <ChevronLeft size={18} strokeWidth={2.2} aria-hidden="true" />
+            </button>
+          )}
           <div style={{ minWidth: 0, flex: 1, fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {title}
           </div>
