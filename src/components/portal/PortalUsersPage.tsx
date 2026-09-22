@@ -3407,13 +3407,21 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
         price of the shared cell. If these hints turn out to matter, `title` on SummaryCell is the
         thing to upgrade, not a fourth home for these three counts.
       */}
-      <UserCountStrip
-        users={projectUsers}
-        onShowGuide={() => setShowGuide(true)}
-        exceptions={peopleTab === "accounts" ? exceptions : []}
-        statusFilter={statusFilter}
-        onFilter={onFilter}
-      />
+      {/* THE STRIP IS THE ACCOUNTS TAB'S (owner, 2026-09-22: 명부대기 화면에 상단 카드는 없어도
+          되지않을까). It counts ACCOUNTS — 5명 이 프로젝트 인원, and under it the five role
+          figures — and 명부 대기 lists the people who have none of those yet. A card counting one
+          population over a table of another is the same fault the headline had when it printed 13
+          for 5 accounts plus 8 roster rows. The count that tab needs is already in the rail
+          (명부 대기 8), which is where it was read from to get here. */}
+      {peopleTab === "accounts" && (
+        <UserCountStrip
+          users={projectUsers}
+          onShowGuide={() => setShowGuide(true)}
+          exceptions={exceptions}
+          statusFilter={statusFilter}
+          onFilter={onFilter}
+        />
+      )}
 
       <AccessRequestsPanel projectId={projectId} onLinksMade={setInvitePanel} />
 
