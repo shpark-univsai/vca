@@ -150,6 +150,48 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
    * anything was frozen.
    */
   const wouldFreezeAll = mode === "some" && cameras.length > 0 && resolvedCount === cameras.length;
+
+  /*
+   * THE SAME SCOPE, IN ONE SENTENCE (owner's reference mockup, 2026-09-22: a live line reading
+   * 「Marcus Lee님은 오차드·부기스 외 1개 그룹 (총 5대) 영상만 모니터링할 수 있습니다」).
+   *
+   * The header counter says HOW MANY; this says WHAT, and it is the difference between a number
+   * and a consequence — read right before pressing 변경, it is the last chance to notice that the
+   * groups are not the ones you meant. Two facts the counter cannot carry: which groups, and
+   * whether the scope grows by itself.
+   *
+   * WHAT IT DOES NOT SAY. The mockup's line ends with 「그 외 마리나베이 등 타 구역 영상은 목록에
+   * 노출되지 않습니다」 — naming an excluded zone as an example. That clause is wrong the moment a
+   * zone is partly included, which is the ordinary case here, so the sentence states what is IN
+   * and lets the complement be the complement. Nothing in 전부 mode either: the radio card
+   * directly above already says it, including the part about cameras installed later.
+   */
+  const scopeSentence = (() => {
+    if (mode === "all") return null;
+    /* STANDS DOWN FOR THE FREEZE WARNING. With everything ticked this sentence read 「개별로 고른
+       62대 중 62대를 봅니다. 나중에 설치되는 카메라는 들어가지 않습니다」 and the warning under it
+       said the same fact in stronger words — one state, two lines. The warning is the summary for
+       that state, and it is the framing that matters there. */
+    if (wouldFreezeAll) return null;
+    const pickedGroupLabels = pickedGroups
+      .map(id => projectGroups.find(g => g.id === id)?.label)
+      .filter((l): l is string => !!l);
+    /* Individually ticked cameras a group does not already cover — the ones that make the scope
+       partly frozen. A camera ticked AND covered by a group is counted as the group's, because
+       the group is what keeps it when the tick is cleared. */
+    const ownPicks = picked.filter(id => !coveredByGroup.has(id) && cameras.some(c => c.id === id)).length;
+
+    if (pickedGroupLabels.length === 0) {
+      return ownPicks === 0 ? null : t.summaryOnlyPicked(resolvedCount, cameras.length) + t.summaryFrozen;
+    }
+    const names = t.summaryGroupsMore(pickedGroupLabels[0], pickedGroupLabels.length - 1);
+    return t.summaryGroups(names, resolvedCount, cameras.length)
+      + (ownPicks > 0 ? t.summaryPlus(ownPicks) : "")
+      + t.summaryGrows
+      + (ownPicks > 0 ? t.summaryFrozen : "");
+  })();
+
+
   const canSave = mode === "all" || resolvedCount > 0;
   const sameIds = (a: string[] | undefined, b: string[]) =>
     a !== undefined && [...a].sort().join() === [...b].sort().join();
@@ -344,21 +386,27 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
           </div>
         </div>
 
-        <div style={{ padding: "16px 20px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+        <div style={{ padding: "14px 20px 20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+          {/*
+            THE SENTENCE FIRST, ON ITS OWN LINE, AND IT DOES NOT WAIT FOR A CHANGE.
+           
+            It used to be that this row held ONE of three things, so opening the dialog to read an
+            account's scope and changing nothing got 「아직 바뀐 것이 없습니다」 — a line about the
+            dialog rather than about the account. The scope sentence is what that reader came for,
+            so it is always here; the warnings stack under it, because a warning is about the save
+            and not about the state.
+          */}
+          {scopeSentence && (
+            <p style={{ fontSize: "11.5px", color: "var(--gray-600)", lineHeight: 1.55 }}>{scopeSentence}</p>
+          )}
           {/* The dead button says why, in the two sentences that are actually different: nothing
               has moved, or this would leave them with no camera at all. */}
           {wouldFreezeAll ? (
-            <span style={{ flex: 1, fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.45 }}>{t.freezeWarning}</span>
-          ) : !(canSave && dirty) ? (
-            <span style={{ flex: 1, fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>
-              {!canSave ? t.refuseEmpty : t.unchanged}
-            </span>
-          ) : (
-            /* The union used to be printed here as well. The header now holds it for the whole
-               edit, including before anything is changed, so saying it twice on one dialog would
-               only give the reader two places to check one number. */
-            <span style={{ flex: 1 }} />
-          )}
+            <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.45 }}>{t.freezeWarning}</p>
+          ) : !canSave ? (
+            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.refuseEmpty}</p>
+          ) : null}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
           <button className="portal-btn-outline" onClick={onClose}
             style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {t.cancel}
@@ -367,6 +415,7 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
             style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: canSave && dirty ? "var(--primary-400)" : "var(--gray-200)", color: canSave && dirty ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave && dirty ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
             {t.apply}
           </button>
+          </div>
         </div>
       </div>
     </div>
@@ -399,8 +448,13 @@ const T = {
     searchNone: "No camera on these projects matches that.",
     freezeWarning: "Every camera is ticked. Saved like this the list is frozen, and cameras added later are left out — pick the first option to include them.",
     zonePicked: (n: number) => n === 0 ? "none picked" : `${n} picked`,
+    summaryGroups: (names: string, n: number, total: number) => `Watches ${n} of ${total} cameras, through ${names}.`,
+    summaryGroupsMore: (first: string, rest: number) => rest === 0 ? `“${first}”` : `“${first}” and ${rest} other group${rest === 1 ? "" : "s"}`,
+    summaryPlus: (n: number) => ` Plus ${n} picked one by one.`,
+    summaryOnlyPicked: (n: number, total: number) => `Watches ${n} of ${total} cameras, each picked by hand.`,
+    summaryGrows: " A camera added to those groups later is included.",
+    summaryFrozen: " Cameras installed later are not — this list is fixed.",
     refuseEmpty: "Pick at least one camera — an account with none opens a screen with nothing on it",
-    unchanged: "Nothing changed yet.",
     cancel: "Cancel",
     apply: "Change",
     savedTitle: "Cameras updated",
@@ -432,8 +486,16 @@ const T = {
     searchNone: "그 조건에 맞는 카메라가 없습니다.",
     freezeWarning: "전부 체크돼 있습니다. 이대로 저장하면 목록이 굳어서 나중에 추가되는 카메라는 빠집니다 — 함께 주려면 위의 첫 번째를 고르세요.",
     zonePicked: (n: number) => n === 0 ? "고른 것 없음" : `${n}대 고름`,
+    /* 주어를 쓰지 않습니다. 이 창의 첫 줄이 이미 누구에 대한 것인지 말하고, 이름을 주어로
+       세우면 「Marcus Lee은(는)」처럼 조사 두 개를 괄호로 내보이게 됩니다 — 그건 제품이 그
+       이름을 모른다는 뜻입니다(삭제 확인창의 같은 메모). */
+    summaryGroups: (names: string, n: number, total: number) => `${names}으로 ${total}대 중 ${n}대를 봅니다.`,
+    summaryGroupsMore: (first: string, rest: number) => rest === 0 ? `「${first}」` : `「${first}」 외 ${rest}개 그룹`,
+    summaryPlus: (n: number) => ` 여기에 개별로 고른 ${n}대가 더 있습니다.`,
+    summaryOnlyPicked: (n: number, total: number) => `개별로 고른 ${total}대 중 ${n}대를 봅니다.`,
+    summaryGrows: " 그룹에 카메라가 추가되면 함께 늘어납니다.",
+    summaryFrozen: " 나중에 설치되는 카메라는 들어가지 않습니다.",
     refuseEmpty: "카메라를 하나 이상 골라주세요 — 하나도 없으면 화면을 열어도 아무것도 없습니다",
-    unchanged: "아직 바뀐 것이 없습니다.",
     cancel: "취소",
     apply: "변경",
     savedTitle: "카메라 범위를 바꿨습니다",

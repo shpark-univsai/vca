@@ -296,6 +296,26 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
           </button>
         </div>
 
+        {/*
+          THE BODY DOES NOT SCROLL; THE MAP TAKES WHAT IS LEFT (owner, 2026-09-22: 지도가 좀
+          작아보여).
+         
+          It was one scrolling column with the map pinned at 280px, and at 18 zones that height
+          put the zone pills on top of each other — Hougang over Bishan over Toa payoh — which is
+          the same failure the in-page editor had at 394px WIDE, now vertical. A map you cannot
+          read is not an input device. Worse, a 61-camera selection put a 300px wall of chips
+          under it, so the one element that needed the room was the one being squeezed.
+         
+          So the column owns the height instead of the scrollbar: the two fields and the chips
+          keep their natural size, the picker takes the rest, and each of the two lists that can
+          outgrow it scrolls inside itself.
+         
+          THE SCROLLBAR COMES BACK ON A SHORT WINDOW, THOUGH. Measured on a 760px one with the
+          body set to `hidden`: everything still fit, but only by squeezing the map to 232px —
+          SMALLER than the 280 this change was made to fix. So the picker keeps a floor and the
+          body may overflow past it: a tall window spends the slack on the map, a short one keeps
+          the map readable and scrolls instead.
+        */}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
             <label style={fieldLabel}>{t.createName} *</label>
@@ -320,7 +340,7 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
               act on — a control spanning more than the list it narrows is the misalignment the
               in-page editor was corrected for. 전부 고르기 and 선택 초기화 sit above that strip,
               because they act on the whole selection rather than on what the search left. */}
-          <div>
+          <div style={{ flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
               <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.inGroupHeading}</span>
               <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-900)", fontVariantNumeric: "tabular-nums" }}>{picked.length}</span>
@@ -331,7 +351,9 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
               )}
             </div>
 
-            <div style={{ border: CARD_BORDER, borderRadius: CARD_RADIUS, overflow: "hidden" }}>
+            {/* 384px = the 44px strip plus a 340px map, which is what holds the seeded register's
+                eighteen zone pills apart at this width — the figure this floor exists to protect. */}
+            <div style={{ flex: 1, minHeight: "384px", border: CARD_BORDER, borderRadius: CARD_RADIUS, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "10px", padding: "10px 12px", borderBottom: BORDER, backgroundColor: "var(--gray-50)" }}>
                 {view === "list" && (
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -354,10 +376,10 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
               </div>
 
               {view === "map" ? (
-                /* A FIXED HEIGHT, not the container's leftover. The drawer body scrolls, so a map
-                   that takes its height from its parent collapses to nothing inside a scroll box —
-                   the opposite of the bug that made `fill` necessary in the first place. */
-                <div style={{ height: "280px" }}>
+                /* Fills the picker, which fills the column. It can do that now that the body does
+                   not scroll — inside a scroll box a parent-sized map collapses to nothing, which
+                   is why this was pinned at 280px to begin with. */
+                <div style={{ flex: 1, minHeight: 0 }}>
                   <CameraMapView
                     cameras={cameras}
                     selectedIds={new Set(picked)}
@@ -369,7 +391,7 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
               ) : zones.length === 0 ? (
                 <p style={{ fontSize: "12px", color: "var(--gray-400)", padding: "12px", lineHeight: 1.5 }}>{t.membersNone}</p>
               ) : (
-                <div style={{ maxHeight: "280px", overflowY: "auto", padding: "8px" }}>
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px" }}>
                   {zones.map(([zone, list]) => {
                     const open = needle !== "" || openZones.includes(zone);
                     return (
@@ -439,8 +461,12 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
               group back — rings on dots and a count name nothing — and in the list the ticks are
               spread over eighteen zones. Each chip's ✕ takes that camera out, which is the one
               action this block is for. */}
+          {/* THREE ROWS AT MOST, THEN IT SCROLLS. 61 cameras is 300px of chips, and letting that
+              grow is how the map got squeezed. Bounded here rather than capped with 「외 N대」,
+              because every chip carries the ✕ that takes that camera out — a chip you cannot see
+              is a camera you cannot remove. */}
           {picked.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+            <div style={{ flexShrink: 0, maxHeight: "92px", overflowY: "auto", display: "flex", flexWrap: "wrap", gap: "6px" }}>
               {picked.map(id => {
                 const cam = cameras.find(c => c.id === id);
                 return (
