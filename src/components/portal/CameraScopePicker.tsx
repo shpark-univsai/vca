@@ -4,9 +4,8 @@ import { useMemo, useState } from "react";
 import { CheckCheck, RotateCcw } from "lucide-react";
 import { useVcaStore, hasPosition, type Camera, type PortalUser } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "@/components/Toast";
-import { BORDER, CONTROL_HEIGHT, TextField } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, Drawer, TextField } from "./PortalShared";
 
 /**
  * Which cameras an account may watch.
@@ -39,7 +38,7 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
   cameras: Camera[];
   onClose: () => void;
 }) {
-  useEscapeKey(onClose);
+  /* Escape is the Drawer's now — one panel, one place that decides how it closes. */
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const { showToast } = useToast();
@@ -230,12 +229,14 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
   };
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "480px", width: "100%", maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "20px 20px 0" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <p style={{ minWidth: 0, flex: 1, fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
+    /* A PANEL, LIKE THE OTHER EDITORS (owner, 2026-09-22: 하나로 가능한한 통일하는게 좋을것같아
+       오른쪽패널로). Narrowing somebody's cameras is work done against the account list behind it,
+       and this dialog had its own 88vh cap and its own column layout to keep a long zone list and
+       a footer on screen — which is what the shared Drawer does for every panel. */
+    <Drawer
+      title={
+        <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ minWidth: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
             {/*
               THE NUMBER, PINNED, AND ALWAYS THERE.
              
@@ -255,11 +256,49 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
                 {mode === "all" ? t.countAll(cameras.length) : t.countSome(resolvedCount, cameras.length)}
               </span>
             </span>
+        </span>
+      }
+      onClose={onClose}
+      width="520px"
+      footer={
+        /* A column inside the footer row: the sentence and the warning belong above the buttons,
+           and the Drawer's footer is one row, so this is the one element it holds. */
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "10px" }}>
+          {/*
+            THE SENTENCE FIRST, ON ITS OWN LINE, AND IT DOES NOT WAIT FOR A CHANGE.
+           
+            It used to be that this row held ONE of three things, so opening the dialog to read an
+            account's scope and changing nothing got 「아직 바뀐 것이 없습니다」 — a line about the
+            dialog rather than about the account. The scope sentence is what that reader came for,
+            so it is always here; the warnings stack under it, because a warning is about the save
+            and not about the state.
+          */}
+          {scopeSentence && (
+            <p style={{ fontSize: "11.5px", color: "var(--gray-600)", lineHeight: 1.55 }}>{scopeSentence}</p>
+          )}
+          {/* The dead button says why, in the two sentences that are actually different: nothing
+              has moved, or this would leave them with no camera at all. */}
+          {wouldFreezeAll ? (
+            <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.45 }}>{t.freezeWarning}</p>
+          ) : !canSave ? (
+            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.refuseEmpty}</p>
+          ) : null}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+          <button className="portal-btn-outline" onClick={onClose}
+            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {t.cancel}
+          </button>
+          <button className="portal-btn-primary" onClick={save} disabled={!(canSave && dirty)}
+            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: canSave && dirty ? "var(--primary-400)" : "var(--gray-200)", color: canSave && dirty ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave && dirty ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+            {t.apply}
+          </button>
           </div>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.intro(user.name)}</p>
         </div>
-
-        <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "10px", overflowY: "auto" }}>
+      }>
+      <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+        {/* The sentence that names who this is about. It headed the dialog when the title sat on
+            its own line; in a panel the title is the header's, so it opens the body instead. */}
+        <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.intro(user.name)}</p>
           {([["all", t.optAll, t.optAllDesc], ["some", t.optSome, t.optSomeDesc]] as const).map(([value, label, desc]) => {
             const on = mode === value;
             return (
@@ -421,40 +460,7 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
             })}
           </div>
         </div>
-
-        <div style={{ padding: "14px 20px 20px", display: "flex", flexDirection: "column", gap: "10px" }}>
-          {/*
-            THE SENTENCE FIRST, ON ITS OWN LINE, AND IT DOES NOT WAIT FOR A CHANGE.
-           
-            It used to be that this row held ONE of three things, so opening the dialog to read an
-            account's scope and changing nothing got 「아직 바뀐 것이 없습니다」 — a line about the
-            dialog rather than about the account. The scope sentence is what that reader came for,
-            so it is always here; the warnings stack under it, because a warning is about the save
-            and not about the state.
-          */}
-          {scopeSentence && (
-            <p style={{ fontSize: "11.5px", color: "var(--gray-600)", lineHeight: 1.55 }}>{scopeSentence}</p>
-          )}
-          {/* The dead button says why, in the two sentences that are actually different: nothing
-              has moved, or this would leave them with no camera at all. */}
-          {wouldFreezeAll ? (
-            <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.45 }}>{t.freezeWarning}</p>
-          ) : !canSave ? (
-            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.refuseEmpty}</p>
-          ) : null}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose}
-            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            {t.cancel}
-          </button>
-          <button className="portal-btn-primary" onClick={save} disabled={!(canSave && dirty)}
-            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: canSave && dirty ? "var(--primary-400)" : "var(--gray-200)", color: canSave && dirty ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave && dirty ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-            {t.apply}
-          </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </Drawer>
   );
 }
 

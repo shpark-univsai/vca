@@ -2387,8 +2387,10 @@ export function SectionNav({ sections, active, onSelect }: {
  * stated rather than designed around: a form with answers in it is discarded by that click, with
  * no undo. If that turns out to bite, the fix is a confirm on a dirty panel, not a dead scrim.
  *
- * Escape still does not close it. That one is not a convention the reader can see, so it would be
- * the same loss with none of the affordance.
+ * Escape closes it too, for the same reason and not in spite of it: once the scrim dismisses, the
+ * keyboard needs the same gesture or the panel is mouse-only. The earlier note here argued Escape
+ * was "the same loss with none of the affordance", which was true while the scrim did not close
+ * either — a key that silently discarded work nothing else discarded. It is not true now.
  *
  * WHAT THE PANEL OWNS AND WHAT THE CALLER OWNS. The panel owns the shell: the scrim, the width,
  * the full height, the header with its title and ✕, and a footer that keeps its height while the
@@ -2407,6 +2409,7 @@ export function Drawer({ title, onClose, footer, width = "520px", children }: {
   width?: string;
   children: React.ReactNode;
 }) {
+  useEscapeKey(onClose);
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", justifyContent: "flex-end" }}>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CheckCheck, RotateCcw } from "lucide-react";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 import {
   cameraGroupsInProject, camerasInProject, useVcaStore, type Camera, type CameraGroup,
 } from "@/lib/vcaStore";
@@ -180,10 +181,12 @@ const CARD_CHIP_CAP = 6;
  * not build the groups they actually need (the gate camera belongs to 정문 and to 야간 순찰 both).
  * So each row says how many other groups hold that camera and names them on hover.
  *
- * THE SCRIM CLOSES IT, ESCAPE DOES NOT (owner, 2026-09-22: 왼쪽 딤드된 부분 클릭해도 닫을수있게
+ * THE SCRIM AND ESCAPE BOTH CLOSE IT (owner, 2026-09-22: 왼쪽 딤드된 부분 클릭해도 닫을수있게
  * 해줘야할것같은데). A dimmed area is a dismiss target everywhere else, so a panel that ignores it
- * reads as stuck. Escape is not visible and would be the same loss with none of the affordance.
- * The cost is stated rather than designed around: that click discards a half-built group.
+ * reads as stuck; and once the scrim dismisses, the keyboard needs the same gesture or the panel is
+ * mouse-only. The cost is stated rather than designed around: either one discards a half-built
+ * group. The shared Drawer holds the same rule — this editor keeps its own shell only because its
+ * body is a picker with a map in it, not because it closes differently.
  */
 function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
   /** The group being changed, or null while one is being made. */
@@ -197,6 +200,7 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
   onSave: (label: string, description: string, cameraIds: string[]) => "duplicate-label" | null;
   onClose: () => void;
 }) {
+  useEscapeKey(onClose);
   const creating = group === null;
   const [label, setLabel] = useState(group?.label ?? "");
   const [description, setDescription] = useState(group?.description ?? "");
