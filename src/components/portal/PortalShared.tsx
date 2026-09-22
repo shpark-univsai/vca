@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Check, EyeOff } from "lucide-react";
 import { APP_ACTIONS, SUPPORT_CONTACT, canEditPortal, canSetPolicy, canViewFaces, currentPortalUser, useVcaStore, type AppAction, type AppScreen, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -2287,20 +2287,37 @@ export function useGrantNames(): { action: Record<AppAction, string>; screen: Re
  */
 export function SectionNav({ sections, active, onSelect }: {
   /** `count` is optional: a figure at the row's right edge, the way the product's own left rail
-   *  carries VIP 등록 122 and 입력 소스 62. Omit it where the section counts nothing. */
-  sections: { id: string; label: string; icon: React.ReactNode; count?: number }[];
+   *  carries VIP 등록 122 and 입력 소스 62. Omit it where the section counts nothing.
+   *
+   *  `group` is optional too: a caption over the first row of each run of rows that share it.
+   *  Rows are rendered in the order given, so a group's rows have to be adjacent — the caption
+   *  is drawn when the value CHANGES, which is also what makes a rail with no groups draw none. */
+  sections: { id: string; label: string; icon: React.ReactNode; count?: number; group?: string }[];
   active: string;
   onSelect: (id: string) => void;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
   return (
     <nav style={{ flexShrink: 0, width: "180px", display: "flex", flexDirection: "column", gap: "2px" }}>
-      {sections.map(sec => {
+      {sections.map((sec, i) => {
         const on = sec.id === active;
         const warm = on || hovered === sec.id;
+        /* THE CAPTION IS A DIFFERENT KIND OF LINE FROM A ROW, and it says so by not being one:
+           uppercase, 10.5px, grey, no icon and no hit area. The product's own left rail captions
+           작업 공간 and 관리 exactly this way, so a reader who has used that rail already knows
+           what this line is. First row of the run only, and the run is the order given. */
+        const caption = sec.group && sec.group !== sections[i - 1]?.group ? sec.group : null;
         return (
+          <React.Fragment key={`g-${sec.id}`}>
+          {caption && (
+            <span style={{
+              fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+              color: "var(--gray-400)", padding: i === 0 ? "2px 10px 6px 16px" : "14px 10px 6px 16px",
+            }}>
+              {caption}
+            </span>
+          )}
           <button
-            key={sec.id}
             onClick={() => onSelect(sec.id)}
             onMouseEnter={() => setHovered(sec.id)}
             onMouseLeave={() => setHovered(null)}
@@ -2360,6 +2377,7 @@ export function SectionNav({ sections, active, onSelect }: {
               </span>
             )}
           </button>
+          </React.Fragment>
         );
       })}
     </nav>

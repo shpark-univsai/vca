@@ -50,6 +50,8 @@ const T = {
     guideAppHeading: "Inside the app",
     guideAppSearchNote: "Person search is granted per account and has nothing to do with the Portal role — an app-only operator can have it and a Portal admin can be without it.",
     guideClose: "Close",
+    railPeople: "Users",
+    railGrants: "Permissions",
     peopleTabAccounts: "Accounts",
     peopleTabRoster: "On the roster",
     // On the tabs themselves. The Accounts one answers the thing this table is most often read
@@ -346,12 +348,6 @@ const T = {
     foldGrant: "Permissions",
     foldSite: "Site",
     foldTeam: "Team",
-    foldUnanswered: "not chosen yet",
-    foldGrantCustom: (n: number) => `Hand-picked · ${n} of 6`,
-    foldGrantPortalOnly: "Portal only — no app screens",
-    foldSiteMore: (first: string, rest: number) => `${first} +${rest}`,
-    foldCamerasAll: (n: number) => `all ${n} cameras`,
-    foldCamerasSome: (n: number) => `${n} cameras`,
     scopeLabel: "Cameras",
     scopeNoProject: "Tick a project to see how many cameras that is.",
     scopeNoCameras: "No cameras are registered on the ticked projects yet.",
@@ -456,6 +452,8 @@ const T = {
     guideAppHeading: "앱 안에서",
     guideAppSearchNote: "인물 검색은 계정마다 따로 부여하며 Portal 역할과 무관합니다 — 앱 전용 운영자가 가질 수도 있고, Portal 관리자가 없을 수도 있습니다.",
     guideClose: "닫기",
+    railPeople: "사용자",
+    railGrants: "권한",
     peopleTabAccounts: "계정",
     peopleTabRoster: "명부 대기",
     peopleTabAccountsHint: "이 프로젝트에 닿을 수 있는 계정입니다 — 초대만 받고 아직 로그인하지 않은 사람도 포함합니다.",
@@ -685,12 +683,6 @@ const T = {
     foldGrant: "권한",
     foldSite: "현장",
     foldTeam: "팀",
-    foldUnanswered: "아직 고르지 않았음",
-    foldGrantCustom: (n: number) => `직접 고름 · 6가지 중 ${n}`,
-    foldGrantPortalOnly: "포털만 — 앱 화면 없음",
-    foldSiteMore: (first: string, rest: number) => `${first} 외 ${rest}`,
-    foldCamerasAll: (n: number) => `카메라 전체 ${n}대`,
-    foldCamerasSome: (n: number) => `카메라 ${n}대`,
     scopeLabel: "카메라 범위",
     scopeNoProject: "프로젝트를 고르면 몇 대인지 나옵니다.",
     scopeNoCameras: "고른 프로젝트에 등록된 카메라가 아직 없습니다.",
@@ -1122,7 +1114,8 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const [permission, setPermission] = useState<PortalPermission>("admin");
   const [projectIds, setProjectIds] = useState<string[]>(defaultProjectId ? [defaultProjectId] : []);
   /** Which fold is open, or none. One at a time: two open folds is the tall form again. */
-  const [openFold, setOpenFold] = useState<"grant" | "site" | "team" | null>(null);
+  /* Only the team folds now, so the state is that one row's. It was an accordion over three. */
+  const [teamOpen, setTeamOpen] = useState(false);
   /** Camera groups the invite hands over. Empty means every camera — see the note on draftGroups. */
   const [scopeGroupIds, setScopeGroupIds] = useState<string[]>([]);
   const toggleScopeGroup = (id: string) =>
@@ -1172,32 +1165,9 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const pickedGroups = draftGroups.filter(g => scopeGroupIds.includes(g.id));
   const pickedGroupCameras = new Set(pickedGroups.flatMap(g => g.cameraIds));
 
-  /*
-   * WHAT EACH CLOSED FOLD SAYS. Written from the draft, so a fold read from the outside always
-   * agrees with what is inside it — a summary computed from anything else is the way a folded form
-   * starts lying about itself.
-   *
-   * The grant one has three states because the three are genuinely different: nothing chosen (the
-   * only thing on this form that blocks and cannot be pre-answered), a preset by name, and a
-   * hand-picked set counted rather than listed — six action names do not fit on a row.
-   */
-  const grantSummary = accessMode === "portalOnly" ? t.foldGrantPortalOnly
-    : effectiveChoice === null ? t.foldUnanswered
-    : effectiveChoice === "custom" ? t.foldGrantCustom(customActions.length)
-    : presetLabel(presets.find(pr => pr.id === effectiveChoice)!, lang);
-  /* Site: the projects, the door, and how many cameras that comes to — the three things the fold
-     holds, in the order the fold asks them. "및 N" rather than every project name: two names
-     already fill the row at 520px. */
-  const siteSummary = projectIds.length === 0 ? t.foldUnanswered : [
-    selectedProjects.length <= 1
-      ? (selectedProjects[0]?.name ?? "")
-      : t.foldSiteMore(selectedProjects[0].name, selectedProjects.length - 1),
-    accessLabel(t, accessMode),
-    accessMode === "portalOnly" ? ""
-      : draftScopable.length === 0 ? ""
-      : pickedGroups.length > 0 ? t.foldCamerasSome(pickedGroupCameras.size)
-      : t.foldCamerasAll(draftScopable.length),
-  ].filter(Boolean).join(" · ");
+  /* The two closed-fold summaries went with the folds: 권한 and 현장 are open sections now, so
+     nothing reads them from the outside and a summary of a section you can see is the section
+     said twice. The 팀 fold prints its own answer inline — it is one name. */
   const hasIsolated = selectedProjects.some(isNetworkIsolated);
   const hasReachable = selectedProjects.some(p => !isNetworkIsolated(p));
   // Only when a site constrains the address. The all-connected case had a line of its own
@@ -1232,11 +1202,9 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
     && teamId !== "" && projectIds.length > 0 && grantsChosen;
   const submit = () => {
     setSubmitted(true);
-    /* AN ERROR MUST NOT POINT AT A FOLD. The two blocking answers that live behind one are the
-       projects and the grant, so a refused invite opens the fold that is missing its answer —
-       otherwise the reason sits beside the button and the field it is about is not on screen. */
-    if (projectIds.length === 0) setOpenFold("site");
-    else if (applyAccessMode(accessMode, permission).appAccess && !grantsChosen) setOpenFold("grant");
+    /* Nothing to open any more. This used to push the failing fold open — a refused invite whose
+       reason sat beside the button while the field it was about was off screen — and both of those
+       fields are now sections that were open the whole time. */
     // A project is required, the same as it is when the assignment is changed later: an account
     // invited with nothing ticked signs into an empty app and reads it as a broken product.
     if (!name.trim() || !email.trim() || !teamId || projectIds.length === 0) return;
@@ -1431,28 +1399,31 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           </div>
 
           {/*
-            THE REST IS FOLDED (owner, 2026-09-21: 사람만 보이고 권한은 접어둔다).
+            THE TWO REQUIRED ANSWERS ARE OPEN; ONLY THE OPTIONAL ONE IS FOLDED (owner, 2026-09-22:
+            사용자 초대에 권한이랑 현장이 필수값인데, 선택해서 선택해야하는게 비효율적이야).
 
-            Measured before rebuilding: the two-column sheet stood 880×859 on a 900px window — 95%
-            of the screen for seven questions — and the WIDE column was the empty one (538px wide
-            holding 392px of content, 333px of dead space under it) while the narrow 340px column
-            ran to 685px. Column titles did not fix that; the dialog was simply too big for what it
-            asks.
-
-            So: one column at 520px, the two fields nobody can answer for you open, and the three
-            that already have an answer folded to a line that STATES that answer. Docusign's
-            add-user page is the reference — its finished steps collapse to "Email: jdoe2@…" — and
-            the summary is what makes folding safe: a closed row is not a hidden question, it is an
-            answered one you can read without opening it.
-
-            The one row that cannot be pre-answered is the grant, deliberately (see grantChoice: no
-            preset is chosen for you). It carries the star and says so, and pressing Invite opens it
-            rather than pointing at a fold.
+            Folding all three was right for the container it was built in and wrong for this one.
+            The reasoning then: the two-column sheet stood 880×859 on a 900px window — 95% of the
+            screen for seven questions — so it became one 520px column with the answerable things
+            folded to a line that STATES the answer. Two things have changed since.
+            
+            It is a PANEL now, as tall as the window, so height is no longer the thing being
+            rationed. And the folds were an ACCORDION — `openFold` holds one id — so filling the
+            two required sections meant opening 권한, answering, opening 현장, which closed 권한,
+            and going back if you wanted to check it. Two required answers behind a control that
+            only shows one at a time is a round trip for every invite.
+            
+            So 권한 and 현장 are sections, always open, each with its star. 팀 stays folded: it has
+            an answer already (the project's owning team) and nobody normally changes it — which is
+            the case folding was for. Folded rather than dropped, because an account CAN be filed
+            under another team and a form that never shows the team would put somebody in the wrong
+            one silently.
+            
+            The grant still starts unanswered on purpose (see grantChoice: no preset is chosen for
+            you), and pressing Invite still says which one is missing.
           */}
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "4px" }}>
-            <FoldRow
-              label={t.foldGrant} required summary={grantSummary} answered={accessMode === "portalOnly" || effectiveChoice !== null}
-              open={openFold === "grant"} onToggle={() => setOpenFold(openFold === "grant" ? null : "grant")}>
+            <FormSection label={t.foldGrant} required>
               {accessMode !== "portalOnly" ? (
                 <GrantPicker
                   presets={presets} choice={effectiveChoice} onChoice={setGrantChoice}
@@ -1463,11 +1434,9 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                    than opening onto an empty list. */
                 <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.grantsPortalOnly}</p>
               )}
-            </FoldRow>
+            </FormSection>
 
-            <FoldRow
-              label={t.foldSite} required summary={siteSummary} answered={projectIds.length > 0}
-              open={openFold === "site"} onToggle={() => setOpenFold(openFold === "site" ? null : "site")}>
+            <FormSection label={t.foldSite} required>
               <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                 <div>
                   <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.projectsLabel}</label>
@@ -1572,7 +1541,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                   </div>
                 )}
               </div>
-            </FoldRow>
+            </FormSection>
 
             {/* Last, and the only fold whose answer nobody normally changes: the team is the one
                 that owns the project this page is scoped to. Folded rather than dropped, because
@@ -1580,7 +1549,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                 would put somebody in the wrong one silently. */}
             <FoldRow
               label={t.foldTeam} summary={teams.find(o => o.id === teamId)?.name ?? ""} answered
-              open={openFold === "team"} onToggle={() => setOpenFold(openFold === "team" ? null : "team")}>
+              open={teamOpen} onToggle={() => setTeamOpen(v => !v)}>
               <FilterSelect value={teamId} onChange={changeTeam} options={teams.map(o => ({ value: o.id, label: o.name }))} />
             </FoldRow>
           </div>
@@ -1916,6 +1885,32 @@ const SECTION_HEAD: React.CSSProperties = {
   fontSize: "11px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase",
   color: "var(--gray-400)",
 };
+
+/**
+ * A REQUIRED ANSWER, ALWAYS OPEN.
+ *
+ * The label with its star, and the thing being answered directly under it — the ordinary shape of
+ * a form field, which is what these are. It exists as a component rather than a bare div so the
+ * star and the label sit at the same size and weight in both sections, and so the next required
+ * section added to this form cannot drift from them.
+ *
+ * The fold below is its opposite number, for the answers that are already filled in.
+ */
+function FormSection({ label, required, children }: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "8px" }}>
+        {label}
+        {required && <span style={{ color: "var(--danger-500)", marginLeft: "3px" }}>*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
 
 /**
  * ONE FOLDED QUESTION: its name, the answer it already holds, and its controls when opened.
@@ -2733,9 +2728,13 @@ type UserFilterKey = "invited" | "suspended" | "roster" | "dormant" | "noScreens
  * the weight a distribution needs.
  */
 function UserCountStrip({
-  users, onShowGuide,
+  users, onShowGuide, exceptions, statusFilter, onFilter,
 }: {
   users: PortalUser[];
+  /** The exception counts, drawn as cells beside the headcount. Empty on the other tabs. */
+  exceptions: { key: UserFilterKey; count: number; label: string; hint: string; icon: React.ReactNode }[];
+  statusFilter: UserFilterKey | null;
+  onFilter: (next: UserFilterKey | null) => void;
   /* The exception counts and their filter left for the toolbar, where a table's filters belong —
      so this component is the headcount and its breakdown, and nothing else. */
   onShowGuide: () => void;
@@ -2786,6 +2785,18 @@ function UserCountStrip({
           unit: t.countPeopleUnit,
           label: t.countTotal,
         },
+        /* NEUTRAL, EVERY ONE. `tone: "warning"` is what they carried when they were cells before,
+           and three amber cards in a row beside the headcount is the thing that made them awkward
+           there. A defect still has to be noticed, and the figure is what does that. */
+        ...exceptions.map(item => ({
+          key: item.key,
+          icon: item.icon,
+          figure: item.count,
+          label: item.label,
+          title: item.hint,
+          active: statusFilter === item.key,
+          onClick: () => onFilter(statusFilter === item.key ? null : item.key),
+        })),
       ]} />
       {/*
         THE BREAKDOWN GOES WITH THE FIGURE IT BREAKS DOWN (owner, 2026-09-22: 위치를 조금
@@ -3344,13 +3355,24 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
       <div style={{ display: "flex", alignItems: "flex-start", gap: "24px" }}>
       <SectionNav
         sections={[
-          { id: "accounts", label: t.peopleTabAccounts, count: projectUsers.length, icon: <UsersIcon size={15} strokeWidth={2} /> },
-          { id: "roster", label: t.peopleTabRoster, count: rosterWaiting.length, icon: <ClipboardList size={15} strokeWidth={2} /> },
+          /* TWO CAPTIONS, WHICH IS WHERE THIS OBJECTION FINALLY LANDS (owner, 2026-09-22: 계정과
+             명부대기를 묶어서 그위에 작은글씨로 구분명을 추가해줘). Four rows that are two kinds
+             was the whole complaint, and every earlier answer tried to say it with geometry — a
+             rule, a second row, a qualifier on one label. A caption says it in a word, and in a
+             rail it costs nothing: the product's own left rail already captions 작업 공간 and
+             관리, so the line reads as a heading before it is read as text.
+             THE TWO WORDS ARE THIS PAGE'S OWN NAME, SPLIT (owner, 2026-09-22: 사람이랑 권한묶음
+             이라는 단어 조금 이상해). 「사람」 was bare and 「권한 묶음」 was a term invented for
+             the occasion — a reader meets it here and nowhere else. The page is called 사용자 및
+             권한, so its two halves are 사용자 and 권한, which is a name the reader has already
+             read in the rail one level up. No new vocabulary. */
+          { id: "accounts", group: t.railPeople, label: t.peopleTabAccounts, count: projectUsers.length, icon: <UsersIcon size={15} strokeWidth={2} /> },
+          { id: "roster", group: t.railPeople, label: t.peopleTabRoster, count: rosterWaiting.length, icon: <ClipboardList size={15} strokeWidth={2} /> },
           /* A group answers "which cameras", a preset answers "which screens", and the invite form
              asks both — so they sit together, in the order the form asks them. Each keeps the icon
              its own screen already used for itself. */
-          { id: "groups", label: t.peopleTabGroups, count: cameraGroupsInProject(cameraGroups, projectId).length, icon: <Boxes size={15} strokeWidth={2} /> },
-          { id: "presets", label: t.peopleTabPresets, count: pagePresets.length, icon: <KeySquare size={15} strokeWidth={2.2} /> },
+          { id: "groups", group: t.railGrants, label: t.peopleTabGroups, count: cameraGroupsInProject(cameraGroups, projectId).length, icon: <Boxes size={15} strokeWidth={2} /> },
+          { id: "presets", group: t.railGrants, label: t.peopleTabPresets, count: pagePresets.length, icon: <KeySquare size={15} strokeWidth={2.2} /> },
         ]}
         active={peopleTab}
         onSelect={id => setPeopleTab(id as "accounts" | "roster" | "groups" | "presets")}
@@ -3364,7 +3386,34 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           Accounts tab used to set a filter no account's status can equal: the table emptied and
           printed "No users have access to this project yet" with six accounts one click away.
           The mirror case did the same on the other tab. A cell now shows what it counts. */}
-      <UserCountStrip users={projectUsers} onShowGuide={() => setShowGuide(true)} />
+      {/*
+        THE THREE ARE CARDS AGAIN, THE SAME HEIGHT AS THE HEADCOUNT (owner, 2026-09-22: 카드 높이
+        같게 해줘 — 칩을 카드 높이로).
+
+        This closes a loop and it is worth writing down. They began as cards in this strip; the
+        owner found them awkward there (초대 수락안함~3가지 좀 위치가 애매해보여) and they became a
+        line of chips beside the search box, which is where a table's filters belong. Moving them
+        into the strip's leftover room made them short pills beside a 73px card, and short pills
+        beside a card read as a different KIND of control rather than a quieter one.
+
+        So: cells of the strip, which is the one thing here that already draws equal-height cards
+        with a pressed state. What was actually wrong the first time was the AMBER — three cells
+        tinted for defects beside the headcount read as three alarms — and that is fixed by tone:
+        every one of them is neutral now (owner: 좀 강조되지않게). The count keeps its size, which
+        is the part somebody has to notice; only the colour stood down.
+
+        The hint moves from our own Tooltip to the cell's `title`, which is the browser's. That is
+        a real loss — the browser's wants the pointer held still for about a second — and it is the
+        price of the shared cell. If these hints turn out to matter, `title` on SummaryCell is the
+        thing to upgrade, not a fourth home for these three counts.
+      */}
+      <UserCountStrip
+        users={projectUsers}
+        onShowGuide={() => setShowGuide(true)}
+        exceptions={peopleTab === "accounts" ? exceptions : []}
+        statusFilter={statusFilter}
+        onFilter={onFilter}
+      />
 
       <AccessRequestsPanel projectId={projectId} onLinksMade={setInvitePanel} />
 
@@ -3390,60 +3439,6 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           inside the pair. */}
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
       <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
-        {/*
-          THE FILTERS SIT WITH THE SEARCH BOX (owner, 2026-09-22: 초대수락안함~3가지 좀 위치가
-          애매해보여 → 레퍼런스찾아보고 → 그냥 검색바옆으로 다시 옮겨줘).
-
-          Both ends were tried against the owner's eye. Asana's shape — search left, the filter
-          state pinned right beside the primary button — is the other candidate and is not what
-          this page wanted: the two narrowing controls end up some 600px apart with the table's
-          whole width between them. Beside the search they read as one group, which is also what
-          most of the references do (Docusign's Status · All Filters · Reset after the keyword
-          box, WRITER's row of selects, Substack, Xero, Navattic).
-        
-          They were a line of their own between the count and the toolbar, belonging to neither. The
-          references agree on where they go: a table's filters live in the row that holds its search,
-          and an applied one stays visible there with an ✕ to clear — Navattic (Events: Engaged ✕ ·
-          Clear), Remote, Twenty, Aboard and Airwallex all do exactly that, and Asana keeps the same
-          idea as "Filters: 2 ✕".
-        
-          NOT A STATUS DROPDOWN, which is the other half of the references (Docusign's
-          "Status: Active, Pending ▾", WRITER's row of selects, Deel's Worker status ●). A dropdown
-          hides its counts until opened, and these three are defects — 앱 화면 미지정 2 is a number
-          somebody has to notice without going looking, which is the whole reason it is drawn.
-        */}
-        {exceptions.map(item => {
-          const on = statusFilter === item.key;
-          return (
-            /* The explanation is the whole point of these labels — an invitation nobody accepted is
-               not a self-explanatory phrase — so each chip keeps the hint the card carried, in our
-               own Tooltip rather than the browser's `title`. */
-            <Tooltip key={item.key} text={item.hint}>
-              <button type="button" onClick={() => onFilter(on ? null : item.key)}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: "6px",
-                  height: CONTROL_HEIGHT, padding: on ? "0 8px 0 10px" : "0 10px",
-                  borderRadius: "999px", cursor: "pointer", fontFamily: "inherit",
-                  border: on ? "1px solid var(--gray-900)" : BORDER,
-                  backgroundColor: on ? "var(--gray-900)" : "white",
-                  color: on ? "white" : "var(--gray-600)",
-                  fontSize: "11.5px", fontWeight: 600,
-                }}>
-                <span style={{ display: "flex", color: on ? "white" : "var(--warning-500)" }}>{item.icon}</span>
-                {item.label}
-                <span style={{ fontWeight: 800, color: on ? "white" : "var(--gray-900)" }}>{item.count}</span>
-                {/* The way out, on the chip that is doing something. Every reference puts it here,
-                    and without it the only way back is pressing the same chip again — which reads as
-                    a toggle nobody told you about. */}
-                {on && (
-                  <span aria-hidden="true" style={{ display: "flex", opacity: 0.7 }}>
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                  </span>
-                )}
-              </button>
-            </Tooltip>
-          );
-        })}
 
           {/* Tools follow the tab. Six buttons in one row was every tool for both halves of the
               lifecycle competing at once, and four of them could not act on what the reader was
