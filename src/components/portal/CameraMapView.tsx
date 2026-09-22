@@ -370,6 +370,9 @@ export default function CameraMapView({
         markersRef.current.set(cam.id, marker);
       });
 
+      /** Every pill, with the number that decides which one wins a collision. */
+      const pillEntries: { marker: L.Marker; zone: (typeof zones)[number]; full: string; compact: string }[] = [];
+
       zones.forEach(zone => {
         /* The count, and how many of them are not answering. One figure would make a zone of
            twelve working cameras and a zone of twelve dead ones the same pill — which is the
@@ -396,19 +399,36 @@ export default function CameraMapView({
                <span style="font-size:11px;font-weight:700">${zone.down}</span>
              </span>`
           : "";
-        const pill = L.divIcon({
-          className: "",
-          html: `<div style="transform:translate(-50%,-50%);display:inline-flex;align-items:baseline;
+        /*
+         * TWO SIZES OF THE SAME PILL, AND WHICH ONE IS DRAWN IS DECIDED AFTER PLACEMENT.
+         *
+         * Eighteen zones inside one city at this zoom collide: measured in the group drawer,
+         * 18 pills produced 29 overlapping pairs at 629x372 and the same 29 at 629x290, which is
+         * why growing the map did not fix it — the cause is the scale, not the box. The earlier
+         * mitigation was z-index only (the bigger zone on top), so the smaller one was still
+         * there, half-covered and unreadable.
+         *
+         * The compact form drops the zone's NAME and keeps the count, which is about a third of
+         * the width. That is the right thing to lose: a pill whose name is hidden under another
+         * pill was not telling you the name either, and the count is what the layer is for. The
+         * name stays in the marker's title, so hovering still answers it, and clicking still
+         * grants the whole zone — losing the target is the one thing decluttering must not do.
+         */
+        const shell = (inner: string) => `<div style="transform:translate(-50%,-50%);display:inline-flex;align-items:baseline;
                    gap:5px;background:white;border:1px solid var(--gray-200);border-radius:999px;padding:3px 9px;
                    box-shadow:0 2px 8px rgba(24,17,39,0.14);white-space:nowrap;font-family:inherit;cursor:pointer">
-                   <span style="font-size:10px;font-weight:600;color:var(--gray-500)">${escapeHtml(zone.label)}</span>
-                   <span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.3px">${t.zoneCount(zone.cams.length)}</span>
-                   ${downMark}
-                 </div>`,
+                   ${inner}
+                 </div>`;
+        const countSpan = `<span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.3px">${t.zoneCount(zone.cams.length)}</span>`;
+        const fullHtml = shell(`<span style="font-size:10px;font-weight:600;color:var(--gray-500)">${escapeHtml(zone.label)}</span>${countSpan}${downMark}`);
+        const compactHtml = shell(`${countSpan}${downMark}`);
+        const pill = L.divIcon({
+          className: "",
+          html: fullHtml,
           iconSize: [0, 0],
           iconAnchor: [0, 0],
         });
-        L.marker([zone.lat, zone.lng], {
+        const pillMarker = L.marker([zone.lat, zone.lng], {
           icon: pill,
           title: zone.down > 0 ? `${zone.label} · ${t.zoneCount(zone.cams.length)} · ${t.zoneDown(zone.down)}` : `${zone.label} · ${t.zoneCount(zone.cams.length)}`,
           /* Where two pills still overlap, the bigger zone wins the top: a one-camera pill hiding
@@ -440,7 +460,101 @@ export default function CameraMapView({
             const bounds = L.latLngBounds(zone.cams.map(c => [c.lat, c.lng] as [number, number]));
             instance.fitBounds(bounds, { padding: [56, 56], maxZoom: ZONE_FOCUS_ZOOM });
           });
+        pillEntries.push({ marker: pillMarker, zone, full: fullHtml, compact: compactHtml });
       });
+
+      /*
+       * DECLUTTER: THE WHOLE LAYER PICKS ONE FORM, THEN THE LEFTOVERS GIVE WAY.
+       *
+       * Eighteen zones inside one city at this zoom collide: measured in the group drawer, 18
+       * pills produced 29 overlapping pairs at 629x372 and the same 29 at 629x290 — growing the
+       * map does not fix it, because the cause is the scale.
+       *
+       * Deciding each pill on its own was tried first and was worse than the problem: seven kept
+       * their names, ONE went compact and ELEVEN were hidden. Eleven hidden zones is eleven zones
+       * you cannot click, and one small pill among seven large ones reads as a glitch rather than
+       * a rule.
+       *
+       * So density decides the FORM for everybody: if the full pills collide anywhere, every pill
+       * drops to its count. That is a third of the width each, which buys far more room than
+       * taking it from the losers one at a time, and a layer where all the marks are the same size
+       * reads as a layer. Only after that does anything give way, and hiding is the last resort.
+       *
+       * What a compact pill loses is its zone's NAME, which is the right thing to lose: a name
+       * under another pill was not being read anyway. It stays in the marker's title, and the
+       * click still grants the whole zone — decluttering must not cost a target.
+       *
+       * Measured on the layout, not guessed from coordinates, and the box is the pill's CHILD div
+       * because the divIcon wrapper is iconSize [0,0] — the same trap that made a test report
+       * "0 pills, 0 overlaps" as a pass. A hidden element keeps its box, so a later pass can still
+       * measure what an earlier one hid.
+       */
+      const PILL_GAP = 4;
+      const declutter = () => {
+        if (!instance.hasLayer(pillLayer)) return;
+        const boxOf = (m: L.Marker) => {
+          const el = m.getElement();
+          const inner = el?.firstElementChild as HTMLElement | undefined;
+          return inner ? inner.getBoundingClientRect() : null;
+        };
+        const hits = (r: DOMRect, placed: DOMRect[]) => placed.some(p =>
+          r.left < p.right + PILL_GAP && p.left < r.right + PILL_GAP
+          && r.top < p.bottom + PILL_GAP && p.top < r.bottom + PILL_GAP);
+        const setForm = (e: typeof pillEntries[number], compact: boolean) => {
+          e.marker.setIcon(L.divIcon({
+            className: "",
+            html: compact ? e.compact.replace("<div ", '<div data-compact="1" ') : e.full,
+            iconSize: [0, 0], iconAnchor: [0, 0],
+          }));
+        };
+
+        // Biggest zone first: where something has to give, the one-camera zone gives before the
+        // eight-camera one. Reset everything, or an earlier decision decides this one.
+        const order = [...pillEntries].sort((a, b) => b.zone.cams.length - a.zone.cams.length);
+        order.forEach(e => {
+          const el = e.marker.getElement();
+          if (el) el.style.visibility = "";
+          setForm(e, false);
+        });
+
+        /*
+         * HOW MANY WOULD LOSE THEIR PLACE DECIDES WHO GIVES UP THEIR NAME.
+         *
+         * Two rules were measured and each was wrong somewhere:
+         *
+         *   per-pill      the losers alone go compact — 13 names kept on the wide Input Sources
+         *                 map (good), but ELEVEN of 18 hidden in the 629px drawer, because seven
+         *                 full pills sat on the room the rest needed
+         *   whole-layer   one collision anywhere strips every name — 8 hidden in the drawer
+         *                 (better), but the wide map lost all 18 names to fix two pills
+         *
+         * So the density picks between them: if MORE THAN A THIRD of the pills would lose their
+         * place, the crowd is the problem and the whole layer drops to counts; otherwise it is a
+         * couple of unlucky pairs and only they give up their names. One rule, and it produces the
+         * better of the two behaviours at each size instead of the same compromise at both.
+         */
+        const firstPass: DOMRect[] = [];
+        const losers = new Set<typeof order[number]>();
+        order.forEach(e => {
+          const r = boxOf(e.marker);
+          if (!r) return;
+          if (hits(r, firstPass)) losers.add(e);
+          else firstPass.push(r);
+        });
+        const crowded = losers.size * 3 > order.length;
+        order.forEach(e => setForm(e, crowded || losers.has(e)));
+
+        // Then, and only then, hide what still cannot fit. Hiding costs a target, so it is last.
+        const placed: DOMRect[] = [];
+        order.forEach(e => {
+          const r = boxOf(e.marker);
+          const el = e.marker.getElement();
+          if (!r || !el) return;
+          if (hits(r, placed)) el.style.visibility = "hidden";
+          else placed.push(r);
+        });
+      };
+      const declutterSoon = () => requestAnimationFrame(() => requestAnimationFrame(declutter));
 
       const applyZoom = () => {
         const z = instance.getZoom();
@@ -450,10 +564,13 @@ export default function CameraMapView({
           if (!instance.hasLayer(dotLayer)) instance.addLayer(dotLayer);
         } else {
           if (instance.hasLayer(dotLayer)) instance.removeLayer(dotLayer);
-          if (!instance.hasLayer(pillLayer)) instance.addLayer(pillLayer);
+          if (!instance.hasLayer(pillLayer)) { instance.addLayer(pillLayer); declutterSoon(); }
         }
       };
       instance.on("zoomend", applyZoom);
+      /* Positions move on pan as well as zoom, and a pill that had room at one corner of the
+         city has none at another. `moveend` covers both — zoomend fires a move too. */
+      instance.on("moveend", declutterSoon);
 
       // Frame what is actually there. A site can be a campus a few hundred metres across, ten
       // kilometres from the city centre the default view opens on.
@@ -463,6 +580,7 @@ export default function CameraMapView({
       }
       // After the fit, not before: which layer belongs on screen depends on the zoom the fit chose.
       applyZoom();
+      declutterSoon();
       map = instance;
       mapInstanceRef.current = instance;
     })();
