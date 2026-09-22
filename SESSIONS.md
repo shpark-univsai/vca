@@ -13,6 +13,11 @@
 
 | 세션 | 잡은 파일 | 상태 |
 |---|---|---|
+| vca-85/P1 | `ProjectVipTab.tsx` · `VipCategories.tsx` · `VipImportModal.tsx` | **배정 2026-09-22 오후**: 자체 모달 → 공용 `Drawer`(오른쪽 패널). `ConfirmModal`은 손대지 않음 |
+| vca-85/P2 | `ProjectRosterTab.tsx` · `RosterImportModal.tsx` | 같음 |
+| vca-85/P3 | `ProjectCamerasTab.tsx` · `CameraImportModal.tsx` · `UploadPreviewModal.tsx` | 같음 |
+| vca-85/P4 | `ProjectServerTab.tsx` · `ProjectApiPanel.tsx` · `ProjectRequestsTab.tsx` | 같음 |
+| vca-85 (본인) | `PortalUsersPage.tsx` · `PortalShared.tsx` · `CameraGroupsTab.tsx` · `CameraScopePicker.tsx` · `CameraMapView.tsx` | 완료·커밋됨. **P1~P4는 커밋하지 않습니다** — 제가 재검증하고 파일 단위로 올립니다 |
 | vca-85 (본인) | `PortalUsersPage.tsx` · `CameraGroupsTab.tsx` · `AccessPresetsTab.tsx` · `CameraScopePicker.tsx` | 외부 UI/UX 검토 문서 반영 — 탭 머리 설명 세 문장 삭제, 빈 상태 둘째 절 삭제, 그룹 이름 플레이스홀더를 등록부의 실제 구역에서 만든 예시로. **진행 중 (2026-09-22 오후)**: 외부 UI/UX 검토 문서 + 시안 HTML 3개를 화면과 대조하며 반영. 완료 `63ff72c`(설명 삭제·플레이스홀더 예시) `93d1c02`(탭 두 단) → `3eb3ded`(**두 단을 되돌리고 한 줄 + 「권한용 묶음」 수식어**, 사용자 선택) `62b6950`(범위 창 머리에 숫자 고정). 남은 것: 표 카메라 칸의 그룹 개수, 권한 요약 한 줄, **카메라 그룹을 카드 격자 + 오른쪽 드로어 편집 + 그룹 설명 필드**. `ab1c4e3`(표 카메라 칸에 그룹 개수). **`vcaStore.ts`를 건드렸습니다** — 규칙대로 확인 후: 워킹트리 깨끗, 그 파일 마지막 손댄 것이 09-21 14:55, 오늘 커밋 전부 제 것이라 잡은 세션 없음. `CameraGroup.description?` 추가 + `renameCameraGroup`·`setCameraGroupMembers`를 `updateCameraGroup` 하나로 합침(드로어가 이름·설명·멤버를 한 번에 저장하므로 감사 줄도 하나). **남은 판단 1건**: 범위 창 「고른 것만」이 개별 62대 전부 체크로 시작해 그대로 저장하면 목록이 굳습니다 — 빈 상태 시작 + 「전부 고르기」 버튼을 권고했고 미착수 |
 | vca-84/E | — 놓았습니다 | **완료 `5aa96d8`.** 타일이 `오늘 검출된 VIP`(사람 19) + `오늘 검출`(건수 65)로 갈렸고, 못 지킬 `deltaPct`는 다섯 시드에서 삭제(SYSTEM 탭 둘도 같은 산술 오류였음). **기록**: `dashboardStats.tracking`과 `vipTargets: 12`는 **읽는 곳이 0개**인 죽은 스텁이고 화면 숫자(121)와 어긋납니다 |
 | vca-84 (본인) | `DetectionActivityChart.tsx` | E가 신고한 한국어 충돌 — 차트 제목 `오늘 VIP 검출`(65건)이 새 타일 `오늘 검출된 VIP`(19명)와 거의 같은 말인데 다른 숫자. 차트는 `오늘 검출` 타일에서 열리므로 그쪽을 따르게 함 |
