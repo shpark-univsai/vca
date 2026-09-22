@@ -264,15 +264,6 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
      */
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "14px" }}>
-        {/* CLOSE, NOT BACK. It was a back button while the editor replaced the table; now the
-            table is beside it and there is nowhere to go back to — this only puts the pane away. */}
-        <button type="button" onClick={onClose}
-          style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: "5px", height: CONTROL_HEIGHT, padding: "0 10px 0 8px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-            <path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-          </svg>
-          {t.back}
-        </button>
         <div style={{ minWidth: 0, flex: 1 }}>
           <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)" }}>
             {creating ? t.createTitle : t.membersTitle(group.label)}
@@ -295,20 +286,19 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
          * beside the button that writes it.
          */}
         <span style={{ flexShrink: 0, fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>{t.pickedCount(picked.length)}</span>
+        {/* THE WAY OUT AND THE WAY TO COMMIT, AS A PAIR, TOP RIGHT. Klaviyo's geofence editor puts
+            Exit and Save there, Deputy and Supabase the same; ours had the close alone on the far
+            left, 800px from the button it is the alternative to. */}
+        <button type="button" onClick={onClose}
+          style={{ flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12.5px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          {t.back}
+        </button>
         <button type="button" onClick={save} disabled={!dirty}
           style={{ flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: dirty ? "var(--gray-900)" : "var(--gray-200)", color: dirty ? "white" : "var(--gray-400)", fontSize: "12.5px", fontWeight: 700, cursor: dirty ? "pointer" : "default", fontFamily: "inherit" }}>
           {creating ? t.createSave : t.membersSave}
         </button>
       </div>
       <div style={{ backgroundColor: "white", borderRadius: CARD_RADIUS, border: CARD_BORDER, boxShadow: PANEL_SHADOW, display: "flex", flexDirection: "column" }}>
-
-        {creating && (
-          <div style={{ padding: "16px 20px 0" }}>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.createName}</label>
-            <TextField value={label} onChange={v => { setLabel(v); setLabelError(null); }} placeholder={t.createNamePlaceholder} autoFocus />
-            {labelError && <FieldError>{labelError}</FieldError>}
-          </div>
-        )}
 
         <div style={{ padding: "16px 20px 0", display: "flex", alignItems: "center", gap: "10px" }}>
           {/* TWO WAYS IN, NOT TWO SELECTIONS. Switching does not reset anything — the count in the
@@ -340,7 +330,9 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
 
         {/* THE ONE SENTENCE THAT STOPS A WRONG ASSUMPTION. Said above the list rather than on a
             row, because it is about the rule and not about any one camera. */}
-        <p style={{ padding: "10px 20px 0", fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.overlapNote}</p>
+        {/* The overlap rule moved into the members column, under the list it is about — see there.
+            Two grey paragraphs stacked above the map is the chrome the references do not have:
+            Klaviyo, Felt and komoot carry their hints as field descriptions or floating chips. */}
 
         {/*
           THE PICKER ON THE LEFT, WHAT IS IN THE GROUP ON THE RIGHT (owner, 2026-09-22: 편집이나
@@ -446,7 +438,36 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
               a 620px map with dead space under it; Klaviyo and Tripadvisor both run the side
               column the full height of the map, divided by a rule. So: no border of its own, no
               radius, full height, and the frame around both is the only box on screen. */}
-          <div style={{ flex: "0 0 210px", minWidth: "180px", display: "flex", flexDirection: "column", minHeight: 0, borderLeft: BORDER, backgroundColor: "white" }}>
+          <div style={{ flex: "0 0 290px", minWidth: "240px", display: "flex", flexDirection: "column", minHeight: 0, borderLeft: BORDER, backgroundColor: "white" }}>
+            {/*
+              THE RIGHT COLUMN IS THE FORM, NOT A SUMMARY (owner: 레퍼런스에서 이런 비슷한 ui 많이
+              봤는데 이건 묘하게 어색해보인다 → Klaviyo 그대로).
+
+              That was the difference. Klaviyo's geofence editor puts the map on the left and the
+              thing's FIELDS on the right — name, description, radius — so the right column is
+              where you type and the left is where you point. Ours had the name in a full-width
+              row above the frame and kept an almost-empty summary on the right, which is why the
+              shape read as borrowed rather than built. Turo and Deputy arrange it the same way.
+
+              So the name comes here, at the top of the column, and the group's cameras follow it:
+              one column, read top to bottom, that IS the group.
+            */}
+            <div style={{ padding: "14px 14px 12px", borderBottom: BORDER }}>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
+                {t.createName}{creating ? " *" : ""}
+              </label>
+              {/* Renaming stays in its own dialog from the row menu, so here the field is the new
+                  group's name and nothing else — on an existing group it shows what it is called
+                  and says where to change it. */}
+              {creating ? (
+                <>
+                  <TextField value={label} onChange={v => { setLabel(v); setLabelError(null); }} placeholder={t.createNamePlaceholder} autoFocus />
+                  {labelError && <FieldError>{labelError}</FieldError>}
+                </>
+              ) : (
+                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.label}</p>
+              )}
+            </div>
             <div style={{ padding: "10px 12px", borderBottom: BORDER, backgroundColor: "var(--gray-50)", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px" }}>
               <span style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--gray-500)" }}>{t.inGroupHeading}</span>
               <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-900)", fontVariantNumeric: "tabular-nums" }}>{picked.length}</span>
@@ -477,6 +498,9 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
                 })}
               </div>
             )}
+            {/* THE ONE RULE THAT CANNOT BE SEEN, under the list it is about rather than stacked
+                above the map with the other hints. */}
+            <p style={{ padding: "10px 12px", borderTop: "1px solid var(--gray-100)", fontSize: "10.5px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.overlapNote}</p>
           </div>
         </div>
 
@@ -538,7 +562,12 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
         {/* MAKING ONE STARTS HERE NOW, not only on Input Sources. Disabled for a reader who cannot
             change access — the row menu already refuses, and a button that opens a dialog whose
             save is refused is worse than a button that says no. */}
-        {mayEdit && (
+        {/* GONE WHILE THE EDITOR IS OPEN, for two reasons found by pressing it: the page then had
+            two buttons reading 그룹 만들기 — this one and the editor's own save — and this one,
+            pressed while editing an existing group, switched the pane to a blank new group and
+            took the draft with it without asking. The editor is the create flow; a second door
+            into it that discards work is a trap. */}
+        {mayEdit && !editorOpen && (
           <button type="button" onClick={() => setCreating(true)}
             style={{ flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {t.createButton}
