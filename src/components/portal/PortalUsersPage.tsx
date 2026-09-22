@@ -59,6 +59,7 @@ const T = {
     peopleTabPresets: "App presets",
     peopleTabPresetsHint: "Editing one reaches every account following it.",
     peopleTabGroups: "Camera groups",
+    peopleTabGroupsFor: "for granting",
     peopleTabGroupsHint: "Named sets of cameras, handed out as one when granting camera access.",
     colPlannedPermission: "Permission on signup",
     colCode: "Registration code",
@@ -460,6 +461,7 @@ const T = {
     peopleTabPresets: "앱 권한 프리셋",
     peopleTabPresetsHint: "하나를 고치면 그것을 따르는 계정 전부에 닿습니다.",
     peopleTabGroups: "카메라 그룹",
+    peopleTabGroupsFor: "권한용 묶음",
     peopleTabGroupsHint: "이름 붙인 카메라 묶음입니다. 카메라 권한을 줄 때 한 덩어리로 줍니다.",
     colPlannedPermission: "가입 시 권한",
     colCode: "등록 코드",
@@ -3353,86 +3355,62 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           brings back an owner who is locked out; it cannot appoint one. */}
 
       {/*
-        TWO ROWS, BECAUSE THEY ARE TWO LEVELS (owner, 2026-09-22: 계정이랑 명부대기 아래 레벨로
-        카메라그룹이랑 앱권한 프리셋 설정이 있어야할것같거든? · 같은라인인게 어색해보여).
-
-        A 1px rule between the second and third tab was the earlier answer to the same objection
-        and it was not enough: a divider says "these are two batches", not "these are one level
-        down". The top row holds PEOPLE — accounts, and the roster waiting to become accounts. The
-        bottom row holds THE THINGS PEOPLE ARE GIVEN: a named set of cameras, a named set of
-        screens. Four names on one line with a count on each read as four lists of the same kind,
-        and 5 · 0 · 4 · 3 reads as one series.
-
-        THEY STAY ON THIS PAGE rather than moving into the rail (owner: 계정에 사람들이 카메라
-        그룹을 어떻게 운용할지, 설정들을 보면서 세팅할 가능성이 크잖아). Shopify nests Roles under
-        Users in its sidebar, and Clerk, Zoho and Zendesk do the same — but a nested rail item is
-        somewhere you GO, and going there leaves the accounts behind. Presets were in 설정 for this
-        exact reason and were moved out of it (owner: 아 설정에 있었구나). So: one level down, one
-        row down, still here.
-
-        No caption over the second row. The row itself is the grouping, and a word for it would
-        cost a line of the header to say once what the layout says every time.
+        ONE ROW, AND THE NAME CARRIES THE KIND (owner, 2026-09-22, choosing between two answers to
+        the same objection — 같은라인인게 어색해보여).
+       
+        The first answer, built and measured first, dropped the last two onto a second row at 12px.
+        It made the level difference visible but cost a row of header and read the second pair as
+        "less important" rather than "a different kind". The owner's mockup answers it the other
+        way and that is the one chosen: keep one row, and let the label say what the thing is FOR.
+        Verkada and HubSpot hold a flat strip for exactly this reason — their names carry the kind.
+       
+        So 카메라 그룹 gains 권한용 묶음. It is the one of the four whose name says only what it
+        holds; 앱 권한 프리셋 already carries 권한, and 계정/명부 대기 are the page's subject and
+        need no qualifier. The qualifier renders in the lighter weight the counts already use, so
+        the name stays the name and the strip does not gain 14 characters of bold.
+       
+        The 1px rule stays between the two kinds. It was not enough ON ITS OWN — that is what the
+        objection was — but with the label naming the kind it is the right amount of separation.
       */}
-      <div style={{ marginBottom: "16px" }}>
-        <div style={{ display: "flex", gap: "20px", borderBottom: BORDER }}>
-          {([
-            { id: "accounts", label: t.peopleTabAccounts, count: projectUsers.length, hint: t.peopleTabAccountsHint },
-            { id: "roster", label: t.peopleTabRoster, count: rosterWaiting.length, hint: t.peopleTabRosterHint },
-          ] as { id: "accounts" | "roster"; label: string; count: number; hint: string }[]).map(tab => {
-            const active = peopleTab === tab.id;
-            return (
-              /* On the tab rather than a line under it. The tab name is a state (on the roster),
-                 which is the right name for what the tab holds but says nothing about what you
-                 came here to do; a permanent sentence answering that would be clutter for
-                 everybody who already knows. Our own Tooltip, not the browser title attribute —
-                 that one wants the pointer held still for over a second and this hint has to be
-                 findable. */
-              <Tooltip key={tab.id} text={tab.hint}>
-                <button onClick={() => setPeopleTab(tab.id)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: "6px",
-                    background: "none", border: "none", cursor: "pointer",
-                    padding: "0 2px 10px", fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
-                    color: active ? "var(--gray-900)" : "var(--gray-500)",
-                    borderBottom: active ? "2px solid var(--gray-900)" : "2px solid transparent",
-                  }}>
-                  {tab.label}
-                  <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{tab.count}</span>
-                </button>
-              </Tooltip>
-            );
-          })}
-        </div>
-
-        {/* The second level: smaller, no underline, and the current one takes a filled pill
-            instead. The underline is the top row's mark and reusing it here would put the two
-            rows back on one footing — the thing this split exists to undo. */}
-        <div style={{ display: "flex", gap: "4px", paddingTop: "8px" }}>
-          {([
-            /* A group answers "which cameras", a preset answers "which screens", and the invite
-               form asks both — so they sit together, in the order the form asks them. */
-            { id: "groups", label: t.peopleTabGroups, count: cameraGroupsInProject(cameraGroups, projectId).length, hint: t.peopleTabGroupsHint },
-            { id: "presets", label: t.peopleTabPresets, count: pagePresets.length, hint: t.peopleTabPresetsHint },
-          ] as { id: "groups" | "presets"; label: string; count: number; hint: string }[]).map(tab => {
-            const active = peopleTab === tab.id;
-            return (
-              <Tooltip key={tab.id} text={tab.hint}>
-                <button onClick={() => setPeopleTab(tab.id)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: "6px",
-                    border: "none", cursor: "pointer", fontFamily: "inherit",
-                    padding: "5px 10px", borderRadius: "8px",
-                    backgroundColor: active ? "var(--gray-100)" : "transparent",
-                    fontSize: "12px", fontWeight: 700,
-                    color: active ? "var(--gray-900)" : "var(--gray-500)",
-                  }}>
-                  {tab.label}
-                  <span style={{ fontSize: "10.5px", fontWeight: 600, color: "var(--gray-400)", fontVariantNumeric: "tabular-nums" }}>{tab.count}</span>
-                </button>
-              </Tooltip>
-            );
-          })}
-        </div>
+      <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
+        {([
+          { id: "accounts", label: t.peopleTabAccounts, count: projectUsers.length, hint: t.peopleTabAccountsHint },
+          { id: "roster", label: t.peopleTabRoster, count: rosterWaiting.length, hint: t.peopleTabRosterHint },
+          /* Third and fourth, after the people: a group answers "which cameras", a preset answers
+             "which screens", and the invite form asks both — so they sit together, in that order. */
+          { id: "groups", label: t.peopleTabGroups, qualifier: t.peopleTabGroupsFor, count: cameraGroupsInProject(cameraGroups, projectId).length, hint: t.peopleTabGroupsHint },
+          { id: "presets", label: t.peopleTabPresets, count: pagePresets.length, hint: t.peopleTabPresetsHint },
+        ] as { id: "accounts" | "roster" | "groups" | "presets"; label: string; qualifier?: string; count: number; hint: string }[]).map(tab => {
+          const active = peopleTab === tab.id;
+          const startsSecondKind = tab.id === "groups";
+          return (<React.Fragment key={tab.id}>
+            {startsSecondKind && (
+              <span aria-hidden="true" style={{ width: "1px", alignSelf: "stretch", marginBottom: "10px", backgroundColor: "var(--gray-200)" }} />
+            )}
+            {/* On the tab rather than a line under it. The tab name is a state (on the roster),
+                which is the right name for what the tab holds but says nothing about what you
+                came here to do; a permanent sentence answering that would be clutter for
+                everybody who already knows. Our own Tooltip, not the browser title attribute —
+                that one wants the pointer held still for over a second and this hint has to be
+                findable. */}
+            <Tooltip text={tab.hint}>
+            <button onClick={() => setPeopleTab(tab.id)}
+              style={{
+                display: "flex", alignItems: "center", gap: "6px",
+                background: "none", border: "none", cursor: "pointer",
+                padding: "0 2px 10px", fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
+                color: active ? "var(--gray-900)" : "var(--gray-500)",
+                borderBottom: active ? "2px solid var(--gray-900)" : "2px solid transparent",
+              }}>
+              {tab.label}
+              {tab.qualifier && (
+                <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-400)" }}>{tab.qualifier}</span>
+              )}
+              <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{tab.count}</span>
+            </button>
+            </Tooltip>
+          </React.Fragment>);
+        })}
       </div>
 
       {/* THE THIRD TAB REPLACES THE LIST, it does not sit above it. Camera groups are not people:
