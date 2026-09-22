@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, KeyRound } from "lucide-react";
 import { useVcaStore } from "@/lib/vcaStore";
 import { REGISTRATION_CODE_TTL_DAYS, codeExpiresAt, formatCode, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import { sgtDateKey } from "@/lib/time";
@@ -256,9 +256,15 @@ function csvEscape(value: string): string {
  * button hides it again, and the audit line is written on each REVEAL only: every look is a look,
  * and putting it away is not one.
  */
-function RosterCodeCell({ entry, onReveal, t, justIssued }: {
+function RosterCodeCell({ entry, onReveal, onIssue, t, justIssued }: {
   entry: RosterEntry;
   onReveal: () => void;
+  /**
+   * Issues this one person's code, from this one row (owner, 2026-09-22: 행마다 코드발급 버튼
+   * 넣는게 어떨까). Left out for an account that may not edit, and then the cell says what it
+   * always said: there is no code.
+   */
+  onIssue?: () => void;
   t: Translations;
   /**
    * True for the row whose code was issued a moment ago, in this session (owner: 코드 재발급
@@ -288,13 +294,39 @@ function RosterCodeCell({ entry, onReveal, t, justIssued }: {
   const expiryLine = expiresAt
     ? <span style={{ fontSize: "10.5px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.codeExpiresOn(sgtDateKey(expiresAt))}</span>
     : null;
+  /* BESIDE THE CODE, NOT UNDER IT (owner: 두줄로 안하고 한줄로 나란히 둬도 옆에 공간많아). Both
+     are one fact about one code and the column has the room, so stacking them spent a second row
+     of the table on 10.5px of text and pushed every row taller. */
+  const cellRow: React.CSSProperties = {
+    display: "flex", flexDirection: "row", alignItems: "center", gap: "8px", minWidth: 0,
+  };
 
+  /*
+   * THE EMPTY CELL IS WHERE THE ACTION BELONGS (owner, 2026-09-22).
+   *
+   * 미발급 is the one status with nothing to print here, and it is also the one status with
+   * something to DO — so the cell held a dash while the doing sat a click deep in the row's ⋮
+   * menu. The common errand on this tab is one person who just arrived, and it was the most
+   * expensive thing on the row to reach.
+   *
+   * Quiet, not filled: it repeats on every waiting row, and eight purple buttons down a column
+   * would make the ordinary state the loudest thing in the table — the same mistake the 「발급됨」
+   * chip made on its -200 background. It opens the same confirmation the menu did, so the code is
+   * still minted deliberately rather than by a stray click.
+   */
   if (entry.status === "not-issued") {
-    return <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>;
+    if (!onIssue) return <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>;
+    return (
+      <button type="button" onClick={onIssue}
+        style={{ display: "inline-flex", alignItems: "center", gap: "5px", padding: "4px 9px", borderRadius: "7px", border: "1px solid var(--gray-200)", backgroundColor: "white", cursor: "pointer", fontFamily: "inherit", fontSize: "11.5px", fontWeight: 700, color: "var(--gray-600)" }}>
+        <KeyRound size={12} strokeWidth={2.4} aria-hidden="true" />
+        {t.issueConfirm}
+      </button>
+    );
   }
   if (entry.status !== "unused") {
     return (
-      <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px" }}>
+      <span style={cellRow}>
         <span style={{ fontSize: "12px", fontFamily: "monospace", color: "var(--gray-300)" }}>••••-••••</span>
         {expiryLine}
       </span>
@@ -304,7 +336,7 @@ function RosterCodeCell({ entry, onReveal, t, justIssued }: {
      control stays under the same pointer. Lucide's pair, like the password fields' show/hide
      toggle — this is the same "reveal a hidden value" affordance. */
   return (
-    <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px" }}>
+    <span style={cellRow}>
     <button
       onClick={() => {
         if (revealed) { setRevealed(false); return; }

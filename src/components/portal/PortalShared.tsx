@@ -695,7 +695,7 @@ interface SelectOption {
 // and inside this app's nested-scroll shell (PortalShell's outer overflow:hidden + inner
 // overflow:auto content area) that positioning can land the popup far from its trigger. Ported
 // from the main VCA app's SimpleSelect (DataPage.tsx) to match its exact look and behavior.
-export function FilterSelect({ value, onChange, options, fitContent, footerAction, onOpenChange }: {
+export function FilterSelect({ value, onChange, options, fitContent, footerAction, onOpenChange, active }: {
   value: string;
   onChange: (value: string) => void;
   options: SelectOption[];
@@ -708,6 +708,18 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
    * is open; see ConfirmModal's escapeSuspended.
    */
   onOpenChange?: (open: boolean) => void;
+  /**
+   * True while this control is NARROWING something (owner: 위에 필터 선택했을때 약간 달라져야
+   * 할것같아).
+   *
+   * A prop rather than a guess: this component is also a form field — 권한, 서버 유형, 부서 —
+   * where every value is an answer and none of them is "off". Only the caller knows whether its
+   * current value means "not filtering", so only the caller can say when the control is on.
+   *
+   * Grey, not purple: the page's exception chips already mark "this filter is applied" with the
+   * gray-900 vocabulary, and purple is kept for what asks to be pressed.
+   */
+  active?: boolean;
   /**
    * A pinned item at the foot of the open list — "+ Add group" and the like.
    *
@@ -804,7 +816,13 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
           backgroundColor: "white", cursor: "pointer", whiteSpace: "nowrap", outline: "none",
           // Open is this control's focused state, and it now looks like one — the same ring a text
           // field gets. Hover keeps its lighter cue underneath.
-          ...(open ? FIELD_FOCUS : { border: hovered ? "1px solid var(--gray-400)" : BORDER }),
+          ...(open
+            ? FIELD_FOCUS
+            /* A filter that is on holds the darker edge and a tinted ground, so a toolbar tells you
+               the table is narrowed without reading every label. Hover still lightens on top. */
+            : active
+            ? { border: "1px solid var(--gray-900)", backgroundColor: "var(--gray-100)" }
+            : { border: hovered ? "1px solid var(--gray-400)" : BORDER }),
         }}
       >
         {/* 12px, the size the action buttons in the same toolbar use, and the size of the options
@@ -2445,7 +2463,13 @@ export function Drawer({ title, onClose, footer, width = "520px", children }: {
         borderLeft: BORDER, boxShadow: "var(--shadow-modal)",
         display: "flex", flexDirection: "column",
       }}>
-        <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", gap: "10px" }}>
+        {/* NO RULE UNDER THE TITLE EITHER (owner, 2026-09-22: 타이틀 바로 아래 라인도 없어도
+            될 것 같은데). Of the twenty panels checked for the footer rule below, Whop, Vapi,
+            Posh and Julienne drop this one too, and the title carries itself: 15px/800 against
+            13px body is the separation, and the padding is the gap. What the line was for —
+            marking the edge when the body scrolls under it — is a scroll shadow's job, not a
+            rule that is drawn whether anything scrolls or not. */}
+        <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "10px" }}>
           <div style={{ minWidth: 0, flex: 1, fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {title}
           </div>
@@ -2466,8 +2490,6 @@ export function Drawer({ title, onClose, footer, width = "520px", children }: {
           header rule as well. The panels that DO rule their footer (Supabase, Customer.io, Gorgias)
           are the minority, and ours was stacking that rule under a bordered cancel button and over
           a bordered picker — three lines within 60px.
-         
-          The header rule stays: it separates a title from content, which is a different job.
          
           What a rule here was for is the boundary when content scrolls under the buttons. If that
           turns out to matter the answer is a shadow that appears on scroll, the way several of

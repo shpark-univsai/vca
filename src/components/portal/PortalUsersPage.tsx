@@ -3528,6 +3528,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
       {peopleTab === "roster" && (
         <FilterSelect
           value={rosterFilter}
+          active={rosterFilter !== "all"}
           onChange={v => setRosterFilter(v as typeof rosterFilter)}
           options={[
             { value: "all", label: t.rosterFilterAll },
@@ -3540,6 +3541,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
       {peopleTab === "accounts" && (
         <FilterSelect
           value={scopeFilter}
+          active={scopeFilter !== "all"}
           onChange={v => setScopeFilter(v as typeof scopeFilter)}
           options={[
             { value: "all", label: t.scopeFilterAll },
@@ -3589,6 +3591,28 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             Accounts is about accounts: the one action there is inviting somebody to make one. The
             roster is one tab away and its own tab's primary.
           */}
+          {/* Three controls, not five (2026-09-15). "Add to roster" is the errand; the code
+              button carries a COUNT, and that count is nowhere else on the screen — the summary
+              strip states invited, suspended and on-the-roster, never how many are still waiting
+              for a code — so folding it away would delete the only thing that says four people
+              cannot sign in yet. It hides itself at zero instead of greying out, which is the
+              same information with nothing to read.
+
+              The other three move behind the menu: putting a file in, taking a file out, printing
+              a sheet. None of them changes who is in the roster, and none carries a number.
+
+              LEFT OF 「명부에 추가」 (owner, 2026-09-22: 일괄 버튼은 명부에 추가 왼쪽으로 옮겨서
+              넣어줘). It sat to the right of the primary, which put a quiet button between the
+              filled one and the ⋮ menu and read as the last thing on the row rather than the
+              secondary of the pair. Now the primary ends the strip beside its own menu, and the
+              batch action — the one that acts on rows already in the table — sits before it. */}
+          {peopleTab === "roster" && notIssuedIds.length > 0 && mayEdit && (
+          <button className="portal-btn-quiet" onClick={bulkIssueCodes}
+            style={{ ...SECONDARY_BTN, color: "var(--gray-600)", cursor: "pointer" }}>
+            <KeyRound size={14} strokeWidth={2.4} />
+            {t.bulkIssue(notIssuedIds.length)}
+          </button>
+          )}
           {peopleTab === "roster" && (
           <button
             onClick={() => mayEdit && setRosterEditorFor({ entry: null })}
@@ -3598,22 +3622,6 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           >
             <ClipboardPlus size={14} strokeWidth={2.4} />
             {t.addToRoster}
-          </button>
-          )}
-          {/* Three controls, not five (2026-09-15). "Add to roster" is the errand; the code
-              button carries a COUNT, and that count is nowhere else on the screen — the summary
-              strip states invited, suspended and on-the-roster, never how many are still waiting
-              for a code — so folding it away would delete the only thing that says four people
-              cannot sign in yet. It hides itself at zero instead of greying out, which is the
-              same information with nothing to read.
-
-              The other three move behind the menu: putting a file in, taking a file out, printing
-              a sheet. None of them changes who is in the roster, and none carries a number. */}
-          {peopleTab === "roster" && notIssuedIds.length > 0 && mayEdit && (
-          <button className="portal-btn-quiet" onClick={bulkIssueCodes}
-            style={{ ...SECONDARY_BTN, color: "var(--gray-600)", cursor: "pointer" }}>
-            <KeyRound size={14} strokeWidth={2.4} />
-            {t.bulkIssue(notIssuedIds.length)}
           </button>
           )}
           {peopleTab === "roster" && (
@@ -4018,6 +4026,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                   <div style={{ minWidth: 0 }}>
                     <RosterCodeCell entry={entry} t={rt}
                       justIssued={justIssuedFor === entry.employeeId}
+                      onIssue={mayEdit ? () => setIssuingEntry(entry) : undefined}
                       onReveal={() => logRosterCodeViewed(entry.employeeId)} />
                   </div>
                               <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -4028,12 +4037,16 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                   /register turns into an account, so a read-only auditor could mint a way in. */}
               <RowActionsMenu actions={[
                 { label: rt.editEntry, onClick: () => setRosterEditorFor({ entry }), disabled: !mayEdit, reason: readOnlyReason },
-                {
-                  label: entry.code ? rt.reissueConfirm : rt.issueConfirm,
+                /* REISSUE ONLY. Issuing a first code is on the row itself now (the 코드 column's
+                   own button — see RosterCodeCell), so listing it here as well would be the same
+                   action twice on one row. Reissue has no such home: those rows show a code, and
+                   replacing a live one is rarer and more destructive than minting the first. */
+                ...(entry.code ? [{
+                  label: rt.reissueConfirm,
                   onClick: () => setIssuingEntry(entry),
                   disabled: !mayEdit,
                   reason: readOnlyReason,
-                },
+                }] : []),
                 { label: rt.remove, onClick: () => setRemovingEntry(entry), danger: true, disabled: !mayEdit, reason: readOnlyReason },
               ]} />
             </div>

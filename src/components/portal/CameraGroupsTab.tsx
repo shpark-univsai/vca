@@ -63,6 +63,7 @@ const T = {
     andMore: (n: number) => `and ${n} more`,
     noZone: "No zone",
     zonePick: "select all", zoneClear: "clear",
+    zoneBack: "Back to all zones",
     allPick: "Select all", allClear: "Clear selection",
     pickHeading: "Select cameras",
     inGroupUnknown: "No longer registered",
@@ -84,7 +85,6 @@ const T = {
     inOtherGroups: (n: number) => `in ${n} other`,
     inOtherGroupsTitle: (names: string) => `Also in: ${names}`,
     pickedCount: (n: number) => `${n} picked`,
-    zonePicked: (n: number) => n === 0 ? "none in the group" : `${n} in the group`,
     duplicate: "Another group on this project already has that name.",
     removeTitle: (label: string) => `Delete ${label}?`,
     removeBody: "Every account holding this group loses those cameras, unless another group or an individual camera still covers them. The cameras themselves are untouched.",
@@ -109,6 +109,7 @@ const T = {
     andMore: (n: number) => `외 ${n}대`,
     noZone: "구역 미지정",
     zonePick: "전체 선택", zoneClear: "해제",
+    zoneBack: "모든 구역으로",
     allPick: "모두 선택", allClear: "선택 초기화",
     /* 「이 그룹에 들어있는 것」이었다 (사용자: 좀더 쉽고 직관적인 단어로). 그 말은 무엇이
        담겼는지를 설명하려 했는데, 이 줄이 머리에 붙어 있는 것은 고르는 칸이고 옆의 숫자가
@@ -133,7 +134,6 @@ const T = {
     inOtherGroups: (n: number) => `다른 그룹 ${n}`,
     inOtherGroupsTitle: (names: string) => `여기에도 있음: ${names}`,
     pickedCount: (n: number) => `${n}대 체크됨`,
-    zonePicked: (n: number) => n === 0 ? "그룹에 없음" : `그룹에 ${n}대`,
     duplicate: "이 프로젝트에 같은 이름의 그룹이 이미 있습니다.",
     /* 을(를) 없이 — 조사 두 개를 괄호로 내보이는 문장은 제품이 이름을 모른다는 뜻입니다. */
     removeTitle: (label: string) => `「${label}」 삭제할까요?`,
@@ -250,14 +250,25 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
     exampleZone ? t.createNameExample(exampleZone) : t.createNameExampleNoZone,
   );
 
-  /* ZONES START CLOSED ON A BIG REGISTER — the same rule and the same threshold as the scope
-     picker (owner: 실제 현장에서는 연결된 카메라 대수가 1000대이상일 수 있어서). A thousand rows
-     inside one scroll box is a list nobody scrolls; a zone is what somebody ticks. Below a
-     screenful the list is already the answer, so closing it would only add clicks. */
-  const zonesStartOpen = cameras.length <= 40;
-  const [openZones, setOpenZones] = useState<string[]>(() => zonesStartOpen ? cameras.map(c => c.zone?.trim() || "") : []);
-  const toggleZoneOpen = (zone: string) =>
-    setOpenZones(prev => prev.includes(zone) ? prev.filter(z => z !== zone) : [...prev, zone]);
+  /*
+   * A BIG REGISTER IS A LIST OF ZONES, AND YOU GO INTO ONE (owner, 2026-09-22: 카메라 리스트
+   * 스크롤 안 해도 되게 해줘 · 이게 기본적으로 구역(위치) 중심인 거잖아, 이걸로 먼저 보여주는 게
+   * 좋겠지?).
+   *
+   * Zones already started closed here — a thousand rows in one scroll box is a list nobody
+   * scrolls, and a zone is what somebody ticks. But they were an accordion, so opening two of
+   * nineteen put the box back into scrolling, which is the thing the closed state was for. Now
+   * one zone is open at a time and it REPLACES the zone list instead of expanding inside it, so
+   * both screens fit: nineteen zone rows, or one zone's cameras. The count on each row is what
+   * you choose by, and the footer keeps the running total across zones.
+   *
+   * Below a screenful none of this applies — the flat list IS the answer at that size, and
+   * making somebody step into a zone to reach four cameras would be a click for nothing. Same
+   * threshold as the scope picker (owner: 실제 현장에서는 연결된 카메라 대수가 1000대이상일 수
+   * 있어서).
+   */
+  const flatZones = cameras.length <= 40;
+  const [openZone, setOpenZone] = useState<string | null>(null);
   const toggleZoneAll = (ids: string[]) => {
     const allOn = ids.every(id => picked.includes(id));
     setPicked(prev => allOn ? prev.filter(id => !ids.includes(id)) : [...new Set([...prev, ...ids])]);
@@ -304,7 +315,8 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
         borderLeft: BORDER, boxShadow: "var(--shadow-modal)",
         display: "flex", flexDirection: "column",
       }}>
-        <div style={{ padding: "16px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", gap: "10px" }}>
+        {/* Header and footer both ruleless, like the shared Drawer this panel mirrors. */}
+        <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "10px" }}>
           <p style={{ minWidth: 0, flex: 1, fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {creating ? t.drawerNew : t.drawerEdit(group.label)}
           </p>
@@ -453,21 +465,47 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
               ) : zones.length === 0 ? (
                 <p style={{ fontSize: "12px", color: "var(--gray-400)", padding: "12px", lineHeight: 1.5 }}>{t.membersNone}</p>
               ) : (
-                /* A screenful, then it scrolls: a thousand-camera register cannot set the height
-                   of a drawer, and eighteen open zones already run past one. */
-                <div style={{ maxHeight: "420px", overflowY: "auto", padding: "8px" }}>
-                  {zones.map(([zone, list]) => {
-                    const open = needle !== "" || openZones.includes(zone);
+                /*
+                  AS TALL AS THE PANEL LEAVES IT (owner, 2026-09-22: 목차 리스트 스크롤 적게
+                  할 수 있게 아래로 넓혀줘).
+                 
+                  It was a flat 420px, which on a 900px window left the panel's lower third empty
+                  and still scrolled the list — the two costs at once. The list is the only thing
+                  under it now that the chips are map-only, so it takes what the two fields and
+                  the footer do not: `100vh` less the measured 340px of chrome above and below.
+                  The ceiling keeps a very tall window from stretching one 61-row list to 900px,
+                  and the floor keeps a short one readable and lets the body scroll instead —
+                  same trade the map floor above makes.
+                */
+                <div style={{ maxHeight: "clamp(240px, calc(100vh - 340px), 660px)", overflowY: "auto", padding: "8px" }}>
+                  {/* Searching crosses zones — a code is typed to find one camera, not to find
+                      out which zone it is in — so a needle shows every zone that matches with
+                      its rows open, whichever zone you had stepped into. */}
+                  {(needle !== "" || flatZones
+                    ? zones
+                    : openZone === null ? zones : zones.filter(([zone]) => zone === openZone)
+                  ).map(([zone, list]) => {
+                    const drilling = needle === "" && !flatZones;
+                    const open = !drilling || openZone === zone;
                     return (
-                      <div key={zone || "__none"} style={{ marginBottom: "8px" }}>
+                      /* 4px between zone rows, not 8: measured, nineteen zones came to 543px
+                         inside a 777px body whose fields and strip already spend 277 — 43px over,
+                         so the panel scrolled while the list itself had room. Halving the gap
+                         gives back 72px and the whole site fits with nothing scrolling. A closed
+                         zone is a 26px row; inside one, there is only one zone and the gap is
+                         moot. */
+                      <div key={zone || "__none"} style={{ marginBottom: "4px" }}>
                         {/* The name opens the zone; the words beside it tick the whole zone. On a
                             big site those are the two things somebody does here, and one header
                             doing both would make ticking a zone cost opening it first. */}
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 0 4px 2px" }}>
-                          <button type="button" onClick={() => toggleZoneOpen(zone)}
-                            style={{ display: "flex", alignItems: "center", gap: "5px", border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
+                          <button type="button" onClick={() => { if (drilling) setOpenZone(open ? null : zone); }}
+                            title={drilling ? (open ? t.zoneBack : undefined) : undefined}
+                            style={{ display: "flex", alignItems: "center", gap: "5px", border: "none", background: "none", padding: 0, cursor: drilling ? "pointer" : "default", fontFamily: "inherit" }}>
+                            {/* Pointing back, not down, once you are inside one: the chevron is
+                                the way out of the zone, and there is no list under it to expand. */}
                             <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true"
-                              style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 120ms", flexShrink: 0 }}>
+                              style={{ transform: drilling && open ? "rotate(180deg)" : "none", transition: "transform 120ms", flexShrink: 0, opacity: drilling ? 1 : 0 }}>
                               <path d="M3 1.5L7 5l-4 3.5" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
                             {/* THE ZONE NAME IS THE DARKEST THING ON ITS ROW (owner: 맨앞에 있는 연한글씨가
@@ -484,13 +522,6 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
                             style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "11.5px", fontWeight: 700, color: "var(--gray-500)" }}>
                             {list.every(c => picked.includes(c.id)) ? t.zoneClear : t.zonePick}
                           </button>
-                          {/* A closed zone says how much of it is in the group, or you would open
-                              it to find out whether you had already ticked it. */}
-                          {!open && (
-                            <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>
-                              {t.zonePicked(list.filter(c => picked.includes(c.id)).length)}
-                            </span>
-                          )}
                         </div>
                         {open && list.map(c => {
                           const on = picked.includes(c.id);
@@ -557,10 +588,11 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
             the count names nothing, so without them the reader has clicked five points and has no
             receipt; and a camera they cannot find again on the map can only be removed here.
            
-            The one case this gives up: in list view a CLOSED zone hides its ticks, and the chips
-            used to answer that. What answers it now is the zone's own 「그룹에 N대」, which says
-            which zone to open — a pointer rather than the names. Worth watching; if it is not
-            enough, the fix is on the closed zone's own row, not a second copy of the membership.
+            The one case this gives up: in list view a CLOSED zone hides its ticks. The zone row
+            used to carry 「그룹에 N대」 for exactly that, and the owner took it out (2026-09-22:
+            있음없음은 없어도되지않을까) — what answers it now is the footer's running count and
+            the search, which opens every zone that matches. If that turns out to be too little,
+            the fix is on the closed zone's own row, not a second copy of the membership.
            
             Never capped with 「외 N대」: every chip carries the ✕ that takes that camera out, and a
             chip you cannot see is a camera you cannot remove.
@@ -586,7 +618,7 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
           )}
         </div>
 
-        <div style={{ padding: "14px 20px", borderTop: BORDER, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+        <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
           <span style={{ flex: 1, fontSize: "11px", fontWeight: 700, color: "var(--gray-500)", fontVariantNumeric: "tabular-nums" }}>
             {t.pickedCount(picked.length)}
           </span>
