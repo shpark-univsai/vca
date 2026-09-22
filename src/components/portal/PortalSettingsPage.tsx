@@ -6,7 +6,7 @@ import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, usePortalEditAccess, useTypeLabel } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, SectionNav, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, usePortalEditAccess, useTypeLabel } from "./PortalShared";
 import { VipCategoryModal } from "./VipCategories";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -27,79 +27,6 @@ import { PROJECT_TIME_ZONE } from "@/lib/time";
  * It also means the heaviest section on this page, deleting the project, is somewhere you have to
  * choose to go rather than somewhere scrolling takes you.
  */
-function SettingsNav({ sections, active, onSelect }: {
-  sections: { id: string; label: string; icon: React.ReactNode }[];
-  active: string;
-  onSelect: (id: string) => void;
-}) {
-  const [hovered, setHovered] = useState<string | null>(null);
-  return (
-    <nav style={{ flexShrink: 0, width: "180px", display: "flex", flexDirection: "column", gap: "2px" }}>
-      {sections.map(sec => {
-        const on = sec.id === active;
-        const warm = on || hovered === sec.id;
-        return (
-          <button
-            key={sec.id}
-            onClick={() => onSelect(sec.id)}
-            onMouseEnter={() => setHovered(sec.id)}
-            onMouseLeave={() => setHovered(null)}
-            aria-current={on ? "page" : undefined}
-            style={{
-              position: "relative",
-              display: "flex", alignItems: "center", gap: "9px",
-              // Extra left padding leaves room for the bar, and every row carries it so the labels
-              // stay on one line whether or not the bar is drawn.
-              padding: "9px 10px 9px 16px", borderRadius: "8px", border: "none",
-              // Grey, not purple. Purple is reserved for things that need attention, and "where
-              // you are" is not one — see the colour note in globals.css.
-              //
-              // A fill alone said it too quietly: gray-100 on the page's near-white ground is
-              // barely a shade, so the only real signal was the weight of the text. The pattern
-              // that carries at a glance is a mark at the leading edge — komoot and Pinterest
-              // both mark the active row that way rather than tinting it harder, and the mark
-              // works at any fill strength because it is a different KIND of difference.
-              // White, lifted — not a tint.
-              //
-              // Two tints were tried and both read as dusty: gray-100 (slate, 96%) and --line
-              // (purple, 93%). That is not a wrong token, it is the lightness band itself. Any
-              // saturated colour at 93-96% against this page's near-white ground has too little
-              // room left to be a colour, so it lands as grey with something in it.
-              //
-              // No fill on the selected row at all. Three were tried and each failed for its own
-              // reason, which together say the row should not be a surface:
-              //
-              //   gray-100 (slate, 96%)  dusty — at that lightness a hue has no room to be a hue
-              //   --line   (purple, 93%) dusty for the same reason, in the other family
-              //   white                  clean, but it is the panel's colour: a white pill beside
-              //                          a white card reads as the same object in two places
-              //
-              // So the mark carries it instead. This is Pinterest's settings rail: a bar at the
-              // leading edge, the label in full weight and colour, and no plate under either. The
-              // row stops competing with the card for what "a white box" means, and the signal is
-              // if anything stronger — a 3px rule against nothing is more definite than a 3%
-              // difference in ground.
-              backgroundColor: hovered === sec.id && !on ? "var(--gray-50)" : "transparent",
-              color: warm ? "var(--gray-900)" : "var(--gray-500)",
-              fontSize: "13px", fontWeight: on ? 700 : 600, fontFamily: "inherit",
-              textAlign: "left", cursor: "pointer", width: "100%",
-              transition: "background-color .12s ease, color .12s ease",
-            }}
-          >
-            {on && (
-              <span aria-hidden="true" style={{
-                position: "absolute", left: "5px", top: "50%", transform: "translateY(-50%)",
-                width: "3px", height: "16px", borderRadius: "999px", backgroundColor: "var(--gray-900)",
-              }} />
-            )}
-            <span style={{ display: "flex", flexShrink: 0, color: on ? "var(--gray-900)" : warm ? "var(--gray-600)" : "var(--gray-400)" }}>{sec.icon}</span>
-            <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sec.label}</span>
-          </button>
-        );
-      })}
-    </nav>
-  );
-}
 
 const T = {
   en: {
@@ -591,7 +518,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
      * than the lopsidedness did.
      */
     <div style={{ display: "flex", alignItems: "flex-start", gap: "28px", maxWidth: "880px", marginInline: "auto" }}>
-      <SettingsNav sections={sections} active={active} onSelect={setSection} />
+      <SectionNav sections={sections} active={active} onSelect={setSection} />
       {/* No page title here: the top bar's crumb already names this page, and printing the same
           word again 20px lower was the page introducing itself twice. What stays is the row of
           things you can do on it. */}

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Asterisk, CircleHelp, MailQuestion, MoreVertical, MonitorOff, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
+import { Asterisk, Boxes, CircleHelp, ClipboardPlus, KeyRound, KeySquare, MailQuestion, MonitorOff, MoreVertical, UserMinus, UserX, Users2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, SectionNav, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import CameraGroupsTab from "./CameraGroupsTab";
 import AccessPresetsTab from "./AccessPresetsTab";
@@ -3359,61 +3359,51 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           brings back an owner who is locked out; it cannot appoint one. */}
 
       {/*
-        ONE ROW, AND THE NAME CARRIES THE KIND (owner, 2026-09-22, choosing between two answers to
-        the same objection — 같은라인인게 어색해보여).
+        TWO TABS ON TOP, AND THE OTHER TWO IN A RAIL DOWN THE LEFT (owner, 2026-09-22: 상단 탭에
+        네개가 나란히 있는게 여전히 어색한데, 앞에 두개만 남겨두고 설정페이지처럼 왼쪽에 작은
+        사이드바처럼 넣어주면 어떨까).
        
-        The first answer, built and measured first, dropped the last two onto a second row at 12px.
-        It made the level difference visible but cost a row of header and read the second pair as
-        "less important" rather than "a different kind". The owner's mockup answers it the other
-        way and that is the one chosen: keep one row, and let the label say what the thing is FOR.
-        Verkada and HubSpot hold a flat strip for exactly this reason — their names carry the kind.
+        The third answer to the same objection, and the first that separates the two kinds without
+        spending a row or a qualifier on saying so. A 1px rule said "two batches" and not "one
+        level down"; a second tab row said the level but read the lower pair as less important; a
+        「권한용 묶음」 qualifier named the kind but left all four on one line. A rail is a different
+        KIND of navigation from a tab, which is the difference itself — 계정 and 명부 대기 are two
+        views of the page's subject, and the rail holds the two objects that subject is GIVEN.
        
-        So 카메라 그룹 gains 권한용 묶음. It is the one of the four whose name says only what it
-        holds; 앱 권한 프리셋 already carries 권한, and 계정/명부 대기 are the page's subject and
-        need no qualifier. The qualifier renders in the lighter weight the counts already use, so
-        the name stays the name and the strip does not gain 14 characters of bold.
+        It is the settings page's rail, not a new one (SectionNav, moved into PortalShared for
+        this): same 180px, same leading bar on the current row, same greys.
        
-        The 1px rule stays between the two kinds. It was not enough ON ITS OWN — that is what the
-        objection was — but with the label naming the kind it is the right amount of separation.
+        NEITHER NAV IS ALWAYS LIT, and that is the honest reading. On 계정 the rail marks nothing,
+        because you are not in either of those places; on 카메라 그룹 the tabs mark nothing, for the
+        same reason. A rail row lit while the reader is somewhere else would be the one thing worse
+        than an unlit one.
       */}
       <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
         {([
           { id: "accounts", label: t.peopleTabAccounts, count: projectUsers.length, hint: t.peopleTabAccountsHint },
           { id: "roster", label: t.peopleTabRoster, count: rosterWaiting.length, hint: t.peopleTabRosterHint },
-          /* Third and fourth, after the people: a group answers "which cameras", a preset answers
-             "which screens", and the invite form asks both — so they sit together, in that order. */
-          { id: "groups", label: t.peopleTabGroups, qualifier: t.peopleTabGroupsFor, count: cameraGroupsInProject(cameraGroups, projectId).length, hint: t.peopleTabGroupsHint },
-          { id: "presets", label: t.peopleTabPresets, count: pagePresets.length, hint: t.peopleTabPresetsHint },
-        ] as { id: "accounts" | "roster" | "groups" | "presets"; label: string; qualifier?: string; count: number; hint: string }[]).map(tab => {
+        ] as { id: "accounts" | "roster"; label: string; count: number; hint: string }[]).map(tab => {
           const active = peopleTab === tab.id;
-          const startsSecondKind = tab.id === "groups";
-          return (<React.Fragment key={tab.id}>
-            {startsSecondKind && (
-              <span aria-hidden="true" style={{ width: "1px", alignSelf: "stretch", marginBottom: "10px", backgroundColor: "var(--gray-200)" }} />
-            )}
-            {/* On the tab rather than a line under it. The tab name is a state (on the roster),
-                which is the right name for what the tab holds but says nothing about what you
-                came here to do; a permanent sentence answering that would be clutter for
-                everybody who already knows. Our own Tooltip, not the browser title attribute —
-                that one wants the pointer held still for over a second and this hint has to be
-                findable. */}
-            <Tooltip text={tab.hint}>
-            <button onClick={() => setPeopleTab(tab.id)}
-              style={{
-                display: "flex", alignItems: "center", gap: "6px",
-                background: "none", border: "none", cursor: "pointer",
-                padding: "0 2px 10px", fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
-                color: active ? "var(--gray-900)" : "var(--gray-500)",
-                borderBottom: active ? "2px solid var(--gray-900)" : "2px solid transparent",
-              }}>
-              {tab.label}
-              {tab.qualifier && (
-                <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-400)" }}>{tab.qualifier}</span>
-              )}
-              <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{tab.count}</span>
-            </button>
+          return (
+            /* On the tab rather than a line under it. The tab name is a state (on the roster),
+               which is the right name for what the tab holds but says nothing about what you came
+               here to do; a permanent sentence answering that would be clutter for everybody who
+               already knows. Our own Tooltip, not the browser title attribute — that one wants the
+               pointer held still for over a second and this hint has to be findable. */
+            <Tooltip key={tab.id} text={tab.hint}>
+              <button onClick={() => setPeopleTab(tab.id)}
+                style={{
+                  display: "flex", alignItems: "center", gap: "6px",
+                  background: "none", border: "none", cursor: "pointer",
+                  padding: "0 2px 10px", fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
+                  color: active ? "var(--gray-900)" : "var(--gray-500)",
+                  borderBottom: active ? "2px solid var(--gray-900)" : "2px solid transparent",
+                }}>
+                {tab.label}
+                <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{tab.count}</span>
+              </button>
             </Tooltip>
-          </React.Fragment>);
+          );
         })}
       </div>
 
@@ -3421,6 +3411,21 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           the count strip, the search toolbar and the account/roster table all answer questions
           about accounts, and leaving them on screen under a table of groups would have the page
           showing two subjects at once with one set of filters over both. */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "24px" }}>
+      {/* A group answers "which cameras", a preset answers "which screens", and the invite form
+          asks both — so they sit together, in the order the form asks them. Each keeps the icon
+          its own screen already used for itself. */}
+      <SectionNav
+        sections={[
+          { id: "groups", label: t.peopleTabGroups, icon: <Boxes size={15} strokeWidth={2} /> },
+          { id: "presets", label: t.peopleTabPresets, icon: <KeySquare size={15} strokeWidth={2.2} /> },
+        ]}
+        /* "" rather than peopleTab: on 계정 and 명부 대기 neither row is current, and passing the
+           tab id would light nothing anyway — this says so on purpose. */
+        active={peopleTab === "groups" || peopleTab === "presets" ? peopleTab : ""}
+        onSelect={id => setPeopleTab(id as "groups" | "presets")}
+      />
+      <div style={{ minWidth: 0, flex: 1 }}>
       {peopleTab === "presets" ? <AccessPresetsTab teamId={pageTeamId ?? ""} canEdit={manageAccess} />
         : peopleTab === "groups" ? <CameraGroupsTab projectId={projectId} onGoToCameras={onGoToCameras} /> : (<>
       {!mailAvailable && <RecoveryModeNotice supportContact={authConfig.supportContact} />}
@@ -3992,6 +3997,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
       </div>
 
       </>)}
+      </div>
+      </div>
 
       {rosterEditorFor && (
         <RosterEntryModal entry={rosterEditorFor.entry} projectId={projectId} onClose={() => setRosterEditorFor(null)} t={rt} />

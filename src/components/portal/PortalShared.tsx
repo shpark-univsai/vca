@@ -2274,3 +2274,87 @@ export function useGrantNames(): { action: Record<AppAction, string>; screen: Re
   const g = GRANT_T[lang];
   return { action: g.actionName, screen: g.screenName };
 }
+
+/**
+ * A SECOND-LEVEL RAIL, SHARED (moved out of PortalSettingsPage 2026-09-22).
+ *
+ * It was the settings page's own component until the users page needed the same thing: the owner
+ * asked for 카메라 그룹 and 앱 권한 프리셋 to sit in 「설정페이지처럼 왼쪽에 작은사이드바」 rather
+ * than beside 계정 and 명부 대기 on one tab row. Two rails that look alike but drift apart is the
+ * usual cost of copying one, so it lives here and both read from it.
+ *
+ * The reasoning inside is the settings rail's, kept verbatim — it is measured, not preference.
+ */
+export function SectionNav({ sections, active, onSelect }: {
+  sections: { id: string; label: string; icon: React.ReactNode }[];
+  active: string;
+  onSelect: (id: string) => void;
+}) {
+  const [hovered, setHovered] = useState<string | null>(null);
+  return (
+    <nav style={{ flexShrink: 0, width: "180px", display: "flex", flexDirection: "column", gap: "2px" }}>
+      {sections.map(sec => {
+        const on = sec.id === active;
+        const warm = on || hovered === sec.id;
+        return (
+          <button
+            key={sec.id}
+            onClick={() => onSelect(sec.id)}
+            onMouseEnter={() => setHovered(sec.id)}
+            onMouseLeave={() => setHovered(null)}
+            aria-current={on ? "page" : undefined}
+            style={{
+              position: "relative",
+              display: "flex", alignItems: "center", gap: "9px",
+              // Extra left padding leaves room for the bar, and every row carries it so the labels
+              // stay on one line whether or not the bar is drawn.
+              padding: "9px 10px 9px 16px", borderRadius: "8px", border: "none",
+              // Grey, not purple. Purple is reserved for things that need attention, and "where
+              // you are" is not one — see the colour note in globals.css.
+              //
+              // A fill alone said it too quietly: gray-100 on the page's near-white ground is
+              // barely a shade, so the only real signal was the weight of the text. The pattern
+              // that carries at a glance is a mark at the leading edge — komoot and Pinterest
+              // both mark the active row that way rather than tinting it harder, and the mark
+              // works at any fill strength because it is a different KIND of difference.
+              // White, lifted — not a tint.
+              //
+              // Two tints were tried and both read as dusty: gray-100 (slate, 96%) and --line
+              // (purple, 93%). That is not a wrong token, it is the lightness band itself. Any
+              // saturated colour at 93-96% against this page's near-white ground has too little
+              // room left to be a colour, so it lands as grey with something in it.
+              //
+              // No fill on the selected row at all. Three were tried and each failed for its own
+              // reason, which together say the row should not be a surface:
+              //
+              //   gray-100 (slate, 96%)  dusty — at that lightness a hue has no room to be a hue
+              //   --line   (purple, 93%) dusty for the same reason, in the other family
+              //   white                  clean, but it is the panel's colour: a white pill beside
+              //                          a white card reads as the same object in two places
+              //
+              // So the mark carries it instead. This is Pinterest's settings rail: a bar at the
+              // leading edge, the label in full weight and colour, and no plate under either. The
+              // row stops competing with the card for what "a white box" means, and the signal is
+              // if anything stronger — a 3px rule against nothing is more definite than a 3%
+              // difference in ground.
+              backgroundColor: hovered === sec.id && !on ? "var(--gray-50)" : "transparent",
+              color: warm ? "var(--gray-900)" : "var(--gray-500)",
+              fontSize: "13px", fontWeight: on ? 700 : 600, fontFamily: "inherit",
+              textAlign: "left", cursor: "pointer", width: "100%",
+              transition: "background-color .12s ease, color .12s ease",
+            }}
+          >
+            {on && (
+              <span aria-hidden="true" style={{
+                position: "absolute", left: "5px", top: "50%", transform: "translateY(-50%)",
+                width: "3px", height: "16px", borderRadius: "999px", backgroundColor: "var(--gray-900)",
+              }} />
+            )}
+            <span style={{ display: "flex", flexShrink: 0, color: on ? "var(--gray-900)" : warm ? "var(--gray-600)" : "var(--gray-400)" }}>{sec.icon}</span>
+            <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sec.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
