@@ -298,7 +298,18 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
           {creating ? t.createSave : t.membersSave}
         </button>
       </div>
-      <div style={{ backgroundColor: "white", borderRadius: CARD_RADIUS, border: CARD_BORDER, boxShadow: PANEL_SHADOW, display: "flex", flexDirection: "column" }}>
+      {/*
+        ONE BOX (owner, 2026-09-22: 박스가 두개인데 겹쳐지고 이상해).
+
+        There were two: this card, and a frame I put inside it to tie the two columns together —
+        so the editor drew a bordered panel 20px inside another bordered panel. The card is the
+        panel; the columns sit directly in it and the rule between them does the tying. Same
+        treatment as the table beside it, which is one card and no frame inside.
+      */}
+      <div style={{
+        backgroundColor: "white", borderRadius: CARD_RADIUS, border: CARD_BORDER, boxShadow: PANEL_SHADOW,
+        display: "flex", alignItems: "stretch", overflow: "hidden", height: "56vh", minHeight: "420px",
+      }}>
 
 
         {/* THE ONE SENTENCE THAT STOPS A WRONG ASSUMPTION. Said above the list rather than on a
@@ -321,7 +332,6 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
           One selection, two views of it, like the list and the map: ticking in either side shows
           up in the other, because they are the same `picked`.
         */}
-        <div style={{ display: "flex", alignItems: "stretch", border: BORDER, borderRadius: "10px", margin: "0 20px 16px", overflow: "hidden", height: "56vh", minHeight: "420px" }}>
           {/* 360/200, not 460/260: the editor pane is about 650px wide now that the table keeps
               the left side, and the wider pair wrapped — the group's own list ended up below
               eighteen zone rows, off the bottom of the window, which is the one place it must not
@@ -514,8 +524,6 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
                 above the map with the other hints. */}
             <p style={{ padding: "10px 12px", borderTop: "1px solid var(--gray-100)", fontSize: "10.5px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.overlapNote}</p>
           </div>
-        </div>
-
       </div>
     </div>
   );
