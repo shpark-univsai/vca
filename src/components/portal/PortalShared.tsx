@@ -2115,6 +2115,13 @@ export function TextField({ value, onChange, placeholder, type, inputMode, autoC
  * dialog. Text only: there is no ticketing system behind Portal, so an address, a number and the
  * hours are the whole of what can honestly be offered.
  */
+/*
+ * CENTRED ON PURPOSE, AND IT STAYS THAT WAY (2026-09-22, when Portal's forms all moved to
+ * right-side panels). Four rows and a 닫기: an address, a number, the hours, and who to ask. There
+ * is nothing to fill in, so nothing to lose to a stray click, and nothing on the page behind it to
+ * check against — which is what the panels are for. A full-height panel for a contact card would
+ * be a panel arguing with its own contents.
+ */
 export function SupportContactModal({ onClose }: { onClose: () => void }) {
   const [lang] = usePortalLanguage();
   const t = SUPPORT_T[lang];

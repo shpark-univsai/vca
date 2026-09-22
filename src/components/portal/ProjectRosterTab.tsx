@@ -574,6 +574,11 @@ function RemoveConfirmModal({
 // than `display:none` on everything else) is the standard trick for "print just this one subtree
 // regardless of what else the page layout is" — it works without this component needing to know
 // anything about PortalShell's chrome outside it.
+/*
+ * A PRINT VIEW, NOT A DIALOG — so it is not a right-side panel and never will be (2026-09-22).
+ * It is the sheet somebody carries to the people whose codes are on it: full width, no scrim, and
+ * its own @media print rules. A panel would print at 520px.
+ */
 function PrintSheet({ entries, projectName, onClose, t }: { entries: RosterEntry[]; projectName: string; onClose: () => void; t: Translations }) {
   useEscapeKey(onClose);
   return (

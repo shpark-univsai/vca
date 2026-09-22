@@ -200,6 +200,11 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
       them (Vercel, AWS) keeps a Back or Cancel on every step, and apps ship ONE create surface
       reused for the first project and the nth — what changes for an empty team is the page
       behind it, which is PortalEmptyState's job, not this component's.
+
+      STILL CENTRED after the 2026-09-22 sweep that moved every form in Portal to a right-side
+      panel. This is not a form about the page behind it — it is several steps that build something
+      that does not exist yet, and there is nothing to read alongside. 640px over the page is the
+      shape the references use for exactly this.
     */
     <div onClick={e => { if (e.target === e.currentTarget) onCancel?.(); }}
       style={{

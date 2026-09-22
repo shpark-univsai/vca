@@ -338,6 +338,14 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
       </button>
 
       {open && (
+        /*
+          CENTRED ON PURPOSE, AND IT STAYS THAT WAY (2026-09-22). This is not a dialog about the
+          page behind it — it is how you LEAVE that page, the console's own "which project am I
+          in". A right-side panel is for working beside what you can still see; a switcher wants
+          the middle of the screen, which is where GCP's resource picker and every command palette
+          put it. It is also why the scrim is a real scrim here rather than an anchored popover:
+          picking a project replaces everything.
+        */
         <div
           onClick={e => { if (e.target === e.currentTarget) setOpen(false); }}
           style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}

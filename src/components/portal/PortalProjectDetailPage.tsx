@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
 import { hasPosition, canEnterApp, canEnterPortal, canManageAccess, currentPortalUser, isAwaitingFirstContact, registeredDayIn, registryHealth, resolveMailConfig, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed, zoneHour } from "@/lib/time";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, FacePhoto, usePortalEditAccess } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, Drawer, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, FacePhoto, usePortalEditAccess } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
@@ -1081,24 +1081,19 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
               in front of it. Each row is the link it was on the strip, and taking one closes the
               popup — you asked to go somewhere, so the list you were choosing from gets out of the
               way. */}
+          {/*
+            A RIGHT-SIDE PANEL, LIKE EVERY OTHER LIST IN PORTAL (owner, 2026-09-22: 나중에 이거 왜
+            패널로 안 바꼈지? 하고 발견되는 중앙팝업 없도록).
+
+            It was a 440px centred card, which put a scrolling list of up to eight errands over the
+            middle of the page it is about — and the cards it ranks are exactly what you compare it
+            against. A panel leaves the page visible beside it, which is the reason the console
+            moved to panels in the first place. Nothing else about it changes: one row per errand in
+            the strip's own order, and taking one closes the panel because you asked to go there.
+          */}
           {attentionAllOpen && (
-            <div
-              onClick={e => { if (e.target === e.currentTarget) setAttentionAllOpen(false); }}
-              style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}
-            >
-              <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, boxShadow: PANEL_SHADOW, width: "440px", maxWidth: "100%", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 12px" }}>
-                  <p style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)" }}>{t.attnAllTitle}</p>
-                  <button
-                    className="portal-icon-btn"
-                    onClick={() => setAttentionAllOpen(false)}
-                    title={t.dismissBanner}
-                    style={{ display: "flex", border: "none", background: "none", padding: "4px", cursor: "pointer", color: "var(--gray-400)" }}
-                  >
-                    <X size={14} strokeWidth={2.4} />
-                  </button>
-                </div>
-                <div style={{ overflowY: "auto", padding: "0 8px 12px" }}>
+            <Drawer title={t.attnAllTitle} onClose={() => setAttentionAllOpen(false)} width="440px">
+                <div style={{ padding: "0 12px 16px" }}>
                   {rankedAttention.map(item => (
                     <button
                       key={item.key}
@@ -1119,8 +1114,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                     </button>
                   ))}
                 </div>
-              </div>
-            </div>
+            </Drawer>
           )}
 
           {/* Metric cards — camera connectivity / license usage / VIP DB / accounts & permissions,

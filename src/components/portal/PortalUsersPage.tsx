@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Asterisk, Boxes, CircleHelp, ClipboardList, ClipboardPlus, KeyRound, KeySquare, MailQuestion, MonitorOff, MoreVertical, Pencil, Plus, UserMinus, UserX, Users as UsersIcon, Users2 } from "lucide-react";
+import { Asterisk, Boxes, CircleHelp, ClipboardList, ClipboardPlus, Eye, KeyRound, KeySquare, Link2, MailQuestion, MonitorOff, MoreVertical, Pencil, Plus, Trash2, UserCheck, UserMinus, UserSearch, UserX, Users as UsersIcon, Users2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type CameraGroup, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -2489,6 +2489,39 @@ const SECONDARY_BTN: React.CSSProperties = {
 };
 
 /**
+ * The name over a part of the account card.
+ *
+ * Small, grey and unemphatic on purpose: it is a signpost, not a fact about the person. The four
+ * of them are identical so that nothing in the card competes with the person's name at the top or
+ * with the values underneath — what separates the parts is what is inside them, tinted cards of
+ * current values against bare rows of verbs, not four differently loud headings.
+ */
+const PANEL_CAPTION: React.CSSProperties = {
+  fontSize: "11px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase",
+  color: "var(--gray-400)", marginBottom: "6px",
+};
+
+/**
+ * A group of current values inside the account card.
+ *
+ * A TINT INSTEAD OF A BORDER AND FIVE DIVIDERS (owner, 2026-09-22: 이것도 ui가 너무 라인이 많고
+ * 눈에 잘 안들어와 중요한 정보들이 눈에 안들어오는 느낌이야).
+ *
+ * Measured in the browser before this change, on two accounts: 27 border edges of which 15 were
+ * horizontal lines across the reader's path on an active account, 31 and 17 on an invited one —
+ * two boxed groups, three dividers between rows, and the four or five bordered buttons under them.
+ * Every one was the same 1px grey, so the card read as a stack of identical boxes with nothing
+ * leading. Checked against twenty admin consoles on Mobbin: Revolut Business's member
+ * panel, Toggl Track's member drawer and Intercom's permission groups all group rows with one
+ * filled card and draw no divider between them at all; Neon, Fibery and Canny draw no line
+ * anywhere in a user panel. The fill does the grouping the border and the dividers were doing,
+ * and it costs no lines.
+ */
+const PANEL_GROUP: React.CSSProperties = {
+  backgroundColor: "var(--gray-50)", borderRadius: "12px", padding: "4px",
+};
+
+/**
  * Which of the team's projects an existing account may open.
  *
  * It was set once, at invite, and never again: updatePortalUserProjects sat in the store with no
@@ -4294,6 +4327,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
          */
         const rows: {
           key: string; group: "where" | "what"; label: string; value: string;
+          /** The one value printed large. See the door row for why it is that one. */
+          hero?: boolean;
           disabled?: boolean; reason?: string; onClick: () => void;
         }[] = [
           {
@@ -4314,6 +4349,17 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             /* The invite form asks it as a question ("어디로 로그인하나"); a card of current
                values states it as a thing. Same axis name as the count line again. */
             label: t.axisDoor,
+            /*
+             * THE ONE VALUE AT 15px, BECAUSE IT IS THE SECOND QUESTION THE CARD ANSWERS.
+             *
+             * After who this person is, the thing the reader opened the card for is whether they
+             * can get in at all — and which door, since every row in 할 수 있는 일 below is
+             * hypothetical without one. Printed at the same 12px as the other four it was
+             * findable but not first; the status badge beside the name says whether the account
+             * works, this says where it works. Same idea as Revolut Business's member panel,
+             * where the role sits alone above the rest of the list.
+             */
+            hero: true,
             value: accessLabel(t, accessModeOf(mu)),
             disabled: !manageAccess,
             reason: manageAccess ? undefined : t.reasonNotOwner,
@@ -4358,30 +4404,54 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
              in the table: a suspended account makes everything below it hypothetical. */
           <Drawer
             title={
-              <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column" }}>
-                  <span style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mu.name}</span>
-                  <span style={{ fontSize: "12px", fontWeight: 400, color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mu.email}</span>
+              <span style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                {/* THE PERSON GETS A FACE (owner, 2026-09-22: 중요한 정보들이 눈에 안들어오는
+                    느낌이야). A 38px disc of the initial, which is the first thing the eye lands
+                    on in every member panel checked — Toggl Track, Churnkey, Clerk, Zoho CRM,
+                    Canny — and it costs no line and no new data: the letter is the name's own.
+                    Decorative, so the screen reader is left with the name beside it. */}
+                <span aria-hidden="true" style={{
+                  flexShrink: 0, width: "38px", height: "38px", borderRadius: "50%",
+                  backgroundColor: "var(--gray-100)", color: "var(--gray-600)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "15px", fontWeight: 800,
+                }}>{[...mu.name.trim()][0] ?? ""}</span>
+                <span style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: "1px" }}>
+                  {/* THE BADGE BESIDE THE NAME, NOT AT THE FAR EDGE (owner, on the table: 계정
+                      상태는 사용자열 근처에 있어야할것같아). The same argument holds in a 520px
+                      panel: it was 380px away from the name it describes, and 정지됨 makes
+                      everything below it hypothetical, so it belongs where the reader is already
+                      looking. 17px, up from 15px — the name was only 3px clear of the row labels
+                      under it, which is what "important things don't come forward" was. */}
+                  <span style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                    <span title={mu.name} style={{ minWidth: 0, fontSize: "17px", fontWeight: 800, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mu.name}</span>
+                    <span style={{ flexShrink: 0, display: "flex" }}><StatusBadge status={mu.status} /></span>
+                  </span>
+                  <span title={mu.email} style={{ fontSize: "12px", fontWeight: 400, color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mu.email}</span>
                 </span>
-                <StatusBadge status={mu.status} />
               </span>
             }
             onClose={close}
           >
-              <div style={{ padding: "16px 20px 6px", display: "flex", flexDirection: "column", gap: "14px" }}>
+              <div style={{ padding: "8px 20px 4px", display: "flex", flexDirection: "column", gap: "18px" }}>
                 {([["where", t.panelWhereSection], ["what", t.panelWhatSection]] as const).map(([group, heading]) => (
                 <div key={group}>
-                <p style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)", marginBottom: "8px" }}>{heading}</p>
-                <div style={{ border: BORDER, borderRadius: "10px", overflow: "hidden" }}>
-                  {rows.filter(r => r.group === group).map((row, i) => {
+                <p style={PANEL_CAPTION}>{heading}</p>
+                <div style={PANEL_GROUP}>
+                  {rows.filter(r => r.group === group).map(row => {
+                    /* No borderTop on the second row onwards, and no box round the group: see
+                       PANEL_GROUP. What keeps two rows apart now is their own padding. */
                     const style: React.CSSProperties = {
                       width: "100%", display: "flex", alignItems: "center", gap: "8px", textAlign: "left",
-                      padding: "11px 12px", border: "none", borderTop: i === 0 ? "none" : "1px solid var(--gray-200)",
-                      backgroundColor: "white", fontFamily: "inherit",
+                      padding: row.hero ? "11px 12px" : "8px 12px", border: "none", borderRadius: "8px",
+                      backgroundColor: "transparent", fontFamily: "inherit",
                     };
                     const label = (
                       <>
-                        <span style={{ flexShrink: 0, fontSize: "12px", fontWeight: 700, color: row.disabled ? "var(--gray-400)" : "var(--gray-600)" }}>{row.label}</span>
+                        {/* The label gives way to the value: it was 700 in gray-600, the same
+                            weight as the thing it names, so a row read as two equals rather than
+                            as a question and its answer. */}
+                        <span style={{ flexShrink: 0, fontSize: "12px", fontWeight: 500, color: row.disabled ? "var(--gray-400)" : "var(--gray-500)" }}>{row.label}</span>
                         {/*
                           WHY IT CANNOT BE OPENED, BEHIND A MARK (owner, 2026-09-22: 이것도 뭔가
                           어색해 단어옆에 물음표같은아이콘에 숨겨줘).
@@ -4406,11 +4476,20 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                       </>
                     );
                     const value = (
-                      <span style={{ flex: 1, minWidth: 0, textAlign: "right", fontSize: "12px", color: row.disabled ? "var(--gray-400)" : "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.value}</span>
+                      <span style={{
+                        flex: 1, minWidth: 0, textAlign: "right",
+                        fontSize: row.hero ? "15px" : "13px", fontWeight: row.hero ? 800 : 700,
+                        color: row.disabled ? "var(--gray-400)" : "var(--gray-900)",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>{row.value}</span>
                     );
                     if (row.disabled) return <div key={row.key} style={style}>{label}{value}</div>;
                     return (
-                      <button key={row.key} type="button" onClick={row.onClick} style={{ ...style, cursor: "pointer" }}>
+                      /* portal-btn-quiet, because a row with no border and no fill of its own has
+                         nothing but the chevron to say it opens something. The tint on pointing is
+                         the rest of that sentence — see the class's own note: nothing at rest and
+                         nothing on pointing is not a quiet control, it is text. */
+                      <button key={row.key} type="button" className="portal-btn-quiet" onClick={row.onClick} style={{ ...style, cursor: "pointer" }}>
                         {label}
                         {value}
                         {/* No chevron on a row that cannot be opened — an arrow that leads nowhere
@@ -4426,15 +4505,29 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                 ))}
               </div>
 
-              <div style={{ padding: "14px 20px 20px" }}>
-                <p style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)", marginBottom: "8px" }}>{t.panelAccountSection}</p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+              {/*
+                VERBS, NOT BOXES (same owner note as PANEL_GROUP).
+
+                Five bordered pills under two bordered groups were twenty of the thirty-one border
+                edges an invited account's card drew, and the loudest thing on it was a row of
+                things you rarely do.
+                They are the row of five that SECONDARY_BTN was written for and the only row on
+                this page that was not using it — the class's own note lists "on the Users page
+                nothing at all" as one of the three ways this treatment got left out. So the card
+                now has two registers: what is true about the account sits in tinted cards above,
+                what you can do to it is bare text that tints under the pointer.
+              */}
+              <div style={{ padding: "14px 20px 22px" }}>
+                <p style={PANEL_CAPTION}>{t.panelAccountSection}</p>
+                {/* Pulled left by the button's own 10px padding, so the first label starts on the
+                    same x as the caption over it and the section reads as one block. */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "2px", margin: "0 -10px" }}>
                   {[
                     /* The two mail-less ways back in, kept apart for the reason the menu gave: a
                        person who never arrived needs the invitation again, a person who is locked
                        out needs a credential. */
                     ...(mu.status === "invited" ? [{
-                      key: "resend", label: t.resendInvite,
+                      key: "resend", label: t.resendInvite, icon: <Link2 size={14} strokeWidth={2.2} />,
                       disabled: !manageAccess, reason: manageAccess ? undefined : t.reasonNotOwner,
                       /* A reissue, not a resend: the previous link stops working the moment this
                          mints a new one. The link goes on a panel rather than in a toast —
@@ -4448,17 +4541,17 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                       },
                     }] : []),
                     {
-                      key: "credential", label: t.resetPassword,
+                      key: "credential", label: t.resetPassword, icon: <KeyRound size={14} strokeWidth={2.2} />,
                       disabled: !manageAccess, reason: manageAccess ? undefined : t.reasonNotOwner,
                       onClick: () => { close(); setCredentialFor(mu); },
                     },
                     ...(mu.setupCode ? [{
-                      key: "code", label: t.viewSetupCode,
+                      key: "code", label: t.viewSetupCode, icon: <Eye size={14} strokeWidth={2.2} />,
                       disabled: !manageAccess, reason: manageAccess ? undefined : t.reasonNotOwner,
                       onClick: () => { close(); setViewingCodeFor(mu); },
                     }] : []),
                     {
-                      key: "search", label: holdsSearch(mu) ? t.appSearchRevoke : t.appSearchGrant,
+                      key: "search", label: holdsSearch(mu) ? t.appSearchRevoke : t.appSearchGrant, icon: <UserSearch size={14} strokeWidth={2.2} />,
                       disabled: !manageAccess || (!holdsSearch(mu) && !mu.appAccess),
                       reason: !manageAccess ? t.reasonNotOwner : (!holdsSearch(mu) && !mu.appAccess) ? t.reasonNoApp : undefined,
                       /* Confirmed, and deliberately NOT danger — red means what cannot be undone,
@@ -4479,13 +4572,22 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                       },
                     },
                   ].map(a => (
-                    <button key={a.key} type="button" onClick={a.disabled ? undefined : a.onClick} disabled={a.disabled}
+                    <button key={a.key} type="button" className={a.disabled ? undefined : "portal-btn-quiet"}
+                      onClick={a.disabled ? undefined : a.onClick} disabled={a.disabled}
                       title={a.disabled ? a.reason : undefined}
                       style={{
-                        height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER,
-                        backgroundColor: "white", color: a.disabled ? "var(--gray-300)" : "var(--gray-700)",
-                        fontSize: "12px", fontWeight: 700, cursor: a.disabled ? "default" : "pointer", fontFamily: "inherit",
+                        ...SECONDARY_BTN, height: CONTROL_HEIGHT, padding: "0 10px",
+                        color: a.disabled ? "var(--gray-300)" : "var(--gray-700)",
+                        fontWeight: 700, cursor: a.disabled ? "default" : "pointer",
                       }}>
+                      {/*
+                        A MARK ON EACH VERB (the page's own quiet buttons carry one — see the
+                        roster's 코드 일괄 발급). Borderless, three Korean phrases in a row read as
+                        navigation; the icon is what says each one is a thing you press. The mark
+                        is the label's own noun: a link for the link, a key for the password, an
+                        eye for 보기, a magnifier over a person for person search.
+                      */}
+                      {a.icon}
                       {a.label}
                     </button>
                   ))}
@@ -4498,8 +4600,12 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                     a heading says which two they are — the ones that change whether the account
                     works at all, as opposed to the ones that help somebody back in. Same heading
                     style as the groups above, so the card reads as four named parts. */}
-                <p style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)", margin: "16px 0 8px" }}>{t.panelStatusSection}</p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                <p style={{ ...PANEL_CAPTION, marginTop: "22px" }}>{t.panelStatusSection}</p>
+                {/* 22px above the heading rather than a rule: with the boxes gone from everything
+                    else, a hairline here would have been the only line in the card doing the job
+                    the space already does. Supabase's user panel separates its own last two
+                    actions the same way, with a heading and room. */}
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "2px", margin: "0 -10px" }}>
                   <button type="button"
                     disabled={!manageAccess || (mu.status !== "suspended" && lastAdmin)}
                     title={!manageAccess ? t.reasonNotOwner : (mu.status !== "suspended" && lastAdmin) ? t.lastAdminReason : undefined}
@@ -4528,11 +4634,13 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                         },
                       });
                     }}
+                    className={(!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? undefined : "portal-btn-quiet"}
                     style={{
-                      height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER,
-                      backgroundColor: "white", color: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "var(--gray-300)" : "var(--gray-700)",
-                      fontSize: "12px", fontWeight: 700, cursor: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "default" : "pointer", fontFamily: "inherit",
+                      ...SECONDARY_BTN, height: CONTROL_HEIGHT, padding: "0 10px",
+                      color: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "var(--gray-300)" : "var(--gray-700)",
+                      fontWeight: 700, cursor: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "default" : "pointer",
                     }}>
+                    {mu.status === "suspended" ? <UserCheck size={14} strokeWidth={2.2} aria-hidden="true" /> : <UserX size={14} strokeWidth={2.2} aria-hidden="true" />}
                     {mu.status === "suspended" ? t.reactivateUser : t.suspendUser}
                   </button>
                   <button type="button"
@@ -4548,11 +4656,34 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                         onConfirm: () => removePortalUser(mu.id),
                       });
                     }}
+                    className={(!manageAccess || lastAdmin) ? undefined : "portal-btn-outline-danger"}
+                    /*
+                     * THE ONLY BOX LEFT IN THE CARD, AND IT IS NOT RED UNTIL YOU POINT AT IT.
+                     *
+                     * Every other control here lost its border, so the one that cannot be undone
+                     * is now the single thing in the panel that looks like a box — which is what
+                     * keeps it from being hit on the way past, where before it was one of five
+                     * identical pills and told apart only by being red.
+                     *
+                     * Red at rest is what this repo already decided against for exactly this
+                     * button elsewhere (see portal-btn-outline-danger in globals.css: "red at
+                     * rest made the one thing on the settings page you almost never want to do
+                     * the first thing the eye lands on"). It was doing that here too: opening an
+                     * account card, the eye went to 제거 at the bottom. The bin says destructive
+                     * at rest, the red arrives with the pointer, and the confirmation behind it
+                     * is unchanged — still danger, still naming the person.
+                     *
+                     * marginLeft auto, so it sits at the far edge with 정지 at the other: two
+                     * controls that both take access away should not be 2px apart.
+                     */
                     style={{
-                      height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "1px solid var(--danger-100)",
-                      backgroundColor: "white", color: (!manageAccess || lastAdmin) ? "var(--gray-300)" : "var(--danger-500)",
+                      display: "inline-flex", alignItems: "center", gap: "6px",
+                      height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER,
+                      backgroundColor: "white", color: (!manageAccess || lastAdmin) ? "var(--gray-300)" : "var(--gray-600)",
                       fontSize: "12px", fontWeight: 700, cursor: (!manageAccess || lastAdmin) ? "default" : "pointer", fontFamily: "inherit",
+                      marginLeft: "auto", marginRight: "10px",
                     }}>
+                    <Trash2 size={13} strokeWidth={2.2} aria-hidden="true" />
                     {t.removeUser}
                   </button>
                 </div>

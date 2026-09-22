@@ -76,6 +76,13 @@ function RequestProjectModal({ team, onClose }: { team: Team; onClose: () => voi
   const t = T[lang];
   const m = team.accountManager;
   return (
+    /*
+      CENTRED ON PURPOSE, AND IT STAYS THAT WAY (2026-09-22, when every form in Portal moved to a
+      right-side panel). This one is three lines and a 닫기: whose name to ask, and how to reach
+      them. Nothing is filled in, so there is nothing to lose to a stray click and nothing to
+      compare against the page behind it — the two reasons the forms moved. A full-height panel for
+      three lines of prose would be the panel arguing with its own contents.
+    */
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: "fixed", inset: 0, zIndex: 400, backgroundColor: "var(--scrim)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "440px", width: "100%", boxShadow: "var(--shadow-modal)" }}>

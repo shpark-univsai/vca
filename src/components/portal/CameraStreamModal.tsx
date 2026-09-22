@@ -89,6 +89,13 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
     : new Date(Math.max(...cameraEvents.map(e => new Date(e.timestamp).getTime())));
 
   return (
+    /*
+      CENTRED ON PURPOSE, AND IT STAYS THAT WAY (2026-09-22). A frame from a camera is the one
+      thing on this screen you look AT rather than work beside, and a 520px panel would hand a
+      16:9 still about 290px of height. Media viewers are centred everywhere for that reason. The
+      facts sheet under it is there because the picture alone cannot say which camera, when, or
+      whether the feed is live.
+    */
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "640px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--shadow-modal)" }}>
