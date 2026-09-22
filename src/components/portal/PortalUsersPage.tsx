@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Asterisk, MailQuestion, MonitorOff, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
+import { Asterisk, MailQuestion, MoreVertical, MonitorOff, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -148,6 +148,13 @@ const T = {
     accessGainsRoleNote: (role: string) => `Given the ${role} role, which changes nothing until you raise it.`,
     reasonNoApp: "This account has no app access — there are no screens to grant or to search on.",
     reasonNoPortal: "This account does not open Portal — change where they sign in first.",
+    manageAccount: "Manage account",
+    panelGrantSection: "Access",
+    panelAccountSection: "Account",
+    panelGrants: "App screens",
+    panelNoPortal: "No Portal",
+    panelNoApp: "No app",
+    panelProjectCount: (n: number) => `${n}`,
     reasonNotOwner: "Only an owner can change access.",
     appSearchOn: "On",
     appSearchGrant: "Allow person search",
@@ -526,6 +533,13 @@ const T = {
     accessGainsRoleNote: (role: string) => `${role} 역할로 들어갑니다. 올리기 전까지는 바꾸는 게 없습니다.`,
     reasonNoApp: "앱 접근이 없는 계정입니다 — 지정하거나 검색할 화면이 없습니다.",
     reasonNoPortal: "Portal을 열지 않는 계정입니다 — 로그인 위치를 먼저 바꾸세요.",
+    manageAccount: "계정 관리",
+    panelGrantSection: "권한",
+    panelAccountSection: "계정",
+    panelGrants: "앱 화면",
+    panelNoPortal: "Portal 없음",
+    panelNoApp: "앱 없음",
+    panelProjectCount: (n: number) => `${n}곳`,
     reasonNotOwner: "권한 변경은 최고관리자만 할 수 있습니다.",
     appSearchOn: "허용",
     appSearchGrant: "인물 검색 허용",
@@ -3137,6 +3151,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
   const allPresets = useVcaStore(st => st.accessPresets);
   const pagePresets = useMemo(() => presetsForTeam(allPresets, pageTeamId ?? ""), [allPresets, pageTeamId]);
   const [editingProjectsFor, setEditingProjectsFor] = useState<PortalUser | null>(null);
+  /** The account whose card is open. One card replaced the row's nine-item menu. */
+  const [managing, setManaging] = useState<PortalUser | null>(null);
   const currentProject = projects.find(p => p.id === projectId);
   /**
    * Which of the "on the way in, or stopped" states the table is narrowed to, if any — set by the
@@ -3813,186 +3829,16 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             {/* Every action in this menu grants or takes away a way in, so the whole menu is the
                 owner's. A non-owner still sees the items with the reason attached — knowing the
                 action exists and who can do it beats a menu that quietly has three fewer rows. */}
-            <RowActionsMenu actions={[
-              {
-                // First, because it is the only thing in this menu that changes what the account
-                // is FOR rather than how it gets in.
-                label: t.editProjects,
-                disabled: !manageAccess,
-                reason: manageAccess ? undefined : t.reasonNotOwner,
-                onClick: () => setEditingProjectsFor(u),
-              },
-              {
-                // The Permission cell's editor. Refused for the last owner on the store's own
-                // guard rather than offered and then ignored, and refused outright for an account
-                // that does not open Portal — there is no role to hold without the door.
-                label: t.changeRole,
-                disabled: !manageAccess || lastAdmin || !canEnterPortal(u.permission),
-                reason: !manageAccess ? t.reasonNotOwner
-                  : lastAdmin ? t.lastAdminRoleFixed
-                  : !canEnterPortal(u.permission) ? t.reasonNoPortal
-                  : undefined,
-                onClick: () => setChangingRoleFor(u),
-              },
-              {
-                label: t.changeAccess,
-                disabled: !manageAccess,
-                reason: manageAccess ? undefined : t.reasonNotOwner,
-                onClick: () => setChangingAccessFor(u),
-              },
-              {
-                // Sits under "where they sign in" because it is the second half of the same
-                // question: the door, then what is behind it. Refused without the app for the
-                // reason the sentence gives — there is nothing to grant, not a missing privilege.
-                label: t.changeGrants,
-                disabled: !manageAccess || !u.appAccess,
-                reason: !manageAccess ? t.reasonNotOwner
-                  : !u.appAccess ? t.reasonNoAppScreens
-                  : undefined,
-                onClick: () => setChangingGrantsFor(u),
-              },
-              {
-                /* Third in the same run, because it answers the third question about one account:
-                   the door (where they sign in), what is behind it (which screens), then how much
-                   of the site those screens show. Orthogonal to the preset by design — a preset
-                   carries screens and verbs and never cameras, because the same job title watches
-                   different cameras at every installation.
-
-                   Refused without the app for the reason the sentence gives, same as the row
-                   above. Also refused when the account's projects hold no cameras at all: a
-                   picker with nothing in it would let somebody "narrow" a scope to the empty set
-                   and lock the account out of a site that simply has not been provisioned yet. */
-                label: t.changeScope,
-                disabled: !manageAccess || !u.appAccess || scopableCamerasFor(u).length === 0,
-                reason: !manageAccess ? t.reasonNotOwner
-                  : !u.appAccess ? t.reasonNoScopeWithoutApp
-                  : scopableCamerasFor(u).length === 0 ? t.reasonNoCamerasToScope
-                  : undefined,
-                onClick: () => setScopingFor(u),
-              },
-              ...(mailAvailable && u.status === "invited" ? [{
-                label: t.resendInvite,
-                disabled: !manageAccess,
-                reason: manageAccess ? undefined : t.reasonNotOwner,
-                // A reissue, not a resend: the previous link stops working the moment this mints
-                // a new one, which is the point when the first has been sitting unused for a week.
-                // The link goes on a panel rather than in a toast — nothing posts it anywhere, so
-                // it is the whole result and it has to survive longer than five seconds.
-                onClick: () => {
-                  const token = issueInviteToken(u.id);
-                  if (!token) return;
-                  setInvitePanel({ title: t.inviteLinkRemadeTitle, links: [{ name: u.name, email: u.email, url: `/password-setup?token=${token}` }] });
-                },
-              }] : []),
-              {
-                // All three recovery paths behind one entry. Mailing a code, reading out a temporary
-                // password and handing over a setup code do the same job — give this person a way
-                // back in — and differ only in how it reaches them. Three menu items made the
-                // administrator choose a mechanism; one item asks how they can reach the person and
-                // derives the mechanism from that.
-                label: t.resetPassword,
-                onClick: () => setCredentialFor(u),
-                disabled: !manageAccess,
-                reason: manageAccess ? undefined : t.reasonNotOwner,
-              },
-              // The code's result screen says it can be looked up again from this menu while it is
-              // unused — and until now it could not, so the modal was promising a menu item that
-              // did not exist. Unlike a temporary password there is nothing wrong with showing it
-              // twice: it is stored, because it has to be verifiable, and it cannot sign in.
-              ...(u.setupCode ? [{
-                label: t.viewSetupCode,
-                onClick: () => setViewingCodeFor(u),
-                disabled: !manageAccess,
-                reason: manageAccess ? undefined : t.reasonNotOwner,
-              }] : []),
-              {
-                // Granting needs the app: person search is a grant on a surface, and an account
-                // with no app cannot reach it. Revoking stays available whatever the app state —
-                // taking a grant away is never the thing to block. (A note here used to say
-                // updatePortalUserAccess drops appSearch when the app goes; it does not, and has
-                // not since closing the app door stopped erasing the grants behind it. The two
-                // values are read together instead — the cell above is `appSearch && appAccess`,
-                // and this row's disable rule is the same pair.)
-                label: holdsSearch(u) ? t.appSearchRevoke : t.appSearchGrant,
-                disabled: !manageAccess || (!holdsSearch(u) && !u.appAccess),
-                reason: !manageAccess ? t.reasonNotOwner
-                  : (!holdsSearch(u) && !u.appAccess) ? t.reasonNoApp
-                  : undefined,
-                onClick: () => {
-                  const next = !holdsSearch(u);
-                  setConfirming({
-                    title: next ? t.confirmSearchGrantTitle(u.name) : t.confirmSearchRevokeTitle(u.name),
-                    body: next ? t.confirmSearchGrantBody : t.confirmSearchRevokeBody,
-                    confirmLabel: next ? t.appSearchGrant : t.appSearchRevoke,
-                    // NOT `danger` in either direction. Red on a confirm means what cannot be
-                    // undone, and blocking person search deletes nothing — the account keeps its
-                    // screens, its role and its place on the list, and this same menu row flips
-                    // back to 인물 검색 허용 the moment it is done. It read as the heaviest
-                    // dialog on the page because it is about the most sensitive grant, which is
-                    // weight, not permanence; spending red on it is what leaves 제거 — which
-                    // really is final — looking like everything else.
-                    onConfirm: () => {
-                      setAppSearch(u.id, next);
-                      showToast({
-                        variant: next ? "success" : "warning",
-                        title: next ? t.appSearchToastOn : t.appSearchToastOff,
-                        desc: t.appSearchToastDesc(u.name),
-                      });
-                    },
-                  });
-                },
-              },
-              u.status === "suspended"
-                ? {
-                    label: t.reactivateUser,
-                    disabled: !manageAccess,
-                    reason: manageAccess ? undefined : t.reasonNotOwner,
-                    onClick: () => setConfirming({
-                      title: t.confirmReactivateTitle(u.name),
-                      body: t.confirmReactivateBody,
-                      confirmLabel: t.reactivateUser,
-                      onConfirm: () => {
-                        updatePortalUserStatus(u.id, "active");
-                        showToast({ variant: "success", title: t.userReactivatedTitle, desc: u.name });
-                      },
-                    }),
-                  }
-                : {
-                    label: t.suspendUser,
-                    onClick: () => setConfirming({
-                      title: t.confirmSuspendTitle(u.name),
-                      body: t.confirmSuspendBody,
-                      confirmLabel: t.suspendUser,
-                      onConfirm: () => {
-                        updatePortalUserStatus(u.id, "suspended");
-                        showToast({ variant: "warning", title: t.userSuspendedTitle, desc: t.userSuspendedDesc(u.name) });
-                      },
-                    }),
-                    // NOT `danger` on the menu row, and not on its confirm either. Suspending is
-                    // reversible — 재활성화 occupies this very slot afterwards — and 제거 below is
-                    // not. Colouring both red makes red mean "bottom of the menu" instead of
-                    // "think", and the one that cannot be undone loses its warning. The dialog
-                    // kept the red after the row lost it, over a body that says in as many words
-                    // that nothing is deleted; the same fix as the bulk-suspend dialog above.
-                    // Refused, not warned about: this deployment is on-premise with the top
-                    // administrator on the customer's side, so there is no supplier account to
-                    // undo it with. The store refuses these too — see isLastActiveAdmin.
-                    disabled: lastAdmin || !manageAccess,
-                    reason: lastAdmin ? t.lastAdminReason : manageAccess ? undefined : t.reasonNotOwner,
-                  },
-              {
-                label: t.removeUser, danger: true,
-                onClick: () => setConfirming({
-                  title: t.confirmRemoveTitle(u.name),
-                  body: t.confirmRemoveBody,
-                  confirmLabel: t.removeUser,
-                  danger: true,
-                  onConfirm: () => removePortalUser(u.id),
-                }),
-                disabled: lastAdmin || !manageAccess,
-                reason: lastAdmin ? t.lastAdminReason : manageAccess ? undefined : t.reasonNotOwner,
-              },
-            ]} />
+            {/* ONE DOOR, NOT NINE (owner, 2026-09-22: 점 세개 눌렀을때 너무 버튼이 많이 뜨는데).
+                Measured before this change: nine items, 467px tall, bottom edge at 998px on a
+                900px window — the menu opened partly off the screen — and three of the nine were
+                disabled on this row. The same actions now live in the account card, which says
+                what the account holds before offering to change it. */}
+            <button className="portal-icon-btn" onClick={() => setManaging(u)} title={t.manageAccount}
+              aria-label={t.manageAccount}
+              style={{ justifySelf: "end", padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
+              <MoreVertical size={16} strokeWidth={2} />
+            </button>
           </div>
           );
         })}
@@ -4086,6 +3932,267 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
         />
       )}
       {showInvite && <InviteUserModal defaultProjectId={projectId} onClose={() => setShowInvite(false)} />}
+      {/*
+        ONE CARD FOR THE ACCOUNT, INSTEAD OF A NINE-ITEM MENU (owner, 2026-09-22: 맨 오른쪽 점
+        세개 눌렀을때 너무 버튼이 많이 뜨는데 … 그냥 팝업띄워서 관리하는게 나을것같기두하고).
+
+        Measured on Grace Tan's row: the menu had NINE items, stood 467px tall and its bottom edge
+        was at 998px on a 900px window — it opened 98px off the screen — and three of the nine
+        were disabled for that row. A menu is a list of verbs with no state in it, so the reader
+        had to pick one to find out what the account currently holds.
+
+        This says the state first and offers the change beside it: five rows that each name what
+        the account holds now, and the account's own actions under a rule. Every guard and every
+        refusal reason is the same one the menu carried — one array still, so a new action cannot
+        be added to one and forgotten in the other.
+
+        ONE DIALOG AT A TIME. Pressing a row closes this and opens that editor, rather than
+        stacking a second sheet over it — ConfirmModal's own note calls a two-deep stack a place
+        nobody wants to be, and the editors this opens are the same ones the menu opened.
+      */}
+      {managing && (() => {
+        const mu = managing;
+        const lastAdmin = isLastActiveAdmin(portalUsers, mu.id);
+        const close = () => setManaging(null);
+        /** Both groups from one list, so the guards cannot drift apart. `value` is what the
+         *  account holds right now — the half a menu of verbs could not show. */
+        const rows: {
+          key: string; label: string; value: string;
+          disabled?: boolean; reason?: string; onClick: () => void;
+        }[] = [
+          {
+            key: "role",
+            /* Not colPermission ("권한"): the section above is already called 권한, and the card
+               printed the word twice in two lines. This row is the console role specifically —
+               the same axis name the count line uses. */
+            label: t.axisConsoleRole,
+            value: canEnterPortal(mu.permission) ? roleLabel(t, mu.permission) : t.panelNoPortal,
+            disabled: !manageAccess || lastAdmin || !canEnterPortal(mu.permission),
+            reason: !manageAccess ? t.reasonNotOwner
+              : lastAdmin ? t.lastAdminRoleFixed
+              : !canEnterPortal(mu.permission) ? t.reasonNoPortal : undefined,
+            onClick: () => { close(); setChangingRoleFor(mu); },
+          },
+          {
+            key: "access",
+            /* The invite form asks it as a question ("어디로 로그인하나"); a card of current
+               values states it as a thing. Same axis name as the count line again. */
+            label: t.axisDoor,
+            value: accessLabel(t, accessModeOf(mu)),
+            disabled: !manageAccess,
+            reason: manageAccess ? undefined : t.reasonNotOwner,
+            onClick: () => { close(); setChangingAccessFor(mu); },
+          },
+          {
+            key: "grants",
+            label: t.panelGrants,
+            value: !mu.appAccess ? t.panelNoApp
+              : lacksAppScreens(mu) ? t.grantsHeldNone
+              : (mu.grantMode === "preset" && mu.presetId && presetLabelById.get(mu.presetId)) || t.grantCustom,
+            disabled: !manageAccess || !mu.appAccess,
+            reason: !manageAccess ? t.reasonNotOwner : !mu.appAccess ? t.reasonNoAppScreens : undefined,
+            onClick: () => { close(); setChangingGrantsFor(mu); },
+          },
+          {
+            key: "cameras",
+            label: t.colCameras,
+            value: !mu.appAccess ? t.panelNoApp
+              : scopeCountFor(mu) === null ? t.camerasAll
+              : t.camerasSome(scopeCountFor(mu) ?? 0, scopableCamerasFor(mu).length),
+            disabled: !manageAccess || !mu.appAccess || scopableCamerasFor(mu).length === 0,
+            reason: !manageAccess ? t.reasonNotOwner
+              : !mu.appAccess ? t.reasonNoScopeWithoutApp
+              : scopableCamerasFor(mu).length === 0 ? t.reasonNoCamerasToScope : undefined,
+            onClick: () => { close(); setScopingFor(mu); },
+          },
+          {
+            key: "projects",
+            label: t.colProjects,
+            value: t.panelProjectCount(mu.projectIds.length),
+            disabled: !manageAccess,
+            reason: manageAccess ? undefined : t.reasonNotOwner,
+            onClick: () => { close(); setEditingProjectsFor(mu); },
+          },
+        ];
+        return (
+          <div onClick={e => { if (e.target === e.currentTarget) close(); }}
+            style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
+            <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "520px", width: "100%", boxShadow: "var(--shadow-modal)", display: "flex", flexDirection: "column" }}>
+              <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid var(--gray-200)", display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mu.name}</p>
+                  <p style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mu.email}</p>
+                </div>
+                {/* The state belongs in the header for the reason it moved next to the name in the
+                    table: a suspended account makes everything below it hypothetical. */}
+                <StatusBadge status={mu.status} />
+                <button className="portal-icon-btn" onClick={close}
+                  style={{ flexShrink: 0, padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                </button>
+              </div>
+
+              <div style={{ padding: "16px 20px 6px" }}>
+                <p style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)", marginBottom: "8px" }}>{t.panelGrantSection}</p>
+                <div style={{ border: BORDER, borderRadius: "10px", overflow: "hidden" }}>
+                  {rows.map((row, i) => (
+                    <button key={row.key} type="button" onClick={row.disabled ? undefined : row.onClick} disabled={row.disabled}
+                      title={row.disabled ? row.reason : undefined}
+                      style={{
+                        width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left",
+                        padding: "11px 12px", border: "none", borderTop: i === 0 ? "none" : "1px solid var(--gray-200)",
+                        backgroundColor: "white", cursor: row.disabled ? "default" : "pointer", fontFamily: "inherit",
+                      }}>
+                      <span style={{ flexShrink: 0, fontSize: "12px", fontWeight: 700, color: row.disabled ? "var(--gray-400)" : "var(--gray-600)" }}>{row.label}</span>
+                      <span style={{ flex: 1, minWidth: 0, textAlign: "right", fontSize: "12px", color: row.disabled ? "var(--gray-400)" : "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.value}</span>
+                      {/* No chevron on a row that cannot be opened — an arrow that leads nowhere is
+                          the control this console keeps being asked to stop drawing. */}
+                      {!row.disabled && (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+                          <path d="M3 1.5L7 5l-4 3.5" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {/* The refusals, once, under the list they are about. A title attribute on a
+                    disabled button is not read by everyone and not read at all on touch. */}
+                {rows.filter(r => r.disabled && r.reason).map(r => (
+                  <p key={r.key} style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>
+                    {r.label} — {r.reason}
+                  </p>
+                ))}
+              </div>
+
+              <div style={{ padding: "14px 20px 20px" }}>
+                <p style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)", marginBottom: "8px" }}>{t.panelAccountSection}</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                  {[
+                    /* The two mail-less ways back in, kept apart for the reason the menu gave: a
+                       person who never arrived needs the invitation again, a person who is locked
+                       out needs a credential. */
+                    ...(mu.status === "invited" ? [{
+                      key: "resend", label: t.resendInvite,
+                      disabled: !manageAccess, reason: manageAccess ? undefined : t.reasonNotOwner,
+                      /* A reissue, not a resend: the previous link stops working the moment this
+                         mints a new one. The link goes on a panel rather than in a toast —
+                         nothing posts it anywhere, so it is the whole result and has to survive
+                         longer than five seconds. Verbatim from the menu this replaced. */
+                      onClick: () => {
+                        const token = issueInviteToken(mu.id);
+                        if (!token) return;
+                        close();
+                        setInvitePanel({ title: t.inviteLinkRemadeTitle, links: [{ name: mu.name, email: mu.email, url: `/password-setup?token=${token}` }] });
+                      },
+                    }] : []),
+                    {
+                      key: "credential", label: t.resetPassword,
+                      disabled: !manageAccess, reason: manageAccess ? undefined : t.reasonNotOwner,
+                      onClick: () => { close(); setCredentialFor(mu); },
+                    },
+                    ...(mu.setupCode ? [{
+                      key: "code", label: t.viewSetupCode,
+                      disabled: !manageAccess, reason: manageAccess ? undefined : t.reasonNotOwner,
+                      onClick: () => { close(); setViewingCodeFor(mu); },
+                    }] : []),
+                    {
+                      key: "search", label: holdsSearch(mu) ? t.appSearchRevoke : t.appSearchGrant,
+                      disabled: !manageAccess || (!holdsSearch(mu) && !mu.appAccess),
+                      reason: !manageAccess ? t.reasonNotOwner : (!holdsSearch(mu) && !mu.appAccess) ? t.reasonNoApp : undefined,
+                      /* Confirmed, and deliberately NOT danger — red means what cannot be undone,
+                         and blocking person search deletes nothing; this same button flips back.
+                         Verbatim from the menu, toast and all. */
+                      onClick: () => {
+                        const next = !holdsSearch(mu);
+                        close();
+                        setConfirming({
+                          title: next ? t.confirmSearchGrantTitle(mu.name) : t.confirmSearchRevokeTitle(mu.name),
+                          body: next ? t.confirmSearchGrantBody : t.confirmSearchRevokeBody,
+                          confirmLabel: next ? t.appSearchGrant : t.appSearchRevoke,
+                          onConfirm: () => {
+                            setAppSearch(mu.id, next);
+                            showToast({ variant: next ? "success" : "warning", title: next ? t.appSearchToastOn : t.appSearchToastOff, desc: t.appSearchToastDesc(mu.name) });
+                          },
+                        });
+                      },
+                    },
+                  ].map(a => (
+                    <button key={a.key} type="button" onClick={a.disabled ? undefined : a.onClick} disabled={a.disabled}
+                      title={a.disabled ? a.reason : undefined}
+                      style={{
+                        height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER,
+                        backgroundColor: "white", color: a.disabled ? "var(--gray-300)" : "var(--gray-700)",
+                        fontSize: "12px", fontWeight: 700, cursor: a.disabled ? "default" : "pointer", fontFamily: "inherit",
+                      }}>
+                      {a.label}
+                    </button>
+                  ))}
+                </div>
+                {/* THE TWO THAT TAKE ACCESS AWAY, BELOW A RULE. They were the last two entries of
+                    a nine-item menu, one keystroke from 인물 검색 차단; here they are the only
+                    things under their own line, which is the weight they have. */}
+                <div style={{ borderTop: "1px solid var(--gray-200)", marginTop: "14px", paddingTop: "12px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                  <button type="button"
+                    disabled={!manageAccess || (mu.status !== "suspended" && lastAdmin)}
+                    title={!manageAccess ? t.reasonNotOwner : (mu.status !== "suspended" && lastAdmin) ? t.lastAdminReason : undefined}
+                    onClick={() => {
+                      const suspended = mu.status === "suspended";
+                      close();
+                      /* Verbatim from the menu, including what is NOT red: suspending is
+                         reversible — 재활성화 takes this very button afterwards — and 제거 beside
+                         it is not. Colouring both would make red mean "the bottom two" instead of
+                         "think", and the one that cannot be undone would lose its warning. */
+                      setConfirming(suspended ? {
+                        title: t.confirmReactivateTitle(mu.name),
+                        body: t.confirmReactivateBody,
+                        confirmLabel: t.reactivateUser,
+                        onConfirm: () => {
+                          updatePortalUserStatus(mu.id, "active");
+                          showToast({ variant: "success", title: t.userReactivatedTitle, desc: mu.name });
+                        },
+                      } : {
+                        title: t.confirmSuspendTitle(mu.name),
+                        body: t.confirmSuspendBody,
+                        confirmLabel: t.suspendUser,
+                        onConfirm: () => {
+                          updatePortalUserStatus(mu.id, "suspended");
+                          showToast({ variant: "warning", title: t.userSuspendedTitle, desc: t.userSuspendedDesc(mu.name) });
+                        },
+                      });
+                    }}
+                    style={{
+                      height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER,
+                      backgroundColor: "white", color: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "var(--gray-300)" : "var(--gray-700)",
+                      fontSize: "12px", fontWeight: 700, cursor: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "default" : "pointer", fontFamily: "inherit",
+                    }}>
+                    {mu.status === "suspended" ? t.reactivateUser : t.suspendUser}
+                  </button>
+                  <button type="button"
+                    disabled={!manageAccess || lastAdmin}
+                    title={lastAdmin ? t.lastAdminReason : manageAccess ? undefined : t.reasonNotOwner}
+                    onClick={() => {
+                      close();
+                      setConfirming({
+                        title: t.confirmRemoveTitle(mu.name),
+                        body: t.confirmRemoveBody,
+                        confirmLabel: t.removeUser,
+                        danger: true,
+                        onConfirm: () => removePortalUser(mu.id),
+                      });
+                    }}
+                    style={{
+                      height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "1px solid var(--danger-100)",
+                      backgroundColor: "white", color: (!manageAccess || lastAdmin) ? "var(--gray-300)" : "var(--danger-500)",
+                      fontSize: "12px", fontWeight: 700, cursor: (!manageAccess || lastAdmin) ? "default" : "pointer", fontFamily: "inherit",
+                    }}>
+                    {t.removeUser}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {editingProjectsFor && (
         <UserProjectsModal
           user={editingProjectsFor}
