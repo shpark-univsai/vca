@@ -27,6 +27,11 @@ const T = {
     // Page header
     inviteUser: "Invite user",
     searchPlaceholder: "Search by user name or email address",
+    rosterSearchPlaceholder: "Search by name or employee ID",
+    rosterFilterAll: "All states",
+    rosterFilterNotIssued: "No code yet",
+    rosterFilterIssued: "Code issued",
+    rosterFilterExpired: "Code expired",
     scopeFilterAll: "Any camera scope",
     scopeFilterEvery: "Every camera",
     scopeFilterNarrowed: "Narrowed",
@@ -433,6 +438,13 @@ const T = {
     // Page header
     inviteUser: "사용자 초대",
     searchPlaceholder: "사용자 이름 또는 이메일 주소로 검색",
+    rosterSearchPlaceholder: "이름 또는 사번으로 검색",
+    /* 「모든 코드 상태」였다 (사용자: 표현이 어색해 · 그냥 상태 전체 이런게 나을것같아). 필터의
+       기본값은 무엇으로 거르는지를 설명할 자리가 아니다 — 거르지 않는다는 말이면 된다. */
+    rosterFilterAll: "상태 전체",
+    rosterFilterNotIssued: "미발급",
+    rosterFilterIssued: "발급됨",
+    rosterFilterExpired: "만료됨",
     scopeFilterAll: "모든 카메라 범위",
     scopeFilterEvery: "전체 카메라",
     scopeFilterNarrowed: "좁혀진 범위",
@@ -3155,6 +3167,15 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
    * would be a filter for a state the scope dialog refuses to save.
    */
   const [scopeFilter, setScopeFilter] = useState<"all" | "every" | "narrowed" | "none">("all");
+  /*
+   * THE ROSTER'S OWN FILTER, so its toolbar answers a question instead of holding one control.
+   *
+   * Three values and no more, because 명부 대기 shows exactly three states: a row with no code
+   * yet, one whose code is out and unused, and one whose code ran out of time. "used" is the
+   * fourth state of the underlying record and it is never here — a used code has become an
+   * account, which is the other tab.
+   */
+  const [rosterFilter, setRosterFilter] = useState<"all" | "not-issued" | "unused" | "expired">("all");
   /** True when the list is empty only because something is filtering it. The two empty states
    *  send the reader to different places, and one message for both sends half of them wrong. */
   const narrowed = statusFilter !== null || search.trim() !== "";
@@ -3260,7 +3281,12 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
    * Stage order stays the tiebreaker under every key, because the funnel is what the tab is for.
    */
   const visibleRoster = sortRows(
-    rosterWaiting.filter(() => statusFilter === null || statusFilter === "roster"),
+    rosterWaiting
+      .filter(() => statusFilter === null || statusFilter === "roster")
+      /* On the table's rows only. Filtering `rosterWaiting` would shrink the rail's 명부 대기 count
+         and the summary with it, and a count that moves when you narrow the view has stopped
+         counting the thing it names — the same rule the accounts side follows. */
+      .filter(r => rosterFilter === "all" || r.status === rosterFilter),
     sort,
     (r, key) => {
       switch (key) {
@@ -3473,10 +3499,33 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           — so they sit close. The distance that matters is the one above this row, not the one
           inside the pair. */}
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
-      <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
+      {/*
+        THE PLACEHOLDER NAMES WHAT THIS TAB ACTUALLY SEARCHES (owner, 2026-09-22: 검색바에
+        플레이스홀더명이 이름이랑 이메일주소로 검색인데, 정작 아래 테이블엔 이메일 주소가 안보여).
+       
+        One string served both tabs and it was wrong on the roster in both directions: it promised
+        an email address the roster neither matches nor prints, and it hid the 사번 it does match —
+        the filters are `u.name || u.email` for accounts and `r.name || r.employeeId` for the
+        roster. A placeholder that names a field the table has no column for is a promise the
+        screen cannot keep.
+      */}
+      <SearchInput value={search} onChange={setSearch}
+        placeholder={peopleTab === "roster" ? t.rosterSearchPlaceholder : t.searchPlaceholder} />
       {/* Beside the search, which is where this table's filters belong — the three exception
           counts stayed in the strip because they are counts as much as filters, and this one is
           only a filter. Accounts tab only: the roster has no camera scope to narrow by. */}
+      {peopleTab === "roster" && (
+        <FilterSelect
+          value={rosterFilter}
+          onChange={v => setRosterFilter(v as typeof rosterFilter)}
+          options={[
+            { value: "all", label: t.rosterFilterAll },
+            { value: "not-issued", label: t.rosterFilterNotIssued },
+            { value: "unused", label: t.rosterFilterIssued },
+            { value: "expired", label: t.rosterFilterExpired },
+          ]}
+        />
+      )}
       {peopleTab === "accounts" && (
         <FilterSelect
           value={scopeFilter}

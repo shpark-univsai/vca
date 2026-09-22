@@ -66,7 +66,7 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
    * group of 3, the 62 pre-ticked cameras had to be cleared one zone at a time, eighteen times,
    * and skipping that step produced 62 frozen cameras with no error anywhere.
    *
-   * 「전부에서 두 대만 빼기」 is still a real scope and still buildable — 전부 고르기 fills the
+   * 「전부에서 두 대만 빼기」 is still a real scope and still buildable — 모두 선택 fills the
    * list in one press, and the freeze warning then lands on somebody who chose that state rather
    * than on everybody who opened the dialog. The expensive direction is now the rare one.
    */
@@ -410,8 +410,10 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
                         style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 120ms", flexShrink: 0 }}>
                         <path d="M3 1.5L7 5l-4 3.5" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
-                      <span style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)" }}>
-                        {zone || t.noZone} · {group.length}
+                      {/* Same as the group drawer's list: the name is the identity, the count qualifies it. */}
+                      <span style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-900)" }}>
+                        {zone || t.noZone}
+                        <span style={{ fontWeight: 600, color: "var(--gray-400)" }}> · {group.length}</span>
                       </span>
                     </button>
                     {mode === "some" && (
@@ -526,7 +528,7 @@ const T = {
     clearGroup: "해제",
     searchPlaceholder: "이름이나 코드로 검색",
     searchHits: (n: number) => `${n}대`,
-    pickEvery: "전부 고르기", clearEvery: "선택 초기화",
+    pickEvery: "모두 선택", clearEvery: "선택 초기화",
     searchNone: "그 조건에 맞는 카메라가 없습니다.",
     freezeWarning: "전부 체크돼 있습니다. 이대로 저장하면 목록이 굳어서 나중에 추가되는 카메라는 빠집니다 — 함께 주려면 위의 첫 번째를 고르세요.",
     zonePicked: (n: number) => n === 0 ? "고른 것 없음" : `${n}대 고름`,

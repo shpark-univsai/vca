@@ -11,7 +11,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TextField,
-  ConfirmModal, FieldError, RowActionsMenu, usePortalEditAccess,
+  ConfirmModal, FieldError, PanelCancel, PanelPrimary, RowActionsMenu, usePortalEditAccess,
 } from "./PortalShared";
 
 /**
@@ -109,7 +109,7 @@ const T = {
     andMore: (n: number) => `외 ${n}대`,
     noZone: "구역 미지정",
     zonePick: "전체 선택", zoneClear: "해제",
-    allPick: "전부 고르기", allClear: "선택 초기화",
+    allPick: "모두 선택", allClear: "선택 초기화",
     /* 「이 그룹에 들어있는 것」이었다 (사용자: 좀더 쉽고 직관적인 단어로). 그 말은 무엇이
        담겼는지를 설명하려 했는데, 이 줄이 머리에 붙어 있는 것은 고르는 칸이고 옆의 숫자가
        이미 몇 개 담겼는지 말한다. 시안도 「카메라 선택」을 쓴다. */
@@ -284,7 +284,7 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
     fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px",
   };
   /* The two whole-selection controls, marked (owner: 전부고르기랑 초기화앞에 각각 텍스트랑
-     어울리는 아이콘 넣어줘). CheckCheck for 전부 고르기 — the double tick is the one mark that
+     어울리는 아이콘 넣어줘). CheckCheck for 모두 선택 — the double tick is the one mark that
      already means "all of them ticked" — and RotateCcw for 선택 초기화, which is the reset arrow
      rather than an ✕: an ✕ on this screen closes things and takes cameras out of chips, and a
      third meaning for it would be a third vocabulary. */
@@ -356,7 +356,7 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
 
           {/* THE PICKER. Search and the view switch sit on one strip at the top of the thing they
               act on — a control spanning more than the list it narrows is the misalignment the
-              in-page editor was corrected for. 전부 고르기 and 선택 초기화 sit above that strip,
+              in-page editor was corrected for. 모두 선택 and 선택 초기화 sit above that strip,
               because they act on the whole selection rather than on what the search left. */}
           {/* THE WRAPPER GROWS ONLY IN MAP VIEW. Shrinking the bordered box inside it was not
               enough: this column kept `flex: 1 1 auto` and swallowed the slack itself, so a search
@@ -368,17 +368,52 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
               <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.pickHeading}</span>
               <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-900)", fontVariantNumeric: "tabular-nums" }}>{picked.length}</span>
+              {/* 초기화 SITS WITH THE NUMBER IT CLEARS (owner: 초기화는 카메라 선택 숫자 옆에
+                  뜨게해줘). It was at the right end beside 모두 선택, where the two read as one
+                  control with two halves — and the one that empties the selection belongs against
+                  the count of it, which is also why it is absent when that count is 0. 모두 선택
+                  stays at the far end: it acts on the register, not on what is picked. */}
+              {picked.length > 0 && (
+                <button type="button" onClick={() => setPicked([])} style={{ ...linkButton, marginLeft: "4px" }}>
+                  <RotateCcw size={12} strokeWidth={2.4} aria-hidden="true" />
+                  {t.allClear}
+                </button>
+              )}
               <span style={{ flex: 1 }} />
               <button type="button" onClick={() => setPicked(cameras.map(c => c.id))} style={linkButton}>
                 <CheckCheck size={13} strokeWidth={2.4} aria-hidden="true" />
                 {t.allPick}
               </button>
-              {picked.length > 0 && (
-                <button type="button" onClick={() => setPicked([])} style={linkButton}>
-                  <RotateCcw size={12} strokeWidth={2.4} aria-hidden="true" />
-                  {t.allClear}
-                </button>
-              )}
+              {/*
+                THE VIEW SWITCH IS A LEVEL ABOVE THE SEARCH (owner: 목록 지도 토글도 저 위치가
+                맞는지 봐줘).
+               
+                It sat at the right of the strip inside the picker, which is where the owner asked
+                for it this morning — 목록/지도 토글은 검색바 오른쪽으로 옮겨줘 — and that was right
+                while the strip held the search in both views. It does not any more: the search only
+                exists in list view, so switching to the map left a tinted bar holding one lonely
+                control. Choosing WHICH picker is also a question above "search inside the list".
+               
+                Here the strip becomes search-only and disappears with it in map view, and the
+                switch sits with the other controls that act on the whole picker.
+               
+                A white lozenge on a grey track rather than a bordered box: one fewer line, and the
+                segmented control every reference panel uses looks like this.
+              */}
+              <div style={{ display: "flex", gap: "4px", padding: "3px", backgroundColor: "var(--gray-100)", borderRadius: "9px", flexShrink: 0 }}>
+                {([["list", t.viewList], ["map", t.viewMap]] as const).map(([value, text]) => (
+                  <button key={value} type="button" onClick={() => setView(value)}
+                    style={{
+                      padding: "4px 11px", borderRadius: "7px", cursor: "pointer", fontFamily: "inherit",
+                      fontSize: "11.5px", fontWeight: 700, border: "none",
+                      backgroundColor: view === value ? "white" : "transparent",
+                      color: view === value ? "var(--gray-900)" : "var(--gray-500)",
+                      boxShadow: view === value ? "0 1px 2px rgba(24,17,39,0.10)" : "none",
+                    }}>
+                    {text}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/*
@@ -395,31 +430,17 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
             <div style={view === "map"
               ? { flex: "1 1 auto", minHeight: "384px", border: CARD_BORDER, borderRadius: CARD_RADIUS, overflow: "hidden", display: "flex", flexDirection: "column" }
               : { flex: "0 0 auto", border: CARD_BORDER, borderRadius: CARD_RADIUS, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "10px", padding: "10px 12px", borderBottom: BORDER, backgroundColor: "var(--gray-50)" }}>
-                {view === "list" && (
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <TextField value={query} onChange={setQuery} placeholder={t.membersSearch} />
-                  </div>
-                )}
-                <div style={{ display: "flex", gap: "4px", padding: "3px", backgroundColor: "white", border: BORDER, borderRadius: "9px", flexShrink: 0 }}>
-                  {([["list", t.viewList], ["map", t.viewMap]] as const).map(([value, text]) => (
-                    <button key={value} type="button" onClick={() => setView(value)}
-                      style={{
-                        padding: "4px 11px", borderRadius: "7px", cursor: "pointer", fontFamily: "inherit",
-                        fontSize: "11.5px", fontWeight: 700, border: "none",
-                        backgroundColor: view === value ? "var(--gray-900)" : "transparent",
-                        color: view === value ? "white" : "var(--gray-500)",
-                      }}>
-                      {text}
-                    </button>
-                  ))}
+              {/* The strip keeps its tint and loses its rule: a 1px line between two greys that
+                  already differ is the line the references do not draw. */}
+              {view === "list" && (
+                <div style={{ padding: "10px 12px", backgroundColor: "var(--gray-50)" }}>
+                  <TextField value={query} onChange={setQuery} placeholder={t.membersSearch} />
                 </div>
-              </div>
-
+              )}
               {view === "map" ? (
-                /* Fills the picker, which fills the column. It can do that now that the body does
-                   not scroll — inside a scroll box a parent-sized map collapses to nothing, which
-                   is why this was pinned at 280px to begin with. */
+                /* Fills the picker, which fills the column. It can do that because the body does
+                   not scroll in map view — inside a scroll box a parent-sized map collapses to
+                   nothing, which is why this was once pinned at 280px. */
                 <div style={{ flex: 1, minHeight: 0 }}>
                   <CameraMapView
                     cameras={cameras}
@@ -449,8 +470,14 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
                               style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 120ms", flexShrink: 0 }}>
                               <path d="M3 1.5L7 5l-4 3.5" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
-                            <span style={{ fontSize: "11.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)" }}>
-                              {zone || t.noZone} · {list.length}
+                            {/* THE ZONE NAME IS THE DARKEST THING ON ITS ROW (owner: 맨앞에 있는 연한글씨가
+                                구역명인거잖아 꽤 중요한 정보같은데 너무 희미해). It was gray-400
+                                while 전체 선택 beside it is gray-500 — the row's action was
+                                darker than the row's identity, which is the order somebody scans
+                                in reversed. The count stays light: it qualifies the name. */}
+                            <span style={{ fontSize: "11.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-900)" }}>
+                              {zone || t.noZone}
+                              <span style={{ fontWeight: 600, color: "var(--gray-400)" }}> · {list.length}</span>
                             </span>
                           </button>
                           <button type="button" onClick={() => toggleZoneAll(list.map(c => c.id))}
@@ -563,14 +590,10 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
           <span style={{ flex: 1, fontSize: "11px", fontWeight: 700, color: "var(--gray-500)", fontVariantNumeric: "tabular-nums" }}>
             {t.pickedCount(picked.length)}
           </span>
-          <button type="button" onClick={onClose}
-            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12.5px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            {t.cancel}
-          </button>
-          <button type="button" onClick={save} disabled={!dirty}
-            style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: dirty ? "var(--gray-900)" : "var(--gray-200)", color: dirty ? "white" : "var(--gray-400)", fontSize: "12.5px", fontWeight: 700, cursor: dirty ? "pointer" : "default", fontFamily: "inherit" }}>
-            {creating ? t.createSave : t.editSave}
-          </button>
+          {/* The shared pair, so this panel and every other one end the same way — see
+              PanelCancel/PanelPrimary for what was measured against twenty reference panels. */}
+          <PanelCancel onClick={onClose} label={t.cancel} />
+          <PanelPrimary onClick={save} disabled={!dirty} label={creating ? t.createSave : t.editSave} />
         </div>
       </div>
     </div>

@@ -1801,7 +1801,9 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
             with `bodyScrolls` off — the card is not a flex container then, and flex-shrink means
             nothing outside one — so it costs the other callers nothing. */}
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          {/* The same ghost cancel the panels use — two bordered buttons side by side read as two
+              equal choices, which is the one thing a confirmation must not say. */}
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {cancelLabel}
           </button>
           {altAction && (
@@ -1822,7 +1824,11 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
           <button onClick={onConfirm} disabled={confirmDisabled}
             style={{
               padding: "10px 16px", borderRadius: "8px", border: "none",
-              backgroundColor: confirmDisabled ? "var(--gray-200)" : danger ? "var(--danger-400)" : "var(--gray-900)",
+              /* PURPLE, LIKE EVERY OTHER COMMITTING ACTION (owner: 중앙모달에만 엑션버튼들이
+                 검정색이야?). It was gray-900 while the panels' primary is primary-400 — the same
+                 weight of decision wearing two colours depending on which container it landed in.
+                 Danger stays red: that one is not a colour choice, it is the warning. */
+              backgroundColor: confirmDisabled ? "var(--gray-200)" : danger ? "var(--danger-400)" : "var(--primary-400)",
               color: confirmDisabled ? "var(--gray-400)" : "white",
               fontSize: "13px", fontWeight: 700, cursor: confirmDisabled ? "not-allowed" : "pointer",
             }}>
@@ -2451,12 +2457,83 @@ export function Drawer({ title, onClose, footer, width = "520px", children }: {
         {/* minHeight 0, or a flex child will not shrink below its content and the panel grows past
             the window instead of scrolling — the bug that put the invite buttons off screen. */}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>{children}</div>
+        {/*
+          NO RULE OVER THE FOOTER (owner, 2026-09-22: 이런 오른쪽패널 디자인 모빈에서 찾아서
+          엑션버튼이랑 라인이 많은것같은데).
+         
+          Checked against twenty right-hand panels: Airwallex, Peec AI and Rox draw no footer rule
+          at all, and their bodies scroll too; Whop, Vapi, Posh and Julienne go further and drop the
+          header rule as well. The panels that DO rule their footer (Supabase, Customer.io, Gorgias)
+          are the minority, and ours was stacking that rule under a bordered cancel button and over
+          a bordered picker — three lines within 60px.
+         
+          The header rule stays: it separates a title from content, which is a different job.
+         
+          What a rule here was for is the boundary when content scrolls under the buttons. If that
+          turns out to matter the answer is a shadow that appears on scroll, the way several of
+          those products do it — not this line back.
+        */}
         {footer && (
-          <div style={{ flexShrink: 0, padding: "14px 20px", borderTop: BORDER, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+          <div style={{ flexShrink: 0, padding: "16px 20px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
             {footer}
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * THE TWO BUTTONS A PANEL ENDS WITH, SO THEY CANNOT DRIFT APART.
+ *
+ * Checked against twenty right-hand panels (owner, 2026-09-22: 이런 오른쪽패널 디자인 모빈에서
+ * 찾아서 엑션버튼이랑 라인이 많은것같은데 이부분도 한번 비교해서 수정해줘): Airwallex, Neon,
+ * Supabase, Vapi, Peec AI, Rox, Cloudflare and Customer.io all end with a bordered-nothing cancel
+ * and one filled primary, bottom right. Ours gave cancel a 1px border, which read as two equal
+ * choices and also made the pair 42px and 40px tall — one had a line the other did not.
+ *
+ * They are components rather than a style object because every panel in this product was writing
+ * the same twelve properties by hand and no two of them agreed: three paddings, two font sizes and
+ * two different disabled greys were in the file at once.
+ */
+export function PanelCancel({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button type="button" onClick={onClick}
+      style={{
+        padding: "10px 14px", borderRadius: "8px", border: "none", backgroundColor: "transparent",
+        color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+      }}>
+      {label}
+    </button>
+  );
+}
+
+/**
+ * The committing action. Purple, which is the one thing this product spends primary colour on —
+ * see the ratio note in globals.css: a grey fill beside a grey cancel gave the reader two equals.
+ *
+ * `disabled` keeps the button on screen and says so, rather than hiding it: a panel whose action
+ * disappears while it is not yet valid is a panel that looks broken. The reason it is dead belongs
+ * beside it, which is the caller's job — the footer is a column for exactly that.
+ */
+export function PanelPrimary({ onClick, label, disabled, danger }: {
+  onClick: () => void;
+  label: string;
+  disabled?: boolean;
+  /** For an action that cannot be undone. Red, and only where deleting is the point. */
+  danger?: boolean;
+}) {
+  const fill = danger ? "var(--danger-500)" : "var(--primary-400)";
+  return (
+    <button type="button" onClick={onClick} disabled={disabled}
+      style={{
+        padding: "10px 18px", borderRadius: "8px", border: "none",
+        backgroundColor: disabled ? "var(--gray-200)" : fill,
+        color: disabled ? "var(--gray-400)" : "white",
+        fontSize: "13px", fontWeight: 700,
+        cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit",
+      }}>
+      {label}
+    </button>
   );
 }
