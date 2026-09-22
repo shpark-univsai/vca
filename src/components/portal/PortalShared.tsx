@@ -2278,17 +2278,14 @@ export function AppGrantList({ actions, locked, onToggle }: {
     <>
       <div style={{ display: "flex", flexDirection: "column" }}>
         {APP_ACTIONS.map(action => (
-          /* WHERE IT APPLIES, named as the app names it (owner: 기능들을 앱에 화면에 기반해서
-             적어줘야 헷갈리지않을것 같은데). `actionOpens` spells out the exact places including
-             the two panels the dashboard is made of, because "실시간" was ambiguous between the
-             dashboard's EVENTS panel and the Data → Live Monitoring tab — and it turned out to be
-             both, plus the map.
-
-             On the description's line rather than its own: measured at three lines per row the
-             sheet stood at 792px on a 900px viewport with 105px hidden, so the last action sat
-             below the fold in the one mode where somebody is choosing. */
+          /* THE TITLE IS THE PLACE AND THE LINE UNDER IT IS THE CAPABILITY (owner, 2026-09-22:
+             전에는 앱 화면 메뉴명으로 선택하고 구분했었거든, 그것보다 불명확한 거 아닌가).
+             There used to be a third part — 「위치: 대시보드 → SYSTEM」 appended to the
+             description — because the title said only what somebody may DO and the place had to be
+             spelled out somewhere. Now the title IS the place, in the app's own words, so the
+             appended line was the same answer twice on one row. See APP_GRANT_LABELS. */
           <GrantRow key={action} label={g.actionName[action]}
-            desc={`${g.actionDesc[action]} · ${g.opens(g.actionOpens[action])}`}
+            desc={g.actionDesc[action]}
             on={actions.includes(action)} locked={locked} onToggle={() => onToggle(action)} />
         ))}
       </div>

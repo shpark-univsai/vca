@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import {
   DISTRICT_ALERT_THRESHOLD_KEY, DISTRICT_MODERATE_THRESHOLD_KEY,
   DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD,
 } from "@/lib/mockData";
-import { APP_SCREENS, canEnterPortal, canExportEvidence, canSearchInApp, canUseAppNow, currentPortalUser, screensFor, SIGNED_IN_USER, useVcaStore, type AppScreen } from "@/lib/vcaStore";
+import { APP_ACTIONS, canEnterPortal, canUseAppNow, currentPortalUser, holdsAppAction, SIGNED_IN_USER, useVcaStore } from "@/lib/vcaStore";
 import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
@@ -47,8 +47,6 @@ const T = {
     myPage: "My page",
     myGrants: "What this account can open",
     myGrantsWho: "Granted per account. An administrator changes this in Portal, under Users & Permissions.",
-    verbSearch: "Person search",
-    verbExport: "Evidence export",
     profile: "Profile information",
     fullName: "Full name",
     emailAddress: "Email address",
@@ -98,8 +96,6 @@ const T = {
     myPage: "마이 페이지",
     myGrants: "이 계정이 열 수 있는 것",
     myGrantsWho: "계정마다 따로 지정됩니다. Portal의 사용자 및 권한에서 관리자가 바꿉니다.",
-    verbSearch: "인물 검색",
-    verbExport: "증거 내보내기",
     profile: "프로필 정보",
     fullName: "이름",
     emailAddress: "이메일 주소",
@@ -637,9 +633,6 @@ export default function MyPage() {
   // Derived outside the selector: screensFor() builds a new array on every call, and a zustand
   // selector that returns a fresh array re-renders forever.
   const portalUsers = useVcaStore(s => s.portalUsers);
-  const heldScreens = useMemo(() => screensFor(portalUsers), [portalUsers]);
-  const maySearch = useMemo(() => canSearchInApp(portalUsers), [portalUsers]);
-  const mayExport = useMemo(() => canExportEvidence(portalUsers), [portalUsers]);
   // Only one session is ever listed here (this mock has no other-device data to actually
   // terminate) — the confirmation is honest about that rather than pretending to have revoked
   // something. Auto-clears the same way BestFramePage's highlightCamId does.
@@ -723,11 +716,21 @@ export default function MyPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.24px" }}>{t.myGrants}</span>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                    {APP_SCREENS.map(sc => (
-                      <GrantChip key={sc} label={APP_GRANT_LABELS[lang].screenName[sc]} on={heldScreens.includes(sc)} />
+                    {/*
+                      THE SAME SIX ROWS THE ADMINISTRATOR TICKED (owner, 2026-09-22: 권한을 준
+                      사람도 받은 사람도 헷갈릴 것 같아).
+
+                      This list was never migrated when the grant became six actions: it drew five
+                      SCREEN names plus two verb chips, so one grant printed different words in
+                      different counts on the two sides of it — the administrator ticked 「지난 기록
+                      열람」 and the person read 「베스트 프레임」, and 「시스템 현황」 appeared on
+                      neither. Now both sides render APP_ACTIONS through APP_GRANT_LABELS, whose
+                      titles are the words this app puts on its own tabs.
+                    */}
+                    {APP_ACTIONS.map(action => (
+                      <GrantChip key={action} label={APP_GRANT_LABELS[lang].actionName[action]}
+                        on={holdsAppAction(portalUsers, action)} />
                     ))}
-                    <GrantChip label={t.verbSearch} on={maySearch} />
-                    <GrantChip label={t.verbExport} on={mayExport} />
                   </div>
                   <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", lineHeight: 1.5 }}>{t.myGrantsWho}</span>
                 </div>
