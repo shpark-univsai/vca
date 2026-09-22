@@ -491,7 +491,7 @@ const T = {
     colUser: "사용자",
     colOtherProjects: "다른 프로젝트",
     alsoOn: (where: string) => `이곳에도 있음: ${where}`,
-    colProjects: "프로젝트",
+    colProjects: "관리 프로젝트",
     projectsCount: (n: number) => `${n}`,
     projectsOnlyThis: "이 프로젝트만",
     otherProjectsNone: "이 프로젝트만",
@@ -3118,7 +3118,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
    * grant, as a mark beside the preset rather than a column asking the same question twice.
    */
   const GRID = showAccountColumns
-    ? "minmax(160px, 1.25fr) 0.45fr 0.8fr 1.2fr 0.65fr 0.85fr 0.6fr 36px"
+    ? "minmax(160px, 1.2fr) 0.62fr 0.78fr 1.15fr 0.62fr 0.82fr 0.58fr 36px"
     : "minmax(180px, 1.4fr) 1fr 1.2fr 0.7fr 36px";
 
   const bulkIssueCodes = () => {
