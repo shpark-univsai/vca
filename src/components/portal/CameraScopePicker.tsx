@@ -5,7 +5,7 @@ import { CheckCheck, RotateCcw } from "lucide-react";
 import { useVcaStore, hasPosition, type Camera, type PortalUser } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
-import { BORDER, CONTROL_HEIGHT, Drawer, TextField } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, Drawer, PICKED_FILL, PICKED_LINE, TextField } from "./PortalShared";
 
 /**
  * Which cameras an account may watch.
@@ -306,11 +306,8 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
                 style={{
                   width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
                   padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontFamily: "inherit",
-                  /* gray-800, like every picked box in Portal — see PICKED_LINE. */
-                  border: on ? "1px solid var(--gray-800)" : BORDER,
-                  /* Same purple-tinted fill every picked thing in Portal now takes — see
-                     PICKED_FILL in PortalUsersPage for what was compared. */
-                  backgroundColor: on ? "var(--primary-100)" : "white",
+                  border: on ? PICKED_LINE : BORDER,
+                  backgroundColor: on ? PICKED_FILL : "white",
                 }}>
                 <span style={{ width: "14px", height: "14px", borderRadius: "999px", flexShrink: 0, marginTop: "2px", border: on ? "4px solid var(--gray-900)" : "1px solid var(--gray-300)" }} />
                 <span style={{ minWidth: 0 }}>

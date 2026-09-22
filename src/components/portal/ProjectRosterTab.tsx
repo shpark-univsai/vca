@@ -7,7 +7,7 @@ import { REGISTRATION_CODE_TTL_DAYS, codeExpiresAt, formatCode, type RosterEntry
 import { sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
-import { TextField, FIELD_STYLE, BORDER, Drawer } from "./PortalShared";
+import { TextField, FIELD_STYLE, BORDER, Drawer, PICKED_LINE, PICKED_FILL } from "./PortalShared";
 
 const T = {
   en: {
@@ -487,8 +487,8 @@ function RosterEntryModal({ entry, projectId, onClose, t }: {
                 <button key={p} onClick={() => setPermission(p)}
                   style={{
                     flex: 1, padding: "10px 12px", borderRadius: "10px", cursor: "pointer", textAlign: "left",
-                    border: active ? "1px solid var(--gray-900)" : BORDER,
-                    backgroundColor: active ? "var(--gray-100)" : "white",
+                    border: active ? PICKED_LINE : BORDER,
+                    backgroundColor: active ? PICKED_FILL : "white",
                     color: active ? "var(--gray-900)" : "var(--gray-600)",
                     fontSize: "13px", fontWeight: 700,
                   }}>

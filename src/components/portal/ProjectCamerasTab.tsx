@@ -12,7 +12,7 @@ import { formatElapsed } from "@/lib/time";
 import { forgetUploadFile, rememberUploadFile } from "@/lib/uploadBlobs";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { useFitRowsPerPage, TablePagination, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, type RowAction } from "./PortalShared";
+import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, type RowAction } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -939,9 +939,14 @@ function CameraFormModal({
                 <button key={option.value} type="button" onClick={() => pickKind(option.value)} title={option.why}
                   style={{
                     textAlign: "left", padding: "9px 12px", borderRadius: "10px", cursor: "pointer", fontFamily: "inherit",
-                    border: on ? "1px solid var(--primary-400)" : BORDER,
-                    backgroundColor: on ? "var(--primary-50)" : "white",
-                    color: on ? "var(--primary-400)" : "var(--gray-600)",
+                    /* The shared picked box (PICKED_LINE/PICKED_FILL). This one was drawn by hand
+                       in primary-400 on primary-50 with purple TEXT — the same shape as every other
+                       two-way picker in Portal but one step louder, and the purple lettering made a
+                       chosen option look like a link. The label goes back to gray-900, which is
+                       what the other pickers give the one that is on. */
+                    border: on ? PICKED_LINE : BORDER,
+                    backgroundColor: on ? PICKED_FILL : "white",
+                    color: on ? "var(--gray-900)" : "var(--gray-600)",
                     display: "flex", alignItems: "center", gap: "7px",
                   }}>
                   {option.value === "ai" ? <Cpu size={14} strokeWidth={2.4} /> : <VideoIcon size={14} strokeWidth={2.4} />}

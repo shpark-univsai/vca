@@ -821,7 +821,7 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
             /* A filter that is on holds the darker edge and a tinted ground, so a toolbar tells you
                the table is narrowed without reading every label. Hover still lightens on top. */
             : active
-            ? { border: "1px solid var(--gray-800)", backgroundColor: "var(--primary-100)" }
+            ? { border: PICKED_LINE, backgroundColor: PICKED_FILL }
             : { border: hovered ? "1px solid var(--gray-400)" : BORDER }),
         }}
       >
@@ -2456,6 +2456,34 @@ export function SectionNav({ sections, active, onSelect }: {
  * marks for one meaning, and the grey one reads as decoration — so a reader cannot tell whether
  * the grey-starred fields are optional. Every required label in Portal takes this.
  */
+/*
+ * A PICKED BOX: THE LINE AND THE FILL, IN ONE PLACE.
+ *
+ * Every picker in Portal draws the same two things for "this one is chosen" — a chip, a preset, a
+ * project, a segmented option, an applied filter — so they are tokens rather than a literal
+ * repeated per file. Owner's decisions, 2026-09-22, in the order they were made:
+ *
+ *  · dark line + neutral fill rather than a purple line and a purple fill. Twenty reference
+ *    screens: WRITER fills the chosen chip BLACK and spends its brand purple on 「Next」 and
+ *    「Apply」; Railway, Klaviyo and Juicebox keep selection neutral too. This console needs that
+ *    discipline more than most — one panel can show a picked project, a picked preset, N picked
+ *    groups and six action pills at once, and in brand purple they would swamp the one purple
+ *    thing that matters, the button that sends.
+ *  · the FILL carries a purple tint: primary-100 (#f0f0ff) is the same lightness as the gray-100
+ *    (#f1f5f9) it replaced and differs only in hue, so nothing got louder.
+ *  · the LINE came down in three steps — gray-900, gray-800, gray-700, and finally primary-300
+ *    (#8c85ff). Each grey step was still near-black: 「너무 눈에 확 띄게 됐는데」, and it was true —
+ *    a picked chip had the darkest ink on the screen around it, darker than the text. Once the
+ *    fill carried a purple tint the grey ramp was the wrong family anyway, so the line joined it.
+ *    primary-300, not the brand's primary-400: 400 is the colour of the button that acts, and a
+ *    selected box is a state. At 1px on a #f0f0ff ground it still draws a readable edge.
+ *
+ * NOT for the 16px tick marks. There the border and the fill are the same colour, and lightening
+ * them softens the tick itself — which is the thing being read.
+ */
+export const PICKED_LINE = "1px solid var(--primary-300)";
+export const PICKED_FILL = "var(--primary-100)";
+
 export function RequiredMark() {
   return <span style={{ color: "var(--danger-500)", marginLeft: "3px", fontWeight: 700 }}>*</span>;
 }

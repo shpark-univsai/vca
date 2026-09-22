@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, SectionNav, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, RequiredMark } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, SectionNav, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, RequiredMark, PICKED_LINE, PICKED_FILL } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import CameraGroupsTab, { CameraGroupEditor } from "./CameraGroupsTab";
 import AccessPresetsTab from "./AccessPresetsTab";
@@ -349,7 +349,7 @@ const T = {
     namePlaceholder: "Full name",
     emailLabel: "Email",
     teamLabel: "Team",
-    accessLabel: "Where they sign in",
+    accessLabel: "Sign-in scope",
     permissionLabel: "Portal role",
     projectsLabel: "Projects",
     sectionWho: "Who",
@@ -359,11 +359,11 @@ const T = {
     scopeLabel: "Cameras",
     scopeNoProject: "Tick a project to see how many cameras that is.",
     scopeNoCameras: "No cameras are registered on the ticked projects yet.",
-    scopeStartsAll: (n: number) => `Pick no group and this account sees every camera on these projects: ${n} today, and any added later.`,
     scopeGroupsNone: "No camera groups on these projects yet.",
+    scopeAll: "All cameras",
+    scopeLater: "Cameras added later are included too.",
     scopeNewGroup: "New group",
     scopeEditGroup: (label: string) => `Edit ${label}`,
-    scopePickedGroups: (n: number) => `The picked groups only: ${n} camera${n === 1 ? "" : "s"} today, and whatever is added to those groups later.`,
     scopeGroupCount: (n: number) => `${n}`,
     scopeHeldAll: (n: number) => `Every camera on their projects — ${n} today, and any added later.`,
     scopeHeldSome: (n: number, total: number) => `${n} of ${total} cameras.`,
@@ -695,7 +695,12 @@ const T = {
     namePlaceholder: "전체 이름",
     emailLabel: "이메일",
     teamLabel: "팀",
-    accessLabel: "어디로 로그인하나",
+    /* A NOUN, LIKE EVERY OTHER LABEL ON THIS FORM (owner, 2026-09-22: 어디로 로그인하나 이건
+       단어가 어색해, 통일감 있게 명사형으로). Its neighbours are 이메일 · 이름 · 프로젝트 ·
+       Portal 역할 · 권한 · 카메라 범위 · 팀, and one label phrased as a question read as a
+       different kind of thing. 「범위」 rather than 「위치」 or 「대상」 because it pairs with the
+       카메라 범위 below it: both answer "how far does this account reach". */
+    accessLabel: "로그인 범위",
     permissionLabel: "Portal 역할",
     projectsLabel: "프로젝트",
     sectionWho: "누구를",
@@ -705,21 +710,11 @@ const T = {
     scopeLabel: "카메라 범위",
     scopeNoProject: "프로젝트를 고르면 몇 대인지 나옵니다.",
     scopeNoCameras: "고른 프로젝트에 등록된 카메라가 아직 없습니다.",
-    /*
-       IT SAYS WHICH OF THE TWO NUMBERS IS IN FORCE (owner, 2026-09-22: 그룹별 옆에 숫자를 보면
-       다해서 5대인데 위에 설명엔 지금 68대라고 적혀 있어서 뭔가 안 맞아 보여).
-
-       The line and the chips were both true and read as arithmetic that does not add up: the
-       sentence stated the default (no group picked means every camera) while the chips offered
-       the alternative, and nothing said they were alternatives. So the sentence now opens with
-       the condition — 「그룹을 고르지 않으면」 — and the other branch below opens with 「고른 그룹만」.
-       Whichever one is showing, the number in it is the number that applies.
-    */
-    scopeStartsAll: (n: number) => `그룹을 고르지 않으면 이 프로젝트의 카메라 전부입니다. 지금 ${n}대, 나중에 추가되는 것도 포함합니다.`,
     scopeGroupsNone: "이 프로젝트에 카메라 그룹이 아직 없습니다.",
+    scopeAll: "전체 카메라",
+    scopeLater: "나중에 추가되는 카메라도 포함됩니다.",
     scopeNewGroup: "새 그룹",
     scopeEditGroup: (label: string) => `${label} 편집`,
-    scopePickedGroups: (n: number) => `고른 그룹만 ${n}대입니다. 그 그룹에 나중에 들어오는 카메라도 포함합니다.`,
     scopeGroupCount: (n: number) => `${n}`,
     scopeHeldAll: (n: number) => `담당 프로젝트의 카메라 전부 — 지금 ${n}대, 나중에 추가되는 것도 포함합니다.`,
     scopeHeldSome: (n: number, total: number) => `${total}대 중 ${n}대.`,
@@ -870,8 +865,9 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideT
                      made the row read as a sentence rather than a set of four equal choices —
                      and left a ragged gap at the right end of a full-width panel. `flex: 1` with
                      no wrap: there are exactly four, they are short, and 520px divides. */
-                  flex: 1, minWidth: 0, textAlign: "center",
-                  padding: "8px 6px", borderRadius: "9px", cursor: "pointer",
+                  flex: 1, minWidth: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  height: CONTROL_HEIGHT, padding: "0 6px", borderRadius: "9px", cursor: "pointer",
                   border: picked ? PICKED_LINE : BORDER,
                   backgroundColor: picked ? PICKED_FILL : "white", fontFamily: "inherit",
                   fontSize: "12px", fontWeight: 700,
@@ -1223,7 +1219,6 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
    */
   const draftGroups = allGroups.filter(g => projectIds.includes(g.projectId));
   const pickedGroups = draftGroups.filter(g => scopeGroupIds.includes(g.id));
-  const pickedGroupCameras = new Set(pickedGroups.flatMap(g => g.cameraIds));
 
   /* The two closed-fold summaries went with the folds: 권한 and 현장 are open sections now, so
      nothing reads them from the outside and a summary of a section you can see is the section
@@ -1525,7 +1520,14 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                       return (
                         <button key={p.id} type="button" onClick={() => toggleProject(p.id)}
                           style={{
-                            padding: "6px 10px", borderRadius: "8px", cursor: "pointer",
+                            /* ONE HEIGHT FOR EVERY BOX IN THIS FORM (owner, 2026-09-22: 인풋이랑
+                               셀렉박스들 높이가 다 제각각인데, 한 가지로 통일시켜줘). Measured
+                               before: fields 36, selects 36, preset buttons 36 — but the chips came
+                               out 32 and 30, because they were sized by padding while everything
+                               else used CONTROL_HEIGHT. A column of boxes at four heights reads as
+                               four kinds of control when it is one. */
+                            display: "flex", alignItems: "center",
+                            height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", cursor: "pointer",
                             border: active ? PICKED_LINE : BORDER,
                             backgroundColor: active ? PICKED_FILL : "white",
                             color: active ? "var(--gray-900)" : "var(--gray-600)",
@@ -1634,17 +1636,47 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                         </button>
                       )}
                     </div>
-                    <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>
-                      {projectIds.length === 0 ? t.scopeNoProject
-                        : draftScopable.length === 0 ? t.scopeNoCameras
-                        : pickedGroups.length > 0 ? t.scopePickedGroups(pickedGroupCameras.size)
-                        : t.scopeStartsAll(draftScopable.length)}
-                    </p>
-                    {draftScopable.length > 0 && (
-                      draftGroups.length === 0 ? (
-                        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "8px" }}>{t.scopeGroupsNone}</p>
-                      ) : (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "10px" }}>
+                    {/*
+                      「전체 카메라」 IS A CHIP, NOT A SENTENCE (owner, 2026-09-22: 이 문구보다 아래
+                      버튼에 전체 카메라 라고 해서 선택되어 있는 게 더 나을 것 같아).
+
+                      The default used to be explained in prose — 「그룹을 고르지 않으면 이 프로젝트의
+                      카메라 전부입니다. 지금 68대…」 — above a row of group chips whose numbers added
+                      up to five. Two true statements that read as arithmetic that does not work,
+                      because nothing showed that they were ALTERNATIVES. As the first chip in the
+                      same row, ticked until a group is ticked, the choice is the thing you see:
+                      one of these is on, and the number on it is the number that applies.
+
+                      Picking it clears the groups; picking a group clears it, because an empty
+                      group list IS "all cameras" in the data model (see scopedCameraIds) — the
+                      chip does not add a state, it shows the one that was always there.
+                    */}
+                    {projectIds.length === 0 || draftScopable.length === 0 ? (
+                      <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>
+                        {projectIds.length === 0 ? t.scopeNoProject : t.scopeNoCameras}
+                      </p>
+                    ) : (
+                      <>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                          {(() => {
+                            const on = pickedGroups.length === 0;
+                            return (
+                              <button type="button" onClick={() => setScopeGroupIds([])}
+                                style={{
+                                  display: "flex", alignItems: "center", gap: "6px",
+                                  height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", cursor: "pointer",
+                                  border: on ? PICKED_LINE : BORDER,
+                                  backgroundColor: on ? PICKED_FILL : "white",
+                                  color: on ? "var(--gray-900)" : "var(--gray-600)",
+                                  fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+                                }}>
+                                {t.scopeAll}
+                                <span style={{ fontSize: "10px", fontWeight: 600, color: on ? "var(--gray-500)" : "var(--gray-400)" }}>
+                                  {t.scopeGroupCount(draftScopable.length)}
+                                </span>
+                              </button>
+                            );
+                          })()}
                           {draftGroups.map(g => {
                             const on = scopeGroupIds.includes(g.id);
                             return (
@@ -1653,14 +1685,14 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                                  border and fill live here so the pair reads as one object. */
                               <span key={g.id}
                                 style={{
-                                  display: "flex", alignItems: "center", borderRadius: "8px",
+                                  display: "flex", alignItems: "center", height: CONTROL_HEIGHT, borderRadius: "8px",
                                   border: on ? PICKED_LINE : BORDER,
                                   backgroundColor: on ? PICKED_FILL : "white",
                                 }}>
                                 <button type="button" onClick={() => toggleScopeGroup(g.id)}
                                   style={{
-                                    display: "flex", alignItems: "center", gap: "6px",
-                                    padding: "6px 6px 6px 10px", border: "none", background: "none", cursor: "pointer",
+                                    display: "flex", alignItems: "center", gap: "6px", height: "100%",
+                                    padding: "0 6px 0 12px", border: "none", background: "none", cursor: "pointer",
                                     color: on ? "var(--gray-900)" : "var(--gray-600)",
                                     fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
                                   }}>
@@ -1678,14 +1710,21 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                                     used with a pointer. */}
                                 <button type="button" onClick={() => setGroupEditorFor({ group: g, projectId: g.projectId })}
                                   title={t.scopeEditGroup(g.label)} aria-label={t.scopeEditGroup(g.label)}
-                                  style={{ display: "flex", padding: "6px 8px 6px 4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)" }}>
+                                  style={{ display: "flex", alignItems: "center", height: "100%", padding: "0 10px 0 4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)" }}>
                                   <Pencil size={11} strokeWidth={2.4} aria-hidden="true" />
                                 </button>
                               </span>
                             );
                           })}
                         </div>
-                      )
+                        {/* The one fact the chips cannot carry: a scope is a rule, not a list, so
+                            it keeps applying to cameras nobody has registered yet. True of both
+                            answers — the project's whole register, or a group — so it is said once
+                            under the row rather than twice inside it. */}
+                        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "8px" }}>
+                          {draftGroups.length === 0 ? `${t.scopeGroupsNone} ${t.scopeLater}` : t.scopeLater}
+                        </p>
+                      </>
                     )}
                   </div>
                 )}
@@ -2025,33 +2064,6 @@ const MODAL_BODY: React.CSSProperties = {
  * shell), where it clips nothing the viewport would not. The trade is that a long form scrolls its
  * header away too; a select you cannot read is the worse of the two.
  */
-/*
- * SELECTED = DARK LINE + A PURPLE-TINTED GREY (owner, 2026-09-22: 검은색 라인과 안에 회색이
- * 칠해지는 게 더 나을까? 아니면 보라색 라인과 안에 보라빛 연한 컬러가…  → 그럼 선택되었을 때
- * 안에 칠해진 회색이 보라빛 도는 회색이면 어때).
- *
- * The answer to the first question was the dark line, from twenty reference screens: WRITER fills
- * a chosen chip BLACK and spends its brand purple on 「Next」 and 「Apply」 only; Railway, Klaviyo
- * and Juicebox keep selection neutral for the same reason. This panel is the case that argues it —
- * one project, one preset, N groups and up to six action pills are all "selected" at once, and in
- * brand purple they would swamp the one purple thing that matters, 초대 보내기. Selection is a
- * state; purple is an action.
- *
- * The fill is where the tint goes. `--primary-100` (#f0f0ff) is the same lightness as the
- * `--gray-100` (#f1f5f9) it replaces and differs only in hue, so nothing gets louder — the fill
- * just stops being slate-blue under a border that is itself purple-tinted (gray-900 is on the
- * purple side of the two-hue ramp). Both are defined tokens; no new step was invented.
- */
-const PICKED_FILL = "var(--primary-100)";
-/*
- * And the line around it, one step off black (owner, 2026-09-22: 선택 컴포넌트 박스 라인 컬러
- * 살짝만 연한 걸로 바꿔줘). gray-800 rather than gray-900 — the next rung of the same
- * purple-tinted end of the ramp, so the box still reads as picked while the darkest ink on the
- * screen goes back to being the text. Only the BOXES: the 16px tick marks keep gray-900, because
- * there the border and the fill are the same colour and lightening them would soften the tick
- * itself, which is the thing being read.
- */
-const PICKED_LINE = "1px solid var(--gray-800)";
 
 /*
  * 20px BETWEEN EVERY BLOCK, NOT 16 THEN 14 (owner, 2026-09-22: 이름이랑 권한 사이만큼 공간
