@@ -38,8 +38,7 @@ import {
 const T = {
   en: {
     heading: "Camera groups",
-    intro: "A named set of cameras, handed out as one on an account's camera scope. Pick them from the list or on the map, and one camera may sit in several groups.",
-    empty: "No groups on this project yet. Make one here, or select cameras on Input Sources and group them there.",
+    empty: "No groups on this project yet.",
     colName: "Group", colCameras: "Cameras", colHolders: "Accounts holding it", colCreated: "Created",
     cameras: (n: number) => `${n} camera${n === 1 ? "" : "s"}`,
     camerasNone: "Empty",
@@ -66,7 +65,9 @@ const T = {
     createTitle: "New camera group",
     createSave: "Create group",
     createName: "Group name",
-    createNamePlaceholder: "The way people say it out loud",
+    createNamePlaceholder: (example: string) => `e.g. ${example}`,
+    createNameExample: (zone: string) => `${zone} and around`,
+    createNameExampleNoZone: "Front and back gate",
     createButton: "New group",
     createdToast: "Camera group created",
     inOtherGroups: (n: number) => `in ${n} other`,
@@ -88,8 +89,7 @@ const T = {
   },
   ko: {
     heading: "카메라 그룹",
-    intro: "이름 붙인 카메라 묶음입니다. 계정의 카메라 범위에서 한 덩어리로 줍니다. 목록에서 찾거나 지도에서 눌러 넣고, 한 카메라가 여러 그룹에 들어가도 됩니다.",
-    empty: "이 프로젝트에 아직 그룹이 없습니다. 여기서 만들거나, 입력 소스에서 카메라를 골라 묶을 수 있습니다.",
+    empty: "이 프로젝트에 아직 그룹이 없습니다.",
     colName: "그룹", colCameras: "카메라", colHolders: "이 그룹을 가진 계정", colCreated: "만든 사람",
     cameras: (n: number) => `${n}대`,
     camerasNone: "비어 있음",
@@ -118,7 +118,9 @@ const T = {
     createTitle: "새 카메라 그룹",
     createSave: "그룹 만들기",
     createName: "그룹 이름",
-    createNamePlaceholder: "사람들이 입으로 부르는 말",
+    createNamePlaceholder: (example: string) => `예: ${example}`,
+    createNameExample: (zone: string) => `${zone} 일대`,
+    createNameExampleNoZone: "정문·후문",
     createButton: "그룹 만들기",
     createdToast: "카메라 그룹을 만들었습니다",
     inOtherGroups: (n: number) => `다른 그룹 ${n}`,
@@ -216,6 +218,31 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
   const zones = [...byZone.entries()].sort((a, b) => (a[0] === "" ? 1 : b[0] === "" ? -1 : a[0].localeCompare(b[0])));
 
   const toggle = (id: string) => setPicked(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  /*
+   * THE PLACEHOLDER IS AN EXAMPLE, NOT A DESCRIPTION OF ONE.
+   *
+   * It read 「사람들이 입으로 부르는 말」 — the KIND of answer wanted, which leaves the reader to
+   * invent the shape. The invite form's address field had the same fault and was fixed the same
+   * way: show something this field would actually accept. The two groups already on this
+   * installation are called 「오차드·부기스 라인」 and 「Geylang 일대」, so a zone plus 일대 is the
+   * shape, and taking the zone from THIS project's register means the example is a place the
+   * reader can see on the map beside it — and stays right when the register is Mongolian rather
+   * than Singaporean. Biggest zone first because that is the one somebody groups; ties broken by
+   * name so the placeholder does not move between renders — and counted over the whole register,
+   * not over `byZone`, which is the SEARCH RESULT: taking it from there would change the example
+   * with every keystroke in the box next to it.
+   */
+  const zoneSizes = new Map<string, number>();
+  cameras.forEach(c => {
+    const zone = c.zone?.trim() ?? "";
+    if (zone !== "") zoneSizes.set(zone, (zoneSizes.get(zone) ?? 0) + 1);
+  });
+  const exampleZone = [...zoneSizes.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
+  const namePlaceholder = t.createNamePlaceholder(
+    exampleZone ? t.createNameExample(exampleZone) : t.createNameExampleNoZone,
+  );
 
   /* ZONES START CLOSED ON A BIG REGISTER — the same rule and the same threshold as the scope
      picker (owner: 실제 현장에서는 연결된 카메라 대수가 1000대이상일 수 있어서). A thousand rows
@@ -485,7 +512,7 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
                   and says where to change it. */}
               {creating ? (
                 <>
-                  <TextField value={label} onChange={v => { setLabel(v); setLabelError(null); }} placeholder={t.createNamePlaceholder} autoFocus />
+                  <TextField value={label} onChange={v => { setLabel(v); setLabelError(null); }} placeholder={namePlaceholder} autoFocus />
                   {labelError && <FieldError>{labelError}</FieldError>}
                 </>
               ) : (
@@ -579,8 +606,13 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
       <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "14px" }}>
         <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "1px" }}><Boxes size={17} strokeWidth={2} /></span>
         <div style={{ minWidth: 0, flex: 1 }}>
+          {/* THE HEADING ALONE (owner, 2026-09-22, on an outside review that wanted this line
+              REWRITTEN LONGER). It carried three facts and the screen says all three: that a
+              group is a named set of cameras is the 그룹/카메라 columns; that it is handed out on
+              an account's scope is the 「이 그룹을 가진 계정」 column, which is the whole reason
+              this tab exists; that a camera can sit in several groups is the 「다른 그룹 N」 mark
+              on the rows it applies to. This screen's own explanation sentences are now 0. */}
           <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.heading}</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px", lineHeight: 1.5 }}>{t.intro}</p>
         </div>
         {/* MAKING ONE STARTS HERE NOW, not only on Input Sources. Disabled for a reader who cannot
             change access — the row menu already refuses, and a button that opens a dialog whose
@@ -612,8 +644,9 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
       <div style={{ display: "flex", gap: "16px", alignItems: "flex-start", flexWrap: "wrap" }}>
       <div style={{ flex: editorOpen ? "0 1 252px" : "1 1 100%", minWidth: 0, backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
         {groups.length === 0 ? (
-          /* A sentence that names another screen needs the way to it. The empty state used to
-             say "select cameras on Input Sources" and leave the reader to find the sidebar. */
+          /* ONE LINE, THEN THE TWO DOORS. The line used to name both of them in prose — make one
+             here, or group them on Input Sources — with both buttons sitting directly under it.
+             The buttons are the instruction; the line only says what the state is. */
           <div style={{ padding: "28px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
             <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6, textAlign: "center", maxWidth: "46ch" }}>{t.empty}</p>
             {mayEdit && (
