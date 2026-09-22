@@ -46,7 +46,7 @@ const T = {
     holdersNone: "Nobody",
     holders: (names: string) => names,
     createdBy: (who: string, when: string) => `${who} · ${when}`,
-    rename: "Rename", remove: "Delete", cancel: "Cancel", back: "Back",
+    rename: "Rename", remove: "Delete", cancel: "Cancel", back: "Close",
     goToCameras: "Go to Input Sources",
     editMembers: "Edit cameras",
     membersTitle: (label: string) => `Cameras in ${label}`,
@@ -59,6 +59,10 @@ const T = {
     andMore: (n: number) => `and ${n} more`,
     noZone: "No zone",
     zonePick: "select all", zoneClear: "clear",
+    inGroupHeading: "In this group",
+    inGroupEmpty: "Nothing yet. Tick cameras in the list, or click dots and zone pills on the map.",
+    inGroupUnknown: "No longer registered",
+    inGroupRemove: "Take out of the group",
     viewList: "List", viewMap: "Map",
     createTitle: "New camera group",
     createSave: "Create group",
@@ -95,7 +99,7 @@ const T = {
     holdersNone: "없음",
     holders: (names: string) => names,
     createdBy: (who: string, when: string) => `${who} · ${when}`,
-    rename: "이름 바꾸기", remove: "삭제", cancel: "취소", back: "뒤로",
+    rename: "이름 바꾸기", remove: "삭제", cancel: "취소", back: "닫기",
     goToCameras: "입력 소스로 가기",
     editMembers: "카메라 편집",
     membersTitle: (label: string) => `${label}의 카메라`,
@@ -108,6 +112,10 @@ const T = {
     andMore: (n: number) => `외 ${n}대`,
     noZone: "구역 미지정",
     zonePick: "전체 선택", zoneClear: "해제",
+    inGroupHeading: "이 그룹에 들어있는 것",
+    inGroupEmpty: "아직 없습니다. 목록에서 체크하거나, 지도에서 점과 구역 알약을 누르세요.",
+    inGroupUnknown: "등록부에 없는 카메라",
+    inGroupRemove: "그룹에서 빼기",
     viewList: "목록", viewMap: "지도",
     createTitle: "새 카메라 그룹",
     createSave: "그룹 만들기",
@@ -140,6 +148,17 @@ const T = {
 type Dict = typeof T.en;
 
 const GRID = "1.4fr 0.6fr 1.6fr 1fr 36px";
+/*
+ * WHILE THE EDITOR IS BESIDE IT, THE TABLE IS A REFERENCE, NOT A REPORT.
+ *
+ * Measured at 1440: the table kept 472px and the editor got 654px, which left the map 394px —
+ * narrow enough that the zone pills overlapped each other (Novena over Kallang over Bugis), and a
+ * map you cannot read is not an input device. 1,144px does not hold a full table, a usable map and
+ * the group's list at once, so the column that can give way does: 이 그룹을 가진 계정 and 만든
+ * 사람 are audit answers, and nobody is auditing while they pick cameras. Name and count are what
+ * "does a group like this already exist" needs.
+ */
+const GRID_COMPACT = "1.6fr 0.5fr 28px";
 
 /**
  * ONE EDITOR FOR BOTH — MAKING A GROUP AND CHANGING ONE, WITH THE LIST AND THE MAP SIDE BY SIDE.
@@ -245,12 +264,12 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
      */
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "14px" }}>
-        {/* THE WAY BACK IS A CONTROL, not a corner X. A page needs a back; a dialog needs a
-            close, and this is no longer a dialog. */}
+        {/* CLOSE, NOT BACK. It was a back button while the editor replaced the table; now the
+            table is beside it and there is nowhere to go back to — this only puts the pane away. */}
         <button type="button" onClick={onClose}
           style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: "5px", height: CONTROL_HEIGHT, padding: "0 10px 0 8px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-            <path d="M7 1.5L3 5l4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
           </svg>
           {t.back}
         </button>
@@ -323,9 +342,26 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
             row, because it is about the rule and not about any one camera. */}
         <p style={{ padding: "10px 20px 0", fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.overlapNote}</p>
 
-        {/* The PAGE scrolls now, not a box inside a box. The list keeps its own frame so the zone
-            groups read as one object, and the map gets a real height instead of 46vh of a sheet. */}
-        <div style={{ padding: "12px 20px" }}>
+        {/*
+          THE PICKER ON THE LEFT, WHAT IS IN THE GROUP ON THE RIGHT (owner, 2026-09-22: 편집이나
+          생성을 누르면 오른쪽에 리스트가 생기는건 어떨까).
+
+          With the map open there was no way to READ the group: rings on dots and a footer saying
+          "6대 체크됨", so the only way to check what was in it was to switch to the list and hunt
+          through eighteen zones. The right pane is the group itself — every camera in it by name,
+          each with a way out — which is also how the references lay this out: Klaviyo's geofence
+          editor puts the map left and its form right, Tripadvisor's map keeps the chosen cities
+          in a list beside it, Felt keeps its layer list against the map.
+
+          One selection, two views of it, like the list and the map: ticking in either side shows
+          up in the other, because they are the same `picked`.
+        */}
+        <div style={{ padding: "12px 20px", display: "flex", gap: "16px", alignItems: "flex-start", flexWrap: "wrap" }}>
+          {/* 360/200, not 460/260: the editor pane is about 650px wide now that the table keeps
+              the left side, and the wider pair wrapped — the group's own list ended up below
+              eighteen zone rows, off the bottom of the window, which is the one place it must not
+              be. Measured at 1440: picker 400px, list 218px, side by side. */}
+          <div style={{ flex: "1 1 360px", minWidth: 0 }}>
           {view === "map" ? (
             <div style={{ height: "56vh", minHeight: "420px" }}>
               <CameraMapView
@@ -400,6 +436,42 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
               })}
             </div>
           )}
+          </div>
+
+          {/* THE GROUP, READABLE. Fixed width so the picker keeps the room it needs; wraps under
+              it on a narrow window rather than squeezing both. */}
+          <div style={{ flex: "0 1 200px", minWidth: "180px", border: BORDER, borderRadius: "10px", overflow: "hidden" }}>
+            <div style={{ padding: "10px 12px", borderBottom: BORDER, backgroundColor: "var(--gray-50)", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--gray-500)" }}>{t.inGroupHeading}</span>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-900)", fontVariantNumeric: "tabular-nums" }}>{picked.length}</span>
+            </div>
+            {picked.length === 0 ? (
+              /* An empty group is the ordinary start of making one, so this says what to do rather
+                 than reporting a problem. */
+              <p style={{ padding: "14px 12px", fontSize: "11.5px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.inGroupEmpty}</p>
+            ) : (
+              <div style={{ maxHeight: "52vh", overflowY: "auto" }}>
+                {picked.map(id => {
+                  const cam = cameras.find(c => c.id === id);
+                  return (
+                    <div key={id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "7px 8px 7px 12px", borderTop: "1px solid var(--gray-100)" }}>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                        title={cam ? `${cam.name} · ${cam.code}` : id}>
+                        {/* A camera the register no longer holds still has to be shown — a group
+                            can name one that was removed, and silently dropping it from this list
+                            would make the count disagree with the rows under it. */}
+                        {cam ? cam.name : t.inGroupUnknown}
+                      </span>
+                      <button type="button" onClick={() => toggle(id)} title={t.inGroupRemove}
+                        style={{ flexShrink: 0, display: "flex", padding: "2px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-300)" }}>
+                        <svg width="11" height="11" viewBox="0 0 10 10" fill="none"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
       </div>
@@ -432,6 +504,8 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
   const [removing, setRemoving] = useState<CameraGroup | null>(null);
   const [editing, setEditing] = useState<CameraGroup | null>(null);
   const [creating, setCreating] = useState(false);
+  /** Whether the editor pane is up — the table narrows to make room for it. */
+  const editorOpen = editing !== null || creating;
 
   /** The accounts whose scope names this group — the answer this tab exists for. */
   const holdersOf = (group: CameraGroup) =>
@@ -443,39 +517,9 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
   const liveCount = (group: CameraGroup) =>
     group.cameraIds.filter(id => registered.some(c => c.id === id)).length;
 
-  /*
-   * THE EDITOR TAKES THE WHOLE AREA (owner: 팝업화면을 바닥에 뿌려줘) — it is not drawn over the
-   * table, it replaces it, the same way this tab replaces the accounts list. Two subjects on one
-   * screen with one set of controls over both is what the tab switch exists to avoid, and a map
-   * needs the room the table was using.
-   */
     {/* ONE EDITOR, TWO ERRANDS. `editing` holds the group being changed; `creating` is the same
         screen with the name field on and no group behind it. Two components would have drifted
         the first time the list or the map changed. */}
-  if (editing || creating) {
-    return (
-      <GroupEditor
-        group={editing}
-        cameras={registered}
-        otherGroups={groups.filter(g => g.id !== editing?.id)}
-        t={t}
-        onSave={(label, ids) => {
-          if (editing) {
-            setCameraGroupMembers(editing.id, ids);
-            showToast({ variant: "success", title: t.membersSavedToast, desc: `${editing.label} · ${t.cameras(ids.length)}` });
-            setEditing(null);
-            return null;
-          }
-          const refusal = addCameraGroup(projectId, label, ids);
-          if (refusal) return refusal;
-          showToast({ variant: "success", title: t.createdToast, desc: `${label} · ${t.cameras(ids.length)}` });
-          setCreating(false);
-          return null;
-        }}
-        onClose={() => { setEditing(null); setCreating(false); }}
-      />
-    );
-  }
 
   return (
     <div>
@@ -496,7 +540,19 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
         )}
       </div>
 
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
+      {/*
+        THE TABLE STAYS, NARROWER, AND THE EDITOR COMES UP BESIDE IT (owner, 2026-09-22: 그룹
+        테이블이 좁아지면서! 기존에 테이블이 어떤게 있는지보고 추가하거나 편집할수있게).
+
+        It replaced the table before, which answered the wrong question: making a group is mostly
+        deciding whether one like it already exists, and a full-screen editor hid the four groups
+        that would tell you. Beside it, the list is the reference and the editor is the work —
+        Verkada's device panel, Felt's layer list against the map, Airtable's record panel all
+        sit this way. Wraps rather than squeezes: under about 1,000px the editor drops below the
+        table instead of leaving both too narrow to read.
+      */}
+      <div style={{ display: "flex", gap: "16px", alignItems: "flex-start", flexWrap: "wrap" }}>
+      <div style={{ flex: editorOpen ? "0 1 252px" : "1 1 100%", minWidth: 0, backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
         {groups.length === 0 ? (
           /* A sentence that names another screen needs the way to it. The empty state used to
              say "select cameras on Input Sources" and leave the reader to find the sidebar. */
@@ -517,8 +573,8 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
           </div>
         ) : (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
-              {[t.colName, t.colCameras, t.colHolders, t.colCreated, ""].map((h, i) => (
+            <div style={{ display: "grid", gridTemplateColumns: editorOpen ? GRID_COMPACT : GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
+              {(editorOpen ? [t.colName, t.colCameras, ""] : [t.colName, t.colCameras, t.colHolders, t.colCreated, ""]).map((h, i) => (
                 <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{h}</span>
               ))}
             </div>
@@ -527,10 +583,15 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
               const count = liveCount(group);
               const isLast = i === groups.length - 1;
               return (
+                /* THE ROW UNDER EDIT IS MARKED. With the editor beside the table, two things on
+                   screen are about one group and nothing tied them together — the reader had to
+                   match the name in the pane's title against five rows. */
                 <div key={group.id} style={{
-                  display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP,
+                  display: "grid", gridTemplateColumns: editorOpen ? GRID_COMPACT : GRID, columnGap: TABLE_COLUMN_GAP,
                   padding: "10px 16px", alignItems: "center",
                   borderBottom: isLast ? "none" : BORDER,
+                  backgroundColor: editing?.id === group.id ? "var(--gray-50)" : undefined,
+                  boxShadow: editing?.id === group.id ? "inset 2px 0 0 var(--gray-900)" : undefined,
                 }}>
                   {/* WHICH CAMERAS, not only how many. A count cannot be checked against what
                       somebody meant to group, and the three names under the label are usually
@@ -555,15 +616,19 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
                     ? <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.camerasNone}</span>
                     : <span style={{ fontSize: "12px", color: "var(--gray-600)", fontVariantNumeric: "tabular-nums" }}>{t.cameras(count)}</span>}
                   {/* THE REVERSE LOOKUP. Named, not counted: "3 accounts" sends the reader back to
-                      the account list to find out which three. */}
-                  {holders.length === 0
+                      the account list to find out which three. Both this and 만든 사람 stand down
+                      while the editor is open — a grid must emit exactly as many cells as it has
+                      tracks, so they are dropped together with their columns, not hidden. */}
+                  {!editorOpen && (holders.length === 0
                     ? <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>{t.holdersNone}</span>
                     : <span title={holders.map(u => u.email).join(", ")} style={{ fontSize: "12px", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {t.holders(holders.map(u => u.name).join(", "))}
-                      </span>}
-                  <span style={{ fontSize: "11px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {t.createdBy(group.createdBy, group.createdAt.slice(0, 10))}
-                  </span>
+                      </span>)}
+                  {!editorOpen && (
+                    <span style={{ fontSize: "11px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {t.createdBy(group.createdBy, group.createdAt.slice(0, 10))}
+                    </span>
+                  )}
                   <RowActionsMenu actions={[
                     {
                       /* First, because it is the one that changes access rather than wording. */
@@ -591,6 +656,32 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
             })}
           </>
         )}
+      </div>
+
+      {editorOpen && (
+        <div style={{ flex: "1 1 600px", minWidth: 0 }}>
+          <GroupEditor
+            group={editing}
+            cameras={registered}
+            otherGroups={groups.filter(g => g.id !== editing?.id)}
+            t={t}
+            onSave={(label, ids) => {
+              if (editing) {
+                setCameraGroupMembers(editing.id, ids);
+                showToast({ variant: "success", title: t.membersSavedToast, desc: `${editing.label} · ${t.cameras(ids.length)}` });
+                setEditing(null);
+                return null;
+              }
+              const refusal = addCameraGroup(projectId, label, ids);
+              if (refusal) return refusal;
+              showToast({ variant: "success", title: t.createdToast, desc: `${label} · ${t.cameras(ids.length)}` });
+              setCreating(false);
+              return null;
+            }}
+            onClose={() => { setEditing(null); setCreating(false); }}
+          />
+        </div>
+      )}
       </div>
 
       {renaming && (
