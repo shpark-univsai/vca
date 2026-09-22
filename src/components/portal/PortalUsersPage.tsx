@@ -962,21 +962,22 @@ function InviteLinkPanel({ title, links, onClose, children }: {
    */
   children?: React.ReactNode;
 }) {
-  useEscapeKey(onClose);
+  /* Escape is the Drawer's, like every other panel on this page. */
   const [lang] = usePortalLanguage();
   const t = T[lang];
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 310, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      {/* 310 rather than the 300 every other modal here uses. This is the one box on the page
-          that must not end up behind something else — it holds the only copy of the link. */}
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "520px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{title}</p>
-          <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          </button>
-        </div>
+    /* A panel, so the account list this link belongs to stays behind it — and so the scope picker
+       that opens over this one has something to come back to.
+       The z-index note this box carried (310 rather than 300, because it holds the only copy of
+       the link) is the Drawer's 320 now: every panel is above every centred confirm, which is the
+       same ordering said once instead of per dialog. */
+    <Drawer title={title} onClose={onClose}
+      footer={
+        <button className="portal-btn-primary" onClick={onClose}
+          style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          {t.tempDone}
+        </button>
+      }>
         <div style={MODAL_BODY}>
           <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>{t.inviteLinkNote}</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -984,14 +985,7 @@ function InviteLinkPanel({ title, links, onClose, children }: {
           </div>
           {children}
         </div>
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
-          <button className="portal-btn-primary" onClick={onClose}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.tempDone}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Drawer>
   );
 }
 
@@ -2363,12 +2357,29 @@ function UserProjectsModal({ user, teamProjects, onClose, onSave }: {
   const canSave = picked.length > 0;
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "20px 20px 0" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.projectsModalTitle}</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.projectsModalIntro(user.name)}</p>
+    /* A panel, like the rest of this page's editors. Which sites a person may open is a decision
+       taken against the row that shows what they hold now. */
+    <Drawer title={t.projectsModalTitle} onClose={onClose}
+      footer={
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
+          {!canSave && (
+            <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.projectsModalNoneWarning}</p>
+          )}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+            <button className="portal-btn-outline" onClick={onClose}
+              style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              {t.cancel}
+            </button>
+            <button className="portal-btn-primary" onClick={() => { onSave(picked); onClose(); }} disabled={!canSave}
+              style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+              {t.changeApply}
+            </button>
+          </div>
+        </div>
+      }>
+        <div style={{ padding: "16px 20px 0" }}>
+          {/* Who this is about. The title is the panel header's now. */}
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.projectsModalIntro(user.name)}</p>
         </div>
         {/*
           CHECKBOX ROWS, NOT CHIPS (owner, 2026-09-22: 이거 선택 가능한거라는 느낌이 안들고
@@ -2424,21 +2435,7 @@ function UserProjectsModal({ user, teamProjects, onClose, onSave }: {
         <div style={{ padding: "0 20px", display: "flex", alignItems: "baseline", gap: "8px" }}>
           <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>{t.projectsPickedCount(picked.length, teamProjects.length)}</span>
         </div>
-        {!canSave && (
-          <p style={{ padding: "8px 20px 0", fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.projectsModalNoneWarning}</p>
-        )}
-        <div style={{ padding: "16px 20px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            {t.cancel}
-          </button>
-          <button className="portal-btn-primary" onClick={() => { onSave(picked); onClose(); }} disabled={!canSave}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-            {t.changeApply}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Drawer>
   );
 }
 
@@ -2533,23 +2530,15 @@ function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => voi
   };
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "20px 20px 0" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.grantsModalTitle}</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.grantsModalIntro(user.name)}</p>
-        </div>
-        <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0, overflowY: "auto" }}>
-          <GrantPicker
-            presets={presets} choice={choice} onChoice={setChoice}
-            actions={actions} onToggleAction={toggleCustomAction}
-            t={t} />
-        </div>
-        {willOverwrite && (
-          <p style={{ padding: "0 20px", fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.grantsOverwriteWarning}</p>
-        )}
-        <div style={{ padding: "16px 20px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+    /* A panel. The 92vh cap and the column layout this dialog needed to keep a seven-row grant
+       list and its footer on screen are the Drawer's job now. */
+    <Drawer title={t.grantsModalTitle} onClose={onClose}
+      footer={
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
+          {willOverwrite && (
+            <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.grantsOverwriteWarning}</p>
+          )}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
           {/* The button says why it is dead instead of sitting there. Two states, two sentences:
               nothing has moved yet, or custom is on with no screen ticked. */}
           {!canSave && (
@@ -2565,9 +2554,18 @@ function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => voi
             style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
             {t.changeApply}
           </button>
+          </div>
         </div>
+      }>
+      <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
+        {/* Who this is about; the title is the panel header's. */}
+        <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.grantsModalIntro(user.name)}</p>
+        <GrantPicker
+          presets={presets} choice={choice} onChoice={setChoice}
+          actions={actions} onToggleAction={toggleCustomAction}
+          t={t} />
       </div>
-    </div>
+    </Drawer>
   );
 }
 
