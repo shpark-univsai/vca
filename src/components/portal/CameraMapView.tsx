@@ -519,7 +519,15 @@ export default function CameraMapView({
   return (
     /* The same card the table draws, filling the same room — see the measurement above. */
     <div ref={cardRef} style={{
-      backgroundColor: "white", border: BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW,
+      backgroundColor: "white",
+      /* A CARD ONLY WHEN IT IS ONE. `fill` means this is a column inside somebody else's panel,
+         and there it kept its own border, radius and shadow — a rounded box 1px inside a rounded
+         box, which is the nesting the owner caught (지도 박스에 라운드가 있어서 큰 박스안에
+         라운드가 있으니까 이상해). Input Sources still gets the card; the group editor gets a
+         plain pane and the panel around it draws the edge. */
+      border: fill ? "none" : BORDER,
+      borderRadius: fill ? 0 : CARD_RADIUS,
+      boxShadow: fill ? "none" : PANEL_SHADOW,
       display: "flex", flexDirection: "column", overflow: "hidden",
       // Before the measurement lands, a sensible box rather than a collapsed one — this is the
       // first paint, and a zero-height map would flash.
