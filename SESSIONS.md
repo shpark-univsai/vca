@@ -13,8 +13,6 @@
 
 | 세션 | 잡은 파일 | 상태 |
 |---|---|---|
-| vca-85/S6 | `CameraMapView.tsx` · `CameraGroupsTab.tsx` · `CameraScopePicker.tsx` | **배정 2026-09-22 밤**: 지도에서 마우스로 영역 그려 고르기(올가미) + 고른 칩을 지도 위로. 커밋하지 않음 |
-| vca-85/S5 | `ProjectCamerasTab.tsx` · `ProjectVipTab.tsx` · `ProjectRosterTab.tsx` | **배정 2026-09-22 밤**: 손으로 그린 확인창 5~6개를 공용 `ConfirmModal`로. 커밋하지 않음 |
 | vca-85/P1 | `ProjectVipTab.tsx` · `VipCategories.tsx` · `VipImportModal.tsx` | **배정 2026-09-22 오후**: 자체 모달 → 공용 `Drawer`(오른쪽 패널). `ConfirmModal`은 손대지 않음 |
 | vca-85/P2 | `ProjectRosterTab.tsx` · `RosterImportModal.tsx` | 같음 |
 | vca-85/P3 | `ProjectCamerasTab.tsx` · `CameraImportModal.tsx` · `UploadPreviewModal.tsx` | 같음 |

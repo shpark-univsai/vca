@@ -1,12 +1,12 @@
 "use client";
 
-import { MousePointerClick } from "lucide-react";
+import { Lasso, MousePointerClick } from "lucide-react";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MAP_TILE_URL, MAP_TILE_FILTER, tileLayerOptions } from "@/lib/mapTiles";
 import { hasPosition, isAwaitingFirstContact, type Camera } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, CARD_RADIUS, PANEL_SHADOW } from "./PortalShared";
+import { BORDER, CARD_RADIUS, PANEL_SHADOW, PICKED_FILL, PICKED_LINE } from "./PortalShared";
 
 /**
  * THE REGISTER, ON THE MAP.
@@ -60,6 +60,12 @@ const T = {
          that is left to say, and the bar that makes the group is outside this component. */
       ? "Click a dot to pick that camera. The bar at the bottom makes the group."
       : `${n} picked. The bar at the bottom makes the group.`,
+    lasso: "Draw an area",
+    /* WHAT THE MODE CANNOT SHOW OF ITSELF goes on the hover, the same division the 「지도에 없는
+       N대」 chip below settled on: the crosshair and the pressed button already say the mode is
+       on, so only the two things no mark can say are written down — that Alt takes cameras out
+       again, and that Shift saves the trip to the button. */
+    lassoHow: "Drag a line around the cameras to add them. Hold Alt while dragging to take the enclosed ones out instead. Shift and drag does the same without this button.",
     preview: "Preview stream",
     empty: "No camera in this project has coordinates yet, so there is nothing to draw.",
     counted: (drawn: number, total: number) => `${drawn} of ${total} drawn`,
@@ -79,6 +85,8 @@ const T = {
     pickHint: (n: number) => n === 0
       ? "점을 누르면 그 카메라가 들어갑니다. 묶는 것은 아래 막대에서 합니다."
       : `${n}대 골랐습니다. 묶는 것은 아래 막대에서 합니다.`,
+    lasso: "영역으로 고르기",
+    lassoHow: "카메라들을 둘러 끌면 선택에 들어갑니다. Alt를 누른 채 끌면 감싼 카메라가 선택에서 빠집니다. Shift를 누르고 끌면 이 버튼 없이도 같은 일이 됩니다.",
     preview: "스트림 미리보기",
     empty: "이 프로젝트에는 좌표가 등록된 카메라가 아직 없어서 그릴 것이 없습니다.",
     counted: (drawn: number, total: number) => `${total}대 중 ${drawn}대 표시`,
@@ -103,7 +111,7 @@ const T = {
  * The other dots are left alone rather than dimmed. Dimming would hide the thing this map is for
  * — an offline camera in a neighbouring zone is still the most important dot on screen.
  */
-function dotHtml(color: string, selected: boolean): string {
+function dotHtml(fill: string, selected: boolean, line: string | null): string {
   /* The ring is drawn with the same box-shadow the dot already uses for its white edge, so a
      selected dot is the unselected one plus two more rings rather than a different object: white
      at 2px keeps the edge over dark tiles, then primary at 4px, then white again so the ring
@@ -111,8 +119,63 @@ function dotHtml(color: string, selected: boolean): string {
   const rings = selected
     ? "0 0 0 2px white, 0 0 0 4px var(--primary-400), 0 0 0 5px rgba(255,255,255,0.9), 0 1px 3px rgba(24,17,39,0.35)"
     : "0 0 0 2px white, 0 1px 3px rgba(24,17,39,0.35)";
-  return `<span style="display:block;width:12px;height:12px;border-radius:50%;background:${color};box-shadow:${rings};"></span>`;
+  /* border-box so a dot that takes the shared picked line is still the same 12px circle as its
+     neighbours — the line is the picked vocabulary, not a size change. */
+  const edge = line === null ? "" : `border:${line};box-sizing:border-box;`;
+  return `<span style="display:block;width:12px;height:12px;border-radius:50%;background:${fill};${edge}box-shadow:${rings};"></span>`;
 }
+
+/**
+ * WHAT A DOT'S COLOUR IS ALLOWED TO MEAN, WHICH DEPENDS ON WHO IS ASKING.
+ *
+ * This map has two callers with two different questions, and the answer to 「연결상태도 계속
+ * 보여줘야 할까?」 (owner, 2026-09-22) is different for each. On 입력 소스 the screen's whole
+ * subject is whether the cameras are up, so the status colour and the key that decodes it earn
+ * their place and nothing changes there. In the PICKER the only question is in or out, and a dot
+ * that is one of four status colours AND has to report whether it is selected makes one mark
+ * carry two colour codes at once — the same one-signal-too-many the owner rejected on the chips
+ * earlier the same day.
+ *
+ * So while picking, colour says exactly one thing. Every unpicked dot is the same neutral grey
+ * and a picked one takes the shared picked pair (PICKED_FILL inside PICKED_LINE) that a picked
+ * box wears everywhere else in the portal, on top of the primary ring it already had.
+ *
+ * THE TRADE, ACCEPTED: while grouping you can no longer notice that a camera has never connected.
+ * A group is about place, and the register that answers the other question is one click away.
+ */
+function dotFace(cam: Camera, selected: boolean, picking: boolean): [string, string | null] {
+  if (!picking) return [statusColor(cam), null];
+  return selected ? [PICKED_FILL, PICKED_LINE] : ["var(--gray-400)", null];
+}
+
+/** How far the pointer has to travel before a drag is a lasso and not a click on a dot. Measured
+ *  against the thing it protects: a dot is 12px across, so a press that wanders two or three
+ *  pixels is somebody aiming at one, not somebody drawing a shape. */
+const LASSO_MIN_TRAVEL_PX = 6;
+
+/**
+ * IS THIS POINT INSIDE THE SHAPE THAT WAS DRAWN — ray casting, no dependency.
+ *
+ * A horizontal ray from the point crosses the closed path an odd number of times exactly when the
+ * point is inside it, which holds for the self-crossing, non-convex shapes a hand actually draws
+ * around a road. Both the shape and the point are in container pixels, so this runs after
+ * latLngToContainerPoint and never has to reason about projections.
+ */
+function enclosedBy(shape: { x: number; y: number }[], x: number, y: number): boolean {
+  let inside = false;
+  for (let i = 0, j = shape.length - 1; i < shape.length; j = i++) {
+    const a = shape[i], b = shape[j];
+    if ((a.y > y) !== (b.y > y) && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+}
+
+/** The two things a lasso needs from Leaflet. Declared here because Leaflet is imported
+ *  dynamically, so its types are not in scope at the top of this file. */
+type LassoMap = {
+  dragging?: { enable: () => void; disable: () => void };
+  latLngToContainerPoint: (latlng: [number, number]) => { x: number; y: number };
+};
 
 /** Zone names come from a text field somebody types into, and they go into markup built as a
  *  string for Leaflet. */
@@ -131,7 +194,7 @@ function statusColor(cam: Camera): string {
 }
 
 export default function CameraMapView({
-  cameras, onInspect, onShowUnpositioned, selectedIds, onToggleSelect, alwaysPicking, fill,
+  cameras, onInspect, onShowUnpositioned, selectedIds, onToggleSelect, alwaysPicking, fill, overlay,
 }: {
   /** The rows the table would be showing — filters applied. Split by position here. */
   cameras: Camera[];
@@ -171,6 +234,17 @@ export default function CameraMapView({
    */
   selectedIds: Set<string>;
   onToggleSelect: (cameraId: string) => void;
+  /**
+   * SOMETHING THE CALLER WANTS DRAWN ON THE MAP, not above the card.
+   *
+   * The group editor's selected-camera chips float over the map (owner, 2026-09-22: 지도 위로 뜨는
+   * 게 더 좋을 것 같아), and the caller cannot place them from outside: MEASURED, a box positioned
+   * against the wrapper this card sits in landed 37px too high, because this card is a header
+   * strip plus the map and the wrapper is both. A percentage of the map's area — which is how the
+   * cap on such an overlay is written — needs the map's own box as its containing block, and this
+   * is the only place that box exists.
+   */
+  overlay?: React.ReactNode;
 }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -191,6 +265,41 @@ export default function CameraMapView({
      zone has to skip the cameras already picked or the toggle would take them back out. */
   const selectedIdsRef = useRef(selectedIds);
   useEffect(() => { selectedIdsRef.current = selectedIds; }, [selectedIds]);
+
+  /*
+   * DRAWING AN AREA IS ITS OWN MODE, BECAUSE A PLAIN DRAG ON A MAP MEANS PAN.
+   *
+   * The owner asked for it as 「마우스로 라인 그어가면서 그룹 지을 수 있는 거」, and freehand is
+   * the right shape rather than a rectangle: cameras follow roads, so a box around a curved
+   * street either misses half of it or catches the next street too, and the reader ends up making
+   * three boxes for one road.
+   *
+   * What it cannot do is steal the drag. Pan-on-drag is what every map in the world does, and a
+   * product that quietly reassigns it breaks the one gesture the reader arrived knowing. So there
+   * are two ways in and both are deliberate: this button, which stays pressed and turns the
+   * cursor into a crosshair so the map says which mode it is in, and Shift+drag for the people
+   * who already expect a modifier to mean "select a region".
+   */
+  const [lassoArmed, setLassoArmed] = useState(false);
+  /* Picking off means lasso off, and it is DERIVED rather than stored: on 입력 소스 the reader can
+     leave the pick mode with the lasso still armed, and a lasso that selects while a dot press
+     does not would be two answers to what a press means. Kept as state it would need an effect to
+     put it back, which is a render's worth of screen showing a mode that is already over. */
+  const lassoMode = picking && lassoArmed;
+  const lassoModeRef = useRef(lassoMode);
+  useEffect(() => { lassoModeRef.current = lassoMode; }, [lassoMode]);
+  /** The gesture in flight, in container pixels. Null between gestures. */
+  const [lassoShape, setLassoShape] = useState<{ x: number; y: number }[] | null>(null);
+  /** Alt/Option held: the shape takes cameras OUT instead of adding them, so the mark has to say
+   *  so while it is being drawn — otherwise the reader learns what it did after it happened. */
+  const [lassoRemoves, setLassoRemoves] = useState(false);
+  /** Set by a gesture that really enclosed something, and read once by the marker click handler.
+   *  A loop that happens to end back on the dot it started from would otherwise fire that dot's
+   *  click too and undo one of the cameras the lasso just added. */
+  const lassoJustRanRef = useRef(false);
+  /** The drawable cameras, for the release handler. It is attached once, so it cannot close over
+   *  a render's array. */
+  const placedRef = useRef<Camera[]>([]);
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
@@ -264,6 +373,126 @@ export default function CameraMapView({
      change does not yank the view back from wherever the reader has panned to — the same rule
      RedmapMap follows. */
   const positionsKey = placed.map(c => `${c.id}:${c.lat},${c.lng}`).join("|");
+  useEffect(() => { placedRef.current = placed; }, [placed]);
+
+  /*
+   * WHILE THE MODE IS ON, LEAFLET MUST NOT PAN AND THE CURSOR MUST SAY SO.
+   *
+   * dragging.disable() is not optional: without it the map slides under the shape being drawn and
+   * the container pixels the shape was collected in stop matching the ones the cameras are at.
+   * Shift+drag also had to be taken off Leaflet — see boxZoom in the map's options.
+   *
+   * The crosshair comes from Leaflet's own `leaflet-crosshair` class rather than a rule of ours,
+   * because the cursor has to change on the panes and the markers too, and those already carry
+   * `leaflet-interactive`. One class covers all three; an inline cursor on the container covers
+   * none of them.
+   */
+  useEffect(() => {
+    const host = mapRef.current;
+    const map = mapInstanceRef.current as LassoMap | null;
+    if (!host) return;
+    if (lassoMode) { host.classList.add("leaflet-crosshair"); map?.dragging?.disable(); }
+    else { host.classList.remove("leaflet-crosshair"); map?.dragging?.enable(); }
+  }, [lassoMode]);
+
+  /*
+   * THE GESTURE ITSELF, ON THE MAP'S OWN NODE RATHER THAN ON AN OVERLAY THAT COVERS IT.
+   *
+   * An overlay would have been simpler to draw on, and it was the first shape this took — but an
+   * overlay that swallows the pointer also swallows the dot clicks, and then every short press
+   * has to be re-implemented as a hit test against the markers. Listening on the container keeps
+   * Leaflet's own click path intact, which is what makes "a two-pixel drag is still a click"
+   * true rather than re-built: below the travel threshold this handler does nothing at all and
+   * the marker's existing click handler runs.
+   *
+   * pointerdown, not mousedown: it fires first, so disabling the drag handler here lands before
+   * Leaflet's own mousedown listener would have started a pan.
+   */
+  useEffect(() => {
+    const host = mapRef.current;
+    if (!host) return;
+
+    let shape: { x: number; y: number }[] | null = null;
+    let travel = 0;
+    let removes = false;
+
+    const at = (e: PointerEvent) => {
+      const rect = host.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    };
+
+    const finish = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+
+    const onMove = (e: PointerEvent) => {
+      if (shape === null) return;
+      const p = at(e);
+      /* Distance from where the finger went down, not the length of the wiggle: an accumulated
+         path length creeps past any threshold during a slow press that never actually moved. */
+      const dx = p.x - shape[0].x, dy = p.y - shape[0].y;
+      travel = Math.max(travel, Math.sqrt(dx * dx + dy * dy));
+      /* Alt can be taken up or put down mid-drag, and the reader should see the shape change its
+         mind with them rather than find out on release. */
+      if (e.altKey !== removes) { removes = e.altKey; setLassoRemoves(removes); }
+      shape = [...shape, p];
+      setLassoShape(shape);
+    };
+
+    const onUp = () => {
+      finish();
+      const drawn = shape;
+      shape = null;
+      setLassoShape(null);
+      const map = mapInstanceRef.current as LassoMap | null;
+      /* Panning comes back unless the mode itself is holding it off. */
+      if (!lassoModeRef.current) map?.dragging?.enable();
+      if (drawn === null || drawn.length < 3 || travel < LASSO_MIN_TRAVEL_PX) return;
+
+      /* Only the drawable cameras can be enclosed. The unsurveyed ones are not on this map at all
+         — the 「지도에 없는 N대」 chip is where they are accounted for — so a shape drawn over the
+         whole city must leave them exactly as they were. */
+      const enclosed = map === null ? [] : placedRef.current.filter(cam => {
+        const pt = map.latLngToContainerPoint([cam.lat as number, cam.lng as number]);
+        return enclosedBy(drawn, pt.x, pt.y);
+      });
+      /* A UNION, NEVER A REPLACEMENT. The selection is assembled from several passes — some rows
+         ticked in the table, a zone taken whole, then two more by hand — so a shape that cleared
+         what was already picked would make every lasso the last word. Alt is the way back out.
+         Only the cameras whose state actually changes are toggled, so a shape drawn over ground
+         that is already picked is a no-op rather than a flip. */
+      const current = selectedIdsRef.current;
+      const changing = enclosed.filter(cam => current.has(cam.id) === removes);
+      changing.forEach(cam => onToggleRef.current(cam.id));
+      if (changing.length > 0) {
+        lassoJustRanRef.current = true;
+        /* Cleared on the next turn of the loop, after the browser has dispatched whatever click
+           this release produced. Left set, it would eat the reader's next real dot press. */
+        setTimeout(() => { lassoJustRanRef.current = false; }, 0);
+      }
+    };
+
+    const onDown = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      if (!lassoModeRef.current && !e.shiftKey) return;
+      const map = mapInstanceRef.current as LassoMap | null;
+      if (map === null) return;
+      map.dragging?.disable();
+      shape = [at(e)];
+      travel = 0;
+      removes = e.altKey;
+      setLassoRemoves(removes);
+      setLassoShape(shape);
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    };
+
+    host.addEventListener("pointerdown", onDown);
+    return () => { host.removeEventListener("pointerdown", onDown); finish(); };
+  }, []);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -278,7 +507,9 @@ export default function CameraMapView({
       const container = mapRef.current as HTMLDivElement & { _leaflet_id?: number };
       if (container._leaflet_id) delete container._leaflet_id;
 
-      const instance = L.map(mapRef.current, { center: [1.3521, 103.8698], zoom: 12, zoomControl: true });
+      /* boxZoom off because Shift+drag is the lasso's shortcut now, and Leaflet's own Shift+drag
+         is a zoom-to-box. Two gestures on one chord means the reader gets whichever one wins. */
+      const instance = L.map(mapRef.current, { center: [1.3521, 103.8698], zoom: 12, zoomControl: true, boxZoom: false });
       if (cancelled) { instance.remove(); return; }
       L.tileLayer(MAP_TILE_URL, tileLayerOptions()).addTo(instance);
       instance.zoomControl.setPosition("topright");
@@ -292,15 +523,25 @@ export default function CameraMapView({
         /* A dot, not a pin. Sixty cameras at neighbourhood zoom is a field of markers, and a
            teardrop's point lands below its own centre — which is a lie about where the camera is
            when the dots are this dense. */
+        /* BUILT WITH THE SELECTION IT ALREADY HAS, not blank. The ring pass below cannot do it on
+           first paint: this build is async (it awaits the Leaflet import), so that effect has
+           already run and returned against an empty marker map, and neither of its keys changes
+           afterwards. Opening a group of three therefore drew three unmarked dots until the
+           reader touched something. Harmless while the dots carried status colour; since they
+           carry nothing but picked-or-not it would be a group that cannot be read at all. */
+        const [fill, line] = dotFace(cam, selectedIdsRef.current.has(cam.id), !!alwaysPicking);
         const icon = L.divIcon({
           className: "",
-          html: dotHtml(statusColor(cam), false),
+          html: dotHtml(fill, selectedIdsRef.current.has(cam.id), line),
           iconSize: [12, 12],
           iconAnchor: [6, 6],
         });
         const marker = L.marker([cam.lat as number, cam.lng as number], { icon, title: cam.name })
           .addTo(dotLayer)
           .on("click", () => {
+            /* A lasso that closed on the dot it opened on gets one click out of the browser as
+               well, and honouring it would take back one of the cameras the shape just added. */
+            if (lassoJustRanRef.current) { lassoJustRanRef.current = false; return; }
             if (pickingRef.current) onToggleRef.current(cam.id);
             else setSelected(cam.id);
           });
@@ -382,9 +623,11 @@ export default function CameraMapView({
         /* One ring, two reasons: a zone picked from a pill, and a camera picked for a group. They
            never overlap in practice (picking a zone clears nothing, but the modes are used one at
            a time) and a second ring style would make the map teach two marks for "this one". */
+        const on = selectedIds.has(cam.id);
+        const [fill, line] = dotFace(cam, on, !!alwaysPicking);
         marker.setIcon(L.divIcon({
           className: "",
-          html: dotHtml(statusColor(cam), selectedIds.has(cam.id)),
+          html: dotHtml(fill, on, line),
           iconSize: [12, 12],
           iconAnchor: [6, 6],
         }));
@@ -441,6 +684,24 @@ export default function CameraMapView({
           {picking ? t.pickStop : t.pickStart}
         </button>
         )}
+        {/* ONLY WHILE PICKING, and pressed rather than labelled twice. A lasso that selected while
+            a dot press did not would be two answers to what a press means, so on 입력 소스 this
+            appears with the pick mode and in the group editor it is simply always there. The label
+            stays one noun in both states: aria-pressed and the fill say which state it is in, and
+            a second wording for "off" would be the reader reading what they can see. */}
+        {picking && (
+          <button onClick={() => setLassoArmed(v => !v)} aria-pressed={lassoMode} title={t.lassoHow}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: "6px", height: "26px", padding: "0 10px",
+              borderRadius: "999px", cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700,
+              border: lassoMode ? "1px solid var(--gray-900)" : BORDER,
+              backgroundColor: lassoMode ? "var(--gray-900)" : "white",
+              color: lassoMode ? "white" : "var(--gray-600)",
+            }}>
+            <Lasso size={12} strokeWidth={2.4} aria-hidden="true" />
+            {t.lasso}
+          </button>
+        )}
         {picking && !alwaysPicking && (
           <span style={{ fontSize: "11px", color: "var(--gray-500)" }}>{t.pickHint(selectedIds.size)}</span>
         )}
@@ -451,6 +712,9 @@ export default function CameraMapView({
             frame, so there is nothing to zoom in for and one layer needs one key.
             The legend is the four words the dots stand for. Four colours with no key is a puzzle,
             and the table one click away spells them out in a column. */}
+        {/* NOT IN THE PICKER. See dotFace: while picking, a dot's colour says picked or not, so a
+            key for four statuses would decode a code that is not on the map. */}
+        {!alwaysPicking && (
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
           {([
             { color: "var(--success-400)", label: t.connected },
@@ -464,6 +728,7 @@ export default function CameraMapView({
             </span>
           ))}
         </div>
+        )}
       </div>
 
         <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
@@ -478,6 +743,41 @@ export default function CameraMapView({
               backgroundColor: "var(--gray-100)",
             }}
           />
+
+          {/*
+            THE SHAPE, WHILE IT IS BEING DRAWN, AND CLOSED FROM THE FIRST MOVE.
+           
+            A closed polygon rather than the open trace the hand has made so far, because the fill
+            is the answer to the only question being asked mid-gesture — which cameras am I about
+            to catch. An open line leaves the reader to imagine the closing segment, and a lasso
+            around a bend is exactly where that guess goes wrong.
+           
+            Red when Alt is down, so taking cameras out never looks like putting them in. Above the
+            dots and the floating chips, under Leaflet's own controls at 1000, and deaf to the
+            pointer — it is a picture of the gesture, not a target for it.
+
+            WIDTH AND HEIGHT ARE SPELLED OUT, because `inset: 0` does not size an <svg>: it is a
+            replaced element, so with no width of its own it takes its intrinsic 300x150 and clips
+            everything past it. MEASURED before those attributes existed — the polygon was in the
+            DOM with the right thirteen points and the right colours, and nothing at all was drawn
+            on the map, because the shape sat at x 1024 in a box that ended at 1090.
+          */}
+          {lassoShape !== null && lassoShape.length > 1 && (
+            <svg aria-hidden="true" width="100%" height="100%"
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 900, pointerEvents: "none" }}>
+              <polygon
+                points={lassoShape.map(p => `${p.x},${p.y}`).join(" ")}
+                fill={lassoRemoves ? "var(--danger-100)" : PICKED_FILL}
+                fillOpacity={0.55}
+                stroke={lassoRemoves ? "var(--danger-400)" : "var(--primary-400)"}
+                strokeWidth={1.5}
+                strokeDasharray="5 4"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
+
+          {overlay}
 
           {placed.length === 0 && (
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px", pointerEvents: "none" }}>

@@ -83,7 +83,7 @@ const T = {
     createNamePlaceholder: (example: string) => `e.g. ${example}`,
     createNameExample: (zone: string) => `${zone} and around`,
     createNameExampleNoZone: "Front and back gate",
-    descField: "What it is for",
+    descField: "Description",
     descOptional: "optional",
     createButton: "New group",
     createdToast: "Camera group created",
@@ -138,7 +138,7 @@ const T = {
     createNamePlaceholder: (example: string) => `예: ${example}`,
     createNameExample: (zone: string) => `${zone} 일대`,
     createNameExampleNoZone: "정문·후문",
-    descField: "무엇에 쓰는 그룹인지",
+    descField: "그룹 설명",
     descOptional: "선택",
     createButton: "그룹 만들기",
     createdToast: "카메라 그룹을 만들었습니다",
@@ -425,6 +425,83 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
     fontSize: "11px", fontWeight: 700, color: "var(--gray-500)",
   };
 
+  /*
+   * WHAT IS IN IT, AS NAMES WITH A WAY OUT.
+   *
+   * On the map there is no other way to read the group back — rings on dots and a count name
+   * nothing — and in the list the ticks are spread over eighteen zones. Each chip's ✕ takes that
+   * camera out, which is the one action this block is for, and the only way to remove a camera
+   * the reader can no longer find among the dots. The camera with no coordinates is the extreme
+   * case and the clearest proof: it has no dot at all, so its chip is the only handle on it.
+   *
+   * MAP VIEW ONLY (owner, 2026-09-22: 아래 칩들이 있어야할까?).
+   *
+   * In list view they said the same thing twice: the ticked rows are right there with their
+   * names, and clicking a row takes that camera out — so the chips repeated five names the reader
+   * had just ticked, and the ✕ duplicated the tick.
+   *
+   * On the MAP they are the only way to read the group back. A ringed dot names nothing and the
+   * count names nothing, so without them the reader has clicked five points and has no receipt.
+   *
+   * The one case this gives up: in list view a CLOSED zone hides its ticks. The zone row used to
+   * carry 「그룹에 N대」 for exactly that, and the owner took it out (2026-09-22: 있음없음은
+   * 없어도되지않을까) — what answers it now is the footer's running count and the search, which
+   * opens every zone that matches. If that turns out to be too little, the fix is on the closed
+   * zone's own row, not a second copy of the membership.
+   *
+   * Never capped with 「외 N대」: every chip carries the ✕ that takes that camera out, and a chip
+   * you cannot see is a camera you cannot remove. Which is why the cap below is on the BOX and
+   * not on the number of chips — past it the box scrolls and every camera is still reachable.
+   *
+   * ON THE MAP, NOT UNDER IT (owner, 2026-09-22: 지금은 지도에서 카메라 선택하면 칩들이 아래
+   * 뜨는데 지도 위로 뜨는 게 더 좋을 것 같아).
+   *
+   * Under the map they were a row that grew downwards, so the receipt for picking cameras was
+   * paid for by the map you pick them on: at 62 cameras it was a 300px wall, and even at five it
+   * pushed the map up every time the reader added one. Floating, the map keeps its full height
+   * whatever is picked — MEASURED at 508px with nothing picked and 508px with all 62.
+   *
+   * HOW MUCH OF THE MAP AN OVERLAY MAY TAKE, following the precedent set by the 「지도에 없는
+   * N대」 chip in CameraMapView: that one measures 0.8% of the map, and the 300px card it replaced
+   * was a fifth of it, which was rejected as "cameras you cannot click". So this box is capped at
+   * 44% of the map's width by 24% of its height — 10.56% of its area at worst, and MEASURED at
+   * exactly that with all 62 picked (276.75 x 121.97 in a 629 x 508 map; three chips take 6.45%)
+   * — past the cap it scrolls inside itself instead of growing. Top-left is
+   * the only free corner: Leaflet's zoom control holds the top-right, the unsurveyed-camera chip
+   * the bottom-left and the tile attribution the bottom-right.
+   *
+   * IT DOES KEEP THE POINTER, which costs one thing: a lasso cannot be STARTED on top of the box.
+   * That is the trade for a scrollbar the reader can drag and an ✕ they can press, and it leaves
+   * the other 90% of the map to start on.
+   */
+  /** Handed to the map rather than placed beside it, so that the cap above is a share of the
+   *  MAP's box — see CameraMapView's `overlay` prop for the 37px of header that made it a prop. */
+  const pickedChips = picked.length === 0 ? null : (
+    <div style={{
+      position: "absolute", left: "10px", top: "10px", zIndex: 700,
+      maxWidth: "44%", maxHeight: "24%", overflowY: "auto",
+      display: "flex", flexWrap: "wrap", gap: "6px",
+      padding: "6px", backgroundColor: "white", border: BORDER,
+      borderRadius: CARD_RADIUS, boxShadow: "var(--shadow-popover)",
+    }}>
+      {picked.map(id => {
+        const cam = cameras.find(c => c.id === id);
+        return (
+          <span key={id} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 6px 4px 9px", borderRadius: "8px", border: BORDER, backgroundColor: "var(--gray-50)", fontSize: "11.5px", color: "var(--gray-900)" }}>
+            {/* A camera the register no longer holds still has to be shown — a group can name one
+                that was removed, and silently dropping it would make the count disagree with the
+                chips. */}
+            {cam ? cam.name : t.inGroupUnknown}
+            <button type="button" onClick={() => toggle(id)} title={t.inGroupRemove}
+              style={{ display: "flex", padding: "1px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)" }}>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            </button>
+          </span>
+        );
+      })}
+    </div>
+  );
+
   return (
     /* Same rule as the shared Drawer, and the same guard: only a click that BEGAN on the scrim
        closes it, or every button inside would close it too on the way out. */
@@ -600,6 +677,7 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
                     onToggleSelect={toggle}
                     alwaysPicking
                     fill
+                    overlay={pickedChips}
                   />
                 </div>
               ) : zones.length === 0 ? (
@@ -723,49 +801,6 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
             </div>
           </div>
 
-          {/* WHAT IS IN IT, AS NAMES WITH A WAY OUT. On the map there is no other way to read the
-              group back — rings on dots and a count name nothing — and in the list the ticks are
-              spread over eighteen zones. Each chip's ✕ takes that camera out, which is the one
-              action this block is for. */}
-          {/*
-            MAP VIEW ONLY (owner, 2026-09-22: 아래 칩들이 있어야할까?).
-           
-            In list view they said the same thing twice: the ticked rows are right there with their
-            names, and clicking a row takes that camera out — so the chips repeated five names the
-            reader had just ticked, and the ✕ duplicated the tick.
-           
-            On the MAP they are the only way to read the group back. A ringed dot names nothing and
-            the count names nothing, so without them the reader has clicked five points and has no
-            receipt; and a camera they cannot find again on the map can only be removed here.
-           
-            The one case this gives up: in list view a CLOSED zone hides its ticks. The zone row
-            used to carry 「그룹에 N대」 for exactly that, and the owner took it out (2026-09-22:
-            있음없음은 없어도되지않을까) — what answers it now is the footer's running count and
-            the search, which opens every zone that matches. If that turns out to be too little,
-            the fix is on the closed zone's own row, not a second copy of the membership.
-           
-            Never capped with 「외 N대」: every chip carries the ✕ that takes that camera out, and a
-            chip you cannot see is a camera you cannot remove.
-          */}
-          {view === "map" && picked.length > 0 && (
-            <div style={{ flexShrink: 0, display: "flex", flexWrap: "wrap", gap: "6px" }}>
-              {picked.map(id => {
-                const cam = cameras.find(c => c.id === id);
-                return (
-                  <span key={id} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 6px 4px 9px", borderRadius: "8px", border: BORDER, backgroundColor: "var(--gray-50)", fontSize: "11.5px", color: "var(--gray-900)" }}>
-                    {/* A camera the register no longer holds still has to be shown — a group can
-                        name one that was removed, and silently dropping it would make the count
-                        disagree with the chips under it. */}
-                    {cam ? cam.name : t.inGroupUnknown}
-                    <button type="button" onClick={() => toggle(id)} title={t.inGroupRemove}
-                      style={{ display: "flex", padding: "1px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)" }}>
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                    </button>
-                  </span>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
