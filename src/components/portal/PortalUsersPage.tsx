@@ -2427,7 +2427,12 @@ function UserProjectsModal({ user, teamProjects, onClose, onSave }: {
                     width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left",
                     padding: "11px 12px", cursor: "pointer", fontFamily: "inherit",
                     border: "none", borderTop: i === 0 ? "none" : "1px solid var(--gray-200)",
-                    backgroundColor: active ? "var(--gray-50)" : "white",
+                    /* NO FILL ON THE PICKED ROW (owner: 헤더같아보여). A grey row with bold text is
+                       what this product's tables use for their HEADER, so the first row of the
+                       list read as a column heading and the second as its only data. The tick is
+                       the state — Customer.io, Wix and Teachable all leave the row itself
+                       untouched and let the box carry it. */
+                    backgroundColor: "white",
                   }}>
                   <span style={{
                     width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0,
@@ -2441,7 +2446,7 @@ function UserProjectsModal({ user, teamProjects, onClose, onSave }: {
                       </svg>
                     )}
                   </span>
-                  <span style={{ minWidth: 0, fontSize: "12.5px", fontWeight: active ? 700 : 500, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ minWidth: 0, fontSize: "12.5px", fontWeight: 500, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {p.name}
                   </span>
                 </button>
