@@ -3410,21 +3410,16 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           inside the pair. */}
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
       <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
-
-          {/* Tools follow the tab. Six buttons in one row was every tool for both halves of the
-              lifecycle competing at once, and four of them could not act on what the reader was
-              looking at. The two ways of adding a person stay on the combined tab; the roster's bulk
-              work lives with the roster rows. */}
-          {/* marginLeft auto, not a <span style={{flex:1}}/> spacer beside it. A spacer only pushes
-              on the line it is on: once the row wraps — under about 1240px with the roster's six
-              controls — the group drops to a line of its own and the spacer stays behind, leaving
-              the buttons hugging the left edge with 200px of empty space to their right. An auto margin
-              absorbs the free space on whichever line the group lands on, so it stays at the right
-              end in both states. */}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto" }}>
         {/*
           THE FILTERS SIT WITH THE SEARCH BOX (owner, 2026-09-22: 초대수락안함~3가지 좀 위치가
-          애매해보여 → 레퍼런스찾아보고).
+          애매해보여 → 레퍼런스찾아보고 → 그냥 검색바옆으로 다시 옮겨줘).
+
+          Both ends were tried against the owner's eye. Asana's shape — search left, the filter
+          state pinned right beside the primary button — is the other candidate and is not what
+          this page wanted: the two narrowing controls end up some 600px apart with the table's
+          whole width between them. Beside the search they read as one group, which is also what
+          most of the references do (Docusign's Status · All Filters · Reset after the keyword
+          box, WRITER's row of selects, Substack, Xero, Navattic).
         
           They were a line of their own between the count and the toolbar, belonging to neither. The
           references agree on where they go: a table's filters live in the row that holds its search,
@@ -3469,6 +3464,18 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             </Tooltip>
           );
         })}
+
+          {/* Tools follow the tab. Six buttons in one row was every tool for both halves of the
+              lifecycle competing at once, and four of them could not act on what the reader was
+              looking at. The two ways of adding a person stay on the combined tab; the roster's bulk
+              work lives with the roster rows. */}
+          {/* marginLeft auto, not a <span style={{flex:1}}/> spacer beside it. A spacer only pushes
+              on the line it is on: once the row wraps — under about 1240px with the roster's six
+              controls — the group drops to a line of its own and the spacer stays behind, leaving
+              the buttons hugging the left edge with 200px of empty space to their right. An auto margin
+              absorbs the free space on whichever line the group lands on, so it stays at the right
+              end in both states. */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto" }}>
           {peopleTab !== "roster" && (
           /* Disabled with the reason on it rather than hidden: a control that vanishes reads as a
              missing feature and sends the admin looking elsewhere for it. */
