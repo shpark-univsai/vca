@@ -1152,7 +1152,11 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
           }}>{cell.icon}</span>
         );
         const shared: React.CSSProperties = {
-          flex: 1, minWidth: "148px",
+          /* Grows to share a row with its neighbours, but a LONE cell stops at what it holds —
+             a 1,144px card around one figure reads as a panel that failed to load its other
+             three. `flex: 1` with no siblings did exactly that on the users page once the
+             exception counts left the strip for a line of chips. */
+          flex: "1 1 auto", maxWidth: "min(100%, 420px)", minWidth: "148px",
           display: "flex", alignItems: "center", gap: "12px",
           // Roomier than it was (10px 18px). These are the page's headline numbers and they were
           // wearing the padding of a table row.

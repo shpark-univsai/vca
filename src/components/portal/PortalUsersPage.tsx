@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Asterisk, ClipboardList, MailQuestion, MonitorOff, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
+import { Asterisk, MailQuestion, MonitorOff, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -110,8 +110,10 @@ const T = {
     // Table
     colUser: "User",
     colOtherProjects: "Other projects",
-    alsoOn: (where: string) => `Also on ${where}`,
-    alsoOnMore: (first: string, rest: number) => `${first} +${rest}`,
+    alsoOn: (where: string) => `Also on: ${where}`,
+    colProjects: "Projects",
+    projectsCount: (n: number) => `${n}`,
+    projectsOnlyThis: "This project only",
     otherProjectsNone: "This project only",
     colPermission: "Permission",
     colAccess: "Access",
@@ -488,8 +490,10 @@ const T = {
     // Table
     colUser: "사용자",
     colOtherProjects: "다른 프로젝트",
-    alsoOn: (where: string) => `${where}에도 있음`,
-    alsoOnMore: (first: string, rest: number) => `${first} 외 ${rest}`,
+    alsoOn: (where: string) => `이곳에도 있음: ${where}`,
+    colProjects: "프로젝트",
+    projectsCount: (n: number) => `${n}`,
+    projectsOnlyThis: "이 프로젝트만",
     otherProjectsNone: "이 프로젝트만",
     colPermission: "권한",
     colAccess: "접근",
@@ -2708,10 +2712,9 @@ type UserFilterKey = "invited" | "suspended" | "roster" | "dormant" | "noScreens
  * the weight a distribution needs.
  */
 function UserCountStrip({
-  users, rosterWaiting, dormant, statusFilter, onFilter, onShowGuide,
+  users, dormant, statusFilter, onFilter, onShowGuide,
 }: {
   users: PortalUser[];
-  rosterWaiting: number;
   /* Counted by the page, not here: it needs a post-mount clock, and this component has none. */
   dormant: number;
   statusFilter: UserFilterKey | null;
@@ -2749,8 +2752,35 @@ function UserCountStrip({
     ] },
   ];
 
+  /*
+   * THE EXCEPTIONS LEAVE THE CARDS (owner, 2026-09-22: 큰 카드를 벗기고).
+   *
+   * They were already hidden at zero, so the fault was never that they showed — it was their
+   * WEIGHT: 초대 수락 안 함 1, 로그인 차단됨 1 and 앱 화면 미지정 2 each took the same card as the
+   * headcount, so a figure of 1 shouted as loudly as the number the page is about, and five cards
+   * across one row pushed the table itself out of the first glance.
+   *
+   * Same numbers, same filters, same explanations — one line of chips instead. A chip fills when
+   * its filter is on, which is the state a card was spending a whole panel to show.
+   */
+  const exceptions = [
+    { key: "invited" as const, count: invited, label: t.countInvited, hint: t.invitedHint, icon: <MailQuestion size={13} strokeWidth={2.4} /> },
+    { key: "suspended" as const, count: suspended, label: t.countSuspended, hint: t.suspendedHint, icon: <UserX size={13} strokeWidth={2.4} /> },
+    /* NO ROSTER CHIP. It sat directly under the 명부 대기 tab, with the same label and the same
+       count, and pressing either did the same thing — switch to that tab. Two controls for one
+       errand, twelve pixels apart. The tab is the one that was already there. */
+    /* Counted over every account with the app door and no screens, suspended and invited
+       included — the badge is on their rows, and a figure that disagrees with the badges under it
+       stops being a figure anybody trusts. */
+    { key: "noScreens" as const, count: users.filter(lacksAppScreens).length, label: t.countNoScreens, hint: t.noScreensHint, icon: <MonitorOff size={13} strokeWidth={2.4} /> },
+    // Last, because it is the only one that is not a state the console set — it is a state that
+    // accumulated while nobody looked.
+    { key: "dormant" as const, count: dormant, label: t.countDormant, hint: t.dormantHint, icon: <UserMinus size={13} strokeWidth={2.4} /> },
+  ].filter(item => item.count > 0);
+
   return (
     <>
+      {/* ONE CARD, for the number the page is about. */}
       <SummaryStrip cells={[
         {
           key: "total",
@@ -2763,36 +2793,34 @@ function UserCountStrip({
           unit: t.countPeopleUnit,
           label: t.countTotal,
         },
-        // Only the states that exist. "0 suspended" is a column spent on nothing happening, and
-        // pressing it would empty the table.
-        ...([
-          { key: "invited" as const, count: invited, label: t.countInvited, hint: t.invitedHint, icon: <MailQuestion size={14} strokeWidth={2.4} /> },
-          { key: "suspended" as const, count: suspended, label: t.countSuspended, hint: t.suspendedHint, icon: <UserX size={14} strokeWidth={2.4} /> },
-          { key: "roster" as const, count: rosterWaiting, label: t.countRosterWaiting, hint: t.rosterWaitingHint, icon: <ClipboardList size={14} strokeWidth={2.4} /> },
-          /* The count half of the Input Sources pattern (badge in the cell, repair link under it,
-             count that filters to those rows). Counted over every account with the app door and
-             no screens, suspended and invited included — the badge is on their rows, and a figure
-             that disagrees with the badges under it stops being a figure anybody trusts. */
-          { key: "noScreens" as const, count: users.filter(lacksAppScreens).length, label: t.countNoScreens, hint: t.noScreensHint, icon: <MonitorOff size={14} strokeWidth={2.4} /> },
-          // Last, because it is the only one that is not a state the console set — it is a state
-          // that accumulated while nobody looked.
-          { key: "dormant" as const, count: dormant, label: t.countDormant, hint: t.dormantHint, icon: <UserMinus size={14} strokeWidth={2.4} /> },
-        ].filter(item => item.count > 0).map(item => ({
-          key: item.key,
-          icon: item.icon,
-          figure: item.count,
-          unit: t.countPeopleUnit,
-          label: item.label,
-          tone: "warning" as const,
-          active: statusFilter === item.key,
-          // The explanation is the whole point of these three labels — an invitation nobody
-          // accepted and a suspended account are not self-explanatory words — and the dotted
-          // underline is what tells the reader it is there. No `title` beside it: two tooltips on
-          // one control, one of them the browser's, is a race the reader did not enter.
-          explanation: item.hint,
-          onClick: () => onFilter(statusFilter === item.key ? null : item.key),
-        }))),
       ]} />
+      {exceptions.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", margin: "-10px 0 16px" }}>
+          {exceptions.map(item => {
+            const on = statusFilter === item.key;
+            return (
+              /* The explanation is the whole point of these labels — an invitation nobody accepted
+                 is not a self-explanatory phrase — so each chip keeps the hint the card carried,
+                 in our own Tooltip rather than the browser's `title`. */
+              <Tooltip key={item.key} text={item.hint}>
+                <button type="button" onClick={() => onFilter(on ? null : item.key)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: "6px",
+                    height: "26px", padding: "0 10px", borderRadius: "999px", cursor: "pointer", fontFamily: "inherit",
+                    border: on ? "1px solid var(--gray-900)" : BORDER,
+                    backgroundColor: on ? "var(--gray-900)" : "white",
+                    color: on ? "white" : "var(--gray-600)",
+                    fontSize: "11.5px", fontWeight: 600,
+                  }}>
+                  <span style={{ display: "flex", color: on ? "white" : "var(--warning-500)" }}>{item.icon}</span>
+                  {item.label}
+                  <span style={{ fontWeight: 800, color: on ? "white" : "var(--gray-900)" }}>{item.count}</span>
+                </button>
+              </Tooltip>
+            );
+          })}
+        </div>
+      )}
       {/* The distribution, and the way to what those words mean — at the end of the sentence that
           uses them. A guide link is worth having (the role descriptions otherwise live inside a
           select an auditor may not be allowed to open), but it needs something to be attached to,
@@ -2833,7 +2861,7 @@ function UserCountStrip({
   );
 }
 
-type UserSortKey = "name" | "permission" | "lastLogin" | "status" | "cameras";
+type UserSortKey = "name" | "projects" | "permission" | "lastLogin" | "status" | "cameras";
 
 interface PortalUsersPageProps {
   /** Scopes the table to users who have access to this project — mirrors Clerk's per-application Users tab. */
@@ -3090,7 +3118,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
    * grant, as a mark beside the preset rather than a column asking the same question twice.
    */
   const GRID = showAccountColumns
-    ? "minmax(170px, 1.35fr) 0.85fr 1.25fr 0.7fr 0.9fr 0.62fr 36px"
+    ? "minmax(160px, 1.25fr) 0.45fr 0.8fr 1.2fr 0.65fr 0.85fr 0.6fr 36px"
     : "minmax(180px, 1.4fr) 1fr 1.2fr 0.7fr 36px";
 
   const bulkIssueCodes = () => {
@@ -3243,6 +3271,9 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
          is sortable. "Every camera" is not a count, and taking the project's total for it keeps
          it at the top of the descending order where it belongs, above any narrowed account. */
       case "cameras": return scopeCountFor(u) ?? scopableCamerasFor(u).length;
+      /* How many sites this account holds. Descending is the useful direction — the people spread
+         across the installation come to the top — which is what this column is for. */
+      case "projects": return u.projectIds.length;
     }
   });
 
@@ -3346,7 +3377,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           Accounts tab used to set a filter no account's status can equal: the table emptied and
           printed "No users have access to this project yet" with six accounts one click away.
           The mirror case did the same on the other tab. A cell now shows what it counts. */}
-      <UserCountStrip users={projectUsers} rosterWaiting={rosterWaiting.length}
+      <UserCountStrip users={projectUsers}
         dormant={nowMs === null ? 0 : projectUsers.filter(u => isDormant(u, nowMs)).length}
         statusFilter={statusFilter}
         onFilter={next => {
@@ -3543,6 +3574,9 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
               let anyone rank people with. */}
           {((showAccountColumns ? [
             { label: t.colUser, key: "name" },
+            /* Sortable: "who is on more than this site" is the question, and it is answered by
+               ordering the column, not by reading five rows. */
+            { label: t.colProjects, key: "projects" },
             { label: t.colPermission, key: "permission" },
             { label: t.colAccess },
             /* Sortable, and "전체" sorts as the largest: the question this column answers is who
@@ -3584,22 +3618,53 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             <div style={{ minWidth: 0 }}>
               <p title={u.name} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</p>
               <p title={u.email} style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</p>
-              {/* WHERE ELSE THIS PERSON IS, under their address and only when the answer is yes.
-                  It was a column of its own printing a grey "이 프로젝트만" on four rows out of
-                  five — 162px spent saying what the page's own scope already says. The question
-                  worth answering is whether removing them from here leaves them access somewhere
-                  else, and that has an answer only for the few who are on another site. */}
-              {(() => {
-                const others = u.projectIds.filter(pid => pid !== projectId);
-                if (others.length === 0) return null;
-                return (
-                  <p title={others.map(projectName).join(", ")}
-                    style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {t.alsoOn(others.length === 1 ? projectName(others[0]) : t.alsoOnMore(projectName(others[0]), others.length - 1))}
-                  </p>
-                );
-              })()}
             </div>
+            {/*
+              HOW MANY SITES THIS ACCOUNT IS ON — ITS OWN COLUMN, AND A NUMBER (owner, 2026-09-22:
+              열을 추가해주는게 맞을것같은데).
+              
+              Three shapes were tried on the way here and the measurements are why this one won.
+              A column of grey "이 프로젝트만" spent 162px saying what the page's own scope already
+              says. A sentence under the address — "Riverside International School에도 있음" —
+              needed 264px in a 239px cell, so it was clipped on the one row that had it, two
+              sites came to 291px and three to 294px, and it made that row 77px tall against 59px
+              for the rest. A chip beside the name read as one more PERSON: +1 by a name in a list
+              of people is "and one other", not "and one other site".
+              
+              A number in a column of numbers cannot be misread, does not grow (one more site is
+              one more digit), and sorts — which is the question an access review actually asks:
+              who is on more than this site. The names are in the hover, and 프로젝트… in the row
+              menu is where it changes.
+            */}
+            {(() => {
+              const others = u.projectIds.filter(pid => pid !== projectId);
+              const hint = others.length === 0 ? t.projectsOnlyThis : t.alsoOn(others.map(projectName).join(", "));
+              const style: React.CSSProperties = {
+                fontSize: "12px", fontVariantNumeric: "tabular-nums", textAlign: "left",
+                /* One site is the ordinary answer and stays quiet; more than one is the row worth
+                   finding, so it is the one that gets the ink. */
+                color: others.length > 0 ? "var(--gray-900)" : "var(--gray-400)",
+                fontWeight: others.length > 0 ? 700 : 500,
+              };
+              /* THE NUMBER OPENS THE LIST (owner: 프로젝트 권한이 이거말고 또 있는지 보여주긴
+                 해야겠지?). Yes — and a hover cannot be the only way to read it: an access review
+                 is somebody going down the column, and nobody hovers five rows to find the one
+                 that says two. Pressing it opens the same dialog the row menu's 프로젝트… opens,
+                 which is where those projects are also changed. Not a button for a reader who
+                 cannot change access — then it is a value with its hint, like the cells beside
+                 it. The underline only where there is something else to see: a dotted number on
+                 every row would make "1" look like it hides something. */
+              if (!manageAccess) return <span title={hint} style={style}>{t.projectsCount(u.projectIds.length)}</span>;
+              return (
+                <button type="button" title={hint} onClick={() => setEditingProjectsFor(u)}
+                  style={{
+                    ...style, border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
+                    borderBottom: others.length > 0 ? "1px dotted var(--gray-300)" : "none",
+                  }}>
+                  {t.projectsCount(u.projectIds.length)}
+                </button>
+              );
+            })()}
             {/* A VALUE, NOT A CONTROL — both this cell and Access beside it. They were each a
                 bordered 36px select on every row, which made a list of people read as a form for
                 editing permissions, and left the row's real actions (suspend, remove) as the
