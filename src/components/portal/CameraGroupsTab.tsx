@@ -180,9 +180,10 @@ const CARD_CHIP_CAP = 6;
  * not build the groups they actually need (the gate camera belongs to 정문 and to 야간 순찰 both).
  * So each row says how many other groups hold that camera and names them on hover.
  *
- * NO ESCAPE KEY, AND THE SCRIM DOES NOT CLOSE IT. Both are the ordinary way out of a dialog and
- * both would throw away a half-built group with no undo. ✕ and 취소 are the ways out, and they are
- * gestures the reader chose deliberately.
+ * THE SCRIM CLOSES IT, ESCAPE DOES NOT (owner, 2026-09-22: 왼쪽 딤드된 부분 클릭해도 닫을수있게
+ * 해줘야할것같은데). A dimmed area is a dismiss target everywhere else, so a panel that ignores it
+ * reads as stuck. Escape is not visible and would be the same loss with none of the affordance.
+ * The cost is stated rather than designed around: that click discards a half-built group.
  */
 function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
   /** The group being changed, or null while one is being made. */
@@ -290,7 +291,10 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", justifyContent: "flex-end" }}>
+    /* Same rule as the shared Drawer, and the same guard: only a click that BEGAN on the scrim
+       closes it, or every button inside would close it too on the way out. */
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", justifyContent: "flex-end" }}>
       <div style={{
         backgroundColor: "white", width: "min(672px, 100%)", height: "100%",
         borderLeft: BORDER, boxShadow: "var(--shadow-modal)",

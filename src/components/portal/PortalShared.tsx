@@ -2286,7 +2286,9 @@ export function useGrantNames(): { action: Record<AppAction, string>; screen: Re
  * The reasoning inside is the settings rail's, kept verbatim — it is measured, not preference.
  */
 export function SectionNav({ sections, active, onSelect }: {
-  sections: { id: string; label: string; icon: React.ReactNode }[];
+  /** `count` is optional: a figure at the row's right edge, the way the product's own left rail
+   *  carries VIP 등록 122 and 입력 소스 62. Omit it where the section counts nothing. */
+  sections: { id: string; label: string; icon: React.ReactNode; count?: number }[];
   active: string;
   onSelect: (id: string) => void;
 }) {
@@ -2351,7 +2353,12 @@ export function SectionNav({ sections, active, onSelect }: {
               }} />
             )}
             <span style={{ display: "flex", flexShrink: 0, color: on ? "var(--gray-900)" : warm ? "var(--gray-600)" : "var(--gray-400)" }}>{sec.icon}</span>
-            <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sec.label}</span>
+            <span style={{ minWidth: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sec.label}</span>
+            {sec.count !== undefined && (
+              <span style={{ flexShrink: 0, fontSize: "11px", fontWeight: 600, color: warm ? "var(--gray-500)" : "var(--gray-400)", fontVariantNumeric: "tabular-nums" }}>
+                {sec.count}
+              </span>
+            )}
           </button>
         );
       })}
@@ -2373,8 +2380,15 @@ export function SectionNav({ sections, active, onSelect }: {
  * lost; a half-built form must NOT, because the same gesture would throw the work away with no
  * undo. One component cannot hold both rules without being wrong for one of them.
  *
- * So the scrim here does not close, and neither does Escape. ✕ and the panel's own cancel are the
- * ways out, and both are gestures the reader chose.
+ * THE SCRIM CLOSES IT (owner, 2026-09-22: 패널 닫을때 왼쪽 딤드된 부분 클릭해도 닫을수있게
+ * 해줘야할것같은데). This file argued the other way an hour earlier — that a stray click would
+ * throw away a half-built form — and the owner's call is the convention: a dimmed area is a
+ * dismiss target everywhere else, and a panel that ignores it reads as stuck. The cost is real and
+ * stated rather than designed around: a form with answers in it is discarded by that click, with
+ * no undo. If that turns out to bite, the fix is a confirm on a dirty panel, not a dead scrim.
+ *
+ * Escape still does not close it. That one is not a convention the reader can see, so it would be
+ * the same loss with none of the affordance.
  *
  * WHAT THE PANEL OWNS AND WHAT THE CALLER OWNS. The panel owns the shell: the scrim, the width,
  * the full height, the header with its title and ✕, and a footer that keeps its height while the
@@ -2394,7 +2408,11 @@ export function Drawer({ title, onClose, footer, width = "520px", children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", justifyContent: "flex-end" }}>
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", justifyContent: "flex-end" }}>
+      {/* `e.target === e.currentTarget`, not a bare handler: a click that started inside the panel
+          bubbles out to here, and closing on that would make every button in the panel also a
+          close button. */}
       <div style={{
         backgroundColor: "white", width: `min(${width}, 100%)`, height: "100%",
         borderLeft: BORDER, boxShadow: "var(--shadow-modal)",

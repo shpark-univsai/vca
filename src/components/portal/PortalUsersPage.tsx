@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Asterisk, Boxes, CircleHelp, ClipboardPlus, KeyRound, KeySquare, MailQuestion, MonitorOff, MoreVertical, UserMinus, UserX, Users2 } from "lucide-react";
+import { Asterisk, Boxes, CircleHelp, ClipboardList, ClipboardPlus, KeyRound, KeySquare, MailQuestion, MonitorOff, MoreVertical, UserMinus, UserX, Users as UsersIcon, Users2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, SectionNav, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, SectionNav, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import CameraGroupsTab from "./CameraGroupsTab";
 import AccessPresetsTab from "./AccessPresetsTab";
@@ -1342,69 +1342,46 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   }
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      /*
-       * flex-start, NOT centre — and this was a real bug, not a preference.
-       *
-       * `align-items: center` on a scrolling container centres the sheet and then splits the
-       * overflow between the two ends: the scrollable range starts at the sheet's centred top, so
-       * whatever sticks out ABOVE that point can never be reached. Measured at a 860px window
-       * (owner's report: 와 이거 스크롤이 안 된당): the sheet is 928px, the wheel moved it the
-       * full 100px it had and stopped, and at the bottom of that travel the header had gone to
-       * top: -84 — the footer's buttons and the title could not both be on screen at any scroll
-       * position. `margin: auto` on the sheet made it worse for the same reason, so that is gone
-       * too; the sheet centres horizontally through justifyContent and nothing centres it
-       * vertically any more.
-       *
-       * Short modals now sit at the top of the window instead of the middle. That is the trade,
-       * and it is the right way round: a dialog you can read all of, slightly higher than you
-       * expected, beats a centred one whose buttons are unreachable.
-       */
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
-      {/* Wider than the other modals on purpose: two columns need the room.
-          CAMERA SCOPE GOES IN THE LEFT COLUMN, NOT THIS ONE. An earlier note here said the right
-          column was its home, which the arithmetic disproves — the right column already stands at
-          788px with four presets and the seven grant rows, and the picker is 544px, so it would
-          put the modal at 1454px. The left column is at 470px and has the space. It is also where
-          the question belongs: this column already carries the door, the console role and the
-          project chips, and the project chips ARE a scope picker. Camera scope is one notch
-          narrower than they are, and the column then reads as one chain — team, which door, which
-          project, which cameras inside it. The right column answers a different question: which
-          screens, which actions.
-          WHAT LANDED THERE IS THE SUMMARY, NOT THE PICKER. The picker writes by user id and a
-          draft has none (the result step's note has the whole argument), so the left column
-          carries the one-line state and the picker opens over the result panel. The arithmetic
-          above is why a future attempt at an inline list belongs in the left column too. */}
-      {/*
-        THE DIALOG FITS THE WINDOW, AND THE BUTTONS ARE NEVER THE PART THAT FALLS OFF.
-        
-        Measured at a 912px window, which is an ordinary laptop: the sheet came out 928px tall, so
-        it opened with 취소 and 초대 보내기 sixteen pixels below the fold. Scrolling did reach them
-        — 48px of travel — but a dialog whose primary action is off screen when it opens is asking
-        the reader to go looking for the way out, and the owner read that as the thing not
-        scrolling at all.
-        
-        So the sheet is capped at the window less its 16px gutters and laid out as a column: the
-        heading and the footer keep their height, and the two-column body in between takes what is
-        left and scrolls itself. That is the opposite of the rule this file follows elsewhere
-        ("scroll the backdrop, not the sheet", because a select's dropdown gets clipped by an
-        overflow context) — the exception is bought deliberately: the two selects in this body sit
-        near its top, and a clipped dropdown is recoverable by scrolling while an unreachable
-        submit button is not.
-      */}
-      <div style={{
-        backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "520px", width: "100%",
-        boxShadow: "var(--shadow-modal)",
-        display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 32px)", minHeight: 0,
-      }}>
-        <div style={{ padding: "18px 24px 14px", borderBottom: "1px solid var(--gray-200)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.modalTitle}</p>
-          <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+    /*
+     * THE INVITE FORM IS A PANEL OFF THE RIGHT EDGE NOW (owner, 2026-09-22: 사용자초대 중앙팝업도
+     * 오른쪽 패널로 바꾸는게 낫지않을까 · 하나로 가능한한 통일하는게 좋을것같아 오른쪽패널로).
+     *
+     * Inviting somebody is work done against the account list: the table you are adding a row to
+     * stays on screen behind the panel, which a centred sheet covered.
+     *
+     * IT ALSO RETIRES A MEASURED EXCEPTION. As a centred sheet this dialog had to cap itself at
+     * the window less its gutters and lay itself out as a column, because at a 912px window it
+     * came out 928px tall and opened with 취소 and 초대 보내기 sixteen pixels below the fold. A
+     * panel is the height of the window by definition, so the header and the footer keep their
+     * places and the body between them scrolls — the shared Drawer does that for every panel
+     * rather than this one file arguing for itself.
+     *
+     * The scrim no longer closes it, which is a change and the right one: this form holds up to
+     * six answers, and a stray click on the page behind it used to throw them away with no undo.
+     * ✕ and 취소 are the ways out.
+     */
+    <Drawer title={t.modalTitle} onClose={onClose} width="520px"
+      footer={<>
+          {/* The reason sits beside the button rather than leaving it dead and silent. Shown only
+              once Invite has been pressed: nothing on this form goes red while somebody is still
+              filling it in, because a form that argues during typing is a form people fight. */}
+          {/* `grantsChosen` is already true for a Portal-only invite — there are no screens to
+              pick — so this cannot fire on one. */}
+          {submitted && !grantsChosen && (
+            <span style={{ flex: 1, fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.45 }}>
+              {/* Two different mistakes, two different sentences. "Pick a way" does not help
+                  somebody who already picked Custom and is looking at seven empty rows. */}
+              {effectiveChoice === null ? t.grantNotChosen : t.grantNoScreens}
+            </span>
+          )}
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {t.cancel}
           </button>
-        </div>
-        {/* The part that gives, between two that do not. minHeight 0 because a flex child will
-            not shrink below its content without it, which is what made the whole sheet grow. */}
+          <button className="portal-btn-primary" onClick={submit} disabled={!canInvite}
+            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: canInvite ? "pointer" : "not-allowed", opacity: canInvite ? 1 : 0.5 }}>
+            {t.sendInvite}
+          </button>
+      </>}>
         {/* A REAL FORM, so Enter sends it. Every reference dialog is one field and a button away
             from done, and ours was six fields where the keyboard could not finish the job: the
             primary button was the only way, and the pointer had to travel past a grant list to
@@ -1412,7 +1389,10 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
             code path that could diverge. */}
         <form
           onSubmit={e => { e.preventDefault(); if (canInvite) submit(); }}
-          style={{ overflowY: "auto", minHeight: 0, ...MODAL_BODY_WITH_SELECT }}>
+          /* The Drawer's body is the scrolling box now, so the form keeps only its padding and
+             its gap — `overflowY: auto` here as well would be a scroll inside a scroll, and the
+             inner one is the one the reader's wheel would not reach. */
+          style={MODAL_BODY_WITH_SELECT}>
           {/*
             THE ADDRESS FIRST (2026-09-21, after eight invite dialogs on Mobbin: Stripe,
             Productboard, Dub, Whop, Emergent, Zapier, Wellfound, Tana — every one of them opens
@@ -1605,29 +1585,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
             </FoldRow>
           </div>
         </form>
-        <div style={{ padding: "16px 24px", borderTop: "1px solid var(--gray-200)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
-          {/* The reason sits beside the button rather than leaving it dead and silent. Shown only
-              once Invite has been pressed: nothing on this form goes red while somebody is still
-              filling it in, because a form that argues during typing is a form people fight. */}
-          {/* `grantsChosen` is already true for a Portal-only invite — there are no screens to
-              pick — so this cannot fire on one. */}
-          {submitted && !grantsChosen && (
-            <span style={{ flex: 1, fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.45 }}>
-              {/* Two different mistakes, two different sentences. "Pick a way" does not help
-                  somebody who already picked Custom and is looking at seven empty rows. */}
-              {effectiveChoice === null ? t.grantNotChosen : t.grantNoScreens}
-            </span>
-          )}
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.cancel}
-          </button>
-          <button className="portal-btn-primary" onClick={submit} disabled={!canInvite}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: canInvite ? "pointer" : "not-allowed", opacity: canInvite ? 1 : 0.5 }}>
-            {t.sendInvite}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Drawer>
   );
 }
 
@@ -3358,72 +3316,44 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           something has to answer when one of them is aimed at the only owner. A reissued password
           brings back an owner who is locked out; it cannot appoint one. */}
 
-      {/*
-        TWO TABS ON TOP, AND THE OTHER TWO IN A RAIL DOWN THE LEFT (owner, 2026-09-22: 상단 탭에
-        네개가 나란히 있는게 여전히 어색한데, 앞에 두개만 남겨두고 설정페이지처럼 왼쪽에 작은
-        사이드바처럼 넣어주면 어떨까).
-       
-        The third answer to the same objection, and the first that separates the two kinds without
-        spending a row or a qualifier on saying so. A 1px rule said "two batches" and not "one
-        level down"; a second tab row said the level but read the lower pair as less important; a
-        「권한용 묶음」 qualifier named the kind but left all four on one line. A rail is a different
-        KIND of navigation from a tab, which is the difference itself — 계정 and 명부 대기 are two
-        views of the page's subject, and the rail holds the two objects that subject is GIVEN.
-       
-        It is the settings page's rail, not a new one (SectionNav, moved into PortalShared for
-        this): same 180px, same leading bar on the current row, same greys.
-       
-        NEITHER NAV IS ALWAYS LIT, and that is the honest reading. On 계정 the rail marks nothing,
-        because you are not in either of those places; on 카메라 그룹 the tabs mark nothing, for the
-        same reason. A rail row lit while the reader is somewhere else would be the one thing worse
-        than an unlit one.
-      */}
-      <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
-        {([
-          { id: "accounts", label: t.peopleTabAccounts, count: projectUsers.length, hint: t.peopleTabAccountsHint },
-          { id: "roster", label: t.peopleTabRoster, count: rosterWaiting.length, hint: t.peopleTabRosterHint },
-        ] as { id: "accounts" | "roster"; label: string; count: number; hint: string }[]).map(tab => {
-          const active = peopleTab === tab.id;
-          return (
-            /* On the tab rather than a line under it. The tab name is a state (on the roster),
-               which is the right name for what the tab holds but says nothing about what you came
-               here to do; a permanent sentence answering that would be clutter for everybody who
-               already knows. Our own Tooltip, not the browser title attribute — that one wants the
-               pointer held still for over a second and this hint has to be findable. */
-            <Tooltip key={tab.id} text={tab.hint}>
-              <button onClick={() => setPeopleTab(tab.id)}
-                style={{
-                  display: "flex", alignItems: "center", gap: "6px",
-                  background: "none", border: "none", cursor: "pointer",
-                  padding: "0 2px 10px", fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
-                  color: active ? "var(--gray-900)" : "var(--gray-500)",
-                  borderBottom: active ? "2px solid var(--gray-900)" : "2px solid transparent",
-                }}>
-                {tab.label}
-                <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{tab.count}</span>
-              </button>
-            </Tooltip>
-          );
-        })}
-      </div>
 
       {/* THE THIRD TAB REPLACES THE LIST, it does not sit above it. Camera groups are not people:
           the count strip, the search toolbar and the account/roster table all answer questions
           about accounts, and leaving them on screen under a table of groups would have the page
           showing two subjects at once with one set of filters over both. */}
+      {/*
+        ALL FOUR IN THE RAIL, AND NO TAB ROW AT ALL (owner, 2026-09-22: 계정이랑 명부대기도 왼쪽
+        사이드바로 옮겨야할것같아).
+       
+        The fourth answer to one objection, and the last one, because it stops splitting the
+        difference. The three before it each kept a tab row and argued about what belonged in it:
+        a 1px rule inside the row (93d1c02), a second row under it, a 「권한용 묶음」 qualifier on
+        one label (3eb3ded), then two in the row and two in a rail (38b19ea). That last one left
+        BOTH navs half-lit — on 계정 the rail marked nothing, on 카메라 그룹 the tabs marked
+        nothing — which was honest but is two controls where one will do.
+       
+        One rail, four rows, exactly one of them current. The kinds are still two and the rail
+        still says so, by order and by the icons: the two people views first, then the two objects
+        those people are given. Same component as the settings page (SectionNav), so this page and
+        that one now navigate the same way.
+       
+        The counts move into the rows. 계정 5 · 명부 대기 8 were on the tabs and are the numbers
+        somebody opens this page to see; a rail row has room for a figure at its right edge, which
+        is what the product's own left rail already does with VIP 등록 122 and 입력 소스 62.
+      */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: "24px" }}>
-      {/* A group answers "which cameras", a preset answers "which screens", and the invite form
-          asks both — so they sit together, in the order the form asks them. Each keeps the icon
-          its own screen already used for itself. */}
       <SectionNav
         sections={[
-          { id: "groups", label: t.peopleTabGroups, icon: <Boxes size={15} strokeWidth={2} /> },
-          { id: "presets", label: t.peopleTabPresets, icon: <KeySquare size={15} strokeWidth={2.2} /> },
+          { id: "accounts", label: t.peopleTabAccounts, count: projectUsers.length, icon: <UsersIcon size={15} strokeWidth={2} /> },
+          { id: "roster", label: t.peopleTabRoster, count: rosterWaiting.length, icon: <ClipboardList size={15} strokeWidth={2} /> },
+          /* A group answers "which cameras", a preset answers "which screens", and the invite form
+             asks both — so they sit together, in the order the form asks them. Each keeps the icon
+             its own screen already used for itself. */
+          { id: "groups", label: t.peopleTabGroups, count: cameraGroupsInProject(cameraGroups, projectId).length, icon: <Boxes size={15} strokeWidth={2} /> },
+          { id: "presets", label: t.peopleTabPresets, count: pagePresets.length, icon: <KeySquare size={15} strokeWidth={2.2} /> },
         ]}
-        /* "" rather than peopleTab: on 계정 and 명부 대기 neither row is current, and passing the
-           tab id would light nothing anyway — this says so on purpose. */
-        active={peopleTab === "groups" || peopleTab === "presets" ? peopleTab : ""}
-        onSelect={id => setPeopleTab(id as "groups" | "presets")}
+        active={peopleTab}
+        onSelect={id => setPeopleTab(id as "accounts" | "roster" | "groups" | "presets")}
       />
       <div style={{ minWidth: 0, flex: 1 }}>
       {peopleTab === "presets" ? <AccessPresetsTab teamId={pageTeamId ?? ""} canEdit={manageAccess} />
