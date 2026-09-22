@@ -519,12 +519,26 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
               group back — rings on dots and a count name nothing — and in the list the ticks are
               spread over eighteen zones. Each chip's ✕ takes that camera out, which is the one
               action this block is for. */}
-          {/* NO CAP ON THESE ANY MORE. They were held to three rows while the picker above claimed
-              a fixed 384px whatever it held; now that a list box shrinks to its rows, the chips
-              get the space the box gave back and the body scrolls when there are genuinely too
-              many. Never capped with 「외 N대」 either way — every chip carries the ✕ that takes
-              that camera out, and a chip you cannot see is a camera you cannot remove. */}
-          {picked.length > 0 && (
+          {/*
+            MAP VIEW ONLY (owner, 2026-09-22: 아래 칩들이 있어야할까?).
+           
+            In list view they said the same thing twice: the ticked rows are right there with their
+            names, and clicking a row takes that camera out — so the chips repeated five names the
+            reader had just ticked, and the ✕ duplicated the tick.
+           
+            On the MAP they are the only way to read the group back. A ringed dot names nothing and
+            the count names nothing, so without them the reader has clicked five points and has no
+            receipt; and a camera they cannot find again on the map can only be removed here.
+           
+            The one case this gives up: in list view a CLOSED zone hides its ticks, and the chips
+            used to answer that. What answers it now is the zone's own 「그룹에 N대」, which says
+            which zone to open — a pointer rather than the names. Worth watching; if it is not
+            enough, the fix is on the closed zone's own row, not a second copy of the membership.
+           
+            Never capped with 「외 N대」: every chip carries the ✕ that takes that camera out, and a
+            chip you cannot see is a camera you cannot remove.
+          */}
+          {view === "map" && picked.length > 0 && (
             <div style={{ flexShrink: 0, display: "flex", flexWrap: "wrap", gap: "6px" }}>
               {picked.map(id => {
                 const cam = cameras.find(c => c.id === id);
