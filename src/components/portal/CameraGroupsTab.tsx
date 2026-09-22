@@ -356,25 +356,26 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
           One selection, two views of it, like the list and the map: ticking in either side shows
           up in the other, because they are the same `picked`.
         */}
-        <div style={{ padding: "12px 20px", display: "flex", gap: "16px", alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "stretch", border: BORDER, borderRadius: "10px", margin: "0 20px 16px", overflow: "hidden", height: "56vh", minHeight: "420px" }}>
           {/* 360/200, not 460/260: the editor pane is about 650px wide now that the table keeps
               the left side, and the wider pair wrapped — the group's own list ended up below
               eighteen zone rows, off the bottom of the window, which is the one place it must not
               be. Measured at 1440: picker 400px, list 218px, side by side. */}
-          <div style={{ flex: "1 1 360px", minWidth: 0 }}>
+          <div style={{ flex: "1 1 360px", minWidth: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
           {view === "map" ? (
-            <div style={{ height: "56vh", minHeight: "420px" }}>
+            <div style={{ flex: 1, minHeight: 0 }}>
               <CameraMapView
                 cameras={cameras}
                 selectedIds={new Set(picked)}
                 onToggleSelect={toggle}
                 alwaysPicking
+                fill
               />
             </div>
           ) : zones.length === 0 ? (
             <p style={{ fontSize: "12px", color: "var(--gray-400)", padding: "10px", lineHeight: 1.5 }}>{t.membersNone}</p>
           ) : (
-            <div style={{ border: BORDER, borderRadius: "10px", padding: "8px" }}>
+            <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px" }}>
               {zones.map(([zone, list]) => {
                 const open = needle !== "" || openZones.includes(zone);
                 return (
@@ -440,7 +441,12 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
 
           {/* THE GROUP, READABLE. Fixed width so the picker keeps the room it needs; wraps under
               it on a narrow window rather than squeezing both. */}
-          <div style={{ flex: "0 1 200px", minWidth: "180px", border: BORDER, borderRadius: "10px", overflow: "hidden" }}>
+          {/* THE SECOND COLUMN OF ONE FRAME, not a small box beside a big one (owner: 레퍼런스에서
+              이런 비슷한 ui 많이 봤는데 이건 묘하게 어색해보인다). It was 104px of border next to
+              a 620px map with dead space under it; Klaviyo and Tripadvisor both run the side
+              column the full height of the map, divided by a rule. So: no border of its own, no
+              radius, full height, and the frame around both is the only box on screen. */}
+          <div style={{ flex: "0 0 210px", minWidth: "180px", display: "flex", flexDirection: "column", minHeight: 0, borderLeft: BORDER, backgroundColor: "white" }}>
             <div style={{ padding: "10px 12px", borderBottom: BORDER, backgroundColor: "var(--gray-50)", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px" }}>
               <span style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--gray-500)" }}>{t.inGroupHeading}</span>
               <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-900)", fontVariantNumeric: "tabular-nums" }}>{picked.length}</span>
@@ -450,7 +456,7 @@ function GroupEditor({ group, cameras, otherGroups, t, onSave, onClose }: {
                  than reporting a problem. */
               <p style={{ padding: "14px 12px", fontSize: "11.5px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.inGroupEmpty}</p>
             ) : (
-              <div style={{ maxHeight: "52vh", overflowY: "auto" }}>
+              <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
                 {picked.map(id => {
                   const cam = cameras.find(c => c.id === id);
                   return (

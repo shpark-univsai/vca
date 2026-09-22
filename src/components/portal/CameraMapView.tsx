@@ -188,7 +188,7 @@ function statusColor(cam: Camera): string {
 }
 
 export default function CameraMapView({
-  cameras, onInspect, onShowUnpositioned, selectedIds, onToggleSelect, alwaysPicking,
+  cameras, onInspect, onShowUnpositioned, selectedIds, onToggleSelect, alwaysPicking, fill,
 }: {
   /** The rows the table would be showing — filters applied. Split by position here. */
   cameras: Camera[];
@@ -207,6 +207,16 @@ export default function CameraMapView({
    * does nothing until somebody finds the toggle first.
    */
   alwaysPicking?: boolean;
+  /**
+   * Take the height from whatever box this is put in, instead of measuring the window.
+   *
+   * The measurement below exists for Input Sources, where this card IS the page's lower half and
+   * should fill the window. Inside the camera-group editor it is one column of a panel, and the
+   * same measurement made it TALLER THAN ITS CARD — the tiles and the "지도에 없는 N대" notice
+   * painted outside the panel's rounded edge (owner: 지도가 넘쳐). A container-driven height is
+   * the honest answer there: the parent says how tall, this draws to that.
+   */
+  fill?: boolean;
   /**
    * THE SAME SELECTION THE TABLE HOLDS (owner, 2026-09-21: 카메라 그룹을 검색하거나 지도에서
    * 선택해서 그룹핑할수있게).
@@ -285,6 +295,22 @@ export default function CameraMapView({
     const map = mapInstanceRef.current as { invalidateSize?: () => void } | null;
     if (height !== null && map?.invalidateSize) map.invalidateSize();
   }, [height]);
+
+  /* THE BOX CAN CHANGE WITHOUT THE WINDOW CHANGING. In the group editor this card shares a row
+     with a table that narrows and a list that comes and goes, so its width moves while `height`
+     stays put — and Leaflet, told nothing, keeps drawing for the old width. Watching the element
+     itself covers every cause at once, including the two that have no event: a flex sibling
+     appearing and a panel opening. */
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      const map = mapInstanceRef.current as { invalidateSize?: () => void } | null;
+      map?.invalidateSize?.();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   /* Which zone's cameras are ringed. Set by clicking a pill, cleared from the chip in the header
      — and it survives zooming in, which is the point: the ring is how the group stays legible
@@ -497,7 +523,9 @@ export default function CameraMapView({
       display: "flex", flexDirection: "column", overflow: "hidden",
       // Before the measurement lands, a sensible box rather than a collapsed one — this is the
       // first paint, and a zero-height map would flash.
-      height: height === null ? "560px" : `${height}px`,
+      /* `fill` hands the decision to the parent — see the prop's note. */
+      height: fill ? "100%" : height === null ? "560px" : `${height}px`,
+      minHeight: fill ? 0 : undefined,
     }}>
       <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px", borderBottom: BORDER, flexWrap: "wrap" }}>
         <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-600)" }}>{t.counted(placed.length, cameras.length)}</span>
