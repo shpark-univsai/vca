@@ -177,7 +177,28 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "480px", width: "100%", maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "20px 20px 0" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <p style={{ minWidth: 0, flex: 1, fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
+            {/*
+              THE NUMBER, PINNED, AND ALWAYS THERE.
+             
+              It used to live in the footer and only under `canSave && dirty` — which means it was
+              missing at exactly the moment somebody opens this dialog to find out what the account
+              currently sees, and appeared only after they had already changed something. The
+              reference mockup keeps a live counter in the header for the whole edit, and that is
+              the right place: it is the one figure this dialog sets, and every tick below moves it.
+             
+              Two readings, because the two modes are different facts and one wording cannot carry
+              both: under 전부 the account also gets cameras installed later (the radio card above
+              says so), so the total is the answer and a fraction would be a lie about a ceiling.
+            */}
+            <span style={{ flexShrink: 0, display: "flex", alignItems: "baseline", gap: "6px", padding: "5px 10px", borderRadius: "999px", border: BORDER, backgroundColor: "var(--gray-50)" }}>
+              <span style={{ fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>{t.countLabel}</span>
+              <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--gray-900)", fontVariantNumeric: "tabular-nums" }}>
+                {mode === "all" ? t.countAll(cameras.length) : t.countSome(resolvedCount, cameras.length)}
+              </span>
+            </span>
+          </div>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.intro(user.name)}</p>
         </div>
 
@@ -333,12 +354,10 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
               {!canSave ? t.refuseEmpty : t.unchanged}
             </span>
           ) : (
-            /* THE ONE NUMBER THAT MATTERS, where the decision is confirmed. Groups and individual
-               cameras overlap, so neither count answers "how much of the site is this" — the union
-               does, and it is what the table will show afterwards. */
-            <span style={{ flex: 1, fontSize: "11px", fontWeight: 700, color: "var(--gray-600)", lineHeight: 1.45 }}>
-              {mode === "all" ? t.optAll : t.resolved(resolvedCount)}
-            </span>
+            /* The union used to be printed here as well. The header now holds it for the whole
+               edit, including before anything is changed, so saying it twice on one dialog would
+               only give the reader two places to check one number. */
+            <span style={{ flex: 1 }} />
           )}
           <button className="portal-btn-outline" onClick={onClose}
             style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
@@ -368,7 +387,9 @@ const T = {
     groupGrows: "Picking a group grants whatever is in it later, too.",
     viaGroup: "in a group",
     camerasHeading: "Individual cameras",
-    resolved: (n: number) => `Sees ${n} camera${n === 1 ? "" : "s"} right now`,
+    countLabel: "Can watch",
+    countAll: (total: number) => `all ${total}`,
+    countSome: (n: number, total: number) => `${n} of ${total}`,
     noZone: "No zone",
     noCoords: "no coordinates",
     pickGroup: "select all",
@@ -399,7 +420,9 @@ const T = {
     groupGrows: "그룹을 고르면 나중에 그 그룹에 들어오는 카메라도 함께 주어집니다.",
     viaGroup: "그룹 포함",
     camerasHeading: "개별 카메라",
-    resolved: (n: number) => `지금 보는 카메라 ${n}대`,
+    countLabel: "볼 수 있는 카메라",
+    countAll: (total: number) => `전체 ${total}대`,
+    countSome: (n: number, total: number) => `${total}대 중 ${n}대`,
     noZone: "구역 미지정",
     noCoords: "좌표 없음",
     pickGroup: "전체 선택",
