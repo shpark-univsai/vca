@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useVcaStore, VIP_CATEGORY_COLORS, type VipCategory, type VipCategoryColor } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { BORDER, CONTROL_HEIGHT, ConfirmModal, TextField } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, ConfirmModal, Drawer, TextField } from "./PortalShared";
 
 /**
  * VIP categories are a TEAM's policy, not a project's.
@@ -122,14 +121,15 @@ export function VipCategoryModal({ teamId, categories, canEdit, onClose }: {
   const [requiresBasis, setRequiresBasis] = useState(true);
   const [color, setColor] = useState<VipCategoryColor>("gray");
   /*
-   * Escape stops closing this manager while the retire confirmation is stacked on top of it.
+   * This manager stays open while the retire confirmation is stacked on top of it.
    *
-   * useEscapeKey attaches a bare document listener, so with both dialogs mounted one Escape fired
-   * both handlers: the confirmation and the category manager behind it went away together, taking
-   * a half-typed category — label, validity, color — with them. The hook takes an `enabled` flag
-   * for exactly this, so the top-most dialog swallows the key.
+   * Escape belongs to the Drawer now, and it closes whatever it is given without asking who else
+   * is listening: with both dialogs mounted one keystroke closed the confirmation AND the manager
+   * behind it, taking a half-typed category — label, validity, color — with them. So the close
+   * itself is withheld while the confirmation is up. Nothing reachable is disabled by that: the
+   * confirmation's own backdrop covers this panel, ✕ included, for as long as it is open.
    */
-  useEscapeKey(onClose, !retiring);
+  const closeUnlessRetiring = () => { if (!retiring) onClose(); };
 
   const reset = () => { setEditing(null); setLabel(""); setValidDays(""); setRequiresBasis(true); setColor("gray"); };
   const startEdit = (c: VipCategory) => {
@@ -155,114 +155,116 @@ export function VipCategoryModal({ teamId, categories, canEdit, onClose }: {
   };
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "520px", width: "100%", maxHeight: "86vh", overflowY: "auto", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "20px 20px 0" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.catModalTitle}</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.catModalIntro}</p>
-        </div>
+    <Drawer
+      title={t.catModalTitle}
+      onClose={closeUnlessRetiring}
+      width="520px"
+      footer={
+        <button className="portal-btn-outline" onClick={onClose}
+          style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          {t.close}
+        </button>
+      }
+    >
+      {/* The panel header carries the title now, so the sentence about what a category decides
+          opens the body. */}
+      <p style={{ padding: "20px 20px 0", fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.catModalIntro}</p>
 
-        <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "8px" }}>
-          {categories.length === 0 && editing === null && (
-            <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5, padding: "12px 0" }}>{t.catEmpty}</p>
-          )}
-          {categories.map(c => (
-            <div key={c.id} style={{
-              display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px",
-              border: BORDER, borderRadius: "10px", opacity: c.archived ? 0.55 : 1,
-            }}>
-              <span style={{ width: "10px", height: "10px", borderRadius: "3px", flexShrink: 0, backgroundColor: categoryTint(c.color).dot }} />
-              <span style={{ flex: 1, minWidth: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {c.label}
-              </span>
-              <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>
-                {c.defaultValidDays === null ? t.catValidDaysNone : `${c.defaultValidDays}d`}
-                {c.requiresBasis ? ` · ${t.basisLabel}` : ""}
-              </span>
-              {c.archived ? (
-                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.catArchived}</span>
-              ) : !canEdit ? null : (<>
-                <button className="portal-btn-quiet" onClick={() => startEdit(c)}
-                  style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                  {t.catEdit}
-                </button>
-                {/* Retiring keeps its box. It is the one action here that cannot be undone from
-                    this screen, and it should not read as the same weight as renaming. */}
-                <button className="portal-btn-outline" onClick={() => setRetiring(c)}
-                  style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                  {t.catArchive}
-                </button>
-              </>)}
+      <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "8px" }}>
+        {categories.length === 0 && editing === null && (
+          <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5, padding: "12px 0" }}>{t.catEmpty}</p>
+        )}
+        {categories.map(c => (
+          <div key={c.id} style={{
+            display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px",
+            border: BORDER, borderRadius: "10px", opacity: c.archived ? 0.55 : 1,
+          }}>
+            <span style={{ width: "10px", height: "10px", borderRadius: "3px", flexShrink: 0, backgroundColor: categoryTint(c.color).dot }} />
+            <span style={{ flex: 1, minWidth: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {c.label}
+            </span>
+            <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>
+              {c.defaultValidDays === null ? t.catValidDaysNone : `${c.defaultValidDays}d`}
+              {c.requiresBasis ? ` · ${t.basisLabel}` : ""}
+            </span>
+            {c.archived ? (
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.catArchived}</span>
+            ) : !canEdit ? null : (<>
+              <button className="portal-btn-quiet" onClick={() => startEdit(c)}
+                style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                {t.catEdit}
+              </button>
+              {/* Retiring keeps its box. It is the one action here that cannot be undone from
+                  this screen, and it should not read as the same weight as renaming. */}
+              <button className="portal-btn-outline" onClick={() => setRetiring(c)}
+                style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                {t.catArchive}
+              </button>
+            </>)}
+          </div>
+        ))}
+
+        {!canEdit ? (
+          /* Said, not hidden — a reader who cannot find the button should learn the list has an
+             owner rather than conclude the console is broken. */
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.catOwnerOnly}</p>
+        ) : editing !== null ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catLabelField}</label>
+              <TextField value={label} onChange={setLabel} placeholder={t.catLabelPlaceholder} autoFocus />
             </div>
-          ))}
-
-          {!canEdit ? (
-            /* Said, not hidden — a reader who cannot find the button should learn the list has an
-               owner rather than conclude the console is broken. */
-            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.catOwnerOnly}</p>
-          ) : editing !== null ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catLabelField}</label>
-                <TextField value={label} onChange={setLabel} placeholder={t.catLabelPlaceholder} autoFocus />
-              </div>
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catValidDays}</label>
-                <TextField value={validDays} onChange={v => setValidDays(v.replace(/[^0-9]/g, ""))} placeholder={t.catValidDaysNone} inputMode="numeric" />
-              </div>
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catColor}</label>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  {VIP_CATEGORY_COLORS.map(name => (
-                    <button key={name} onClick={() => setColor(name)} title={name}
-                      style={{
-                        width: "28px", height: "28px", borderRadius: "8px", cursor: "pointer",
-                        backgroundColor: categoryTint(name).bg,
-                        border: color === name ? "2px solid var(--gray-900)" : "1px solid var(--gray-200)",
-                      }}>
-                      <span style={{ display: "block", width: "10px", height: "10px", borderRadius: "3px", margin: "0 auto", backgroundColor: categoryTint(name).dot }} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Default on, because most categories need one and the cost of the wrong default is
-                  asymmetric: a required basis somebody skips is a nag, a missing basis on a row
-                  that turns out wrong is a question nobody can answer. */}
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "var(--gray-600)" }}>
-                <input type="checkbox" checked={requiresBasis} onChange={e => setRequiresBasis(e.target.checked)} />
-                {t.catRequiresBasis}
-              </label>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-                <button className="portal-btn-outline" onClick={reset}
-                  style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                  {t.cancel}
-                </button>
-                <button className="portal-btn-primary" onClick={submit} disabled={!label.trim()}
-                  style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: label.trim() ? "var(--primary-400)" : "var(--gray-200)", color: label.trim() ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: label.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-                  {editing === "new" ? t.catCreate : t.catSave}
-                </button>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catValidDays}</label>
+              <TextField value={validDays} onChange={v => setValidDays(v.replace(/[^0-9]/g, ""))} placeholder={t.catValidDaysNone} inputMode="numeric" />
+            </div>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catColor}</label>
+              <div style={{ display: "flex", gap: "8px" }}>
+                {VIP_CATEGORY_COLORS.map(name => (
+                  <button key={name} onClick={() => setColor(name)} title={name}
+                    style={{
+                      width: "28px", height: "28px", borderRadius: "8px", cursor: "pointer",
+                      backgroundColor: categoryTint(name).bg,
+                      border: color === name ? "2px solid var(--gray-900)" : "1px solid var(--gray-200)",
+                    }}>
+                    <span style={{ display: "block", width: "10px", height: "10px", borderRadius: "3px", margin: "0 auto", backgroundColor: categoryTint(name).dot }} />
+                  </button>
+                ))}
               </div>
             </div>
-          ) : (
-            <button className="portal-btn-outline" onClick={() => setEditing("new")}
-              style={{ height: CONTROL_HEIGHT, borderRadius: "10px", border: `1px dashed var(--gray-300)`, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-              + {t.catNew}
-            </button>
-          )}
-          {categories.some(c => c.archived) && (
-            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.catArchiveNote}</p>
-          )}
-        </div>
-
-        <div style={{ padding: "0 20px 20px", display: "flex", justifyContent: "flex-end" }}>
-          <button className="portal-btn-outline" onClick={onClose}
-            style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            {t.close}
+            {/* Default on, because most categories need one and the cost of the wrong default is
+                asymmetric: a required basis somebody skips is a nag, a missing basis on a row
+                that turns out wrong is a question nobody can answer. */}
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "var(--gray-600)" }}>
+              <input type="checkbox" checked={requiresBasis} onChange={e => setRequiresBasis(e.target.checked)} />
+              {t.catRequiresBasis}
+            </label>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+              <button className="portal-btn-outline" onClick={reset}
+                style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                {t.cancel}
+              </button>
+              <button className="portal-btn-primary" onClick={submit} disabled={!label.trim()}
+                style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: label.trim() ? "var(--primary-400)" : "var(--gray-200)", color: label.trim() ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: label.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+                {editing === "new" ? t.catCreate : t.catSave}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button className="portal-btn-outline" onClick={() => setEditing("new")}
+            style={{ height: CONTROL_HEIGHT, borderRadius: "10px", border: `1px dashed var(--gray-300)`, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            + {t.catNew}
           </button>
-        </div>
+        )}
+        {categories.some(c => c.archived) && (
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.catArchiveNote}</p>
+        )}
       </div>
 
+      {/* The confirmation stays INSIDE the panel. It draws its own backdrop at a lower z-index
+          than the Drawer's, so as a sibling of the panel it would be painted underneath it —
+          a dialog asking a question nobody can see. */}
       {retiring && (
         <ConfirmModal
           title={t.catRetireTitle(retiring.label)}
@@ -280,7 +282,7 @@ export function VipCategoryModal({ teamId, categories, canEdit, onClose }: {
           </p>
         </ConfirmModal>
       )}
-    </div>
+    </Drawer>
   );
 }
 

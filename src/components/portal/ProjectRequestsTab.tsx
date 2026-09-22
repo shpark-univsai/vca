@@ -9,8 +9,7 @@ import {
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import { Eraser, Video } from "lucide-react";
-import { BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP, TableEmpty, SortableHeader, TextField, FilterSelect, ConfirmModal, HelpTip, usePortalEditAccess, MEASURE } from "./PortalShared";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP, TableEmpty, SortableHeader, TextField, FilterSelect, ConfirmModal, HelpTip, usePortalEditAccess, MEASURE, Drawer } from "./PortalShared";
 
 /**
  * One register for everything the outside world asks of this project.
@@ -546,21 +545,18 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-function Modal({ title, children, footer, onClose, wide }: {
-  title: string; children: React.ReactNode; footer: React.ReactNode; onClose: () => void; wide?: boolean;
+/* The three intake and decision forms are one panel, and all of what a dialog has to arrange for
+   itself — the scrim, Escape, a height that leaves the buttons on screen — is the Drawer's. What
+   is left here is the field stack's own spacing, which is this screen's and not every panel's.
+   No narrow variant any more: 460px existed so a three-field form would not look lost in the
+   middle of the screen, and against the edge there is nothing to look lost in. */
+function FormDrawer({ title, children, footer, onClose }: {
+  title: string; children: React.ReactNode; footer: React.ReactNode; onClose: () => void;
 }) {
-  useEscapeKey(onClose);
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: wide ? "520px" : "460px", width: "100%", maxHeight: "86vh", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "20px 20px 4px" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{title}</p>
-        </div>
-        <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "14px", overflowY: "auto", minHeight: 0 }}>{children}</div>
-        <div style={{ padding: "0 20px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>{footer}</div>
-      </div>
-    </div>
+    <Drawer title={title} onClose={onClose} width="520px" footer={footer}>
+      <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>{children}</div>
+    </Drawer>
   );
 }
 
@@ -591,7 +587,7 @@ function FootageIntake({ t, projectId, onClose, onSaved, add }: {
     && purpose.trim() !== "" && (!needsReference || reference.trim() !== "");
 
   return (
-    <Modal title={t.fFormTitle} onClose={onClose} wide
+    <FormDrawer title={t.fFormTitle} onClose={onClose}
       footer={<>
         <button className="portal-btn-outline" onClick={onClose} style={btn("ghost", true)}>{t.cancel}</button>
         <button className="portal-btn-primary" disabled={!canSave} style={btn("primary", canSave)}
@@ -622,7 +618,7 @@ function FootageIntake({ t, projectId, onClose, onSaved, add }: {
       <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "-6px" }}>{t.fWindowNote}</p>
       <Field label={t.fCameras}><TextField value={cameraNote} onChange={setCameraNote} placeholder={t.fCamerasPh} /></Field>
       <Field label={t.fPurpose}><TextField value={purpose} onChange={setPurpose} placeholder={t.fPurposePh} /></Field>
-    </Modal>
+    </FormDrawer>
   );
 }
 
@@ -636,7 +632,7 @@ function ErasureIntake({ t, projectId, onClose, onSaved, add }: {
   const canSave = subjectName.trim() !== "" && subjectReference.trim() !== "";
 
   return (
-    <Modal title={t.eFormTitle} onClose={onClose}
+    <FormDrawer title={t.eFormTitle} onClose={onClose}
       footer={<>
         <button className="portal-btn-outline" onClick={onClose} style={btn("ghost", true)}>{t.cancel}</button>
         <button className="portal-btn-primary" disabled={!canSave} style={btn("primary", canSave)}
@@ -650,7 +646,7 @@ function ErasureIntake({ t, projectId, onClose, onSaved, add }: {
           that does not say how it was verified. */}
       <Field label={t.eReference}><TextField value={subjectReference} onChange={setSubjectReference} placeholder={t.eReferencePh} /></Field>
       <Field label={t.eNotes}><TextField value={notes} onChange={setNotes} placeholder={t.eNotesPh} /></Field>
-    </Modal>
+    </FormDrawer>
   );
 }
 
@@ -660,7 +656,7 @@ function DecisionModal({ t, request, onClose, onDecide }: {
   const [note, setNote] = useState("");
   const can = note.trim() !== "";
   return (
-    <Modal title={t.decideTitle} onClose={onClose}
+    <FormDrawer title={t.decideTitle} onClose={onClose}
       footer={<>
         <button className="portal-btn-outline" onClick={onClose} style={btn("ghost", true)}>{t.cancel}</button>
         <button className="portal-btn-outline-danger" disabled={!can} style={btn("ghost", can)} onClick={() => onDecide(false, note)}>{t.refuse}</button>
@@ -674,7 +670,7 @@ function DecisionModal({ t, request, onClose, onDecide }: {
       <Field label={t.decideNote} hint={t.decideNoteHint}>
         <TextField value={note} onChange={setNote} placeholder={t.decideNotePh} autoFocus />
       </Field>
-    </Modal>
+    </FormDrawer>
   );
 }
 

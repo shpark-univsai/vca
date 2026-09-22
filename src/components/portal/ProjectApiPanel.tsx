@@ -32,10 +32,9 @@ import { dateKeyIn } from "@/lib/time";
 import { PROJECT_TIME_ZONE } from "@/lib/time";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TextField,
-  ConfirmModal, FieldError, RowActionsMenu, TableEmpty,
+  ConfirmModal, FieldError, RowActionsMenu, TableEmpty, Drawer,
 } from "./PortalShared";
 
 const ENDPOINTS = [
@@ -172,7 +171,6 @@ function IssueKeyModal({ projectId, onClose }: { projectId: string; onClose: () 
   const t: Dict = T[lang];
   const issueApiKey = useVcaStore(s => s.issueApiKey);
   const projects = useVcaStore(s => s.projects);
-  useEscapeKey(onClose);
 
   const [name, setName] = useState("");
   const [scope, setScope] = useState<ApiKeyScope>("read");
@@ -210,112 +208,105 @@ function IssueKeyModal({ projectId, onClose }: { projectId: string; onClose: () 
   };
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, boxShadow: "var(--shadow-modal)", width: "100%", maxWidth: "480px" }}>
-        <div style={{ padding: "20px", borderBottom: BORDER }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{issued ? t.revealTitle : t.dialogTitle}</p>
-          {issued && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.5 }}>{t.revealBody}</p>}
+    <Drawer title={issued ? t.revealTitle : t.dialogTitle} onClose={onClose} width="520px"
+      footer={issued ? (
+        /* The reveal keeps a button of its own. Leaving this stage drops a value nothing can
+           be asked for again, so there has to be one exit a reader takes on purpose — the
+           scrim, Escape and the panel's ✕ are all ways out of it by accident. */
+        <button className="portal-btn-primary" onClick={onClose}
+          style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          {t.done}
+        </button>
+      ) : (<>
+        <button className="portal-btn-outline" onClick={onClose}
+          style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          {t.cancel}
+        </button>
+        <button className="portal-btn-primary" onClick={submit} disabled={!valid}
+          style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+          {t.issueButton}
+        </button>
+      </>)}>
+      {issued ? (
+        <div style={{ padding: "20px" }}>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginBottom: "12px", lineHeight: 1.5 }}>{t.revealBody}</p>
+          <div style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
+            <code style={{
+              flex: 1, minWidth: 0, fontSize: "12px", fontFamily: "monospace", color: "var(--gray-900)",
+              backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "8px", padding: "10px",
+              wordBreak: "break-all", lineHeight: 1.5,
+            }}>
+              {issued.secret}
+            </code>
+            <button onClick={copy}
+              style={{ flexShrink: 0, alignSelf: "flex-start", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              {copied ? t.copied : t.copy}
+            </button>
+          </div>
+          {refusal && <div style={{ marginTop: "8px" }}><FieldError>{refusal}</FieldError></div>}
+          {/* The one thing a reader cannot find out by trying: this value is not on any server. */}
+          <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.5, marginTop: "12px" }}>{t.revealMock}</p>
         </div>
+      ) : (
+        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldName} *</label>
+            <TextField value={name} onChange={v => { setName(v); setRefusal(null); }} placeholder={t.fieldNamePlaceholder} />
+            <p style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.fieldNameHint}</p>
+            {refusal && <FieldError>{refusal}</FieldError>}
+          </div>
 
-        {issued ? (
-          <div style={{ padding: "20px" }}>
-            <div style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
-              <code style={{
-                flex: 1, minWidth: 0, fontSize: "12px", fontFamily: "monospace", color: "var(--gray-900)",
-                backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "8px", padding: "10px",
-                wordBreak: "break-all", lineHeight: 1.5,
-              }}>
-                {issued.secret}
-              </code>
-              <button onClick={copy}
-                style={{ flexShrink: 0, alignSelf: "flex-start", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                {copied ? t.copied : t.copy}
-              </button>
-            </div>
-            {refusal && <div style={{ marginTop: "8px" }}><FieldError>{refusal}</FieldError></div>}
-            {/* The one thing a reader cannot find out by trying: this value is not on any server. */}
-            <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.5, marginTop: "12px" }}>{t.revealMock}</p>
-            <div style={{ marginTop: "16px", display: "flex", justifyContent: "flex-end" }}>
-              <button className="portal-btn-primary" onClick={onClose}
-                style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                {t.done}
-              </button>
+          {/* Two cards rather than a select: what a key may do is the decision on this dialog
+              worth reading twice, and a collapsed list hides the half that matters. */}
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldScope} *</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {([["read", t.scopeRead, t.scopeReadDesc], ["readwrite", t.scopeWrite, t.scopeWriteDesc]] as const).map(([value, label, desc]) => (
+                <label key={value} style={{
+                  display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer",
+                  padding: "10px 12px", borderRadius: "10px",
+                  border: scope === value ? "1px solid var(--primary-400)" : BORDER,
+                  backgroundColor: scope === value ? "var(--primary-100)" : "white",
+                }}>
+                  <input type="radio" name="api-scope" checked={scope === value} onChange={() => setScope(value)}
+                    style={{ marginTop: "2px", accentColor: "var(--primary-400)", cursor: "pointer" }} />
+                  <span>
+                    <span style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</span>
+                    <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", marginTop: "2px", lineHeight: 1.5 }}>{desc}</span>
+                  </span>
+                </label>
+              ))}
             </div>
           </div>
-        ) : (
-          <>
-            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldName} *</label>
-                <TextField value={name} onChange={v => { setName(v); setRefusal(null); }} placeholder={t.fieldNamePlaceholder} />
-                <p style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.fieldNameHint}</p>
-                {refusal && <FieldError>{refusal}</FieldError>}
-              </div>
 
-              {/* Two cards rather than a select: what a key may do is the decision on this dialog
-                  worth reading twice, and a collapsed list hides the half that matters. */}
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldScope} *</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {([["read", t.scopeRead, t.scopeReadDesc], ["readwrite", t.scopeWrite, t.scopeWriteDesc]] as const).map(([value, label, desc]) => (
-                    <label key={value} style={{
-                      display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer",
-                      padding: "10px 12px", borderRadius: "10px",
-                      border: scope === value ? "1px solid var(--primary-400)" : BORDER,
-                      backgroundColor: scope === value ? "var(--primary-100)" : "white",
+          <div>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldExpiry} *</label>
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+              {EXPIRY_CHOICES.map(choice => {
+                const selected = expiryDays === choice.days;
+                return (
+                  <button key={String(choice.days)} onClick={() => setExpiryDays(choice.days)}
+                    style={{
+                      height: "32px", padding: "0 12px", borderRadius: "8px", cursor: "pointer", fontFamily: "inherit",
+                      border: selected ? "1px solid var(--primary-400)" : BORDER,
+                      backgroundColor: selected ? "var(--primary-100)" : "white",
+                      color: selected ? "var(--primary-400)" : "var(--gray-600)",
+                      fontSize: "12px", fontWeight: 700,
                     }}>
-                      <input type="radio" name="api-scope" checked={scope === value} onChange={() => setScope(value)}
-                        style={{ marginTop: "2px", accentColor: "var(--primary-400)", cursor: "pointer" }} />
-                      <span>
-                        <span style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</span>
-                        <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", marginTop: "2px", lineHeight: 1.5 }}>{desc}</span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldExpiry} *</label>
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                  {EXPIRY_CHOICES.map(choice => {
-                    const selected = expiryDays === choice.days;
-                    return (
-                      <button key={String(choice.days)} onClick={() => setExpiryDays(choice.days)}
-                        style={{
-                          height: "32px", padding: "0 12px", borderRadius: "8px", cursor: "pointer", fontFamily: "inherit",
-                          border: selected ? "1px solid var(--primary-400)" : BORDER,
-                          backgroundColor: selected ? "var(--primary-100)" : "white",
-                          color: selected ? "var(--primary-400)" : "var(--gray-600)",
-                          fontSize: "12px", fontWeight: 700,
-                        }}>
-                        {choice.days === null ? t.expiryNone : t.expiryDays(choice.days)}
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* Not a refusal. A permanent key is a real choice on a site nobody visits often;
-                    what it costs is worth one line where the choice is made. */}
-                {expiryDays === null && (
-                  <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.5, marginTop: "8px" }}>{t.expiryNoneWarning}</p>
-                )}
-              </div>
+                    {choice.days === null ? t.expiryNone : t.expiryDays(choice.days)}
+                  </button>
+                );
+              })}
             </div>
-            <div style={{ padding: "16px 20px", borderTop: BORDER, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-              <button className="portal-btn-outline" onClick={onClose}
-                style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                {t.cancel}
-              </button>
-              <button className="portal-btn-primary" onClick={submit} disabled={!valid}
-                style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-                {t.issueButton}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+            {/* Not a refusal. A permanent key is a real choice on a site nobody visits often;
+                what it costs is worth one line where the choice is made. */}
+            {expiryDays === null && (
+              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.5, marginTop: "8px" }}>{t.expiryNoneWarning}</p>
+            )}
+          </div>
+        </div>
+      )}
+    </Drawer>
   );
 }
 

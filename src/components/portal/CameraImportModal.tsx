@@ -2,10 +2,9 @@
 
 import { useRef, useState } from "react";
 import { useVcaStore, projectChannelLimit } from "@/lib/vcaStore";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER } from "./PortalShared";
+import { BORDER, Drawer } from "./PortalShared";
 import {
   buildCameraImportRows, decodeSpreadsheetBytes, importableRows, isBlocking, looksLikeXlsx, parseDelimited,
   type CameraImportIssue, type CameraImportMode, type ParsedCameraRow,
@@ -164,7 +163,6 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t: Dict = T[lang];
-  useEscapeKey(onClose);
 
   const inputRef = useRef<HTMLInputElement>(null);
   // What the file is for. Explicit, because "update if the code exists" would let a file meant to
@@ -321,221 +319,210 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
   const GRID = "40px 1.2fr 0.9fr 1.6fr 0.9fr 1fr";
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{
-        backgroundColor: "white", borderRadius: "16px", border: BORDER, width: "100%",
-        maxWidth: parsed || result ? "820px" : "460px",
-        maxHeight: "86vh", display: "flex", flexDirection: "column",
-        boxShadow: "var(--shadow-modal)",
-      }}>
-        <div style={{ padding: "20px", borderBottom: parsed || result ? BORDER : "none", flexShrink: 0 }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{result ? t.doneTitle : t.title}</p>
-          {!result && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.5 }}>{t.subtitle}</p>}
-        </div>
-
-        {result ? (
-          <>
-            <div style={{ padding: "20px", overflowY: "auto", minHeight: 0 }}>
-              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{mode === "fill-coordinates" ? t.doneFilled(result.added) : t.doneAdded(result.added)}</p>
-              {result.skipped.length > 0 && (
-                <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "2px" }}>{t.doneSkipped(result.skipped.length)}</p>
-              )}
-              {/* The "registered but not on the map" note is gone with the state it described:
-                  nothing imports without coordinates any more (see WARNINGS_BY_MODE), so a line
-                  explaining what happens to those rows would describe a case this screen can no
-                  longer produce. */}
-              {result.skipped.length > 0 && (
-                <div style={{ marginTop: "16px" }}>
-                  <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.skippedHeading}</p>
-                  <div style={{ border: BORDER, borderRadius: "12px", overflow: "hidden" }}>
-                    {result.skipped.map((s, i) => (
-                      <div key={`${s.row.line}-${i}`} style={{
-                        display: "flex", gap: "10px", padding: "8px 12px", alignItems: "baseline",
-                        borderBottom: i === result.skipped.length - 1 ? "none" : BORDER,
-                      }}>
-                        <span style={{ fontSize: "11px", color: "var(--gray-400)", minWidth: "28px", flexShrink: 0 }}>{s.row.line}</span>
-                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", minWidth: 0 }}>
-                          {s.row.name || s.row.code || "—"}
-                        </span>
-                        <span style={{ fontSize: "12px", color: "var(--danger-400)", marginLeft: "auto", textAlign: "right" }}>
-                          {s.reasons.join(" · ")}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
-              {result.skipped.length > 0 && (
-                <button className="portal-btn-outline" onClick={downloadSkipped}
-                  style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                  {t.downloadErrors}
-                </button>
-              )}
-              <button className="portal-btn-primary" onClick={onClose}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {t.close}
-              </button>
-            </div>
-          </>
-        ) : parsed ? (
-          <>
-            <div style={{ padding: "12px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", flexShrink: 0 }}>
-              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--success-400)" }}>{t.readyCount(okRows.length)}</span>
-              {badRows.length > 0 && <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-400)" }}>{t.errorCount(badRows.length)}</span>}
-              {/* No amber "N without coordinates" tally either — in both modes a row without a
-                  position is an error now, and it is counted with the rest of them. */}
-              <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>
-                {okRows.length === 0 ? t.allRowsBad : badRows.length > 0 ? t.errorsSkippedNote : ""}
-              </span>
-              {parsed.unmapped.length > 0 && (
-                <span style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%" }}>{t.unmappedNote(parsed.unmapped.join(", "))}</span>
-              )}
-              {/* The licence, before the button rather than after. A file of 300 rows against 40
-                  free channels is the single most likely surprise in this flow. */}
-              <span style={{
-                width: "100%", fontSize: "12px", lineHeight: 1.5,
-                color: allowance === 0 || okRows.length > allowance ? "var(--warning-500)" : "var(--gray-500)",
-              }}>
-                {limit === undefined ? t.allowanceNone
-                  : allowance === 0 ? t.allowanceFull(limit)
-                  : okRows.length > allowance ? t.allowanceCut(allowance, okRows.length)
-                  : t.allowanceLeft(allowance)}
-              </span>
-            </div>
-            <div style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
-              <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: "10px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, position: "sticky", top: 0 }}>
-                {[t.colLine, t.colName, t.colCode, t.colRtsp, t.colZone, t.colLocation].map(h => (
-                  <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{h}</span>
-                ))}
-              </div>
-              {parsed.rows.map((r, i) => {
-                const blocking = r.issues.filter(i => isBlocking(i, mode));
-                const bad = blocking.length > 0;
-                const warn = !bad && r.issues.length > 0;
-                return (
-                  <div key={`${r.line}-${i}`} style={{
-                    display: "grid", gridTemplateColumns: GRID, columnGap: "10px",
-                    padding: "8px 20px", borderBottom: BORDER,
-                    backgroundColor: bad ? "var(--danger-100)" : "transparent",
+    /* Wider than the panel's default once there is a file: the preview is the rows as read, six
+       columns of them, and at the usual width every cell would be an ellipsis. */
+    <Drawer title={result ? t.doneTitle : t.title} onClose={onClose}
+      width={parsed || result ? "760px" : "520px"}
+      footer={result ? (
+        <>
+          {result.skipped.length > 0 && (
+            <button className="portal-btn-outline" onClick={downloadSkipped}
+              style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+              {t.downloadErrors}
+            </button>
+          )}
+          <button className="portal-btn-primary" onClick={onClose}
+            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {t.close}
+          </button>
+        </>
+      ) : parsed ? (
+        <>
+          <button className="portal-btn-outline" onClick={onClose}
+            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {t.cancel}
+          </button>
+          <button onClick={commit} disabled={willImport === 0}
+            style={{
+              padding: "10px 16px", borderRadius: "8px", border: "none",
+              backgroundColor: willImport === 0 ? "var(--gray-200)" : "var(--primary-400)",
+              color: willImport === 0 ? "var(--gray-400)" : "white",
+              fontSize: "13px", fontWeight: 700, cursor: willImport === 0 ? "not-allowed" : "pointer",
+            }}>
+            {mode === "fill-coordinates" ? t.importFillN(willImport) : t.importN(willImport)}
+          </button>
+        </>
+      ) : (
+        <button className="portal-btn-outline" onClick={onClose}
+          style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          {t.cancel}
+        </button>
+      )}>
+      {result ? (
+        <div style={{ padding: "20px" }}>
+          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{mode === "fill-coordinates" ? t.doneFilled(result.added) : t.doneAdded(result.added)}</p>
+          {result.skipped.length > 0 && (
+            <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "2px" }}>{t.doneSkipped(result.skipped.length)}</p>
+          )}
+          {/* The "registered but not on the map" note is gone with the state it described:
+              nothing imports without coordinates any more (see WARNINGS_BY_MODE), so a line
+              explaining what happens to those rows would describe a case this screen can no
+              longer produce. */}
+          {result.skipped.length > 0 && (
+            <div style={{ marginTop: "16px" }}>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.skippedHeading}</p>
+              <div style={{ border: BORDER, borderRadius: "12px", overflow: "hidden" }}>
+                {result.skipped.map((s, i) => (
+                  <div key={`${s.row.line}-${i}`} style={{
+                    display: "flex", gap: "10px", padding: "8px 12px", alignItems: "baseline",
+                    borderBottom: i === result.skipped.length - 1 ? "none" : BORDER,
                   }}>
-                    <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{r.line}</span>
-                    <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name || "—"}</span>
-                    <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.code || "—"}</span>
-                    <span style={{ fontSize: "12px", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.rtspUrl || "—"}</span>
-                    <span style={{ fontSize: "12px", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.zone || "—"}</span>
-                    <span style={{ fontSize: "12px", color: bad ? "var(--danger-500)" : warn ? "var(--warning-500)" : "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {r.issues.length > 0 ? r.issues.map(issueText).join(" · ") : (r.location || "—")}
+                    <span style={{ fontSize: "11px", color: "var(--gray-400)", minWidth: "28px", flexShrink: 0 }}>{s.row.line}</span>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", minWidth: 0 }}>
+                      {s.row.name || s.row.code || "—"}
+                    </span>
+                    <span style={{ fontSize: "12px", color: "var(--danger-400)", marginLeft: "auto", textAlign: "right" }}>
+                      {s.reasons.join(" · ")}
                     </span>
                   </div>
-                );
-              })}
-            </div>
-            <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
-              <button className="portal-btn-outline" onClick={onClose}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {t.cancel}
-              </button>
-              <button onClick={commit} disabled={willImport === 0}
-                style={{
-                  padding: "10px 16px", borderRadius: "8px", border: "none",
-                  backgroundColor: willImport === 0 ? "var(--gray-200)" : "var(--primary-400)",
-                  color: willImport === 0 ? "var(--gray-400)" : "white",
-                  fontSize: "13px", fontWeight: 700, cursor: willImport === 0 ? "not-allowed" : "pointer",
-                }}>
-                {mode === "fill-coordinates" ? t.importFillN(willImport) : t.importN(willImport)}
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ padding: "0 20px 20px" }}>
-              {/*
-                THE MODE, ASKED BEFORE THE FILE.
-                
-                It existed in the library and in this component's state and had no control at all —
-                setMode was never called, so the round trip the coordinate decision leans on ("put
-                the survey in later") was reachable from code and from nobody's hands. Recorded in
-                HANDOFF-SERVER §9-2 as the way back from a deferred survey, which made writing this
-                overdue rather than optional.
-                
-                Two boxes rather than a select, and asked first: the same file means two different
-                things depending on the answer, and "update the row if the code exists" as a silent
-                default is destructive — a file meant to add twelve cameras would rewrite the name,
-                stream URL and credentials of everything already registered under a matching code.
-                See CameraImportMode.
-              */}
-              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.modeQuestion}</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
-                {([
-                  { value: "add" as CameraImportMode, label: t.modeAdd, why: t.modeAddWhy },
-                  { value: "fill-coordinates" as CameraImportMode, label: t.modeFill, why: t.modeFillWhy },
-                ]).map(option => {
-                  const on = mode === option.value;
-                  return (
-                    <button key={option.value} type="button"
-                      /* The parse is mode-dependent, so a mode change after a file is chosen has to
-                         drop what was parsed rather than reinterpret it silently. */
-                      onClick={() => { setMode(option.value); setParsed(null); setFileError(null); }}
-                      style={{
-                        textAlign: "left", padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontFamily: "inherit",
-                        border: on ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
-                        backgroundColor: on ? "var(--primary-50)" : "white",
-                      }}>
-                      <span style={{ display: "block", fontSize: "12px", fontWeight: 700, color: on ? "var(--primary-400)" : "var(--gray-900)" }}>{option.label}</span>
-                      <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", marginTop: "3px", lineHeight: 1.45 }}>{option.why}</span>
-                    </button>
-                  );
-                })}
+                ))}
               </div>
-              <div
-                onDragOver={e => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={e => { e.preventDefault(); setDragging(false); onPick(e.dataTransfer.files); }}
-                onClick={() => inputRef.current?.click()}
-                style={{
-                  border: `1px dashed ${dragging ? "var(--primary-400)" : "var(--gray-200)"}`,
-                  backgroundColor: dragging ? "var(--primary-100)" : "var(--gray-50)",
-                  borderRadius: "12px", padding: "24px 20px", textAlign: "center", cursor: "pointer",
-                }}>
-                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.dropHere}</p>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.orBrowse}</p>
+            </div>
+          )}
+        </div>
+      ) : parsed ? (
+        <>
+          <div style={{ padding: "12px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--success-400)" }}>{t.readyCount(okRows.length)}</span>
+            {badRows.length > 0 && <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-400)" }}>{t.errorCount(badRows.length)}</span>}
+            {/* No amber "N without coordinates" tally either — in both modes a row without a
+                position is an error now, and it is counted with the rest of them. */}
+            <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>
+              {okRows.length === 0 ? t.allRowsBad : badRows.length > 0 ? t.errorsSkippedNote : ""}
+            </span>
+            {parsed.unmapped.length > 0 && (
+              <span style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%" }}>{t.unmappedNote(parsed.unmapped.join(", "))}</span>
+            )}
+            {/* The licence, before the button rather than after. A file of 300 rows against 40
+                free channels is the single most likely surprise in this flow. */}
+            <span style={{
+              width: "100%", fontSize: "12px", lineHeight: 1.5,
+              color: allowance === 0 || okRows.length > allowance ? "var(--warning-500)" : "var(--gray-500)",
+            }}>
+              {limit === undefined ? t.allowanceNone
+                : allowance === 0 ? t.allowanceFull(limit)
+                : okRows.length > allowance ? t.allowanceCut(allowance, okRows.length)
+                : t.allowanceLeft(allowance)}
+            </span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: "10px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, position: "sticky", top: 0 }}>
+            {[t.colLine, t.colName, t.colCode, t.colRtsp, t.colZone, t.colLocation].map(h => (
+              <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{h}</span>
+            ))}
+          </div>
+          {parsed.rows.map((r, i) => {
+            const blocking = r.issues.filter(i => isBlocking(i, mode));
+            const bad = blocking.length > 0;
+            const warn = !bad && r.issues.length > 0;
+            return (
+              <div key={`${r.line}-${i}`} style={{
+                display: "grid", gridTemplateColumns: GRID, columnGap: "10px",
+                padding: "8px 20px", borderBottom: BORDER,
+                backgroundColor: bad ? "var(--danger-100)" : "transparent",
+              }}>
+                <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{r.line}</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name || "—"}</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.code || "—"}</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.rtspUrl || "—"}</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.zone || "—"}</span>
+                <span style={{ fontSize: "12px", color: bad ? "var(--danger-500)" : warn ? "var(--warning-500)" : "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {r.issues.length > 0 ? r.issues.map(issueText).join(" · ") : (r.location || "—")}
+                </span>
               </div>
-              <input ref={inputRef} type="file" accept=".csv,.tsv,.txt,text/csv,text/plain"
-                onChange={e => { onPick(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
+            );
+          })}
+        </>
+      ) : (
+        <div style={{ padding: "20px" }}>
+          {/* What the file has to hold, and it is still the first thing said — the heading it used
+              to sit under belongs to the panel now. */}
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginBottom: "16px", lineHeight: 1.5 }}>{t.subtitle}</p>
+          {/*
+            THE MODE, ASKED BEFORE THE FILE.
+            
+            It existed in the library and in this component's state and had no control at all —
+            setMode was never called, so the round trip the coordinate decision leans on ("put
+            the survey in later") was reachable from code and from nobody's hands. Recorded in
+            HANDOFF-SERVER §9-2 as the way back from a deferred survey, which made writing this
+            overdue rather than optional.
+            
+            Two boxes rather than a select, and asked first: the same file means two different
+            things depending on the answer, and "update the row if the code exists" as a silent
+            default is destructive — a file meant to add twelve cameras would rewrite the name,
+            stream URL and credentials of everything already registered under a matching code.
+            See CameraImportMode.
+          */}
+          <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.modeQuestion}</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
+            {([
+              { value: "add" as CameraImportMode, label: t.modeAdd, why: t.modeAddWhy },
+              { value: "fill-coordinates" as CameraImportMode, label: t.modeFill, why: t.modeFillWhy },
+            ]).map(option => {
+              const on = mode === option.value;
+              return (
+                <button key={option.value} type="button"
+                  /* The parse is mode-dependent, so a mode change after a file is chosen has to
+                     drop what was parsed rather than reinterpret it silently. */
+                  onClick={() => { setMode(option.value); setParsed(null); setFileError(null); }}
+                  style={{
+                    textAlign: "left", padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontFamily: "inherit",
+                    border: on ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
+                    backgroundColor: on ? "var(--primary-50)" : "white",
+                  }}>
+                  <span style={{ display: "block", fontSize: "12px", fontWeight: 700, color: on ? "var(--primary-400)" : "var(--gray-900)" }}>{option.label}</span>
+                  <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", marginTop: "3px", lineHeight: 1.45 }}>{option.why}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div
+            onDragOver={e => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={e => { e.preventDefault(); setDragging(false); onPick(e.dataTransfer.files); }}
+            onClick={() => inputRef.current?.click()}
+            style={{
+              border: `1px dashed ${dragging ? "var(--primary-400)" : "var(--gray-200)"}`,
+              backgroundColor: dragging ? "var(--primary-100)" : "var(--gray-50)",
+              borderRadius: "12px", padding: "24px 20px", textAlign: "center", cursor: "pointer",
+            }}>
+            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.dropHere}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.orBrowse}</p>
+          </div>
+          <input ref={inputRef} type="file" accept=".csv,.tsv,.txt,text/csv,text/plain"
+            onChange={e => { onPick(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
 
-              {fileError && (
-                <div style={{ marginTop: "12px", padding: "12px", borderRadius: "12px", backgroundColor: "var(--danger-100)" }}>
-                  <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{fileError.title}</p>
-                  <p style={{ fontSize: "12px", color: "var(--danger-500)", marginTop: "4px", lineHeight: 1.5 }}>{fileError.body}</p>
-                </div>
-              )}
+          {fileError && (
+            <div style={{ marginTop: "12px", padding: "12px", borderRadius: "12px", backgroundColor: "var(--danger-100)" }}>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{fileError.title}</p>
+              <p style={{ fontSize: "12px", color: "var(--danger-500)", marginTop: "4px", lineHeight: 1.5 }}>{fileError.body}</p>
+            </div>
+          )}
 
-              {/* Said before a file is chosen, not after it is parsed: somebody about to export
-                  300 rows out of a survey should know the ceiling first. */}
-              <p style={{ fontSize: "12px", marginTop: "14px", lineHeight: 1.5, color: allowance === 0 ? "var(--warning-500)" : "var(--gray-500)" }}>
-                {limit === undefined ? t.allowanceNone : allowance === 0 ? t.allowanceFull(limit) : t.allowanceLeft(allowance)}
-              </p>
-              <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.5 }}>
-                {mode === "fill-coordinates" ? t.columnsNoteFill : t.columnsNote}
-              </p>
-              <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "4px", lineHeight: 1.5 }}>{t.formatNote}</p>
-              <button onClick={downloadTemplate}
-                style={{ marginTop: "10px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
-                {t.downloadTemplate}
-              </button>
-            </div>
-            <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
-              <button className="portal-btn-outline" onClick={onClose}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {t.cancel}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+          {/* Said before a file is chosen, not after it is parsed: somebody about to export
+              300 rows out of a survey should know the ceiling first. */}
+          <p style={{ fontSize: "12px", marginTop: "14px", lineHeight: 1.5, color: allowance === 0 ? "var(--warning-500)" : "var(--gray-500)" }}>
+            {limit === undefined ? t.allowanceNone : allowance === 0 ? t.allowanceFull(limit) : t.allowanceLeft(allowance)}
+          </p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.5 }}>
+            {mode === "fill-coordinates" ? t.columnsNoteFill : t.columnsNote}
+          </p>
+          <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "4px", lineHeight: 1.5 }}>{t.formatNote}</p>
+          <button onClick={downloadTemplate}
+            style={{ marginTop: "10px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
+            {t.downloadTemplate}
+          </button>
+        </div>
+      )}
+    </Drawer>
   );
 }

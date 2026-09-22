@@ -9,7 +9,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed } from "@/lib/time";
 import { useToast } from "../Toast";
-import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
+import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, Drawer, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
 import VipImportModal from "./VipImportModal";
 
@@ -689,10 +689,11 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
   /*
    * True while the category manager is stacked on top of this form.
    *
-   * useEscapeKey attaches a bare document listener, so with both dialogs mounted one Escape
-   * fired both handlers: the manager and the half-filled registration closed together, and the
-   * typed name, the basis and the uploaded photo went with them. The hook takes an `enabled`
-   * flag for exactly this — the top-most dialog swallows the key.
+   * Escape belongs to the panel now, and it closes whatever it is given without asking who else
+   * is listening: with both mounted one keystroke closed the manager and the half-filled
+   * registration together, and the typed name, the basis and the uploaded photo went with them.
+   * So this form withholds its own close while the manager is up — the manager stands over it,
+   * ✕ included, for as long as it is open.
    */
   escapeSuspended?: boolean;
 }) {
@@ -751,7 +752,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
    */
   const [newGroupName, setNewGroupName] = useState<string | null>(null);
   const addPersonGroup = useVcaStore(s => s.addPersonGroup);
-  useEscapeKey(onClose, !escapeSuspended);
+  const closeUnlessManagingCategories = () => { if (!escapeSuspended) onClose(); };
 
   const createGroup = () => {
     const trimmed = (newGroupName ?? "").trim();
@@ -865,247 +866,12 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
   };
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
-            {editing ? t.editModalTitle(person.name) : t.modalTitle}
-          </p>
-          <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          </button>
-        </div>
-        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
-          {/* The face first (2026-09-15). Everything under it describes a person the system has
-              to be able to RECOGNISE, and a row with a name and no readable face is a row no
-              camera can ever match — this screen already counts those separately as "photo
-              unreadable". Asking for the picture last put the one thing the product needs at the
-              bottom of a form people fill top to bottom, after four fields that are only useful
-              once it works. */}
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
-              {/* Starred when editing too (owner's ask, 2026-09-18: "이름에는 필수표시 있으니까
-                  사진에도 필수표시가 있어야할것같구"). The mark says what the RECORD needs, not
-                  what you have to retype right now — the name field carries it over a name that is
-                  already filled in, and the photo is the same kind of requirement: a row without a
-                  face is a name no camera can ever match.
-                  It used to drop the star while editing, which made the one form show a starred
-                  name beside an unstarred photo and left the reader guessing which rule applied. */}
-              {t.facePhotoLabelRequired}
-            </label>
-            <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={handlePhotoChange} style={{ display: "none" }} />
-            {/*
-              A ROW OF TILES AND A + AT THE END, which is the shape the previous product used for
-              exactly this field. Not a wide dropzone: a dropzone is one slot by implication, and
-              the whole point here is that there can be several. Wraps, so a set of six does not
-              push the form sideways.
-            */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {photos.map((photo, index) => (
-                <span
-                  key={photo.url}
-                  onMouseEnter={() => setPhotoHoverIndex(index)}
-                  onMouseLeave={() => setPhotoHoverIndex(-1)}
-                  title={photo.fileName}
-                  style={{ position: "relative", display: "flex", width: "72px", height: "72px", borderRadius: "10px", overflow: "hidden", border: BORDER, flexShrink: 0 }}>
-                  <img src={photo.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                  {/* WHICH ONE THE REST OF THE PRODUCT SHOWS. Marked rather than left to be
-                      inferred from position: the table, the cards and the app all draw this face,
-                      and a set of five tiles gives no other clue which one that is. */}
-                  {index === 0 && (
-                    <span style={{
-                      position: "absolute", left: 0, right: 0, bottom: 0, padding: "2px 0",
-                      backgroundColor: "rgba(24,17,39,0.62)", color: "white",
-                      fontSize: "9px", fontWeight: 700, textAlign: "center",
-                    }}>
-                      {t.representativePhoto}
-                    </span>
-                  )}
-                  {photoHoverIndex === index && (
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(index)}
-                      title={t.removePhoto}
-                      style={{
-                        position: "absolute", top: "3px", right: "3px", display: "flex",
-                        width: "18px", height: "18px", alignItems: "center", justifyContent: "center",
-                        borderRadius: "50%", border: "none", backgroundColor: "rgba(24,17,39,0.72)",
-                        color: "white", cursor: "pointer", padding: 0,
-                      }}>
-                      <svg width="9" height="9" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
-                    </button>
-                  )}
-                </span>
-              ))}
-              <button
-                type="button"
-                onClick={() => photoInputRef.current?.click()}
-                style={{
-                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px",
-                  width: "72px", height: "72px", borderRadius: "10px", flexShrink: 0,
-                  border: "1px dashed var(--gray-300)", backgroundColor: "var(--gray-50)",
-                  cursor: "pointer", fontFamily: "inherit",
-                }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round"/></svg>
-                <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{photos.length === 0 ? t.uploadPhoto : t.addPhotos}</span>
-              </button>
-            </div>
-            {/* The owner's own sentence, under the tiles where the previous product put it. It is
-                the whole explanation this field needs: it says why more than one is worth adding
-                and what kind of picture is worth adding. */}
-            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoSetHint}</p>
-            {/* The reason this form is open, for the people it is open about.
-                An admin who clicked "12 photo unreadable", picked a row and got here saw a
-                perfectly ordinary-looking photograph and no hint of what was wrong with it. The
-                model's complaint belongs against the picture it could not read. */}
-            {photoState === "unreadable" && (
-              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoUnreadableHint}</p>
-            )}
-            {/* The refusal, against the picture it is about. Danger-toned and above the other two
-                hints because this one means NOTHING WAS SAVED — the other two describe a row that
-                exists. */}
-            {photoRejected && (
-              <div style={{ marginTop: "8px", padding: "10px 12px", borderRadius: "8px", backgroundColor: "var(--danger-100)", border: "1px solid var(--danger-200)" }}>
-                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{t.photoRejectedTitle}</p>
-                <p style={{ fontSize: "11px", color: "var(--gray-600)", lineHeight: 1.45, marginTop: "4px" }}>{t.photoRejectedHint}</p>
-              </div>
-            )}
-            {photoState === "reenrolling" && (
-              <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoReenrollingHint}</p>
-            )}
-          </div>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
-            <TextField value={name} onChange={setName} placeholder={t.namePlaceholder} />
-          </div>
-          {/* Classification, then what backs it, then when it ends — the three questions an audit
-              asks about a registry row, in the order somebody answers them. Above priority
-              because a category decides whether the basis is required and what the expiry starts
-              at, and a field that changes two others should come before them.
-              Behind complianceConfig.vipCategories: with it off the select is gone, `categoryId`
-              stays empty, and the basis below is therefore always optional on its own. */}
-          {categoriesEnabled && <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.categoryLabel}</label>
-            <FilterSelect
-              value={categoryId}
-              onChange={pickCategory}
-              options={[
-                // Unclassified is a choice, not a blank. An installation that has not built its
-                // taxonomy still registers people, and those rows should say so rather than look
-                // like somebody forgot.
-                { value: "", label: t.categoryNone },
-                ...categories.map(c => ({ value: c.id, label: c.label })),
-              ]}
-              footerAction={{ label: t.manageCategories, onClick: onManageCategories }}
-            />
-          </div>}
-          {/*
-           * ALWAYS VISIBLE, AND ABOVE THE FOLD — this is the field an audit asks about first, and
-           * it was hidden under "추가 정보" whenever a category did not demand it (2026-09-18).
-           *
-           * The domain's own products ask for it at creation time, not in an optional drawer:
-           * Verkada Command's "Add Person of Interest" flow asks for a name, a face, THE REASON
-           * for creating the POI, and which People List it joins — reason is one of four, not an
-           * extra. (Verkada's POI has no expiry at all; Avigilon keeps retention as a system-wide
-           * "days to retain" setting rather than a field on the person. Ours keeps the date because
-           * the deployment's retention rule is a contract item, and a policy default fills it.)
-           *
-           * It used to exist as TWO copies of the same input — a required one here and an optional
-           * one in the drawer — which is two places that had to agree about one value. One block
-           * now, and only the label changes.
-           */}
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
-              {basisRequired ? t.basisLabelRequired : t.basisLabel}
-            </label>
-            <TextField value={basis} onChange={setBasis} placeholder={t.basisPlaceholder} />
-          </div>
-          {/*
-           * NO EXPIRY FIELD, AND THAT IS THE DESIGN (owner's call, 2026-09-18: "등록할때나
-           * 편집할때 만료일을 설정할 필요도 없는거지"). Do not add one back per person.
-           *
-           * One policy decides how long a listing lasts — Settings → 프로젝트 → VIP 등록
-           * 유효기간 — and the store stamps it on save (settledExpiry). Avigilon works this way:
-           * retention is a system setting with a days figure, not a field on the person. Verkada
-           * goes further and has no expiry at all, removing people by hand.
-           *
-           * The case this used to serve — a delegation here for a week — is the bulk action's:
-           * select their rows and use 만료일 지정. That is one deliberate, audited act on a set of
-           * people, instead of a date box on every registration that nobody fills in. 118 of 122
-           * seeded rows had it unanswered, which is what a field everybody skips looks like.
-           */}
-          {/* NO RULE ABOVE THIS (owner's ask, 2026-09-18). The toggle is already a break in the
-              form — a chevron and a heavier label after a run of fields — and a line drawn right
-              above it made the split twice, once with a border and once with the control. Shut by
-              default so registering somebody is three fields; everything an audit asks about sits
-              above it either way. */}
-          <div style={{ paddingTop: "4px" }}>
-            <button
-              type="button"
-              onClick={() => setMoreOpen(o => !o)}
-              style={{
-                display: "flex", alignItems: "center", gap: "6px", padding: 0, border: "none",
-                background: "none", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
-              }}>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
-                style={{ transform: moreOpen ? "rotate(90deg)" : "none", transition: "transform 120ms" }}>
-                <path d="M4.5 2.5L8 6l-3.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              {t.moreDetails}
-            </button>
-            {moreOpen && <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "14px" }}>
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.priorityLabel}</label>
-                <FilterSelect
-                  value={priorityLabel}
-                  onChange={v => setPriorityLabel(v as typeof priorityLabel)}
-                  options={PRIORITY_LABELS.map(p => ({ value: p, label: t.priorityText[p] }))}
-                />
-              </div>
-              {/* Group is set here rather than on the detail sheet, where it used to be the one
-                  editable thing on a sheet whose other four values were read-only, next to an Edit
-                  item in the menu — which read as "the group is all you may change". */}
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.colGroup}</label>
-                {newGroupName === null ? (
-                  <FilterSelect
-                    value={groupId}
-                    onChange={setGroupId}
-                    /* "그룹 없음", the same words the filter uses for the same set. It said
-                       "개인", which read as a third kind of registration next to the group names. */
-                    options={[{ value: "", label: t.noGroup }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
-                    footerAction={{ label: t.addGroup, onClick: () => setNewGroupName("") }}
-                  />
-                ) : (
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <TextField value={newGroupName} onChange={setNewGroupName} placeholder={t.groupNamePlaceholder} autoFocus />
-                    </div>
-                    <button className="portal-btn-primary" onClick={createGroup} disabled={!newGroupName.trim()}
-                      style={{
-                        height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none",
-                        backgroundColor: newGroupName.trim() ? "var(--primary-400)" : "var(--gray-200)",
-                        color: newGroupName.trim() ? "white" : "var(--gray-400)",
-                        fontSize: "12px", fontWeight: 700, cursor: newGroupName.trim() ? "pointer" : "not-allowed", flexShrink: 0,
-                      }}>
-                      {t.createGroupAction}
-                    </button>
-                    <button className="portal-btn-outline" onClick={() => setNewGroupName(null)}
-                      style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-                      {t.cancel}
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.noteLabel}</label>
-                <TextField value={description} onChange={setDescription} placeholder={t.notePlaceholder} />
-              </div>
-            </div>}
-          </div>
-        </div>
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+    <Drawer
+      title={editing ? t.editModalTitle(person.name) : t.modalTitle}
+      onClose={closeUnlessManagingCategories}
+      width="520px"
+      footer={
+        <>
           <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
@@ -1138,9 +904,239 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
             {!editing && <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>}
             {editing ? t.saveEdit : t.register}
           </button>
+        </>
+      }
+    >
+      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+        {/* The face first (2026-09-15). Everything under it describes a person the system has
+            to be able to RECOGNISE, and a row with a name and no readable face is a row no
+            camera can ever match — this screen already counts those separately as "photo
+            unreadable". Asking for the picture last put the one thing the product needs at the
+            bottom of a form people fill top to bottom, after four fields that are only useful
+            once it works. */}
+        <div>
+          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
+            {/* Starred when editing too (owner's ask, 2026-09-18: "이름에는 필수표시 있으니까
+                사진에도 필수표시가 있어야할것같구"). The mark says what the RECORD needs, not
+                what you have to retype right now — the name field carries it over a name that is
+                already filled in, and the photo is the same kind of requirement: a row without a
+                face is a name no camera can ever match.
+                It used to drop the star while editing, which made the one form show a starred
+                name beside an unstarred photo and left the reader guessing which rule applied. */}
+            {t.facePhotoLabelRequired}
+          </label>
+          <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={handlePhotoChange} style={{ display: "none" }} />
+          {/*
+            A ROW OF TILES AND A + AT THE END, which is the shape the previous product used for
+            exactly this field. Not a wide dropzone: a dropzone is one slot by implication, and
+            the whole point here is that there can be several. Wraps, so a set of six does not
+            push the form sideways.
+          */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            {photos.map((photo, index) => (
+              <span
+                key={photo.url}
+                onMouseEnter={() => setPhotoHoverIndex(index)}
+                onMouseLeave={() => setPhotoHoverIndex(-1)}
+                title={photo.fileName}
+                style={{ position: "relative", display: "flex", width: "72px", height: "72px", borderRadius: "10px", overflow: "hidden", border: BORDER, flexShrink: 0 }}>
+                <img src={photo.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                {/* WHICH ONE THE REST OF THE PRODUCT SHOWS. Marked rather than left to be
+                    inferred from position: the table, the cards and the app all draw this face,
+                    and a set of five tiles gives no other clue which one that is. */}
+                {index === 0 && (
+                  <span style={{
+                    position: "absolute", left: 0, right: 0, bottom: 0, padding: "2px 0",
+                    backgroundColor: "rgba(24,17,39,0.62)", color: "white",
+                    fontSize: "9px", fontWeight: 700, textAlign: "center",
+                  }}>
+                    {t.representativePhoto}
+                  </span>
+                )}
+                {photoHoverIndex === index && (
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(index)}
+                    title={t.removePhoto}
+                    style={{
+                      position: "absolute", top: "3px", right: "3px", display: "flex",
+                      width: "18px", height: "18px", alignItems: "center", justifyContent: "center",
+                      borderRadius: "50%", border: "none", backgroundColor: "rgba(24,17,39,0.72)",
+                      color: "white", cursor: "pointer", padding: 0,
+                    }}>
+                    <svg width="9" height="9" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
+                  </button>
+                )}
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px",
+                width: "72px", height: "72px", borderRadius: "10px", flexShrink: 0,
+                border: "1px dashed var(--gray-300)", backgroundColor: "var(--gray-50)",
+                cursor: "pointer", fontFamily: "inherit",
+              }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round"/></svg>
+              <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{photos.length === 0 ? t.uploadPhoto : t.addPhotos}</span>
+            </button>
+          </div>
+          {/* The owner's own sentence, under the tiles where the previous product put it. It is
+              the whole explanation this field needs: it says why more than one is worth adding
+              and what kind of picture is worth adding. */}
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoSetHint}</p>
+          {/* The reason this form is open, for the people it is open about.
+              An admin who clicked "12 photo unreadable", picked a row and got here saw a
+              perfectly ordinary-looking photograph and no hint of what was wrong with it. The
+              model's complaint belongs against the picture it could not read. */}
+          {photoState === "unreadable" && (
+            <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoUnreadableHint}</p>
+          )}
+          {/* The refusal, against the picture it is about. Danger-toned and above the other two
+              hints because this one means NOTHING WAS SAVED — the other two describe a row that
+              exists. */}
+          {photoRejected && (
+            <div style={{ marginTop: "8px", padding: "10px 12px", borderRadius: "8px", backgroundColor: "var(--danger-100)", border: "1px solid var(--danger-200)" }}>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{t.photoRejectedTitle}</p>
+              <p style={{ fontSize: "11px", color: "var(--gray-600)", lineHeight: 1.45, marginTop: "4px" }}>{t.photoRejectedHint}</p>
+            </div>
+          )}
+          {photoState === "reenrolling" && (
+            <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, marginTop: "6px" }}>{t.photoReenrollingHint}</p>
+          )}
+        </div>
+        <div>
+          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
+          <TextField value={name} onChange={setName} placeholder={t.namePlaceholder} />
+        </div>
+        {/* Classification, then what backs it, then when it ends — the three questions an audit
+            asks about a registry row, in the order somebody answers them. Above priority
+            because a category decides whether the basis is required and what the expiry starts
+            at, and a field that changes two others should come before them.
+            Behind complianceConfig.vipCategories: with it off the select is gone, `categoryId`
+            stays empty, and the basis below is therefore always optional on its own. */}
+        {categoriesEnabled && <div>
+          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.categoryLabel}</label>
+          <FilterSelect
+            value={categoryId}
+            onChange={pickCategory}
+            options={[
+              // Unclassified is a choice, not a blank. An installation that has not built its
+              // taxonomy still registers people, and those rows should say so rather than look
+              // like somebody forgot.
+              { value: "", label: t.categoryNone },
+              ...categories.map(c => ({ value: c.id, label: c.label })),
+            ]}
+            footerAction={{ label: t.manageCategories, onClick: onManageCategories }}
+          />
+        </div>}
+        {/*
+         * ALWAYS VISIBLE, AND ABOVE THE FOLD — this is the field an audit asks about first, and
+         * it was hidden under "추가 정보" whenever a category did not demand it (2026-09-18).
+         *
+         * The domain's own products ask for it at creation time, not in an optional drawer:
+         * Verkada Command's "Add Person of Interest" flow asks for a name, a face, THE REASON
+         * for creating the POI, and which People List it joins — reason is one of four, not an
+         * extra. (Verkada's POI has no expiry at all; Avigilon keeps retention as a system-wide
+         * "days to retain" setting rather than a field on the person. Ours keeps the date because
+         * the deployment's retention rule is a contract item, and a policy default fills it.)
+         *
+         * It used to exist as TWO copies of the same input — a required one here and an optional
+         * one in the drawer — which is two places that had to agree about one value. One block
+         * now, and only the label changes.
+         */}
+        <div>
+          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
+            {basisRequired ? t.basisLabelRequired : t.basisLabel}
+          </label>
+          <TextField value={basis} onChange={setBasis} placeholder={t.basisPlaceholder} />
+        </div>
+        {/*
+         * NO EXPIRY FIELD, AND THAT IS THE DESIGN (owner's call, 2026-09-18: "등록할때나
+         * 편집할때 만료일을 설정할 필요도 없는거지"). Do not add one back per person.
+         *
+         * One policy decides how long a listing lasts — Settings → 프로젝트 → VIP 등록
+         * 유효기간 — and the store stamps it on save (settledExpiry). Avigilon works this way:
+         * retention is a system setting with a days figure, not a field on the person. Verkada
+         * goes further and has no expiry at all, removing people by hand.
+         *
+         * The case this used to serve — a delegation here for a week — is the bulk action's:
+         * select their rows and use 만료일 지정. That is one deliberate, audited act on a set of
+         * people, instead of a date box on every registration that nobody fills in. 118 of 122
+         * seeded rows had it unanswered, which is what a field everybody skips looks like.
+         */}
+        {/* NO RULE ABOVE THIS (owner's ask, 2026-09-18). The toggle is already a break in the
+            form — a chevron and a heavier label after a run of fields — and a line drawn right
+            above it made the split twice, once with a border and once with the control. Shut by
+            default so registering somebody is three fields; everything an audit asks about sits
+            above it either way. */}
+        <div style={{ paddingTop: "4px" }}>
+          <button
+            type="button"
+            onClick={() => setMoreOpen(o => !o)}
+            style={{
+              display: "flex", alignItems: "center", gap: "6px", padding: 0, border: "none",
+              background: "none", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
+            }}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+              style={{ transform: moreOpen ? "rotate(90deg)" : "none", transition: "transform 120ms" }}>
+              <path d="M4.5 2.5L8 6l-3.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {t.moreDetails}
+          </button>
+          {moreOpen && <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "14px" }}>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.priorityLabel}</label>
+              <FilterSelect
+                value={priorityLabel}
+                onChange={v => setPriorityLabel(v as typeof priorityLabel)}
+                options={PRIORITY_LABELS.map(p => ({ value: p, label: t.priorityText[p] }))}
+              />
+            </div>
+            {/* Group is set here rather than on the detail sheet, where it used to be the one
+                editable thing on a sheet whose other four values were read-only, next to an Edit
+                item in the menu — which read as "the group is all you may change". */}
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.colGroup}</label>
+              {newGroupName === null ? (
+                <FilterSelect
+                  value={groupId}
+                  onChange={setGroupId}
+                  /* "그룹 없음", the same words the filter uses for the same set. It said
+                     "개인", which read as a third kind of registration next to the group names. */
+                  options={[{ value: "", label: t.noGroup }, ...groups.map(g => ({ value: g.id, label: g.name }))]}
+                  footerAction={{ label: t.addGroup, onClick: () => setNewGroupName("") }}
+                />
+              ) : (
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <TextField value={newGroupName} onChange={setNewGroupName} placeholder={t.groupNamePlaceholder} autoFocus />
+                  </div>
+                  <button className="portal-btn-primary" onClick={createGroup} disabled={!newGroupName.trim()}
+                    style={{
+                      height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none",
+                      backgroundColor: newGroupName.trim() ? "var(--primary-400)" : "var(--gray-200)",
+                      color: newGroupName.trim() ? "white" : "var(--gray-400)",
+                      fontSize: "12px", fontWeight: 700, cursor: newGroupName.trim() ? "pointer" : "not-allowed", flexShrink: 0,
+                    }}>
+                    {t.createGroupAction}
+                  </button>
+                  <button className="portal-btn-outline" onClick={() => setNewGroupName(null)}
+                    style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+                    {t.cancel}
+                  </button>
+                </div>
+              )}
+            </div>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.noteLabel}</label>
+              <TextField value={description} onChange={setDescription} placeholder={t.notePlaceholder} />
+            </div>
+          </div>}
         </div>
       </div>
-    </div>
+    </Drawer>
   );
 }
 
@@ -1246,7 +1242,6 @@ function PriorityTag({ priority, text }: { priority: NonNullable<Person["priorit
 function GroupModal({ t, group, projectId, onClose }: {
   t: VipDict; group: PersonGroup | null; projectId: string; onClose: () => void;
 }) {
-  useEscapeKey(onClose);
   const addPersonGroup = useVcaStore(s => s.addPersonGroup);
   const updatePersonGroup = useVcaStore(s => s.updatePersonGroup);
   const { showToast } = useToast();
@@ -1278,31 +1273,12 @@ function GroupModal({ t, group, projectId, onClose }: {
   );
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "420px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
-            {group ? t.groupModalEditTitle : t.groupModalAddTitle}
-          </p>
-          <div>
-            {label(t.groupNameLabel)}
-            <TextField value={name} onChange={setName} placeholder={t.groupNamePlaceholder} />
-          </div>
-          <div>
-            {label(t.groupDescLabel)}
-            <TextField value={description} onChange={setDescription} placeholder={t.groupDescPlaceholder} />
-          </div>
-          <div>
-            {label(t.priorityLabel)}
-            <FilterSelect
-              value={priority}
-              onChange={v => setPriority(v as NonNullable<Person["priorityLabel"]>)}
-              options={PRIORITY_LABELS.map(pl => ({ value: pl, label: t.priorityText[pl] }))}
-            />
-          </div>
-        </div>
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+    <Drawer
+      title={group ? t.groupModalEditTitle : t.groupModalAddTitle}
+      onClose={onClose}
+      width="520px"
+      footer={
+        <>
           <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
@@ -1315,9 +1291,28 @@ function GroupModal({ t, group, projectId, onClose }: {
             }}>
             {t.groupSave}
           </button>
+        </>
+      }
+    >
+      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div>
+          {label(t.groupNameLabel)}
+          <TextField value={name} onChange={setName} placeholder={t.groupNamePlaceholder} />
+        </div>
+        <div>
+          {label(t.groupDescLabel)}
+          <TextField value={description} onChange={setDescription} placeholder={t.groupDescPlaceholder} />
+        </div>
+        <div>
+          {label(t.priorityLabel)}
+          <FilterSelect
+            value={priority}
+            onChange={v => setPriority(v as NonNullable<Person["priorityLabel"]>)}
+            options={PRIORITY_LABELS.map(pl => ({ value: pl, label: t.priorityText[pl] }))}
+          />
         </div>
       </div>
-    </div>
+    </Drawer>
   );
 }
 
@@ -1362,7 +1357,6 @@ function PersonDetailModal({ t, person, zone, groups, onClose, onEdit, onRemove 
   onEdit: () => void;
   onRemove: () => void;
 }) {
-  useEscapeKey(onClose);
   const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
   const group = groups.find(g => g.id === person.groupId);
 
@@ -1388,86 +1382,82 @@ function PersonDetailModal({ t, person, zone, groups, onClose, onEdit, onRemove 
   );
 
   return (
-    // The scroll lives on the backdrop, not on the sheet. On the sheet, overflow-y makes a clipping
-    // context, and the Group select below opens as an absolutely positioned list — inside that
-    // context the list was cut off at the sheet's edge. The backdrop is the viewport, so scrolling
-    // there clips nothing the browser would not clip anyway. `margin: auto` on the sheet is what
-    // keeps a tall one scrollable from its top instead of having its head cut off by centring.
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "380px", width: "100%", margin: "auto", boxShadow: "var(--shadow-modal)" }}>
-        {/* Square, edge to edge, corners rounded only at the top so it reads as the sheet's own
-            header rather than a picture sitting inside it. Capped so the sheet does not need to be
-            taller than a short window on account of the photo alone. */}
-        <FacePhoto src={person.photoUrl} radius="0"
-          style={{ width: "100%", aspectRatio: "1 / 1", maxHeight: "320px", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", backgroundColor: "var(--gray-100)" }}
-          hiddenStyle={{ border: "none", borderBottom: "1px solid var(--gray-200)" }} />
-        {/* THE REST OF THE ENROLMENT SET, when there is one. The big photo above is the face
-            everything else in the product draws; these are the other pictures this person was
-            enrolled from, and "how many angles do we actually have of him" is a question you can
-            only answer by seeing them. Absent entirely for a row enrolled from one photograph —
-            a strip explaining that there is nothing to show is worse than no strip. */}
-        {(person.enrolmentPhotoUrls?.length ?? 0) > 0 && (
-          <div style={{ padding: "12px 20px 0", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)" }}>
-              {t.photoSetCount((person.enrolmentPhotoUrls ?? []).length)}
-            </span>
-            {(person.enrolmentPhotoUrls ?? []).map(url => (
-              <FacePhoto key={url} src={url} size={40} radius="8px" />
-            ))}
-          </div>
-        )}
-        <div style={{ padding: "20px 20px", display: "flex", flexDirection: "column", gap: "12px" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>{person.name}</p>
-            {/* Priority only. The group used to be a tag here too, two rows above the select that
-                sets it — the same fact stated twice, once unchangeable and once not. Priority has
-                no control on this sheet, so the tag is the only place it is said. */}
-            {person.priorityLabel && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "6px" }}>
-                <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} />
-              </div>
-            )}
-          </div>
-          {/* Removing a face lives in the overflow menu, not on a button. Every contact-detail
-              panel worth copying does it this way (Front, folk, Lightfield, HubSpot): the one thing
-              on the sheet that cannot be undone is the one thing that should not be a step away
-              from a stray click, and red belongs in the confirmation, not in the furniture. */}
-          <RowActionsMenu actions={[
-            { label: t.editPerson, onClick: onEdit, disabled: !mayEdit, reason: readOnlyReason },
-            { label: t.removeAction, onClick: onRemove, danger: true, disabled: !mayEdit, reason: readOnlyReason },
-          ]} />
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: BORDER, paddingTop: "12px" }}>
-            {/* A dash, not the word "개인". No group is the absence of a value, and this product
-                does not dress absences up as values — the same rule that keeps 0,0 out of the
-                coordinate fields. */}
-            {row(t.colGroup, group
-              ? group.name
-              : <span style={{ color: "var(--gray-400)" }}>—</span>)}
-            {/* Group first, then what qualifies the person, then the note, then when they were
-                enrolled — last because it is the one value nobody comes here to read and the only
-                one that never changes. The time is shown as well: this is the detail view, and on
-                a vipRegistry "when was this face put in" is a question an inspection asks by the
-                minute, not by the day. Rows enrolled before Portal recorded a time show only the
-                date rather than a made-up one. */}
-            {row(t.colNote, person.description || <span style={{ color: "var(--gray-400)" }}>{t.detailNoNote}</span>)}
-            {row(t.colRegistered, registeredLong(person.registeredAt, zone))}
-          </div>
+    <Drawer
+      title={person.name}
+      onClose={onClose}
+      width="520px"
+      footer={
+        /* Outlined, not filled. A dark Close next to a red Remove was two saturated blocks
+           arguing on a sheet whose job is to show a photograph, and neither of them was the
+           action anybody came for. The only filled button here is Save, and only while there is
+           something to save. */
+        <button className="portal-btn-outline" onClick={onClose}
+          style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          {t.close}
+        </button>
+      }
+    >
+      {/* Square, edge to edge, and square-cornered now that the panel supplies its own header
+          above it — rounded corners inside a square panel read as a picture that does not quite
+          fit. Capped so the panel does not scroll on account of the photo alone. */}
+      <FacePhoto src={person.photoUrl} radius="0"
+        style={{ width: "100%", aspectRatio: "1 / 1", maxHeight: "320px", backgroundColor: "var(--gray-100)" }}
+        hiddenStyle={{ border: "none", borderBottom: "1px solid var(--gray-200)" }} />
+      {/* THE REST OF THE ENROLMENT SET, when there is one. The big photo above is the face
+          everything else in the product draws; these are the other pictures this person was
+          enrolled from, and "how many angles do we actually have of him" is a question you can
+          only answer by seeing them. Absent entirely for a row enrolled from one photograph —
+          a strip explaining that there is nothing to show is worse than no strip. */}
+      {(person.enrolmentPhotoUrls?.length ?? 0) > 0 && (
+        <div style={{ padding: "12px 20px 0", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)" }}>
+            {t.photoSetCount((person.enrolmentPhotoUrls ?? []).length)}
+          </span>
+          {(person.enrolmentPhotoUrls ?? []).map(url => (
+            <FacePhoto key={url} src={url} size={40} radius="8px" />
+          ))}
         </div>
-        {/* Outlined, not filled. A dark Close next to a red Remove was two saturated blocks
-            arguing on a sheet whose job is to show a photograph, and neither of them was the
-            action anybody came for. The only filled button here is Save, and only while there is
-            something to save. */}
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
-          <button className="portal-btn-outline" onClick={onClose}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.close}
-          </button>
+      )}
+      <div style={{ padding: "20px 20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
+        <div style={{ minWidth: 0 }}>
+          {/* The panel's header says who this is, so the name is not repeated here. */}
+          {/* Priority only. The group used to be a tag here too, two rows above the select that
+              sets it — the same fact stated twice, once unchangeable and once not. Priority has
+              no control on this sheet, so the tag is the only place it is said. */}
+          {person.priorityLabel && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+              <PriorityTag priority={person.priorityLabel} text={t.priorityText[person.priorityLabel]} />
+            </div>
+          )}
+        </div>
+        {/* Removing a face lives in the overflow menu, not on a button. Every contact-detail
+            panel worth copying does it this way (Front, folk, Lightfield, HubSpot): the one thing
+            on the sheet that cannot be undone is the one thing that should not be a step away
+            from a stray click, and red belongs in the confirmation, not in the furniture. */}
+        <RowActionsMenu actions={[
+          { label: t.editPerson, onClick: onEdit, disabled: !mayEdit, reason: readOnlyReason },
+          { label: t.removeAction, onClick: onRemove, danger: true, disabled: !mayEdit, reason: readOnlyReason },
+        ]} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: BORDER, paddingTop: "12px" }}>
+          {/* A dash, not the word "개인". No group is the absence of a value, and this product
+              does not dress absences up as values — the same rule that keeps 0,0 out of the
+              coordinate fields. */}
+          {row(t.colGroup, group
+            ? group.name
+            : <span style={{ color: "var(--gray-400)" }}>—</span>)}
+          {/* Group first, then what qualifies the person, then the note, then when they were
+              enrolled — last because it is the one value nobody comes here to read and the only
+              one that never changes. The time is shown as well: this is the detail view, and on
+              a vipRegistry "when was this face put in" is a question an inspection asks by the
+              minute, not by the day. Rows enrolled before Portal recorded a time show only the
+              date rather than a made-up one. */}
+          {row(t.colNote, person.description || <span style={{ color: "var(--gray-400)" }}>{t.detailNoNote}</span>)}
+          {row(t.colRegistered, registeredLong(person.registeredAt, zone))}
         </div>
       </div>
-    </div>
+    </Drawer>
   );
 }
 

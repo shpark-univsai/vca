@@ -4,11 +4,10 @@ import { useState } from "react";
 import { CircleAlert, CircleCheck, CircleDashed, RotateCcw, ServerCrash, Unplug, Video } from "lucide-react";
 import { useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
 import ProjectApiPanel from "./ProjectApiPanel";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { TablePagination, SummaryStrip, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, usePortalEditAccess, ConfirmModal, FieldError } from "./PortalShared";
+import { TablePagination, SummaryStrip, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, usePortalEditAccess, ConfirmModal, FieldError, Drawer } from "./PortalShared";
 
 // Ordered as the deployed Add Server dialog orders them, so an operator who has used that one
 // finds each entry where their hand already goes. Its list opens with "All", which this one does
@@ -229,7 +228,6 @@ function ServerFormModal({
   onClose: () => void;
   onSubmit: (values: ServerFormValues) => void;
 }) {
-  useEscapeKey(onClose);
   const [form, setForm] = useState<ServerFormValues>(initial);
   const [lang] = usePortalLanguage();
   const t = MODAL_T[lang];
@@ -246,67 +244,58 @@ function ServerFormModal({
     && form.port.trim().length > 0 && form.type !== "" && !ipProblem && !portIssue;
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{title}</p>
-          <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          </button>
+    <Drawer title={title} onClose={onClose} width="520px"
+      footer={<>
+        <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          {t.cancel}
+        </button>
+        <button className="portal-btn-primary" onClick={() => valid && onSubmit(form)} disabled={!valid}
+          style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", }}>
+          {t.save}
+        </button>
+      </>}>
+      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div>
+          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverName}</label>
+          <TextField value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder={t.serverNamePlaceholder} />
         </div>
-        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div>
+          {/* Starred now, and the star is honest: an unanswered type blocks the save (see
+              ServerFormValues.type). Before this it was the one field on the form that looked
+              answered without anybody answering it. */}
+          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverTypeRequired}</label>
+          <FilterSelect value={form.type} onChange={v => setForm(f => ({ ...f, type: v as ServerType }))}
+            options={[
+              /* The prompt is an option rather than a placeholder because FilterSelect draws its
+                 current value as text: with no entry for "", the closed select would have been
+                 blank and read as broken. It cannot be chosen back into — picking it is picking
+                 nothing, and the button below already says what nothing costs. */
+              ...(form.type === "" ? [{ value: "", label: t.serverTypePrompt }] : []),
+              ...SERVER_TYPES.map(ty => ({ value: ty, label: SERVER_TYPE_LABELS[ty][lang] })),
+            ]} />
+        </div>
+        {/* Address and port on one row: between them they are one thing, and nothing reaches a
+            server with only half of it. The dialog this mirrors stacks them; keeping them on one
+            line is the only place this form departs from it, and it departs by pairing fields the
+            other one already asks for back to back. */}
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "12px" }}>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverName}</label>
-            <TextField value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder={t.serverNamePlaceholder} />
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverIp}</label>
+            <TextField value={form.ip} onChange={v => setForm(f => ({ ...f, ip: v }))} placeholder={t.serverIpPlaceholder} />
+            {ipProblem && <FieldError>{FIELD_CHECK_T[lang][ipProblem]}</FieldError>}
           </div>
           <div>
-            {/* Starred now, and the star is honest: an unanswered type blocks the save (see
-                ServerFormValues.type). Before this it was the one field on the form that looked
-                answered without anybody answering it. */}
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverTypeRequired}</label>
-            <FilterSelect value={form.type} onChange={v => setForm(f => ({ ...f, type: v as ServerType }))}
-              options={[
-                /* The prompt is an option rather than a placeholder because FilterSelect draws its
-                   current value as text: with no entry for "", the closed select would have been
-                   blank and read as broken. It cannot be chosen back into — picking it is picking
-                   nothing, and the button below already says what nothing costs. */
-                ...(form.type === "" ? [{ value: "", label: t.serverTypePrompt }] : []),
-                ...SERVER_TYPES.map(ty => ({ value: ty, label: SERVER_TYPE_LABELS[ty][lang] })),
-              ]} />
-          </div>
-          {/* Address and port on one row: between them they are one thing, and nothing reaches a
-              server with only half of it. The dialog this mirrors stacks them; keeping them on one
-              line is the only place this form departs from it, and it departs by pairing fields the
-              other one already asks for back to back. */}
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "12px" }}>
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverIp}</label>
-              <TextField value={form.ip} onChange={v => setForm(f => ({ ...f, ip: v }))} placeholder={t.serverIpPlaceholder} />
-              {ipProblem && <FieldError>{FIELD_CHECK_T[lang][ipProblem]}</FieldError>}
-            </div>
-            <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverPort}</label>
-              <TextField value={form.port} onChange={v => setForm(f => ({ ...f, port: v.replace(/[^0-9]/g, "") }))} placeholder={t.serverPortPlaceholder} />
-              {portIssue && <FieldError>{FIELD_CHECK_T[lang][portIssue]}</FieldError>}
-            </div>
-          </div>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.specification}</label>
-            <TextField value={form.specification} onChange={v => setForm(f => ({ ...f, specification: v }))} placeholder={t.specificationPlaceholder} />
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverPort}</label>
+            <TextField value={form.port} onChange={v => setForm(f => ({ ...f, port: v.replace(/[^0-9]/g, "") }))} placeholder={t.serverPortPlaceholder} />
+            {portIssue && <FieldError>{FIELD_CHECK_T[lang][portIssue]}</FieldError>}
           </div>
         </div>
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.cancel}
-          </button>
-          <button className="portal-btn-primary" onClick={() => valid && onSubmit(form)} disabled={!valid}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", }}>
-            {t.save}
-          </button>
+        <div>
+          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.specification}</label>
+          <TextField value={form.specification} onChange={v => setForm(f => ({ ...f, specification: v }))} placeholder={t.specificationPlaceholder} />
         </div>
       </div>
-    </div>
+    </Drawer>
   );
 }
 

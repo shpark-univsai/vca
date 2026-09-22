@@ -2,10 +2,9 @@
 
 import { useRef, useState } from "react";
 import { useVcaStore } from "@/lib/vcaStore";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER } from "./PortalShared";
+import { BORDER, Drawer } from "./PortalShared";
 import {
   buildImportRows, decodeSpreadsheetBytes, looksLikeXlsx, parseDelimited,
   type ImportIssue, type ParsedRow,
@@ -153,7 +152,6 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t: Dict = T[lang];
-  useEscapeKey(onClose);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -244,175 +242,163 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
   const okRows = parsed?.rows.filter(r => r.issues.length === 0) ?? [];
   const badRows = parsed?.rows.filter(r => r.issues.length > 0) ?? [];
 
-  return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{
-        backgroundColor: "white", borderRadius: "16px", border: BORDER, width: "100%",
-        // Wide when there is a table to read, narrow while it is still a drop zone — a 760px box
-        // around one "choose a file" line reads as an empty screen.
-        maxWidth: parsed || result ? "760px" : "440px",
-        maxHeight: "86vh", display: "flex", flexDirection: "column",
-        boxShadow: "var(--shadow-modal)",
-      }}>
-        <div style={{ padding: "20px", borderBottom: parsed || result ? BORDER : "none", flexShrink: 0 }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{result ? t.doneTitle : t.title}</p>
-          {!result && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.5 }}>{t.subtitle}</p>}
-        </div>
+  // Wide when there is a table to read, narrow while it is still a drop zone — a 760px panel
+  // around one "choose a file" line reads as an empty screen.
+  const width = parsed || result ? "760px" : "440px";
 
-        {/* ---------- Step 3: what happened ---------- */}
-        {result ? (
-          <>
-            <div style={{ padding: "20px", overflowY: "auto", minHeight: 0 }}>
-              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.doneAdded(result.added)}</p>
-              {result.skipped.length > 0 && (
-                <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "2px" }}>{t.doneSkipped(result.skipped.length)}</p>
-              )}
-              {result.added > 0 && (
-                <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.doneNoCodeNote}</p>
-              )}
-              {result.skipped.length > 0 && (
-                <div style={{ marginTop: "16px" }}>
-                  <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.skippedHeading}</p>
-                  <div style={{ border: BORDER, borderRadius: "12px", overflow: "hidden" }}>
-                    {result.skipped.map((s, i) => (
-                      <div key={`${s.row.line}-${i}`} style={{
-                        display: "flex", gap: "10px", padding: "8px 12px", alignItems: "baseline",
-                        borderBottom: i === result.skipped.length - 1 ? "none" : BORDER,
-                      }}>
-                        <span style={{ fontSize: "11px", color: "var(--gray-400)", minWidth: "28px", flexShrink: 0 }}>{s.row.line}</span>
-                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", minWidth: 0 }}>
-                          {s.row.name || s.row.employeeId || "—"}
-                        </span>
-                        <span style={{ fontSize: "12px", color: "var(--danger-400)", marginLeft: "auto", textAlign: "right" }}>
-                          {s.reasons.join(" · ")}
-                        </span>
-                      </div>
-                    ))}
+  const footer = result ? (
+    <>
+      {result.skipped.length > 0 && (
+        <button className="portal-btn-outline" onClick={downloadSkipped}
+          style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          {t.downloadErrors}
+        </button>
+      )}
+      <button className="portal-btn-primary" onClick={onClose}
+        style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+        {t.close}
+      </button>
+    </>
+  ) : parsed ? (
+    <>
+      {/* Pushed to the far end of the row: it goes back a step, and reading it next to the two
+          buttons that end the import would make it look like a third way out. */}
+      <button className="portal-btn-outline" onClick={() => { setParsed(null); setFileError(null); }}
+        style={{ marginRight: "auto", padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+        {t.chooseAnother}
+      </button>
+      <button className="portal-btn-outline" onClick={onClose}
+        style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+        {t.cancel}
+      </button>
+      <button onClick={commit} disabled={okRows.length === 0}
+        style={{
+          padding: "10px 16px", borderRadius: "8px", border: "none",
+          backgroundColor: okRows.length === 0 ? "var(--gray-200)" : "var(--primary-400)",
+          color: okRows.length === 0 ? "var(--gray-400)" : "white",
+          fontSize: "13px", fontWeight: 700, cursor: okRows.length === 0 ? "not-allowed" : "pointer",
+        }}>
+        {t.importN(okRows.length)}
+      </button>
+    </>
+  ) : (
+    <button className="portal-btn-outline" onClick={onClose}
+      style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+      {t.cancel}
+    </button>
+  );
+
+  return (
+    <Drawer title={result ? t.doneTitle : t.title} onClose={onClose} width={width} footer={footer}>
+      {/* ---------- Step 3: what happened ---------- */}
+      {result ? (
+        <div style={{ padding: "20px" }}>
+          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.doneAdded(result.added)}</p>
+          {result.skipped.length > 0 && (
+            <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "2px" }}>{t.doneSkipped(result.skipped.length)}</p>
+          )}
+          {result.added > 0 && (
+            <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.doneNoCodeNote}</p>
+          )}
+          {result.skipped.length > 0 && (
+            <div style={{ marginTop: "16px" }}>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.skippedHeading}</p>
+              <div style={{ border: BORDER, borderRadius: "12px", overflow: "hidden" }}>
+                {result.skipped.map((s, i) => (
+                  <div key={`${s.row.line}-${i}`} style={{
+                    display: "flex", gap: "10px", padding: "8px 12px", alignItems: "baseline",
+                    borderBottom: i === result.skipped.length - 1 ? "none" : BORDER,
+                  }}>
+                    <span style={{ fontSize: "11px", color: "var(--gray-400)", minWidth: "28px", flexShrink: 0 }}>{s.row.line}</span>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", minWidth: 0 }}>
+                      {s.row.name || s.row.employeeId || "—"}
+                    </span>
+                    <span style={{ fontSize: "12px", color: "var(--danger-400)", marginLeft: "auto", textAlign: "right" }}>
+                      {s.reasons.join(" · ")}
+                    </span>
                   </div>
-                </div>
-              )}
-            </div>
-            <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
-              {result.skipped.length > 0 && (
-                <button className="portal-btn-outline" onClick={downloadSkipped}
-                  style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                  {t.downloadErrors}
-                </button>
-              )}
-              <button className="portal-btn-primary" onClick={onClose}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {t.close}
-              </button>
-            </div>
-          </>
-        ) : parsed ? (
-          /* ---------- Step 2: read it back before committing ---------- */
-          <>
-            <div style={{ padding: "12px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", flexShrink: 0 }}>
-              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--success-400)" }}>{t.readyCount(okRows.length)}</span>
-              {badRows.length > 0 && <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-400)" }}>{t.errorCount(badRows.length)}</span>}
-              <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>
-                {okRows.length === 0 ? t.allRowsBad : badRows.length > 0 ? t.errorsSkippedNote : ""}
-              </span>
-              {parsed.unmapped.length > 0 && (
-                <span style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%" }}>{t.unmappedNote(parsed.unmapped.join(", "))}</span>
-              )}
-            </div>
-            <div style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "40px 1.2fr 1fr 1fr 1.4fr 0.8fr", columnGap: "10px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, position: "sticky", top: 0 }}>
-                {[t.colLine, t.colName, t.colEmployeeId, t.colDepartment, t.colEmail, t.colPermission].map(h => (
-                  <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{h}</span>
                 ))}
               </div>
-              {parsed.rows.map((r, i) => {
-                const bad = r.issues.length > 0;
-                return (
-                  <div key={`${r.line}-${i}`} style={{ borderBottom: BORDER, backgroundColor: bad ? "var(--danger-100)" : "white" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "40px 1.2fr 1fr 1fr 1.4fr 0.8fr", columnGap: "10px", padding: "8px 20px", alignItems: "center" }}>
-                      <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{r.line}</span>
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name || "—"}</span>
-                      <span style={{ fontSize: "12px", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.employeeId || "—"}</span>
-                      <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.department ?? "—"}</span>
-                      <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.email ?? "—"}</span>
-                      <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{r.permission === "admin" ? t.admin : t.operator}</span>
-                    </div>
-                    {/* The reason sits under its own row rather than in a status column: it is a
-                        sentence, and a sentence in a 0.8fr cell is three ellipsised words. */}
-                    {bad && (
-                      <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", padding: "0 20px 8px 70px" }}>
-                        {r.issues.map(issueText).join(" · ")}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
             </div>
-            <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", gap: "8px", flexShrink: 0 }}>
-              <button className="portal-btn-outline" onClick={() => { setParsed(null); setFileError(null); }}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {t.chooseAnother}
-              </button>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button className="portal-btn-outline" onClick={onClose}
-                  style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                  {t.cancel}
-                </button>
-                <button onClick={commit} disabled={okRows.length === 0}
-                  style={{
-                    padding: "10px 16px", borderRadius: "8px", border: "none",
-                    backgroundColor: okRows.length === 0 ? "var(--gray-200)" : "var(--primary-400)",
-                    color: okRows.length === 0 ? "var(--gray-400)" : "white",
-                    fontSize: "13px", fontWeight: 700, cursor: okRows.length === 0 ? "not-allowed" : "pointer",
-                  }}>
-                  {t.importN(okRows.length)}
-                </button>
-              </div>
-            </div>
-          </>
-        ) : (
-          /* ---------- Step 1: give us the file ---------- */
-          <>
-            <div style={{ padding: "0 20px 20px" }}>
-              <div
-                onDragOver={e => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={e => { e.preventDefault(); setDragging(false); onPick(e.dataTransfer.files); }}
-                onClick={() => inputRef.current?.click()}
-                style={{
-                  border: `1px dashed ${dragging ? "var(--primary-400)" : "var(--gray-200)"}`,
-                  backgroundColor: dragging ? "var(--primary-100)" : "var(--gray-50)",
-                  borderRadius: "12px", padding: "24px 20px", textAlign: "center", cursor: "pointer",
-                }}>
-                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.dropHere}</p>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.orBrowse}</p>
-              </div>
-              <input ref={inputRef} type="file" accept=".csv,.tsv,.txt,text/csv,text/plain"
-                onChange={e => { onPick(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
-
-              {fileError && (
-                <div style={{ marginTop: "12px", padding: "12px", borderRadius: "12px", backgroundColor: "var(--danger-100)" }}>
-                  <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{fileError.title}</p>
-                  <p style={{ fontSize: "12px", color: "var(--danger-500)", marginTop: "4px", lineHeight: 1.5 }}>{fileError.body}</p>
+          )}
+        </div>
+      ) : parsed ? (
+        /* ---------- Step 2: read it back before committing ---------- */
+        <>
+          <div style={{ padding: "12px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--success-400)" }}>{t.readyCount(okRows.length)}</span>
+            {badRows.length > 0 && <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-400)" }}>{t.errorCount(badRows.length)}</span>}
+            <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>
+              {okRows.length === 0 ? t.allRowsBad : badRows.length > 0 ? t.errorsSkippedNote : ""}
+            </span>
+            {parsed.unmapped.length > 0 && (
+              <span style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%" }}>{t.unmappedNote(parsed.unmapped.join(", "))}</span>
+            )}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "40px 1.2fr 1fr 1fr 1.4fr 0.8fr", columnGap: "10px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, position: "sticky", top: 0 }}>
+            {[t.colLine, t.colName, t.colEmployeeId, t.colDepartment, t.colEmail, t.colPermission].map(h => (
+              <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{h}</span>
+            ))}
+          </div>
+          {parsed.rows.map((r, i) => {
+            const bad = r.issues.length > 0;
+            return (
+              <div key={`${r.line}-${i}`} style={{ borderBottom: BORDER, backgroundColor: bad ? "var(--danger-100)" : "white" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "40px 1.2fr 1fr 1fr 1.4fr 0.8fr", columnGap: "10px", padding: "8px 20px", alignItems: "center" }}>
+                  <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{r.line}</span>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name || "—"}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.employeeId || "—"}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.department ?? "—"}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.email ?? "—"}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{r.permission === "admin" ? t.admin : t.operator}</span>
                 </div>
-              )}
+                {/* The reason sits under its own row rather than in a status column: it is a
+                    sentence, and a sentence in a 0.8fr cell is three ellipsised words. */}
+                {bad && (
+                  <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", padding: "0 20px 8px 70px" }}>
+                    {r.issues.map(issueText).join(" · ")}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </>
+      ) : (
+        /* ---------- Step 1: give us the file ---------- */
+        <div style={{ padding: "20px" }}>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.subtitle}</p>
+          <div
+            onDragOver={e => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={e => { e.preventDefault(); setDragging(false); onPick(e.dataTransfer.files); }}
+            onClick={() => inputRef.current?.click()}
+            style={{
+              marginTop: "14px",
+              border: `1px dashed ${dragging ? "var(--primary-400)" : "var(--gray-200)"}`,
+              backgroundColor: dragging ? "var(--primary-100)" : "var(--gray-50)",
+              borderRadius: "12px", padding: "24px 20px", textAlign: "center", cursor: "pointer",
+            }}>
+            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.dropHere}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.orBrowse}</p>
+          </div>
+          <input ref={inputRef} type="file" accept=".csv,.tsv,.txt,text/csv,text/plain"
+            onChange={e => { onPick(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
 
-              <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "14px", lineHeight: 1.5 }}>{t.columnsNote}</p>
-              <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "4px", lineHeight: 1.5 }}>{t.formatNote}</p>
-              <button onClick={downloadTemplate}
-                style={{ marginTop: "10px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
-                {t.downloadTemplate}
-              </button>
+          {fileError && (
+            <div style={{ marginTop: "12px", padding: "12px", borderRadius: "12px", backgroundColor: "var(--danger-100)" }}>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{fileError.title}</p>
+              <p style={{ fontSize: "12px", color: "var(--danger-500)", marginTop: "4px", lineHeight: 1.5 }}>{fileError.body}</p>
             </div>
-            <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
-              <button className="portal-btn-outline" onClick={onClose}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {t.cancel}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+          )}
+
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "14px", lineHeight: 1.5 }}>{t.columnsNote}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "4px", lineHeight: 1.5 }}>{t.formatNote}</p>
+          <button onClick={downloadTemplate}
+            style={{ marginTop: "10px", border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
+            {t.downloadTemplate}
+          </button>
+        </div>
+      )}
+    </Drawer>
   );
 }

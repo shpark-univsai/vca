@@ -6,7 +6,7 @@ import { useVcaStore } from "@/lib/vcaStore";
 import { REGISTRATION_CODE_TTL_DAYS, formatCode, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
-import { TextField, FIELD_STYLE, BORDER } from "./PortalShared";
+import { TextField, FIELD_STYLE, BORDER, Drawer } from "./PortalShared";
 
 const T = {
   en: {
@@ -16,9 +16,9 @@ const T = {
     statusExpired: "Expired",
     reissueTitle: "Reissue registration code?",
     issueTitle: "Issue registration code?",
-    reissueBody: (name: string) => `${name}'s current code will stop working immediately. Anyone still holding the old printout will need the new one instead.`,
+    reissueBody: (name: string) => `${name}'s current code stops working immediately.`,
     issueBody: (name: string) => `A new registration code will be generated for ${name}.`,
-    codeExpiryNote: (days: number) => `It stops working after ${days} days, used or not — write the date on the printout.`,
+    codeExpiryNote: (days: number) => `The new code expires in ${days} days.`,
     cancel: "Cancel",
     reissueConfirm: "Reissue code",
     issueConfirm: "Issue code",
@@ -103,9 +103,13 @@ const T = {
     statusExpired: "만료됨",
     reissueTitle: "등록 코드를 재발급하시겠습니까?",
     issueTitle: "등록 코드를 발급하시겠습니까?",
-    reissueBody: (name: string) => `${name}님의 현재 코드는 즉시 사용할 수 없게 됩니다. 이전 출력물을 가지고 있는 사람은 새 코드가 필요합니다.`,
+    /* 두 문장을 하나로 (사용자: 너무 길어 · 핵심만). 「이전 출력물을 가진 사람은 새 코드가
+       필요합니다」는 앞 문장의 결과를 되풀이한 것이고, 코드가 무효라는 말이 이미 그 뜻이다. */
+    reissueBody: (name: string) => `${name}님의 지금 코드는 즉시 무효가 됩니다.`,
     issueBody: (name: string) => `${name}님을 위한 새 등록 코드가 생성됩니다.`,
-    codeExpiryNote: (days: number) => `사용 여부와 관계없이 ${days}일 후 만료됩니다 — 출력물에 날짜를 적어 두세요.`,
+    /* 「사용 여부와 관계없이」와 「출력물에 날짜를 적어 두세요」를 뺐다 — 앞은 만료의 정의이고
+       뒤는 이 창이 묻는 결정과 무관한 조언이다. */
+    codeExpiryNote: (days: number) => `새 코드는 ${days}일 후 만료됩니다.`,
     cancel: "취소",
     reissueConfirm: "코드 재발급",
     issueConfirm: "코드 발급",
@@ -302,7 +306,6 @@ function RosterEntryModal({ entry, projectId, onClose, t }: {
   onClose: () => void;
   t: Translations;
 }) {
-  useEscapeKey(onClose);
   const addRosterEntry = useVcaStore(s => s.addRosterEntry);
   const updateRosterEntry = useVcaStore(s => s.updateRosterEntry);
   const { showToast } = useToast();
@@ -352,81 +355,79 @@ function RosterEntryModal({ entry, projectId, onClose, t }: {
   const inputStyle = FIELD_STYLE;
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "16px 20px 8px" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{editing ? t.modalEditTitle : t.modalAddTitle}</p>
-        </div>
-
-        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", maxHeight: "60vh", overflowY: "auto" }}>
-          <div>
-            {label(t.fieldName)}
-            <TextField value={name} onChange={setName} placeholder={t.fieldNamePlaceholder} autoFocus />
-          </div>
-          <div>
-            {label(t.fieldEmployeeId)}
-            <input
-              value={employeeId}
-              onChange={e => { setEmployeeId(e.target.value); setDuplicate(false); }}
-              placeholder={t.fieldEmployeeIdPlaceholder}
-              disabled={editing}
-              style={{ ...inputStyle, backgroundColor: editing ? "var(--gray-50)" : "white", color: editing ? "var(--gray-500)" : "var(--gray-900)" }}
-            />
-            {editing && <p style={{ margin: "6px 0 0", fontSize: "11px", color: "var(--gray-400)" }}>{t.fieldEmployeeIdLocked}</p>}
-            {duplicate && <p style={{ margin: "6px 0 0", fontSize: "11px", fontWeight: 700, color: "var(--danger-400)" }}>{t.duplicateId}</p>}
-          </div>
-          <div>
-            {label(t.fieldDepartment, t.fieldEmailOptional)}
-            <TextField value={department} onChange={setDepartment} placeholder={t.fieldDepartmentPlaceholder} />
-          </div>
-          <div>
-            {label(t.fieldEmail, t.fieldEmailOptional)}
-            <TextField value={email} onChange={setEmail} placeholder={t.fieldEmailPlaceholder} />
-          </div>
-          <div>
-            {label(t.fieldPermission)}
-            {/* Two buttons rather than a select: the answer is one of two and both fit on screen.
-                Each carries the access it grants under the name — this is the one screen where the
-                choice is made on paper terms and read back weeks later off a printed slip. */}
-            <div style={{ display: "flex", gap: "8px" }}>
-              {(["operator", "admin"] as const).map(p => {
-                const active = permission === p;
-                return (
-                  <button key={p} onClick={() => setPermission(p)}
-                    style={{
-                      flex: 1, padding: "10px 12px", borderRadius: "10px", cursor: "pointer", textAlign: "left",
-                      border: active ? "1px solid var(--gray-900)" : BORDER,
-                      backgroundColor: active ? "var(--gray-100)" : "white",
-                      color: active ? "var(--gray-900)" : "var(--gray-600)",
-                      fontSize: "13px", fontWeight: 700,
-                    }}>
-                    {p === "admin" ? t.admin : t.operator}
-                    <span style={{ display: "block", fontSize: "12px", fontWeight: 600, color: active ? "var(--gray-600)" : "var(--gray-500)", marginTop: "3px" }}>
-                      {p === "admin" ? t.adminHint : t.operatorHint}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          {!editing && <p style={{ margin: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{t.addNote}</p>}
-        </div>
-
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+    <Drawer
+      title={editing ? t.modalEditTitle : t.modalAddTitle}
+      onClose={onClose}
+      width="520px"
+      footer={
+        <>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button className="portal-btn-primary" onClick={submit} disabled={!canSubmit}
             style={{
               padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-200)", color: canSubmit ? "white" : "var(--gray-400)",
-              fontSize: "13px", fontWeight: 700, cursor: canSubmit ? "pointer" : "not-allowed", 
+              fontSize: "13px", fontWeight: 700, cursor: canSubmit ? "pointer" : "not-allowed",
             }}>
             {t.save}
           </button>
+        </>
+      }
+    >
+      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div>
+          {label(t.fieldName)}
+          <TextField value={name} onChange={setName} placeholder={t.fieldNamePlaceholder} autoFocus />
         </div>
+        <div>
+          {label(t.fieldEmployeeId)}
+          <input
+            value={employeeId}
+            onChange={e => { setEmployeeId(e.target.value); setDuplicate(false); }}
+            placeholder={t.fieldEmployeeIdPlaceholder}
+            disabled={editing}
+            style={{ ...inputStyle, backgroundColor: editing ? "var(--gray-50)" : "white", color: editing ? "var(--gray-500)" : "var(--gray-900)" }}
+          />
+          {editing && <p style={{ margin: "6px 0 0", fontSize: "11px", color: "var(--gray-400)" }}>{t.fieldEmployeeIdLocked}</p>}
+          {duplicate && <p style={{ margin: "6px 0 0", fontSize: "11px", fontWeight: 700, color: "var(--danger-400)" }}>{t.duplicateId}</p>}
+        </div>
+        <div>
+          {label(t.fieldDepartment, t.fieldEmailOptional)}
+          <TextField value={department} onChange={setDepartment} placeholder={t.fieldDepartmentPlaceholder} />
+        </div>
+        <div>
+          {label(t.fieldEmail, t.fieldEmailOptional)}
+          <TextField value={email} onChange={setEmail} placeholder={t.fieldEmailPlaceholder} />
+        </div>
+        <div>
+          {label(t.fieldPermission)}
+          {/* Two buttons rather than a select: the answer is one of two and both fit on screen.
+              Each carries the access it grants under the name — this is the one screen where the
+              choice is made on paper terms and read back weeks later off a printed slip. */}
+          <div style={{ display: "flex", gap: "8px" }}>
+            {(["operator", "admin"] as const).map(p => {
+              const active = permission === p;
+              return (
+                <button key={p} onClick={() => setPermission(p)}
+                  style={{
+                    flex: 1, padding: "10px 12px", borderRadius: "10px", cursor: "pointer", textAlign: "left",
+                    border: active ? "1px solid var(--gray-900)" : BORDER,
+                    backgroundColor: active ? "var(--gray-100)" : "white",
+                    color: active ? "var(--gray-900)" : "var(--gray-600)",
+                    fontSize: "13px", fontWeight: 700,
+                  }}>
+                  {p === "admin" ? t.admin : t.operator}
+                  <span style={{ display: "block", fontSize: "12px", fontWeight: 600, color: active ? "var(--gray-600)" : "var(--gray-500)", marginTop: "3px" }}>
+                    {p === "admin" ? t.adminHint : t.operatorHint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {!editing && <p style={{ margin: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{t.addNote}</p>}
       </div>
-    </div>
+    </Drawer>
   );
 }
 
@@ -448,17 +449,23 @@ function IssueConfirmModal({
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
             {hasCode ? t.reissueTitle : t.issueTitle}
           </p>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "8px", lineHeight: 1.5 }}>
+          {/* THE TWO LINES ARE ONE ANSWER, THE TITLE IS THE QUESTION (owner: 이 두줄 사이간격
+              좁혀주고 그위에 질문에서부터는 더 떨어트려줘). At 8px under the title and 6px between
+              themselves they read as three evenly spaced lines — a list, which is not what this
+              is. 14px away from the question and 3px apart makes the pair one block: what this
+              costs, in two facts.
+              The second line is said before the code exists, not after: the administrator is
+              about to print it and hand it over, and the deadline is only useful while they
+              still have the paper. */}
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "14px", lineHeight: 1.5 }}>
             {hasCode ? t.reissueBody(entry.name) : t.issueBody(entry.name)}
           </p>
-          {/* Said before the code exists, not after: the administrator is about to print this and
-              hand it over, and the deadline is only useful while they still have the paper. */}
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.5 }}>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "3px", lineHeight: 1.5 }}>
             {t.codeExpiryNote(REGISTRATION_CODE_TTL_DAYS)}
           </p>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button className="portal-btn-primary" onClick={onConfirm}
@@ -491,7 +498,7 @@ function RemoveConfirmModal({
           </p>
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button className="portal-btn-danger" onClick={onConfirm}

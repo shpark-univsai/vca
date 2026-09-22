@@ -3,10 +3,9 @@
 import { Fragment, useMemo, useRef, useState } from "react";
 import { FileDown, ImageOff, ImagePlus } from "lucide-react";
 import { useVcaStore } from "@/lib/vcaStore";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER } from "./PortalShared";
+import { BORDER, Drawer } from "./PortalShared";
 import {
   attachVipPhotos, buildVipImportRows, decodeSpreadsheetBytes, importableRows, isBlocking, looksLikeXlsx,
   parseDelimited, type ParsedVipRow, type VipImportIssue,
@@ -228,7 +227,6 @@ export default function VipImportModal({
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t: Dict = T[lang];
-  useEscapeKey(onClose);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -426,283 +424,292 @@ export default function VipImportModal({
      cells than it has tracks does not leave a hole — it slides every later cell one column left. */
   const GRID = "34px 1fr 1fr 46px 1.4fr";
 
-  return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{
-        backgroundColor: "white", borderRadius: "16px", border: BORDER, width: "100%",
-        maxWidth: parsed || result ? "760px" : "460px",
-        maxHeight: "86vh", display: "flex", flexDirection: "column",
-        boxShadow: "var(--shadow-modal)",
-      }}>
-        <div style={{ padding: "20px", borderBottom: parsed || result ? BORDER : "none", flexShrink: 0 }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{result ? t.doneTitle : t.title}</p>
-          {!result && <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.5 }}>{t.subtitle}</p>}
-        </div>
-
-        {result ? (
-          <>
-            <div style={{ padding: "20px", overflowY: "auto", minHeight: 0 }}>
-              <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.doneAdded(result.added)}</p>
-              {result.skipped.length > 0 && (
-                <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "2px" }}>{t.doneSkipped(result.skipped.length)}</p>
-              )}
-              {/* Where those people now are, said once and in the registry's own words — and now
-                  counted rather than assumed: the import can land faces, so the number in the
-                  사진 없음 sentence is the rows that did NOT get one, and the sentence disappears
-                  entirely when every row came with a photo. Saying "all of them" over a set that
-                  is half enrolled is the kind of confident wrong figure this screen exists to
-                  stop producing. */}
-              {result.withPhoto > 0 && (
-                <p style={{ fontSize: "13px", color: "var(--success-400)", fontWeight: 700, marginTop: "2px" }}>{t.doneWithPhoto(result.withPhoto)}</p>
-              )}
-              {result.added - result.withPhoto > 0 && (
-                <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.doneNoPhotoNote(result.added - result.withPhoto)}</p>
-              )}
-              {result.skipped.length > 0 && (
-                <div style={{ marginTop: "16px" }}>
-                  <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.skippedHeading}</p>
-                  <div style={{ border: BORDER, borderRadius: "12px", overflow: "hidden" }}>
-                    {result.skipped.map((s, i) => (
-                      <div key={`${s.row.line}-${i}`} style={{
-                        display: "flex", gap: "10px", padding: "8px 12px", alignItems: "baseline",
-                        borderBottom: i === result.skipped.length - 1 ? "none" : BORDER,
-                      }}>
-                        <span style={{ fontSize: "11px", color: "var(--gray-400)", minWidth: "28px", flexShrink: 0 }}>{s.row.line}</span>
-                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", minWidth: 0 }}>
-                          {s.row.name || s.row.description || "—"}
-                        </span>
-                        <span style={{ fontSize: "12px", color: "var(--danger-400)", marginLeft: "auto", textAlign: "right" }}>
-                          {s.reasons.join(" · ")}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
-              {result.skipped.length > 0 && (
-                <button className="portal-btn-outline" onClick={downloadSkipped}
-                  style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                  {t.downloadErrors}
-                </button>
-              )}
-              <button className="portal-btn-primary" onClick={onClose}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {t.close}
-              </button>
-            </div>
-          </>
-        ) : parsed ? (
-          <>
-            <div style={{ padding: "12px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", flexShrink: 0 }}>
-              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--success-400)" }}>{t.readyCount(okRows.length)}</span>
-              {badRows.length > 0 && <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-400)" }}>{t.errorCount(badRows.length)}</span>}
-              {warnRows.length > 0 && <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)" }}>{t.warnCount(warnRows.length)}</span>}
-              <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>
-                {okRows.length === 0 ? t.allRowsBad : badRows.length > 0 ? t.errorsSkippedNote : ""}
-              </span>
-              {parsed.unmapped.length > 0 && (
-                <span style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%" }}>{t.unmappedNote(parsed.unmapped.join(", "))}</span>
-              )}
-              {/* Said only when it happened, and it is not visible in the table otherwise: a file
-                  headed in words we do not know shows its heading as row one, and a reader who is
-                  not told imports a person called 피보호자. */}
-              {!parsed.headerDetected && (
-                <span style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%", lineHeight: 1.5 }}>{t.noHeaderNote}</span>
-              )}
-              {/* THE SECOND HALF OF THE FILE, when the sheet asked for one.
-                  A sheet with a photo column has named images this modal does not have yet, so the
-                  way to give them to it sits here — beside the counts it changes, before the
-                  button, and not as a step of its own: the reader has to be able to pick more and
-                  watch the same rows fill in. A file of bare names shows none of this and keeps
-                  the sentence it always had. */}
-              <div style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                  <button onClick={() => photoInputRef.current?.click()}
-                    style={{ display: "flex", alignItems: "center", gap: "6px", height: "30px", padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
-                    <ImagePlus size={13} strokeWidth={2.4} />
-                    {photos.length === 0 ? t.pickPhotos : t.pickMorePhotos}
-                  </button>
-                  <input ref={photoInputRef} type="file" accept="image/*" multiple
-                    onChange={e => { onPickPhotos(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
-                  {photos.length === 0 ? (
-                    <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.photosNone}</span>
-                  ) : (
-                    <span style={{ fontSize: "12px", fontWeight: 700, color: withPhotoCount === rows.length ? "var(--success-400)" : "var(--warning-500)" }}>
-                      {t.photosMatched(withPhotoCount, rows.length)}
-                    </span>
-                  )}
-                {/* What the archive turned out to hold. Said because nobody chose these files by
-                    name: one drop produced a sheet and a photo set, and the reader has no other
-                    way to check that the zip was read the way they packed it. */}
-                {archiveNote && (
-                  <span style={{ width: "100%", fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{archiveNote}</span>
-                )}
-                  {/* Pictures the reader chose that no row asked for — a misspelt file name in the
-                      sheet looks identical from the row's side, and this is the half that names the
-                      file so the two can be compared. Four, then a count: a folder of two hundred
-                      photos against the wrong sheet would otherwise fill the modal. */}
-                  {attached && attached.unusedFiles.length > 0 && (
-                    <span style={{ width: "100%", fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>
-                      {t.photosUnused(attached.unusedFiles.slice(0, 4).join(", ")
-                        + (attached.unusedFiles.length > 4 ? ` +${attached.unusedFiles.length - 4}` : ""))}
-                    </span>
-                  )}
-                {/* The consequence, and only while there is one: it goes as the last row fills. */}
-                {withPhotoCount < rows.length && (
-                  <span style={{ width: "100%", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.noPhotoNote}</span>
-                )}
-              </div>
-            </div>
-            <div style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
-              <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: "10px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, position: "sticky", top: 0 }}>
-                {[t.colLine, t.colName, t.colMemo, t.colPhoto, t.colReason].map(h => (
-                  <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{h}</span>
-                ))}
-              </div>
-              {rows.map((r, i) => {
-                const bad = r.issues.some(isBlocking);
-                const warn = !bad && r.issues.length > 0;
-                return (
-                  <div key={`${r.line}-${i}`} style={{
-                    display: "grid", gridTemplateColumns: GRID, columnGap: "10px",
-                    padding: "8px 20px", borderBottom: BORDER,
-                    backgroundColor: bad ? "var(--danger-100)" : "transparent",
-                  }}>
-                    <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{r.line}</span>
-                    <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name || "—"}</span>
-                    <span style={{ fontSize: "12px", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.description || "—"}</span>
-                    {/* THE FACE ITSELF, not a tick. The one thing the reader cannot check from a
-                        file name is whether the right person's photo landed on the right row, and a
-                        26px thumbnail is that check — the reason the images are picked here rather
-                        than uploaded blind after the import. A row whose file was not picked shows
-                        the words instead; the reason column says what to do about it. */}
-                    {(
-                      r.photo ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={previewUrl(r.photo)} alt="" width={26} height={26}
-                          style={{ width: "26px", height: "26px", borderRadius: "50%", objectFit: "cover", border: "1px solid var(--gray-200)" }} />
-                      ) : (r.photoFile || r.issues.includes("photo-ambiguous")) ? (
-                        /* A MARK, NOT A SENTENCE. This cell held the words 파일 없음 while the
-                           reason column beside it said the same thing at length — one fact twice,
-                           in the two columns a reader compares. The glyph marks the row, the file
-                           name it was looking for is on the hover, and the sentence stays in the
-                           column whose heading is 사유. */
-                        <span title={r.photoFile || undefined} style={{ display: "flex", color: "var(--warning-500)" }}>
-                          <ImageOff size={15} strokeWidth={2.2} />
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
-                      )
-                    )}
-                    {/* The reason column holds the reason, and stays empty when there is none —
-                        unlike the camera preview, which reuses its last column for 위치 when the
-                        row is clean. Here there is no third field to fall back to, and a memo
-                        printed under a heading that says 사유 would read as the reason. */}
-                    <span style={{ fontSize: "12px", color: bad ? "var(--danger-500)" : warn ? "var(--warning-500)" : "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {r.issues.map(issueText).join(" · ")}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
-              <button className="portal-btn-outline" onClick={onClose}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {t.cancel}
-              </button>
-              <button onClick={commit} disabled={okRows.length === 0}
-                style={{
-                  padding: "10px 16px", borderRadius: "8px", border: "none",
-                  backgroundColor: okRows.length === 0 ? "var(--gray-200)" : "var(--primary-400)",
-                  color: okRows.length === 0 ? "var(--gray-400)" : "white",
-                  fontSize: "13px", fontWeight: 700, cursor: okRows.length === 0 ? "not-allowed" : "pointer",
+  /* One panel, three states, and the row of buttons that belongs to each: pick a file, look the
+     rows over, then read what landed. Body and footer are chosen by the same condition, so a
+     footer can never offer an action that belongs to a state the reader is not in. */
+  const stage = result ? {
+    body: (
+      <div style={{ padding: "20px" }}>
+        <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.doneAdded(result.added)}</p>
+        {result.skipped.length > 0 && (
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "2px" }}>{t.doneSkipped(result.skipped.length)}</p>
+        )}
+        {/* Where those people now are, said once and in the registry's own words — and now
+            counted rather than assumed: the import can land faces, so the number in the
+            사진 없음 sentence is the rows that did NOT get one, and the sentence disappears
+            entirely when every row came with a photo. Saying "all of them" over a set that
+            is half enrolled is the kind of confident wrong figure this screen exists to
+            stop producing. */}
+        {result.withPhoto > 0 && (
+          <p style={{ fontSize: "13px", color: "var(--success-400)", fontWeight: 700, marginTop: "2px" }}>{t.doneWithPhoto(result.withPhoto)}</p>
+        )}
+        {result.added - result.withPhoto > 0 && (
+          <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.doneNoPhotoNote(result.added - result.withPhoto)}</p>
+        )}
+        {result.skipped.length > 0 && (
+          <div style={{ marginTop: "16px" }}>
+            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.skippedHeading}</p>
+            <div style={{ border: BORDER, borderRadius: "12px", overflow: "hidden" }}>
+              {result.skipped.map((s, i) => (
+                <div key={`${s.row.line}-${i}`} style={{
+                  display: "flex", gap: "10px", padding: "8px 12px", alignItems: "baseline",
+                  borderBottom: i === result.skipped.length - 1 ? "none" : BORDER,
                 }}>
-                {t.importN(okRows.length)}
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ padding: "0 20px 20px" }}>
-              <div
-                onDragOver={e => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={e => { e.preventDefault(); setDragging(false); onPick(e.dataTransfer.files); }}
-                onClick={() => inputRef.current?.click()}
-                style={{
-                  border: `1px dashed ${dragging ? "var(--primary-400)" : "var(--gray-200)"}`,
-                  backgroundColor: dragging ? "var(--primary-100)" : "var(--gray-50)",
-                  borderRadius: "12px", padding: "24px 20px", textAlign: "center", cursor: "pointer",
-                }}>
-                <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.dropHere}</p>
-                <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.orBrowse}</p>
-              </div>
-              {/* CSV or ZIP, and .tsv listed now that the archive made the list longer than one:
-                  the parser has always read tab-separated text (parseDelimited sniffs the
-                  delimiter) and the picker simply did not say so. The format note above still
-                  leads with CSV, because the template is a CSV and the one instruction that gets
-                  an Excel user out of trouble is which Save As option to pick. */}
-              <input ref={inputRef} type="file" accept=".csv,text/csv,.tsv,.zip,application/zip"
-                onChange={e => { onPick(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
-
-              {fileError && (
-                <div style={{ marginTop: "12px", padding: "12px", borderRadius: "12px", backgroundColor: "var(--danger-100)" }}>
-                  <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{fileError.title}</p>
-                  <p style={{ fontSize: "12px", color: "var(--danger-500)", marginTop: "4px", lineHeight: 1.5 }}>{fileError.body}</p>
+                  <span style={{ fontSize: "11px", color: "var(--gray-400)", minWidth: "28px", flexShrink: 0 }}>{s.row.line}</span>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", minWidth: 0 }}>
+                    {s.row.name || s.row.description || "—"}
+                  </span>
+                  <span style={{ fontSize: "12px", color: "var(--danger-400)", marginLeft: "auto", textAlign: "right" }}>
+                    {s.reasons.join(" · ")}
+                  </span>
                 </div>
-              )}
-
-              {/*
-                THREE NAMED LINES, NOT FOUR PARAGRAPHS (owner, 2026-09-21: 설명을 좀 더 읽기
-                편하게 바꿔줄순없을까, with the screen attached).
-
-                This was four grey paragraphs of the same size and weight stacked nine lines deep,
-                which is a wall: nothing said which to read first, and the two facts somebody
-                actually needs before choosing a file — what the sheet must contain, and how a
-                photograph finds its person — sat in the middle of it.
-
-                So each line now carries the noun it is about in the left column. A reader looking
-                for the photo rule finds it by scanning three words instead of reading three
-                paragraphs, and the Excel instruction drops to the smallest thing here because it
-                matters to one reader in ten — the one whose file came back as mojibake.
-
-                The consequence stays last and stays amber. It is the only line that is not about
-                how to use the screen.
-              */}
-              <div style={{ marginTop: "16px", display: "grid", gridTemplateColumns: "auto 1fr", columnGap: "12px", rowGap: "7px", alignItems: "baseline" }}>
-                {[
-                  { label: t.labelTable, text: t.rowTable },
-                  { label: t.labelPhotos, text: t.rowPhotos },
-                  { label: t.labelFile, text: t.rowFile },
-                ].map(row => (
-                  <Fragment key={row.label}>
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-400)", whiteSpace: "nowrap" }}>{row.label}</span>
-                    <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>{row.text}</span>
-                  </Fragment>
-                ))}
-              </div>
-              <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "10px", lineHeight: 1.5 }}>{t.formatNote}</p>
-              <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.noPhotoNote}</p>
-              {/* An action, dressed as one. In a column of grey sentences a bold grey-900 phrase
-                  reads as another sentence — it is the one thing here somebody clicks before they
-                  have a file at all. */}
-              <button onClick={onDownloadTemplate}
-                style={{ marginTop: "14px", display: "inline-flex", alignItems: "center", gap: "6px", height: "30px", padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit" }}>
-                <FileDown size={13} strokeWidth={2.4} />
-                {t.downloadTemplate}
-              </button>
+              ))}
             </div>
-            <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
-              <button className="portal-btn-outline" onClick={onClose}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {t.cancel}
-              </button>
-            </div>
-          </>
+          </div>
         )}
       </div>
-    </div>
+    ),
+    footer: (
+      <>
+        {result.skipped.length > 0 && (
+          <button className="portal-btn-outline" onClick={downloadSkipped}
+            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {t.downloadErrors}
+          </button>
+        )}
+        <button className="portal-btn-primary" onClick={onClose}
+          style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          {t.close}
+        </button>
+      </>
+    ),
+  } : parsed ? {
+    body: (
+      <>
+        <div style={{ padding: "12px 20px", borderBottom: BORDER, display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--success-400)" }}>{t.readyCount(okRows.length)}</span>
+          {badRows.length > 0 && <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-400)" }}>{t.errorCount(badRows.length)}</span>}
+          {warnRows.length > 0 && <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)" }}>{t.warnCount(warnRows.length)}</span>}
+          <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>
+            {okRows.length === 0 ? t.allRowsBad : badRows.length > 0 ? t.errorsSkippedNote : ""}
+          </span>
+          {parsed.unmapped.length > 0 && (
+            <span style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%" }}>{t.unmappedNote(parsed.unmapped.join(", "))}</span>
+          )}
+          {/* Said only when it happened, and it is not visible in the table otherwise: a file
+              headed in words we do not know shows its heading as row one, and a reader who is
+              not told imports a person called 피보호자. */}
+          {!parsed.headerDetected && (
+            <span style={{ fontSize: "12px", color: "var(--gray-400)", width: "100%", lineHeight: 1.5 }}>{t.noHeaderNote}</span>
+          )}
+          {/* THE SECOND HALF OF THE FILE, when the sheet asked for one.
+              A sheet with a photo column has named images this modal does not have yet, so the
+              way to give them to it sits here — beside the counts it changes, before the
+              button, and not as a step of its own: the reader has to be able to pick more and
+              watch the same rows fill in. A file of bare names shows none of this and keeps
+              the sentence it always had. */}
+          <div style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <button onClick={() => photoInputRef.current?.click()}
+                style={{ display: "flex", alignItems: "center", gap: "6px", height: "30px", padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+                <ImagePlus size={13} strokeWidth={2.4} />
+                {photos.length === 0 ? t.pickPhotos : t.pickMorePhotos}
+              </button>
+              <input ref={photoInputRef} type="file" accept="image/*" multiple
+                onChange={e => { onPickPhotos(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
+              {photos.length === 0 ? (
+                <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{t.photosNone}</span>
+              ) : (
+                <span style={{ fontSize: "12px", fontWeight: 700, color: withPhotoCount === rows.length ? "var(--success-400)" : "var(--warning-500)" }}>
+                  {t.photosMatched(withPhotoCount, rows.length)}
+                </span>
+              )}
+            {/* What the archive turned out to hold. Said because nobody chose these files by
+                name: one drop produced a sheet and a photo set, and the reader has no other
+                way to check that the zip was read the way they packed it. */}
+            {archiveNote && (
+              <span style={{ width: "100%", fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{archiveNote}</span>
+            )}
+              {/* Pictures the reader chose that no row asked for — a misspelt file name in the
+                  sheet looks identical from the row's side, and this is the half that names the
+                  file so the two can be compared. Four, then a count: a folder of two hundred
+                  photos against the wrong sheet would otherwise fill the modal. */}
+              {attached && attached.unusedFiles.length > 0 && (
+                <span style={{ width: "100%", fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>
+                  {t.photosUnused(attached.unusedFiles.slice(0, 4).join(", ")
+                    + (attached.unusedFiles.length > 4 ? ` +${attached.unusedFiles.length - 4}` : ""))}
+                </span>
+              )}
+            {/* The consequence, and only while there is one: it goes as the last row fills. */}
+            {withPhotoCount < rows.length && (
+              <span style={{ width: "100%", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.noPhotoNote}</span>
+            )}
+          </div>
+        </div>
+        <div>
+          <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: "10px", padding: "8px 20px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, position: "sticky", top: 0 }}>
+            {[t.colLine, t.colName, t.colMemo, t.colPhoto, t.colReason].map(h => (
+              <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)" }}>{h}</span>
+            ))}
+          </div>
+          {rows.map((r, i) => {
+            const bad = r.issues.some(isBlocking);
+            const warn = !bad && r.issues.length > 0;
+            return (
+              <div key={`${r.line}-${i}`} style={{
+                display: "grid", gridTemplateColumns: GRID, columnGap: "10px",
+                padding: "8px 20px", borderBottom: BORDER,
+                backgroundColor: bad ? "var(--danger-100)" : "transparent",
+              }}>
+                <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{r.line}</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name || "—"}</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.description || "—"}</span>
+                {/* THE FACE ITSELF, not a tick. The one thing the reader cannot check from a
+                    file name is whether the right person's photo landed on the right row, and a
+                    26px thumbnail is that check — the reason the images are picked here rather
+                    than uploaded blind after the import. A row whose file was not picked shows
+                    the words instead; the reason column says what to do about it. */}
+                {(
+                  r.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={previewUrl(r.photo)} alt="" width={26} height={26}
+                      style={{ width: "26px", height: "26px", borderRadius: "50%", objectFit: "cover", border: "1px solid var(--gray-200)" }} />
+                  ) : (r.photoFile || r.issues.includes("photo-ambiguous")) ? (
+                    /* A MARK, NOT A SENTENCE. This cell held the words 파일 없음 while the
+                       reason column beside it said the same thing at length — one fact twice,
+                       in the two columns a reader compares. The glyph marks the row, the file
+                       name it was looking for is on the hover, and the sentence stays in the
+                       column whose heading is 사유. */
+                    <span title={r.photoFile || undefined} style={{ display: "flex", color: "var(--warning-500)" }}>
+                      <ImageOff size={15} strokeWidth={2.2} />
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>
+                  )
+                )}
+                {/* The reason column holds the reason, and stays empty when there is none —
+                    unlike the camera preview, which reuses its last column for 위치 when the
+                    row is clean. Here there is no third field to fall back to, and a memo
+                    printed under a heading that says 사유 would read as the reason. */}
+                <span style={{ fontSize: "12px", color: bad ? "var(--danger-500)" : warn ? "var(--warning-500)" : "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {r.issues.map(issueText).join(" · ")}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </>
+    ),
+    footer: (
+      <>
+        <button className="portal-btn-outline" onClick={onClose}
+          style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          {t.cancel}
+        </button>
+        <button onClick={commit} disabled={okRows.length === 0}
+          style={{
+            padding: "10px 16px", borderRadius: "8px", border: "none",
+            backgroundColor: okRows.length === 0 ? "var(--gray-200)" : "var(--primary-400)",
+            color: okRows.length === 0 ? "var(--gray-400)" : "white",
+            fontSize: "13px", fontWeight: 700, cursor: okRows.length === 0 ? "not-allowed" : "pointer",
+          }}>
+          {t.importN(okRows.length)}
+        </button>
+      </>
+    ),
+  } : {
+    body: (
+      <div style={{ padding: "0 20px 20px" }}>
+        <div
+          onDragOver={e => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={e => { e.preventDefault(); setDragging(false); onPick(e.dataTransfer.files); }}
+          onClick={() => inputRef.current?.click()}
+          style={{
+            border: `1px dashed ${dragging ? "var(--primary-400)" : "var(--gray-200)"}`,
+            backgroundColor: dragging ? "var(--primary-100)" : "var(--gray-50)",
+            borderRadius: "12px", padding: "24px 20px", textAlign: "center", cursor: "pointer",
+          }}>
+          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.dropHere}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.orBrowse}</p>
+        </div>
+        {/* CSV or ZIP, and .tsv listed now that the archive made the list longer than one:
+            the parser has always read tab-separated text (parseDelimited sniffs the
+            delimiter) and the picker simply did not say so. The format note above still
+            leads with CSV, because the template is a CSV and the one instruction that gets
+            an Excel user out of trouble is which Save As option to pick. */}
+        <input ref={inputRef} type="file" accept=".csv,text/csv,.tsv,.zip,application/zip"
+          onChange={e => { onPick(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
+
+        {fileError && (
+          <div style={{ marginTop: "12px", padding: "12px", borderRadius: "12px", backgroundColor: "var(--danger-100)" }}>
+            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{fileError.title}</p>
+            <p style={{ fontSize: "12px", color: "var(--danger-500)", marginTop: "4px", lineHeight: 1.5 }}>{fileError.body}</p>
+          </div>
+        )}
+
+        {/*
+          THREE NAMED LINES, NOT FOUR PARAGRAPHS (owner, 2026-09-21: 설명을 좀 더 읽기
+          편하게 바꿔줄순없을까, with the screen attached).
+
+          This was four grey paragraphs of the same size and weight stacked nine lines deep,
+          which is a wall: nothing said which to read first, and the two facts somebody
+          actually needs before choosing a file — what the sheet must contain, and how a
+          photograph finds its person — sat in the middle of it.
+
+          So each line now carries the noun it is about in the left column. A reader looking
+          for the photo rule finds it by scanning three words instead of reading three
+          paragraphs, and the Excel instruction drops to the smallest thing here because it
+          matters to one reader in ten — the one whose file came back as mojibake.
+
+          The consequence stays last and stays amber. It is the only line that is not about
+          how to use the screen.
+        */}
+        <div style={{ marginTop: "16px", display: "grid", gridTemplateColumns: "auto 1fr", columnGap: "12px", rowGap: "7px", alignItems: "baseline" }}>
+          {[
+            { label: t.labelTable, text: t.rowTable },
+            { label: t.labelPhotos, text: t.rowPhotos },
+            { label: t.labelFile, text: t.rowFile },
+          ].map(row => (
+            <Fragment key={row.label}>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-400)", whiteSpace: "nowrap" }}>{row.label}</span>
+              <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>{row.text}</span>
+            </Fragment>
+          ))}
+        </div>
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "10px", lineHeight: 1.5 }}>{t.formatNote}</p>
+        <p style={{ fontSize: "12px", color: "var(--warning-500)", marginTop: "10px", lineHeight: 1.5 }}>{t.noPhotoNote}</p>
+        {/* An action, dressed as one. In a column of grey sentences a bold grey-900 phrase
+            reads as another sentence — it is the one thing here somebody clicks before they
+            have a file at all. */}
+        <button onClick={onDownloadTemplate}
+          style={{ marginTop: "14px", display: "inline-flex", alignItems: "center", gap: "6px", height: "30px", padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit" }}>
+          <FileDown size={13} strokeWidth={2.4} />
+          {t.downloadTemplate}
+        </button>
+      </div>
+    ),
+    footer: (
+      <button className="portal-btn-outline" onClick={onClose}
+        style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+        {t.cancel}
+      </button>
+    ),
+  };
+
+  return (
+    <Drawer
+      title={result ? t.doneTitle : t.title}
+      onClose={onClose}
+      /* Two widths, the same two the centred sheet had: the preview is a five-column table of
+         rows, and the pick-a-file state is a dropzone and three lines of explanation that would
+         sit in an otherwise empty 760px panel. */
+      width={parsed || result ? "760px" : "460px"}
+      footer={stage.footer}
+    >
+      {/* The panel header carries the title now, so the sentence about what this screen does
+          starts the body — and still says nothing once the import has run. */}
+      {!result && <p style={{ padding: "20px", fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.subtitle}</p>}
+      {stage.body}
+    </Drawer>
   );
 }

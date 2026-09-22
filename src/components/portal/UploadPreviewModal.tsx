@@ -5,8 +5,7 @@ import { Film as FilmIcon, Image as ImageIcon, Play, ShieldCheck } from "lucide-
 import { type UploadedMedia } from "@/lib/vcaStore";
 import { uploadFileUrl } from "@/lib/uploadBlobs";
 import { usePortalLanguage } from "@/lib/i18n";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { BORDER } from "./PortalShared";
+import { Drawer } from "./PortalShared";
 
 /**
  * A REGISTERED FILE, OPENED — the same move a camera row makes, and the reason the file rows
@@ -92,7 +91,6 @@ function formatBytes(bytes?: number): string | null {
 export default function UploadPreviewModal({ upload, onClose }: { upload: UploadedMedia; onClose: () => void }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
-  useEscapeKey(onClose);
   /* Pressed once and then the element takes over. Kept as state rather than autoplaying: a modal
      that starts making noise because somebody clicked a table row is a modal nobody opens twice. */
   const [playing, setPlaying] = useState(false);
@@ -109,84 +107,78 @@ export default function UploadPreviewModal({ upload, onClose }: { upload: Upload
   ];
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, boxShadow: "var(--shadow-modal)", width: "100%", maxWidth: "720px", overflow: "hidden" }}>
-        <div style={{ padding: "14px 18px", display: "flex", alignItems: "flex-start", gap: "12px", borderBottom: BORDER }}>
-          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "34px", height: "34px", borderRadius: "9px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)", flexShrink: 0 }}>
-            <KindIcon size={16} strokeWidth={2.2} />
-          </span>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{upload.fileName}</p>
-            <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "2px" }}>
-              {kindLabel} · {t.uploadedBy(upload.uploadedBy, upload.uploadedAt.slice(0, 16).replace("T", " "))}
-            </p>
-          </div>
-          <button className="portal-icon-btn" onClick={onClose} title={t.close}
-            style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          </button>
-        </div>
-
-        {/* THE STAGE. Dark, 16:9, and empty until asked — a recording at rest. */}
-        <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", backgroundColor: "var(--gray-900)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {fileUrl && playing && !isImage && (
-            <video src={fileUrl} controls autoPlay style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
-          )}
-          {fileUrl && isImage && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={fileUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
-          )}
-          {!(fileUrl && (playing || isImage)) && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", padding: "24px", textAlign: "center" }}>
-              <button
-                onClick={() => { if (fileUrl) setPlaying(true); }}
-                disabled={!fileUrl}
-                title={fileUrl ? undefined : t.notHeld}
-                style={{
-                  display: "flex", alignItems: "center", gap: "8px",
-                  padding: "10px 18px", borderRadius: "999px", border: "none",
-                  backgroundColor: fileUrl ? "white" : "rgba(255,255,255,0.14)",
-                  color: fileUrl ? "var(--gray-900)" : "rgba(255,255,255,0.55)",
-                  fontSize: "13px", fontWeight: 700, cursor: fileUrl ? "pointer" : "not-allowed", fontFamily: "inherit",
-                }}>
-                <Play size={15} strokeWidth={2.6} />
-                {isImage ? t.playImage : t.play}
-              </button>
-              {/* The reason, written out rather than left as a dead button. */}
-              {!fileUrl && (
-                <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.6)", lineHeight: 1.5, maxWidth: "380px" }}>{t.notHeld}</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
-          {facts.map(fact => (
-            <span key={fact.label} style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-              <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>{fact.label}</span>
-              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "monospace" }}>{fact.value}</span>
-            </span>
-          ))}
-          <span style={{ flex: 1 }} />
-          {/* The result, in the same words the row uses — a preview that renamed them would make
-              the reader check whether they are the same fact. */}
-          <span style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-end" }}>
-            <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>
-              {upload.kind === "deepfake" ? t.verdict : t.analysed}
-            </span>
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
-              {upload.status !== "done"
-                ? (upload.status === "pending" ? t.pending : t.running)
-                : upload.kind === "deepfake"
-                  ? `${upload.deepfakeVerdict === "manipulated" ? t.verdictManipulated
-                      : upload.deepfakeVerdict === "authentic" ? t.verdictAuthentic : t.verdictInconclusive}`
-                    + (upload.deepfakeScore !== undefined ? ` · ${t.score(upload.deepfakeScore)}` : "")
-                  : upload.detectionCount !== undefined ? t.faces(upload.detectionCount) : t.analysed}
-            </span>
-          </span>
-        </div>
+    /* Wider than the panel's default: the stage is a 16:9 frame, and a recording shown 520px wide
+       is a thumbnail with controls. */
+    <Drawer title={upload.fileName} onClose={onClose} width="672px">
+      {/* The name is the panel's heading now, so what is left of that line is the kind of file and
+          whose it is. */}
+      <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: "12px" }}>
+        <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "34px", height: "34px", borderRadius: "9px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)", flexShrink: 0 }}>
+          <KindIcon size={16} strokeWidth={2.2} />
+        </span>
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", minWidth: 0 }}>
+          {kindLabel} · {t.uploadedBy(upload.uploadedBy, upload.uploadedAt.slice(0, 16).replace("T", " "))}
+        </p>
       </div>
-    </div>
+
+      {/* THE STAGE. Dark, 16:9, and empty until asked — a recording at rest. */}
+      <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", backgroundColor: "var(--gray-900)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {fileUrl && playing && !isImage && (
+          <video src={fileUrl} controls autoPlay style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+        )}
+        {fileUrl && isImage && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={fileUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+        )}
+        {!(fileUrl && (playing || isImage)) && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", padding: "24px", textAlign: "center" }}>
+            <button
+              onClick={() => { if (fileUrl) setPlaying(true); }}
+              disabled={!fileUrl}
+              title={fileUrl ? undefined : t.notHeld}
+              style={{
+                display: "flex", alignItems: "center", gap: "8px",
+                padding: "10px 18px", borderRadius: "999px", border: "none",
+                backgroundColor: fileUrl ? "white" : "rgba(255,255,255,0.14)",
+                color: fileUrl ? "var(--gray-900)" : "rgba(255,255,255,0.55)",
+                fontSize: "13px", fontWeight: 700, cursor: fileUrl ? "pointer" : "not-allowed", fontFamily: "inherit",
+              }}>
+              <Play size={15} strokeWidth={2.6} />
+              {isImage ? t.playImage : t.play}
+            </button>
+            {/* The reason, written out rather than left as a dead button. */}
+            {!fileUrl && (
+              <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.6)", lineHeight: 1.5, maxWidth: "380px" }}>{t.notHeld}</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
+        {facts.map(fact => (
+          <span key={fact.label} style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>{fact.label}</span>
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "monospace" }}>{fact.value}</span>
+          </span>
+        ))}
+        <span style={{ flex: 1 }} />
+        {/* The result, in the same words the row uses — a preview that renamed them would make
+            the reader check whether they are the same fact. */}
+        <span style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-end" }}>
+          <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>
+            {upload.kind === "deepfake" ? t.verdict : t.analysed}
+          </span>
+          <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
+            {upload.status !== "done"
+              ? (upload.status === "pending" ? t.pending : t.running)
+              : upload.kind === "deepfake"
+                ? `${upload.deepfakeVerdict === "manipulated" ? t.verdictManipulated
+                    : upload.deepfakeVerdict === "authentic" ? t.verdictAuthentic : t.verdictInconclusive}`
+                  + (upload.deepfakeScore !== undefined ? ` · ${t.score(upload.deepfakeScore)}` : "")
+                : upload.detectionCount !== undefined ? t.faces(upload.detectionCount) : t.analysed}
+          </span>
+        </span>
+      </div>
+    </Drawer>
   );
 }

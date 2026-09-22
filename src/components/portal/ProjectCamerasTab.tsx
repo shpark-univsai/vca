@@ -12,7 +12,7 @@ import { formatElapsed } from "@/lib/time";
 import { forgetUploadFile, rememberUploadFile } from "@/lib/uploadBlobs";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { useFitRowsPerPage, TablePagination, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
+import { useFitRowsPerPage, TablePagination, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -688,7 +688,6 @@ function CameraFormModal({
   onTouched?: () => void;
   t: (typeof T)["en"] | (typeof T)["ko"];
 }) {
-  useEscapeKey(onClose);
   const [form, setForm] = useState<CameraFormValues>(initial);
   // This modal takes its dictionary as a prop, but the shared format messages are keyed by
   // language rather than copied into every file's T — so it reads the language itself.
@@ -846,123 +845,20 @@ function CameraFormModal({
 
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      // Scroll on the backdrop, not the sheet: this form holds FilterSelects, and those open as
-      // absolutely positioned lists that an overflow-y on the sheet cuts off at its edge.
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "460px", width: "100%", margin: "auto", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{title}</p>
-          <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          </button>
-        </div>
-        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
-
-          {/* FIRST, because it changes what the rest of the form means — and because it is where
-              the previous product asked it. Two boxes rather than a select: there are exactly two
-              answers, they are chosen once, and a select would hide one of them behind a click.
-              Each says what it is under its name — "AI camera" is not self-explanatory to somebody
-              holding an installer's invoice. */}
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldSourceType}</label>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              {([
-                { value: "normal" as CameraKind, label: t.kindNormal, why: t.kindNormalWhy },
-                { value: "ai" as CameraKind, label: t.kindAi, why: t.kindAiWhy },
-              ]).map(option => {
-                const on = form.kind === option.value;
-                return (
-                  <button key={option.value} type="button" onClick={() => pickKind(option.value)} title={option.why}
-                    style={{
-                      textAlign: "left", padding: "9px 12px", borderRadius: "10px", cursor: "pointer", fontFamily: "inherit",
-                      border: on ? "1px solid var(--primary-400)" : BORDER,
-                      backgroundColor: on ? "var(--primary-50)" : "white",
-                      color: on ? "var(--primary-400)" : "var(--gray-600)",
-                      display: "flex", alignItems: "center", gap: "7px",
-                    }}>
-                    {option.value === "ai" ? <Cpu size={14} strokeWidth={2.4} /> : <VideoIcon size={14} strokeWidth={2.4} />}
-                    <span style={{ fontSize: "12px", fontWeight: 700 }}>{option.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {field("name", t.fieldDeviceName, t.fieldDeviceNamePlaceholder, {
-            error: refused && nameMissing ? t.errRequired : undefined,
-            // Remounted per batch round so autoFocus fires again — see nextInBatch.
-            remountKey: round, autoFocus: round > 0,
-          })}
-          {field("ip", t.fieldIp, t.fieldIpPlaceholder, {
-            error: ipShape ? FIELD_CHECK_T[lang][ipShape] : ipCharsBad ? t.errIp : refused && ipMissing ? t.errRequired : undefined,
-          })}
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            {selectField(t.fieldMaker, form.maker, MAKERS.map(m => ({ value: m, label: m })), v => setForm(f => ({ ...f, maker: v })))}
-            {field("model", t.fieldModel, t.fieldModelPlaceholder, {
-              error: refused && modelMissing ? t.errRequired : undefined,
-            })}
-          </div>
-
-          <div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              {field("username", t.fieldUsername, t.fieldUsernamePlaceholder, {
-                error: refused && usernameMissing ? t.errRequired : undefined,
-              })}
-              {field("password", t.fieldPassword, t.fieldPasswordPlaceholder, {
-                type: "password",
-                error: refused && passwordMissing ? t.errRequired : undefined,
-              })}
-            </div>
-            {/* Says where the password goes, because an empty box on the edit form otherwise reads
-                as "we lost it" rather than "we never had it". */}
-            <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.45 }}>
-              {isEdit ? `${t.fieldPasswordEditHint} ${t.passwordNotStoredHint}` : t.passwordNotStoredHint}
-            </p>
-          </div>
-
-          {/* The malformed case wins over the empty one: they cannot both be true, and rtspError
-              is the more specific thing to say. */}
-          {field("rtspUrl", t.fieldRtspUrl, "rtsp://10.20.4.11:554/stream1", {
-            error: rtspError ? t.errRtsp : refused && rtspMissing ? t.errRequired : undefined,
-          })}
-
-          <div>
-            {selectField(
-              t.fieldServer,
-              form.serverId,
-              [{ value: "", label: t.fieldServerNone }, ...serversForKind.map(sv => ({ value: sv.id, label: sv.name }))],
-              v => setForm(f => ({ ...f, serverId: v })),
-            )}
-            {servers.length === 0
-              ? <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.45 }}>{t.fieldServerNoneAvailable}</p>
-              : serversForKind.length === 0
-                /* There are servers, just none of this kind — a different sentence from "no server
-                   yet", and the one that tells the reader their next move is on the other screen. */
-                ? <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.45 }}>{t.fieldServerNoneForKind}</p>
-                : refused && serverMissing ? <FieldError>{t.errRequired}</FieldError> : null}
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            {field("lat", t.fieldLat, "0.0", { inputMode: "decimal", error: latError ? t.errLat : refused && latMissing ? t.errRequired : undefined })}
-            {field("lng", t.fieldLng, "0.0", { inputMode: "decimal", error: lngError ? t.errLng : refused && lngMissing ? t.errRequired : undefined })}
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            {field("location", t.fieldLocation, t.fieldLocationPlaceholder)}
-            {field("zone", t.fieldZone, t.fieldZonePlaceholder)}
-          </div>
-
-        </div>
-        {/* Readable text beside the dead button rather than a tooltip on it — the call the licence
-            tab's install button already makes, for the same reason: a tooltip on a disabled control
-            is unreliable across browsers and this sentence has to be read. */}
-        {/* A COLUMN, because three buttons and a sentence do not fit on one line. They shared a
-            wrapping row and the sentence pushed 취소 up onto its own line, leaving the three
-            buttons split across two rows in no particular order. The message gets the line above
-            and the buttons keep theirs. */}
-        <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", alignItems: "stretch", gap: "10px" }}>
+    /* The panel's own body scrolls. It was the backdrop that scrolled before, because the
+       FilterSelects on this form open as absolutely positioned lists and an overflow on the sheet
+       cut them off at its edge — the list measures the room under its trigger and opens upward
+       when there is none, so the panel can scroll without eating them. */
+    <Drawer title={title} onClose={onClose} width="520px"
+      footer={
+        /* Readable text beside the dead button rather than a tooltip on it — the call the licence
+           tab's install button already makes, for the same reason: a tooltip on a disabled control
+           is unreliable across browsers and this sentence has to be read. */
+        /* A COLUMN, because three buttons and a sentence do not fit on one line. They shared a
+           wrapping row and the sentence pushed 취소 up onto its own line, leaving the three
+           buttons split across two rows in no particular order. The message gets the line above
+           and the buttons keep theirs. */
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
           {submitRefusal ? (
             /* Outranks the "something above is empty" line: the form IS filled in — the register
                refused it, which is a different sentence and the only one that explains why the
@@ -1020,8 +916,106 @@ function CameraFormModal({
           </button>
           </div>
         </div>
+      }>
+      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+
+        {/* FIRST, because it changes what the rest of the form means — and because it is where
+            the previous product asked it. Two boxes rather than a select: there are exactly two
+            answers, they are chosen once, and a select would hide one of them behind a click.
+            Each says what it is under its name — "AI camera" is not self-explanatory to somebody
+            holding an installer's invoice. */}
+        <div>
+          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldSourceType}</label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            {([
+              { value: "normal" as CameraKind, label: t.kindNormal, why: t.kindNormalWhy },
+              { value: "ai" as CameraKind, label: t.kindAi, why: t.kindAiWhy },
+            ]).map(option => {
+              const on = form.kind === option.value;
+              return (
+                <button key={option.value} type="button" onClick={() => pickKind(option.value)} title={option.why}
+                  style={{
+                    textAlign: "left", padding: "9px 12px", borderRadius: "10px", cursor: "pointer", fontFamily: "inherit",
+                    border: on ? "1px solid var(--primary-400)" : BORDER,
+                    backgroundColor: on ? "var(--primary-50)" : "white",
+                    color: on ? "var(--primary-400)" : "var(--gray-600)",
+                    display: "flex", alignItems: "center", gap: "7px",
+                  }}>
+                  {option.value === "ai" ? <Cpu size={14} strokeWidth={2.4} /> : <VideoIcon size={14} strokeWidth={2.4} />}
+                  <span style={{ fontSize: "12px", fontWeight: 700 }}>{option.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {field("name", t.fieldDeviceName, t.fieldDeviceNamePlaceholder, {
+          error: refused && nameMissing ? t.errRequired : undefined,
+          // Remounted per batch round so autoFocus fires again — see nextInBatch.
+          remountKey: round, autoFocus: round > 0,
+        })}
+        {field("ip", t.fieldIp, t.fieldIpPlaceholder, {
+          error: ipShape ? FIELD_CHECK_T[lang][ipShape] : ipCharsBad ? t.errIp : refused && ipMissing ? t.errRequired : undefined,
+        })}
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          {selectField(t.fieldMaker, form.maker, MAKERS.map(m => ({ value: m, label: m })), v => setForm(f => ({ ...f, maker: v })))}
+          {field("model", t.fieldModel, t.fieldModelPlaceholder, {
+            error: refused && modelMissing ? t.errRequired : undefined,
+          })}
+        </div>
+
+        <div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            {field("username", t.fieldUsername, t.fieldUsernamePlaceholder, {
+              error: refused && usernameMissing ? t.errRequired : undefined,
+            })}
+            {field("password", t.fieldPassword, t.fieldPasswordPlaceholder, {
+              type: "password",
+              error: refused && passwordMissing ? t.errRequired : undefined,
+            })}
+          </div>
+          {/* Says where the password goes, because an empty box on the edit form otherwise reads
+              as "we lost it" rather than "we never had it". */}
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.45 }}>
+            {isEdit ? `${t.fieldPasswordEditHint} ${t.passwordNotStoredHint}` : t.passwordNotStoredHint}
+          </p>
+        </div>
+
+        {/* The malformed case wins over the empty one: they cannot both be true, and rtspError
+            is the more specific thing to say. */}
+        {field("rtspUrl", t.fieldRtspUrl, "rtsp://10.20.4.11:554/stream1", {
+          error: rtspError ? t.errRtsp : refused && rtspMissing ? t.errRequired : undefined,
+        })}
+
+        <div>
+          {selectField(
+            t.fieldServer,
+            form.serverId,
+            [{ value: "", label: t.fieldServerNone }, ...serversForKind.map(sv => ({ value: sv.id, label: sv.name }))],
+            v => setForm(f => ({ ...f, serverId: v })),
+          )}
+          {servers.length === 0
+            ? <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.45 }}>{t.fieldServerNoneAvailable}</p>
+            : serversForKind.length === 0
+              /* There are servers, just none of this kind — a different sentence from "no server
+                 yet", and the one that tells the reader their next move is on the other screen. */
+              ? <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "6px", lineHeight: 1.45 }}>{t.fieldServerNoneForKind}</p>
+              : refused && serverMissing ? <FieldError>{t.errRequired}</FieldError> : null}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          {field("lat", t.fieldLat, "0.0", { inputMode: "decimal", error: latError ? t.errLat : refused && latMissing ? t.errRequired : undefined })}
+          {field("lng", t.fieldLng, "0.0", { inputMode: "decimal", error: lngError ? t.errLng : refused && lngMissing ? t.errRequired : undefined })}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          {field("location", t.fieldLocation, t.fieldLocationPlaceholder)}
+          {field("zone", t.fieldZone, t.fieldZonePlaceholder)}
+        </div>
+
       </div>
-    </div>
+    </Drawer>
   );
 }
 
@@ -1305,14 +1299,14 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const [groupError, setGroupError] = useState<string | null>(null);
   const addCameraGroup = useVcaStore(s => s.addCameraGroup);
   /*
-   * Escape for the two dialogs on this screen that are inline JSX rather than components, so
-   * they cannot each call useEscapeKey for themselves. Both had a working backdrop click and a
-   * dead Escape key, which is the exact drift the shared hook exists to prevent — and one of
-   * the two is the bulk delete.
+   * Escape for the bulk delete, which is inline JSX rather than a component and so cannot call
+   * useEscapeKey for itself. It had a working backdrop click and a dead Escape key, which is the
+   * exact drift the shared hook exists to prevent — and this is the bulk delete. The upload
+   * dialog was the other one; it is a Drawer now and brings its own.
    */
   useEscapeKey(
-    () => { if (confirmingBulkDelete) setConfirmingBulkDelete(false); else setUploadPurpose(null); },
-    confirmingBulkDelete || uploadPurpose !== null,
+    () => setConfirmingBulkDelete(false),
+    confirmingBulkDelete,
   );
 
   const clearFilters = () => { setZoneFilter("ALL"); setStatusFilter("ALL"); setGapFilter(null); };
@@ -2606,50 +2600,42 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           with a Choose button — so the two upload surfaces in the product are one pattern. Accepts
           video as well as image, which is the only real difference. */}
       {uploadPurpose && (
-        <div onClick={e => { if (e.target === e.currentTarget) setUploadPurpose(null); }}
-          style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "520px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-            <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{uploadPurpose === "deepfake" ? t.deepfakeUploadTitle : t.uploadTitle}</p>
-              <button onClick={() => setUploadPurpose(null)} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-              </button>
-            </div>
-            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
-              <div
-                onDragOver={e => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={e => { e.preventDefault(); setDragging(false); acceptFiles(e.dataTransfer.files); }}
-                style={{
-                  borderRadius: "12px", border: `1px dashed ${dragging ? "var(--gray-900)" : "var(--gray-300)"}`,
-                  backgroundColor: dragging ? "var(--gray-100)" : "var(--gray-50)",
-                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                  gap: "12px", padding: "32px 24px", textAlign: "center",
-                }}>
-                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", borderRadius: "24px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)" }}>
-                  <FilmIcon size={22} strokeWidth={1.53} />
-                </span>
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{t.uploadDrop}</span>
-                  <span style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{uploadPurpose === "deepfake" ? t.deepfakeUploadHint : t.uploadHint}</span>
-                </div>
-                <button className="portal-btn-primary" onClick={() => uploadInputRef.current?.click()}
-                  style={{ padding: "10px 16px", borderRadius: "8px", border: "none", cursor: "pointer", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700 }}>
-                  {t.uploadChoose}
-                </button>
-                <input ref={uploadInputRef} type="file" multiple accept="video/*,image/*"
-                  onChange={e => { acceptFiles(e.target.files); e.target.value = ""; }}
-                  style={{ display: "none" }} />
+        <Drawer title={uploadPurpose === "deepfake" ? t.deepfakeUploadTitle : t.uploadTitle}
+          onClose={() => setUploadPurpose(null)} width="520px">
+          <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div
+              onDragOver={e => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={e => { e.preventDefault(); setDragging(false); acceptFiles(e.dataTransfer.files); }}
+              style={{
+                borderRadius: "12px", border: `1px dashed ${dragging ? "var(--gray-900)" : "var(--gray-300)"}`,
+                backgroundColor: dragging ? "var(--gray-100)" : "var(--gray-50)",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: "12px", padding: "32px 24px", textAlign: "center",
+              }}>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", borderRadius: "24px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)" }}>
+                <FilmIcon size={22} strokeWidth={1.53} />
+              </span>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)" }}>{t.uploadDrop}</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{uploadPurpose === "deepfake" ? t.deepfakeUploadHint : t.uploadHint}</span>
               </div>
-              {/* No "the analysis is not connected yet" line here any more (2026-09-09). It was a
-                  sentence about the state of the build, printed inside the product — and the row's
-                  own status already says "Queued", which is both true now and still true once the
-                  endpoint lands and a real job waits its turn. The note would have had to be
-                  deleted on the day the backend arrived; the status will not. The dependency is
-                  recorded where it belongs, in the HANDOFF note on addUpload in vcaStore. */}
+              <button className="portal-btn-primary" onClick={() => uploadInputRef.current?.click()}
+                style={{ padding: "10px 16px", borderRadius: "8px", border: "none", cursor: "pointer", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700 }}>
+                {t.uploadChoose}
+              </button>
+              <input ref={uploadInputRef} type="file" multiple accept="video/*,image/*"
+                onChange={e => { acceptFiles(e.target.files); e.target.value = ""; }}
+                style={{ display: "none" }} />
             </div>
+            {/* No "the analysis is not connected yet" line here any more (2026-09-09). It was a
+                sentence about the state of the build, printed inside the product — and the row's
+                own status already says "Queued", which is both true now and still true once the
+                endpoint lands and a real job waits its turn. The note would have had to be
+                deleted on the day the backend arrived; the status will not. The dependency is
+                recorded where it belongs, in the HANDOFF note on addUpload in vcaStore. */}
           </div>
-        </div>
+        </Drawer>
       )}
 
 
