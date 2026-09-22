@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, SectionNav, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, RequiredMark, PICKED_LINE, PICKED_FILL } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, SectionNav, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import CameraGroupsTab, { CameraGroupEditor } from "./CameraGroupsTab";
 import AccessPresetsTab from "./AccessPresetsTab";
@@ -1911,18 +1911,25 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
   );
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "440px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>
-            {password ? c.resultTitle : c.modalTitle}
-          </p>
-          <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          </button>
-        </div>
-
+    /*
+      THE SHARED RIGHT-SIDE PANEL (2026-09-22: 나중에 이거 왜 패널로 안 바꼈지? 하고 발견되는
+      중앙팝업 없도록). It was a 440px centred card, and it is the console's longest single errand:
+      three delivery cards, four consequence lines, and then a credential to read out. Its own
+      comment said the box had to cap itself at 60vh and scroll because the English copy wraps
+      where the Korean does not — a panel is the height of the window, so the header and the
+      footer keep their places and only the middle scrolls, which is what that cap was standing in
+      for. `dirty` is not set: nothing here is typed, and the result step must not trap the reader
+      behind a confirmation when the code is already minted.
+    */
+    <Drawer title={password ? c.resultTitle : c.modalTitle} onClose={onClose} width="440px"
+      footer={password === null ? (
+        <>
+          <PanelCancel onClick={onClose} label={t.cancel} />
+          <PanelPrimary onClick={generate} label={c.generate} />
+        </>
+      ) : (
+        <PanelPrimary onClick={onClose} label={t.tempDone} />
+      )}>
         {password === null ? (
           <>
             <div style={MODAL_BODY}>
@@ -1992,15 +1999,6 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
                 </ul>
               </div>
             )}
-            <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-              <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {t.cancel}
-              </button>
-              <button className="portal-btn-primary" onClick={generate}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {c.generate}
-              </button>
-            </div>
           </>
         ) : (
           <>
@@ -2030,16 +2028,9 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
                 <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.5, marginTop: "4px" }}>{c.handover}</p>
               </div>
             </div>
-            <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
-              <button className="portal-btn-primary" onClick={onClose}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-                {t.tempDone}
-              </button>
-            </div>
           </>
         )}
-      </div>
-    </div>
+    </Drawer>
   );
 }
 
@@ -2806,12 +2797,17 @@ function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko
   ];
   const GUIDE_GRID = "1.6fr repeat(3, 1fr)";
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "560px", width: "100%", maxHeight: "86vh", overflowY: "auto", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ padding: "20px 20px 0" }}>
-          <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.guideTitle}</p>
-          <p style={{ fontSize: "13px", color: "var(--gray-500)", marginTop: "6px", lineHeight: 1.5 }}>{t.guideLead}</p>
+    /*
+      THE SHARED RIGHT-SIDE PANEL (2026-09-22). This is the console's reference table — three roles
+      against three doors, plus the lines about app access — and it was read over the very screen
+      it explains, a 560px card capped at 86vh with its own scrollbar. A panel keeps the accounts
+      table visible beside it, which is the point of reading it at all: you are checking a row
+      against the ladder. The Drawer's body is the scroll, so the cap goes with the card.
+    */
+    <Drawer title={t.guideTitle} onClose={onClose} width="560px"
+      footer={<PanelPrimary onClick={onClose} label={t.guideClose} />}>
+        <div style={{ padding: "4px 20px 0" }}>
+          <p style={{ fontSize: "13px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.guideLead}</p>
         </div>
 
         {/* The doors. This is the half people actually get wrong — the roles read fine on their own,
@@ -2858,14 +2854,8 @@ function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.guideAppSearchNote}</p>
         </div>
 
-        <div style={{ padding: "20px", display: "flex", justifyContent: "flex-end" }}>
-          <button className="portal-btn-primary" onClick={onClose}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.guideClose}
-          </button>
-        </div>
-      </div>
-    </div>
+        <div style={{ height: "20px" }} />
+    </Drawer>
   );
 }
 
