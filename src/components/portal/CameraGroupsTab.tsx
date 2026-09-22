@@ -713,8 +713,12 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
           {mayEdit && (
             <button type="button" onClick={() => setCreating(true)}
               style={{
+                /* WHITE INSIDE IT (owner: 새 그룹 박스안에도 흰색을 바탕에 깔아줘). It was
+                   transparent, so the page's off-white showed through and the dashed outline read
+                   as a hole in the grid rather than an empty card waiting to be filled. The
+                   dashes are what say "not a group yet"; the ground is what says "a card". */
                 minHeight: "120px", borderRadius: CARD_RADIUS, border: "1px dashed var(--gray-300)",
-                backgroundColor: "transparent", cursor: "pointer", fontFamily: "inherit",
+                backgroundColor: "white", cursor: "pointer", fontFamily: "inherit",
                 fontSize: "12px", fontWeight: 700, color: "var(--gray-500)",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
               }}>

@@ -27,6 +27,10 @@ const T = {
     // Page header
     inviteUser: "Invite user",
     searchPlaceholder: "Search by user name or email address",
+    scopeFilterAll: "Any camera scope",
+    scopeFilterEvery: "Every camera",
+    scopeFilterNarrowed: "Narrowed",
+    scopeFilterNone: "No app access",
 
     // Role/status summary strip
     axisConsoleRole: "Console",
@@ -429,6 +433,10 @@ const T = {
     // Page header
     inviteUser: "사용자 초대",
     searchPlaceholder: "사용자 이름 또는 이메일 주소로 검색",
+    scopeFilterAll: "모든 카메라 범위",
+    scopeFilterEvery: "전체 카메라",
+    scopeFilterNarrowed: "좁혀진 범위",
+    scopeFilterNone: "앱 접근 없음",
 
     // Role/status summary strip
     axisConsoleRole: "포털 역할",
@@ -3138,6 +3146,17 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
    * is what the numbers were being read for.
    */
   const [statusFilter, setStatusFilter] = useState<UserFilterKey | null>(null);
+  /*
+   * FILTER BY HOW MUCH OF THE SITE AN ACCOUNT SEES (owner's mockup, 2026-09-22: 모든 카메라
+   * 접근 범위 select). The camera column now says 「3 / 62」 with 「그룹 1」 under it, and a column
+   * that carries a fact this specific has to be filterable by it — "who can watch everything" is
+   * the first question an access review asks and it was answerable only by reading 62 rows.
+   *
+   * Three values because the data has three states and no more: every camera on their projects,
+   * a narrowed set, and no app at all (the column's own 「—」). A fourth for "narrowed to nothing"
+   * would be a filter for a state the scope dialog refuses to save.
+   */
+  const [scopeFilter, setScopeFilter] = useState<"all" | "every" | "narrowed" | "none">("all");
   /** True when the list is empty only because something is filtering it. The two empty states
    *  send the reader to different places, and one message for both sends half of them wrong. */
   const narrowed = statusFilter !== null || search.trim() !== "";
@@ -3190,7 +3209,17 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
     .filter(u => statusFilter === null
       || (statusFilter === "dormant" ? nowMs !== null && isDormant(u, nowMs)
         : statusFilter === "noScreens" ? lacksAppScreens(u)
-        : u.status === statusFilter));
+        : u.status === statusFilter))
+    /* Read through the same helper the column draws from, not from the raw fields: a scope is a
+       union of groups and individual cameras and only `scopedCameraIds` resolves both. A filter
+       that re-derived it would drift from the cell it claims to filter. */
+    .filter(u => {
+      if (scopeFilter === "all") return true;
+      if (!u.appAccess) return scopeFilter === "none";
+      return scopeFilter === "every"
+        ? scopedCameraIds(u, cameraGroups) === null
+        : scopeFilter === "narrowed" && scopedCameraIds(u, cameraGroups) !== null;
+    });
   /**
    * Roster rows for this project that are still waiting — matched against accounts by employee
    * number, which is the roster's own key. Status "used" is not enough on its own: an account can
@@ -3447,6 +3476,21 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           inside the pair. */}
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
       <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
+      {/* Beside the search, which is where this table's filters belong — the three exception
+          counts stayed in the strip because they are counts as much as filters, and this one is
+          only a filter. Accounts tab only: the roster has no camera scope to narrow by. */}
+      {peopleTab === "accounts" && (
+        <FilterSelect
+          value={scopeFilter}
+          onChange={v => setScopeFilter(v as typeof scopeFilter)}
+          options={[
+            { value: "all", label: t.scopeFilterAll },
+            { value: "every", label: t.scopeFilterEvery },
+            { value: "narrowed", label: t.scopeFilterNarrowed },
+            { value: "none", label: t.scopeFilterNone },
+          ]}
+        />
+      )}
 
           {/* Tools follow the tab. Six buttons in one row was every tool for both halves of the
               lifecycle competing at once, and four of them could not act on what the reader was
@@ -4072,23 +4116,23 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           },
         ];
         return (
-          <div onClick={e => { if (e.target === e.currentTarget) close(); }}
-            style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "16px", overflowY: "auto" }}>
-            <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "520px", width: "100%", boxShadow: "var(--shadow-modal)", display: "flex", flexDirection: "column" }}>
-              <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid var(--gray-200)", display: "flex", alignItems: "flex-start", gap: "10px" }}>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <p style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mu.name}</p>
-                  <p style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mu.email}</p>
-                </div>
-                {/* The state belongs in the header for the reason it moved next to the name in the
-                    table: a suspended account makes everything below it hypothetical. */}
+          /* A PANEL, like every other editor on this page (owner: 하나로 가능한한 통일하는게
+             좋을것같아 오른쪽패널로). This card is where an account is read and changed, and the
+             row it belongs to stays visible behind it. The name, the address and the status badge
+             go in the panel's title — the badge is there for the reason it moved beside the name
+             in the table: a suspended account makes everything below it hypothetical. */
+          <Drawer
+            title={
+              <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column" }}>
+                  <span style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mu.name}</span>
+                  <span style={{ fontSize: "12px", fontWeight: 400, color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mu.email}</span>
+                </span>
                 <StatusBadge status={mu.status} />
-                <button className="portal-icon-btn" onClick={close}
-                  style={{ flexShrink: 0, padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-                </button>
-              </div>
-
+              </span>
+            }
+            onClose={close}
+          >
               <div style={{ padding: "16px 20px 6px", display: "flex", flexDirection: "column", gap: "14px" }}>
                 {([["where", t.panelWhereSection], ["what", t.panelWhatSection]] as const).map(([group, heading]) => (
                 <div key={group}>
@@ -4278,8 +4322,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
+          </Drawer>
         );
       })()}
       {editingProjectsFor && (
