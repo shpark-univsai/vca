@@ -13,6 +13,7 @@
 
 | 세션 | 잡은 파일 | 상태 |
 |---|---|---|
+| vca-85/S1 | — 놓았습니다 | **완료.** 라벨 21곳의 회색 `*`를 공용 `RequiredMark`(danger-500)로 통일. `ProjectCamerasTab`의 `field()`/`selectField()` 헬퍼 `label` 타입이 `string` → `React.ReactNode`로 넓어짐. **남긴 판단 1건**: 가입 마법사의 「[필수] 이용약관 동의」는 별표가 아니라 대괄호 말머리 — 통일 여부는 별건. 제가 grep·tsc·build로 재검증하고 커밋 |
 | vca-85/P1 | `ProjectVipTab.tsx` · `VipCategories.tsx` · `VipImportModal.tsx` | **배정 2026-09-22 오후**: 자체 모달 → 공용 `Drawer`(오른쪽 패널). `ConfirmModal`은 손대지 않음 |
 | vca-85/P2 | `ProjectRosterTab.tsx` · `RosterImportModal.tsx` | 같음 |
 | vca-85/P3 | `ProjectCamerasTab.tsx` · `CameraImportModal.tsx` · `UploadPreviewModal.tsx` | 같음 |

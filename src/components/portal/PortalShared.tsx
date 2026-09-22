@@ -821,7 +821,7 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
             /* A filter that is on holds the darker edge and a tinted ground, so a toolbar tells you
                the table is narrowed without reading every label. Hover still lightens on top. */
             : active
-            ? { border: "1px solid var(--gray-900)", backgroundColor: "var(--gray-100)" }
+            ? { border: "1px solid var(--gray-800)", backgroundColor: "var(--primary-100)" }
             : { border: hovered ? "1px solid var(--gray-400)" : BORDER }),
         }}
       >
@@ -2245,7 +2245,11 @@ export function AppGrantList({ actions, locked, onToggle }: {
   if (locked) {
     return (
       <>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", padding: "2px 10px 0" }}>
+        {/* NO SIDE INSET (owner, 2026-09-22: 정렬이 이상해). The row carried 10px of left
+            padding from the days when it sat inside a bordered fold whose own content was inset
+            by that much. In a plain column the pills started 10px right of the preset buttons and
+            the line of prose above them — three left edges, three different places. */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", paddingTop: "2px" }}>
           {APP_ACTIONS.map(action => {
             const on = actions.includes(action);
             return (
@@ -2443,17 +2447,78 @@ export function SectionNav({ sections, active, onSelect }: {
  * `width` exists because these are not all the same kind of work: a form is one column (520px is
  * the width the invite form was measured to), while a picker with a map beside it wants 672px.
  */
-export function Drawer({ title, onClose, footer, width = "520px", children }: {
+/**
+ * THE ONE REQUIRED MARKER (owner, 2026-09-22: 빨간 표시로 할 거면 다 빨간 표시로 필수임을
+ * 알려줬으면 해).
+ *
+ * The invite panel had both kinds on one screen: 권한 and 현장 drew a red star from their section
+ * component, while 이메일, 이름 and 프로젝트 carried a grey one baked into the label string. Two
+ * marks for one meaning, and the grey one reads as decoration — so a reader cannot tell whether
+ * the grey-starred fields are optional. Every required label in Portal takes this.
+ */
+export function RequiredMark() {
+  return <span style={{ color: "var(--danger-500)", marginLeft: "3px", fontWeight: 700 }}>*</span>;
+}
+
+const DRAWER_DISCARD_T = {
+  en: {
+    title: "You have unsaved changes",
+    body: "Close this panel and what you have typed is gone.",
+    confirm: "Close without saving",
+    cancel: "Keep editing",
+  },
+  ko: {
+    title: "작성 중인 내용이 있습니다",
+    body: "닫으면 입력한 내용은 저장되지 않습니다.",
+    confirm: "저장하지 않고 닫기",
+    cancel: "계속 작성",
+  },
+} as const;
+
+export function Drawer({ title, onClose, footer, width = "520px", escapeEnabled = true, dirty = false, children }: {
   title: React.ReactNode;
   onClose: () => void;
   /** The row of buttons. Kept out of the scrolling body, so it cannot fall off the bottom. */
   footer?: React.ReactNode;
   width?: string;
+  /**
+   * False while ANOTHER panel is open over this one — a group being edited from inside the invite
+   * panel, say. Escape closes the top panel only; left on, one keypress would shut both, throwing
+   * away the half-written form underneath as well as the thing the reader meant to dismiss.
+   */
+  escapeEnabled?: boolean;
+  /**
+   * TRUE ONCE THE READER HAS PUT SOMETHING IN (owner, 2026-09-22: 패널 공통 컴포넌트로 작성 중일
+   * 때 왼쪽 딤드 클릭해도 바로 삭제돼서 입력하던 데이터를 황당하게 잃어버리는 일이 없게 장치를
+   * 만들어줘).
+   *
+   * The scrim is an ambient target — it is most of the window, and a click meant for the page
+   * behind lands on it — so with work in the panel it asks instead of closing. Escape is guarded
+   * the same way: one keypress should not be able to delete six answers.
+   *
+   * ✕ and the footer's 취소 are NOT guarded. Those are aimed: they are labelled "close this", the
+   * reader pressed the thing that says so, and a confirmation on a deliberate cancel is the dialog
+   * arguing with a decision already made. Guard the accidents, not the choices.
+   *
+   * A panel that leaves this false keeps the old behaviour, which is right for the ones that only
+   * show things.
+   */
+  dirty?: boolean;
   children: React.ReactNode;
 }) {
-  useEscapeKey(onClose);
+  const [lang] = usePortalLanguage();
+  const dt = DRAWER_DISCARD_T[lang];
+  const [confirmingClose, setConfirmingClose] = useState(false);
+  /** The two ambient ways out. Deliberate ones call `onClose` straight. */
+  const requestClose = () => {
+    if (dirty) { setConfirmingClose(true); return; }
+    onClose();
+  };
+  /* Off while the confirmation is up, or one Escape would be handled twice — by that dialog and
+     by this panel — and close both, which is the loss this guard exists to prevent. */
+  useEscapeKey(requestClose, escapeEnabled && !confirmingClose);
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    <div onClick={e => { if (e.target === e.currentTarget) requestClose(); }}
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", justifyContent: "flex-end" }}>
       {/* `e.target === e.currentTarget`, not a bare handler: a click that started inside the panel
           bubbles out to here, and closing on that would make every button in the panel also a
@@ -2501,6 +2566,17 @@ export function Drawer({ title, onClose, footer, width = "520px", children }: {
           </div>
         )}
       </div>
+      {confirmingClose && (
+        /* Not danger-red: nothing here is irreversible in the way a deletion is, and the red
+           button is spent on the ones that cannot be undone. The cancel is the wide one by
+           position — it is the second button and the panel stays open behind it. */
+        <ConfirmModal
+          title={dt.title} body={dt.body}
+          confirmLabel={dt.confirm} cancelLabel={dt.cancel}
+          onConfirm={() => { setConfirmingClose(false); onClose(); }}
+          onClose={() => setConfirmingClose(false)}
+        />
+      )}
     </div>
   );
 }

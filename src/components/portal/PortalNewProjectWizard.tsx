@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useVcaStore, canManageAccess, currentPortalUser, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, CONTROL_HEIGHT, FieldError } from "./PortalShared";
+import { BORDER, CONTROL_HEIGHT, FieldError, RequiredMark } from "./PortalShared";
 
 const TEMPLATES: { type: ProjectType; icon: string }[] = [
   { type: "smart_city", icon: "/icons/portal-smart-city.png" },
@@ -327,7 +327,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
             disabled boxes under it would read as work somebody forgot to do. */}
         {wantsCamera && (
           <div style={{ marginTop: "12px" }}>
-            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "4px" }}>{t.coordsLabel} *</p>
+            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "4px" }}>{t.coordsLabel}<RequiredMark /></p>
             <p style={{ fontSize: "12px", color: "var(--gray-400)", marginBottom: "8px", lineHeight: 1.45 }}>{t.coordsWhy}</p>
             <div style={{ display: "flex", gap: "12px" }}>
               {([

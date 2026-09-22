@@ -306,8 +306,11 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
                 style={{
                   width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
                   padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontFamily: "inherit",
-                  border: on ? "1px solid var(--gray-900)" : BORDER,
-                  backgroundColor: on ? "var(--gray-100)" : "white",
+                  /* gray-800, like every picked box in Portal — see PICKED_LINE. */
+                  border: on ? "1px solid var(--gray-800)" : BORDER,
+                  /* Same purple-tinted fill every picked thing in Portal now takes — see
+                     PICKED_FILL in PortalUsersPage for what was compared. */
+                  backgroundColor: on ? "var(--primary-100)" : "white",
                 }}>
                 <span style={{ width: "14px", height: "14px", borderRadius: "999px", flexShrink: 0, marginTop: "2px", border: on ? "4px solid var(--gray-900)" : "1px solid var(--gray-300)" }} />
                 <span style={{ minWidth: 0 }}>

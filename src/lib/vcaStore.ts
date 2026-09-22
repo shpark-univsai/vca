@@ -2124,15 +2124,15 @@ export function canExportEvidence(users: PortalUser[]): boolean {
 export const PRESET_BUILTIN_LABELS: Record<NonNullable<AccessPreset["builtinKey"]>, { label: { en: string; ko: string }; description: { en: string; ko: string } }> = {
   operator: {
     label: { en: "Operator", ko: "운영자" },
-    description: { en: "Watches the cameras, live and after the fact", ko: "카메라를 본다 — 실시간과 지난 기록" },
+    description: { en: "Watches the cameras, live and after the fact", ko: "실시간 화면과 지난 기록을 봅니다" },
   },
   investigator: {
     label: { en: "Investigator", ko: "조사자" },
-    description: { en: "Operator, plus finding a person and following their route", ko: "운영자 + 사람을 찾고 동선을 따라간다" },
+    description: { en: "Operator, plus finding a person and following their route", ko: "운영자가 하는 일에 인물 검색과 동선 추적을 더합니다" },
   },
   supervisor: {
     label: { en: "Supervisor", ko: "감독자" },
-    description: { en: "Investigator, plus taking evidence out of the building", ko: "조사자 + 증거를 밖으로 낸다" },
+    description: { en: "Investigator, plus taking evidence out of the building", ko: "조사자가 하는 일에 증거 내보내기를 더합니다" },
   },
 };
 
@@ -4201,12 +4201,12 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     },
     {
       id: "preset-investigator", teamId: "team-univs", builtinKey: "investigator", label: "조사자",
-      description: "운영자 + 지난 것을 찾는다",
+      description: "운영자가 하는 일에 인물 검색과 동선 추적을 더합니다",
       actions: ["systemStatus", "liveView", "history", "personSearch", "trail"],
     },
     {
       id: "preset-supervisor", teamId: "team-univs", builtinKey: "supervisor", label: "감독자",
-      description: "조사자 + 증거를 밖으로 낸다",
+      description: "조사자가 하는 일에 증거 내보내기를 더합니다",
       actions: ["systemStatus", "liveView", "history", "personSearch", "trail", "export"],
     },
   ],

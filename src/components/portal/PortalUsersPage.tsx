@@ -1,18 +1,18 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Asterisk, Boxes, CircleHelp, ClipboardList, ClipboardPlus, KeyRound, KeySquare, MailQuestion, MonitorOff, MoreVertical, UserMinus, UserX, Users as UsersIcon, Users2 } from "lucide-react";
+import { Asterisk, Boxes, CircleHelp, ClipboardList, ClipboardPlus, KeyRound, KeySquare, MailQuestion, MonitorOff, MoreVertical, Pencil, Plus, UserMinus, UserX, Users as UsersIcon, Users2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type CameraGroup, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, SectionNav, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, SectionNav, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, RequiredMark } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
-import CameraGroupsTab from "./CameraGroupsTab";
+import CameraGroupsTab, { CameraGroupEditor } from "./CameraGroupsTab";
 import AccessPresetsTab from "./AccessPresetsTab";
 import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import RosterImportModal from "./RosterImportModal";
@@ -345,24 +345,25 @@ const T = {
     // seeded with the team that owns this page's project and has no empty option, so it is not a
     // field anybody can fail. Cameras is unmarked because it does not block — an unanswered scope
     // means every camera on the ticked projects, which is the row's own sentence.
-    nameLabel: "Name *",
+    nameLabel: "Name",
     namePlaceholder: "Full name",
-    emailLabel: "Email *",
+    emailLabel: "Email",
     teamLabel: "Team",
     accessLabel: "Where they sign in",
     permissionLabel: "Portal role",
-    projectsLabel: "Projects *",
+    projectsLabel: "Projects",
     sectionWho: "Who",
     sectionWhere: "Where",
     foldGrant: "Permissions",
-    foldSite: "Site",
     foldTeam: "Team",
     scopeLabel: "Cameras",
     scopeNoProject: "Tick a project to see how many cameras that is.",
     scopeNoCameras: "No cameras are registered on the ticked projects yet.",
-    scopeStartsAll: (n: number) => `Every camera on these projects — ${n} today, and any added later.`,
-    scopeGroupsNone: "No camera groups on these projects yet. They are made on the Camera groups tab.",
-    scopePickedGroups: (n: number) => `${n} camera${n === 1 ? "" : "s"} through the picked groups. Individual cameras are added after the invite.`,
+    scopeStartsAll: (n: number) => `Pick no group and this account sees every camera on these projects: ${n} today, and any added later.`,
+    scopeGroupsNone: "No camera groups on these projects yet.",
+    scopeNewGroup: "New group",
+    scopeEditGroup: (label: string) => `Edit ${label}`,
+    scopePickedGroups: (n: number) => `The picked groups only: ${n} camera${n === 1 ? "" : "s"} today, and whatever is added to those groups later.`,
     scopeGroupCount: (n: number) => `${n}`,
     scopeHeldAll: (n: number) => `Every camera on their projects — ${n} today, and any added later.`,
     scopeHeldSome: (n: number, total: number) => `${n} of ${total} cameras.`,
@@ -374,8 +375,7 @@ const T = {
     // installation cannot deliver to), so the constraint stays and only the promise goes.
     // HANDOFF NOTE: the 2026-08-28 decision is that the backend mails the invite. When it does,
     // this is where the transport sentence comes back — with the send actually behind it.
-    mailNoteBoth: "One of these projects is on an internet-isolated site: from there, only an address on that site's own internal mailbox can be reached.",
-    mailNoteIsolated: "This project's site is internet-isolated — from there, only an address on its own internal mailbox can be reached.",
+    mailNoteIsolated: (names: string) => `${names} has no external internet. Only an address on that site's own mailbox can be reached.`,
     cancel: "Cancel",
     errEmail: "That is not an email address.",
     errDuplicate: "An account already uses this address.",
@@ -404,9 +404,9 @@ const T = {
     requestedLoading: "Requested …",
     accessApprovedTitle: "Access approved — account created",
     accountsCreatedTitle: (count: number) => `${count} accounts created`,
-    grantLabel: "App grants *",
+    grantLabel: "App grants",
     grantCustom: "Custom",
-    grantCustomDesc: "Pick what they may do, one action at a time.",
+    grantCustomDesc: "Pick what they may do, one action at a time",
     customDiff: (preset: string, plus: string, minus: string) =>
       `${preset}${plus ? ` + ${plus}` : ""}${minus ? ` − ${minus}` : ""}`,
     customSameAsPreset: (preset: string) =>
@@ -691,30 +691,43 @@ const T = {
 
     // Invite modal
     modalTitle: "사용자 초대",
-    nameLabel: "이름 *",
+    nameLabel: "이름",
     namePlaceholder: "전체 이름",
-    emailLabel: "이메일 *",
+    emailLabel: "이메일",
     teamLabel: "팀",
     accessLabel: "어디로 로그인하나",
     permissionLabel: "Portal 역할",
-    projectsLabel: "프로젝트 *",
+    projectsLabel: "프로젝트",
     sectionWho: "누구를",
     sectionWhere: "어디에",
     foldGrant: "권한",
-    foldSite: "현장",
     foldTeam: "팀",
     scopeLabel: "카메라 범위",
     scopeNoProject: "프로젝트를 고르면 몇 대인지 나옵니다.",
     scopeNoCameras: "고른 프로젝트에 등록된 카메라가 아직 없습니다.",
-    scopeStartsAll: (n: number) => `이 프로젝트의 카메라 전부 — 지금 ${n}대, 나중에 추가되는 것도 포함합니다.`,
-    scopeGroupsNone: "이 프로젝트에 카메라 그룹이 아직 없습니다. 카메라 그룹 탭에서 만듭니다.",
-    scopePickedGroups: (n: number) => `고른 그룹으로 ${n}대. 카메라를 한 대씩 더 주는 것은 초대 뒤에 합니다.`,
+    /*
+       IT SAYS WHICH OF THE TWO NUMBERS IS IN FORCE (owner, 2026-09-22: 그룹별 옆에 숫자를 보면
+       다해서 5대인데 위에 설명엔 지금 68대라고 적혀 있어서 뭔가 안 맞아 보여).
+
+       The line and the chips were both true and read as arithmetic that does not add up: the
+       sentence stated the default (no group picked means every camera) while the chips offered
+       the alternative, and nothing said they were alternatives. So the sentence now opens with
+       the condition — 「그룹을 고르지 않으면」 — and the other branch below opens with 「고른 그룹만」.
+       Whichever one is showing, the number in it is the number that applies.
+    */
+    scopeStartsAll: (n: number) => `그룹을 고르지 않으면 이 프로젝트의 카메라 전부입니다. 지금 ${n}대, 나중에 추가되는 것도 포함합니다.`,
+    scopeGroupsNone: "이 프로젝트에 카메라 그룹이 아직 없습니다.",
+    scopeNewGroup: "새 그룹",
+    scopeEditGroup: (label: string) => `${label} 편집`,
+    scopePickedGroups: (n: number) => `고른 그룹만 ${n}대입니다. 그 그룹에 나중에 들어오는 카메라도 포함합니다.`,
     scopeGroupCount: (n: number) => `${n}`,
     scopeHeldAll: (n: number) => `담당 프로젝트의 카메라 전부 — 지금 ${n}대, 나중에 추가되는 것도 포함합니다.`,
     scopeHeldSome: (n: number, total: number) => `${total}대 중 ${n}대.`,
     scopePick: "카메라 고르기",
-    mailNoteBoth: "선택한 프로젝트 중 인터넷이 차단된 사이트가 있습니다 — 그쪽에서는 사이트 내부 메일함 주소로만 연락이 닿습니다.",
-    mailNoteIsolated: "이 프로젝트의 사이트는 인터넷이 차단되어 있습니다 — 사이트 내부 메일함 주소로만 연락이 닿습니다.",
+    /* 「…에는」 rather than 「…는」: a project's name can end in either a vowel or a consonant —
+       and half of them are English — so no single subject particle is correct for all of them.
+       This is the same trap the camera scope sentence was rewritten to avoid. */
+    mailNoteIsolated: (names: string) => `${names}에는 외부 인터넷이 없습니다. 사이트 안의 메일 주소로만 초대가 닿습니다.`,
     cancel: "취소",
     errEmail: "이메일 주소 형식이 아닙니다.",
     errDuplicate: "이미 이 주소를 쓰는 계정이 있습니다.",
@@ -738,9 +751,10 @@ const T = {
     requestedLoading: "요청됨 …",
     accessApprovedTitle: "접근 승인됨 — 계정이 만들어졌습니다",
     accountsCreatedTitle: (count: number) => `계정 ${count}개가 만들어졌습니다`,
-    grantLabel: "권한 부여 방식 *",
+    grantLabel: "권한 부여 방식",
     grantCustom: "커스텀",
-    grantCustomDesc: "할 수 있는 일을 하나씩 고릅니다.",
+    /* No full stop: it sits in the same place as the three preset lines, which have none. */
+    grantCustomDesc: "할 수 있는 일을 하나씩 고릅니다",
     customDiff: (preset: string, plus: string, minus: string) =>
       `${preset}${plus ? ` + ${plus}` : ""}${minus ? ` − ${minus}` : ""}`,
     customSameAsPreset: (preset: string) =>
@@ -810,6 +824,11 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideT
      조사자 / 감독자 in a list of English rows. See AccessPreset.builtinKey. */
   const [lang] = usePortalLanguage();
   const grantNames = useGrantNames();
+  const grantOptions = [
+    ...presets.map(pr => ({ id: pr.id, label: presetLabel(pr, lang), desc: presetDescription(pr, lang) })),
+    { id: "custom", label: t.grantCustom, desc: t.grantCustomDesc },
+  ];
+  const chosenOption = grantOptions.find(o => o.id === choice);
   return (
     <>
       <div>
@@ -819,35 +838,46 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideT
             may do" above a list already labelled 할 수 있는 일 is the same words twice. Both
             callers get it — the edit modal's column starts here too, and the pair reading the
             same in both places is this component's whole reason to exist. */}
-        {!hideTitle && <label style={{ ...SECTION_HEAD, display: "block", marginBottom: "10px" }}>{t.grantLabel}</label>}
-        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+        {!hideTitle && <label style={{ ...SECTION_HEAD, display: "block", marginBottom: "10px" }}>{t.grantLabel}<RequiredMark /></label>}
+        {/*
+          ACROSS, NOT DOWN (owner, 2026-09-22: 권한 프리셋들은 가로로 버튼 정렬 바꿔주고 커스텀은
+          누르면 그 아래로 또 공간 필요하니까).
+
+          Four full-width cards, each with a radio and a line of prose, ran 4×56px down the middle
+          of a 520px panel — and then 커스텀 needed the action list under them, so the one question
+          took most of the panel before the cameras had been asked about. As a row of names it is
+          one 32px line, and the space it gives back is what 커스텀 opens into.
+
+          The descriptions do not disappear, they MOVE: the chosen one is printed in the block
+          below, where the actions it switches on are already listed. Four descriptions at once
+          were there to choose BY; one description is there to check what you chose. The names
+          alone carry the choosing — 운영자 · 조사자 · 감독자 are this product's own ladder, and
+          the block below says what each rung means the moment it is picked.
+        */}
+        <div style={{ display: "flex", gap: "6px" }}>
           {/* Custom is the LAST ITEM OF THE SAME LIST rather than a separate switch — it is one
               more way of answering "how are this person's grants decided", and a toggle beside the
               list would make it a second question people answer before the first. */}
-          {[...presets.map(pr => ({ id: pr.id, label: presetLabel(pr, lang), desc: presetDescription(pr, lang) })),
-            { id: "custom", label: t.grantCustom, desc: t.grantCustomDesc }].map(opt => {
+          {grantOptions.map(opt => {
             const picked = choice === opt.id;
             return (
               /* type="button": this list renders inside the invite <form>, where a button with
                  no type submits — pressing a preset created the account. */
               <button key={opt.id} type="button" onClick={() => onChoice(opt.id)}
                 style={{
-                  width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
-                  padding: "10px 12px", borderRadius: "10px", cursor: "pointer",
-                  border: picked ? "1px solid var(--gray-900)" : BORDER,
-                  backgroundColor: picked ? "var(--gray-100)" : "white", fontFamily: "inherit",
+                  /* EQUAL QUARTERS ACROSS THE COLUMN (owner: 가로폭 꽉 차게 넓혀줘 일정한 크기로).
+                     Four names of two to three syllables came out four different widths, which
+                     made the row read as a sentence rather than a set of four equal choices —
+                     and left a ragged gap at the right end of a full-width panel. `flex: 1` with
+                     no wrap: there are exactly four, they are short, and 520px divides. */
+                  flex: 1, minWidth: 0, textAlign: "center",
+                  padding: "8px 6px", borderRadius: "9px", cursor: "pointer",
+                  border: picked ? PICKED_LINE : BORDER,
+                  backgroundColor: picked ? PICKED_FILL : "white", fontFamily: "inherit",
+                  fontSize: "12px", fontWeight: 700,
+                  color: picked ? "var(--gray-900)" : "var(--gray-600)",
                 }}>
-                <span style={{
-                  width: "14px", height: "14px", borderRadius: "999px", flexShrink: 0, marginTop: "2px",
-                  border: picked ? "4px solid var(--gray-900)" : "1px solid var(--gray-300)",
-                }} />
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{opt.label}</span>
-                  {/* Required on every option. A list of job titles with no descriptions cannot be
-                      chosen from, and removing the pre-selected default only works if the reader
-                      can tell the options apart. */}
-                  <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "2px" }}>{opt.desc}</span>
-                </span>
+                {opt.label}
               </button>
             );
           })}
@@ -862,13 +892,28 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideT
           heading that says "what this switches on" describe a grant nobody chose — and the only
           words there were an instruction to go back up, which the reader is already looking at. */}
       {choice !== null && (
-      <div style={{ borderTop: "1px solid var(--gray-200)", paddingTop: "14px", minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", marginBottom: "8px" }}>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.grantsHeading}</label>
-          <span style={{ fontSize: "11px", color: "var(--gray-400)", textAlign: "right", lineHeight: 1.45 }}>
-            {!isCustom ? t.grantsLocked : ""}
-          </span>
-        </div>
+      /*
+        ONE SENTENCE AND THE MARKS (owner, 2026-09-22: 너무 복잡해..).
+       
+        This block had four layers of text under the row of names: a rule, the heading 「이 방식이
+        켜는 것」, the note 「프리셋을 따릅니다. 하나씩 바꾸려면 커스텀을 고르세요」, the chosen
+        option's own line, and then the marks. The heading names what the marks obviously are, and
+        the note tells the reader to do something they have just done — 커스텀 is the fourth button
+        directly above it. Both gone, and the rule with them.
+       
+        What is left is what cannot be worked out by looking: which option this is (its one line)
+        and exactly what it switches on (the marks, filled and outlined).
+      */
+      <div style={{ minWidth: 0 }}>
+        {/* The chosen option's own line, moved down here from the button it used to sit in — see
+            the note on the row above. Printed for 커스텀 too: 「할 수 있는 일을 하나씩 고릅니다」
+            is what the list underneath is for. */}
+        {chosenOption && (
+          /* 12px clear of the row of names above it (owner: 위에 버튼이랑 너무 붙어 있어). It
+             describes the button that was pressed, so it has to sit closer to the marks it
+             introduces than to the row it came from — 12 above, 8 below. */
+          <p style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "12px", marginBottom: "8px" }}>{chosenOption.desc}</p>
+        )}
         <AppGrantList actions={actions} locked={!isCustom} onToggle={onToggleAction} />
         {/* WHAT THIS ONE-OFF IS, IN THE WORDS OF THE LADDER. A custom set of five ticks is not
             something an access review can read: "조사자 − 동선 추적" is. Computed against the
@@ -888,7 +933,7 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideT
           const name = presetLabel(nearest.pr, lang);
           const names = (list: AppAction[]) => list.map(a => grantNames.action[a]).join(", ");
           return (
-            <p style={{ fontSize: "11px", color: nearest.distance === 0 ? "var(--warning-500)" : "var(--gray-500)", lineHeight: 1.5, padding: "0 10px" }}>
+            <p style={{ fontSize: "11px", color: nearest.distance === 0 ? "var(--warning-500)" : "var(--gray-500)", lineHeight: 1.5, marginTop: "8px" }}>
               {nearest.distance === 0
                 ? t.customSameAsPreset(name)
                 : t.customDiff(name, nearest.plus.length ? names(nearest.plus) : "", nearest.minus.length ? names(nearest.minus) : "")}
@@ -1129,9 +1174,10 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const [projectIds, setProjectIds] = useState<string[]>(defaultProjectId ? [defaultProjectId] : []);
   /** Which fold is open, or none. One at a time: two open folds is the tall form again. */
   /* Only the team folds now, so the state is that one row's. It was an accordion over three. */
-  const [teamOpen, setTeamOpen] = useState(false);
   /** Camera groups the invite hands over. Empty means every camera — see the note on draftGroups. */
   const [scopeGroupIds, setScopeGroupIds] = useState<string[]>([]);
+  /** The group being written from inside this panel — `{ group: null }` while making a new one. */
+  const [groupEditorFor, setGroupEditorFor] = useState<{ group: CameraGroup | null; projectId: string } | null>(null);
   const toggleScopeGroup = (id: string) =>
     setScopeGroupIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
@@ -1182,17 +1228,24 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   /* The two closed-fold summaries went with the folds: 권한 and 현장 are open sections now, so
      nothing reads them from the outside and a summary of a section you can see is the section
      said twice. The 팀 fold prints its own answer inline — it is one name. */
-  const hasIsolated = selectedProjects.some(isNetworkIsolated);
-  const hasReachable = selectedProjects.some(p => !isNetworkIsolated(p));
   // Only when a site constrains the address. The all-connected case had a line of its own
   // ("Invite will be sent by external email"), which told the reader nothing they could act on
   // and, since nothing is sent from here, was not true either. Silence is the accurate default;
   // the note is for the exception.
-  const mailTransportNote = selectedProjects.length === 0 || !hasIsolated
+  /*
+   * IT NAMES THE SITE (owner, 2026-09-22: 인터넷이 차단된 사이트가 뭔지 명확히 알려줘 · 사이에
+   * - 없애주고, 설명을 심플하게).
+   *
+   * It used to say 「선택한 프로젝트 중 인터넷이 차단된 사이트가 있습니다」 — which one, out of
+   * the ticked projects, the reader had to work out for themselves, and the only thing they can do
+   * about this note is type a different address for a particular site. Naming it also retires the
+   * second copy of the sentence: with the project named, "one of these" and "this one" say the
+   * same thing, so there is one string instead of two.
+   */
+  const isolatedProjects = selectedProjects.filter(isNetworkIsolated);
+  const mailTransportNote = isolatedProjects.length === 0
     ? null
-    : hasReachable
-      ? t.mailNoteBoth
-      : t.mailNoteIsolated;
+    : t.mailNoteIsolated(isolatedProjects.map(p => p.name).join(", "));
 
   /*
    * The same three checks /request-access already makes, for the reason resolveMailConfig's own
@@ -1214,6 +1267,18 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
     : "";
   const canInvite = name.trim() !== "" && emailValid && !duplicate && !undeliverable
     && teamId !== "" && projectIds.length > 0 && grantsChosen;
+  /*
+   * HAS THE READER PUT ANYTHING IN? What the scrim guard asks about (see Drawer's `dirty`).
+   *
+   * Not `canInvite`: a form that is only half valid is exactly the one worth protecting, and the
+   * cost of losing it is the same. Only the answers somebody had to GIVE count — the project the
+   * page arrived with, the team it belongs to and the default access mode were all filled in by
+   * this dialog, so a panel opened and closed untouched still closes on one click.
+   */
+  const inviteStarted = email.trim() !== "" || name.trim() !== ""
+    || grantChoice !== null || scopeGroupIds.length > 0
+    || accessMode !== "appOnly"
+    || projectIds.join() !== (defaultProjectId ? defaultProjectId : "");
   const submit = () => {
     setSubmitted(true);
     /* Nothing to open any more. This used to push the failing fold open — a refused invite whose
@@ -1338,11 +1403,12 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
      * places and the body between them scrolls — the shared Drawer does that for every panel
      * rather than this one file arguing for itself.
      *
-     * The scrim no longer closes it, which is a change and the right one: this form holds up to
-     * six answers, and a stray click on the page behind it used to throw them away with no undo.
-     * ✕ and 취소 are the ways out.
+     * A stray click on the scrim used to throw the whole form away with no undo — this one holds
+     * up to six answers. It now asks first, and only once something has been entered: see the
+     * shared Drawer's `dirty`, which this panel sets from the fields below.
      */
-    <Drawer title={t.modalTitle} onClose={onClose} width="520px"
+    <>
+    <Drawer title={t.modalTitle} onClose={onClose} width="520px" escapeEnabled={groupEditorFor === null} dirty={inviteStarted}
       footer={<>
           {/* The reason sits beside the button rather than leaving it dead and silent. Shown only
               once Invite has been pressed: nothing on this form goes red while somebody is still
@@ -1386,7 +1452,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
             one field nobody can guess for you — the name, this form can.
           */}
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.emailLabel}</label>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.emailLabel}<RequiredMark /></label>
             {/* THE PLACEHOLDER HAS TO BE AN ADDRESS THIS FORM WOULD ACCEPT. It was a fixed
                 "name@univs.ai" — our own domain, not the customer's — while the field below it
                 refuses anything off the installation's domain. Same mailDomain the validation
@@ -1408,7 +1474,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               NO "filled in from the address" LINE ANY MORE (owner, 2026-09-21: 필드 밑 회색
               설명줄 다 없앤다) — the name appearing as the address is typed says it by happening. */}
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}<RequiredMark /></label>
             <TextField value={name} onChange={v => { setNameTouched(true); setName(v); }} placeholder={t.namePlaceholder} />
           </div>
 
@@ -1427,33 +1493,32 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
             and going back if you wanted to check it. Two required answers behind a control that
             only shows one at a time is a round trip for every invite.
             
-            So 권한 and 현장 are sections, always open, each with its star. 팀 stays folded: it has
-            an answer already (the project's owning team) and nobody normally changes it — which is
-            the case folding was for. Folded rather than dropped, because an account CAN be filed
-            under another team and a form that never shows the team would put somebody in the wrong
-            one silently.
+            So nothing here folds except 팀: every question is open, in the order the answers
+            depend on each other (project → how they get in → what they may do → which cameras).
+            팀 keeps its fold because it has an answer already — the project's owning team — and
+            nobody normally changes it, which is the case folding was for. Folded rather than
+            dropped, because an account CAN be filed under another team and a form that never shows
+            the team would put somebody in the wrong one silently.
             
             The grant still starts unanswered on purpose (see grantChoice: no preset is chosen for
             you), and pressing Invite still says which one is missing.
           */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "4px" }}>
-            <FormSection label={t.foldGrant} required>
-              {accessMode !== "portalOnly" ? (
-                <GrantPicker
-                  presets={presets} choice={effectiveChoice} onChoice={setGrantChoice}
-                  actions={shownActions} onToggleAction={toggleCustomAction}
-                  hideTitle t={t} />
-              ) : (
-                /* Portal-only: there is no app to grant screens in, and the row says so rather
-                   than opening onto an empty list. */
-                <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.grantsPortalOnly}</p>
-              )}
-            </FormSection>
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-            <FormSection label={t.foldSite} required>
-              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            {/*
+              NO 「현장」 HEADING OVER IT (owner, 2026-09-22: 현장 아래는 아무것도 없는 것 같은데?).
+             
+              It was a FormSection, so it drew a labelled row — 「현장 *」 — and the next thing
+              under it was another label, 「프로젝트 *」. A label with a label under it reads as a
+              field somebody forgot to fill, and the star made it look required and empty. The
+              questions inside it already say what they are (프로젝트 · 어디로 로그인하나 · 권한 ·
+              카메라 범위), and 프로젝트 carries the star that actually stops the button. So the
+              wrapper keeps the column and drops the heading.
+            */}
+            <div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                 <div>
-                  <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.projectsLabel}</label>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.projectsLabel}<RequiredMark /></label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                     {teamProjects.map(p => {
                       const active = projectIds.includes(p.id);
@@ -1461,8 +1526,8 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                         <button key={p.id} type="button" onClick={() => toggleProject(p.id)}
                           style={{
                             padding: "6px 10px", borderRadius: "8px", cursor: "pointer",
-                            border: active ? "1px solid var(--gray-900)" : BORDER,
-                            backgroundColor: active ? "var(--gray-100)" : "white",
+                            border: active ? PICKED_LINE : BORDER,
+                            backgroundColor: active ? PICKED_FILL : "white",
                             color: active ? "var(--gray-900)" : "var(--gray-600)",
                             fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
                           }}>
@@ -1483,20 +1548,27 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                       pressing a preset MAILED THE INVITE on the spot. Every picker in here needs
                       the attribute, and a new one added without it does the same thing silently,
                       because the form only submits when the invite happens to be valid. */}
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    {(["both", "appOnly", "portalOnly"] as AccessMode[]).map(mode => (
-                      <button key={mode} type="button" onClick={() => setAccessMode(mode)}
-                        style={{
-                          flex: 1, padding: "10px 8px", borderRadius: "10px", cursor: "pointer",
-                          border: accessMode === mode ? "1px solid var(--gray-900)" : BORDER,
-                          backgroundColor: accessMode === mode ? "var(--gray-100)" : "white",
-                          color: accessMode === mode ? "var(--gray-900)" : "var(--gray-600)",
-                          fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
-                        }}>
-                        {accessLabel(t, mode)}
-                      </button>
-                    ))}
-                  </div>
+                  {/*
+                    ONE LINE, LIKE EVERY REFERENCE (owner, 2026-09-22: 이 부분 너무 복잡해 보이는데,
+                    조금 더 심플하게 바꿔줘 모빈 참고해서).
+                   
+                    Ten invite forms on Mobbin — Melio, Copilot, Sentry, Webflow, Toggl Track,
+                    Buffer, Productboard, Grok, Zapier, Sweatpals — and every one of them asks the
+                    role-shaped question with a SELECT. Ours spent a full 10px-padded row of three
+                    equal buttons on it, directly under another row of project chips and above two
+                    more blocks, so four stacked answers all shouted at the same volume. A select
+                    says the same thing in one line and reads as "already answered", which it is:
+                    this one always has a value.
+                   
+                    type="button" is not needed on FilterSelect — it renders one itself — but every
+                    hand-written control in this form still needs it (a <button> in a <form> is a
+                    submit button, and this dialog really submits).
+                  */}
+                  <FilterSelect
+                    value={accessMode}
+                    onChange={v => setAccessMode(v as AccessMode)}
+                    options={(["both", "appOnly", "portalOnly"] as AccessMode[]).map(mode => ({ value: mode, label: accessLabel(t, mode) }))}
+                  />
                 </div>
                 {accessMode !== "appOnly" && (
                   <div>
@@ -1508,6 +1580,34 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                     />
                   </div>
                 )}
+                {/*
+                  WHAT THEY MAY DO COMES AFTER WHERE AND HOW THEY GET IN (owner, 2026-09-22:
+                  프로젝트랑 어디로 로그인하는지 먼저 선택하고 권한을 선택하게 해야 하는 거 아닌가?).
+
+                  Yes, and not only for reading order: the two questions above DECIDE this one.
+                  Portal-only invites have no app to grant screens in, so this block turns into a
+                  sentence saying so; app-only invites have no Portal role, so that select is not
+                  drawn at all. Asked first, it was a question whose own answer could be taken away
+                  by an answer given below it.
+
+                  One thing the model does NOT support, and the form should not pretend to: a role
+                  is ONE value per account (PortalUser.permission) next to a LIST of projects, so
+                  an account is the same role on every project it holds. Per-project roles would be
+                  a new row in the data, not a new control here — worth raising with the backend
+                  before anybody draws it.
+                */}
+                <FormSection label={t.foldGrant} required>
+                  {accessMode !== "portalOnly" ? (
+                    <GrantPicker
+                      presets={presets} choice={effectiveChoice} onChoice={setGrantChoice}
+                      actions={shownActions} onToggleAction={toggleCustomAction}
+                      hideTitle t={t} />
+                  ) : (
+                    /* Portal-only: there is no app to grant screens in, and the row says so rather
+                       than opening onto an empty list. */
+                    <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.grantsPortalOnly}</p>
+                  )}
+                </FormSection>
                 {/* CAMERAS — groups only, and nothing picked means every camera on the ticked
                     projects, the same rule the data model states on scopedCameraIds. A thousand-
                     camera site is not granted one row at a time: Verkada, Milestone and Rhombus
@@ -1516,7 +1616,24 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                     the scale. Not asked of a Portal-only account: no app to watch them in. */}
                 {accessMode !== "portalOnly" && (
                   <div>
-                    <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.scopeLabel}</label>
+                    {/* THE DOOR SITS ON THE LABEL ROW (owner, 2026-09-22: 카메라 범위 옆에 그룹
+                        수정/추가 버튼 만들어서 편집해서 추가할 수 있게). Toggl Track puts
+                        「+ Create a new project」 inside its project picker and Buffer puts
+                        「Apply to All」 on the label row — the action that changes what you can pick
+                        belongs beside the picking, not on another tab. Only with ONE project
+                        ticked: a group belongs to exactly one project, and with two ticked there
+                        is no answer to which one a new group would be made in. */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                      <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.scopeLabel}</label>
+                      <span style={{ flex: 1 }} />
+                      {projectIds.length === 1 && (
+                        <button type="button" onClick={() => setGroupEditorFor({ group: null, projectId: projectIds[0] })}
+                          style={{ display: "inline-flex", alignItems: "center", gap: "4px", border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>
+                          <Plus size={12} strokeWidth={2.6} aria-hidden="true" />
+                          {t.scopeNewGroup}
+                        </button>
+                      )}
+                    </div>
                     <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>
                       {projectIds.length === 0 ? t.scopeNoProject
                         : draftScopable.length === 0 ? t.scopeNoCameras
@@ -1531,22 +1648,40 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                           {draftGroups.map(g => {
                             const on = scopeGroupIds.includes(g.id);
                             return (
-                              <button key={g.id} type="button" onClick={() => toggleScopeGroup(g.id)}
+                              /* A span holding two buttons, not a button holding one: nesting
+                                 buttons is invalid and the browser drops the inner one. The chip's
+                                 border and fill live here so the pair reads as one object. */
+                              <span key={g.id}
                                 style={{
-                                  display: "flex", alignItems: "center", gap: "6px",
-                                  padding: "6px 10px", borderRadius: "8px", cursor: "pointer",
-                                  border: on ? "1px solid var(--gray-900)" : BORDER,
-                                  backgroundColor: on ? "var(--gray-100)" : "white",
-                                  color: on ? "var(--gray-900)" : "var(--gray-600)",
-                                  fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+                                  display: "flex", alignItems: "center", borderRadius: "8px",
+                                  border: on ? PICKED_LINE : BORDER,
+                                  backgroundColor: on ? PICKED_FILL : "white",
                                 }}>
-                                {g.label}
-                                {/* The size, because two groups can carry the same name's worth of
-                                    weight and a very different number of cameras. */}
-                                <span style={{ fontSize: "10px", fontWeight: 600, color: on ? "var(--gray-500)" : "var(--gray-400)" }}>
-                                  {t.scopeGroupCount(g.cameraIds.length)}
-                                </span>
-                              </button>
+                                <button type="button" onClick={() => toggleScopeGroup(g.id)}
+                                  style={{
+                                    display: "flex", alignItems: "center", gap: "6px",
+                                    padding: "6px 6px 6px 10px", border: "none", background: "none", cursor: "pointer",
+                                    color: on ? "var(--gray-900)" : "var(--gray-600)",
+                                    fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+                                  }}>
+                                  {g.label}
+                                  {/* The size, because two groups can carry the same name's worth of
+                                      weight and a very different number of cameras. */}
+                                  <span style={{ fontSize: "10px", fontWeight: 600, color: on ? "var(--gray-500)" : "var(--gray-400)" }}>
+                                    {t.scopeGroupCount(g.cameraIds.length)}
+                                  </span>
+                                </button>
+                                {/* Changing what is IN the group, from the form that hands it out —
+                                    the other half of the owner's 수정/추가. Always drawn rather than
+                                    shown on hover: a control nobody can see is a control nobody
+                                    finds, and this panel is read on a screenshot as often as it is
+                                    used with a pointer. */}
+                                <button type="button" onClick={() => setGroupEditorFor({ group: g, projectId: g.projectId })}
+                                  title={t.scopeEditGroup(g.label)} aria-label={t.scopeEditGroup(g.label)}
+                                  style={{ display: "flex", padding: "6px 8px 6px 4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)" }}>
+                                  <Pencil size={11} strokeWidth={2.4} aria-hidden="true" />
+                                </button>
+                              </span>
                             );
                           })}
                         </div>
@@ -1555,20 +1690,40 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                   </div>
                 )}
               </div>
-            </FormSection>
+            </div>
 
-            {/* Last, and the only fold whose answer nobody normally changes: the team is the one
-                that owns the project this page is scoped to. Folded rather than dropped, because
-                an account CAN be filed under another team, and a form that never shows the team
-                would put somebody in the wrong one silently. */}
-            <FoldRow
-              label={t.foldTeam} summary={teams.find(o => o.id === teamId)?.name ?? ""} answered
-              open={teamOpen} onToggle={() => setTeamOpen(v => !v)}>
+            {/*
+              THE LAST QUESTION LOOKS LIKE THE OTHERS (owner, 2026-09-22: 맨 아래 팀도 위에 것들과
+              동일하게 바닥에 뿌려줘).
+
+              It was the one fold left — a bordered row that said 팀 on the left and the answer on
+              the right, opening onto the select. That shape was earning its keep when three
+              questions were folded and this was the third; alone at the bottom of six plain
+              labelled blocks it just read as a different KIND of thing, and it hid a control
+              behind a click for no saving in height: the select it opens is one line, which is
+              what the fold itself cost.
+
+              It stays last and it stays shown. An account CAN be filed under another team, and a
+              form that never shows the team would put somebody in the wrong one silently.
+            */}
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.foldTeam}</label>
               <FilterSelect value={teamId} onChange={changeTeam} options={teams.map(o => ({ value: o.id, label: o.name }))} />
-            </FoldRow>
+            </div>
           </div>
         </form>
     </Drawer>
+    {/* OVER THIS PANEL, NOT INSTEAD OF IT. The invite keeps every answer already typed while the
+        group is written, and Escape closes this editor only — see Drawer's escapeEnabled. */}
+    {groupEditorFor && (
+      <CameraGroupEditor
+        projectId={groupEditorFor.projectId}
+        group={groupEditorFor.group}
+        onClose={() => setGroupEditorFor(null)}
+        onSaved={id => setScopeGroupIds(prev => prev.includes(id) ? prev : [...prev, id])}
+      />
+    )}
+    </>
   );
 }
 
@@ -1870,8 +2025,45 @@ const MODAL_BODY: React.CSSProperties = {
  * shell), where it clips nothing the viewport would not. The trade is that a long form scrolls its
  * header away too; a select you cannot read is the worse of the two.
  */
+/*
+ * SELECTED = DARK LINE + A PURPLE-TINTED GREY (owner, 2026-09-22: 검은색 라인과 안에 회색이
+ * 칠해지는 게 더 나을까? 아니면 보라색 라인과 안에 보라빛 연한 컬러가…  → 그럼 선택되었을 때
+ * 안에 칠해진 회색이 보라빛 도는 회색이면 어때).
+ *
+ * The answer to the first question was the dark line, from twenty reference screens: WRITER fills
+ * a chosen chip BLACK and spends its brand purple on 「Next」 and 「Apply」 only; Railway, Klaviyo
+ * and Juicebox keep selection neutral for the same reason. This panel is the case that argues it —
+ * one project, one preset, N groups and up to six action pills are all "selected" at once, and in
+ * brand purple they would swamp the one purple thing that matters, 초대 보내기. Selection is a
+ * state; purple is an action.
+ *
+ * The fill is where the tint goes. `--primary-100` (#f0f0ff) is the same lightness as the
+ * `--gray-100` (#f1f5f9) it replaces and differs only in hue, so nothing gets louder — the fill
+ * just stops being slate-blue under a border that is itself purple-tinted (gray-900 is on the
+ * purple side of the two-hue ramp). Both are defined tokens; no new step was invented.
+ */
+const PICKED_FILL = "var(--primary-100)";
+/*
+ * And the line around it, one step off black (owner, 2026-09-22: 선택 컴포넌트 박스 라인 컬러
+ * 살짝만 연한 걸로 바꿔줘). gray-800 rather than gray-900 — the next rung of the same
+ * purple-tinted end of the ramp, so the box still reads as picked while the darkest ink on the
+ * screen goes back to being the text. Only the BOXES: the 16px tick marks keep gray-900, because
+ * there the border and the fill are the same colour and lightening them would soften the tick
+ * itself, which is the thing being read.
+ */
+const PICKED_LINE = "1px solid var(--gray-800)";
+
+/*
+ * 20px BETWEEN EVERY BLOCK, NOT 16 THEN 14 (owner, 2026-09-22: 이름이랑 권한 사이만큼 공간
+ * 공통으로 다 띄어줘서 구분을 확실히 해줘, 지금 프로젝트랑 너무 다 붙어있어).
+ *
+ * The form used to nest: 16px between the top-level blocks, 8px inside the wrapper, 14px between
+ * the four questions in the site column. So 이름 → 권한 read as a break and 프로젝트 → 어디로
+ * 로그인하나 read as one block with two labels in it, although both are whole questions. Same
+ * number at every level, and the nesting stops being visible.
+ */
 const MODAL_BODY_WITH_SELECT: React.CSSProperties = {
-  padding: "20px", display: "flex", flexDirection: "column", gap: "16px",
+  padding: "20px", display: "flex", flexDirection: "column", gap: "20px",
 };
 
 /**
@@ -1919,68 +2111,13 @@ function FormSection({ label, required, children }: {
     <div>
       <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "8px" }}>
         {label}
-        {required && <span style={{ color: "var(--danger-500)", marginLeft: "3px" }}>*</span>}
+        {required && <RequiredMark />}
       </label>
       {children}
     </div>
   );
 }
 
-/**
- * ONE FOLDED QUESTION: its name, the answer it already holds, and its controls when opened.
- *
- * The summary is the whole point. A fold that says only 권한 hides a question; a fold that says
- * 조사자 · 카메라 전체 62대 has ANSWERED it in the space of a line, and opening it is then an edit
- * rather than a discovery. Docusign's add-user page is the reference (its finished steps collapse
- * to "Email: jdoe2@…"), and the same rule is why the unanswered one reads 아직 고르지 않음 in the
- * place where an answer would be, instead of showing nothing.
- *
- * The star sits on the row, not inside it: the four stars on this form are still exactly the four
- * things that stop the button (email, name, projects, and how grants are decided), and two of
- * those now live behind a fold.
- */
-function FoldRow({ label, required, summary, answered, open, onToggle, children }: {
-  label: string;
-  required?: boolean;
-  /** What this fold holds right now, in the reader's words. */
-  summary: string;
-  /** False draws the summary as the thing still missing rather than as an answer. */
-  answered: boolean;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div style={{ border: BORDER, borderRadius: "10px", backgroundColor: open ? "white" : "var(--gray-50)" }}>
-      <button type="button" onClick={onToggle}
-        style={{
-          width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left",
-          padding: "11px 12px", border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-        }}>
-        <span style={{ flexShrink: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
-          {label}{required ? " *" : ""}
-        </span>
-        <span style={{
-          flex: 1, minWidth: 0, fontSize: "12px", textAlign: "right",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          color: answered ? "var(--gray-500)" : "var(--gray-400)",
-          fontWeight: answered ? 500 : 600,
-        }}>
-          {summary}
-        </span>
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"
-          style={{ flexShrink: 0, transform: open ? "rotate(90deg)" : "none", transition: "transform 120ms" }}>
-          <path d="M3 1.5L7 5l-4 3.5" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </button>
-      {open && (
-        <div style={{ padding: "0 12px 14px", borderTop: "1px solid var(--gray-200)", paddingTop: "14px", minWidth: 0 }}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
 
 /**
  * The four console roles, with the sentence that explains each. One definition, used by the row

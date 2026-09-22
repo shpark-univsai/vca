@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useVcaStore } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { FIELD_STYLE, BORDER } from "./PortalShared";
+import { FIELD_STYLE, BORDER, RequiredMark } from "./PortalShared";
 
 type SignupStep = "account" | "team" | "done";
 
@@ -23,7 +23,7 @@ const T = {
       backToLogin: "Back to Login",
       title: "Step 1 / 2 — Create Admin Account",
       subtitle: "This becomes your login ID and the master admin who receives system notifications.",
-      emailLabel: "Email Address (Login ID) *",
+      emailLabel: "Email Address (Login ID)",
       // Placeholders carry no example prefix ("e.g." / "예:") anywhere in the portal: grey text in
       // an empty field already reads as an example, the prefix eats width, and people type it in.
       emailPlaceholder: "hyejin@univs.ai",
@@ -33,15 +33,15 @@ const T = {
       emailInvalidError: "Enter a valid email address.",
       emailTakenError: "This email is already registered — try logging in instead.",
       emailNotCheckedError: "Click “Check Availability” to verify this email.",
-      passwordLabel: "Password *",
+      passwordLabel: "Password",
       passwordPlaceholder: "Letters, numbers & symbols, 8+ characters",
       passwordError: "Must be 8+ characters with upper & lower case, a number, and a symbol.",
       passwordReqTitle: "Password requirements",
       passwordReqText: "Upper & lowercase letters · at least 1 number · at least 1 symbol (@#$%) · minimum 8 characters",
-      confirmLabel: "Confirm Password *",
+      confirmLabel: "Confirm Password",
       confirmPlaceholder: "Re-enter your password",
       confirmError: "Passwords do not match.",
-      nameLabel: "Full Name *",
+      nameLabel: "Full Name",
       namePlaceholder: "Hye Kim",
       nameError: "Full name is required.",
       continueButton: "Continue — Set Up Team →",
@@ -50,7 +50,7 @@ const T = {
       back: "Back",
       title: "Step 2 / 2 — Set Up Your Team",
       subtitle: "Create the top-level workspace that will contain all your projects.",
-      orgNameLabel: "Team / Company Name *",
+      orgNameLabel: "Team / Company Name",
       orgNamePlaceholder: "Universe Corporation",
       useDomain: "Use domain",
       useDomainWithValue: (domain: string) => `Use ${domain}`,
@@ -86,7 +86,7 @@ const T = {
       backToLogin: "로그인으로 돌아가기",
       title: "1 / 2단계 — 관리자 계정 생성",
       subtitle: "이 계정이 로그인 ID이자 시스템 알림을 받는 마스터 관리자가 됩니다.",
-      emailLabel: "이메일 주소 (로그인 ID) *",
+      emailLabel: "이메일 주소 (로그인 ID)",
       emailPlaceholder: "hyejin@univs.ai",
       checkAvailability: "중복 확인",
       taken: "✗ 사용 불가",
@@ -94,15 +94,15 @@ const T = {
       emailInvalidError: "올바른 이메일 주소를 입력해주세요.",
       emailTakenError: "이미 등록된 이메일입니다 — 로그인을 이용해주세요.",
       emailNotCheckedError: "“중복 확인”을 눌러 이메일을 확인해주세요.",
-      passwordLabel: "비밀번호 *",
+      passwordLabel: "비밀번호",
       passwordPlaceholder: "영문, 숫자, 특수문자 포함 8자 이상",
       passwordError: "영문 대소문자, 숫자, 특수문자를 포함해 8자 이상 입력해주세요.",
       passwordReqTitle: "비밀번호 조건",
       passwordReqText: "영문 대소문자 · 숫자 1개 이상 · 특수문자(@#$%) 1개 이상 · 최소 8자",
-      confirmLabel: "비밀번호 확인 *",
+      confirmLabel: "비밀번호 확인",
       confirmPlaceholder: "비밀번호를 다시 입력해주세요",
       confirmError: "비밀번호가 일치하지 않습니다.",
-      nameLabel: "이름 *",
+      nameLabel: "이름",
       namePlaceholder: "김혜진",
       nameError: "이름을 입력해주세요.",
       continueButton: "계속 — 팀 설정하기 →",
@@ -111,7 +111,7 @@ const T = {
       back: "뒤로",
       title: "2 / 2단계 — 팀 설정",
       subtitle: "모든 프로젝트를 담을 최상위 워크스페이스를 생성합니다.",
-      orgNameLabel: "팀 / 회사명 *",
+      orgNameLabel: "팀 / 회사명",
       orgNamePlaceholder: "유니버스 코퍼레이션",
       useDomain: "도메인 사용",
       useDomainWithValue: (domain: string) => `${domain} 사용`,
@@ -357,7 +357,7 @@ export default function PortalSignupWizard() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               <div>
-                <FieldLabel>{t.step1.emailLabel}</FieldLabel>
+                <FieldLabel>{t.step1.emailLabel}<RequiredMark /></FieldLabel>
                 <div style={{ display: "flex", gap: "8px" }}>
                   <input
                     value={email}
@@ -383,7 +383,7 @@ export default function PortalSignupWizard() {
               </div>
 
               <div>
-                <FieldLabel>{t.step1.passwordLabel}</FieldLabel>
+                <FieldLabel>{t.step1.passwordLabel}<RequiredMark /></FieldLabel>
                 <input
                   type="password"
                   value={password}
@@ -400,7 +400,7 @@ export default function PortalSignupWizard() {
               </div>
 
               <div>
-                <FieldLabel>{t.step1.confirmLabel}</FieldLabel>
+                <FieldLabel>{t.step1.confirmLabel}<RequiredMark /></FieldLabel>
                 <input
                   type="password"
                   value={confirmPassword}
@@ -413,7 +413,7 @@ export default function PortalSignupWizard() {
               </div>
 
               <div>
-                <FieldLabel>{t.step1.nameLabel}</FieldLabel>
+                <FieldLabel>{t.step1.nameLabel}<RequiredMark /></FieldLabel>
                 <input
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
@@ -445,7 +445,7 @@ export default function PortalSignupWizard() {
             <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.step2.subtitle}</p>
             <div style={{ height: "4px", backgroundColor: "var(--primary-400)", borderRadius: "2px", marginTop: "16px", marginBottom: "20px" }} />
 
-            <FieldLabel>{t.step2.orgNameLabel}</FieldLabel>
+            <FieldLabel>{t.step2.orgNameLabel}<RequiredMark /></FieldLabel>
             <div style={{ display: "flex", gap: "8px" }}>
               <input
                 value={orgName}

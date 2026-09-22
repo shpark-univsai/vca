@@ -12,7 +12,7 @@ import { formatElapsed } from "@/lib/time";
 import { forgetUploadFile, rememberUploadFile } from "@/lib/uploadBlobs";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { useFitRowsPerPage, TablePagination, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, type RowAction } from "./PortalShared";
+import { useFitRowsPerPage, TablePagination, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, type RowAction } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -136,21 +136,21 @@ const T = {
     removeUploadAction: "Remove upload",
     toastUploadRemovedTitle: "Upload removed",
     emptyNoSources: "Nothing registered for this project yet.",
-    fieldIp: "IP address *",
+    fieldIp: "IP address",
     fieldIpPlaceholder: "10.20.4.11",
-    fieldModel: "Model *",
+    fieldModel: "Model",
     fieldModelPlaceholder: "XNP-6400R",
-    fieldUsername: "User ID *",
+    fieldUsername: "User ID",
     fieldUsernamePlaceholder: "Stream account",
-    fieldPassword: "Password *",
+    fieldPassword: "Password",
     fieldPasswordPlaceholder: "Stream password",
     fieldPasswordEditHint: "Leave blank to keep the current password.",
     fieldServerNoneAvailable: "This project has no server registered yet — add one under Servers & API. A camera can be registered before then.",
     passwordNotStoredHint: "Sent to the server with the camera and never read back — it is not kept in this browser.",
-    fieldServer: "Associated server *",
+    fieldServer: "Associated server",
     fieldServerNone: "Select a server",
-    fieldLat: "Latitude *",
-    fieldLng: "Longitude *",
+    fieldLat: "Latitude",
+    fieldLng: "Longitude",
     // No clearFilters label: ActiveFilterCount is a chip that clears on its own ×, and this
     // string was never rendered. A wording nobody reads drifts from the ones they do.
     selectedCount: (n: number) => `${n} selected`,
@@ -199,20 +199,20 @@ const T = {
     // the edit title until now — the same leftover, one noun further along.
     addModalTitle: "Add camera",
     editModalTitle: "Edit camera",
-    fieldDeviceName: "Camera name *",
+    fieldDeviceName: "Camera name",
     fieldDeviceNamePlaceholder: "Novena",
     fieldLocation: "Location",
     fieldLocationPlaceholder: "Entrance",
     fieldZone: "Zone",
     fieldZonePlaceholder: "Front Gate",
-    fieldRtspUrl: "Connection — RTSP URL *",
-    fieldSourceType: "Source type *",
+    fieldRtspUrl: "Connection — RTSP URL",
+    fieldSourceType: "Source type",
     kindNormal: "Normal camera",
     kindAi: "AI camera",
     kindNormalWhy: "Hands over a stream for a Face Recognition or Normal Camera node to analyse.",
     kindAiWhy: "Runs the analysis on the device and reports results, so it reports to an AI Camera node.",
     fieldServerNoneForKind: "This project has no server that takes this kind of camera yet.",
-    fieldMaker: "Maker *",
+    fieldMaker: "Maker",
     cancel: "Cancel",
     // One word, both languages. Every other save in Portal is "Save" / "저장" — the server form,
     // the roster, the categories — and this was the only 변경사항 저장 among nine plain 저장.
@@ -334,21 +334,21 @@ const T = {
     removeUploadAction: "업로드 삭제",
     toastUploadRemovedTitle: "업로드가 삭제됨",
     emptyNoSources: "이 프로젝트에 등록된 소스가 없습니다.",
-    fieldIp: "IP 주소 *",
+    fieldIp: "IP 주소",
     fieldIpPlaceholder: "10.20.4.11",
-    fieldModel: "모델 *",
+    fieldModel: "모델",
     fieldModelPlaceholder: "XNP-6400R",
-    fieldUsername: "사용자 ID *",
+    fieldUsername: "사용자 ID",
     fieldUsernamePlaceholder: "스트림 계정",
-    fieldPassword: "비밀번호 *",
+    fieldPassword: "비밀번호",
     fieldPasswordPlaceholder: "스트림 비밀번호",
     fieldPasswordEditHint: "비워두면 기존 비밀번호를 그대로 사용합니다.",
     fieldServerNoneAvailable: "이 프로젝트에 등록된 서버가 아직 없습니다 — 서버 및 API에서 추가하세요. 그 전에도 카메라는 등록할 수 있습니다.",
     passwordNotStoredHint: "카메라와 함께 서버로 전송되며 다시 읽어오지 않습니다 — 브라우저에는 남지 않습니다.",
-    fieldServer: "연결 서버 *",
+    fieldServer: "연결 서버",
     fieldServerNone: "선택하세요",
-    fieldLat: "위도 *",
-    fieldLng: "경도 *",
+    fieldLat: "위도",
+    fieldLng: "경도",
     selectedCount: (n: number) => `${n}대 선택됨`,
     bulkClearSelection: "선택 해제",
     bulkMoveToZone: "구역 이동",
@@ -379,20 +379,20 @@ const T = {
     removeAction: "삭제",
     addModalTitle: "카메라 추가",
     editModalTitle: "카메라 수정",
-    fieldDeviceName: "카메라 이름 *",
+    fieldDeviceName: "카메라 이름",
     fieldDeviceNamePlaceholder: "Novena",
     fieldLocation: "위치",
     fieldLocationPlaceholder: "입구",
     fieldZone: "구역",
     fieldZonePlaceholder: "정문 구역",
-    fieldRtspUrl: "연결 — RTSP URL *",
-    fieldSourceType: "소스 종류 *",
+    fieldRtspUrl: "연결 — RTSP URL",
+    fieldSourceType: "소스 종류",
     kindNormal: "일반 카메라",
     kindAi: "AI 카메라",
     kindNormalWhy: "스트림을 넘겨서 얼굴인식 또는 일반 카메라 서버가 분석합니다.",
     kindAiWhy: "장치에서 분석해 결과를 보고하므로 AI 카메라 서버에 붙습니다.",
     fieldServerNoneForKind: "이 프로젝트에는 이 종류의 카메라를 받는 서버가 아직 없습니다.",
-    fieldMaker: "제조사 *",
+    fieldMaker: "제조사",
     cancel: "취소",
     saveChanges: "저장",
     addDevice: "추가",
@@ -812,7 +812,10 @@ function CameraFormModal({
 
   const field = (
     key: "name" | "ip" | "location" | "zone" | "rtspUrl" | "model" | "username" | "password" | "lat" | "lng",
-    label: string,
+    /* A node, not a string: the required fields carry the shared red marker after their text. The
+       asterisk used to be typed into the label sentence itself, which made it grey like the label
+       and put the same marker in two dictionaries to keep in sync. */
+    label: React.ReactNode,
     placeholder: string,
     opts?: { type?: string; inputMode?: "decimal"; error?: string; remountKey?: number; autoFocus?: boolean },
   ) => (
@@ -836,7 +839,7 @@ function CameraFormModal({
     </div>
   );
 
-  const selectField = (label: string, value: string, options: { value: string; label: string }[], onChange: (v: string) => void) => (
+  const selectField = (label: React.ReactNode, value: string, options: { value: string; label: string }[], onChange: (v: string) => void) => (
     <div>
       <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{label}</label>
       <FilterSelect value={value} onChange={onChange} options={options} />
@@ -925,7 +928,7 @@ function CameraFormModal({
             Each says what it is under its name — "AI camera" is not self-explanatory to somebody
             holding an installer's invoice. */}
         <div>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldSourceType}</label>
+          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldSourceType}<RequiredMark /></label>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             {([
               { value: "normal" as CameraKind, label: t.kindNormal, why: t.kindNormalWhy },
@@ -949,28 +952,28 @@ function CameraFormModal({
           </div>
         </div>
 
-        {field("name", t.fieldDeviceName, t.fieldDeviceNamePlaceholder, {
+        {field("name", <>{t.fieldDeviceName}<RequiredMark /></>, t.fieldDeviceNamePlaceholder, {
           error: refused && nameMissing ? t.errRequired : undefined,
           // Remounted per batch round so autoFocus fires again — see nextInBatch.
           remountKey: round, autoFocus: round > 0,
         })}
-        {field("ip", t.fieldIp, t.fieldIpPlaceholder, {
+        {field("ip", <>{t.fieldIp}<RequiredMark /></>, t.fieldIpPlaceholder, {
           error: ipShape ? FIELD_CHECK_T[lang][ipShape] : ipCharsBad ? t.errIp : refused && ipMissing ? t.errRequired : undefined,
         })}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          {selectField(t.fieldMaker, form.maker, MAKERS.map(m => ({ value: m, label: m })), v => setForm(f => ({ ...f, maker: v })))}
-          {field("model", t.fieldModel, t.fieldModelPlaceholder, {
+          {selectField(<>{t.fieldMaker}<RequiredMark /></>, form.maker, MAKERS.map(m => ({ value: m, label: m })), v => setForm(f => ({ ...f, maker: v })))}
+          {field("model", <>{t.fieldModel}<RequiredMark /></>, t.fieldModelPlaceholder, {
             error: refused && modelMissing ? t.errRequired : undefined,
           })}
         </div>
 
         <div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            {field("username", t.fieldUsername, t.fieldUsernamePlaceholder, {
+            {field("username", <>{t.fieldUsername}<RequiredMark /></>, t.fieldUsernamePlaceholder, {
               error: refused && usernameMissing ? t.errRequired : undefined,
             })}
-            {field("password", t.fieldPassword, t.fieldPasswordPlaceholder, {
+            {field("password", <>{t.fieldPassword}<RequiredMark /></>, t.fieldPasswordPlaceholder, {
               type: "password",
               error: refused && passwordMissing ? t.errRequired : undefined,
             })}
@@ -984,13 +987,13 @@ function CameraFormModal({
 
         {/* The malformed case wins over the empty one: they cannot both be true, and rtspError
             is the more specific thing to say. */}
-        {field("rtspUrl", t.fieldRtspUrl, "rtsp://10.20.4.11:554/stream1", {
+        {field("rtspUrl", <>{t.fieldRtspUrl}<RequiredMark /></>, "rtsp://10.20.4.11:554/stream1", {
           error: rtspError ? t.errRtsp : refused && rtspMissing ? t.errRequired : undefined,
         })}
 
         <div>
           {selectField(
-            t.fieldServer,
+            <>{t.fieldServer}<RequiredMark /></>,
             form.serverId,
             [{ value: "", label: t.fieldServerNone }, ...serversForKind.map(sv => ({ value: sv.id, label: sv.name }))],
             v => setForm(f => ({ ...f, serverId: v })),
@@ -1005,8 +1008,8 @@ function CameraFormModal({
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          {field("lat", t.fieldLat, "0.0", { inputMode: "decimal", error: latError ? t.errLat : refused && latMissing ? t.errRequired : undefined })}
-          {field("lng", t.fieldLng, "0.0", { inputMode: "decimal", error: lngError ? t.errLng : refused && lngMissing ? t.errRequired : undefined })}
+          {field("lat", <>{t.fieldLat}<RequiredMark /></>, "0.0", { inputMode: "decimal", error: latError ? t.errLat : refused && latMissing ? t.errRequired : undefined })}
+          {field("lng", <>{t.fieldLng}<RequiredMark /></>, "0.0", { inputMode: "decimal", error: lngError ? t.errLng : refused && lngMissing ? t.errRequired : undefined })}
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
@@ -2747,7 +2750,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           onClose={() => { setGroupingSelection(false); setGroupName(""); setGroupError(null); }}
         >
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.groupNameLabel} *</label>
+            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.groupNameLabel}<RequiredMark /></label>
             <TextField value={groupName} onChange={v => { setGroupName(v); setGroupError(null); }} placeholder={t.groupNamePlaceholder} />
             {groupError && <FieldError>{groupError}</FieldError>}
           </div>

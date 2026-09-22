@@ -11,7 +11,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TextField,
-  ConfirmModal, FieldError, PanelCancel, PanelPrimary, RowActionsMenu, usePortalEditAccess,
+  ConfirmModal, FieldError, PanelCancel, PanelPrimary, RequiredMark, RowActionsMenu, usePortalEditAccess,
 } from "./PortalShared";
 
 /**
@@ -64,6 +64,11 @@ const T = {
     noZone: "No zone",
     zonePick: "select all", zoneClear: "clear",
     zoneBack: "Back to all zones",
+    zoneInGroup: "In this group",
+    discardTitle: "You have unsaved changes",
+    discardBody: "Close this panel and what you have typed is gone.",
+    discardConfirm: "Close without saving",
+    discardCancel: "Keep editing",
     allPick: "Select all", allClear: "Clear selection",
     pickHeading: "Select cameras",
     inGroupUnknown: "No longer registered",
@@ -110,6 +115,11 @@ const T = {
     noZone: "구역 미지정",
     zonePick: "전체 선택", zoneClear: "해제",
     zoneBack: "모든 구역으로",
+    zoneInGroup: "이 그룹의 카메라",
+    discardTitle: "작성 중인 내용이 있습니다",
+    discardBody: "닫으면 입력한 내용은 저장되지 않습니다.",
+    discardConfirm: "저장하지 않고 닫기",
+    discardCancel: "계속 작성",
     allPick: "모두 선택", allClear: "선택 초기화",
     /* 「이 그룹에 들어있는 것」이었다 (사용자: 좀더 쉽고 직관적인 단어로). 그 말은 무엇이
        담겼는지를 설명하려 했는데, 이 줄이 머리에 붙어 있는 것은 고르는 칸이고 옆의 숫자가
@@ -158,6 +168,74 @@ type Dict = typeof T.en;
 const CARD_CHIP_CAP = 6;
 
 /**
+ * The picker's first section when a group is being CHANGED: the cameras it already holds. Not a
+ * zone key — no zone can be named this, because a zone key is the register's own trimmed string
+ * and this one is not a string any register produces.
+ */
+const IN_GROUP = "\u0000in-group";
+
+/**
+ * THE GROUP EDITOR, WIRED TO THE STORE AND OPENABLE FROM ANYWHERE (owner, 2026-09-22: 사용자 초대
+ * 패널에서 카메라 범위 옆에 그룹 수정/추가 버튼 만들어서 편집해서 추가할 수 있게 하면 어떨까).
+ *
+ * The panel itself is `GroupDrawer`; this is the part the camera-groups tab used to keep inline —
+ * the store calls, the duplicate-name refusal and the toast. Pulled out so the invite panel can
+ * open the very same editor over itself: somebody handing out camera access is exactly the person
+ * who finds that the group they want does not exist yet, and sending them to another tab would
+ * throw away the invite they were half-way through writing. Toggl Track does the same thing with
+ * 「+ Create a new project」 inside its project picker.
+ *
+ * `onSaved` carries the group that was written, so a caller can tick what it just created.
+ */
+export function CameraGroupEditor({ projectId, group, onClose, onSaved }: {
+  projectId: string;
+  /** The group to change, or null to make one. */
+  group: CameraGroup | null;
+  onClose: () => void;
+  onSaved?: (groupId: string) => void;
+}) {
+  const [lang] = usePortalLanguage();
+  const t: Dict = T[lang];
+  const { showToast } = useToast();
+  const allGroups = useVcaStore(s => s.cameraGroups);
+  const allCameras = useVcaStore(s => s.cameras);
+  const addCameraGroup = useVcaStore(s => s.addCameraGroup);
+  const updateCameraGroup = useVcaStore(s => s.updateCameraGroup);
+  const groups = cameraGroupsInProject(allGroups, projectId);
+
+  return (
+    <GroupDrawer
+      group={group}
+      cameras={camerasInProject(allCameras, projectId)}
+      otherGroups={groups.filter(g => g.id !== group?.id)}
+      t={t}
+      onSave={(label, description, ids) => {
+        if (group) {
+          const refusal = updateCameraGroup(group.id, { label, description, cameraIds: ids });
+          if (refusal) return refusal;
+          showToast({ variant: "success", title: t.savedToast, desc: `${label} · ${t.cameras(ids.length)}` });
+          onSaved?.(group.id);
+          onClose();
+          return null;
+        }
+        const refusal = addCameraGroup(projectId, label, ids, description);
+        if (refusal) return refusal;
+        /* The store hands back a refusal, not the row, so the new group is looked up by the name
+           it was just refused a duplicate of — read straight from the store rather than from the
+           subscribed value, which is still the pre-save render's array. */
+        const made = cameraGroupsInProject(useVcaStore.getState().cameraGroups, projectId)
+          .find(g => g.label.trim().toLowerCase() === label.trim().toLowerCase());
+        showToast({ variant: "success", title: t.createdToast, desc: `${label} · ${t.cameras(ids.length)}` });
+        if (made) onSaved?.(made.id);
+        onClose();
+        return null;
+      }}
+      onClose={onClose}
+    />
+  );
+}
+
+/**
  * MAKING A GROUP AND CHANGING ONE, IN A DRAWER OFF THE RIGHT EDGE.
  *
  * The owner asked for the map here (2026-09-21): 입력소스 화면에 넣었던 지도를 여기 카메라
@@ -200,7 +278,14 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
   onSave: (label: string, description: string, cameraIds: string[]) => "duplicate-label" | null;
   onClose: () => void;
 }) {
-  useEscapeKey(onClose);
+  /*
+   * THE SCRIM ASKS WHEN THERE IS SOMETHING TO LOSE (owner, 2026-09-22: 작성 중일 때 왼쪽 딤드
+   * 클릭해도 바로 삭제돼서 입력하던 데이터를 황당하게 잃어버리는 일이 없게). Same device and the
+   * same wording as the shared Drawer, which this panel predates — it draws its own scrim, so it
+   * needs its own copy of the guard rather than inheriting one. ✕ and 취소 stay immediate: they
+   * are aimed.
+   */
+  const [confirmingClose, setConfirmingClose] = useState(false);
   const creating = group === null;
   const [label, setLabel] = useState(group?.label ?? "");
   const [description, setDescription] = useState(group?.description ?? "");
@@ -268,7 +353,22 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
    * 있어서).
    */
   const flatZones = cameras.length <= 40;
-  const [openZone, setOpenZone] = useState<string | null>(null);
+  /*
+   * WHAT IS ALREADY IN THE GROUP IS WHAT THE EDITOR OPENS ON (owner, 2026-09-22: 카메라 그룹
+   * 편집할 때 이미 선택된 카메라들은 체크 표시한 상태로 열려 있음 해).
+   *
+   * The ticks were always there — `picked` starts from the group's own members — but on a big
+   * register the list opens as nineteen closed zones, so an editor could not see any of them
+   * without guessing which zones to step into. Opening on the group's members shows the ticks
+   * first and leaves adding to 「모든 구역으로」.
+   *
+   * The section's MEMBERSHIP is frozen at open (`group.cameraIds`), not read from `picked`:
+   * computed live, a row would disappear the moment you unticked it, so taking a camera out by
+   * mistake would also take away the way to put it back. Frozen, unticking just unticks.
+   */
+  const [initialPicked] = useState<string[]>(() => group?.cameraIds ?? []);
+  const inGroupSection = !flatZones && initialPicked.length > 0;
+  const [openZone, setOpenZone] = useState<string | null>(inGroupSection ? IN_GROUP : null);
   const toggleZoneAll = (ids: string[]) => {
     const allOn = ids.every(id => picked.includes(id));
     setPicked(prev => allOn ? prev.filter(id => !ids.includes(id)) : [...new Set([...prev, ...ids])]);
@@ -284,6 +384,10 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
       || description.trim() !== (group.description ?? "")
       || [...picked].sort().join() !== [...group.cameraIds].sort().join()
     );
+
+  /* Escape takes the same route as the scrim — ask when there is work in the panel — and is off
+     while the confirmation is up, or one keypress would be handled by both and close the lot. */
+  useEscapeKey(() => { if (dirty) setConfirmingClose(true); else onClose(); }, !confirmingClose);
 
   const save = () => {
     if (!dirty) return;
@@ -308,7 +412,7 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
   return (
     /* Same rule as the shared Drawer, and the same guard: only a click that BEGAN on the scrim
        closes it, or every button inside would close it too on the way out. */
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    <div onClick={e => { if (e.target === e.currentTarget) { if (dirty) setConfirmingClose(true); else onClose(); } }}
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", justifyContent: "flex-end" }}>
       <div style={{
         backgroundColor: "white", width: "min(672px, 100%)", height: "100%",
@@ -348,7 +452,7 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
         */}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
-            <label style={fieldLabel}>{t.createName} *</label>
+            <label style={fieldLabel}>{t.createName}<RequiredMark /></label>
             <TextField value={label} onChange={v => { setLabel(v); setLabelError(null); }} placeholder={namePlaceholder} autoFocus />
             {labelError && <FieldError>{labelError}</FieldError>}
           </div>
@@ -481,10 +585,16 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
                   {/* Searching crosses zones — a code is typed to find one camera, not to find
                       out which zone it is in — so a needle shows every zone that matches with
                       its rows open, whichever zone you had stepped into. */}
-                  {(needle !== "" || flatZones
-                    ? zones
-                    : openZone === null ? zones : zones.filter(([zone]) => zone === openZone)
-                  ).map(([zone, list]) => {
+                  {(() => {
+                    /* Searching is a register-wide question, so a needle drops the section and
+                       shows the real zones that match — including cameras already in the group,
+                       ticked where they live. */
+                    if (needle !== "" || flatZones) return zones;
+                    const withSection: [string, Camera[]][] = inGroupSection
+                      ? [[IN_GROUP, cameras.filter(c => initialPicked.includes(c.id))], ...zones]
+                      : zones;
+                    return openZone === null ? withSection : withSection.filter(([zone]) => zone === openZone);
+                  })().map(([zone, list]) => {
                     const drilling = needle === "" && !flatZones;
                     const open = !drilling || openZone === zone;
                     return (
@@ -513,8 +623,12 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
                                 while 전체 선택 beside it is gray-500 — the row's action was
                                 darker than the row's identity, which is the order somebody scans
                                 in reversed. The count stays light: it qualifies the name. */}
-                            <span style={{ fontSize: "11.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-900)" }}>
-                              {zone || t.noZone}
+                            {/* The section is not a zone, so it is not uppercased with them:
+                                uppercase is this list's mark for "a place on the site". */}
+                            <span style={zone === IN_GROUP
+                              ? { fontSize: "11.5px", fontWeight: 700, color: "var(--gray-900)" }
+                              : { fontSize: "11.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-900)" }}>
+                              {zone === IN_GROUP ? t.zoneInGroup : zone || t.noZone}
                               <span style={{ fontWeight: 600, color: "var(--gray-400)" }}> · {list.length}</span>
                             </span>
                           </button>
@@ -628,6 +742,14 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose }: {
           <PanelPrimary onClick={save} disabled={!dirty} label={creating ? t.createSave : t.editSave} />
         </div>
       </div>
+      {confirmingClose && (
+        <ConfirmModal
+          title={t.discardTitle} body={t.discardBody}
+          confirmLabel={t.discardConfirm} cancelLabel={t.discardCancel}
+          onConfirm={() => { setConfirmingClose(false); onClose(); }}
+          onClose={() => setConfirmingClose(false)}
+        />
+      )}
     </div>
   );
 }
@@ -643,8 +765,6 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
   const allGroups = useVcaStore(s => s.cameraGroups);
   const allCameras = useVcaStore(s => s.cameras);
   const portalUsers = useVcaStore(s => s.portalUsers);
-  const addCameraGroup = useVcaStore(s => s.addCameraGroup);
-  const updateCameraGroup = useVcaStore(s => s.updateCameraGroup);
   const removeCameraGroup = useVcaStore(s => s.removeCameraGroup);
 
   const groups = cameraGroupsInProject(allGroups, projectId);
@@ -799,25 +919,9 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
       )}
 
       {drawerOpen && (
-        <GroupDrawer
+        <CameraGroupEditor
+          projectId={projectId}
           group={editing}
-          cameras={registered}
-          otherGroups={groups.filter(g => g.id !== editing?.id)}
-          t={t}
-          onSave={(label, description, ids) => {
-            if (editing) {
-              const refusal = updateCameraGroup(editing.id, { label, description, cameraIds: ids });
-              if (refusal) return refusal;
-              showToast({ variant: "success", title: t.savedToast, desc: `${label} · ${t.cameras(ids.length)}` });
-              setEditing(null);
-              return null;
-            }
-            const refusal = addCameraGroup(projectId, label, ids, description);
-            if (refusal) return refusal;
-            showToast({ variant: "success", title: t.createdToast, desc: `${label} · ${t.cameras(ids.length)}` });
-            setCreating(false);
-            return null;
-          }}
           onClose={() => { setEditing(null); setCreating(false); }}
         />
       )}
