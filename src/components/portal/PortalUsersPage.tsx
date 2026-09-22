@@ -374,6 +374,7 @@ const T = {
     errDomain: (d: string) => `Accounts must be on @${d} — mail to anything else is not deliverable from this installation.`,
     editProjects: "Change projects",
     projectsModalTitle: "Projects",
+    projectsPickedCount: (n: number, total: number) => `${n} of ${total} selected`,
     projectsModalIntro: (name: string) => `Which of this team's projects ${name} may open. A project they are not given stops appearing in their app.`,
     projectsModalNoneWarning: "At least one project. An account with no projects signs in to an empty app with no sign that anything was taken away — suspend the account instead.",
     projectsUpdatedTitle: "Projects updated",
@@ -702,6 +703,7 @@ const T = {
     errDomain: (d: string) => `계정은 @${d} 주소여야 합니다 — 이 설치본에서 다른 주소로는 메일이 나가지 않습니다.`,
     editProjects: "담당 프로젝트 변경",
     projectsModalTitle: "프로젝트",
+    projectsPickedCount: (n: number, total: number) => `${total}곳 중 ${n}곳 선택`,
     projectsModalIntro: (name: string) => `${name} 님이 열 수 있는 이 팀의 프로젝트입니다. 주지 않은 프로젝트는 앱에서 보이지 않습니다.`,
     projectsModalNoneWarning: "최소 한 개는 있어야 합니다. 프로젝트가 없는 계정은 아무것도 없는 앱에 로그인하게 되고, 무엇이 회수됐는지 알 방법이 없습니다. 그럴 땐 계정을 정지하세요.",
     projectsUpdatedTitle: "프로젝트가 변경되었습니다",
@@ -2401,25 +2403,57 @@ function UserProjectsModal({ user, teamProjects, onClose, onSave }: {
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.projectsModalTitle}</p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.projectsModalIntro(user.name)}</p>
         </div>
-        <div style={{ padding: "16px 20px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
-          {teamProjects.map(p => {
-            const active = picked.includes(p.id);
-            return (
-              <button key={p.id} onClick={() => toggle(p.id)}
-                style={{
-                  padding: "6px 10px", borderRadius: "8px", cursor: "pointer",
-                  border: active ? "1px solid var(--gray-900)" : BORDER,
-                  backgroundColor: active ? "var(--gray-100)" : "white",
-                  color: active ? "var(--gray-900)" : "var(--gray-600)",
-                  fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
-                }}>
-                {p.name}
-              </button>
-            );
-          })}
+        {/*
+          CHECKBOX ROWS, NOT CHIPS (owner, 2026-09-22: 이거 선택 가능한거라는 느낌이 안들고
+          프로젝트 권한을 주는 중요한 팝업인데 너무 약해).
+
+          A chip that changes only its border when picked is a filter's idiom, and it was carrying
+          a decision about which sites a person may watch. Every product that asks this question
+          asks it with a ticked list: Customer.io's workspace permissions, Buffer's channel access,
+          Wix's roles, Teachable's course access, HubSpot's access groups. The box is the part that
+          says "you choose these", and the row — full width, one per site — is what makes a list of
+          two read the same as a list of twenty.
+
+          The count under it is the same device the camera picker uses: the one number that says
+          what is about to be saved, beside the button that saves it.
+        */}
+        <div style={{ padding: "16px 20px 6px" }}>
+          <div style={{ border: BORDER, borderRadius: "10px", overflow: "hidden" }}>
+            {teamProjects.map((p, i) => {
+              const active = picked.includes(p.id);
+              return (
+                <button key={p.id} type="button" onClick={() => toggle(p.id)}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left",
+                    padding: "11px 12px", cursor: "pointer", fontFamily: "inherit",
+                    border: "none", borderTop: i === 0 ? "none" : "1px solid var(--gray-200)",
+                    backgroundColor: active ? "var(--gray-50)" : "white",
+                  }}>
+                  <span style={{
+                    width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    border: active ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)",
+                    backgroundColor: active ? "var(--gray-900)" : "white",
+                  }}>
+                    {active && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                        <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </span>
+                  <span style={{ minWidth: 0, fontSize: "12.5px", fontWeight: active ? 700 : 500, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {p.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{ padding: "0 20px", display: "flex", alignItems: "baseline", gap: "8px" }}>
+          <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>{t.projectsPickedCount(picked.length, teamProjects.length)}</span>
         </div>
         {!canSave && (
-          <p style={{ padding: "0 20px", fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.projectsModalNoneWarning}</p>
+          <p style={{ padding: "8px 20px 0", fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.projectsModalNoneWarning}</p>
         )}
         <div style={{ padding: "16px 20px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button className="portal-btn-outline" onClick={onClose}
