@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Boxes } from "lucide-react";
 import {
   cameraGroupsInProject, camerasInProject, useVcaStore, type Camera, type CameraGroup,
 } from "@/lib/vcaStore";
@@ -37,7 +36,6 @@ import {
 
 const T = {
   en: {
-    heading: "Camera groups",
     empty: "No groups on this project yet.",
     colName: "Group", colCameras: "Cameras", colHolders: "Accounts holding it", colCreated: "Created",
     cameras: (n: number) => `${n} camera${n === 1 ? "" : "s"}`,
@@ -88,7 +86,6 @@ const T = {
     notOwner: "Only an owner changes camera groups.",
   },
   ko: {
-    heading: "카메라 그룹",
     empty: "이 프로젝트에 아직 그룹이 없습니다.",
     colName: "그룹", colCameras: "카메라", colHolders: "이 그룹을 가진 계정", colCreated: "만든 사람",
     cameras: (n: number) => `${n}대`,
@@ -603,17 +600,22 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
 
   return (
     <div>
+      {/*
+        NO HEADING EITHER (owner, 2026-09-22, after the tab strip split into two levels).
+       
+        Measured on the two-row strip: the lit pill read 카메라 그룹 at y 118 and this heading read
+        카메라 그룹 again at y 149 — the same words 31px apart. The pill is what says which of the
+        two things you are looking at, so the row that was the heading keeps only the control the
+        pill cannot carry.
+       
+        The subtitle went earlier the same day and for the same rule: it carried three facts and
+        the table says all three — a group is a named set of cameras (the 그룹/카메라 columns), it
+        is handed out on an account's scope (the 「이 그룹을 가진 계정」 column, which is the whole
+        reason this tab exists), and a camera can sit in several groups (the 「다른 그룹 N」 mark on
+        the rows it applies to). This screen's own explanation sentences are 0.
+      */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "14px" }}>
-        <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "1px" }}><Boxes size={17} strokeWidth={2} /></span>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          {/* THE HEADING ALONE (owner, 2026-09-22, on an outside review that wanted this line
-              REWRITTEN LONGER). It carried three facts and the screen says all three: that a
-              group is a named set of cameras is the 그룹/카메라 columns; that it is handed out on
-              an account's scope is the 「이 그룹을 가진 계정」 column, which is the whole reason
-              this tab exists; that a camera can sit in several groups is the 「다른 그룹 N」 mark
-              on the rows it applies to. This screen's own explanation sentences are now 0. */}
-          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.heading}</p>
-        </div>
+        <div style={{ minWidth: 0, flex: 1 }} />
         {/* MAKING ONE STARTS HERE NOW, not only on Input Sources. Disabled for a reader who cannot
             change access — the row menu already refuses, and a button that opens a dialog whose
             save is refused is worse than a button that says no. */}

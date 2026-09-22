@@ -103,11 +103,14 @@ export default function AccessPresetsTab({ teamId, canEdit }: {
   const t = T[lang];
   return (
     <div>
+      {/* NO TITLE. The lit pill on the second tab row reads 앱 권한 프리셋 and this line read it
+          again 31px below — the same duplication measured on the camera-groups tab. The intro
+          stays for now: its last clause (따로 지정한 계정은 건드리지 않습니다) is the one fact
+          nothing else on this screen carries, and it needs a home before the line can go. */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "14px" }}>
         <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "1px" }}><KeySquare size={16} strokeWidth={2.2} /></span>
         <div style={{ minWidth: 0 }}>
-          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.presetTitle}</p>
-          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px", lineHeight: 1.5 }}>{t.presetIntro}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.presetIntro}</p>
         </div>
       </div>
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "16px" }}>
