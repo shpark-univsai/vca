@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Asterisk, MailQuestion, MoreVertical, MonitorOff, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
+import { Asterisk, CircleHelp, MailQuestion, MoreVertical, MonitorOff, Users2, UserMinus, UserX, ClipboardPlus, KeyRound} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -149,8 +149,10 @@ const T = {
     reasonNoApp: "This account has no app access — there are no screens to grant or to search on.",
     reasonNoPortal: "This account does not open Portal — change where they sign in first.",
     manageAccount: "Manage account",
-    panelGrantSection: "Access",
-    panelAccountSection: "Account",
+    panelWhereSection: "Where they get in",
+    panelWhatSection: "What they may do",
+    panelAccountSection: "Getting back in",
+    panelStatusSection: "Account status",
     panelGrants: "App screens",
     panelNoPortal: "No Portal",
     panelNoApp: "No app",
@@ -534,8 +536,10 @@ const T = {
     reasonNoApp: "앱 접근이 없는 계정입니다 — 지정하거나 검색할 화면이 없습니다.",
     reasonNoPortal: "Portal을 열지 않는 계정입니다 — 로그인 위치를 먼저 바꾸세요.",
     manageAccount: "계정 관리",
-    panelGrantSection: "권한",
-    panelAccountSection: "계정",
+    panelWhereSection: "들어가는 곳",
+    panelWhatSection: "할 수 있는 일",
+    panelAccountSection: "다시 들어가게 하기",
+    panelStatusSection: "계정 상태",
     panelGrants: "앱 화면",
     panelNoPortal: "Portal 없음",
     panelNoApp: "앱 없음",
@@ -2726,20 +2730,16 @@ type UserFilterKey = "invited" | "suspended" | "roster" | "dormant" | "noScreens
  * the weight a distribution needs.
  */
 function UserCountStrip({
-  users, dormant, statusFilter, onFilter, onShowGuide,
+  users, onShowGuide,
 }: {
   users: PortalUser[];
-  /* Counted by the page, not here: it needs a post-mount clock, and this component has none. */
-  dormant: number;
-  statusFilter: UserFilterKey | null;
-  onFilter: (next: UserFilterKey | null) => void;
+  /* The exception counts and their filter left for the toolbar, where a table's filters belong —
+     so this component is the headcount and its breakdown, and nothing else. */
   onShowGuide: () => void;
 }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
 
-  const invited = users.filter(u => u.status === "invited").length;
-  const suspended = users.filter(u => u.status === "suspended").length;
   /*
    * TWO AXES, AND THE LINE HAS TO SHOW THEM AS TWO.
    *
@@ -2766,31 +2766,7 @@ function UserCountStrip({
     ] },
   ];
 
-  /*
-   * THE EXCEPTIONS LEAVE THE CARDS (owner, 2026-09-22: 큰 카드를 벗기고).
-   *
-   * They were already hidden at zero, so the fault was never that they showed — it was their
-   * WEIGHT: 초대 수락 안 함 1, 로그인 차단됨 1 and 앱 화면 미지정 2 each took the same card as the
-   * headcount, so a figure of 1 shouted as loudly as the number the page is about, and five cards
-   * across one row pushed the table itself out of the first glance.
-   *
-   * Same numbers, same filters, same explanations — one line of chips instead. A chip fills when
-   * its filter is on, which is the state a card was spending a whole panel to show.
-   */
-  const exceptions = [
-    { key: "invited" as const, count: invited, label: t.countInvited, hint: t.invitedHint, icon: <MailQuestion size={13} strokeWidth={2.4} /> },
-    { key: "suspended" as const, count: suspended, label: t.countSuspended, hint: t.suspendedHint, icon: <UserX size={13} strokeWidth={2.4} /> },
-    /* NO ROSTER CHIP. It sat directly under the 명부 대기 tab, with the same label and the same
-       count, and pressing either did the same thing — switch to that tab. Two controls for one
-       errand, twelve pixels apart. The tab is the one that was already there. */
-    /* Counted over every account with the app door and no screens, suspended and invited
-       included — the badge is on their rows, and a figure that disagrees with the badges under it
-       stops being a figure anybody trusts. */
-    { key: "noScreens" as const, count: users.filter(lacksAppScreens).length, label: t.countNoScreens, hint: t.noScreensHint, icon: <MonitorOff size={13} strokeWidth={2.4} /> },
-    // Last, because it is the only one that is not a state the console set — it is a state that
-    // accumulated while nobody looked.
-    { key: "dormant" as const, count: dormant, label: t.countDormant, hint: t.dormantHint, icon: <UserMinus size={13} strokeWidth={2.4} /> },
-  ].filter(item => item.count > 0);
+
 
   return (
     <>
@@ -2854,33 +2830,6 @@ function UserCountStrip({
           {t.whatRolesMean}
         </button>
       </p>
-      {exceptions.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", margin: "0 0 20px" }}>
-          {exceptions.map(item => {
-            const on = statusFilter === item.key;
-            return (
-              /* The explanation is the whole point of these labels — an invitation nobody accepted
-                 is not a self-explanatory phrase — so each chip keeps the hint the card carried,
-                 in our own Tooltip rather than the browser's `title`. */
-              <Tooltip key={item.key} text={item.hint}>
-                <button type="button" onClick={() => onFilter(on ? null : item.key)}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: "6px",
-                    height: "26px", padding: "0 10px", borderRadius: "999px", cursor: "pointer", fontFamily: "inherit",
-                    border: on ? "1px solid var(--gray-900)" : BORDER,
-                    backgroundColor: on ? "var(--gray-900)" : "white",
-                    color: on ? "white" : "var(--gray-600)",
-                    fontSize: "11.5px", fontWeight: 600,
-                  }}>
-                  <span style={{ display: "flex", color: on ? "white" : "var(--warning-500)" }}>{item.icon}</span>
-                  {item.label}
-                  <span style={{ fontWeight: 800, color: on ? "white" : "var(--gray-900)" }}>{item.count}</span>
-                </button>
-              </Tooltip>
-            );
-          })}
-        </div>
-      )}
     </>
   );
 }
@@ -3117,6 +3066,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
   // them and take it as a prop, which is exactly why they could be shared instead of rewritten.
   const rt = ROSTER_T[lang];
 
+
   // The account-only columns: role, access, person search, MFA, last login. Dropped on the roster
   // tab rather than printed as five dashes per row.
   const showAccountColumns = peopleTab === "accounts";
@@ -3185,6 +3135,37 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
   // left after the search. Counting the searched set instead would make the summary agree with the
   // table and stop being a summary.
   const projectUsers = portalUsers.filter(u => u.projectIds.includes(projectId));
+
+  /*
+   * THE EXCEPTIONS LEAVE THE CARDS (owner, 2026-09-22: 큰 카드를 벗기고).
+   *
+   * They were already hidden at zero, so the fault was never that they showed — it was their
+   * WEIGHT: 초대 수락 안 함 1, 로그인 차단됨 1 and 앱 화면 미지정 2 each took the same card as the
+   * headcount, so a figure of 1 shouted as loudly as the number the page is about, and five cards
+   * across one row pushed the table itself out of the first glance.
+   *
+   * Same numbers, same filters, same explanations — one line of chips instead. A chip fills when
+   * its filter is on, which is the state a card was spending a whole panel to show.
+   */
+  const exceptions = [
+    { key: "invited" as const, count: projectUsers.filter(u => u.status === "invited").length, label: t.countInvited, hint: t.invitedHint, icon: <MailQuestion size={13} strokeWidth={2.4} /> },
+    { key: "suspended" as const, count: projectUsers.filter(u => u.status === "suspended").length, label: t.countSuspended, hint: t.suspendedHint, icon: <UserX size={13} strokeWidth={2.4} /> },
+    /* NO ROSTER CHIP. It sat directly under the 명부 대기 tab, with the same label and the same
+       count, and pressing either did the same thing — switch to that tab. Two controls for one
+       errand, twelve pixels apart. The tab is the one that was already there. */
+    /* Counted over every account with the app door and no screens, suspended and invited
+       included — the badge is on their rows, and a figure that disagrees with the badges under it
+       stops being a figure anybody trusts. */
+    { key: "noScreens" as const, count: projectUsers.filter(lacksAppScreens).length, label: t.countNoScreens, hint: t.noScreensHint, icon: <MonitorOff size={13} strokeWidth={2.4} /> },
+    // Last, because it is the only one that is not a state the console set — it is a state that
+    // accumulated while nobody looked.
+    { key: "dormant" as const, count: nowMs === null ? 0 : projectUsers.filter(u => isDormant(u, nowMs)).length, label: t.countDormant, hint: t.dormantHint, icon: <UserMinus size={13} strokeWidth={2.4} /> },
+  ].filter(item => item.count > 0);
+  /** Setting a filter also puts the reader on the tab that can show it. */
+  const onFilter = (next: UserFilterKey | null) => {
+    setStatusFilter(next);
+    if (next !== null) setPeopleTab("accounts");
+  };
   const filteredUsers = projectUsers
     .filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
     // "roster" narrows to people who have no account at all, so no account row can match it.
@@ -3403,15 +3384,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           Accounts tab used to set a filter no account's status can equal: the table emptied and
           printed "No users have access to this project yet" with six accounts one click away.
           The mirror case did the same on the other tab. A cell now shows what it counts. */}
-      <UserCountStrip users={projectUsers}
-        dormant={nowMs === null ? 0 : projectUsers.filter(u => isDormant(u, nowMs)).length}
-        statusFilter={statusFilter}
-        onFilter={next => {
-          setStatusFilter(next);
-          if (next === "roster") setPeopleTab("roster");
-          else if (next !== null) setPeopleTab("accounts");
-        }}
-        onShowGuide={() => setShowGuide(true)} />
+      <UserCountStrip users={projectUsers} onShowGuide={() => setShowGuide(true)} />
 
       <AccessRequestsPanel projectId={projectId} onLinksMade={setInvitePanel} />
 
@@ -3449,6 +3422,53 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
               absorbs the free space on whichever line the group lands on, so it stays at the right
               end in both states. */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto" }}>
+        {/*
+          THE FILTERS SIT WITH THE SEARCH BOX (owner, 2026-09-22: 초대수락안함~3가지 좀 위치가
+          애매해보여 → 레퍼런스찾아보고).
+        
+          They were a line of their own between the count and the toolbar, belonging to neither. The
+          references agree on where they go: a table's filters live in the row that holds its search,
+          and an applied one stays visible there with an ✕ to clear — Navattic (Events: Engaged ✕ ·
+          Clear), Remote, Twenty, Aboard and Airwallex all do exactly that, and Asana keeps the same
+          idea as "Filters: 2 ✕".
+        
+          NOT A STATUS DROPDOWN, which is the other half of the references (Docusign's
+          "Status: Active, Pending ▾", WRITER's row of selects, Deel's Worker status ●). A dropdown
+          hides its counts until opened, and these three are defects — 앱 화면 미지정 2 is a number
+          somebody has to notice without going looking, which is the whole reason it is drawn.
+        */}
+        {exceptions.map(item => {
+          const on = statusFilter === item.key;
+          return (
+            /* The explanation is the whole point of these labels — an invitation nobody accepted is
+               not a self-explanatory phrase — so each chip keeps the hint the card carried, in our
+               own Tooltip rather than the browser's `title`. */
+            <Tooltip key={item.key} text={item.hint}>
+              <button type="button" onClick={() => onFilter(on ? null : item.key)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "6px",
+                  height: CONTROL_HEIGHT, padding: on ? "0 8px 0 10px" : "0 10px",
+                  borderRadius: "999px", cursor: "pointer", fontFamily: "inherit",
+                  border: on ? "1px solid var(--gray-900)" : BORDER,
+                  backgroundColor: on ? "var(--gray-900)" : "white",
+                  color: on ? "white" : "var(--gray-600)",
+                  fontSize: "11.5px", fontWeight: 600,
+                }}>
+                <span style={{ display: "flex", color: on ? "white" : "var(--warning-500)" }}>{item.icon}</span>
+                {item.label}
+                <span style={{ fontWeight: 800, color: on ? "white" : "var(--gray-900)" }}>{item.count}</span>
+                {/* The way out, on the chip that is doing something. Every reference puts it here,
+                    and without it the only way back is pressing the same chip again — which reads as
+                    a toggle nobody told you about. */}
+                {on && (
+                  <span aria-hidden="true" style={{ display: "flex", opacity: 0.7 }}>
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  </span>
+                )}
+              </button>
+            </Tooltip>
+          );
+        })}
           {peopleTab !== "roster" && (
           /* Disabled with the reason on it rather than hidden: a control that vanishes reads as a
              missing feature and sends the admin looking elsewhere for it. */
@@ -3966,12 +3986,24 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
         const close = () => setManaging(null);
         /** Both groups from one list, so the guards cannot drift apart. `value` is what the
          *  account holds right now — the half a menu of verbs could not show. */
+        /*
+         * TWO GROUPS, BECAUSE THE FIVE ROWS ANSWER TWO QUESTIONS (owner, 2026-09-22: 직관적으로
+         * 보고 이해하기 쉽게 그룹핑해줘야해).
+         *
+         * Flat, the card put 로그인 next to 앱 화면 and hid the causation between them: on a
+         * Portal-only account the app rows are grey BECAUSE of the door two rows above, and
+         * nothing on screen said so. Grouped, the door comes first and what it opens follows it —
+         * the reader sees the cause before the consequence.
+         *
+         * 들어가는 곳 = which door, which sites. 할 수 있는 일 = the console role, and the app's
+         * screens and cameras. The second name is the app's own words for it (see appGrants).
+         */
         const rows: {
-          key: string; label: string; value: string;
+          key: string; group: "where" | "what"; label: string; value: string;
           disabled?: boolean; reason?: string; onClick: () => void;
         }[] = [
           {
-            key: "role",
+            key: "role", group: "what",
             /* Not colPermission ("권한"): the section above is already called 권한, and the card
                printed the word twice in two lines. This row is the console role specifically —
                the same axis name the count line uses. */
@@ -3984,7 +4016,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             onClick: () => { close(); setChangingRoleFor(mu); },
           },
           {
-            key: "access",
+            key: "access", group: "where",
             /* The invite form asks it as a question ("어디로 로그인하나"); a card of current
                values states it as a thing. Same axis name as the count line again. */
             label: t.axisDoor,
@@ -3994,7 +4026,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             onClick: () => { close(); setChangingAccessFor(mu); },
           },
           {
-            key: "grants",
+            key: "grants", group: "what",
             label: t.panelGrants,
             value: !mu.appAccess ? t.panelNoApp
               : lacksAppScreens(mu) ? t.grantsHeldNone
@@ -4004,7 +4036,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             onClick: () => { close(); setChangingGrantsFor(mu); },
           },
           {
-            key: "cameras",
+            key: "cameras", group: "what",
             label: t.colCameras,
             value: !mu.appAccess ? t.panelNoApp
               : scopeCountFor(mu) === null ? t.camerasAll
@@ -4016,7 +4048,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             onClick: () => { close(); setScopingFor(mu); },
           },
           {
-            key: "projects",
+            key: "projects", group: "where",
             label: t.colProjects,
             value: t.panelProjectCount(mu.projectIds.length),
             disabled: !manageAccess,
@@ -4042,35 +4074,61 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                 </button>
               </div>
 
-              <div style={{ padding: "16px 20px 6px" }}>
-                <p style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)", marginBottom: "8px" }}>{t.panelGrantSection}</p>
+              <div style={{ padding: "16px 20px 6px", display: "flex", flexDirection: "column", gap: "14px" }}>
+                {([["where", t.panelWhereSection], ["what", t.panelWhatSection]] as const).map(([group, heading]) => (
+                <div key={group}>
+                <p style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)", marginBottom: "8px" }}>{heading}</p>
                 <div style={{ border: BORDER, borderRadius: "10px", overflow: "hidden" }}>
-                  {rows.map((row, i) => (
-                    <button key={row.key} type="button" onClick={row.disabled ? undefined : row.onClick} disabled={row.disabled}
-                      title={row.disabled ? row.reason : undefined}
-                      style={{
-                        width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left",
-                        padding: "11px 12px", border: "none", borderTop: i === 0 ? "none" : "1px solid var(--gray-200)",
-                        backgroundColor: "white", cursor: row.disabled ? "default" : "pointer", fontFamily: "inherit",
-                      }}>
-                      <span style={{ flexShrink: 0, fontSize: "12px", fontWeight: 700, color: row.disabled ? "var(--gray-400)" : "var(--gray-600)" }}>{row.label}</span>
+                  {rows.filter(r => r.group === group).map((row, i) => {
+                    const style: React.CSSProperties = {
+                      width: "100%", display: "flex", alignItems: "center", gap: "8px", textAlign: "left",
+                      padding: "11px 12px", border: "none", borderTop: i === 0 ? "none" : "1px solid var(--gray-200)",
+                      backgroundColor: "white", fontFamily: "inherit",
+                    };
+                    const label = (
+                      <>
+                        <span style={{ flexShrink: 0, fontSize: "12px", fontWeight: 700, color: row.disabled ? "var(--gray-400)" : "var(--gray-600)" }}>{row.label}</span>
+                        {/*
+                          WHY IT CANNOT BE OPENED, BEHIND A MARK (owner, 2026-09-22: 이것도 뭔가
+                          어색해 단어옆에 물음표같은아이콘에 숨겨줘).
+                          
+                          The reasons were printed under the list as "앱 화면 — 앱 접근이 없는
+                          계정입니다 — 지정하거나 검색할 화면이 없습니다." — the row's name, then
+                          a dash, then a sentence that already had a dash in it, for every refused
+                          row. Two lines of grey explaining what two greyed rows had already said.
+                          
+                          Our own Tooltip, not the browser's `title`: a disabled control gets no
+                          hover events in some browsers and none at all on touch, which is why the
+                          mark sits OUTSIDE the button — a refused row is not a control anyway, so
+                          it is drawn as a value with a question beside it.
+                        */}
+                        {row.disabled && row.reason && (
+                          <Tooltip text={row.reason}>
+                            <span style={{ flexShrink: 0, display: "flex", color: "var(--gray-300)", cursor: "help" }}>
+                              <CircleHelp size={13} strokeWidth={2.2} />
+                            </span>
+                          </Tooltip>
+                        )}
+                      </>
+                    );
+                    const value = (
                       <span style={{ flex: 1, minWidth: 0, textAlign: "right", fontSize: "12px", color: row.disabled ? "var(--gray-400)" : "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.value}</span>
-                      {/* No chevron on a row that cannot be opened — an arrow that leads nowhere is
-                          the control this console keeps being asked to stop drawing. */}
-                      {!row.disabled && (
+                    );
+                    if (row.disabled) return <div key={row.key} style={style}>{label}{value}</div>;
+                    return (
+                      <button key={row.key} type="button" onClick={row.onClick} style={{ ...style, cursor: "pointer" }}>
+                        {label}
+                        {value}
+                        {/* No chevron on a row that cannot be opened — an arrow that leads nowhere
+                            is the control this console keeps being asked to stop drawing. */}
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
                           <path d="M3 1.5L7 5l-4 3.5" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
-                      )}
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
-                {/* The refusals, once, under the list they are about. A title attribute on a
-                    disabled button is not read by everyone and not read at all on touch. */}
-                {rows.filter(r => r.disabled && r.reason).map(r => (
-                  <p key={r.key} style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>
-                    {r.label} — {r.reason}
-                  </p>
+                </div>
                 ))}
               </div>
 
@@ -4138,10 +4196,16 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                     </button>
                   ))}
                 </div>
-                {/* THE TWO THAT TAKE ACCESS AWAY, BELOW A RULE. They were the last two entries of
-                    a nine-item menu, one keystroke from 인물 검색 차단; here they are the only
-                    things under their own line, which is the weight they have. */}
-                <div style={{ borderTop: "1px solid var(--gray-200)", marginTop: "14px", paddingTop: "12px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {/* THE TWO THAT TAKE ACCESS AWAY GET THEIR OWN NAME (owner, 2026-09-22: 마지막에
+                    버튼 두개도 계정상태관리 뭐 이런걸로 안에 넣어줘).
+                    
+                    They were the last two entries of a nine-item menu, one keystroke from 인물
+                    검색 차단. A rule above them said "these are different" without saying how;
+                    a heading says which two they are — the ones that change whether the account
+                    works at all, as opposed to the ones that help somebody back in. Same heading
+                    style as the groups above, so the card reads as four named parts. */}
+                <p style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)", margin: "16px 0 8px" }}>{t.panelStatusSection}</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                   <button type="button"
                     disabled={!manageAccess || (mu.status !== "suspended" && lastAdmin)}
                     title={!manageAccess ? t.reasonNotOwner : (mu.status !== "suspended" && lastAdmin) ? t.lastAdminReason : undefined}
