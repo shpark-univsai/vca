@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useVcaStore } from "@/lib/vcaStore";
-import { REGISTRATION_CODE_TTL_DAYS, formatCode, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
+import { REGISTRATION_CODE_TTL_DAYS, codeExpiresAt, formatCode, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
+import { sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
 import { TextField, FIELD_STYLE, BORDER, Drawer } from "./PortalShared";
@@ -66,6 +67,8 @@ const T = {
     colPermission: "Permission",
     colStatus: "Status",
     colCode: "Code",
+    codeExpiresOn: (date: string) => `Expires ${date}`,
+    justIssued: "Just issued",
     codeReveal: "Show the code",
     codeHide: "Hide the code again",
     admin: "Portal admin",
@@ -161,6 +164,8 @@ const T = {
     colPermission: "권한",
     colStatus: "상태",
     colCode: "코드",
+    codeExpiresOn: (date: string) => `${date} 만료`,
+    justIssued: "방금 발급",
     codeReveal: "코드 보기",
     codeHide: "코드 다시 가리기",
     admin: "Portal 관리자",
@@ -251,19 +256,55 @@ function csvEscape(value: string): string {
  * button hides it again, and the audit line is written on each REVEAL only: every look is a look,
  * and putting it away is not one.
  */
-function RosterCodeCell({ entry, onReveal, t }: { entry: RosterEntry; onReveal: () => void; t: Translations }) {
+function RosterCodeCell({ entry, onReveal, t, justIssued }: {
+  entry: RosterEntry;
+  onReveal: () => void;
+  t: Translations;
+  /**
+   * True for the row whose code was issued a moment ago, in this session (owner: 코드 재발급
+   * 누르면 재발급된 코드를 먼저 보여줘).
+   *
+   * The cell opens masked for everybody else, because a screenful of live codes is a screenful of
+   * credentials anyone walking past can read. The one exception is the code you just minted: you
+   * pressed the button in order to read it out, and making you press a second control to see what
+   * you asked for is the dialog refusing to finish its own errand.
+   */
+  justIssued?: boolean;
+}) {
   const [revealed, setRevealed] = useState(false);
+  /* The auto-reveal is logged like any other, or the audit would say a code nobody looked at was
+     the one code on screen in plain text. `justIssued` is session state and false again on
+     reload, so this fires once per issue. */
+  useEffect(() => {
+    if (justIssued) { setRevealed(true); onReveal(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [justIssued]);
+
+  /* THE DATE OUTLIVES THE CODE'S USEFULNESS, so it is computed before the branches and printed in
+     both. On a live code it is the deadline; on an expired one it is the answer to "why is this
+     dead" — the state says expired and the date says since when. Only 미발급 has nothing to say,
+     because there is no code to date. */
+  const expiresAt = codeExpiresAt(entry.issuedAt);
+  const expiryLine = expiresAt
+    ? <span style={{ fontSize: "10.5px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.codeExpiresOn(sgtDateKey(expiresAt))}</span>
+    : null;
 
   if (entry.status === "not-issued") {
     return <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>;
   }
   if (entry.status !== "unused") {
-    return <span style={{ fontSize: "12px", fontFamily: "monospace", color: "var(--gray-300)" }}>••••-••••</span>;
+    return (
+      <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px" }}>
+        <span style={{ fontSize: "12px", fontFamily: "monospace", color: "var(--gray-300)" }}>••••-••••</span>
+        {expiryLine}
+      </span>
+    );
   }
   /* One button in both states, so the row does not change height or shift when it flips and the
      control stays under the same pointer. Lucide's pair, like the password fields' show/hide
      toggle — this is the same "reveal a hidden value" affordance. */
   return (
+    <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px" }}>
     <button
       onClick={() => {
         if (revealed) { setRevealed(false); return; }
@@ -285,6 +326,9 @@ function RosterCodeCell({ entry, onReveal, t }: { entry: RosterEntry; onReveal: 
         {revealed ? <Eye size={14} strokeWidth={2.4} /> : <EyeOff size={14} strokeWidth={2.4} />}
       </span>
     </button>
+      {/* Same line as the masked branch above — see the note where it is computed. */}
+      {expiryLine}
+    </span>
   );
 }
 

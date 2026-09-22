@@ -3057,6 +3057,17 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
   // Roster-side dialogs. They are the roster tab's own components, imported rather than rebuilt —
   // the tab is gone, the work it did is not.
   const [issuingEntry, setIssuingEntry] = useState<RosterEntry | null>(null);
+  /*
+   * WHOSE CODE WAS MINTED A MOMENT AGO (owner: 재발급 방금받았다는 표시에 표에 있어야할것같아).
+   *
+   * Session state, deliberately not stored: "just" is about what happened on this screen while
+   * the reader was watching, and a flag the record carried would still be claiming 방금 tomorrow
+   * morning. It survives no reload, which is the honest lifetime for that word.
+   *
+   * It does two things at once, and they are the same fact: the row says the code is new, and the
+   * cell opens it revealed instead of masked.
+   */
+  const [justIssuedFor, setJustIssuedFor] = useState<string | null>(null);
   const [removingEntry, setRemovingEntry] = useState<RosterEntry | null>(null);
   const [showPrintSheet, setShowPrintSheet] = useState(false);
   const [showRosterImport, setShowRosterImport] = useState(false);
@@ -3992,12 +4003,22 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
               <div style={{ minWidth: 0 }}>
                 <p title={entry.name} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.name}</p>
                 <p title={entry.email || entry.employeeId} style={{ fontSize: "12px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.email || entry.employeeId}</p>
+                {/* 「방금 발급」 SITS WITH THE NAME, not with the code. The reader is looking for a
+                    person's row; the mark is how they find which one the dialog just acted on, and
+                    the code cell beside it is already showing the difference by being unmasked. */}
+                {justIssuedFor === entry.employeeId && (
+                  <span style={{ display: "inline-block", marginTop: "3px", fontSize: "10px", fontWeight: 700, color: "var(--primary-400)", backgroundColor: "var(--primary-50)", padding: "2px 6px", borderRadius: "999px" }}>
+                    {rt.justIssued}
+                  </span>
+                )}
               </div>
                   <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>
                     {entry.permission === "admin" ? rt.admin : rt.operator}
                   </span>
                   <div style={{ minWidth: 0 }}>
-                    <RosterCodeCell entry={entry} t={rt} onReveal={() => logRosterCodeViewed(entry.employeeId)} />
+                    <RosterCodeCell entry={entry} t={rt}
+                      justIssued={justIssuedFor === entry.employeeId}
+                      onReveal={() => logRosterCodeViewed(entry.employeeId)} />
                   </div>
                               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <StageBadge stage={stage} t={t} />
@@ -4038,6 +4059,10 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
               issueRegistrationCodes([issuingEntry.employeeId]);
               showToast({ variant: "success", title: rt.toastCodeIssuedTitle, desc: issuingEntry.name });
             }
+            /* The toast says it happened and then leaves; the row is what somebody reads the code
+               off. Marking the row is what makes the code visible there (see RosterCodeCell's
+               justIssued). */
+            setJustIssuedFor(issuingEntry.employeeId);
             setIssuingEntry(null);
           }} />
       )}

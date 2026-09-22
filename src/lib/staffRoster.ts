@@ -84,6 +84,23 @@ export function codeDaysRemaining(
   return Math.max(0, Math.ceil((ttlDays * DAY_MS - elapsed) / DAY_MS));
 }
 
+/**
+ * The day an issued code stops working, as a Date — null when there is nothing to count from.
+ *
+ * Lives beside `codeDaysRemaining` for the reason `effectiveCodeStatus` states one comment below:
+ * the TTL is one rule, and a screen that added its own `issuedAt + 14 days` would be a second
+ * place for expiry to live and drift from. The caller formats it in the SITE's zone (see
+ * lib/time), not the browser's — a date is what an administrator writes on a printout.
+ */
+export function codeExpiresAt(
+  issuedAt: string | undefined, ttlDays: number = REGISTRATION_CODE_TTL_DAYS,
+): Date | null {
+  if (!issuedAt) return null;
+  const at = new Date(issuedAt).getTime();
+  if (Number.isNaN(at)) return null;
+  return new Date(at + ttlDays * DAY_MS);
+}
+
 export function isCodeExpired(
   issuedAt: string | undefined, ttlDays: number = REGISTRATION_CODE_TTL_DAYS, now: number = Date.now(),
 ): boolean {
