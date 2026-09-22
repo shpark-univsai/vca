@@ -336,6 +336,16 @@ export interface CameraGroup {
   projectId: string;
   /** The customer's own word, never translated — see VipCategory.label. */
   label: string;
+  /**
+   * One line on what the group is for, written by whoever made it. OPTIONAL and absent by
+   * default (2026-09-22): the name is already the way people say it out loud and the card lists
+   * the member cameras, so most groups are recognisable without this. It earns its place on a
+   * site with forty of them, where 「오차드 라인」 and 「오차드 외곽」 need telling apart. A group
+   * with none renders nothing — no empty line, no placeholder standing in for an answer.
+   *
+   * The customer's own words, like `label`: never translated.
+   */
+  description?: string;
   cameraIds: string[];
   createdAt: string;
   createdBy: string;
@@ -1255,9 +1265,14 @@ interface VcaStoreState {
    */
   setCameraScope: (userId: string, cameraIds: string[] | undefined, cameraGroupIds?: string[] | undefined) => void;
   /** Make a group out of the cameras somebody has selected. Returns null, or why not. */
-  addCameraGroup: (projectId: string, label: string, cameraIds: string[]) => "duplicate-label" | null;
-  renameCameraGroup: (groupId: string, label: string) => void;
-  setCameraGroupMembers: (groupId: string, cameraIds: string[]) => void;
+  addCameraGroup: (projectId: string, label: string, cameraIds: string[], description?: string) => "duplicate-label" | null;
+  /**
+   * The group's name, its purpose line and its membership, changed together — because the editor
+   * that changes them is one drawer with one save, and three calls would write three audit lines
+   * for one decision. Only the fields passed are touched. Refuses a name another group on the
+   * project already holds, the same rule `addCameraGroup` applies.
+   */
+  updateCameraGroup: (groupId: string, patch: { label?: string; description?: string; cameraIds?: string[] }) => "duplicate-label" | null;
   /** Deletes the group and takes it out of every scope that held it. */
   removeCameraGroup: (groupId: string) => void;
   /** Which project the monitoring app is watching. Empty until something picks one. */
@@ -3011,7 +3026,10 @@ const API_KEYS: ApiKey[] = [
  * `pruneCameraGroups` keeps out.
  */
 const CAMERA_GROUPS: CameraGroup[] = [
-  { id: "cgroup-1", projectId: "proj-sg", label: "오차드·부기스 라인", cameraIds: ["cam-orchard", "cam-bugis", "cam-novena"], createdAt: "2026-09-02T10:00:00+08:00", createdBy: "Grace Tan" },
+  /* ONE OF THE THREE CARRIES A PURPOSE LINE, ON PURPOSE. `description` is optional and a card with
+     none renders nothing, so both states have to exist in the seed or the screen only ever shows
+     one of them — and the one it would show is the empty one. */
+  { id: "cgroup-1", projectId: "proj-sg", label: "오차드·부기스 라인", description: "중심 상업지구 보행로와 MRT 출입구", cameraIds: ["cam-orchard", "cam-bugis", "cam-novena"], createdAt: "2026-09-02T10:00:00+08:00", createdBy: "Grace Tan" },
   { id: "cgroup-2", projectId: "proj-sg", label: "Geylang 일대", cameraIds: ["cam-geylang", "cam-geylang-2"], createdAt: "2026-09-02T10:04:00+08:00", createdBy: "Grace Tan" },
   { id: "cgroup-3", projectId: "proj-riverside", label: "정문·후문", cameraIds: [], createdAt: "2026-09-05T09:10:00+08:00", createdBy: "Nadia Rahman" },
 ];
@@ -4811,7 +4829,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
-  addCameraGroup: (projectId, label, cameraIds) => {
+  addCameraGroup: (projectId, label, cameraIds, description) => {
     const trimmed = label.trim();
     const state = get();
     // A name is how a group is handed out on the permission screen, so two groups called the same
@@ -4823,6 +4841,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       id: `cgroup-${++cameraGroupSeq}`,
       projectId,
       label: trimmed,
+      /* Absent rather than "" when nothing was written — an empty string is a description that
+         exists and says nothing, and every reader of this field would then need the same guard. */
+      ...(description?.trim() ? { description: description.trim() } : {}),
       cameraIds: [...cameraIds],
       createdAt: new Date().toISOString(),
       createdBy: SIGNED_IN_USER.name,
@@ -4836,38 +4857,54 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     }));
     return null;
   },
-  renameCameraGroup: (groupId, label) =>
-    set(state => {
-      const group = state.cameraGroups.find(g => g.id === groupId);
-      if (!group || label.trim() === "" || label.trim() === group.label) return {};
-      return {
-        cameraGroups: state.cameraGroups.map(g => (g.id === groupId ? { ...g, label: label.trim() } : g)),
-        auditLog: [clientAudit({
-          projectId: group.projectId, message: `Camera group "${group.label}" renamed to "${label.trim()}"`,
-          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
-        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
-      };
-    }),
-  setCameraGroupMembers: (groupId, cameraIds) =>
-    set(state => {
-      const group = state.cameraGroups.find(g => g.id === groupId);
-      if (!group) return {};
-      const added = cameraIds.filter(id => !group.cameraIds.includes(id)).length;
-      const removed = group.cameraIds.filter(id => !cameraIds.includes(id)).length;
-      if (added === 0 && removed === 0) return {};
-      /* AUDITED AS AN ACCESS CHANGE, not a tidy-up. Everybody holding this group gains or loses
-         these cameras the moment it is saved — that is what makes a group a group, and it is why
-         the line says how many accounts are affected. */
-      const holders = state.portalUsers.filter(u => (u.cameraGroupIds ?? []).includes(groupId)).length;
-      return {
-        cameraGroups: state.cameraGroups.map(g => (g.id === groupId ? { ...g, cameraIds: [...cameraIds] } : g)),
-        auditLog: [clientAudit({
-          projectId: group.projectId,
-          message: `Camera group "${group.label}" changed (+${added} / -${removed}), affecting ${holders} account(s)`,
-          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
-        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
-      };
-    }),
+  updateCameraGroup: (groupId, patch) => {
+    const state = get();
+    const group = state.cameraGroups.find(g => g.id === groupId);
+    if (!group) return null;
+
+    const nextLabel = patch.label === undefined ? group.label : patch.label.trim();
+    if (nextLabel === "") return null;
+    if (nextLabel.toLowerCase() !== group.label.toLowerCase()) {
+      // Same rule as creation: the name is what an administrator picks from when granting camera
+      // access, so two groups called the same thing is a scope nobody can read back.
+      const taken = cameraGroupsInProject(state.cameraGroups, group.projectId)
+        .some(g => g.id !== groupId && g.label.trim().toLowerCase() === nextLabel.toLowerCase());
+      if (taken) return "duplicate-label";
+    }
+
+    const nextDescription = patch.description === undefined
+      ? group.description
+      : (patch.description.trim() || undefined);
+    const nextIds = patch.cameraIds === undefined ? group.cameraIds : [...patch.cameraIds];
+
+    const renamed = nextLabel !== group.label;
+    const redescribed = nextDescription !== group.description;
+    const added = nextIds.filter(id => !group.cameraIds.includes(id)).length;
+    const removed = group.cameraIds.filter(id => !nextIds.includes(id)).length;
+    if (!renamed && !redescribed && added === 0 && removed === 0) return null;
+
+    /* ONE LINE, NAMING WHAT ACTUALLY MOVED. The membership half is an ACCESS change, not a
+       tidy-up: everybody holding this group gains or loses those cameras the moment it is saved
+       — that is what makes a group a group — so the count of affected accounts rides along. The
+       name and the purpose line move nobody's access and say so by not carrying that count. */
+    const holders = state.portalUsers.filter(u => (u.cameraGroupIds ?? []).includes(groupId)).length;
+    const parts: string[] = [];
+    if (renamed) parts.push(`renamed to "${nextLabel}"`);
+    if (redescribed) parts.push(nextDescription ? "description set" : "description cleared");
+    if (added > 0 || removed > 0) parts.push(`cameras +${added} / -${removed}, affecting ${holders} account(s)`);
+
+    set(st => ({
+      cameraGroups: st.cameraGroups.map(g => (g.id === groupId
+        ? { ...g, label: nextLabel, cameraIds: nextIds, ...(nextDescription ? { description: nextDescription } : { description: undefined }) }
+        : g)),
+      auditLog: [clientAudit({
+        projectId: group.projectId,
+        message: `Camera group "${group.label}" ${parts.join("; ")}`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    }));
+    return null;
+  },
   removeCameraGroup: (groupId) =>
     set(state => {
       const group = state.cameraGroups.find(g => g.id === groupId);
