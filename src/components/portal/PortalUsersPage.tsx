@@ -2808,33 +2808,16 @@ function UserCountStrip({
           label: t.countTotal,
         },
       ]} />
-      {exceptions.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", margin: "-10px 0 16px" }}>
-          {exceptions.map(item => {
-            const on = statusFilter === item.key;
-            return (
-              /* The explanation is the whole point of these labels — an invitation nobody accepted
-                 is not a self-explanatory phrase — so each chip keeps the hint the card carried,
-                 in our own Tooltip rather than the browser's `title`. */
-              <Tooltip key={item.key} text={item.hint}>
-                <button type="button" onClick={() => onFilter(on ? null : item.key)}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: "6px",
-                    height: "26px", padding: "0 10px", borderRadius: "999px", cursor: "pointer", fontFamily: "inherit",
-                    border: on ? "1px solid var(--gray-900)" : BORDER,
-                    backgroundColor: on ? "var(--gray-900)" : "white",
-                    color: on ? "white" : "var(--gray-600)",
-                    fontSize: "11.5px", fontWeight: 600,
-                  }}>
-                  <span style={{ display: "flex", color: on ? "white" : "var(--warning-500)" }}>{item.icon}</span>
-                  {item.label}
-                  <span style={{ fontWeight: 800, color: on ? "white" : "var(--gray-900)" }}>{item.count}</span>
-                </button>
-              </Tooltip>
-            );
-          })}
-        </div>
-      )}
+      {/*
+        THE BREAKDOWN GOES WITH THE FIGURE IT BREAKS DOWN (owner, 2026-09-22: 위치를 조금
+        조정하는게 좋을것같아).
+        
+        It used to sit directly under the cards, and it still says the same thing — how the
+        headcount above it divides. Once the exception counts left the strip for a line of
+        chips, that line landed between the two and the breakdown read as a footnote of the
+        chips instead. Order now: the count, what it divides into, then the filters — and the
+        filters are last because they act on the table, which is what follows them.
+      */}
       {/* The distribution, and the way to what those words mean — at the end of the sentence that
           uses them. A guide link is worth having (the role descriptions otherwise live inside a
           select an auditor may not be allowed to open), but it needs something to be attached to,
@@ -2843,7 +2826,7 @@ function UserCountStrip({
           OF those numbers, so it belongs to them — and the gap after it is where the page's next
           section starts. Equal gaps everywhere is what made this page read as one flat column:
           hierarchy here is spacing, not another heading. */}
-      <p style={{ fontSize: "11px", color: "var(--gray-500)", margin: "-14px 0 28px" }}>
+      <p style={{ fontSize: "11px", color: "var(--gray-500)", margin: "-12px 0 14px" }}>
         {/* A REAL GAP, not three spaces — HTML folds those, and the line came out as
             "읽기 전용 1 로그인 앱 전용 3", which is the two groups run together and unreadable at
             exactly the place the split was supposed to be. inline-block so the margin applies. */}
@@ -2871,6 +2854,33 @@ function UserCountStrip({
           {t.whatRolesMean}
         </button>
       </p>
+      {exceptions.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", margin: "0 0 20px" }}>
+          {exceptions.map(item => {
+            const on = statusFilter === item.key;
+            return (
+              /* The explanation is the whole point of these labels — an invitation nobody accepted
+                 is not a self-explanatory phrase — so each chip keeps the hint the card carried,
+                 in our own Tooltip rather than the browser's `title`. */
+              <Tooltip key={item.key} text={item.hint}>
+                <button type="button" onClick={() => onFilter(on ? null : item.key)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: "6px",
+                    height: "26px", padding: "0 10px", borderRadius: "999px", cursor: "pointer", fontFamily: "inherit",
+                    border: on ? "1px solid var(--gray-900)" : BORDER,
+                    backgroundColor: on ? "var(--gray-900)" : "white",
+                    color: on ? "white" : "var(--gray-600)",
+                    fontSize: "11.5px", fontWeight: 600,
+                  }}>
+                  <span style={{ display: "flex", color: on ? "white" : "var(--warning-500)" }}>{item.icon}</span>
+                  {item.label}
+                  <span style={{ fontWeight: 800, color: on ? "white" : "var(--gray-900)" }}>{item.count}</span>
+                </button>
+              </Tooltip>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }
