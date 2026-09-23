@@ -80,8 +80,8 @@ const T = {
     colCode: "Registration code",
     countRosterWaiting: "Awaiting sign-up",
     stageRosterListed: "Written down",
-    stageCodeIssued: "Code issued",
-    stageCodeExpired: "Code expired",
+    stageCodeIssued: "Issued",
+    stageCodeExpired: "Expired",
     // Roster tools, moved here with the rows they act on.
     addToRoster: "Add with a code",
     addPerson: "Add a user",
@@ -495,8 +495,8 @@ const T = {
     colCode: "등록 코드",
     countRosterWaiting: "등록 대기",
     stageRosterListed: "적어둠",
-    stageCodeIssued: "코드 발급",
-    stageCodeExpired: "코드 만료",
+    stageCodeIssued: "발급됨",
+    stageCodeExpired: "만료됨",
     addToRoster: "등록 코드로 추가",
     addPerson: "사용자 추가",
     addPersonMail: "메일로 초대",
@@ -2959,7 +2959,15 @@ function AddPersonMenu({ t, mayInvite, inviteReason, mayAddCode, codeReason, onM
   );
 }
 
-/** One badge for every rung of the ladder, so a reader compares like with like down the column. */
+/**
+ * One badge for every rung of the ladder, so a reader compares like with like down the column.
+ *
+ * THE WORDS ARE STATES, NOT ACTIONS (owner, 2026-09-23: 아직 발급 버튼이랑 코드 발급 버튼이
+ * 남아 있는데). This column said 「코드 발급」 for "a code has been issued" — the exact words of
+ * the BUTTON two columns to its left, which issues one. So the same phrase was an instruction on
+ * one row and a receipt on the next, and the table looked like it was asking to be pressed twice.
+ * 적어둠 · 발급됨 · 만료됨: each one is something that has happened.
+ */
 function StageBadge({ stage, t }: { stage: Stage; t: { stageRosterListed: string; stageCodeIssued: string; stageCodeExpired: string } }) {
   const meta: Record<"rosterListed" | "codeIssued" | "codeExpired", { label: string; bg: string; color: string }> = {
     rosterListed: { label: t.stageRosterListed, bg: "var(--gray-100)", color: "var(--gray-500)" },
