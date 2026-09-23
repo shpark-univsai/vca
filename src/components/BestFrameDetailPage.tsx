@@ -535,7 +535,17 @@ function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detect
         // Mirrors whichever detection is focused on the camera feed — clicking a box there (or
         // this card) keeps the two in sync, matching each other's "focused" outline rather than
         // this being its own independent selection state.
-        outline: isFocused ? `2px solid ${SELECTED}` : hovered ? "1px solid var(--gray-300)" : "none",
+        //
+        // HOVER DRAWS NO LINE (owner, 2026-09-23: 오른쪽에 카드에 라인이 있는 게 좀 이상해).
+        // It used to add `1px solid var(--gray-300)` on the same edge at the same radius as the
+        // focus ring, so a reel with one focused card and the pointer resting on another showed
+        // TWO outlined cards — measured: P-01 at 2px rgb(24,17,39) and P-02 at 1px rgb(204,213,225),
+        // same 12px radius, same 183x238 box. Two lines on one axis read as two selections, and
+        // the weaker one wins the argument about which card is "current" because it is under the
+        // pointer. The fill alone says hover, which is what the app's other lists already do
+        // (rows: fill for hover, a line only for the selected one) — so a line on this screen now
+        // means exactly one thing.
+        outline: isFocused ? `2px solid ${SELECTED}` : "none",
         backgroundColor: hovered && !isFocused ? "var(--gray-50)" : "transparent",
         transition: "background-color 0.15s ease",
       }}

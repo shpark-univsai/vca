@@ -7,7 +7,7 @@ import { REGISTRATION_CODE_TTL_DAYS, codeExpiresAt, formatCode, type RosterEntry
 import { sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useToast } from "../Toast";
-import { TextField, FIELD_STYLE, BORDER, ConfirmModal, Drawer, PICKED_LINE, PICKED_FILL } from "./PortalShared";
+import { TextField, FIELD_STYLE, BORDER, ConfirmModal, Drawer, PICKED_LINE, PICKED_FILL, RequiredMark } from "./PortalShared";
 
 const T = {
   en: {
@@ -48,7 +48,6 @@ const T = {
     fieldDepartment: "Department",
     fieldDepartmentPlaceholder: "Control Room",
     fieldEmail: "Email",
-    fieldEmailOptional: "Optional",
     fieldEmailPlaceholder: "Leave empty where there is no mail",
     fieldPermission: "Permission",
     duplicateId: "That employee number is already on a roster.",
@@ -141,7 +140,6 @@ const T = {
     fieldDepartment: "부서",
     fieldDepartmentPlaceholder: "관제실",
     fieldEmail: "이메일",
-    fieldEmailOptional: "선택",
     fieldEmailPlaceholder: "메일이 없는 곳은 비워 두세요",
     fieldPermission: "권한",
     duplicateId: "이미 등록 대기에 있는 사번입니다.",
@@ -448,10 +446,23 @@ function RosterEntryModal({ entry, projectId, onClose, onCreated, t }: {
     onClose();
   };
 
-  const label = (text: string, hint?: string) => (
-    <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>
+  /*
+   * THE FORM MARKS WHAT IS REQUIRED, NOT WHAT IS OPTIONAL (owner, 2026-09-23: 다른 거에는 필수
+   * 별표로 넣어 두는데 왜 여기만 선택 항목이라고 알려주고 있어? 공통으로 바꿔줘).
+   *
+   * This panel was the last one saying 「선택」 beside 부서 and 이메일 while every other panel in
+   * Portal puts a red star on the fields that block the button. Two conventions in one console
+   * means a reader has to work out which one a panel is using before they can read it — and the
+   * two disagree about the same blank field, one calling it allowed and the other saying nothing.
+   *
+   * Required here is exactly what canSubmit tests: 이름 and 사번. 권한 gets no star either, because
+   * it is two buttons with one already chosen — a star on a field that cannot be empty marks
+   * nothing.
+   */
+  const label = (text: string, required?: boolean) => (
+    <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>
       {text}
-      {hint && <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-400)" }}>{hint}</span>}
+      {required && <RequiredMark />}
     </label>
   );
   const inputStyle = FIELD_STYLE;
@@ -478,11 +489,11 @@ function RosterEntryModal({ entry, projectId, onClose, onCreated, t }: {
     >
       <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
         <div>
-          {label(t.fieldName)}
+          {label(t.fieldName, true)}
           <TextField value={name} onChange={setName} placeholder={t.fieldNamePlaceholder} autoFocus />
         </div>
         <div>
-          {label(t.fieldEmployeeId)}
+          {label(t.fieldEmployeeId, true)}
           <input
             value={employeeId}
             onChange={e => { setEmployeeId(e.target.value); setDuplicate(false); }}
@@ -494,11 +505,11 @@ function RosterEntryModal({ entry, projectId, onClose, onCreated, t }: {
           {duplicate && <p style={{ margin: "6px 0 0", fontSize: "11px", fontWeight: 700, color: "var(--danger-400)" }}>{t.duplicateId}</p>}
         </div>
         <div>
-          {label(t.fieldDepartment, t.fieldEmailOptional)}
+          {label(t.fieldDepartment)}
           <TextField value={department} onChange={setDepartment} placeholder={t.fieldDepartmentPlaceholder} />
         </div>
         <div>
-          {label(t.fieldEmail, t.fieldEmailOptional)}
+          {label(t.fieldEmail)}
           <TextField value={email} onChange={setEmail} placeholder={t.fieldEmailPlaceholder} />
         </div>
         <div>
