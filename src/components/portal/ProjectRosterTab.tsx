@@ -459,10 +459,14 @@ function RosterEntryModal({ entry, projectId, onClose, onCreated, t }: {
    * it is two buttons with one already chosen — a star on a field that cannot be empty marks
    * nothing.
    */
+  /* A BLOCK LABEL WITH THE MARK ADJACENT, like every other one in Portal (owner, 2026-09-23:
+     이름 옆에 별표 사이 간격이 너무 넓어). It was a flex row with `gap: 4px` left over from the
+     days when it also carried a 「선택」 hint, and the gap ADDED to RequiredMark's own 3px
+     marginLeft — 7px where the rest of the console has 3. The mark is part of the label's text,
+     not a second item beside it, so it sits in the text flow. */
   const label = (text: string, required?: boolean) => (
-    <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>
-      {text}
-      {required && <RequiredMark />}
+    <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>
+      {text}{required && <RequiredMark />}
     </label>
   );
   const inputStyle = FIELD_STYLE;
