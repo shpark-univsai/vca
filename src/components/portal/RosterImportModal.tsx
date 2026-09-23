@@ -149,6 +149,7 @@ interface FileError { title: string; body: string }
 export default function RosterImportModal({ projectId, onClose }: { projectId: string; onClose: () => void }) {
   const staffRoster = useVcaStore(s => s.staffRoster);
   const addRosterEntries = useVcaStore(s => s.addRosterEntries);
+  const issueRegistrationCodes = useVcaStore(s => s.issueRegistrationCodes);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t: Dict = T[lang];
@@ -219,6 +220,18 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
     clean.forEach(row => {
       if (rejected.has(row.employeeId)) skipped.push({ row, reasons: [issueText("rejected")] });
     });
+    /*
+      EVERY ROW THAT LANDS GETS ITS CODE (2026-09-23, owner: 자동 발급이 되니까 없어야지).
+      A file of two hundred names used to arrive with no codes at all, which left the whole import
+      sitting at 「적어둠」 and the reader with a 「코드 200개 발급」 button to press afterwards — a
+      second pass over a decision the import had already made. The one-person door issues on save
+      for the same reason; this is the same act at file scale.
+
+      One store call, not one per row: `issueRegistrationCodes` takes the list, and each call trims
+      the audit log (see addRosterEntries' own note).
+    */
+    const acceptedIds = clean.map(r => r.employeeId).filter(id => !rejected.has(id));
+    if (acceptedIds.length > 0) issueRegistrationCodes(acceptedIds);
     const added = clean.length - rejected.size;
     setResult({ added, skipped });
     showToast({

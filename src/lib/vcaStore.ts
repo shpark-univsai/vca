@@ -2976,30 +2976,41 @@ const PORTAL_USERS: PortalUser[] = [
 // cannot occur teach whoever reads the screen that the queue means something it does not.
 const ACCESS_REQUESTS: AccessRequest[] = [];
 
-// Mock stand-in for an Excel-imported staff roster (see ProjectRosterTab.tsx — the real import
-// isn't built yet). Mix of all four code statuses on purpose, across both projects, so the tab's
-// status filter has something in every bucket from first load.
+// Mock stand-in for an Excel-imported staff roster. Three code statuses across both projects, so
+// the tab's status filter has something in every bucket from first load.
+//
+// NO CODELESS ROWS ANY MORE (2026-09-23, owner: 자동 발급이 되니까 없어야지). Seven rows used to sit
+// at "not-issued" — on the list with no code — and the console can no longer produce that state:
+// 「등록 코드로 추가」 issues on save, and the CSV import issues for every row it accepts. Seeding a
+// state the product cannot reach is the same mistake ACCESS_REQUESTS records above: it teaches
+// whoever reads the screen that the list means something it does not, and here it also left two
+// buttons on screen (the row's 「코드 발급」 and the toolbar's 「코드 N개 발급」) for work that never
+// exists.
+//
+// The TYPE still allows it and so does the server contract — a row handed over by the server with
+// no code is possible, and then those two buttons are how it gets one. The console just never
+// writes one itself.
 const STAFF_ROSTER: RosterEntry[] = [
-  { employeeId: "EMP-3001", name: "James Whitfield", department: "Control Room", projectId: "proj-sg", permission: "admin", status: "not-issued" },
+  { employeeId: "EMP-3001", name: "James Whitfield", department: "Control Room", projectId: "proj-sg", permission: "admin", status: "unused", code: "FQ4M7XB2", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3002", name: "Priya Nair", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", code: "BPXW4762" },
   { employeeId: "EMP-3003", name: "Daniel Cruz", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", code: "HKLM9234" },
-  { employeeId: "EMP-3004", name: "Farah Ismail", department: "Operations", projectId: "proj-sg", permission: "operator", status: "not-issued" },
+  { employeeId: "EMP-3004", name: "Farah Ismail", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", code: "TN8R3KD5", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3005", name: "Tom Reyes", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "used", code: "QRST5678" },
-  { employeeId: "EMP-3006", name: "Lena Brooks", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "not-issued" },
+  { employeeId: "EMP-3006", name: "Lena Brooks", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "unused", code: "YC6V9HJ4", issuedAt: "2026-09-20T09:00:00+08:00" },
   // Issued long enough ago that REGISTRATION_CODE_TTL_DAYS has passed: the row still says
   // "unused", and effectiveCodeStatus() is what turns it into "expired". Stored-as-expired is not
   // used in the seeds any more — it could never demonstrate that expiry actually works.
   { employeeId: "EMP-3007", name: "Marcus Ho", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", code: "VXYZ2345", issuedAt: "2026-07-15T09:00:00+08:00" },
   { employeeId: "EMP-3008", name: "Aisha Bakar", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", code: "JKMN6789" },
-  { employeeId: "EMP-3009", name: "Ryan Tavares", department: "Field Engineering", projectId: "proj-sg", permission: "admin", status: "not-issued" },
+  { employeeId: "EMP-3009", name: "Ryan Tavares", department: "Field Engineering", projectId: "proj-sg", permission: "admin", status: "unused", code: "MZ2K5QP7", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3010", name: "Sana Idris", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "used", code: "CDFG3456" },
-  { employeeId: "EMP-3011", name: "Emily Foster", department: "Operations", projectId: "proj-riverside", permission: "admin", status: "not-issued" },
+  { employeeId: "EMP-3011", name: "Emily Foster", department: "Operations", projectId: "proj-riverside", permission: "admin", status: "unused", code: "RB9T4LN6", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3012", name: "Kevin Ng", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "LMPQ8765" },
-  { employeeId: "EMP-3013", name: "Hana Suzuki", department: "Field Engineering", projectId: "proj-riverside", permission: "operator", status: "not-issued" },
+  { employeeId: "EMP-3013", name: "Hana Suzuki", department: "Field Engineering", projectId: "proj-riverside", permission: "operator", status: "unused", code: "DX7J2WF8", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3014", name: "Oliver Grant", department: "Operations", projectId: "proj-riverside", permission: "operator", status: "used", code: "RSTU4325" },
   { employeeId: "EMP-3015", name: "Mei Lin Tan", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "WXYZ9876" },
   { employeeId: "EMP-3016", name: "Diego Alvarez", department: "Field Engineering", projectId: "proj-riverside", permission: "operator", status: "unused", code: "ABCD5432", issuedAt: "2026-07-02T09:00:00+08:00" },
-  { employeeId: "EMP-3017", name: "Chloe Bennett", department: "Operations", projectId: "proj-riverside", permission: "operator", status: "not-issued" },
+  { employeeId: "EMP-3017", name: "Chloe Bennett", department: "Operations", projectId: "proj-riverside", permission: "operator", status: "unused", code: "GK3P8SV5", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3018", name: "Yusuf Karim", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "EFGH6543" },
 ];
 

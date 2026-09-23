@@ -3861,9 +3861,17 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           value={rosterFilter}
           active={rosterFilter !== "all"}
           onChange={v => setRosterFilter(v as typeof rosterFilter)}
+          /* 「미발급」 is offered only if a codeless row is actually here (2026-09-23). The console
+             cannot create one any more — both add paths issue on save — so on an ordinary
+             installation this choice would narrow the table to nothing, and a filter that can only
+             ever return an empty table is a control that lies about what the list holds. It stays
+             available for a row the SERVER hands over with no code, which the contract still
+             allows. */
           options={[
             { value: "all", label: t.rosterFilterAll },
-            { value: "not-issued", label: t.rosterFilterNotIssued },
+            ...(rosterWaiting.some(r => r.status === "not-issued")
+              ? [{ value: "not-issued", label: t.rosterFilterNotIssued }]
+              : []),
             { value: "unused", label: t.rosterFilterIssued },
             { value: "expired", label: t.rosterFilterExpired },
           ]}
