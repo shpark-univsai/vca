@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Asterisk, Boxes, CircleHelp, ClipboardList, Eye, KeyRound, KeySquare, Link2, MailQuestion, MonitorOff, MoreVertical, Pencil, Plus, Trash2, UserCheck, UserMinus, UserSearch, UserX, Users as UsersIcon, Users2 } from "lucide-react";
+import { Asterisk, Boxes, ChevronRight, CircleHelp, ClipboardList, Eye, KeyRound, KeySquare, Link2, MailQuestion, MonitorOff, MoreVertical, Trash2, UserCheck, UserMinus, UserSearch, UserX, Users as UsersIcon, Users2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type CameraGroup, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
@@ -12,7 +12,7 @@ import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
 import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, SectionNav, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
-import CameraGroupsTab, { CameraGroupEditor } from "./CameraGroupsTab";
+import CameraGroupsTab from "./CameraGroupsTab";
 import AccessPresetsTab from "./AccessPresetsTab";
 import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import RosterImportModal from "./RosterImportModal";
@@ -175,7 +175,7 @@ const T = {
     panelWhatSection: "What they may do",
     panelAccountSection: "Getting back in",
     panelStatusSection: "Account status",
-    panelGrants: "App screens",
+    panelGrants: "App permissions",
     panelNoPortal: "No Portal",
     panelNoApp: "No app",
     panelProjectCount: (n: number) => `${n}`,
@@ -208,7 +208,7 @@ const T = {
     changeScope: "Change which cameras",
     reasonNoScopeWithoutApp: "This account cannot reach the app, so there are no cameras to narrow.",
     reasonNoCamerasToScope: "No cameras are registered on this account's projects yet.",
-    reasonNoAppScreens: "This account has no app access — there are no screens to grant or to search on.",
+    reasonNoAppScreens: "This account has no app access — there are no permissions to grant or to search on.",
     generateTempPassword: "Generate temporary password",
     // "user" is redundant in a menu that opens from a user's own row — the row already says who.
     reactivateUser: "Reactivate",
@@ -365,14 +365,6 @@ const T = {
     foldGrant: "Permissions",
     foldTeam: "Team",
     scopeLabel: "Cameras",
-    scopeNoProject: "Tick a project to see how many cameras that is.",
-    scopeNoCameras: "No cameras are registered on the ticked projects yet.",
-    scopeGroupsNone: "No camera groups on these projects yet.",
-    scopeAll: "All cameras",
-    scopeLater: "Cameras added later are included too.",
-    scopeNewGroup: "New group",
-    scopeEditGroup: (label: string) => `Edit ${label}`,
-    scopeGroupCount: (n: number) => `${n}`,
     scopeHeldAll: (n: number) => `Every camera on their projects — ${n} today, and any added later.`,
     scopeHeldSome: (n: number, total: number) => `${n} of ${total} cameras.`,
     scopePick: "Choose cameras",
@@ -420,6 +412,16 @@ const T = {
     customSameAsPreset: (preset: string) =>
       `This is exactly ${preset}'s set. Following the preset instead keeps them in step with it when it changes.`,
     grantNotChosen: "Choose how this account's grants are decided",
+    /* THE DOOR UNDER THE ROW OF NAMES, and the line it sits on. Square puts "Edit permission set"
+       directly under its preset card rather than beside the field label — the door belongs against
+       the thing it opens, not against the required star. */
+    grantDetails: "Details",
+    grantActionCount: (n: number) => `${n} actions`,
+    grantNothingPicked: "Nothing picked",
+    /* The nested editor commits to a draft of an account that does not exist yet, so "Change"
+       would be a lie about something that has nothing to change. */
+    grantApply: "Apply",
+    grantBack: "Back",
     grantNoScreens: "Tick at least one screen — an account with none cannot open the app",
     grantsHeading: "What this grants",
     grantsLocked: "Follows the preset. Choose Custom to change individual items.",
@@ -432,15 +434,19 @@ const T = {
     // Names the missing thing rather than reporting an absence — "No screens" in a cell about app
     // access could be read as "this account has no app". It is an amber badge in the row now, so
     // it has to say what is not set.
-    grantsHeldNone: "No app screens",
-    fixGrants: "Choose screens",
-    countNoScreens: "No app screens set",
+    grantsHeldNone: "No app permissions",
+    fixGrants: "Choose permissions",
+    countNoScreens: "No app permissions",
     // "Once nothing else stops them" earns its clause: the gate tests suspended and invited first,
     // so this is the refusal waiting behind those, not necessarily the one they meet today.
-    noScreensHint: "The app is one of their doors and not one screen is granted, so there is nothing for them to open. Once nothing else stops them, sign-in turns them away with \"no screens have been assigned to this account\" — set the screens here and it clears.",
-    grantsSavedTitle: "App screens updated",
+    /* THE APP'S OWN SENTENCE IS QUOTED, NOT REWORDED. Everything on this page calls these
+       things permissions now, but the words in the quotation marks are what AccessGate actually
+       prints at sign-in — change them here and the screen would be describing a message nobody
+       receives. */
+    noScreensHint: "The app is one of their doors and not one permission is granted, so there is nothing for them to open. Once nothing else stops them, sign-in turns them away with \"no screens have been assigned to this account\" — set the permissions here and it clears.",
+    grantsSavedTitle: "App permissions updated",
     grantsSavedDesc: (name: string) => `${name}'s grants take effect the next time they open the app.`,
-    grantsPortalOnly: "A Portal-only account has no app screens to grant.",
+    grantsPortalOnly: "A Portal-only account has no app permissions to grant.",
   },
   ko: {
     // Page header
@@ -577,7 +583,7 @@ const T = {
     panelWhatSection: "할 수 있는 일",
     panelAccountSection: "다시 들어가게 하기",
     panelStatusSection: "계정 상태",
-    panelGrants: "앱 화면",
+    panelGrants: "앱 권한",
     panelNoPortal: "Portal 없음",
     panelNoApp: "앱 없음",
     panelProjectCount: (n: number) => `${n}곳`,
@@ -601,7 +607,7 @@ const T = {
     changeScope: "볼 수 있는 카메라 변경",
     reasonNoScopeWithoutApp: "앱에 접근할 수 없는 계정이라 좁힐 카메라가 없습니다.",
     reasonNoCamerasToScope: "이 계정의 프로젝트에 등록된 카메라가 아직 없습니다.",
-    reasonNoAppScreens: "앱 접근이 없는 계정입니다 — 지정하거나 검색할 화면이 없습니다.",
+    reasonNoAppScreens: "앱 접근이 없는 계정입니다 — 지정하거나 검색할 권한이 없습니다.",
     generateTempPassword: "임시 비밀번호 생성",
     resetPassword: "비밀번호 재설정",
     sendCode: "코드 요청",
@@ -720,14 +726,6 @@ const T = {
     foldGrant: "권한",
     foldTeam: "팀",
     scopeLabel: "카메라 범위",
-    scopeNoProject: "프로젝트를 고르면 몇 대인지 나옵니다.",
-    scopeNoCameras: "고른 프로젝트에 등록된 카메라가 아직 없습니다.",
-    scopeGroupsNone: "이 프로젝트에 카메라 그룹이 아직 없습니다.",
-    scopeAll: "전체 카메라",
-    scopeLater: "나중에 추가되는 카메라도 포함됩니다.",
-    scopeNewGroup: "새 그룹",
-    scopeEditGroup: (label: string) => `${label} 편집`,
-    scopeGroupCount: (n: number) => `${n}`,
     scopeHeldAll: (n: number) => `담당 프로젝트의 카메라 전부 — 지금 ${n}대, 나중에 추가되는 것도 포함합니다.`,
     scopeHeldSome: (n: number, total: number) => `${total}대 중 ${n}대.`,
     scopePick: "카메라 고르기",
@@ -767,6 +765,11 @@ const T = {
     customSameAsPreset: (preset: string) =>
       `${preset} 프리셋과 똑같은 조합입니다. 프리셋을 따르게 두면 그 프리셋이 바뀔 때 함께 바뀝니다.`,
     grantNotChosen: "권한 부여 방식을 선택해주세요",
+    grantDetails: "세부 설정",
+    grantActionCount: (n: number) => `할 수 있는 일 ${n}개`,
+    grantNothingPicked: "고른 것 없음",
+    grantApply: "적용",
+    grantBack: "뒤로",
     grantNoScreens: "화면을 하나 이상 골라주세요 — 하나도 없으면 앱을 열 수 없습니다",
     grantsHeading: "이 방식이 켜는 것",
     grantsLocked: "프리셋을 따릅니다. 하나씩 바꾸려면 커스텀을 고르세요.",
@@ -774,13 +777,13 @@ const T = {
     grantsModalIntro: (name: string) => `${name} — 관제 앱에서 할 수 있는 일`,
     grantsOverwriteWarning: "이 계정은 손으로 조정한 권한을 갖고 있습니다. 이 프리셋을 따르면 그것이 대체됩니다.",
     grantsUnchanged: "아직 바뀐 것이 없습니다.",
-    grantsHeldNone: "앱 화면 미지정",
-    fixGrants: "화면 지정",
-    countNoScreens: "앱 화면 미지정",
-    noScreensHint: "앱이 이 계정의 문 중 하나인데 볼 화면이 하나도 지정되지 않았습니다. 다른 이유로 막히는 것이 없어지는 순간, 로그인 단계에서 「볼 화면이 지정되지 않은 계정입니다」로 되돌려보냅니다. 여기서 화면을 지정하면 풀립니다.",
-    grantsSavedTitle: "앱 화면 권한을 바꿨습니다",
+    grantsHeldNone: "앱 권한 없음",
+    fixGrants: "권한 지정",
+    countNoScreens: "앱 권한 없음",
+    noScreensHint: "앱이 이 계정의 문 중 하나인데 부여된 권한이 하나도 없습니다. 다른 이유로 막히는 것이 없어지는 순간, 로그인 단계에서 「볼 화면이 지정되지 않은 계정입니다」로 되돌려보냅니다. 여기서 권한을 지정하면 풀립니다.",
+    grantsSavedTitle: "앱 권한을 바꿨습니다",
     grantsSavedDesc: (name: string) => `${name}이(가) 다음에 앱을 열 때부터 적용됩니다.`,
-    grantsPortalOnly: "Portal만 쓰는 계정에는 부여할 앱 화면이 없습니다.",
+    grantsPortalOnly: "Portal만 쓰는 계정에는 부여할 앱 권한이 없습니다.",
   },
 } as const;
 
@@ -808,7 +811,7 @@ const T = {
  * It holds no state. The caller owns the draft, because the two callers resolve it differently —
  * an invite starts with nothing chosen, an edit starts from what the account already holds.
  */
-function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideTitle, t }: {
+function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideTitle, compact, t }: {
   presets: AccessPreset[];
   choice: string | null;
   onChoice: (id: string) => void;
@@ -820,6 +823,18 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideT
    * labelled 권한, and a heading repeating that word inside the fold is the same word twice.
    */
   hideTitle?: boolean;
+  /**
+   * THE ROW OF NAMES AND ONE LINE — no action list, and a door to the panel that has one.
+   *
+   * The invite form's shape, measured: the eight-row list made the 권한 block 667px of a 1212px
+   * form, so finishing an invite meant scrolling 445px past the two questions below it. As a row
+   * plus one line the block is 90px and every state of the form is the same height.
+   *
+   * Same component rather than a second row of names in the invite file: there are exactly four
+   * answers to this question and they have to be the same four, in the same order, at the same
+   * width, wherever it is asked.
+   */
+  compact?: { onOpenDetails: () => void };
   /** What the list shows — already resolved by the caller, which is not always the custom draft. */
   actions: AppAction[];
   onToggleAction: (action: AppAction) => void;
@@ -890,6 +905,41 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideT
             );
           })}
         </div>
+        {/*
+          ONE LINE UNDER THE ROW: WHAT WAS CHOSEN, AND THE WAY IN (§4 of the invite spec).
+
+          Left is the only thing the four names cannot say — a preset's own sentence, or, for
+          커스텀, how many actions are actually ticked behind the door. Right is the door.
+
+          NOTHING HERE BEFORE THE FIRST ANSWER. Before a name is pressed there is no description to
+          print and no detail to go into, which is the same rule the action list already follows
+          (owner, 2026-09-21: 프리셋을 선택 안한상태일땐, 아래 이 방식이 켜는것을 안보여줘도
+          될것같아) — and it is what keeps the untouched form shorter than the answered one by
+          exactly this line.
+        */}
+        {compact && choice !== null && (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "8px" }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {isCustom
+                ? (actions.length > 0 ? t.grantActionCount(actions.length) : t.grantNothingPicked)
+                : chosenOption?.desc}
+            </span>
+            {/* type="button": this renders inside the invite <form>, where a button with no type
+                submits — the door would have mailed the invite. One shade darker than the line it
+                shares (gray-600 against gray-500), which is how a reader sees that the right end
+                of this line is a different kind of thing from the left. */}
+            <button type="button" onClick={compact.onOpenDetails} className="portal-btn-quiet"
+              style={{
+                flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "2px",
+                border: "none", background: "none", padding: "2px 4px", marginRight: "-4px",
+                borderRadius: "6px", cursor: "pointer", fontFamily: "inherit",
+                fontSize: "11px", fontWeight: 700, color: "var(--gray-600)",
+              }}>
+              {t.grantDetails}
+              <ChevronRight size={12} strokeWidth={2.4} aria-hidden="true" style={{ color: "var(--gray-400)" }} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* THE LIST IS HERE FOR EVERY ANSWER — AND NOTHING BEFORE THE FIRST ONE.
@@ -899,7 +949,9 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideT
           선택 안한상태일땐, 아래 이 방식이 켜는것을 안보여줘도될것같아). Six outlined pills under a
           heading that says "what this switches on" describe a grant nobody chose — and the only
           words there were an instruction to go back up, which the reader is already looking at. */}
-      {choice !== null && (
+      {/* `!compact`: the invite shows the line above instead, and the panel its door opens is
+          this same component without the switch. */}
+      {choice !== null && !compact && (
       /*
         ONE SENTENCE AND THE MARKS (owner, 2026-09-22: 너무 복잡해..).
        
@@ -914,9 +966,15 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideT
       */
       <div style={{ minWidth: 0 }}>
         {/* The chosen option's own line, moved down here from the button it used to sit in — see
-            the note on the row above. Printed for 커스텀 too: 「할 수 있는 일을 하나씩 고릅니다」
-            is what the list underneath is for. */}
-        {chosenOption && (
+            the note on the row above.
+ 
+            NOT FOR 커스텀 (2026-09-23). 「할 수 있는 일을 하나씩 고릅니다」 was a description of the
+            list directly beneath it, which the reader can see. It earned its place while the whole
+            grant list lived inside the invite form and that line was the only thing naming what
+            the eight rows were for; now the rows sit in their own panel titled 「앱 권한」, so the
+            sentence is the third thing on one screen saying the same job. A preset's line stays —
+            「지금 일어나는 일을 본다」 cannot be worked out from a name and a set of marks. */}
+        {chosenOption && !isCustom && (
           /* 12px clear of the row of names above it (owner: 위에 버튼이랑 너무 붙어 있어). It
              describes the button that was pressed, so it has to sit closer to the marks it
              introduces than to the row it came from — 12 above, 8 below. */
@@ -1074,7 +1132,10 @@ function scopableCameras(cameras: Camera[], projectIds: string[]): Camera[] {
 }
 
 function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: string; onClose: () => void }) {
-  useEscapeKey(onClose);
+  /* NO useEscapeKey HERE. The Drawer owns Escape and routes it through the same guard as the scrim
+     (its `dirty`), and it turns the key off entirely while the details panel is open over this
+     one. A second listener on this component did neither: one press threw away a half-written
+     invite without asking, and it fired even while the reader was looking at the stacked panel. */
   const teams = useVcaStore(s => s.teams);
   const projects = useVcaStore(s => s.projects);
   const allUsers = useVcaStore(s => s.portalUsers);
@@ -1178,16 +1239,58 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const pickedPreset = presets.find(pr => pr.id === effectiveChoice);
   const shown = pickedPreset ? grantsOfPreset(pickedPreset) : null;
   const shownActions = isCustom ? customActions : (shown?.appActions ?? []);
+  /**
+   * PRESSING 커스텀 OPENS THE DETAILS PANEL, and carries the set that was on screen into it.
+   *
+   * 커스텀 is by definition the answer "I will say which ones", so a press that visibly does
+   * nothing reads as the eight rows having gone missing. HubSpot's Create users does the same
+   * thing — the access step opens as soon as it becomes the question being asked.
+   *
+   * The set it opens with is the preset's, not an empty list, until the reader has tuned one of
+   * their own (customTouched). Every other name just answers the question.
+   */
+  const chooseGrant = (id: string) => {
+    setGrantChoice(id);
+    if (id !== "custom") return;
+    setGrantEditor({ choice: "custom", actions: customTouched ? customActions : shownActions });
+  };
+  /** The other door, on the line under the row: opens on whatever is chosen right now. */
+  const openGrantDetails = () => setGrantEditor({ choice: effectiveChoice, actions: shownActions });
+  /**
+   * 「적용」 — into the draft on this form and nowhere else. Nothing is saved and there is no
+   * toast: there is no account to save it against yet, which is the whole difference between this
+   * door and the one on an account's card.
+   */
+  const applyGrantDraft = (d: GrantDraft) => {
+    const openedWith = grantEditor?.actions ?? [];
+    setGrantChoice(d.choice);
+    if (d.choice === "custom") {
+      setCustomActions(d.actions);
+      // Only a set they actually moved makes it theirs. Applying the seeded set unchanged leaves
+      // 커스텀 still following whichever preset is showing next time.
+      if (!sameActions(d.actions, openedWith)) setCustomTouched(true);
+    }
+    setGrantEditor(null);
+  };
   const [permission, setPermission] = useState<PortalPermission>("admin");
   const [projectIds, setProjectIds] = useState<string[]>(defaultProjectId ? [defaultProjectId] : []);
-  /** Which fold is open, or none. One at a time: two open folds is the tall form again. */
-  /* Only the team folds now, so the state is that one row's. It was an accordion over three. */
-  /** Camera groups the invite hands over. Empty means every camera — see the note on draftGroups. */
-  const [scopeGroupIds, setScopeGroupIds] = useState<string[]>([]);
-  /** The group being written from inside this panel — `{ group: null }` while making a new one. */
-  const [groupEditorFor, setGroupEditorFor] = useState<{ group: CameraGroup | null; projectId: string } | null>(null);
-  const toggleScopeGroup = (id: string) =>
-    setScopeGroupIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  /**
+   * THE DETAILS PANEL, AND WHAT IT OPENED WITH — null while it is closed.
+   *
+   * The pair is kept rather than recomputed on apply, because the invite has to know whether the
+   * reader actually moved anything in there (see customTouched).
+   */
+  const [grantEditor, setGrantEditor] = useState<GrantDraft | null>(null);
+  /**
+   * Has anybody hand-tuned the custom set on this form yet?
+   *
+   * Until they have, 커스텀 opens on the actions of the preset that was showing — that preset is
+   * what the reader is looking at and wants to adjust. It used to open on an empty list, which
+   * made them tick five boxes they had just been reading, and if they did not it walked straight
+   * into the "pick at least one" refusal. Once they HAVE tuned it, their set is theirs and
+   * pressing 운영자 then 커스텀 again must not overwrite it.
+   */
+  const [customTouched, setCustomTouched] = useState(false);
 
   const toggleProject = (id: string) =>
     setProjectIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
@@ -1207,30 +1310,25 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   // internet-isolated site can't reach an external mail provider, so that one routes through the
   // project's internal mailbox instead. See the 2026-08-28 backend-meeting decision this mirrors.
   const selectedProjects = teamProjects.filter(p => projectIds.includes(p.id));
-  /** What the ticked projects hold today — the number the scope row says out loud. */
-  const draftScopable = scopableCameras(allCameras, projectIds);
   /*
-   * CAMERAS ARE GRANTED BY GROUP AT INVITE TIME, AND ONLY BY GROUP.
+   * THE INVITE DOES NOT ASK ABOUT CAMERAS ANY MORE — it asks about permissions and stops.
    *
-   * The owner's constraint (2026-09-21): 실제 현장에서는 연결된 카메라 대수가 1000대이상일 수
-   * 있어서. That settles a question the references disagree on. Eagle Eye Networks is the one
-   * product that puts the camera list inside the add-user dialog — drag and drop, or "Add All" —
-   * and a list of a thousand rows is not a thing anybody drags. Verkada, Milestone and Rhombus all
-   * hand out cameras by site, role or group and never one at a time on this screen, which is the
-   * shape that survives the scale.
+   * There was a 카메라 범위 block here: a 「전체 카메라 62」 chip, one chip per camera group, a
+   * pencil on each that opened the group editor over this panel, a 「+ 새 그룹」 on the label row,
+   * and a line saying later cameras are included. 85px of the form, and a second implementation
+   * of a decision that already exists — `CameraScopePicker` writes with `setCameraScope(user.id,
+   * …)`, which needs an account id, and a draft has none. So the chips could not use the real
+   * editor, and two pickers for one rule drift the day either is corrected.
    *
-   * NOTHING PICKED IS NOT AN UNANSWERED QUESTION, it is the answer "every camera on the ticked
-   * projects" — the same rule the data model already states on scopedCameraIds, where absent-and-
-   * absent is the only "everything". So there is no All/Some switch to set and no fifth way to
-   * fail: an empty pick sends the account through with the whole register, exactly as it did
-   * before this control existed, and every chip pressed narrows it. An empty ARRAY would mean
-   * "narrowed to nothing", which is why submit omits the field rather than sending [].
+   * Narrowing now happens against an account that exists, in the two places already built for it:
+   * the 「카메라 고르기」 button on the result step below (so nobody has to find the row again) and
+   * the 카메라 row of the account's card. Both go through `CameraScopePicker`, so both leave an
+   * audit line — a scope handed to `addPortalUser` was a narrowing with no record of who did it.
    *
-   * Derived, not filtered into state: unticking a project must drop its groups, and a useEffect
-   * doing that would fight the render it is triggered by.
+   * What does NOT change: not narrowing still means every camera on the ticked projects, today's
+   * and next month's (see scopedCameraIds). That was already what happens when nobody presses a
+   * chip, so the default the invite hands out is the same one as before.
    */
-  const draftGroups = allGroups.filter(g => projectIds.includes(g.projectId));
-  const pickedGroups = draftGroups.filter(g => scopeGroupIds.includes(g.id));
 
   /* The two closed-fold summaries went with the folds: 권한 and 현장 are open sections now, so
      nothing reads them from the outside and a summary of a section you can see is the section
@@ -1283,7 +1381,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
    * this dialog, so a panel opened and closed untouched still closes on one click.
    */
   const inviteStarted = email.trim() !== "" || name.trim() !== ""
-    || grantChoice !== null || scopeGroupIds.length > 0
+    || grantChoice !== null || customActions.length > 0
     || accessMode !== "appOnly"
     || projectIds.join() !== (defaultProjectId ? defaultProjectId : "");
   const submit = () => {
@@ -1311,12 +1409,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
     const id = addPortalUser({
       name: name.trim(), email: email.trim(), teamId, projectIds,
       permission: resolved.permission, appAccess: resolved.appAccess, status: "invited",
-      // The groups picked above, and the field is OMITTED when none were: an empty array is the
-      // answer "narrowed to nothing" (scopedCameraIds), which would sign the account into an app
-      // with no cameras at all. Groups only — a thousand-camera site is not granted one row at a
-      // time, see the note on draftGroups. Not sent for a Portal-only account either: it has no
-      // app to watch cameras in, and a scope on it would come back the day the app door opens.
-      ...(resolved.appAccess && pickedGroups.length > 0 ? { cameraGroupIds: pickedGroups.map(g => g.id) } : {}),
+      // NO cameraGroupIds EITHER. The invite no longer asks — see the note where the chips were.
       ...grants,
       ...(resolved.appAccess ? { grantMode: (chosen ? "preset" : "custom") as GrantMode, presetId: chosen?.id } : {}),
     });
@@ -1415,7 +1508,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
      * shared Drawer's `dirty`, which this panel sets from the fields below.
      */
     <>
-    <Drawer title={t.modalTitle} onClose={onClose} width="520px" escapeEnabled={groupEditorFor === null} dirty={inviteStarted}
+    <Drawer title={t.modalTitle} onClose={onClose} width="520px" escapeEnabled={grantEditor === null} dirty={inviteStarted}
       footer={<>
           {/* The reason sits beside the button rather than leaving it dead and silent. Shown only
               once Invite has been pressed: nothing on this form goes red while somebody is still
@@ -1612,9 +1705,14 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                 */}
                 <FormSection label={t.foldGrant} required>
                   {accessMode !== "portalOnly" ? (
+                    /* THE ROW OF NAMES AND ONE LINE — the eight-row list lives behind 세부 설정
+                       now, which is what makes every state of this form the same height. Same
+                       component as the panel that door opens, so the four answers cannot come out
+                       in a different order or at a different width in the two places. */
                     <GrantPicker
-                      presets={presets} choice={effectiveChoice} onChoice={setGrantChoice}
+                      presets={presets} choice={effectiveChoice} onChoice={chooseGrant}
                       actions={shownActions} onToggleAction={toggleCustomAction}
+                      compact={{ onOpenDetails: openGrantDetails }}
                       hideTitle t={t} />
                   ) : (
                     /* Portal-only: there is no app to grant screens in, and the row says so rather
@@ -1622,124 +1720,6 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                     <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.grantsPortalOnly}</p>
                   )}
                 </FormSection>
-                {/* CAMERAS — groups only, and nothing picked means every camera on the ticked
-                    projects, the same rule the data model states on scopedCameraIds. A thousand-
-                    camera site is not granted one row at a time: Verkada, Milestone and Rhombus
-                    hand cameras out by site, role or group, and Eagle Eye — the one product with
-                    the camera list inside the add-user dialog — is the one that would not survive
-                    the scale. Not asked of a Portal-only account: no app to watch them in. */}
-                {accessMode !== "portalOnly" && (
-                  <div>
-                    {/* THE DOOR SITS ON THE LABEL ROW (owner, 2026-09-22: 카메라 범위 옆에 그룹
-                        수정/추가 버튼 만들어서 편집해서 추가할 수 있게). Toggl Track puts
-                        「+ Create a new project」 inside its project picker and Buffer puts
-                        「Apply to All」 on the label row — the action that changes what you can pick
-                        belongs beside the picking, not on another tab. Only with ONE project
-                        ticked: a group belongs to exactly one project, and with two ticked there
-                        is no answer to which one a new group would be made in. */}
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-                      <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.scopeLabel}</label>
-                      <span style={{ flex: 1 }} />
-                      {projectIds.length === 1 && (
-                        <button type="button" onClick={() => setGroupEditorFor({ group: null, projectId: projectIds[0] })}
-                          style={{ display: "inline-flex", alignItems: "center", gap: "4px", border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>
-                          <Plus size={12} strokeWidth={2.6} aria-hidden="true" />
-                          {t.scopeNewGroup}
-                        </button>
-                      )}
-                    </div>
-                    {/*
-                      「전체 카메라」 IS A CHIP, NOT A SENTENCE (owner, 2026-09-22: 이 문구보다 아래
-                      버튼에 전체 카메라 라고 해서 선택되어 있는 게 더 나을 것 같아).
-
-                      The default used to be explained in prose — 「그룹을 고르지 않으면 이 프로젝트의
-                      카메라 전부입니다. 지금 68대…」 — above a row of group chips whose numbers added
-                      up to five. Two true statements that read as arithmetic that does not work,
-                      because nothing showed that they were ALTERNATIVES. As the first chip in the
-                      same row, ticked until a group is ticked, the choice is the thing you see:
-                      one of these is on, and the number on it is the number that applies.
-
-                      Picking it clears the groups; picking a group clears it, because an empty
-                      group list IS "all cameras" in the data model (see scopedCameraIds) — the
-                      chip does not add a state, it shows the one that was always there.
-                    */}
-                    {projectIds.length === 0 || draftScopable.length === 0 ? (
-                      <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>
-                        {projectIds.length === 0 ? t.scopeNoProject : t.scopeNoCameras}
-                      </p>
-                    ) : (
-                      <>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                          {(() => {
-                            const on = pickedGroups.length === 0;
-                            return (
-                              <button type="button" onClick={() => setScopeGroupIds([])}
-                                style={{
-                                  display: "flex", alignItems: "center", gap: "6px",
-                                  height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", cursor: "pointer",
-                                  border: on ? PICKED_LINE : BORDER,
-                                  backgroundColor: on ? PICKED_FILL : "white",
-                                  color: on ? "var(--gray-900)" : "var(--gray-600)",
-                                  fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
-                                }}>
-                                {t.scopeAll}
-                                <span style={{ fontSize: "10px", fontWeight: 600, color: on ? "var(--gray-500)" : "var(--gray-400)" }}>
-                                  {t.scopeGroupCount(draftScopable.length)}
-                                </span>
-                              </button>
-                            );
-                          })()}
-                          {draftGroups.map(g => {
-                            const on = scopeGroupIds.includes(g.id);
-                            return (
-                              /* A span holding two buttons, not a button holding one: nesting
-                                 buttons is invalid and the browser drops the inner one. The chip's
-                                 border and fill live here so the pair reads as one object. */
-                              <span key={g.id}
-                                style={{
-                                  display: "flex", alignItems: "center", height: CONTROL_HEIGHT, borderRadius: "8px",
-                                  border: on ? PICKED_LINE : BORDER,
-                                  backgroundColor: on ? PICKED_FILL : "white",
-                                }}>
-                                <button type="button" onClick={() => toggleScopeGroup(g.id)}
-                                  style={{
-                                    display: "flex", alignItems: "center", gap: "6px", height: "100%",
-                                    padding: "0 6px 0 12px", border: "none", background: "none", cursor: "pointer",
-                                    color: on ? "var(--gray-900)" : "var(--gray-600)",
-                                    fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
-                                  }}>
-                                  {g.label}
-                                  {/* The size, because two groups can carry the same name's worth of
-                                      weight and a very different number of cameras. */}
-                                  <span style={{ fontSize: "10px", fontWeight: 600, color: on ? "var(--gray-500)" : "var(--gray-400)" }}>
-                                    {t.scopeGroupCount(g.cameraIds.length)}
-                                  </span>
-                                </button>
-                                {/* Changing what is IN the group, from the form that hands it out —
-                                    the other half of the owner's 수정/추가. Always drawn rather than
-                                    shown on hover: a control nobody can see is a control nobody
-                                    finds, and this panel is read on a screenshot as often as it is
-                                    used with a pointer. */}
-                                <button type="button" onClick={() => setGroupEditorFor({ group: g, projectId: g.projectId })}
-                                  title={t.scopeEditGroup(g.label)} aria-label={t.scopeEditGroup(g.label)}
-                                  style={{ display: "flex", alignItems: "center", height: "100%", padding: "0 10px 0 4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)" }}>
-                                  <Pencil size={11} strokeWidth={2.4} aria-hidden="true" />
-                                </button>
-                              </span>
-                            );
-                          })}
-                        </div>
-                        {/* The one fact the chips cannot carry: a scope is a rule, not a list, so
-                            it keeps applying to cameras nobody has registered yet. True of both
-                            answers — the project's whole register, or a group — so it is said once
-                            under the row rather than twice inside it. */}
-                        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "8px" }}>
-                          {draftGroups.length === 0 ? `${t.scopeGroupsNone} ${t.scopeLater}` : t.scopeLater}
-                        </p>
-                      </>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -1764,15 +1744,24 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
           </div>
         </form>
     </Drawer>
-    {/* OVER THIS PANEL, NOT INSTEAD OF IT. The invite keeps every answer already typed while the
-        group is written, and Escape closes this editor only — see Drawer's escapeEnabled. */}
-    {groupEditorFor && (
-      <CameraGroupEditor
+    {/*
+      OVER THIS PANEL, NOT INSTEAD OF IT — and OUTSIDE the <form> above.
+     
+      The invite keeps every answer already typed while the permissions are being detailed, and
+      Escape closes this editor only (see the Drawer's escapeEnabled, switched off above while
+      this is up). Outside the form matters: inside it, every toggle in the editor would be a
+      submit button and the first one pressed would mail the invite.
+     
+      Its scrim covers the invite too, but it is this panel's scrim — clicking it asks (the
+      editor's own `dirty`) and then closes the top panel only. The invite is still there.
+    */}
+    {grantEditor && (
+      <AppGrantEditor
         nested
-        projectId={groupEditorFor.projectId}
-        group={groupEditorFor.group}
-        onClose={() => setGroupEditorFor(null)}
-        onSaved={id => setScopeGroupIds(prev => prev.includes(id) ? prev : [...prev, id])}
+        presets={presets}
+        initial={grantEditor}
+        onClose={() => setGrantEditor(null)}
+        onApply={applyGrantDraft}
       />
     )}
     </>
@@ -2637,12 +2626,140 @@ function UserProjectsModal({ user, teamProjects, onClose, onSave }: {
   );
 }
 
+/** The pair a grant editor takes in and hands back: how grants are decided, and what they are. */
+type GrantDraft = { choice: string | null; actions: AppAction[] };
+
 /**
- * Change one account's app grants after the invite.
+ * Do these two lists hold the same actions? Order-independent: a toggle appends in the order it
+ * was pressed and the store keeps APP_ACTIONS order, so a raw compare calls identical sets dirty.
+ *
+ * At module scope because three things ask it now — the editor's own "has anything moved", the
+ * account wrapper's comparison against what is on file, and the invite's "has the reader
+ * hand-tuned the custom set yet".
+ */
+function sameActions(a: AppAction[], b: AppAction[]) {
+  return APP_ACTIONS.filter(x => a.includes(x)).join() === APP_ACTIONS.filter(x => b.includes(x)).join();
+}
+
+/**
+ * THE ONE PLACE APP PERMISSIONS ARE EDITED. Values in, values out — it saves nothing itself.
+ *
+ * Two doors open it and they must not be two editors: 「세부 설정」 on the invite form, and the
+ * 앱 권한 row of an account's card. A second arrangement of the same question would be a second
+ * thing to learn for the same decision, and the decision is who may look at what.
+ *
+ * WHAT THE CALLER KEEPS. Anything that needs an account: following a preset, detaching to custom,
+ * the audit line, the toast, and the warning about overwriting hand-tuned grants. The invite has
+ * no account yet — it has a draft — so it keeps none of that and just takes the pair back.
+ *
+ * `nested` is the only switch between the two, and it decides three things at once: the ← that
+ * says there is a panel behind this one, the footer's two words, and whether the title gets a line
+ * naming the person (the invite has nobody to name).
+ */
+function AppGrantEditor({ presets, initial, subtitle, nested, warning, blockedReason, onClose, onApply }: {
+  presets: AccessPreset[];
+  /** Where this opens: a preset id or "custom", and the actions to start the custom draft from. */
+  initial: GrantDraft;
+  /** The line under the title, for the caller that has an account to name. */
+  subtitle?: string;
+  /** Opened OVER another panel. See the class comment. */
+  nested?: boolean;
+  /** Said before it happens — what the caller knows about the account behind the draft. */
+  warning?: (draft: GrantDraft) => string | null;
+  /**
+   * Why the committing button is dead, beyond the one refusal both callers share.
+   *
+   * The shared one is custom-with-nothing-ticked, which is checked here because it is a property
+   * of the draft rather than of either caller: an account holding zero actions signs in and is
+   * turned away by the gate's `noScreens`, whether it was saved or invited.
+   */
+  blockedReason?: (draft: GrantDraft) => string | null;
+  onClose: () => void;
+  onApply: (draft: GrantDraft) => void;
+}) {
+  /* NO useEscapeKey HERE. The Drawer owns Escape, and it routes it through the same guard as the
+     scrim — a second listener on this component would close the panel unguarded and throw away
+     exactly what the guard exists to keep. */
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  const [choice, setChoice] = useState<string | null>(initial.choice);
+  /* Starts from what came in, which is what makes "preset → custom" carry the preset's set: the
+     caller hands over the actions that were on screen, not an empty list. */
+  const [customActions, setCustomActions] = useState<AppAction[]>(initial.actions);
+  const toggleCustomAction = (action: AppAction) =>
+    setCustomActions(prev => prev.includes(action) ? prev.filter(x => x !== action) : [...prev, action]);
+
+  const isCustom = choice === "custom";
+  const pickedPreset = presets.find(pr => pr.id === choice);
+  const shown = pickedPreset ? grantsOfPreset(pickedPreset) : null;
+  const actions = isCustom ? customActions : (shown?.appActions ?? []);
+  const draft: GrantDraft = { choice, actions };
+
+  /**
+   * HAS THE READER MOVED ANYTHING? What the scrim and Escape ask about (Drawer's `dirty`).
+   *
+   * This panel had no guard at all: eight toggles pressed on an account's card, then a click on
+   * the scrim — which is most of the window — and it vanished without a word. Measured against
+   * the draft rather than against the store, because that is the question a scrim click asks.
+   */
+  const touched = choice !== initial.choice || !sameActions(actions, initial.actions);
+
+  const blocked = choice === null ? t.grantNotChosen
+    : isCustom && customActions.length === 0 ? t.grantNoScreens
+    : blockedReason?.(draft) ?? null;
+  const note = warning?.(draft) ?? null;
+
+  return (
+    /* A panel. The 92vh cap and the column layout this dialog needed to keep a long grant list
+       and its footer on screen are the Drawer's job now. */
+    <Drawer title={t.grantsModalTitle} onClose={onClose} onBack={nested ? onClose : undefined} dirty={touched}
+      footer={
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
+          {note && (
+            <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{note}</p>
+          )}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+          {/* The button says why it is dead instead of sitting there. */}
+          {blocked && (
+            <span style={{ flex: 1, fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>
+              {blocked}
+            </span>
+          )}
+          {/* 뒤로 when there is a panel behind this one, the same precedent the camera group editor
+              set: a stacked panel's cancel returns to what it covered, and saying 취소 there reads
+              as cancelling the invite underneath. */}
+          <button type="button" className="portal-btn-outline" onClick={onClose}
+            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {nested ? t.grantBack : t.cancel}
+          </button>
+          {/* 적용 against 변경: the nested one edits a draft of an account that does not exist, so
+              there is nothing yet to have changed. */}
+          <button type="button" className="portal-btn-primary" onClick={() => onApply(draft)} disabled={blocked !== null}
+            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: blocked === null ? "var(--primary-400)" : "var(--gray-200)", color: blocked === null ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: blocked === null ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+            {nested ? t.grantApply : t.changeApply}
+          </button>
+          </div>
+        </div>
+      }>
+      <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
+        {/* Who this is about; the title is the panel header's. Absent on the invite's door —
+            there is no account yet, so there is nobody to name. */}
+        {subtitle && <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{subtitle}</p>}
+        <GrantPicker
+          presets={presets} choice={choice} onChoice={setChoice}
+          actions={actions} onToggleAction={toggleCustomAction}
+          t={t} />
+      </div>
+    </Drawer>
+  );
+}
+
+/**
+ * Change one account's app grants after the invite — the account half around the editor above.
  *
  * WITHOUT THIS, GRANTS FREEZE AT INVITE TIME. Role, app access, person search, projects and status
- * were all editable from the row menu; the five screens, evidence export and preset membership
- * were not. The only way to move somebody between jobs was to delete the account and invite them
+ * were all editable from the row menu; the screens, evidence export and preset membership were
+ * not. The only way to move somebody between jobs was to delete the account and invite them
  * again, which throws away the audit continuity the account exists to carry and makes somebody
  * hand out a fresh setup link. The workaround was worse than the gap.
  *
@@ -2651,7 +2768,6 @@ function UserProjectsModal({ user, teamProjects, onClose, onSave }: {
  * reporting rather than defaulting.
  */
 function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => void }) {
-  useEscapeKey(onClose);
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const { showToast } = useToast();
@@ -2666,44 +2782,32 @@ function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => voi
   /** What this account holds right now — the thing every comparison below is against. */
   const held = useMemo(() => user.appActions ?? [], [user.appActions]);
 
-  const [choice, setChoice] = useState<string | null>(() => {
+  const initialChoice = useMemo(() => {
     // A preset that is no longer offered cannot be shown as selected — the radio would sit on
     // nothing and the locked list below would show an empty grant set for an account that holds
     // five screens. archiveAccessPreset already moves followers to custom, so this is a guard
     // against a state that should not arrive, not a case being handled.
     const following = user.grantMode === "preset" && user.presetId
-      && presetsForTeam(allPresets, user.teamId).some(pr => pr.id === user.presetId);
+      && presets.some(pr => pr.id === user.presetId);
     return following ? user.presetId ?? "custom" : "custom";
-  });
-  const [customActions, setCustomActions] = useState<AppAction[]>(held);
-  const toggleCustomAction = (action: AppAction) =>
-    setCustomActions(prev => prev.includes(action) ? prev.filter(x => x !== action) : [...prev, action]);
+  }, [presets, user.grantMode, user.presetId]);
 
-  const isCustom = choice === "custom";
-  const pickedPreset = presets.find(pr => pr.id === choice);
-  const shown = pickedPreset ? grantsOfPreset(pickedPreset) : null;
-  const actions = isCustom ? customActions : (shown?.appActions ?? []);
+  /**
+   * IS THERE ANYTHING TO WRITE? Against what is ON FILE, not against the draft's own start.
+   *
+   * The two are almost the same question and diverge in one real case: an account whose grants
+   * were never marked either way can be switched to custom holding exactly the same actions, and
+   * that IS a change — it stops a later preset edit reaching them. The editor's own `touched` is
+   * the scrim's question, which is a different one.
+   */
+  const changed = (d: GrantDraft) => d.choice === "custom"
+    ? user.grantMode !== "custom" || !sameActions(d.actions, held)
+    : user.grantMode !== "preset" || user.presetId !== d.choice;
 
-  /** Order-independent: the toggle appends, the store stores in APP_ACTIONS order. */
-  const sameActions = (a: AppAction[], b: AppAction[]) =>
-    APP_ACTIONS.filter(x => a.includes(x)).join() === APP_ACTIONS.filter(x => b.includes(x)).join();
-
-  const dirty = isCustom
-    ? user.grantMode !== "custom" || !sameActions(customActions, held)
-    : user.grantMode !== "preset" || user.presetId !== choice;
-  /* Same refusal as the invite form, for the same reason: custom with nothing ticked saves an
-     account that signs in and is turned away by the gate's noScreens. */
-  const canSave = dirty && (isCustom ? customActions.length > 0 : choice !== null);
-  /* Said before it happens rather than reported after. Following a preset means holding its
-     grants, so hand-tuned values go — and only when they actually differ, or the warning becomes
-     wallpaper on every preset switch. */
-  const willOverwrite = !isCustom && shown != null && user.grantMode === "custom"
-    && !sameActions(shown.appActions ?? [], held);
-
-  const save = () => {
-    if (!canSave) return;
-    if (!isCustom && choice) {
-      applyGrantPreset(user.id, choice);
+  const save = (d: GrantDraft) => {
+    if (!changed(d)) return;
+    if (d.choice !== "custom" && d.choice) {
+      applyGrantPreset(user.id, d.choice);
     } else {
       // Detach first: setAppGrant writes values and says nothing about where they come from, so
       // tuning an account that still reads as "follows the preset" is the silent mismatch this
@@ -2718,7 +2822,7 @@ function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => voi
       // alone swallows the manual tuning that came after it, and that is the half an access
       // review is actually asking about.
       APP_ACTIONS.forEach(action => {
-        const next = customActions.includes(action);
+        const next = d.actions.includes(action);
         if (next !== held.includes(action)) setAppGrant(user.id, action, next);
       });
     }
@@ -2728,42 +2832,23 @@ function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => voi
   };
 
   return (
-    /* A panel. The 92vh cap and the column layout this dialog needed to keep a seven-row grant
-       list and its footer on screen are the Drawer's job now. */
-    <Drawer title={t.grantsModalTitle} onClose={onClose}
-      footer={
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
-          {willOverwrite && (
-            <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.grantsOverwriteWarning}</p>
-          )}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
-          {/* The button says why it is dead instead of sitting there. Two states, two sentences:
-              nothing has moved yet, or custom is on with no screen ticked. */}
-          {!canSave && (
-            <span style={{ flex: 1, fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>
-              {!dirty ? t.grantsUnchanged : t.grantNoScreens}
-            </span>
-          )}
-          <button className="portal-btn-outline" onClick={onClose}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            {t.cancel}
-          </button>
-          <button className="portal-btn-primary" onClick={save} disabled={!canSave}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-            {t.changeApply}
-          </button>
-          </div>
-        </div>
-      }>
-      <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
-        {/* Who this is about; the title is the panel header's. */}
-        <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.grantsModalIntro(user.name)}</p>
-        <GrantPicker
-          presets={presets} choice={choice} onChoice={setChoice}
-          actions={actions} onToggleAction={toggleCustomAction}
-          t={t} />
-      </div>
-    </Drawer>
+    <AppGrantEditor
+      presets={presets}
+      initial={{ choice: initialChoice, actions: held }}
+      subtitle={t.grantsModalIntro(user.name)}
+      /* Said before it happens rather than reported after. Following a preset means holding its
+         grants, so hand-tuned values go — and only when they actually differ, or the warning
+         becomes wallpaper on every preset switch. */
+      warning={d => {
+        if (d.choice === "custom" || user.grantMode !== "custom") return null;
+        const pr = presets.find(x => x.id === d.choice);
+        const set = pr ? grantsOfPreset(pr).appActions ?? [] : null;
+        return set && !sameActions(set, held) ? t.grantsOverwriteWarning : null;
+      }}
+      blockedReason={d => changed(d) ? null : t.grantsUnchanged}
+      onClose={onClose}
+      onApply={save}
+    />
   );
 }
 
@@ -4118,6 +4203,17 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             /* Before what they may do: a suspended account makes every grant on the row
                hypothetical, and that has to be known at the name. */
             { label: t.colStatus, key: "status" },
+            /*
+             * NOT SETTLED: 「권한」 IS TWO DIFFERENT THINGS ON THIS PAGE.
+             *
+             * This column header means sign-in scope AND the preset together (it prints both, one
+             * per line). The invite form's field labelled 권한 means the preset/custom answer
+             * only. Same word, two sizes of thing, on one screen.
+             *
+             * Left alone deliberately when the invite was thinned out (2026-09-23): renaming the
+             * header reaches the count strip above the table and the filter that strip drives, so
+             * it is its own change with its own measuring, not a rider on this one.
+             */
             { label: t.colPermission, key: "permission" },
             /* Sortable: "who is on more than this site" is the question, and it is answered by
                ordering the column, not by reading five rows. */
