@@ -13,6 +13,7 @@ import ProjectSidebar, { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import PortalSettingsPage from "./PortalSettingsPage";
 import PortalAccountMenu from "./PortalAccountMenu";
+import { PEOPLE_TABS } from "./PortalUsersPage";
 import { ToastProvider, useToast } from "../Toast";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useVcaStore, canEnterApp, currentPortalUser, SIGNED_IN_USER, type ProjectType, type Team } from "@/lib/vcaStore";
@@ -127,6 +128,9 @@ export default function PortalShell() {
   // to Portal was a link to the same screen. Read once, as the initial value: after that the tab is
   // component state, so clicking around does not push a history entry per tab.
   const tabParam = searchParams.get("tab");
+  /* Which of 사용자 및 권한's four lists is open, so the trail can name it — see PEOPLE_TABS and
+     the note on the sub-tab state in PortalUsersPage. Only that tab has sub-lists today. */
+  const subParam = searchParams.get("sub");
 
   const [showWizard, setShowWizard] = useState(newProjectParam);
   /**
@@ -354,6 +358,11 @@ export default function PortalShell() {
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [lang] = usePortalLanguage();
+  /* The words for the sub-list, taken from the page that owns them rather than copied here. Only
+     drawn when the open tab actually has sub-lists and the URL names one of them. */
+  const subCrumb = tab === "users" && subParam
+    ? PEOPLE_TABS.find(x => x.id === subParam)?.label[lang] ?? null
+    : null;
   const t = T[lang];
 
   /**
@@ -655,9 +664,23 @@ export default function PortalShell() {
                 content, this is the only place the screen is named, so it has to carry that
                 weight — a trail whose last segment is the heading, which is how a console with a
                 named rail and a bar above it usually ends up. */}
-            <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: "14px", fontWeight: 700, color: showAccount || !subCrumb ? "var(--gray-900)" : "var(--gray-500)", whiteSpace: "nowrap" }}>
               {showAccount ? t.settingsCrumb : PROJECT_TABS.find(pt => pt.id === tab)?.label[lang]}
             </span>
+            {/* THE LIST INSIDE THE PAGE, WHEN THERE IS ONE (owner, 2026-09-23: 현재 보고 있는
+                등록 대기까지 표시해 줘야 정확히 인지할 수 있을 것 같아). The trail stopped at the
+                page while the reader was a level below it, on one of four lists that look alike
+                enough to lose track of. The page's own name steps back to gray-500 when this is
+                drawn: the last segment is where you are, and two segments in full weight would be
+                two answers to one question. */}
+            {!showAccount && subCrumb && (
+              <>
+                <BreadcrumbChevron />
+                <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap" }}>
+                  {subCrumb}
+                </span>
+              </>
+            )}
           </>
         ) : (
           <>

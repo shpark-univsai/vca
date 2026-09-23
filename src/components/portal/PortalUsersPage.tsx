@@ -2872,6 +2872,21 @@ function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko
 }
 
 /**
+ * The four lists of 사용자 및 권한, in rail order, with the words the rail puts on them.
+ *
+ * Exported because the header's trail names the open one (PortalShell), and a second copy of these
+ * labels there would drift the first time one is renamed — which is exactly what happened to
+ * 「명부 대기」 the day it became 「등록 대기」.
+ */
+export type PeopleTab = "accounts" | "roster" | "groups" | "presets";
+export const PEOPLE_TABS: { id: PeopleTab; label: { en: string; ko: string } }[] = [
+  { id: "accounts", label: { en: "Accounts", ko: "계정" } },
+  { id: "roster", label: { en: "Awaiting sign-up", ko: "등록 대기" } },
+  { id: "groups", label: { en: "Camera groups", ko: "카메라 그룹" } },
+  { id: "presets", label: { en: "App permission presets", ko: "앱 권한 프리셋" } },
+];
+
+/**
  * THE ONE DOOR FOR ADDING A PERSON, AND THE TWO WAYS IN.
  *
  * A labelled button with a small menu rather than a panel: it is a two-way choice, and a
@@ -3331,7 +3346,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
   const [showRosterImport, setShowRosterImport] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   /** null = closed, { entry: null } = add, { entry } = edit. */
-  const [rosterEditorFor, setRosterEditorFor] = useState<{ entry: RosterEntry | null } | null>(null);
+  /** `issueOnSave` is set only by the 「등록 코드로 추가」 door — see the note at the render. */
+  const [rosterEditorFor, setRosterEditorFor] = useState<{ entry: RosterEntry | null; issueOnSave?: boolean } | null>(null);
   /**
    * Top-level cut of the list. Same arrangement Input Sources uses for its kinds, for the same
    * reason: which half of the lifecycle you are looking at is a different question from how you are
@@ -3344,7 +3360,38 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
    * questions. What the two halves needed to share was never one row list — it was one page, one
    * ladder of stages, one search and one set of counts, and they still do.
    */
-  const [peopleTab, setPeopleTab] = useState<"accounts" | "roster" | "groups" | "presets">("accounts");
+  /*
+   * THE SUB-TAB LIVES IN THE URL (owner, 2026-09-23: 헤더에도 사용자 및 권한까지만 표시되고
+   * 있는데, 현재 보고 있는 등록 대기까지 표시해 줘야 정확히 인지할 수 있을 것 같아).
+   *
+   * The header's trail is built in PortalShell from `?tab=`, and it had no way to know which of
+   * these four lists was open — so the crumb stopped at 사용자 및 권한 while the reader was two
+   * levels down. Putting it in `?sub=` is what lets the bar name it, and it comes with two things
+   * we wanted anyway: a reload keeps the list you were on, and the link you paste opens it.
+   *
+   * replaceState rather than router.replace: this is not a navigation, it is where you already
+   * are, and pushing an entry per tab click would make Back walk the rail instead of leaving the
+   * page. The `popstate` listener keeps the rail honest when the browser's own Back does move.
+   */
+  const [peopleTab, setPeopleTab] = useState<PeopleTab>(() => {
+    if (typeof window === "undefined") return "accounts";
+    const sub = new URL(window.location.href).searchParams.get("sub");
+    return PEOPLE_TABS.some(x => x.id === sub) ? (sub as PeopleTab) : "accounts";
+  });
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (peopleTab === "accounts") url.searchParams.delete("sub");
+    else url.searchParams.set("sub", peopleTab);
+    if (url.toString() !== window.location.href) window.history.replaceState(null, "", url.toString());
+  }, [peopleTab]);
+  useEffect(() => {
+    const back = () => {
+      const sub = new URL(window.location.href).searchParams.get("sub");
+      setPeopleTab(PEOPLE_TABS.some(x => x.id === sub) ? (sub as PeopleTab) : "accounts");
+    };
+    window.addEventListener("popstate", back);
+    return () => window.removeEventListener("popstate", back);
+  }, []);
   const [search, setSearch] = useState("");
   // Name ascending to start: the only order that is stable and that a reader can predict before
   // they have looked. The sortable columns are the ones an administrator asks questions about —
@@ -3536,9 +3583,20 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
   const projectRosterAll = pageNowMs === null
     ? projectRoster
     : withEffectiveStatus(projectRoster, pageNowMs);
+  /*
+   * THE SEARCH IS NOT PART OF THIS COUNT (2026-09-23).
+   *
+   * It was: typing in the table's search box took the rail's 등록 대기 from 8 to 0, while the
+   * status filters beside it deliberately did not — two rules for one idea, and the rail was the
+   * one telling the lie. `projectUsers`, which feeds 계정, has never been filtered by either.
+   *
+   * The rule, stated once for the three readers of these lists: the rail and the summary say how
+   * big the section is, so neither the search nor a filter touches them; the table shows what you
+   * asked for; and an action that acts on rows acts on exactly the rows you can see (see
+   * notIssuedIds below, which moved onto the visible set for that reason).
+   */
   const rosterWaiting = projectRosterAll
     .filter(r => r.status !== "used" && !accountEmployeeIds.has(r.employeeId.toLowerCase()))
-    .filter(r => !q || r.name.toLowerCase().includes(q) || r.employeeId.toLowerCase().includes(q))
     .sort((a, b) => STAGES.indexOf(stageOfRosterEntry(a.status)) - STAGES.indexOf(stageOfRosterEntry(b.status)) || a.name.localeCompare(b.name));
   /**
    * The roster rows the table shows. Separate from rosterWaiting, which the tab count and the
@@ -3554,6 +3612,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
    */
   const visibleRoster = sortRows(
     rosterWaiting
+      .filter(r => !q || r.name.toLowerCase().includes(q) || r.employeeId.toLowerCase().includes(q))
       .filter(() => statusFilter === null || statusFilter === "roster")
       /* On the table's rows only. Filtering `rosterWaiting` would shrink the rail's 명부 대기 count
          and the summary with it, and a count that moves when you narrow the view has stopped
@@ -3571,8 +3630,11 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
       }
     },
   );
-  const notIssuedIds = rosterWaiting.filter(r => r.status === "not-issued").map(r => r.employeeId);
-  const printableEntries = rosterWaiting.filter(r => r.status === "unused" && r.code);
+  /* On the VISIBLE rows, not on the section. A search for one person with 「코드 3개 발급」 beside
+     it would mint codes for two people who are not on screen — the exact shape of "acts on an
+     invisible set" this button was already criticised for. Now the number and the rows agree. */
+  const notIssuedIds = visibleRoster.filter(r => r.status === "not-issued").map(r => r.employeeId);
+  const printableEntries = visibleRoster.filter(r => r.status === "unused" && r.code);
 
   /**
    * Who a "suspend everything shown" would actually touch.
@@ -3864,7 +3926,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             mayInvite={manageAccess} inviteReason={t.reasonNotOwner}
             mayAddCode={mayEdit} codeReason={readOnlyReason}
             onMail={() => { setPeopleTab("accounts"); setShowInvite(true); }}
-            onCode={() => { setPeopleTab("roster"); setRosterEditorFor({ entry: null }); }}
+            onCode={() => { setPeopleTab("roster"); setRosterEditorFor({ entry: null, issueOnSave: true }); }}
           />
           )}
           {/* Icons on the secondary tools too. Only the invite button had one, so on a page whose
@@ -4363,7 +4425,23 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
       </div>
 
       {rosterEditorFor && (
-        <RosterEntryModal entry={rosterEditorFor.entry} projectId={projectId} onClose={() => setRosterEditorFor(null)} t={rt} />
+        /*
+          THE CODE COMES WITH THE PERSON (owner, 2026-09-23: 계정에서 코드 발급으로 초대하면
+          코드는 자동으로 발급되게 하면 안 돼?).
+
+          Right: choosing 「등록 코드로 추가」 has already said what this person gets. Leaving the
+          row at 미발급 meant the administrator finished a panel and then had to find that row and
+          press 코드 발급 — a second decision about a question they had answered before they
+          started typing. So the door issues it on save and marks the row 「방금 발급」, which is
+          what unmasks the code for reading out (see RosterCodeCell's justIssued).
+
+          Only from that door. Opening the same panel from a row's 수정 issues nothing: there, the
+          code is not what was asked about, and minting one would be a live credential created as a
+          side effect.
+        */
+        <RosterEntryModal entry={rosterEditorFor.entry} projectId={projectId}
+          onCreated={rosterEditorFor.issueOnSave ? id => { issueRegistrationCodes([id]); setJustIssuedFor(id); } : undefined}
+          onClose={() => setRosterEditorFor(null)} t={rt} />
       )}
       {issuingEntry && (
         <IssueConfirmModal entry={issuingEntry} t={rt}

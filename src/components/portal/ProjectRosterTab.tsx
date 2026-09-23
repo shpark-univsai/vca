@@ -393,10 +393,18 @@ function RosterCodeCell({ entry, onReveal, onIssue, t, justIssued }: {
  * be typed when adding and is read-only afterwards — silently rewriting it would point an already
  * printed code at a different person.
  */
-function RosterEntryModal({ entry, projectId, onClose, t }: {
+function RosterEntryModal({ entry, projectId, onClose, onCreated, t }: {
   entry: RosterEntry | null;
   projectId: string;
   onClose: () => void;
+  /**
+   * Called with the employee number after a NEW row is written, never on an edit.
+   *
+   * The caller that opened this through 「등록 코드로 추가」 uses it to mint the code in the same
+   * act — see PortalUsersPage. A callback rather than doing it here, because this panel is also
+   * the row editor, where issuing a code would be a side effect nobody asked for.
+   */
+  onCreated?: (employeeId: string) => void;
   t: Translations;
 }) {
   const addRosterEntry = useVcaStore(s => s.addRosterEntry);
@@ -436,6 +444,7 @@ function RosterEntryModal({ entry, projectId, onClose, t }: {
     });
     if (!ok) { setDuplicate(true); return; }
     showToast({ variant: "success", title: t.toastAddedTitle, desc: `${name.trim()} (${employeeId.trim()})` });
+    onCreated?.(employeeId.trim());
     onClose();
   };
 
