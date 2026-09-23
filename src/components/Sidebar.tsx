@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Search, Crown } from "lucide-react";
 import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, getFacePhoto, formatTimeAgo, districtIdAt } from "@/lib/mockData";
 import {
-  vcaEventsToLiveEvents, todaysDetectionHits, useDashboardPanels,
+  vcaEventsToLiveEvents, todaysDetectionHits, useDashboardPanels, holdsAppAction, useVcaStore,
   useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras, type Camera,
 } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -1003,9 +1003,25 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
   const [filter, setFilter] = useState<FilterType>("All");
   const [page, setPage] = useState(1);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
-  const FILTERS: FilterType[] = ["All", "VIP Detection", "Tracking"];
+  /*
+   * TRACKING IS THE MAP'S CAPABILITY, WEARING THE DASHBOARD'S CLOTHES (2026-09-23, owner:
+   * 대시보드에서 이벤트에 VIP 감지뿐 아니라 지금 트레킹도 있긴 하거든 · 못 보게 할 거면 같이
+   * 꺼야 할 것 같아, 레드맵 기능과 같거든).
+   *
+   * A Tracking row is one person joined across two or more cameras — the same answer 레드맵 draws
+   * on a map, and `trail` is the grant for it. So an account without `trail` was seeing, in the
+   * dashboard's own panel, the thing the map permission exists to withhold: where somebody went.
+   * The rows go, and the filter chip with them — a chip that can only ever return an empty list is
+   * a control that lies about what the panel holds.
+   */
+  const portalUsers = useVcaStore(st => st.portalUsers);
+  const maySeeTrails = holdsAppAction(portalUsers, "trail");
+  const FILTERS: FilterType[] = maySeeTrails
+    ? ["All", "VIP Detection", "Tracking"]
+    : ["All", "VIP Detection"];
   const districtEvents = useProjectEvents();
-  const liveEvents = vcaEventsToLiveEvents(districtEvents);
+  const allLiveEvents = vcaEventsToLiveEvents(districtEvents);
+  const liveEvents = maySeeTrails ? allLiveEvents : allLiveEvents.filter(e => e.type !== "Tracking");
   // Routed through the future-backend stub instead of importing the mock array directly — see
   // lib/api/dashboard.ts. Falls back to the raw district id (still a valid, if less pretty,
   // label) for the brief pre-fetch window.

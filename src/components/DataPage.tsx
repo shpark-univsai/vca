@@ -111,8 +111,6 @@ const T = {
     rtspConnected: "RTSP connected",
     noFeedTitle: "No feed to show",
     noFeedBody: "This camera is not running, so there is nothing being captured. The device list shows when it was last seen.",
-    noReidTitle: "Person search permission required",
-    noReidBody: "Re-ID Analysis answers where one person has been seen across the site's cameras, which is a person search. An administrator can grant the permission in the Portal, under Users & Permissions.",
     noRedFaceTitle: "Person search permission required",
     noRedFaceBody: "RedFace matches a face against the registry and builds an association network from it, so with no search permission there is nothing it can show. An administrator can grant it in the Portal, under Users & Permissions.",
     searchVips: "Search VIPs",
@@ -274,8 +272,6 @@ const T = {
     rtspConnected: "RTSP 연결됨",
     noFeedTitle: "표시할 화면이 없습니다",
     noFeedBody: "이 카메라는 가동 중이 아니라 촬영되는 것이 없습니다. 마지막 신호 시각은 장비 목록에서 볼 수 있습니다.",
-    noReidTitle: "인물 검색 권한이 필요합니다",
-    noReidBody: "Re-ID 분석은 한 사람이 이 현장의 카메라들에서 언제 어디서 보였는지를 답하는 화면입니다. 인물 검색에 해당하므로 권한이 필요합니다. 관리자에게 요청하면 Portal의 사용자 및 권한에서 열어 줄 수 있습니다.",
     noRedFaceTitle: "인물 검색 권한이 필요합니다",
     noRedFaceBody: "RedFace는 얼굴을 등록부와 대조해 동행 관계를 만드는 화면이라, 검색 권한 없이는 보여줄 것이 없습니다. 관리자에게 요청하면 Portal의 사용자 및 권한에서 열어 줄 수 있습니다.",
     searchVips: "VIP 검색",
@@ -345,7 +341,10 @@ const T = {
     viewGrid: "정렬 가능한 표로 보기",
     pyramidAndZone: "단계 · 구역",
     dataGrid: "표로 보기",
-    tabLiveMonitoring: "실시간 관제",
+    /* 「모니터링」, not 「실시간 관제」 (owner, 2026-09-23). The owner calls this tab 모니터링, and
+       the permission that opens it has to carry the same word — the whole point of naming the
+       grants after the app's menu. Changed here first, so the app is still the source. */
+    tabLiveMonitoring: "모니터링",
     tabReid: "Re-ID 분석",
     tabRedface: "RedFace",
     redfaceTooltip: "선택한 사람과 같은 프레임에 잡힌 사람을 모든 카메라에서 찾습니다",
@@ -3607,26 +3606,34 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
     action: "RedFace",
     matches: targetMatches ?? (attributeRows ?? []).map(p => ({ ...reidToMatchItem(p), similarity: p.similarity })),
   } : null;
-  const clusters = hasSearched ? (searchResultCluster ? [searchResultCluster] : []) : liveClusters;
+  /*
+   * A SEARCH RESULT NEEDS THE SEARCH GRANT, WHICHEVER DOOR IT CAME THROUGH (2026-09-23).
+   *
+   * The whole-screen gate above used to cover this. It is gone — the screen has live content worth
+   * opening (the server re-identifies what 모니터링 detects, which is why the owner asked for the
+   * two to be separate grants) — but the one thing the gate was protecting has to stay protected:
+   * a 모니터링 card's 「Re-ID」 button walks in with a target and sets `hasSearched`, so without this
+   * an account with no 인물 검색 would get twenty matches on screen having pressed nothing that
+   * says "search". `searchAllowed` is false for that account, so it sees the live clusters, and
+   * the sidebar's own button tells it why searching is unavailable.
+   */
+  const clusters = hasSearched && searchAllowed ? (searchResultCluster ? [searchResultCluster] : []) : liveClusters;
   const detailItem = detailId !== null ? clusters.flatMap(c => c.matches).find(m => m.id === detailId) ?? null : null;
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // After the hooks, so the rule stays a rule no matter which way this tab was entered — the tab
-  // bar, a deep-link, or a card's Re-ID button.
-  if (!searchAllowed) {
-    return (
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px", backgroundColor: "var(--gray-50)" }}>
-        <div style={{ maxWidth: "420px", textAlign: "center" }}>
-          <p style={{ margin: 0, fontSize: "18px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.36px" }}>
-            {t.noReidTitle}
-          </p>
-          <p style={{ margin: "10px 0 0", fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", lineHeight: 1.5 }}>
-            {t.noReidBody}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  /*
+   * NO WHOLE-SCREEN GATE HERE ANY MORE (2026-09-23, owner: 데이터 모니터링과 리아이디를 제외하고는
+   * 레드페이스와 레드맵은 검색을 해야만 데이터를 볼 수 있어서 · 그걸 세부적으로 나눠줬으면).
+   *
+   * This screen used to refuse outright without 인물 검색, which made the 「Re-ID 분석」 grant
+   * meaningless on its own — and it was not even true of the screen: `liveClusters` above is what
+   * it shows before anybody searches, so there is something to look at. The search itself is still
+   * gated, by the sidebar's own button (see LiveSearchSidebar: aria-disabled plus the sentence
+   * 「인물 검색 권한이 없습니다 — 관리자에게 요청하세요」), which is exactly how 모니터링 behaves.
+   *
+   * The two screens that DO keep a whole-screen gate are RedFace and 레드맵, and for the same
+   * reason in both: they have no unsearched state — with no search there is nothing to draw.
+   */
 
   return (
     <div style={{ flex:1, display:"flex", gap:"12px", overflow:"hidden", padding:"20px 24px 12px", backgroundColor:"var(--gray-100)", boxSizing:"border-box" }}>

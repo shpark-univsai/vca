@@ -90,7 +90,7 @@ const T = {
     introWithPurpose: "모니터링 앱에서 실행된 인물 조회와, 그때 관제요원이 밝힌 목적입니다.",
     empty: "기록된 조회가 없습니다.",
     noMatch: "조건에 맞는 조회 기록이 없습니다.",
-    surfaceName: { live: "실시간 관제", reid: "Re-ID", redmap: "레드맵", redface: "RedFace" } as Record<string, string>,
+    surfaceName: { live: "모니터링", reid: "Re-ID", redmap: "레드맵", redface: "RedFace" } as Record<string, string>,
     colAt: "시각", colActor: "조회자", colPurpose: "목적", colReference: "참조번호",
     colTarget: "조회 대상", colSurface: "화면", colResults: "결과", colIp: "IP 주소",
     filterAllPurposes: "전체 목적",

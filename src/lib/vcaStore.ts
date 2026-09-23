@@ -95,6 +95,21 @@ export interface Project {
   // of this single number, not two separate limits. Optional so projects created before this
   // existed (or without a license configured yet) still type-check.
   /**
+   * Whether the live view and the saved frames carry the viewer's name and the time on them.
+   *
+   * ABSENT MEANS ON (2026-09-23, owner: 혹시 이것도 뺄 수 있게 포탈에 설정을 넣어야 할까 → 넣되
+   * 기본은 켜짐). A watermark cannot stop a screenshot — no browser can, and a phone camera beats
+   * every native trick — so what it buys is not prevention but attribution: a still that leaks
+   * says whose session it was taken from. Default-off would mean nobody turns it on, and the one
+   * screen that most needs it (a face on a live feed) is the one people photograph.
+   *
+   * It is switchable because of the control room: a wall display is watched by a shift, not by the
+   * account whose session drives it, so the name on it would be a claim about the wrong person.
+   * Per project, like `timeZone`, because the policy belongs to the site — and turning it OFF is
+   * audited, since removing a traceability control is itself a decision somebody made.
+   */
+  evidenceWatermark?: boolean;
+  /**
    * The zone this project's days and hours are counted in, e.g. "Asia/Singapore".
    *
    * A timezone belongs to a project, not to an account: a site sits in one country and its "today"
@@ -1064,6 +1079,7 @@ interface VcaStoreState {
   closeErasureRequest: (id: string, completed: boolean, note: string) => void;
   updateProjectMail: (projectId: string, updates: Pick<Project, "mailDomain" | "smtp">) => void;
   setProjectTimeZone: (projectId: string, timeZone: string) => void;
+  setEvidenceWatermark: (projectId: string, on: boolean) => void;
   /** null clears it back to "not decided". See Project.retentionDays. */
   setProjectRetention: (projectId: string, days: number | null) => void;
   /** null clears it back to "not decided", and then the deployment default applies. See
@@ -2369,8 +2385,29 @@ export const APP_SCREENS: AppScreen[] = ["live", "bestframe", "redmap", "reid", 
 export type AppAction =
   | "systemStatus"
   | "liveView"
+  /**
+   * 데이터 → 실시간 관제. SEPARATE FROM `liveView` ON PURPOSE (2026-09-23, owner: 이걸 같이 보면
+   * 안 되는 게, 데이터의 모니터링에서는 모르는 사람도 모두 감지하고 촬영하고 있어서).
+   *
+   * The dashboard's VIP detections are about people the customer registered. Live Monitoring is
+   * about EVERYBODY who walks past, including faces nobody enrolled — so granting one used to
+   * grant the other, and an account that should only see VIP alerts could watch and film strangers.
+   * Same privacy line `systemStatus` is drawn on, and the heavier side of it.
+   */
+  | "liveMonitoring"
   | "history"
   | "personSearch"
+  /**
+   * 데이터 → Re-ID 분석. Split from `trail` (2026-09-23, owner: 레드맵이랑 Re-ID 분석은 별개
+   * 메뉴야 · 둘로 쪼개줘). One grant used to open both: a table of where one person appeared, and
+   * a map drawing their route. They are separate menus in the app and separate jobs — an
+   * investigator who should read sightings out of a table does not automatically need the map.
+   * `trail` keeps the map, which is what its name always described.
+   *
+   * Both still need `personSearch` alongside them, or the two screens open onto a refusal — see
+   * the note in HANDOFF-SERVER §4.
+   */
+  | "reid"
   | "trail"
   | "export";
 
@@ -2405,8 +2442,15 @@ export type AppAction =
  * The way in is the two sources every one of those reads (`getFacePhoto` and `Person.photoUrl`),
  * gated once each, with a placeholder rather than a broken image. That is its own piece of work.
  */
+/*
+ * IN THE APP'S OWN MENU ORDER (2026-09-23, owner: 제일 위로 올려줘, 처음 랜딩 화면에서 볼 수
+ * 있으니까). The app opens on 대시보드, so its two panels come first — 이벤트 before 시스템,
+ * because the events panel is what the landing screen shows. Then 베스트 프레임, then the three
+ * 데이터 sub-tabs in their own order, then 레드맵, and 증거 내보내기 last because it is a button
+ * rather than a place. A reader can now check this list against the app's menu bar top to bottom.
+ */
 export const APP_ACTIONS: AppAction[] = [
-  "systemStatus", "liveView", "history", "personSearch", "trail", "export",
+  "liveView", "systemStatus", "history", "liveMonitoring", "reid", "personSearch", "trail", "export",
 ];
 
 /**
@@ -2485,10 +2529,10 @@ export function screensForActions(actions: AppAction[]): AppScreen[] {
   const has = (a: AppAction) => actions.includes(a);
   return APP_SCREENS.filter(screen => {
     switch (screen) {
-      case "live": return has("liveView");
+      case "live": return has("liveMonitoring");
       case "bestframe": return has("history");
       case "redface": return has("personSearch");
-      case "reid": return has("trail");
+      case "reid": return has("reid");
       case "redmap": return has("trail");
     }
   });
@@ -2959,10 +3003,10 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["systemStatus", "liveView", "history", "personSearch", "trail", "export"], grantMode: "preset", presetId: "preset-supervisor", status: "active", lastLoginAt: "2026-08-25 09:14" },
-  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["systemStatus", "liveView", "history", "personSearch", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "history", "personSearch", "reid", "trail", "export"], grantMode: "preset", presetId: "preset-supervisor", status: "active", lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "history", "personSearch", "reid", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
   // Admin who also works the app — the combination the single-field model could not hold.
-  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appActions: ["systemStatus", "liveView", "history"], grantMode: "preset", presetId: "preset-operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
+  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "history"], grantMode: "preset", presetId: "preset-operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
   { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", employeeId: "EMP-2044", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "invited" },
   { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", employeeId: "EMP-2045", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "suspended", lastLoginAt: "2026-06-02 08:30" },
   // The customer's security officer: reads Portal for the audit trail, has no business in the
@@ -4208,17 +4252,17 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     {
       id: "preset-operator", teamId: "team-univs", builtinKey: "operator", label: "운영자",
       description: "지금 일어나는 일을 본다",
-      actions: ["systemStatus", "liveView", "history"],
+      actions: ["systemStatus", "liveView", "liveMonitoring", "history"],
     },
     {
       id: "preset-investigator", teamId: "team-univs", builtinKey: "investigator", label: "조사자",
       description: "운영자가 하는 일에 인물 검색과 동선 추적을 더합니다",
-      actions: ["systemStatus", "liveView", "history", "personSearch", "trail"],
+      actions: ["systemStatus", "liveView", "liveMonitoring", "history", "personSearch", "reid", "trail"],
     },
     {
       id: "preset-supervisor", teamId: "team-univs", builtinKey: "supervisor", label: "감독자",
       description: "조사자가 하는 일에 증거 내보내기를 더합니다",
-      actions: ["systemStatus", "liveView", "history", "personSearch", "trail", "export"],
+      actions: ["systemStatus", "liveView", "liveMonitoring", "history", "personSearch", "reid", "trail", "export"],
     },
   ],
   searchPurpose: null,
@@ -4557,6 +4601,21 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     }),
   // Mail settings write to the audit log the way license changes do — an admin changing where
   // invites are sent is exactly the kind of thing someone has to be able to trace later.
+  setEvidenceWatermark: (projectId, on) =>
+    set(state => ({
+      projects: state.projects.map(p => (p.id === projectId ? { ...p, evidenceWatermark: on } : p)),
+      /* Audited in both directions, and the OFF line is the one that matters: it is the record that
+         somebody removed the mark that ties a leaked still to a session. */
+      auditLog: [
+        clientAudit({
+          projectId,
+          message: on ? "Viewer watermark turned on" : "Viewer watermark turned OFF — leaked stills no longer name the session",
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }),
+        ...state.auditLog,
+      ].slice(0, AUDIT_LOG_LIMIT),
+    })),
+
   setProjectTimeZone: (projectId, timeZone) =>
     set(state => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, timeZone } : p)),
